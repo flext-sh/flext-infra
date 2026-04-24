@@ -6,6 +6,8 @@ from collections.abc import (
     MutableMapping,
 )
 
+from tomlkit.toml_document import TOMLDocument
+
 from flext_infra import FlextInfraPhaseEngine, c, m, t
 
 
@@ -46,7 +48,7 @@ class FlextInfraEnsurePytestConfigPhase:
             .build()
         )
 
-    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+    def apply(self, doc: TOMLDocument) -> t.StrSequence:
         """Apply pytest defaults while preserving project-specific ini options."""
         return FlextInfraPhaseEngine.apply_phases(doc, self._phase())
 

@@ -15,6 +15,7 @@ from typing import ClassVar, override
 
 import pytest
 from flext_tests import FlextTestsUtilities
+from tomlkit import TOMLDocument
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
@@ -271,7 +272,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return result.value
 
             @staticmethod
-            def toml_doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+            def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
                 return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
                     u.Cli.normalize_json_value(doc.unwrap()),
                 )

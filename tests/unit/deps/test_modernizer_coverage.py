@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tomlkit
 from flext_tests import tm
+from tomlkit import TOMLDocument
 
 from flext_infra import FlextInfraEnsureCoverageConfigPhase
 from tests import m, t, u
@@ -18,7 +19,7 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
     return result.value
 
 
-def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
         u.Cli.normalize_json_value(doc.unwrap()),
     )

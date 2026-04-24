@@ -6,6 +6,8 @@ from collections.abc import (
     MutableMapping,
 )
 
+from tomlkit.toml_document import TOMLDocument
+
 from flext_infra import FlextInfraPhaseEngine, m, t
 
 
@@ -38,7 +40,7 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
             .build()
         )
 
-    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+    def apply(self, doc: TOMLDocument) -> t.StrSequence:
         """Apply canonical ``[tool.pydantic-mypy]`` defaults into TOML document."""
         return FlextInfraPhaseEngine.apply_phases(doc, self._phase())
 

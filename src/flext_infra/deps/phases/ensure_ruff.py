@@ -8,6 +8,8 @@ from collections.abc import (
 )
 from pathlib import Path
 
+from tomlkit.toml_document import TOMLDocument
+
 from flext_infra import FlextInfraPhaseEngine, c, m, t, u
 
 
@@ -40,7 +42,7 @@ class FlextInfraEnsureRuffConfigPhase:
         )
 
     @staticmethod
-    def _remove_stale_lint_section(doc: t.Cli.TomlDocument) -> t.StrSequence:
+    def _remove_stale_lint_section(doc: TOMLDocument) -> t.StrSequence:
         """Remove the stale top-level ``[lint]`` table left by old configs."""
         if c.Infra.LINT_SECTION not in doc:
             return []
@@ -146,7 +148,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     def apply(
         self,
-        doc: t.Cli.TomlDocument,
+        doc: TOMLDocument,
         *,
         path: Path,
     ) -> t.StrSequence:

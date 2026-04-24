@@ -7,6 +7,8 @@ from collections.abc import (
     Sequence,
 )
 
+from tomlkit.toml_document import TOMLDocument
+
 from flext_infra import FlextInfraPhaseEngine, c, m, t, u
 
 
@@ -60,7 +62,7 @@ class FlextInfraEnsureMypyConfigPhase:
             phase_builder = phase_builder.value(key, value)
         return phase_builder.build()
 
-    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
+    def apply(self, doc: TOMLDocument) -> t.StrSequence:
         """Apply mypy defaults, overrides, and toggles from tool configuration."""
         return FlextInfraPhaseEngine.apply_phases(doc, self._phase())
 

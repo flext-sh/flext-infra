@@ -241,7 +241,15 @@ project-excludes = [
 ]
 project-includes = [ "src/**/*.py*", "tests/**/*.py*", "tmp_flow_test/**/*.py*" ]
 python-version = "3.13"
-search-path = [ ".", "src" ]
+search-path = [
+  ".",
+  "src",
+  "../flext-core/src",
+  "../flext-cli/src",
+  "../flext-tests/src",
+]
+site-package-path = [ "../.venv/lib/python3.13/site-packages" ]
+skip-interpreter-query = true
 use-ignore-files = false
 
 [tool.pyrefly.errors]

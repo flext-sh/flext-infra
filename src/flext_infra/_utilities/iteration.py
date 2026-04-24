@@ -18,6 +18,7 @@ from pathlib import Path
 
 from flext_cli import u
 from git import InvalidGitRepositoryError, NoSuchPathError, Repo
+from tomlkit import TOMLDocument
 
 from flext_infra import c, p, r, t
 
@@ -48,7 +49,7 @@ class FlextInfraUtilitiesIteration:
         return normalized or None
 
     @staticmethod
-    def _normalized_toml_payload(document: t.Cli.TomlDocument) -> t.Infra.ContainerDict:
+    def _normalized_toml_payload(document: TOMLDocument) -> t.Infra.ContainerDict:
         """Return one TOML document normalized through the infra adapter."""
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
@@ -73,7 +74,7 @@ class FlextInfraUtilitiesIteration:
         return tuple(selected_by_name[name] for name in sorted(selected_by_name))
 
     @classmethod
-    def declared_dependency_names(cls, document: t.Cli.TomlDocument) -> t.StrSequence:
+    def declared_dependency_names(cls, document: TOMLDocument) -> t.StrSequence:
         """Return normalized dependency names from one TOML document."""
         normalized = cls._normalized_toml_payload(document)
         if not normalized:
@@ -223,7 +224,7 @@ class FlextInfraUtilitiesIteration:
     @classmethod
     def project_dev_groups(
         cls,
-        document: t.Cli.TomlDocument,
+        document: TOMLDocument,
     ) -> Mapping[str, t.StrSequence]:
         """Collect optional dependency groups from one TOML document."""
         normalized = cls._normalized_toml_payload(document)
@@ -234,7 +235,7 @@ class FlextInfraUtilitiesIteration:
     @classmethod
     def canonical_dev_dependencies(
         cls,
-        document: t.Cli.TomlDocument,
+        document: TOMLDocument,
     ) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one TOML document."""
         normalized = cls._normalized_toml_payload(document)
@@ -258,7 +259,7 @@ class FlextInfraUtilitiesIteration:
     @classmethod
     def workspace_dep_namespaces(
         cls,
-        document: t.Cli.TomlDocument,
+        document: TOMLDocument,
     ) -> t.StrSequence:
         """Extract workspace-local dependency namespaces from one TOML document."""
         normalized = cls._normalized_toml_payload(document)

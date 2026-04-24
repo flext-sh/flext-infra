@@ -6,6 +6,8 @@ from collections.abc import (
     MutableMapping,
 )
 
+from tomlkit.toml_document import TOMLDocument
+
 from flext_infra import FlextInfraPhaseEngine, m, t
 
 
@@ -52,7 +54,7 @@ class FlextInfraEnsureCoverageConfigPhase:
 
     def apply(
         self,
-        doc: t.Cli.TomlDocument,
+        doc: TOMLDocument,
         *,
         project_kind: str = "core",
     ) -> t.StrSequence:

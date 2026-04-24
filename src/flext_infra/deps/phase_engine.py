@@ -17,6 +17,9 @@ from collections.abc import (
 )
 from typing import Annotated, override
 
+from tomlkit.items import Table
+from tomlkit.toml_document import TOMLDocument
+
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -24,7 +27,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     """Apply ``m.Infra.TomlPhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
-        t.Cli.TomlDocument,
+        TOMLDocument,
         m.Field(exclude=True, description="Target TOML document"),
     ]
     phases: Annotated[
@@ -34,14 +37,12 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
             description="Ordered TOML transformation phases to apply.",
         ),
     ]
-    _table_cache: dict[tuple[str, ...], t.Cli.TomlTable] = u.PrivateAttr(
-        default_factory=dict
-    )
+    _table_cache: dict[tuple[str, ...], Table] = u.PrivateAttr(default_factory=dict)
 
     @classmethod
     def apply_phases(
         cls,
-        doc: t.Cli.TomlDocument,
+        doc: TOMLDocument,
         *phases: m.Infra.TomlPhaseConfig,
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
@@ -114,7 +115,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
             )
         return out
 
-    def _resolve_phase_table(self, phase_path: tuple[str, ...]) -> t.Cli.TomlTable:
+    def _resolve_phase_table(self, phase_path: tuple[str, ...]) -> Table:
         """Resolve and cache one TOML table path for the current document."""
         cached_table = self._table_cache.get(phase_path)
         if cached_table is not None:
@@ -160,7 +161,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _apply_operation(
-        tbl: t.Cli.TomlTable,
+        tbl: Table,
         operation: m.Infra.TomlOperation,
         out: MutableSequence[str],
         pfx: str,
@@ -247,7 +248,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _remove_operation(
-        tbl: t.Cli.TomlTable,
+        tbl: Table,
         operation: m.Infra.TomlRemoveOp,
         out: MutableSequence[str],
         pfx: str,

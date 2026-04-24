@@ -13,8 +13,9 @@ from __future__ import annotations
 from typing import override
 
 import tomlkit
+from tomlkit.items import Table
 
-from flext_infra import c, p, r, s, t, u
+from flext_infra import c, p, r, s, u
 
 
 class FlextInfraCodegenPyprojectKeys(s[bool]):
@@ -46,24 +47,21 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
             tool_flext_config = u.read_tool_flext_config(project_info.path)
             dumped = tool_flext_config.model_dump(exclude_none=True)
 
-            tool: t.Infra.TomlTable = doc.setdefault(
-                "tool", tomlkit.table(is_super_table=True)
-            )
-            flext: t.Infra.TomlTable = tool.setdefault(
-                "flext", tomlkit.table(is_super_table=True)
-            )
+            tool: Table = doc.setdefault("tool", tomlkit.table(is_super_table=True))
+            flext: Table = tool.setdefault("flext", tomlkit.table(is_super_table=True))
 
             for section_key in ("project", "namespace", "docs", "aliases"):
                 section_data = dumped.get(section_key, {})
                 if section_key not in flext:
                     flext[section_key] = tomlkit.table()
-                item = flext[section_key]
-                if not isinstance(item, tomlkit.items.Table):
+                raw_item = flext[section_key]
+                if not isinstance(raw_item, Table):
                     msg = f"{project_info.name}: [tool.flext.{section_key}] is not a table"
                     raise TypeError(msg)
+                section_table: Table = raw_item
                 for k, v in section_data.items():
-                    if k not in item:
-                        item[k] = v
+                    if k not in section_table:
+                        section_table[k] = v
 
             rendered = tomlkit.dumps(doc)
             if rendered == original_text:

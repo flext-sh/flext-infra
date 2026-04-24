@@ -8,6 +8,7 @@ from collections.abc import (
 )
 
 from tomlkit.items import Table
+from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import c, t, u
 
@@ -17,7 +18,7 @@ class FlextInfraConsolidateGroupsPhase:
 
     def apply(
         self,
-        doc: t.Infra.TomlDocument,
+        doc: TOMLDocument,
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         """Merge all legacy optional groups into canonical ``project.optional-dependencies.dev``."""
@@ -49,7 +50,7 @@ class FlextInfraConsolidateGroupsPhase:
         tool = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
         poetry = u.Cli.toml_ensure_table(tool, c.Infra.POETRY)
         poetry_group = u.Cli.toml_ensure_table(poetry, c.Infra.GROUP)
-        poetry_dev_table: t.Infra.TomlTable | None = None
+        poetry_dev_table: Table | None = None
         for old_group in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
             if old_group not in poetry_group:
                 continue

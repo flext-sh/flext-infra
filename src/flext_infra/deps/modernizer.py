@@ -10,7 +10,9 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from tomlkit.items import AoT, Table
+from tomlkit.container import Container
+from tomlkit.items import AoT, Item, Table
+from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
@@ -196,7 +198,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
                 is_root=is_root,
             ),
         )
-        doc = u.Cli.toml_document_from_mapping(payload)
+        doc: TOMLDocument = u.Cli.toml_document_from_mapping(payload)
         self._reorder_document_inplace(doc)
         state.payload = payload
         rendered = doc.as_string()
@@ -298,7 +300,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
     @classmethod
     def _reorder_table_inplace(
         cls,
-        table: t.Infra.TomlTable,
+        table: Table,
         *,
         preferred_first: t.StrSequence | None = None,
         table_key: str | None = None,
@@ -313,29 +315,27 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         )
         if ordered_keys == original_keys:
             for key in ordered_keys:
-                value = table[key]
-                if isinstance(value, Table):
-                    cls._reorder_table_inplace(value, table_key=key)
-                elif isinstance(value, AoT):
-                    for entry in value.body:
+                child: Item = table[key]
+                if isinstance(child, Table):
+                    cls._reorder_table_inplace(child, table_key=key)
+                elif isinstance(child, AoT):
+                    for entry in child.body:
                         cls._reorder_table_inplace(entry, table_key=key)
             return
-        items: MutableMapping[str, t.Infra.TomlItem] = {
-            key: table[key] for key in original_keys
-        }
+        items: MutableMapping[str, Item] = {key: table[key] for key in original_keys}
         for key in original_keys:
             del table[key]
         for key in ordered_keys:
-            value = items[key]
-            if isinstance(value, Table):
-                cls._reorder_table_inplace(value, table_key=key)
-            elif isinstance(value, AoT):
-                for entry in value.body:
+            item_value: Item = items[key]
+            if isinstance(item_value, Table):
+                cls._reorder_table_inplace(item_value, table_key=key)
+            elif isinstance(item_value, AoT):
+                for entry in item_value.body:
                     cls._reorder_table_inplace(entry, table_key=key)
-            table[key] = value
+            table[key] = item_value
 
     @classmethod
-    def _reorder_document_inplace(cls, doc: t.Infra.TomlDocument) -> None:
+    def _reorder_document_inplace(cls, doc: TOMLDocument) -> None:
         """Apply deterministic ordering for top-level groups and nested tables."""
         root_keys = [str(key) for key in doc]
         ordered_root = cls._ordered_keys(
@@ -343,9 +343,9 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             preferred_first=("build-system", "dependency-groups", "project", "tool"),
         )
         if ordered_root != root_keys:
-            root_items: MutableMapping[
-                str, t.Infra.TomlItem | t.Infra.TomlContainer
-            ] = {key: doc[key] for key in root_keys}
+            root_items: dict[str, Item | Container] = {
+                key: doc[key] for key in root_keys
+            }
             for key in root_keys:
                 del doc[key]
             for key in ordered_root:

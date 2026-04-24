@@ -9,9 +9,13 @@ from collections.abc import (
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tomlkit.toml_document import TOMLDocument
+
 from flext_infra import FlextInfraPhaseEngine, c, m, t
 
 if TYPE_CHECKING:
+    from tomlkit.toml_document import TOMLDocument
+
     from flext_infra import FlextInfraExtraPathsManager
 
 
@@ -81,7 +85,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def apply(
         self,
-        doc: t.Cli.TomlDocument,
+        doc: TOMLDocument,
         *,
         is_root: bool,
         project_dir: Path | None = None,
