@@ -1,0 +1,74 @@
+tests/unit/test_infra_workspace_migrator_deps.py
+  h_9db9d35f50cf33 28,34
+src/flext_infra/_utilities/docs_api.py
+  h_9db9d35f50cf33 237
+tests/utilities.py
+  h_9db9d35f50cf33 970-974,983
+tests/unit/docs/auditor_tests.py
+  h_9db9d35f50cf33 28-29,31,36-37,39,44-47
+src/flext_infra/refactor/orchestrator.py
+  h_9db9d35f50cf33 243,248
+src/flext_infra/_utilities/rope_source.py
+  h_9db9d35f50cf33 313,322,324,327
+src/flext_infra/validate/namespace_rules.py
+  h_9db9d35f50cf33 25-31,362,371-373,377,381-385,387-394
+src/flext_infra/_typings/base.py
+  h_9db9d35f50cf33 117-119
+tests/unit/test_infra_selection.py
+  h_9db9d35f50cf33 41-42
+tests/unit/check/silent_failure_gate_tests.py
+  h_9db9d35f50cf33 14,30
+tests/unit/validate/namespace_validator_tests.py
+  h_9db9d35f50cf33 278,308-360
+tests/unit/transformers/test_infra_transformer_class_nesting.py
+  h_9db9d35f50cf33 24-25
+tests/unit/validate/silent_failure_tests.py
+  h_9db9d35f50cf33 20
+tests/unit/codegen/lazy_init_helpers_tests.py
+  h_9db9d35f50cf33 15,20
+src/flext_infra/release/orchestrator.py
+  h_9db9d35f50cf33 69,71,240,340,408
+tests/unit/release/orchestrator_git_tests.py
+  h_9db9d35f50cf33 52,56
+tests/unit/workspace_factory.py
+  h_9db9d35f50cf33 57,89-92,112-117,120-121,124-125,129
+tests/unit/validate/basemk_validator_tests.py
+  h_9db9d35f50cf33 27,135
+src/flext_infra/_utilities/docs_contract.py
+  h_9db9d35f50cf33 56
+src/flext_infra/deps/detector_runtime.py
+  h_9db9d35f50cf33 13,23-24,32,86-87
+tests/unit/basemk/test_make_contract.py
+  h_9db9d35f50cf33 18
+tests/unit/codegen/scaffolder_tests.py
+  h_9db9d35f50cf33 21,25,31,36
+src/flext_infra/deps/detection_analysis.py
+  h_9db9d35f50cf33 182
+src/flext_infra/_utilities/codegen.py
+  h_9db9d35f50cf33 33
+tests/unit/deps/test_detector_report_flags.py
+  h_9db9d35f50cf33 76,80,82
+tests/unit/docs/main_entry_tests.py
+  h_9db9d35f50cf33 14,19
+tests/unit/test_infra_reporting_extra.py
+  h_9db9d35f50cf33 21-22
+tests/unit/test_infra_reporting_core.py
+  h_9db9d35f50cf33 21-22
+src/flext_infra/_utilities/versioning.py
+  h_9db9d35f50cf33 34,61,63-64
+tests/unit/transformers/test_infra_transformer_helper_consolidation.py
+  h_9db9d35f50cf33 25-26
+tests/unit/transformers/test_infra_transformer_nested_class_propagation.py
+  h_9db9d35f50cf33 22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7559344a988517d4c32688cd15fb7bf230479166",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
