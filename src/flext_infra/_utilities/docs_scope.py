@@ -347,7 +347,9 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def project_package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project."""
-        name: str = FlextInfraUtilitiesDocsScope.project_state(project_root).package_name
+        name: str = FlextInfraUtilitiesDocsScope.project_state(
+            project_root
+        ).package_name
         return name
 
     @staticmethod

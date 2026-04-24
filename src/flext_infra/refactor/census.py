@@ -464,11 +464,14 @@ class FlextInfraRefactorCensus(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
                 )
                 touched_paths.add(Path(candidate.file_path).resolve())
-                touched_paths.update(Path(site.file_path).resolve() for site in (
-                    *candidate.test_reference_sites,
-                    *candidate.example_reference_sites,
-                    *candidate.script_reference_sites,
-                ))
+                touched_paths.update(
+                    Path(site.file_path).resolve()
+                    for site in (
+                        *candidate.test_reference_sites,
+                        *candidate.example_reference_sites,
+                        *candidate.script_reference_sites,
+                    )
+                )
         if applied:
             self._regenerate_inits_via_codegen()
             self._ruff_fix_touched_files(touched_paths)

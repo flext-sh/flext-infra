@@ -148,7 +148,9 @@ class FlextInfraUtilitiesProtectedEdit:
         command_cwd = cls._command_cwd(py_file, workspace)
         command_env = cls._command_env()
 
-        def _run_gate(tool_name: str, tmpl: tuple[str, ...]) -> tuple[str, t.StrSequence]:
+        def _run_gate(
+            tool_name: str, tmpl: tuple[str, ...]
+        ) -> tuple[str, t.StrSequence]:
             cmd = [item.replace("{file}", str(py_file)) for item in tmpl]
             result = u.Cli.run_raw(
                 cmd,
@@ -158,9 +160,7 @@ class FlextInfraUtilitiesProtectedEdit:
             )
             if result.success and result.value.exit_code != 0:
                 output = (result.value.stdout + result.value.stderr).strip()
-                return tool_name, [
-                    line for line in output.splitlines() if line.strip()
-                ]
+                return tool_name, [line for line in output.splitlines() if line.strip()]
             return tool_name, ()
 
         with concurrent.futures.ThreadPoolExecutor(

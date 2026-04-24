@@ -88,9 +88,9 @@ class FlextInfraProjectClassifier:
         raw_value: t.Infra.InfraValue | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         if isinstance(raw_value, Mapping):
-            validated: Mapping[
-                str, t.Infra.InfraValue
-            ] = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
+            validated: Mapping[str, t.Infra.InfraValue] = (
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
+            )
             return validated
         return {}
 
