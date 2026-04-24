@@ -98,7 +98,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_mapping: Mapping[str, t.Infra.InfraValue],
     ) -> str:
-        raw_name = raw_mapping.get(c.NAME)
+        raw_name = raw_mapping.get(c.Infra.NAME)
         if isinstance(raw_name, str):
             return self._normalize_dependency_name(raw_name)
         return ""

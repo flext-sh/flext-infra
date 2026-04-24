@@ -10,6 +10,7 @@ tools:
     - .ruff_cache
     - .venv
     - __pycache__
+    - '**/__pyrefly_virtual__/**'
     - archive
     - backup
     - build
@@ -461,6 +462,7 @@ tools:
       default-excludes:
       - '**/node_modules'
       - '**/__pycache__'
+      - '**/__pyrefly_virtual__/**'
       - '**/.mypy_cache'
       - '**/.ruff_cache'
       - '**/.pytest_cache'
@@ -600,6 +602,7 @@ tools:
     - non-exhaustive-match
     project-exclude-globs:
     - '**/__pycache__'
+    - '**/__pyrefly_virtual__/**'
     - '**/node_modules'
     - '**/.venv/**'
     - '**/*_pb2*.py'

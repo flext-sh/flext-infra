@@ -229,6 +229,7 @@ project-excludes = [
   "**/*_pb2_grpc*.py",
   "**/.venv/**",
   "**/__pycache__",
+  "**/__pyrefly_virtual__/**",
   "**/node_modules",
   "**/typings/**",
   "**/vendor/**",
@@ -238,7 +239,7 @@ project-excludes = [
   "typings/**",
   "vendor/**",
 ]
-project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
+project-includes = [ "src/**/*.py*", "tests/**/*.py*", "tmp_flow_test/**/*.py*" ]
 python-version = "3.13"
 search-path = [ ".", "src" ]
 use-ignore-files = false
@@ -339,6 +340,7 @@ exclude = [
   "**/.venv",
   "**/.venv/**",
   "**/__pycache__",
+  "**/__pyrefly_virtual__/**",
   "**/dist-packages",
   "**/dist-packages/**",
   "**/node_modules",
@@ -353,7 +355,7 @@ exclude = [
 ]
 extraPaths = [ ".", "../typings", "src" ]
 ignore = [ "**/*.pyi", "../typings" ]
-include = [ "src", "tests" ]
+include = [ "src", "tests", "tmp_flow_test" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportArgumentType = "none"
@@ -397,6 +399,11 @@ extraPaths = [ ".", "src" ]
 reportPrivateUsage = "none"
 root = "tests"
 
+[[tool.pyright.executionEnvironments]]
+extraPaths = [ ".", "src" ]
+reportPrivateUsage = "none"
+root = "tmp_flow_test"
+
 # [MANAGED] pytest
 [tool.pytest.ini_options]
 addopts = [ "--markdown-docs", "--strict-markers" ]
@@ -428,6 +435,7 @@ mi_min = "B"
 # [MANAGED] ruff
 [tool.ruff]
 exclude = [
+  "**/__pyrefly_virtual__/**",
   ".git",
   ".mypy_cache",
   ".pytest_cache",
@@ -451,7 +459,7 @@ line-length = 88
 preview = true
 respect-gitignore = true
 show-fixes = true
-src = [ "src", "tests" ]
+src = [ "src", "tests", "tmp_flow_test" ]
 target-version = "py313"
 
 [tool.ruff.format]
