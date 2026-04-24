@@ -11,7 +11,7 @@ from flext_infra import FlextInfraPyprojectModernizer
 from tests import c
 
 
-class TestFlextInfraPyprojectModernizerEdgeCases:
+class TestsFlextInfraDepsModernizerMainExtra:
     """Validate edge cases through the public modernizer API."""
 
     @pytest.mark.parametrize(

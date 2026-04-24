@@ -13,7 +13,7 @@ from flext_infra import FlextInfraEnsurePyrightConfigPhase
 from tests import m, tm, u
 
 
-class TestDepsModernizerPyright:
+class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
     def test_root_config_sets_expected_execution_environments(

@@ -82,7 +82,7 @@ def _setup(
     return detector
 
 
-class TestDetectorReportFlags:
+class TestsFlextInfraDepsDetectorReportFlags:
     def test_run_with_issues_and_pip_failure(
         self,
         tmp_path: Path,

@@ -13,7 +13,7 @@ from flext_tests import tm
 from tests import t, u
 
 
-class TestMigratorFlextCore:
+class TestsFlextInfraInfraWorkspaceMigratorPyproject:
     def test_flext_core_skipped(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-core"
         root.mkdir(parents=True)
@@ -59,8 +59,6 @@ class TestMigratorFlextCore:
             eq=True,
         )
 
-
-class TestMigratorPoetryDeps:
     def test_has_flext_core_in_poetry(self, tmp_path: Path) -> None:
         root = tmp_path / "project-a"
         root.mkdir(parents=True)
@@ -130,8 +128,6 @@ class TestMigratorPoetryDeps:
             eq=True,
         )
 
-
-class TestMigratorDryRun:
     def test_makefile_not_found(self, tmp_path: Path) -> None:
         root = tmp_path / "project-a"
         root.mkdir(parents=True)

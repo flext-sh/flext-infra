@@ -7,7 +7,7 @@ from flext_tests import tm
 from tests import t, u
 
 
-class TestDetectionUncoveredLines:
+class TestsFlextInfraDepsDetectionUncovered:
     def test_run_deptry_with_non_dict_issue(
         self,
         tmp_path: Path,

@@ -7,7 +7,7 @@ from flext_tests import tm
 from tests import u
 
 
-class TestDetectorRunFailures:
+class TestsFlextInfraDepsDetectorDetectFailures:
     def test_run_with_no_projects_found(
         self,
         tmp_path: Path,

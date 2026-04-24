@@ -12,7 +12,7 @@ import pytest
 from tests import u
 
 
-class TestFlextInfraReportingServiceExtra:
+class TestsFlextInfraInfraReportingExtra:
     """Test suite for FlextInfraReportingService extra operations."""
 
     @pytest.fixture

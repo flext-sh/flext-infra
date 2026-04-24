@@ -27,32 +27,43 @@ def _transform_source(tmp_path: Path, source: str) -> str:
         rope_project.close()
 
 
-def test_class_nesting_moves_top_level_class_into_new_namespace(tmp_path: Path) -> None:
-    source = '@decorator\nclass TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):\n    """timeout docs"""\n    value: T\n'
-    code = _transform_source(tmp_path, source)
-    assert "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):" in code
-    assert (
-        "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
-        in code
-    )
-    assert '    """timeout docs"""' in code
-    assert "class FlextDispatcher:" in code
+class TestsFlextInfraTransformersInfraTransformerClassNesting:
+    """Behavior contract for test_infra_transformer_class_nesting."""
 
+    def test_class_nesting_moves_top_level_class_into_new_namespace(
+        self, tmp_path: Path
+    ) -> None:
+        source = '@decorator\nclass TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):\n    """timeout docs"""\n    value: T\n'
+        code = _transform_source(tmp_path, source)
+        assert (
+            "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+            in code
+        )
+        assert (
+            "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+            in code
+        )
+        assert '    """timeout docs"""' in code
+        assert "class FlextDispatcher:" in code
 
-def test_class_nesting_appends_to_existing_namespace_and_removes_pass(
-    tmp_path: Path,
-) -> None:
-    source = "class FlextDispatcher:\n    pass\n\nclass TimeoutEnforcer:\n    pass\n"
-    code = _transform_source(tmp_path, source)
-    assert "class FlextDispatcher:" in code
-    assert "    class TimeoutEnforcer:" in code
-    assert "class TimeoutEnforcer:\n    pass\n" not in code
-    assert "class FlextDispatcher:\n    pass\n" not in code
+    def test_class_nesting_appends_to_existing_namespace_and_removes_pass(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        source = (
+            "class FlextDispatcher:\n    pass\n\nclass TimeoutEnforcer:\n    pass\n"
+        )
+        code = _transform_source(tmp_path, source)
+        assert "class FlextDispatcher:" in code
+        assert "    class TimeoutEnforcer:" in code
+        assert "class TimeoutEnforcer:\n    pass\n" not in code
+        assert "class FlextDispatcher:\n    pass\n" not in code
 
-
-def test_class_nesting_keeps_unmapped_top_level_classes(tmp_path: Path) -> None:
-    source = "class TimeoutEnforcer:\n    pass\n\nclass OtherClass:\n    pass\n"
-    code = _transform_source(tmp_path, source)
-    assert "class FlextDispatcher:" in code
-    assert "    class TimeoutEnforcer:" in code
-    assert "class OtherClass:\n    pass\n" in code
+    def test_class_nesting_keeps_unmapped_top_level_classes(
+        self, tmp_path: Path
+    ) -> None:
+        source = "class TimeoutEnforcer:\n    pass\n\nclass OtherClass:\n    pass\n"
+        code = _transform_source(tmp_path, source)
+        assert "class FlextDispatcher:" in code
+        assert "    class TimeoutEnforcer:" in code
+        assert "class OtherClass:\n    pass\n" in code

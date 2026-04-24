@@ -38,34 +38,39 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
     return (workspace_root, constants_path, consumer_path)
 
 
-def test_run_rope_post_hooks_applies_mro_migration(tmp_path: Path) -> None:
-    workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
+class TestsFlextInfraUtilitiesRopeHooks:
+    """Behavior contract for test_rope_hooks."""
 
-    results: list[m.Infra.Result] = list(
-        u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
-    )
+    def test_run_rope_post_hooks_applies_mro_migration(self, tmp_path: Path) -> None:
+        workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
 
-    assert any(
-        result.file_path == consumer_path and result.modified for result in results
-    )
-    assert 'class FlextDemoConstants:\n    FOO = "value"' in constants_path.read_text(
-        encoding="utf-8",
-    )
-    consumer_text = consumer_path.read_text(encoding="utf-8")
-    assert "from demo_pkg.constants import c" in consumer_text
-    assert "value = c.FOO" in consumer_text
+        results: list[m.Infra.Result] = list(
+            u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
+        )
 
+        assert any(
+            result.file_path == consumer_path and result.modified for result in results
+        )
+        assert (
+            'class FlextDemoConstants:\n    FOO = "value"'
+            in constants_path.read_text(
+                encoding="utf-8",
+            )
+        )
+        consumer_text = consumer_path.read_text(encoding="utf-8")
+        assert "from demo_pkg.constants import c" in consumer_text
+        assert "value = c.FOO" in consumer_text
 
-def test_run_rope_post_hooks_dry_run_is_non_mutating(tmp_path: Path) -> None:
-    workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
-    original_constants = constants_path.read_text(encoding="utf-8")
-    original_consumer = consumer_path.read_text(encoding="utf-8")
+    def test_run_rope_post_hooks_dry_run_is_non_mutating(self, tmp_path: Path) -> None:
+        workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
+        original_constants = constants_path.read_text(encoding="utf-8")
+        original_consumer = consumer_path.read_text(encoding="utf-8")
 
-    results: list[m.Infra.Result] = list(
-        u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
-    )
+        results: list[m.Infra.Result] = list(
+            u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
+        )
 
-    assert any(result.file_path == consumer_path for result in results)
-    assert all(not result.modified for result in results)
-    assert constants_path.read_text(encoding="utf-8") == original_constants
-    assert consumer_path.read_text(encoding="utf-8") == original_consumer
+        assert any(result.file_path == consumer_path for result in results)
+        assert all(not result.modified for result in results)
+        assert constants_path.read_text(encoding="utf-8") == original_constants
+        assert consumer_path.read_text(encoding="utf-8") == original_consumer

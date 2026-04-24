@@ -84,8 +84,18 @@ class FlextInfraConstantsCodegen:
         "merge_lazy_imports",
         "output",
         "output_reporting",
+        "pytest_addoption",
+        "pytest_collect_file",
+        "pytest_collection_modifyitems",
+        "pytest_configure",
+        "pytest_runtest_setup",
+        "pytest_runtest_teardown",
+        "pytest_sessionfinish",
+        "pytest_sessionstart",
+        "pytest_terminal_summary",
+        "pytest_warning_recorded",
     })
-    "Exports exclusive to flext-infra that should not bubble up."
+    "Exports excluded from package __init__.py auto-export — pytest hooks live per-module via pytest plugin entry-points and infra-only utilities never bubble up."
     ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
         "docs",
         "src",

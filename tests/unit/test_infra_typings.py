@@ -10,7 +10,7 @@ from flext_tests import tm
 from tests import c, t, u
 
 
-class TestInfraTypingAdapters:
+class TestsFlextInfraInfraTypings:
     """Validate public adapters exposed by ``t``."""
 
     def test_json_mapping_adapter_validates_nested_cli_payload(self) -> None:
@@ -62,10 +62,6 @@ class TestInfraTypingAdapters:
                 "root": Path("/tmp/flext"),
                 "settings": {"enabled": True},
             })
-
-
-class TestInfraTypingGuards:
-    """Validate public guard helpers that consume typing contracts."""
 
     def test_registerable_service_guard_accepts_real_public_values(self) -> None:
         tm.that(u.registerable_service({"service": "infra"}), eq=True)

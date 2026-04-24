@@ -23,7 +23,7 @@ def orchestrator() -> FlextInfraOrchestratorService:
     return FlextInfraOrchestratorService(verb="check")
 
 
-class TestOrchestratorBasic:
+class TestsFlextInfraInfraWorkspaceOrchestrator:
     def test_executes_verb_across_projects(
         self,
         orchestrator: FlextInfraOrchestratorService,
@@ -103,8 +103,6 @@ class TestOrchestratorBasic:
             has="unsupported orchestrate verb",
         )
 
-
-class TestOrchestratorFailures:
     def test_fail_fast_skips_remaining(
         self,
         orchestrator: FlextInfraOrchestratorService,
@@ -179,8 +177,6 @@ class TestOrchestratorFailures:
             len=3,
         )
 
-
-class TestOrchestratorGateNormalization:
     def test_maps_python_type_gates_to_go_type_alias(
         self,
         tmp_path_factory: pytest.TempPathFactory,

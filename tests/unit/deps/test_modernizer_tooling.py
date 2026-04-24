@@ -14,7 +14,7 @@ from flext_infra import (
 from tests import m, tm, u
 
 
-class TestDepsModernizerTooling:
+class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for formatting, namespace, and Ruff phases."""
 
     def test_formatting_phase_sets_expected_state(

@@ -8,7 +8,7 @@ from flext_infra import FlextInfraDependencyDetectionService
 from tests import u
 
 
-class TestDetectionTypingsFlow:
+class TestsFlextInfraDepsDetectionTypingsFlow:
     def test_module_to_types_package(self) -> None:
         service = FlextInfraDependencyDetectionService()
         tm.that(service.module_to_types_package("yaml", {}), eq="types-pyyaml")

@@ -9,7 +9,7 @@ from flext_tests import tm
 from tests import u
 
 
-class TestFlextInfraDiscoveryServiceUncoveredLines:
+class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     def test_discover_projects_includes_non_git_flext_projects(
         self,
         tmp_path: Path,

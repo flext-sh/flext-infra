@@ -112,7 +112,7 @@ class _StubRunner(p.Cli.CommandRunner):
         return tr[int].ok(result.value.exit_code)
 
 
-class TestLoadDependencyLimits:
+class TestsFlextInfraDepsDetectionTypings:
     def test_success(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([
@@ -143,8 +143,6 @@ class TestLoadDependencyLimits:
         assert "key" in result
         tm.that(result["key"], eq=None)
 
-
-class TestRunMypyStubHints:
     def test_mypy_not_found(self, tmp_path: Path) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"

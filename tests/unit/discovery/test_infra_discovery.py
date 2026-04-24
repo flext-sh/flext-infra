@@ -16,7 +16,7 @@ from flext_tests import tm
 from tests import c, m, t, u
 
 
-class TestFlextInfraDiscoveryService:
+class TestsFlextInfraDiscoveryInfraDiscovery:
     @pytest.fixture
     def service(self) -> u.Infra:
         return u.Infra()

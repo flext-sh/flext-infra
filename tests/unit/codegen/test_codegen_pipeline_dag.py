@@ -67,7 +67,7 @@ def _stub_all_stages(
         )
 
 
-class TestCodegenPipelineDag:
+class TestsFlextInfraCodegenPipelineDag:
     """Tests for the codegen pipeline DAG stage execution."""
 
     def test_pipeline_stage_order(

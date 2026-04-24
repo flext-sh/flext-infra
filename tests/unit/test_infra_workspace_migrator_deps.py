@@ -10,7 +10,7 @@ from flext_infra import FlextInfraProjectMigrator
 from tests import u
 
 
-class TestWorkspaceMigratorDependencyBehavior:
+class TestsFlextInfraInfraWorkspaceMigratorDeps:
     @staticmethod
     def _build_migrator(
         tmp_path: Path,

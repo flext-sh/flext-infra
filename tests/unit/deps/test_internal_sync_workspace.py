@@ -73,144 +73,148 @@ def create_workspace_with_submodule(tmp_path: Path) -> tuple[Path, Path]:
     return workspace, workspace / "deps" / "child"
 
 
-def test_workspace_root_from_env_returns_none_when_env_is_missing(
-    tmp_path: Path,
-) -> None:
-    with temporary_env(FLEXT_WORKSPACE_ROOT=None):
-        result = FlextInfraInternalDependencySyncService().workspace_root_from_env(
-            tmp_path,
-        )
+class TestsFlextInfraDepsInternalSyncWorkspace:
+    """Behavior contract for test_internal_sync_workspace."""
 
-    assert result is None
+    def test_workspace_root_from_env_returns_none_when_env_is_missing(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        with temporary_env(FLEXT_WORKSPACE_ROOT=None):
+            result = FlextInfraInternalDependencySyncService().workspace_root_from_env(
+                tmp_path,
+            )
 
+        assert result is None
 
-def test_workspace_root_from_env_returns_valid_parent(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    project.mkdir()
+    def test_workspace_root_from_env_returns_valid_parent(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
 
-    with temporary_env(FLEXT_WORKSPACE_ROOT=str(tmp_path)):
-        result = FlextInfraInternalDependencySyncService().workspace_root_from_env(
+        with temporary_env(FLEXT_WORKSPACE_ROOT=str(tmp_path)):
+            result = FlextInfraInternalDependencySyncService().workspace_root_from_env(
+                project,
+            )
+
+        assert result == tmp_path
+
+    def test_workspace_root_from_env_rejects_invalid_or_unrelated_paths(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        project = tmp_path / "other" / "project"
+        project.mkdir(parents=True)
+
+        with temporary_env(FLEXT_WORKSPACE_ROOT="/nonexistent/path"):
+            missing_result = (
+                FlextInfraInternalDependencySyncService().workspace_root_from_env(
+                    project,
+                )
+            )
+        with temporary_env(FLEXT_WORKSPACE_ROOT=str(workspace)):
+            unrelated_result = (
+                FlextInfraInternalDependencySyncService().workspace_root_from_env(
+                    project,
+                )
+            )
+
+        assert missing_result is None
+        assert unrelated_result is None
+
+    def test_workspace_root_from_parents_finds_gitmodules(self, tmp_path: Path) -> None:
+        (tmp_path / ".gitmodules").touch()
+        project = tmp_path / "sub" / "project"
+        project.mkdir(parents=True)
+
+        result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
             project,
         )
 
-    assert result == tmp_path
+        assert result == tmp_path
 
+    def test_workspace_root_from_parents_returns_none_when_missing(
+        self, tmp_path: Path
+    ) -> None:
+        project = tmp_path / "isolated"
+        project.mkdir()
 
-def test_workspace_root_from_env_rejects_invalid_or_unrelated_paths(
-    tmp_path: Path,
-) -> None:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    project = tmp_path / "other" / "project"
-    project.mkdir(parents=True)
-
-    with temporary_env(FLEXT_WORKSPACE_ROOT="/nonexistent/path"):
-        missing_result = (
-            FlextInfraInternalDependencySyncService().workspace_root_from_env(
-                project,
-            )
-        )
-    with temporary_env(FLEXT_WORKSPACE_ROOT=str(workspace)):
-        unrelated_result = (
-            FlextInfraInternalDependencySyncService().workspace_root_from_env(
-                project,
-            )
+        result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
+            project,
         )
 
-    assert missing_result is None
-    assert unrelated_result is None
+        assert result is None
 
-
-def test_workspace_root_from_parents_finds_gitmodules(tmp_path: Path) -> None:
-    (tmp_path / ".gitmodules").touch()
-    project = tmp_path / "sub" / "project"
-    project.mkdir(parents=True)
-
-    result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
-        project,
-    )
-
-    assert result == tmp_path
-
-
-def test_workspace_root_from_parents_returns_none_when_missing(tmp_path: Path) -> None:
-    project = tmp_path / "isolated"
-    project.mkdir()
-
-    result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
-        project,
-    )
-
-    assert result is None
-
-
-def test_is_workspace_mode_respects_standalone_env(tmp_path: Path) -> None:
-    with temporary_env(FLEXT_STANDALONE="1", FLEXT_WORKSPACE_ROOT=None):
-        is_workspace, root = (
-            FlextInfraInternalDependencySyncService().is_workspace_mode(
-                tmp_path,
+    def test_is_workspace_mode_respects_standalone_env(self, tmp_path: Path) -> None:
+        with temporary_env(FLEXT_STANDALONE="1", FLEXT_WORKSPACE_ROOT=None):
+            is_workspace, root = (
+                FlextInfraInternalDependencySyncService().is_workspace_mode(
+                    tmp_path,
+                )
             )
-        )
 
-    assert is_workspace is False
-    assert root is None
+        assert is_workspace is False
+        assert root is None
 
+    def test_is_workspace_mode_uses_workspace_root_env(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
 
-def test_is_workspace_mode_uses_workspace_root_env(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    project.mkdir()
-
-    with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=str(tmp_path)):
-        is_workspace, root = (
-            FlextInfraInternalDependencySyncService().is_workspace_mode(
-                project,
+        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=str(tmp_path)):
+            is_workspace, root = (
+                FlextInfraInternalDependencySyncService().is_workspace_mode(
+                    project,
+                )
             )
-        )
 
-    assert is_workspace is True
-    assert root == tmp_path
+        assert is_workspace is True
+        assert root == tmp_path
 
+    def test_is_workspace_mode_detects_real_git_superproject(
+        self, tmp_path: Path
+    ) -> None:
+        workspace, submodule = create_workspace_with_submodule(tmp_path)
 
-def test_is_workspace_mode_detects_real_git_superproject(tmp_path: Path) -> None:
-    workspace, submodule = create_workspace_with_submodule(tmp_path)
-
-    with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
-        is_workspace, root = (
-            FlextInfraInternalDependencySyncService().is_workspace_mode(
-                submodule,
+        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
+            is_workspace, root = (
+                FlextInfraInternalDependencySyncService().is_workspace_mode(
+                    submodule,
+                )
             )
-        )
 
-    assert is_workspace is True
-    assert root == workspace
+        assert is_workspace is True
+        assert root == workspace
 
+    def test_is_workspace_mode_falls_back_to_gitmodules_heuristic(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / ".gitmodules").touch()
+        project = tmp_path / "sub"
+        project.mkdir()
 
-def test_is_workspace_mode_falls_back_to_gitmodules_heuristic(tmp_path: Path) -> None:
-    (tmp_path / ".gitmodules").touch()
-    project = tmp_path / "sub"
-    project.mkdir()
-
-    with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
-        is_workspace, root = (
-            FlextInfraInternalDependencySyncService().is_workspace_mode(
-                project,
+        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
+            is_workspace, root = (
+                FlextInfraInternalDependencySyncService().is_workspace_mode(
+                    project,
+                )
             )
-        )
 
-    assert is_workspace is True
-    assert root == tmp_path
+        assert is_workspace is True
+        assert root == tmp_path
 
+    def test_is_workspace_mode_returns_false_for_isolated_project(
+        self, tmp_path: Path
+    ) -> None:
+        project = tmp_path / "isolated"
+        project.mkdir()
 
-def test_is_workspace_mode_returns_false_for_isolated_project(tmp_path: Path) -> None:
-    project = tmp_path / "isolated"
-    project.mkdir()
-
-    with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
-        is_workspace, root = (
-            FlextInfraInternalDependencySyncService().is_workspace_mode(
-                project,
+        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
+            is_workspace, root = (
+                FlextInfraInternalDependencySyncService().is_workspace_mode(
+                    project,
+                )
             )
-        )
 
-    assert is_workspace is False
-    assert root is None
+        assert is_workspace is False
+        assert root is None

@@ -36,53 +36,57 @@ def _make_config(
     )
 
 
-def test_release_all_phases_succeed_in_dry_run_mode(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
-    result = FlextInfraReleaseOrchestrator().run_release(
-        _make_config(workspace, dry_run=True),
-    )
+class TestsFlextInfraReleaseDag:
+    """Behavior contract for test_release_dag."""
 
-    assert result.success
-    report_dir = workspace / ".reports/release/v1.0.0"
-    assert (report_dir / "build-report.json").is_file()
-    assert (report_dir / "RELEASE_NOTES.md").is_file()
+    def test_release_all_phases_succeed_in_dry_run_mode(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = u.Infra.Tests.create_release_workspace(
+            tmp_path,
+            project_names=("flext-a",),
+        )
+        result = FlextInfraReleaseOrchestrator().run_release(
+            _make_config(workspace, dry_run=True),
+        )
 
+        assert result.success
+        report_dir = workspace / ".reports/release/v1.0.0"
+        assert (report_dir / "build-report.json").is_file()
+        assert (report_dir / "RELEASE_NOTES.md").is_file()
 
-def test_release_selected_validate_phase_skips_release_artifacts(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
-    result = FlextInfraReleaseOrchestrator().run_release(
-        _make_config(
-            workspace,
-            phases=[c.Infra.VERB_VALIDATE],
-            dry_run=True,
-        ),
-    )
+    def test_release_selected_validate_phase_skips_release_artifacts(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+        result = FlextInfraReleaseOrchestrator().run_release(
+            _make_config(
+                workspace,
+                phases=[c.Infra.VERB_VALIDATE],
+                dry_run=True,
+            ),
+        )
 
-    assert result.success
-    assert not (workspace / ".reports/release").exists()
+        assert result.success
+        assert not (workspace / ".reports/release").exists()
 
+    def test_release_build_failure_propagates_from_real_make(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = u.Infra.Tests.create_release_workspace(
+            tmp_path,
+            root_build_exit_code="1",
+        )
+        result = FlextInfraReleaseOrchestrator().run_release(
+            _make_config(
+                workspace,
+                phases=[c.Infra.DIR_BUILD],
+                dry_run=False,
+            ),
+        )
 
-def test_release_build_failure_propagates_from_real_make(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
-        tmp_path,
-        root_build_exit_code="1",
-    )
-    result = FlextInfraReleaseOrchestrator().run_release(
-        _make_config(
-            workspace,
-            phases=[c.Infra.DIR_BUILD],
-            dry_run=False,
-        ),
-    )
-
-    assert result.failure
-    assert "build failed" in (result.error or "")
+        assert result.failure
+        assert "build failed" in (result.error or "")

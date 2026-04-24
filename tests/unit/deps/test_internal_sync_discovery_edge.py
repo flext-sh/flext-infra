@@ -36,7 +36,7 @@ def _set_toml_sequence(
     service.toml = _TomlReaderStub(_next)
 
 
-class TestCollectInternalDepsEdgeCases:
+class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
     def test_collect_internal_deps_variants(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text("x")
 

@@ -45,7 +45,7 @@ def _apply_rule(
         rope_project.close()
 
 
-class TestProjectLevelRefactor:
+class TestsFlextInfraIntegrationRefactorNestingProject:
     """Test class nesting refactor across a project."""
 
     def test_project_processes_without_errors(self, tmp_path: Path) -> None:

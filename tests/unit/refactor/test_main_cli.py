@@ -25,7 +25,7 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
     return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
 
 
-class TestFlextInfraRefactorMainCli:
+class TestsFlextInfraRefactorMainCli:
     @staticmethod
     def _refactor_main(*args: str) -> int:
         return infra_main(["refactor", *args])
@@ -37,7 +37,7 @@ class TestFlextInfraRefactorMainCli:
 
     @staticmethod
     def _write_workspace_pyproject(workspace: Path) -> None:
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "pyproject.toml",
             "[project]\n"
             'name = "sample-pkg"\n'
@@ -51,13 +51,13 @@ class TestFlextInfraRefactorMainCli:
     @staticmethod
     def _build_basic_workspace(tmp_path: Path) -> tuple[Path, Path]:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
         )
         service_file = workspace / "src" / "sample_pkg" / "service.py"
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             service_file,
             "from __future__ import annotations\n"
             "from collections.abc import Mapping\n"
@@ -71,18 +71,18 @@ class TestFlextInfraRefactorMainCli:
     @staticmethod
     def _build_test_only_workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "service.py",
             "from __future__ import annotations\n\n"
             "def only_for_tests(value: int) -> int:\n"
             "    return value + 1\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_service.py",
             "from __future__ import annotations\n\n"
             "from sample_pkg.service import only_for_tests\n\n"
@@ -96,9 +96,9 @@ class TestFlextInfraRefactorMainCli:
         tmp_path: Path,
     ) -> tuple[Path, Path, Path]:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
         init_path = workspace / "src" / "sample_pkg" / "__init__.py"
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             init_path,
             "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
             '"""Sample package."""\n\n'
@@ -119,7 +119,7 @@ class TestFlextInfraRefactorMainCli:
             "]\n",
         )
         service_file = workspace / "src" / "sample_pkg" / "operations.py"
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             service_file,
             "from __future__ import annotations\n\n"
             '__all__: list[str] = ["helper_used", "only_for_tests"]\n\n'
@@ -128,14 +128,14 @@ class TestFlextInfraRefactorMainCli:
             "def only_for_tests(value: int) -> int:\n"
             "    return value + 1\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "runtime.py",
             "from __future__ import annotations\n\n"
             "from sample_pkg.operations import helper_used\n\n"
             "def compute(value: int) -> int:\n"
             "    return helper_used(value)\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_operations.py",
             "from __future__ import annotations\n\n"
             "from sample_pkg.operations import only_for_tests\n\n"
@@ -149,20 +149,20 @@ class TestFlextInfraRefactorMainCli:
         tmp_path: Path,
     ) -> tuple[Path, Path]:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
         )
         service_file = workspace / "src" / "sample_pkg" / "service.py"
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             service_file,
             "from __future__ import annotations\n"
             "from collections.abc import Sequence\n\n"
             "def only_for_tests(values: Sequence[int]) -> int:\n"
             "    return len(values)\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_service.py",
             "from __future__ import annotations\n\n"
             "from sample_pkg.service import only_for_tests\n\n"
@@ -174,19 +174,19 @@ class TestFlextInfraRefactorMainCli:
     @staticmethod
     def _build_test_only_method_workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "service.py",
             "from __future__ import annotations\n\n"
             "class Service:\n"
             "    def only_for_tests(self, value: int) -> int:\n"
             "        return value + 1\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_service.py",
             "from __future__ import annotations\n\n"
             "from sample_pkg.service import Service\n\n"
@@ -198,12 +198,12 @@ class TestFlextInfraRefactorMainCli:
     @staticmethod
     def _build_unused_nested_function_workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "service.py",
             "from __future__ import annotations\n\n"
             "def outer(value: int) -> int:\n"
@@ -211,7 +211,7 @@ class TestFlextInfraRefactorMainCli:
             "        return inner + 1\n\n"
             "    return value\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_service.py",
             "from __future__ import annotations\n\n"
             "from sample_pkg.service import outer\n\n"
@@ -225,13 +225,13 @@ class TestFlextInfraRefactorMainCli:
         tmp_path: Path,
     ) -> tuple[Path, Path]:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
         )
         service_file = workspace / "src" / "sample_pkg" / "service.py"
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             service_file,
             "from __future__ import annotations\n"
             "from collections.abc import Sequence\n\n"
@@ -243,19 +243,19 @@ class TestFlextInfraRefactorMainCli:
     @staticmethod
     def _build_unused_local_workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
-        TestFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
             "from __future__ import annotations\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "service.py",
             "from __future__ import annotations\n\n"
             "def outer(value: int) -> int:\n"
             "    only_for_cleanup = value + 1\n"
             "    return value\n",
         )
-        TestFlextInfraRefactorMainCli._write(
+        TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_service.py",
             "from __future__ import annotations\n\n"
             "from sample_pkg.service import outer\n\n"

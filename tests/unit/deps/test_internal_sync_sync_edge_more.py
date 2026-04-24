@@ -34,7 +34,7 @@ def _set_toml_stub(
     service.toml = _TomlStub(values)
 
 
-class TestSyncMethodEdgeCasesMore:
+class TestsFlextInfraDepsInternalSyncSyncEdgeMore:
     def test_sync_checkout_failure(
         self,
         tmp_path: Path,

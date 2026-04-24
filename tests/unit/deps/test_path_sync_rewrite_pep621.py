@@ -7,7 +7,7 @@ from tomlkit.toml_document import TOMLDocument
 from tests import u
 
 
-class TestRewritePep621:
+class TestsFlextInfraDepsPathSyncRewritePep621:
     def test_rewrite_pep621_no_project(self) -> None:
         doc = TOMLDocument()
         changes, _ = u.Infra()._rewrite_pep621(
@@ -103,36 +103,33 @@ class TestRewritePep621:
         # path rewriting (../flext-core) is done by _rewrite_uv_sources, not _rewrite_pep621
         tm.that(unwrapped["project"]["dependencies"][0], eq="flext-core")
 
+    def test_rewrite_pep621_non_string_item_with_tomlkit(self) -> None:
+        doc = tomlkit.document()
+        project = tomlkit.table()
+        project["dependencies"] = [123]
+        doc["project"] = project
+        changes, _ = u.Infra()._rewrite_pep621(
+            doc,
+            internal_names={"flext-core"},
+        )
+        tm.that(len(changes), eq=0)
 
-def test_rewrite_pep621_non_string_item() -> None:
-    doc = tomlkit.document()
-    project = tomlkit.table()
-    project["dependencies"] = [123]
-    doc["project"] = project
-    changes, _ = u.Infra()._rewrite_pep621(
-        doc,
-        internal_names={"flext-core"},
-    )
-    tm.that(len(changes), eq=0)
+    def test_rewrite_pep621_no_project_table(self) -> None:
+        doc = tomlkit.document()
+        changes, _ = u.Infra()._rewrite_pep621(
+            doc,
+            internal_names={"flext-core"},
+        )
+        tm.that(len(changes), eq=0)
 
-
-def test_rewrite_pep621_no_project_table() -> None:
-    doc = tomlkit.document()
-    changes, _ = u.Infra()._rewrite_pep621(
-        doc,
-        internal_names={"flext-core"},
-    )
-    tm.that(len(changes), eq=0)
-
-
-def test_rewrite_pep621_invalid_path_dep_regex() -> None:
-    doc = tomlkit.document()
-    project = tomlkit.table()
-    project["dependencies"] = ["  flext-core @ file://.flext-deps/flext-core"]
-    doc["project"] = project
-    changes, _ = u.Infra()._rewrite_pep621(
-        doc,
-        internal_names={"flext-core"},
-    )
-    # PEP621_NAME_RE allows leading whitespace, so this WILL extract name and create change
-    tm.that(len(changes), eq=1)
+    def test_rewrite_pep621_invalid_path_dep_regex(self) -> None:
+        doc = tomlkit.document()
+        project = tomlkit.table()
+        project["dependencies"] = ["  flext-core @ file://.flext-deps/flext-core"]
+        doc["project"] = project
+        changes, _ = u.Infra()._rewrite_pep621(
+            doc,
+            internal_names={"flext-core"},
+        )
+        # PEP621_NAME_RE allows leading whitespace, so this WILL extract name and create change
+        tm.that(len(changes), eq=1)

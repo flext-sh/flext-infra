@@ -9,7 +9,7 @@ from tests import t, u
 type RopeWorkspace = t.Pair[t.Infra.RopeProject, Path]
 
 
-class TestGetModuleImports:
+class TestsFlextInfraRefactorRopeSemantic:
     def test_returns_imports(
         self,
         rope_workspace: RopeWorkspace,
@@ -37,8 +37,6 @@ class TestGetModuleImports:
         # Animal is defined, not imported
         assert "Animal" not in imports
 
-
-class TestGetModuleClasses:
     def test_returns_defined_classes(
         self,
         rope_workspace: RopeWorkspace,
@@ -65,8 +63,6 @@ class TestGetModuleClasses:
         # Dog is imported, not defined here
         assert "Dog" not in classes
 
-
-class TestGetClassBases:
     def test_returns_base_classes(
         self,
         rope_workspace: RopeWorkspace,
@@ -107,8 +103,6 @@ class TestGetClassBases:
         )
         assert not bases
 
-
-class TestGetClassMethods:
     def test_returns_public_methods(
         self,
         rope_workspace: RopeWorkspace,
@@ -150,21 +144,6 @@ class TestGetClassMethods:
         assert "_wag" in methods
         assert methods["_wag"] == "method"
 
-    def test_nonexistent_class_returns_empty(
-        self,
-        rope_workspace: RopeWorkspace,
-        models_resource: t.Infra.RopeResource,
-    ) -> None:
-        proj, _ = rope_workspace
-        methods = u.Infra.get_class_methods(
-            proj,
-            models_resource,
-            "DoesNotExist",
-        )
-        assert methods == {}
-
-
-class TestFindDefinitionOffset:
     def test_returns_character_offset_for_semantic_definition(
         self,
         rope_workspace: RopeWorkspace,

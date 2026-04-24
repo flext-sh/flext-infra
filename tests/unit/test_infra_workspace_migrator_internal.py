@@ -10,7 +10,7 @@ from flext_infra import FlextInfraProjectMigrator
 from tests import u
 
 
-class TestMigratorPublicBehavior:
+class TestsFlextInfraInfraWorkspaceMigratorInternal:
     @staticmethod
     def _write_project_files(
         project_root: Path,

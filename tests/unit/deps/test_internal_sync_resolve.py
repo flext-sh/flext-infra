@@ -48,88 +48,89 @@ def add_origin(repo_root: Path, remote_url: str) -> None:
     )
 
 
-def test_resolve_ref_prefers_github_head_ref(tmp_path: Path) -> None:
-    with temporary_env(
-        GITHUB_ACTIONS="true",
-        GITHUB_HEAD_REF="feature/test",
-        GITHUB_REF_NAME="main",
-    ):
-        result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
+class TestsFlextInfraDepsInternalSyncResolve:
+    """Behavior contract for test_internal_sync_resolve."""
 
-    assert result == "feature/test"
+    def test_resolve_ref_prefers_github_head_ref(self, tmp_path: Path) -> None:
+        with temporary_env(
+            GITHUB_ACTIONS="true",
+            GITHUB_HEAD_REF="feature/test",
+            GITHUB_REF_NAME="main",
+        ):
+            result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
 
+        assert result == "feature/test"
 
-def test_resolve_ref_uses_github_ref_name_when_head_ref_is_empty(
-    tmp_path: Path,
-) -> None:
-    with temporary_env(
-        GITHUB_ACTIONS="true",
-        GITHUB_HEAD_REF="",
-        GITHUB_REF_NAME="main",
-    ):
-        result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
+    def test_resolve_ref_uses_github_ref_name_when_head_ref_is_empty(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        with temporary_env(
+            GITHUB_ACTIONS="true",
+            GITHUB_HEAD_REF="",
+            GITHUB_REF_NAME="main",
+        ):
+            result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
 
-    assert result == "main"
+        assert result == "main"
 
+    def test_resolve_ref_uses_current_git_branch(self, tmp_path: Path) -> None:
+        repo = create_git_repo(tmp_path, "repo")
+        assert u.Cli.run_checked(["git", "checkout", "-B", "develop"], cwd=repo).success
 
-def test_resolve_ref_uses_current_git_branch(tmp_path: Path) -> None:
-    repo = create_git_repo(tmp_path, "repo")
-    assert u.Cli.run_checked(["git", "checkout", "-B", "develop"], cwd=repo).success
+        result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
 
-    result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
+        assert result == "develop"
 
-    assert result == "develop"
+    def test_resolve_ref_uses_exact_tag_on_detached_head(self, tmp_path: Path) -> None:
+        repo = create_git_repo(tmp_path, "repo")
+        assert u.Cli.run_checked(
+            ["git", "tag", "-a", "v1.0.0", "-m", "release"],
+            cwd=repo,
+        ).success
+        assert u.Cli.run_checked(["git", "checkout", "v1.0.0"], cwd=repo).success
 
+        result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
 
-def test_resolve_ref_uses_exact_tag_on_detached_head(tmp_path: Path) -> None:
-    repo = create_git_repo(tmp_path, "repo")
-    assert u.Cli.run_checked(
-        ["git", "tag", "-a", "v1.0.0", "-m", "release"],
-        cwd=repo,
-    ).success
-    assert u.Cli.run_checked(["git", "checkout", "v1.0.0"], cwd=repo).success
+        assert result == "v1.0.0"
 
-    result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
+    def test_resolve_ref_falls_back_to_main_for_non_repo(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
 
-    assert result == "v1.0.0"
+        with temporary_env(
+            GITHUB_ACTIONS=None,
+            GITHUB_HEAD_REF=None,
+            GITHUB_REF_NAME=None,
+        ):
+            result = FlextInfraInternalDependencySyncService().resolve_ref(project)
 
+        assert result == "main"
 
-def test_resolve_ref_falls_back_to_main_for_non_repo(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    project.mkdir()
+    def test_infer_owner_from_origin_reads_real_remote(self, tmp_path: Path) -> None:
+        repo = create_git_repo(tmp_path, "repo")
+        add_origin(repo, "git@github.com:flext-sh/flext-core.git")
 
-    with temporary_env(
-        GITHUB_ACTIONS=None,
-        GITHUB_HEAD_REF=None,
-        GITHUB_REF_NAME=None,
-    ):
-        result = FlextInfraInternalDependencySyncService().resolve_ref(project)
+        result = FlextInfraInternalDependencySyncService().infer_owner_from_origin(repo)
 
-    assert result == "main"
+        assert result == "flext-sh"
 
+    def test_infer_owner_from_origin_returns_none_without_remote(
+        self, tmp_path: Path
+    ) -> None:
+        repo = create_git_repo(tmp_path, "repo")
 
-def test_infer_owner_from_origin_reads_real_remote(tmp_path: Path) -> None:
-    repo = create_git_repo(tmp_path, "repo")
-    add_origin(repo, "git@github.com:flext-sh/flext-core.git")
+        result = FlextInfraInternalDependencySyncService().infer_owner_from_origin(repo)
 
-    result = FlextInfraInternalDependencySyncService().infer_owner_from_origin(repo)
+        assert result is None
 
-    assert result == "flext-sh"
+    def test_synthesized_repo_map_builds_public_urls(self) -> None:
+        result = FlextInfraInternalDependencySyncService().synthesized_repo_map(
+            "flext-sh",
+            {"flext-core", "flext-api"},
+        )
 
-
-def test_infer_owner_from_origin_returns_none_without_remote(tmp_path: Path) -> None:
-    repo = create_git_repo(tmp_path, "repo")
-
-    result = FlextInfraInternalDependencySyncService().infer_owner_from_origin(repo)
-
-    assert result is None
-
-
-def test_synthesized_repo_map_builds_public_urls() -> None:
-    result = FlextInfraInternalDependencySyncService().synthesized_repo_map(
-        "flext-sh",
-        {"flext-core", "flext-api"},
-    )
-
-    assert result["flext-core"].ssh_url == "git@github.com:flext-sh/flext-core.git"
-    assert result["flext-api"].https_url == "https://github.com/flext-sh/flext-api.git"
+        assert result["flext-core"].ssh_url == "git@github.com:flext-sh/flext-core.git"
+        assert (
+            result["flext-api"].https_url == "https://github.com/flext-sh/flext-api.git"
+        )

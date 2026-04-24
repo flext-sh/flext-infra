@@ -5,7 +5,7 @@ from pathlib import Path
 from tests import c, u
 
 
-class TestsFlextInfraUtilitiesFormattingRunRuffFix:
+class TestsFlextInfraUtilitiesformatting:
     def test_run_ruff_fix_runs_check_and_format(self, tmp_path: Path) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")

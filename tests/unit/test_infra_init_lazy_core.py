@@ -16,7 +16,7 @@ from flext_infra import (
 )
 
 
-class TestFlextInfraInitLazyLoading:
+class TestsFlextInfraInfraInitLazyCore:
     """Test __getattr__ error path in flext_infra.__init__."""
 
     def test_getattr_nonexistent_name_raises_attribute_error(self) -> None:

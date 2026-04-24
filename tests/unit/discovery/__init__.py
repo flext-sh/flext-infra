@@ -9,7 +9,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".test_infra_discovery": ("test_infra_discovery",),
         ".test_infra_discovery_edge_cases": (
-            "TestFlextInfraDiscoveryServiceUncoveredLines",
+            "TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases",
         ),
     },
 )

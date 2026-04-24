@@ -9,7 +9,7 @@ from flext_tests import tm
 from flext_infra import u
 
 
-class TestFlextInfraPathResolver:
+class TestsFlextInfraInfraPaths:
     """Verify workspace path resolution through the public utility."""
 
     def test_resolve_workspace_root_with_current_directory(self) -> None:

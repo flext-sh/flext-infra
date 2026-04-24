@@ -12,7 +12,7 @@ from flext_infra import FlextInfraRefactorLooseClassScanner
 from tests import m
 
 
-class TestWorkspaceLevelRefactor:
+class TestsFlextInfraIntegrationRefactorNestingWorkspace:
     """Test class nesting refactor across multi-project workspace."""
 
     def test_multi_project_workspace_processed(self, tmp_path: Path) -> None:

@@ -23,7 +23,7 @@ def _init_git_repo(repo: Path) -> None:
     _run_git(repo, "commit", "-m", "initial commit")
 
 
-class TestSafetyCheckpoint:
+class TestsFlextInfraUtilitiessafety:
     def test_create_checkpoint_returns_empty_for_clean_repo(
         self,
         tmp_path: Path,
@@ -57,8 +57,6 @@ class TestSafetyCheckpoint:
         assert result.success
         assert result.value == ""
 
-
-class TestSafetyRollback:
     def test_rollback_to_checkpoint_invalid_stash_ref_fails(
         self,
         tmp_path: Path,

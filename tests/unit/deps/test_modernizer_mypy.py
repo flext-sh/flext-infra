@@ -11,7 +11,7 @@ from flext_infra import (
 from tests import m, u
 
 
-class TestDepsModernizerMypy:
+class TestsFlextInfraDepsModernizerMypy:
     """Declarative tests for generated mypy and pydantic-mypy settings."""
 
     def test_mypy_phase_sets_expected_state(

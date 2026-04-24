@@ -9,7 +9,7 @@ from __future__ import annotations
 from tests import p
 
 
-class TestFlextInfraProtocolsImport:
+class TestsFlextInfraInfraProtocols:
     """Test p class import and structure."""
 
     def test_flext_infra_protocols_is_importable(self) -> None:

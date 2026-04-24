@@ -8,7 +8,7 @@ from flext_tests import tm
 from flext_infra import FlextInfraInternalDependencySyncService
 
 
-class TestFlextInfraInternalDependencySyncService:
+class TestsFlextInfraDepsInternalSyncValidation:
     def test_service_initialization(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         tm.that(
@@ -55,8 +55,6 @@ class TestFlextInfraInternalDependencySyncService:
         url = "https://github.com/flext-sh/flext.git"
         tm.that(FlextInfraInternalDependencySyncService.ssh_to_https(url), eq=url)
 
-
-class TestValidateGitRefEdgeCases:
     @pytest.mark.parametrize(
         "ref",
         ["feature/my-branch", "v1.0.0", "release/2.0", "fix/issue-123"],
@@ -68,8 +66,6 @@ class TestValidateGitRefEdgeCases:
     def test_invalid_refs(self, ref: str) -> None:
         tm.fail(FlextInfraInternalDependencySyncService.validate_git_ref(ref))
 
-
-class TestOwnerFromRemoteUrl:
     @pytest.mark.parametrize(
         ("url", "expected"),
         [
@@ -85,8 +81,6 @@ class TestOwnerFromRemoteUrl:
             eq=expected,
         )
 
-
-class TestIsRelativeTo:
     def test_relative_to_true(self, tmp_path: Path) -> None:
         child = tmp_path / "sub" / "file.txt"
         tm.that(
@@ -100,8 +94,6 @@ class TestIsRelativeTo:
             eq=True,
         )
 
-
-class TestResolveInternalRepoName:
     @pytest.mark.parametrize(
         ("raw_path", "expected"),
         [

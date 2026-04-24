@@ -12,7 +12,7 @@ from flext_infra import FlextInfraUtilities
 from tests import u
 
 
-class TestFlextInfraUtilitiesImport:
+class TestsFlextInfraInfraUtilities:
     """Test FlextInfraUtilities class import and structure."""
 
     def test_flext_infra_utilities_is_importable(self) -> None:

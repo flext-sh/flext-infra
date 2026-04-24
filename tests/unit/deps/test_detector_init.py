@@ -8,7 +8,7 @@ from flext_infra import FlextInfraRuntimeDevDependencyDetector
 from tests import u
 
 
-class TestFlextInfraRuntimeDevDependencyDetectorInit:
+class TestsFlextInfraDepsDetectorInit:
     def test_detector_initialization(self) -> None:
         detector = FlextInfraRuntimeDevDependencyDetector()
         tm.that(

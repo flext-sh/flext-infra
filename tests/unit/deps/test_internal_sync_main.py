@@ -7,7 +7,7 @@ from flext_tests import tm
 from flext_infra import main
 
 
-class TestMain:
+class TestsFlextInfraDepsInternalSyncMain:
     def test_main_success(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n',

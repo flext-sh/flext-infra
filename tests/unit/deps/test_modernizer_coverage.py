@@ -33,7 +33,7 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
     return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
 
 
-class TestEnsureCoverageConfigPhase:
+class TestsFlextInfraDepsModernizerCoverage:
     """Tests coverage settings phase behavior."""
 
     def test_apply_sets_report_and_run_state(self) -> None:

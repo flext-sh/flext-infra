@@ -13,7 +13,7 @@ from flext_tests import tm
 from tests import c
 
 
-class TestFlextInfraConstantsPathsNamespace:
+class TestsFlextInfraInfraConstantsCore:
     """Tests for Paths namespace constants."""
 
     def test_venv_bin_rel_constant(self) -> None:
@@ -25,10 +25,6 @@ class TestFlextInfraConstantsPathsNamespace:
     def test_paths_constants_are_strings(self) -> None:
         tm.that(c.Infra.VENV_BIN_REL, is_=str)
         tm.that(c.Infra.DEFAULT_SRC_DIR, is_=str)
-
-
-class TestFlextInfraConstantsFilesNamespace:
-    """Tests for Files namespace constants."""
 
     def test_pyproject_filename_constant(self) -> None:
         tm.that(c.Infra.PYPROJECT_FILENAME, eq="pyproject.toml")
@@ -47,10 +43,6 @@ class TestFlextInfraConstantsFilesNamespace:
         tm.that(c.Infra.MAKEFILE_FILENAME, is_=str)
         tm.that(c.Infra.BASE_MK, is_=str)
         tm.that(c.Infra.GO_MOD, is_=str)
-
-
-class TestFlextInfraConstantsGatesNamespace:
-    """Tests for Gates namespace constants."""
 
     def test_gate_constants_exist(self) -> None:
         tm.that(c.Infra.LINT, eq="lint")
@@ -79,10 +71,6 @@ class TestFlextInfraConstantsGatesNamespace:
         for g in gates:
             tm.that(g, is_=str)
 
-
-class TestFlextInfraConstantsStatusNamespace:
-    """Tests for Status namespace constants."""
-
     def test_pass_status_constant(self) -> None:
         tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
 
@@ -100,10 +88,6 @@ class TestFlextInfraConstantsStatusNamespace:
         tm.that(c.Infra.ResultStatus.FAIL, is_=c.Infra.ResultStatus)
         tm.that(c.Infra.ResultStatus.OK, is_=c.Infra.ResultStatus)
         tm.that(c.Infra.ResultStatus.WARN, is_=c.Infra.ResultStatus)
-
-
-class TestFlextInfraConstantsExcludedNamespace:
-    """Tests for Excluded namespace constants."""
 
     def test_common_excluded_dirs_is_string(self) -> None:
         excluded = c.Infra.COMMON_EXCLUDED_DIRS

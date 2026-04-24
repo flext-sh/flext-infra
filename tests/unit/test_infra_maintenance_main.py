@@ -50,18 +50,12 @@ def _make_enforcer(workspace: Path) -> FlextInfraPythonVersionEnforcer:
     return _TestEnforcer()
 
 
-class TestMaintenanceMainSuccess:
-    """Tests for main() success paths."""
-
+class TestsFlextInfraInfraMaintenanceMain:
     def test_main_with_help_flag(self) -> None:
         tm.that(main(["--help"]), eq=0)
 
     def test_main_calls_sys_exit_on_help(self) -> None:
         tm.that(main(["--help"]), eq=0)
-
-
-class TestMaintenanceMainEnforcer:
-    """Tests for FlextInfraPythonVersionEnforcer directly."""
 
     def test_enforcer_check_only_success(self, tmp_path: Path) -> None:
         workspace = _create_workspace(

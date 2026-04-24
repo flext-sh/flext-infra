@@ -37,7 +37,7 @@ def _set_toml_stub(
     service.toml = _TomlReaderStub(_read)
 
 
-class TestSyncMethodEdgeCases:
+class TestsFlextInfraDepsInternalSyncSyncEdge:
     def test_sync_with_parsed_repo_map_failure(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(

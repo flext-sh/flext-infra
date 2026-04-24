@@ -28,7 +28,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
         return dict(u.Cli.yaml_load_mapping(self._config_path))
 
 
-class TestPerformanceBenchmarks:
+class TestsFlextInfraIntegrationRefactorNestingPerformance:
     """Benchmark performance of refactor engine."""
 
     def test_process_1000_files_in_30_seconds(self) -> None:

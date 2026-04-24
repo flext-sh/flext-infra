@@ -55,7 +55,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_refactor_typing_unifier": (
             "FlextInfraRefactorTypingUnificationRule",
         ),
-        ".test_main_cli": ("TestFlextInfraRefactorMainCli",),
+        ".test_main_cli": ("TestsFlextInfraRefactorMainCli",),
     },
 )
 

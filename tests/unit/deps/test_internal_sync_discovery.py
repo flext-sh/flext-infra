@@ -50,7 +50,7 @@ def _set_toml_sequence(
     service.toml = _TomlReaderStub(fn=_next)
 
 
-class TestParseGitmodules:
+class TestsFlextInfraDepsInternalSyncDiscovery:
     def test_parse_gitmodules_valid(self, tmp_path: Path) -> None:
         gitmodules = tmp_path / ".gitmodules"
         gitmodules.write_text(
@@ -86,8 +86,6 @@ class TestParseGitmodules:
             FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
         )
 
-
-class TestParseRepoMap:
     def test_parse_repo_map_success(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -150,8 +148,6 @@ class TestParseRepoMap:
         tm.ok(result)
         tm.that(result.value["flext-core"].https_url.startswith("https://"), eq=True)
 
-
-class TestCollectInternalDeps:
     def test_no_pyproject(self, tmp_path: Path) -> None:
         tm.ok(
             FlextInfraInternalDependencySyncService().collect_internal_deps(tmp_path),

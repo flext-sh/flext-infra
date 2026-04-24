@@ -10,7 +10,7 @@ import pytest
 from flext_infra import FlextInfraPythonVersionEnforcer, maintenance
 
 
-class TestFlextInfraMaintenance:
+class TestsFlextInfraInfraMaintenanceInit:
     """Tests for flext_infra.maintenance module."""
 
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:

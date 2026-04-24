@@ -10,7 +10,7 @@ from flext_infra import FlextInfraWorkspaceDetector
 from tests import c, u
 
 
-class TestWorkspaceDetector:
+class TestsFlextInfraInfraWorkspaceDetector:
     """Exercise workspace detection through public repo state and inputs."""
 
     @staticmethod

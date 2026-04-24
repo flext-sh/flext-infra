@@ -13,5 +13,8 @@ def main(argv: t.StrSequence | None = None) -> int:
     return infra_main(args)
 
 
-def test_maintenance_rejects_apply_flag() -> None:
-    assert main(["--apply"]) == 2
+class TestsFlextInfraInfraMaintenanceCli:
+    """Behavior contract for test_infra_maintenance_cli."""
+
+    def test_maintenance_rejects_apply_flag(self) -> None:
+        assert main(["--apply"]) == 2

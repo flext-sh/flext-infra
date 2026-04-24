@@ -8,7 +8,7 @@ import flext_infra
 from tests import c, u
 
 
-class TestFlextInfraRopeWorkspace:
+class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
 
     def test_open_workspace_materializes_snapshot(self, tmp_path: Path) -> None:

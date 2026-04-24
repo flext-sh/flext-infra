@@ -11,7 +11,7 @@ import flext_infra.basemk as basemk_module
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkTemplateEngine
 
 
-class TestFlextInfraBaseMk:
+class TestsFlextInfraBasemkInit:
     """Tests for flext_infra.basemk module."""
 
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:

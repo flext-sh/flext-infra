@@ -8,7 +8,7 @@ from flext_tests import tm
 from flext_infra import deps
 
 
-class TestPublicDepsSurface:
+class TestsFlextInfraDepsMain:
     EXPECTED_SERVICES = {
         "detect": "FlextInfraRuntimeDevDependencyDetector",
         "extra-paths": "FlextInfraExtraPathsManager",

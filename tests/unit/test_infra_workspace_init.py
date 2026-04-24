@@ -10,7 +10,7 @@ import pytest
 from flext_infra import workspace as workspace_module
 
 
-class TestFlextInfraWorkspace:
+class TestsFlextInfraInfraWorkspaceInit:
     """Tests for flext_infra.workspace module."""
 
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:

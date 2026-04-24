@@ -7,7 +7,7 @@ from flext_tests import tm
 from flext_infra import main as infra_main
 
 
-class TestDepsGroupEntry:
+class TestsFlextInfraDepsMainDispatch:
     @staticmethod
     def subcommands() -> list[str]:
         return ["detect", "extra-paths", "internal-sync", "modernize", "path-sync"]

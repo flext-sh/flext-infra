@@ -7,7 +7,7 @@ from flext_tests import tm
 from tests import c, t, u
 
 
-class TestDiscoverProjectPathsDeptry:
+class TestsFlextInfraDepsDetectionDeptry:
     def test_success(self, tmp_path: Path) -> None:
         project = u.Infra.Tests.create_project_info(
             tmp_path / "test-project",
@@ -44,8 +44,6 @@ class TestDiscoverProjectPathsDeptry:
         tm.ok(result)
         tm.that(result.value, empty=True)
 
-
-class TestRunDeptry:
     def test_success_with_issues(
         self,
         tmp_path: Path,

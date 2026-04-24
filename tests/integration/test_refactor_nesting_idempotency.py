@@ -45,7 +45,7 @@ def _apply_rule(
         rope_project.close()
 
 
-class TestIdempotency:
+class TestsFlextInfraIntegrationRefactorNestingIdempotency:
     """Test that running refactor multiple times is idempotent."""
 
     def test_first_run_produces_changes(self, tmp_path: Path) -> None:

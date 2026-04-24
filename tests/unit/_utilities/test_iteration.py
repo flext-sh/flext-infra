@@ -5,7 +5,7 @@ from pathlib import Path
 from tests import t, u
 
 
-class TestIterWorkspacePythonModules:
+class TestsFlextInfraUtilitiesiteration:
     @staticmethod
     def _create_project(workspace: Path, name: str) -> Path:
         project_root = workspace / name

@@ -11,7 +11,7 @@ from flext_tests import tm
 from tests import c
 
 
-class TestFlextInfraConstantsCheckNamespace:
+class TestsFlextInfraInfraConstantsExtra:
     """Tests for Check namespace constants."""
 
     def test_default_check_dirs_is_list(self) -> None:
@@ -40,10 +40,6 @@ class TestFlextInfraConstantsCheckNamespace:
         for d in c.Infra.CHECK_DIRS_SUBPROJECT:
             tm.that(d, is_=str)
 
-
-class TestFlextInfraConstantsGithubNamespace:
-    """Tests for Github namespace constants."""
-
     def test_github_repo_url_constant(self) -> None:
         tm.that(
             c.Infra.GITHUB_REPO_URL,
@@ -57,19 +53,11 @@ class TestFlextInfraConstantsGithubNamespace:
         tm.that(c.Infra.GITHUB_REPO_URL, is_=str)
         tm.that(c.Infra.GITHUB_REPO_NAME, is_=str)
 
-
-class TestFlextInfraConstantsEncodingNamespace:
-    """Tests for Encoding namespace constants."""
-
     def test_default_encoding_constant(self) -> None:
         tm.that(c.Infra.ENCODING_DEFAULT, eq="utf-8")
 
     def test_encoding_constant_is_string(self) -> None:
         tm.that(c.Infra.ENCODING_DEFAULT, is_=str)
-
-
-class TestFlextInfraConstantsAlias:
-    """Tests for module-level alias."""
 
     def test_c_alias_is_string(self) -> None:
         tm.that(c, is_=type)
@@ -82,10 +70,6 @@ class TestFlextInfraConstantsAlias:
         tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
         tm.that(c.Infra.PYPROJECT_FILENAME, eq="pyproject.toml")
 
-
-class TestFlextInfraConstantsImmutability:
-    """Tests for constant immutability."""
-
     def test_excluded_dirs_are_immutable(self) -> None:
         excluded = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(not hasattr(excluded, "add"), eq=True)
@@ -93,10 +77,6 @@ class TestFlextInfraConstantsImmutability:
     def test_check_dirs_are_immutable(self) -> None:
         dirs = c.Infra.DEFAULT_CHECK_DIRS
         tm.that(not hasattr(dirs, "append"), eq=True)
-
-
-class TestFlextInfraConstantsConsistency:
-    """Tests for consistency across namespaces."""
 
     def test_all_status_values_are_uppercase(self) -> None:
         tm.that(c.Infra.ResultStatus.PASSED.isupper(), eq=True)

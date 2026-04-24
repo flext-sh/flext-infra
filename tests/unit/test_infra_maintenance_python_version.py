@@ -40,7 +40,6 @@ def _ws(root: Path, *, minor: int = _MINOR) -> Path:
 
 
 def _proj(root: Path, name: str, *, minor: int = _MINOR) -> Path:
-    """Create a sub-project inside workspace."""
     proj = root / name
     proj.mkdir(exist_ok=True)
     (proj / ".git").mkdir(exist_ok=True)
@@ -60,7 +59,6 @@ def _proj(root: Path, name: str, *, minor: int = _MINOR) -> Path:
 
 
 def _svc(ws: Path) -> FlextInfraPythonVersionEnforcer:
-    """Create enforcer bound to given workspace."""
 
     class _TestEnforcer(FlextInfraPythonVersionEnforcer):
         @override
@@ -71,9 +69,7 @@ def _svc(ws: Path) -> FlextInfraPythonVersionEnforcer:
     return _TestEnforcer()
 
 
-class TestEnforcerExecute:
-    """Tests for execute() with real workspace structures."""
-
+class TestsFlextInfraInfraMaintenancePythonVersion:
     def test_check_only_success(self, tmp_path: Path) -> None:
         tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True, verbose=False), eq=0)
 
@@ -95,10 +91,6 @@ class TestEnforcerExecute:
 
     def test_empty_workspace(self, tmp_path: Path) -> None:
         tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True))
-
-
-class TestReadRequiredMinor:
-    """Tests for _read_required_minor()."""
 
     @pytest.fixture
     def enforcer(self) -> FlextInfraPythonVersionEnforcer:
@@ -131,10 +123,6 @@ class TestReadRequiredMinor:
         (d / "pyproject.toml").write_text("# No field\n", encoding="utf-8")
         tm.that(enforcer._read_required_minor(d), eq=13)
 
-
-class TestWorkspaceRoot:
-    """Tests for _workspace_root_from_file()."""
-
     def test_success(
         self,
         enforcer: FlextInfraPythonVersionEnforcer,
@@ -156,10 +144,6 @@ class TestWorkspaceRoot:
         f.touch()
         with pytest.raises(RuntimeError, match="workspace root not found"):
             enforcer._workspace_root_from_file(f)
-
-
-class TestEnsurePythonVersionFile:
-    """Tests for _ensure_python_version_file()."""
 
     def test_mismatch_check_mode(
         self,
@@ -209,10 +193,6 @@ class TestEnsurePythonVersionFile:
             not enforcer._ensure_python_version_file(p, required_minor=_MINOR),
             eq=True,
         )
-
-
-class TestPublicProjectDiscovery:
-    """Tests for public project discovery consumed by the enforcer."""
 
     def test_empty_dir_returns_empty(self, tmp_path: Path) -> None:
         d = tmp_path / "empty"

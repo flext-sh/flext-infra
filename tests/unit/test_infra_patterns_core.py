@@ -5,7 +5,7 @@ from __future__ import annotations
 from tests import u
 
 
-class TestFlextInfraPatternsTooling:
+class TestsFlextInfraInfraPatternsCore:
     """Tests for tooling-related regex patterns."""
 
     def test_mypy_hint_pattern_matches_valid_hint(self) -> None:
@@ -53,10 +53,6 @@ class TestFlextInfraPatternsTooling:
 
     def test_internal_prefixes_is_tuple(self) -> None:
         assert isinstance(u.Infra.INTERNAL_PREFIXES, tuple)
-
-
-class TestFlextInfraPatternsMarkdown:
-    """Tests for markdown-related regex patterns."""
 
     def test_markdown_link_pattern_matches_link(self) -> None:
         text = "[Click here](https://example.com)"

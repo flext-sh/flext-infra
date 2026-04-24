@@ -93,7 +93,7 @@ def _setup(
     )
 
 
-class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
+class TestsFlextInfraDepsDetectorReport:
     def test_run_with_output_flag(
         self,
         tmp_path: Path,

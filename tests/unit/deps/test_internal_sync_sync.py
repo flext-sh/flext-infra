@@ -36,7 +36,7 @@ def _set_toml_stub(
     service.toml = _TomlReaderStub(_read)
 
 
-class TestSync:
+class TestsFlextInfraDepsInternalSyncSync:
     def test_sync_no_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(

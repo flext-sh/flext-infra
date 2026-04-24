@@ -9,7 +9,7 @@ from __future__ import annotations
 from flext_infra.__version__ import FlextInfraVersion
 
 
-class TestFlextInfraVersionClass:
+class TestsFlextInfraInfraVersionCore:
     """Test FlextInfraVersion class attributes and methods."""
 
     def test_flext_infra_version_has_version_attribute(self) -> None:

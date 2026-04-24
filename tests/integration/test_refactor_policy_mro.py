@@ -6,7 +6,7 @@ from flext_infra import FlextInfraRefactorMROResolver
 from tests import c
 
 
-class TestRefactorPolicyMRO:
+class TestsFlextInfraIntegrationRefactorPolicyMro:
     """Single top-level integration test class for MRO policy resolution."""
 
     class FlextLdapModels:

@@ -11,7 +11,7 @@ from flext_infra import FlextInfraDependencyDetectionService
 from tests import t
 
 
-class TestClassifyIssues:
+class TestsFlextInfraDepsDetectionClassify:
     def test_classify_dep001(self) -> None:
         service = FlextInfraDependencyDetectionService()
         issues: Sequence[t.Infra.ContainerDict] = [
@@ -81,8 +81,6 @@ class TestClassifyIssues:
         issues: Sequence[t.Infra.ContainerDict] = [{"module": "foo"}]
         tm.that(len(service.classify_issues(issues).dep001), eq=0)
 
-
-class TestBuildProjectReport:
     def test_builds_report(self) -> None:
         service = FlextInfraDependencyDetectionService()
         issues: Sequence[t.Infra.ContainerDict] = [
@@ -93,8 +91,6 @@ class TestBuildProjectReport:
         tm.that(report.project, eq="test-project")
         tm.that(report.deptry.raw_count, eq=2)
 
-
-class TestDetectionUncoveredLinesClassify:
     def test_module_to_types_package_with_custom_limits(self) -> None:
         service = FlextInfraDependencyDetectionService()
         inner = FlextInfraDependencyDetectionService.to_infra_value(

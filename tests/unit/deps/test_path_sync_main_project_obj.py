@@ -37,39 +37,41 @@ def _service(
     return _TestPathSync()
 
 
-def test_main_project_obj_not_dict_first_loop(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text(
-        'project = "not-a-dict"\n',
-        encoding="utf-8",
-    )
-    tm.that(
-        _service([]).execute(
-            m.Infra.PathSyncCommand.model_validate({
-                "workspace": str(tmp_path),
-                "mode": "standalone",
-            })
-        ),
-        eq=0,
-    )
+class TestsFlextInfraDepsPathSyncMainProjectObj:
+    """Behavior contract for test_path_sync_main_project_obj."""
 
+    def test_main_project_obj_not_dict_first_loop(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            'project = "not-a-dict"\n',
+            encoding="utf-8",
+        )
+        tm.that(
+            _service([]).execute(
+                m.Infra.PathSyncCommand.model_validate({
+                    "workspace": str(tmp_path),
+                    "mode": "standalone",
+                })
+            ),
+            eq=0,
+        )
 
-def test_main_project_obj_not_dict_second_loop(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text(
-        '[project]\nname = "workspace"\n',
-        encoding="utf-8",
-    )
-    project_dir = tmp_path / "test-project"
-    project_dir.mkdir()
-    (project_dir / "pyproject.toml").write_text(
-        'project = "not-a-dict"\n',
-        encoding="utf-8",
-    )
-    tm.that(
-        _service([_project(project_dir)]).execute(
-            m.Infra.PathSyncCommand.model_validate({
-                "workspace": str(tmp_path),
-                "mode": "standalone",
-            })
-        ),
-        eq=0,
-    )
+    def test_main_project_obj_not_dict_second_loop(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "workspace"\n',
+            encoding="utf-8",
+        )
+        project_dir = tmp_path / "test-project"
+        project_dir.mkdir()
+        (project_dir / "pyproject.toml").write_text(
+            'project = "not-a-dict"\n',
+            encoding="utf-8",
+        )
+        tm.that(
+            _service([_project(project_dir)]).execute(
+                m.Infra.PathSyncCommand.model_validate({
+                    "workspace": str(tmp_path),
+                    "mode": "standalone",
+                })
+            ),
+            eq=0,
+        )

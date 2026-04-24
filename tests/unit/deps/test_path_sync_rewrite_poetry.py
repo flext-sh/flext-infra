@@ -7,7 +7,7 @@ from tomlkit.toml_document import TOMLDocument
 from tests import c, u
 
 
-class TestRewritePoetry:
+class TestsFlextInfraDepsPathSyncRewritePoetry:
     def test_rewrite_poetry_no_tool(self) -> None:
         tm.that(
             u.Infra._rewrite_poetry(
@@ -132,51 +132,48 @@ class TestRewritePoetry:
         assert len(changes) > 0
         tm.that(doc.as_string(), contains='path = "../flext-core"')
 
-
-def test_rewrite_poetry_with_non_dict_value() -> None:
-    doc = tomlkit.document()
-    poetry = tomlkit.table()
-    deps = tomlkit.table()
-    deps["flext-core"] = "string-value"
-    poetry["dependencies"] = deps
-    tool = tomlkit.table()
-    tool["poetry"] = poetry
-    doc["tool"] = tool
-    tm.that(
-        len(
-            u.Infra._rewrite_poetry(
-                doc,
-                is_root=False,
-                mode=c.Infra.PathSyncMode.WORKSPACE,
+    def test_rewrite_poetry_with_non_dict_value(self) -> None:
+        doc = tomlkit.document()
+        poetry = tomlkit.table()
+        deps = tomlkit.table()
+        deps["flext-core"] = "string-value"
+        poetry["dependencies"] = deps
+        tool = tomlkit.table()
+        tool["poetry"] = poetry
+        doc["tool"] = tool
+        tm.that(
+            len(
+                u.Infra._rewrite_poetry(
+                    doc,
+                    is_root=False,
+                    mode=c.Infra.PathSyncMode.WORKSPACE,
+                ),
             ),
-        ),
-        eq=0,
-    )
+            eq=0,
+        )
 
-
-def test_rewrite_poetry_no_tool_table() -> None:
-    tm.that(
-        len(
-            u.Infra._rewrite_poetry(
-                tomlkit.document(),
-                is_root=False,
-                mode=c.Infra.PathSyncMode.WORKSPACE,
+    def test_rewrite_poetry_no_tool_table(self) -> None:
+        tm.that(
+            len(
+                u.Infra._rewrite_poetry(
+                    tomlkit.document(),
+                    is_root=False,
+                    mode=c.Infra.PathSyncMode.WORKSPACE,
+                ),
             ),
-        ),
-        eq=0,
-    )
+            eq=0,
+        )
 
-
-def test_rewrite_poetry_no_poetry_table() -> None:
-    doc = tomlkit.document()
-    doc["tool"] = tomlkit.table()
-    tm.that(
-        len(
-            u.Infra._rewrite_poetry(
-                doc,
-                is_root=False,
-                mode=c.Infra.PathSyncMode.WORKSPACE,
+    def test_rewrite_poetry_no_poetry_table(self) -> None:
+        doc = tomlkit.document()
+        doc["tool"] = tomlkit.table()
+        tm.that(
+            len(
+                u.Infra._rewrite_poetry(
+                    doc,
+                    is_root=False,
+                    mode=c.Infra.PathSyncMode.WORKSPACE,
+                ),
             ),
-        ),
-        eq=0,
-    )
+            eq=0,
+        )

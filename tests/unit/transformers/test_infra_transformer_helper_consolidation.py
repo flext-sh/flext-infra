@@ -28,7 +28,7 @@ def _transform_source(
         rope_project.close()
 
 
-class TestHelperConsolidationTransformer:
+class TestsFlextInfraTransformersInfraTransformerHelperConsolidation:
     """Test suite for helper consolidation transformer."""
 
     def test_helper_becomes_staticmethod(self, tmp_path: Path) -> None:

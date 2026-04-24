@@ -19,7 +19,7 @@ from flext_infra import (
 from flext_infra.__version__ import FlextInfraVersion
 
 
-class TestFlextInfraVersionPackageInfo:
+class TestsFlextInfraInfraVersionExtra:
     """Test FlextInfraVersion.resolve_package_info() method."""
 
     def test_resolve_package_info_returns_mapping(self) -> None:
@@ -67,10 +67,6 @@ class TestFlextInfraVersionPackageInfo:
         result = FlextInfraVersion.resolve_package_info()
         for value in result.values():
             assert isinstance(value, str)
-
-
-class TestFlextInfraVersionModuleLevel:
-    """Test module-level version exports."""
 
     def test_module_level_version_is_string(self) -> None:
         """Test that module-level __version__ is a string."""

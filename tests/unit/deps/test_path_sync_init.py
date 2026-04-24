@@ -27,13 +27,13 @@ def _rewrite_dep_paths(
     )
 
 
-class TestFlextInfraDependencyPathSync:
+class TestsFlextInfraDepsPathSyncInit:
+    """Behavior contract for FlextInfraUtilitiesDependencyPathSync init/detect/rewrite."""
+
     def test_path_sync_initialization(self) -> None:
         path_sync = FlextInfraUtilitiesDependencyPathSync()
         tm.that(type(path_sync).__name__, eq="FlextInfraUtilitiesDependencyPathSync")
 
-
-class TestDetectMode:
     def test_detect_mode_workspace(self, tmp_path: Path) -> None:
         (tmp_path / ".gitmodules").touch()
         tm.that(
@@ -58,26 +58,16 @@ class TestDetectMode:
             eq=c.Infra.PathSyncMode.STANDALONE,
         )
 
-
-def test_detect_mode_with_nonexistent_path(tmp_path: Path) -> None:
-    tm.that(
-        {c.Infra.PathSyncMode.WORKSPACE, c.Infra.PathSyncMode.STANDALONE},
-        has=FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
-    )
-
-
-def test_detect_mode_with_path_object() -> None:
-    tm.that(
-        {c.Infra.PathSyncMode.WORKSPACE, c.Infra.PathSyncMode.STANDALONE},
-        has=FlextInfraUtilitiesDependencyPathSync.detect_mode(Path("/tmp")),
-    )
-
-
-class TestPathSyncEdgeCases:
     def test_detect_mode_with_nonexistent_path(self, tmp_path: Path) -> None:
         tm.that(
             {c.Infra.PathSyncMode.WORKSPACE, c.Infra.PathSyncMode.STANDALONE},
             has=FlextInfraUtilitiesDependencyPathSync.detect_mode(tmp_path),
+        )
+
+    def test_detect_mode_with_path_object(self) -> None:
+        tm.that(
+            {c.Infra.PathSyncMode.WORKSPACE, c.Infra.PathSyncMode.STANDALONE},
+            has=FlextInfraUtilitiesDependencyPathSync.detect_mode(Path("/tmp")),
         )
 
     def test_dep_name_normalizes_path_inputs(self) -> None:

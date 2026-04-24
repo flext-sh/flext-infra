@@ -10,7 +10,7 @@ from flext_infra import FlextInfraPyprojectModernizer, main
 from tests import c
 
 
-class TestFlextInfraPyprojectModernizer:
+class TestsFlextInfraDepsModernizerMain:
     """Validate only public modernizer behavior."""
 
     def test_initialization_uses_explicit_workspace(

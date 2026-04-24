@@ -8,7 +8,7 @@ from flext_tests import tm
 from flext_infra import FlextInfraConsolidateGroupsPhase
 
 
-class TestConsolidateGroupsPhase:
+class TestsFlextInfraDepsModernizerConsolidate:
     """Tests consolidate groups phase behavior."""
 
     def test_consolidate_groups_creates_dev_group(self) -> None:
@@ -60,34 +60,36 @@ class TestConsolidateGroupsPhase:
         changes = FlextInfraConsolidateGroupsPhase().apply(tomlkit.document(), [])
         tm.that(changes, empty=False)
 
+    def test_consolidate_groups_phase_apply_removes_old_groups(self) -> None:
+        doc = tomlkit.document()
+        project = tomlkit.table()
+        optional = tomlkit.table()
+        optional["dev"] = ["pytest"]
+        optional["docs"] = ["sphinx"]
+        optional["test"] = ["coverage"]
+        project["optional-dependencies"] = optional
+        doc["project"] = project
+        changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
+        tm.that(
+            any("optional-dependencies.docs removed" in c for c in changes), eq=True
+        )
+        tm.that(
+            any("optional-dependencies.test removed" in c for c in changes), eq=True
+        )
 
-def test_consolidate_groups_phase_apply_removes_old_groups() -> None:
-    doc = tomlkit.document()
-    project = tomlkit.table()
-    optional = tomlkit.table()
-    optional["dev"] = ["pytest"]
-    optional["docs"] = ["sphinx"]
-    optional["test"] = ["coverage"]
-    project["optional-dependencies"] = optional
-    doc["project"] = project
-    changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
-    tm.that(any("optional-dependencies.docs removed" in c for c in changes), eq=True)
-    tm.that(any("optional-dependencies.test removed" in c for c in changes), eq=True)
-
-
-def test_consolidate_groups_phase_apply_with_empty_poetry_group() -> None:
-    doc = tomlkit.document()
-    project = tomlkit.table()
-    project["optional-dependencies"] = tomlkit.table()
-    doc["project"] = project
-    docs_group = tomlkit.table()
-    docs_group["dependencies"] = tomlkit.table()
-    group = tomlkit.table()
-    group["docs"] = docs_group
-    poetry = tomlkit.table()
-    poetry["group"] = group
-    tool = tomlkit.table()
-    tool["poetry"] = poetry
-    doc["tool"] = tool
-    changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
-    tm.that(changes, empty=False)
+    def test_consolidate_groups_phase_apply_with_empty_poetry_group(self) -> None:
+        doc = tomlkit.document()
+        project = tomlkit.table()
+        project["optional-dependencies"] = tomlkit.table()
+        doc["project"] = project
+        docs_group = tomlkit.table()
+        docs_group["dependencies"] = tomlkit.table()
+        group = tomlkit.table()
+        group["docs"] = docs_group
+        poetry = tomlkit.table()
+        poetry["group"] = group
+        tool = tomlkit.table()
+        tool["poetry"] = poetry
+        doc["tool"] = tool
+        changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
+        tm.that(changes, empty=False)

@@ -33,7 +33,7 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
     return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
 
 
-class TestEnsurePytestConfigPhase:
+class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
     def test_apply_sets_expected_ini_options(self) -> None:

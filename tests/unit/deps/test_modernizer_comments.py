@@ -7,7 +7,7 @@ from flext_tests import tm
 from flext_infra import FlextInfraInjectCommentsPhase
 
 
-class TestInjectCommentsPhase:
+class TestsFlextInfraDepsModernizerComments:
     """Tests comment injection behavior."""
 
     def test_inject_comments_adds_banner(self) -> None:
@@ -37,72 +37,63 @@ class TestInjectCommentsPhase:
         result, _ = FlextInfraInjectCommentsPhase().apply(rendered)
         tm.that(result, has="# [MANAGED] build system")
 
+    def test_inject_comments_phase_apply_banner(self) -> None:
+        rendered = '[project]\nname = "test"\n'
+        result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        tm.that(result, has="[MANAGED] FLEXT pyproject standardization")
+        tm.that(changes, has="managed banner injected")
 
-def test_inject_comments_phase_apply_banner() -> None:
-    rendered = '[project]\nname = "test"\n'
-    result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    tm.that(result, has="[MANAGED] FLEXT pyproject standardization")
-    tm.that(changes, has="managed banner injected")
+    def test_inject_comments_phase_apply_markers(self) -> None:
+        rendered = '[project]\nname = "test"\n[tool.pytest]\n'
+        result, _ = FlextInfraInjectCommentsPhase().apply(rendered)
+        tm.that(result, has="[MANAGED]")
 
+    def test_inject_comments_phase_apply_broken_group_section(self) -> None:
+        rendered = '[group.dev.dependencies]\nrequests = "*"\n[project]\n'
+        result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        tm.that("[group.dev.dependencies]" not in result, eq=True)
+        tm.that(changes, has="broken [group.dev.dependencies] section removed")
 
-def test_inject_comments_phase_apply_markers() -> None:
-    rendered = '[project]\nname = "test"\n[tool.pytest]\n'
-    result, _ = FlextInfraInjectCommentsPhase().apply(rendered)
-    tm.that(result, has="[MANAGED]")
+    def test_inject_comments_phase_apply_with_optional_dependencies_dev(self) -> None:
+        rendered = "[project.optional-dependencies]\noptional-dependencies.dev = ['pytest', 'coverage']\n"
+        result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        tm.that(("optional-dependencies.dev" in result) or (changes), eq=True)
 
+    def test_inject_comments_phase_repositions_marker_before_section(self) -> None:
+        rendered = '[tool.coverage.report]\nfail_under = 45\n# [MANAGED] pyrefly\n[tool.pyrefly]\npython-version = "3.13"'
+        result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        lines = result.splitlines()
+        pyrefly_idx = lines.index("[tool.pyrefly]")
+        tm.that(lines[pyrefly_idx - 1], eq="# [MANAGED] pyrefly")
 
-def test_inject_comments_phase_apply_broken_group_section() -> None:
-    rendered = '[group.dev.dependencies]\nrequests = "*"\n[project]\n'
-    result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    tm.that("[group.dev.dependencies]" not in result, eq=True)
-    tm.that(changes, has="broken [group.dev.dependencies] section removed")
+    def test_inject_comments_phase_removes_auto_banner_and_auto_marker(self) -> None:
+        rendered = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Sections with [AUTO] are derived from workspace layout and dependencies.\n# [AUTO] merged from dev/docs/security/test/typings\n[project.optional-dependencies]\ndev = ['pytest']"
+        result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        tm.that(
+            result,
+            has="# Run `make mod` to regenerate all managed pyproject sections.",
+        )
+        tm.that("[AUTO]" in result, eq=False)
 
+    def test_inject_comments_phase_marks_pytest_and_coverage_subtables(self) -> None:
+        rendered = '[tool.pytest.ini_options]\nminversion = "8.0"\n[tool.coverage.report]\nfail_under = 45'
+        result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        tm.that(result, has="# [MANAGED] pytest")
+        tm.that(result, has="# [MANAGED] coverage")
 
-def test_inject_comments_phase_apply_with_optional_dependencies_dev() -> None:
-    rendered = "[project.optional-dependencies]\noptional-dependencies.dev = ['pytest', 'coverage']\n"
-    result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    tm.that(("optional-dependencies.dev" in result) or (changes), eq=True)
+    def test_inject_comments_phase_deduplicates_family_markers(self) -> None:
+        rendered = "[tool.coverage.run]\nbranch = true\n[tool.coverage.report]\nfail_under = 45"
+        result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        tm.that(result.count("# [MANAGED] coverage"), eq=1)
 
-
-def test_inject_comments_phase_repositions_marker_before_section() -> None:
-    rendered = '[tool.coverage.report]\nfail_under = 45\n# [MANAGED] pyrefly\n[tool.pyrefly]\npython-version = "3.13"'
-    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    lines = result.splitlines()
-    pyrefly_idx = lines.index("[tool.pyrefly]")
-    tm.that(lines[pyrefly_idx - 1], eq="# [MANAGED] pyrefly")
-
-
-def test_inject_comments_phase_removes_auto_banner_and_auto_marker() -> None:
-    rendered = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Sections with [AUTO] are derived from workspace layout and dependencies.\n# [AUTO] merged from dev/docs/security/test/typings\n[project.optional-dependencies]\ndev = ['pytest']"
-    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    tm.that(
-        result,
-        has="# Run `make mod` to regenerate all managed pyproject sections.",
-    )
-    tm.that("[AUTO]" in result, eq=False)
-
-
-def test_inject_comments_phase_marks_pytest_and_coverage_subtables() -> None:
-    rendered = '[tool.pytest.ini_options]\nminversion = "8.0"\n[tool.coverage.report]\nfail_under = 45'
-    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    tm.that(result, has="# [MANAGED] pytest")
-    tm.that(result, has="# [MANAGED] coverage")
-
-
-def test_inject_comments_phase_deduplicates_family_markers() -> None:
-    rendered = (
-        "[tool.coverage.run]\nbranch = true\n[tool.coverage.report]\nfail_under = 45"
-    )
-    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    tm.that(result.count("# [MANAGED] coverage"), eq=1)
-
-
-def test_inject_comments_phase_is_idempotent_on_managed_content() -> None:
-    rendered = (
-        '[project]\nname = "test"\n[tool.pytest.ini_options]\nminversion = "8.0"\n'
-    )
-    first_result, first_changes = FlextInfraInjectCommentsPhase().apply(rendered)
-    second_result, second_changes = FlextInfraInjectCommentsPhase().apply(first_result)
-    tm.that(first_changes, len=(1, 20))
-    tm.that(second_result, eq=first_result)
-    tm.that(second_changes, empty=True)
+    def test_inject_comments_phase_is_idempotent_on_managed_content(self) -> None:
+        rendered = (
+            '[project]\nname = "test"\n[tool.pytest.ini_options]\nminversion = "8.0"\n'
+        )
+        first_result, first_changes = FlextInfraInjectCommentsPhase().apply(rendered)
+        second_result, second_changes = FlextInfraInjectCommentsPhase().apply(
+            first_result
+        )
+        tm.that(first_changes, len=(1, 20))
+        tm.that(second_result, eq=first_result)
+        tm.that(second_changes, empty=True)

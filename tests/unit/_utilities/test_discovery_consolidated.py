@@ -5,7 +5,7 @@ from pathlib import Path
 from tests import c, m, u
 
 
-class TestsFlextInfraUtilitiesDiscoveryConsolidated:
+class TestsFlextInfraUtilitiesdiscoveryconsolidated:
     @staticmethod
     def _init_git_repo(repo_root: Path) -> None:
         commands = (

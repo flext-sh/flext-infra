@@ -35,7 +35,7 @@ def _violation(
 _SOURCE_10 = [f"line {i}" for i in range(10)]
 
 
-class TestViolationKeyFromViolation:
+class TestsFlextInfraCodegenViolationKey:
     """Tests for ViolationKey.from_violation() factory."""
 
     def test_from_violation_produces_content_hash(self) -> None:

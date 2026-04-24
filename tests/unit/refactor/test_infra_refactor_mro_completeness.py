@@ -53,95 +53,96 @@ def _write_models_project(
     return package_dir / "models.py", rope_project
 
 
-def test_detects_missing_local_composition_base(tmp_path: Path) -> None:
-    facade_file, rope_project = _write_models_project(
-        tmp_path=tmp_path,
-        facade_bases="FlextExampleModelsBase",
-        candidate_class="FlextExampleModelsDomain",
-    )
+class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
+    """Behavior contract for test_infra_refactor_mro_completeness."""
 
-    violations = FlextInfraMROCompletenessDetector.detect_file(
-        m.Infra.DetectorContext(
-            file_path=facade_file,
-            rope_project=rope_project,
-        ),
-    )
+    def test_detects_missing_local_composition_base(self, tmp_path: Path) -> None:
+        facade_file, rope_project = _write_models_project(
+            tmp_path=tmp_path,
+            facade_bases="FlextExampleModelsBase",
+            candidate_class="FlextExampleModelsDomain",
+        )
 
-    assert len(violations) == 1
-    assert violations[0].facade_class == "FlextExampleModels"
-    assert violations[0].missing_base == "FlextExampleModelsDomain"
-    assert violations[0].family == "m"
+        violations = FlextInfraMROCompletenessDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=facade_file,
+                rope_project=rope_project,
+            ),
+        )
 
+        assert len(violations) == 1
+        assert violations[0].facade_class == "FlextExampleModels"
+        assert violations[0].missing_base == "FlextExampleModelsDomain"
+        assert violations[0].family == "m"
 
-def test_skips_when_candidate_is_already_in_facade_bases(tmp_path: Path) -> None:
-    facade_file, rope_project = _write_models_project(
-        tmp_path=tmp_path,
-        facade_bases="FlextExampleModelsBase, FlextExampleModelsDomain",
-        candidate_class="FlextExampleModelsDomain",
-    )
+    def test_skips_when_candidate_is_already_in_facade_bases(
+        self, tmp_path: Path
+    ) -> None:
+        facade_file, rope_project = _write_models_project(
+            tmp_path=tmp_path,
+            facade_bases="FlextExampleModelsBase, FlextExampleModelsDomain",
+            candidate_class="FlextExampleModelsDomain",
+        )
 
-    violations = FlextInfraMROCompletenessDetector.detect_file(
-        m.Infra.DetectorContext(
-            file_path=facade_file,
-            rope_project=rope_project,
-        ),
-    )
+        violations = FlextInfraMROCompletenessDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=facade_file,
+                rope_project=rope_project,
+            ),
+        )
 
-    assert violations == []
+        assert violations == []
 
+    def test_skips_non_facade_files(self, tmp_path: Path) -> None:
+        target = tmp_path / "consumer.py"
+        target.write_text("from __future__ import annotations\n", encoding="utf-8")
 
-def test_skips_non_facade_files(tmp_path: Path) -> None:
-    target = tmp_path / "consumer.py"
-    target.write_text("from __future__ import annotations\n", encoding="utf-8")
+        # Rope project not needed — detector exits early for non-facade filenames.
+        # Provide a minimal one anyway to satisfy the signature.
+        rope_project = _make_rope(tmp_path)
+        violations = FlextInfraMROCompletenessDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
 
-    # Rope project not needed — detector exits early for non-facade filenames.
-    # Provide a minimal one anyway to satisfy the signature.
-    rope_project = _make_rope(tmp_path)
-    violations = FlextInfraMROCompletenessDetector.detect_file(
-        m.Infra.DetectorContext(
-            file_path=target,
-            rope_project=rope_project,
-        ),
-    )
+        assert violations == []
 
-    assert violations == []
+    def test_skips_private_candidate_classes(self, tmp_path: Path) -> None:
+        facade_file, rope_project = _write_models_project(
+            tmp_path=tmp_path,
+            facade_bases="FlextExampleModelsBase",
+            candidate_class="_FlextExampleModelsDomain",
+        )
 
+        violations = FlextInfraMROCompletenessDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=facade_file,
+                rope_project=rope_project,
+            ),
+        )
 
-def test_skips_private_candidate_classes(tmp_path: Path) -> None:
-    facade_file, rope_project = _write_models_project(
-        tmp_path=tmp_path,
-        facade_bases="FlextExampleModelsBase",
-        candidate_class="_FlextExampleModelsDomain",
-    )
+        assert violations == []
 
-    violations = FlextInfraMROCompletenessDetector.detect_file(
-        m.Infra.DetectorContext(
-            file_path=facade_file,
-            rope_project=rope_project,
-        ),
-    )
+    def test_rewriter_adds_missing_base_and_formats(self, tmp_path: Path) -> None:
+        facade_file, rope_project = _write_models_project(
+            tmp_path=tmp_path,
+            facade_bases="FlextExampleModelsBase",
+            candidate_class="FlextExampleModelsDomain",
+        )
 
-    assert violations == []
+        violations = FlextInfraMROCompletenessDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=facade_file,
+                rope_project=rope_project,
+            ),
+        )
+        u.Infra.rewrite_mro_completeness_violations(
+            violations=violations,
+            parse_failures=[],
+        )
 
-
-def test_rewriter_adds_missing_base_and_formats(tmp_path: Path) -> None:
-    facade_file, rope_project = _write_models_project(
-        tmp_path=tmp_path,
-        facade_bases="FlextExampleModelsBase",
-        candidate_class="FlextExampleModelsDomain",
-    )
-
-    violations = FlextInfraMROCompletenessDetector.detect_file(
-        m.Infra.DetectorContext(
-            file_path=facade_file,
-            rope_project=rope_project,
-        ),
-    )
-    u.Infra.rewrite_mro_completeness_violations(
-        violations=violations,
-        parse_failures=[],
-    )
-
-    rewritten = facade_file.read_text(encoding="utf-8")
-    assert "FlextExampleModelsDomain" in rewritten
-    assert "class FlextExampleModels(" in rewritten
+        rewritten = facade_file.read_text(encoding="utf-8")
+        assert "FlextExampleModelsDomain" in rewritten
+        assert "class FlextExampleModels(" in rewritten

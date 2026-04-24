@@ -8,7 +8,7 @@ from flext_infra import FlextInfraDependencyDetectionService
 from tests import m, u
 
 
-class TestDiscoverProjectPathsSelection:
+class TestsFlextInfraDepsDetectionDiscover:
     def test_success(self, tmp_path: Path) -> None:
         service = FlextInfraDependencyDetectionService()
         proj = m.Infra.ProjectInfo(

@@ -302,10 +302,13 @@ class FlextInfraAccessorMigrationOrchestrator(
         params: FlextInfraServiceBase[m.Infra.AccessorMigrationReport],
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
-        result = params.execute()
-        if result.success:
-            cli.display_text(cls.render_text(result.value))
-        return result
+        result: p.Result[m.Infra.AccessorMigrationReport] = params.execute()
+        if result.failure:
+            return r[m.Infra.AccessorMigrationReport].fail(
+                result.error or "accessor migration execution failed",
+            )
+        cli.display_text(cls.render_text(result.value))
+        return r[m.Infra.AccessorMigrationReport].ok(result.value)
 
     @staticmethod
     def _accumulate_lint_totals(

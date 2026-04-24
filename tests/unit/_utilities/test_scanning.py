@@ -5,7 +5,7 @@ from pathlib import Path
 from tests import c, m
 
 
-class TestScanModels:
+class TestsFlextInfraUtilitiesscanning:
     def test_scan_violation_model_fields(self) -> None:
         violation = m.Infra.ScanViolation(
             line=42,

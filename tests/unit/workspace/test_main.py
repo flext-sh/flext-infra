@@ -114,94 +114,91 @@ def workspace_main(argv: list[str] | None = None) -> int:
     return infra_main(args)
 
 
-def test_detect_workspace_returns_workspace_mode(tmp_path: Path) -> None:
-    workspace_root = tmp_path / "workspace"
-    _write_workspace(workspace_root)
-    member_root = workspace_root / "demo-a"
+class TestsFlextInfraWorkspaceMain:
+    """Behavior contract for test_main."""
 
-    result = FlextInfraWorkspaceDetector(
-        workspace=member_root,
-        apply_changes=False,
-    ).execute()
+    def test_detect_workspace_returns_workspace_mode(self, tmp_path: Path) -> None:
+        workspace_root = tmp_path / "workspace"
+        _write_workspace(workspace_root)
+        member_root = workspace_root / "demo-a"
 
-    assert result.success, result.error
-    assert result.value == c.Infra.WorkspaceMode.WORKSPACE
+        result = FlextInfraWorkspaceDetector(
+            workspace=member_root,
+            apply_changes=False,
+        ).execute()
 
+        assert result.success, result.error
+        assert result.value == c.Infra.WorkspaceMode.WORKSPACE
 
-def test_sync_workspace_returns_sync_result(tmp_path: Path) -> None:
-    project_root = tmp_path / "project"
-    _write_project(project_root, "demo-project")
+    def test_sync_workspace_returns_sync_result(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
 
-    result = FlextInfraSyncService(
-        canonical_root=project_root.parent,
-        workspace=project_root,
-        apply_changes=False,
-    ).execute()
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace=project_root,
+            apply_changes=False,
+        ).execute()
 
-    assert result.success, result.error
-    assert result.value.files_changed >= 1
+        assert result.success, result.error
+        assert result.value.files_changed >= 1
 
+    def test_orchestrate_workspace_rejects_unknown_verb(self) -> None:
+        result = FlextInfraOrchestratorService(
+            verb="legacy-check",
+            selected_projects=["p-a"],
+        ).execute()
 
-def test_orchestrate_workspace_rejects_unknown_verb() -> None:
-    result = FlextInfraOrchestratorService(
-        verb="legacy-check",
-        selected_projects=["p-a"],
-    ).execute()
+        assert result.failure
+        assert "unsupported orchestrate verb" in (result.error or "")
 
-    assert result.failure
-    assert "unsupported orchestrate verb" in (result.error or "")
+    def test_orchestrate_workspace_defaults_to_current_project(self) -> None:
+        orchestrator = FlextInfraOrchestratorService(
+            verb="check",
+            selected_projects=[],
+        )
+        _install_successful_orchestration(orchestrator, project_root=Path.cwd())
+        result = orchestrator.execute()
 
+        assert result.success, result.error
 
-def test_orchestrate_workspace_defaults_to_current_project() -> None:
-    orchestrator = FlextInfraOrchestratorService(
-        verb="check",
-        selected_projects=[],
-    )
-    _install_successful_orchestration(orchestrator, project_root=Path.cwd())
-    result = orchestrator.execute()
+    def test_workspace_main_detect_accepts_explicit_workspace_root(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = tmp_path / "workspace"
+        _write_workspace(workspace_root)
+        member_root = workspace_root / "demo-a"
 
-    assert result.success, result.error
+        assert workspace_main(["detect", "--workspace", str(member_root)]) == 0
 
+    def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
 
-def test_workspace_main_detect_accepts_explicit_workspace_root(
-    tmp_path: Path,
-) -> None:
-    workspace_root = tmp_path / "workspace"
-    _write_workspace(workspace_root)
-    member_root = workspace_root / "demo-a"
-
-    assert workspace_main(["detect", "--workspace", str(member_root)]) == 0
-
-
-def test_workspace_main_sync_runs_public_command(tmp_path: Path) -> None:
-    project_root = tmp_path / "project"
-    _write_project(project_root, "demo-project")
-
-    exit_code = workspace_main([
-        "sync",
-        "--workspace",
-        str(project_root),
-        "--canonical-root",
-        str(project_root.parent),
-    ])
-
-    assert exit_code == 0
-    assert (project_root / "Makefile").exists()
-    assert (project_root / "base.mk").exists()
-
-
-def test_workspace_main_orchestrate_returns_failure_for_unknown_verb() -> None:
-    assert (
-        workspace_main([
-            "orchestrate",
-            "--verb",
-            "legacy-check",
-            "--projects",
-            "p-a",
+        exit_code = workspace_main([
+            "sync",
+            "--workspace",
+            str(project_root),
+            "--canonical-root",
+            str(project_root.parent),
         ])
-        == 1
-    )
 
+        assert exit_code == 0
+        assert (project_root / "Makefile").exists()
+        assert (project_root / "base.mk").exists()
 
-def test_workspace_main_without_command_returns_failure() -> None:
-    assert workspace_main([]) == 1
+    def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
+        assert (
+            workspace_main([
+                "orchestrate",
+                "--verb",
+                "legacy-check",
+                "--projects",
+                "p-a",
+            ])
+            == 1
+        )
+
+    def test_workspace_main_without_command_returns_failure(self) -> None:
+        assert workspace_main([]) == 1

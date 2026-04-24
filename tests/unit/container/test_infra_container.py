@@ -18,7 +18,7 @@ from flext_core import FlextContainer
 from tests import c, u
 
 
-class TestInfraContainerFunctions:
+class TestsFlextInfraContainerInfraContainer:
     """Test container accessor functions."""
 
     @pytest.fixture(autouse=True)
@@ -37,10 +37,6 @@ class TestInfraContainerFunctions:
         container = FlextContainer()
         assert callable(container.bind)
         assert callable(container.resolve)
-
-
-class TestInfraMroPattern:
-    """Test that u.Infra MRO exposes all utility methods."""
 
     def test_io_methods_available(self) -> None:
         """Verify IO methods are accessible via u.Infra MRO."""
@@ -91,15 +87,6 @@ class TestInfraMroPattern:
     def test_patterns_available(self) -> None:
         """Verify pattern constants are accessible via u.Infra MRO."""
         assert callable(u.Cli.matches)
-
-
-class TestInfraServiceRetrieval:
-    """Test service retrieval behavior."""
-
-    @pytest.fixture(autouse=True)
-    def setup(self) -> None:
-        """Ensure container is configured before each test."""
-        FlextContainer().initialize_di_components()
 
     def test_container_has_service_method(self) -> None:
         """Verify FlextContainer has has_service method."""

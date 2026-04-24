@@ -92,76 +92,78 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         return False
 
 
-def test_refactor_project_integrates_safety_manager(tmp_path: Path) -> None:
-    rules_dir = tmp_path / "rules"
-    rules_dir.mkdir(parents=True)
-    (rules_dir / "rules.yml").write_text(
-        "\nrules:\n  - id: ensure-future-annotations\n    enabled: true\n    fix_action: ensure_future_annotations\n".strip()
-        + "\n",
-        encoding="utf-8",
-    )
-    config_path = tmp_path / "settings.yml"
-    config_path.write_text('refactor_engine:\n  project_scan_dirs: ["src"]\n')
-    src_dir = tmp_path / "src"
-    src_dir.mkdir(parents=True)
-    (src_dir / "sample.py").write_text("import os\n", encoding="utf-8")
-    engine = FlextInfraRefactorEngine(config_path=config_path)
-    stub = EngineSafetyStub()
-    engine.orchestrator.safety_manager = stub
-    loaded = engine.load_rules()
-    assert loaded.success
-    results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)
-    assert results
-    assert all(item.success for item in results)
-    assert stub.calls == ["stash", "checkpoint", "validate", "clear"]
-    assert stub.kept_paths == [src_dir / "sample.py"]
+class TestsFlextInfraRefactorInfraRefactorSafety:
+    """Behavior contract for test_infra_refactor_safety."""
 
+    def test_refactor_project_integrates_safety_manager(self, tmp_path: Path) -> None:
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir(parents=True)
+        (rules_dir / "rules.yml").write_text(
+            "\nrules:\n  - id: ensure-future-annotations\n    enabled: true\n    fix_action: ensure_future_annotations\n".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        config_path = tmp_path / "settings.yml"
+        config_path.write_text('refactor_engine:\n  project_scan_dirs: ["src"]\n')
+        src_dir = tmp_path / "src"
+        src_dir.mkdir(parents=True)
+        (src_dir / "sample.py").write_text("import os\n", encoding="utf-8")
+        engine = FlextInfraRefactorEngine(config_path=config_path)
+        stub = EngineSafetyStub()
+        engine.orchestrator.safety_manager = stub
+        loaded = engine.load_rules()
+        assert loaded.success
+        results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)
+        assert results
+        assert all(item.success for item in results)
+        assert stub.calls == ["stash", "checkpoint", "validate", "clear"]
+        assert stub.kept_paths == [src_dir / "sample.py"]
 
-def test_clear_checkpoint_preserves_requested_backups(tmp_path: Path) -> None:
-    keep_file = tmp_path / "keep.py"
-    drop_file = tmp_path / "drop.py"
-    keep_file.write_text("value = 1\n", encoding="utf-8")
-    drop_file.write_text("value = 2\n", encoding="utf-8")
-    manager = FlextInfraRefactorSafetyManager()
-    created = manager.create_pre_transformation_stash(tmp_path)
-    assert created.success
+    def test_clear_checkpoint_preserves_requested_backups(self, tmp_path: Path) -> None:
+        keep_file = tmp_path / "keep.py"
+        drop_file = tmp_path / "drop.py"
+        keep_file.write_text("value = 1\n", encoding="utf-8")
+        drop_file.write_text("value = 2\n", encoding="utf-8")
+        manager = FlextInfraRefactorSafetyManager()
+        created = manager.create_pre_transformation_stash(tmp_path)
+        assert created.success
 
-    cleared = manager.clear_checkpoint(keep=[keep_file])
+        cleared = manager.clear_checkpoint(keep=[keep_file])
 
-    assert cleared.success
-    assert keep_file.with_suffix(".py.bak").exists()
-    assert not drop_file.with_suffix(".py.bak").exists()
+        assert cleared.success
+        assert keep_file.with_suffix(".py.bak").exists()
+        assert not drop_file.with_suffix(".py.bak").exists()
 
+    def test_create_pre_transformation_stash_ignores_untracked_git_python_files(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
+        assert init_result.success
+        assert init_result.value.exit_code == 0
+        email_result = u.Cli.run_raw(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=tmp_path,
+        )
+        assert email_result.success
+        assert email_result.value.exit_code == 0
+        name_result = u.Cli.run_raw(
+            ["git", "config", "user.name", "Test User"],
+            cwd=tmp_path,
+        )
+        assert name_result.success
+        assert name_result.value.exit_code == 0
+        tracked_file = tmp_path / "tracked.py"
+        tracked_file.write_text("value = 1\n", encoding="utf-8")
+        untracked_file = tmp_path / "untracked.py"
+        untracked_file.write_text("value = 2\n", encoding="utf-8")
+        add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
+        assert add_result.success
+        assert add_result.value.exit_code == 0
+        manager = FlextInfraRefactorSafetyManager()
 
-def test_create_pre_transformation_stash_ignores_untracked_git_python_files(
-    tmp_path: Path,
-) -> None:
-    init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
-    assert init_result.success
-    assert init_result.value.exit_code == 0
-    email_result = u.Cli.run_raw(
-        ["git", "config", "user.email", "test@example.com"],
-        cwd=tmp_path,
-    )
-    assert email_result.success
-    assert email_result.value.exit_code == 0
-    name_result = u.Cli.run_raw(
-        ["git", "config", "user.name", "Test User"],
-        cwd=tmp_path,
-    )
-    assert name_result.success
-    assert name_result.value.exit_code == 0
-    tracked_file = tmp_path / "tracked.py"
-    tracked_file.write_text("value = 1\n", encoding="utf-8")
-    untracked_file = tmp_path / "untracked.py"
-    untracked_file.write_text("value = 2\n", encoding="utf-8")
-    add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
-    assert add_result.success
-    assert add_result.value.exit_code == 0
-    manager = FlextInfraRefactorSafetyManager()
+        created = manager.create_pre_transformation_stash(tmp_path)
 
-    created = manager.create_pre_transformation_stash(tmp_path)
-
-    assert created.success
-    assert tracked_file.with_suffix(".py.bak").exists()
-    assert not untracked_file.with_suffix(".py.bak").exists()
+        assert created.success
+        assert tracked_file.with_suffix(".py.bak").exists()
+        assert not untracked_file.with_suffix(".py.bak").exists()

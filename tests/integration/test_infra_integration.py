@@ -28,7 +28,7 @@ from flext_infra import (
 pytestmark = [pytest.mark.integration]
 
 
-class TestInfraIntegration:
+class TestsFlextInfraIntegrationInfraIntegration:
     @pytest.mark.integration
     def test_workspace_detector_and_orchestrator_share_state(
         self,

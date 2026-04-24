@@ -7,7 +7,7 @@ from flext_tests import tm
 from flext_infra import FlextInfraInternalDependencySyncService
 
 
-class TestEnsureCheckoutEdgeCases:
+class TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge:
     def test_ensure_checkout_cleanup_failure(
         self,
         tmp_path: Path,

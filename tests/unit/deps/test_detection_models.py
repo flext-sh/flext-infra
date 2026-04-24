@@ -16,7 +16,7 @@ from flext_infra import (
 )
 
 
-class TestFlextInfraModelsDependencyDetection:
+class TestsFlextInfraDepsDetectionModels:
     def test_deptry_issue_groups_creation(self) -> None:
         groups = m.Infra.DeptryIssueGroups()
         assert groups.dep001 == []
@@ -68,8 +68,6 @@ class TestFlextInfraModelsDependencyDetection:
         tm.that(not report.limits_applied, eq=True)
         tm.that(report.python_version, eq=None)
 
-
-class TestFlextInfraDependencyDetectionService:
     def test_service_initialization(self) -> None:
         FlextInfraDependencyDetectionService()
 
@@ -78,8 +76,6 @@ class TestFlextInfraDependencyDetectionService:
         limits = service.load_dependency_limits()
         tm.that(service.module_to_types_package("yaml", limits), eq="types-pyyaml")
 
-
-class TestToInfraValue:
     def test_none_value(self) -> None:
         assert FlextInfraDependencyDetectionService.to_infra_value(None) is None
 

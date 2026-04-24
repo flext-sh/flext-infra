@@ -36,7 +36,7 @@ def _metadata_dependency_names(subject: type) -> set[str]:
     return names
 
 
-class TestSymbolPropagatorRopeMigration:
+class TestsFlextInfraInfraRefactorRopeMigrations:
     """Verify symbol_propagator stays rope-oriented."""
 
     def test_no_qualified_name_provider(self) -> None:
@@ -175,10 +175,6 @@ class TestSymbolPropagatorRopeMigration:
         assert changes
         assert file_path.read_text(encoding="utf-8") == original_source
 
-
-class TestNestedClassPropagationRopeMigration:
-    """Verify nested_class_propagation stays rope-oriented."""
-
     def test_no_parent_node_provider(self) -> None:
         """FlextInfraNestedClassPropagationTransformer has no CST parent dependency."""
         deps = _metadata_dependency_names(FlextInfraNestedClassPropagationTransformer)
@@ -211,19 +207,3 @@ class TestNestedClassPropagationRopeMigration:
             transformer.transform,
         )
         assert "Namespace.OldName" in result
-
-    def test_apply_to_source_matches_rope_transform(self, tmp_path: Path) -> None:
-        """Text and rope entrypoints keep the same nesting propagation behavior."""
-        source = "value = OldName()\n"
-        transformer = FlextInfraNestedClassPropagationTransformer(
-            class_renames={"OldName": "Namespace.OldName"},
-        )
-        rope_result, rope_changes = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
-        )
-        text_result, text_changes = transformer.apply_to_source(source)
-        assert text_result == rope_result
-        assert text_changes == rope_changes

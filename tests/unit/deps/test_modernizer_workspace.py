@@ -11,7 +11,7 @@ from flext_infra import main
 from tests import c, u
 
 
-class TestFlextInfraPyprojectModernizerWorkspace:
+class TestsFlextInfraDepsModernizerWorkspace:
     """Validate helper behavior through public utilities and entrypoints."""
 
     @pytest.mark.parametrize(

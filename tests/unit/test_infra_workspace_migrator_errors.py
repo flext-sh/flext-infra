@@ -10,7 +10,7 @@ from flext_infra import FlextInfraProjectMigrator
 from tests import m as im, t, u
 
 
-class TestMigratorFailureScenarios:
+class TestsFlextInfraInfraWorkspaceMigratorErrors:
     @staticmethod
     def _setup_basic(tmp_path: Path) -> tuple[Path, im.Infra.ProjectInfo]:
         root = tmp_path / "project-a"

@@ -171,7 +171,7 @@ def _setup_typings_detector(
     return runtime, captured_commands
 
 
-class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
+class TestsFlextInfraDepsDetectorMain:
     def test_run_with_apply_typings_success(
         self,
         tmp_path: Path,
@@ -253,8 +253,6 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
         )
         tm.ok(runtime.run(params))
 
-
-class TestMainFunction:
     def test_main_returns_failure_code_on_run_failure(
         self,
     ) -> None:

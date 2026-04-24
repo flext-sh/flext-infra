@@ -8,14 +8,11 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".test_discovery_consolidated": (
-            "TestsFlextInfraUtilitiesDiscoveryConsolidated",
+            "TestsFlextInfraUtilitiesdiscoveryconsolidated",
         ),
-        ".test_formatting": ("TestsFlextInfraUtilitiesFormattingRunRuffFix",),
-        ".test_safety": (
-            "TestSafetyCheckpoint",
-            "TestSafetyRollback",
-        ),
-        ".test_scanning": ("TestScanModels",),
+        ".test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+        ".test_safety": ("TestsFlextInfraUtilitiessafety",),
+        ".test_scanning": ("TestsFlextInfraUtilitiesscanning",),
     },
 )
 

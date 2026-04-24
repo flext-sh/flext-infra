@@ -9,7 +9,7 @@ from flext_infra import FlextInfraDependencyDetectionService, m
 from tests import p, t, u
 
 
-class TestRunPipCheck:
+class TestsFlextInfraDepsDetectionPipCheck:
     @staticmethod
     def make_runner(result: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
         return u.Infra.Tests.DeptryRunner(result)

@@ -7,7 +7,7 @@ import re
 from tests import u
 
 
-class TestFlextInfraTypesPatternsPattern:
+class TestsFlextInfraInfraPatternsExtra:
     """Tests for pattern type consistency."""
 
     def test_all_patterns_are_compiled_regex(self) -> None:
@@ -32,10 +32,6 @@ class TestFlextInfraTypesPatternsPattern:
         ]
         for pattern in patterns:
             assert isinstance(pattern.pattern, str)
-
-
-class TestFlextInfraPatternsEdgeCases:
-    """Tests for edge cases and boundary conditions."""
 
     def test_markdown_link_with_special_chars_in_url(self) -> None:
         text = "[Link](https://example.com/path?query=value&other=123)"

@@ -16,7 +16,7 @@ from flext_tests import tm
 from tests import u
 
 
-class TestFlextInfraUtilitiesSelection:
+class TestsFlextInfraInfraSelection:
     """Test suite for u.Infra."""
 
     @pytest.fixture
