@@ -73,10 +73,13 @@ def _setup(
     tmp_path: Path,
     deps: _DepsStub,
 ) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
-    return u.Infra.Tests.setup_detector_runtime(
-        tmp_path,
-        deps,
+    detector: detector_module.FlextInfraRuntimeDevDependencyDetector = (
+        u.Infra.Tests.setup_detector_runtime(
+            tmp_path,
+            deps,
+        )
     )
+    return detector
 
 
 class TestDetectorReportFlags:

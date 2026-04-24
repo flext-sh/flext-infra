@@ -38,7 +38,8 @@ class TestFlextInfraUtilitiesSelection:
     @pytest.fixture
     def selector(self) -> type[u.Infra]:
         """Provide project selector utilities class."""
-        return u.Infra
+        selector_cls: type[u.Infra] = u.Infra
+        return selector_cls
 
     @pytest.fixture
     def workspace_with_declared_names(self, tmp_path: Path) -> Path:

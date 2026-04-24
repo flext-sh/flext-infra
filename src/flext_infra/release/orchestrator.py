@@ -65,7 +65,12 @@ class FlextInfraReleaseOrchestrator(
         phases = self.phase_names
         project_names = self.project_names
         needs_version = bool(
-            {c.VERSION, c.Infra.DIR_BUILD, c.Infra.VERB_PUBLISH} & set(phases),
+            {
+                c.Infra.ReleasePhase.VERSION,
+                c.Infra.DIR_BUILD,
+                c.Infra.VERB_PUBLISH,
+            }
+            & set(phases),
         )
         if needs_version:
             version_result = self._resolve_version(
@@ -232,7 +237,7 @@ class FlextInfraReleaseOrchestrator(
         active: set[str] = set(phases)
         phase_order: t.StrSequence = [
             c.Infra.VERB_VALIDATE,
-            c.VERSION,
+            c.Infra.ReleasePhase.VERSION,
             c.Infra.DIR_BUILD,
             c.Infra.VERB_PUBLISH,
         ]
@@ -332,7 +337,7 @@ class FlextInfraReleaseOrchestrator(
             return r[bool].fail(bump_result.error or "bump failed")
         next_version = bump_result.value
         ctx = m.Infra.ReleasePhaseDispatchConfig(
-            phase=c.VERSION,
+            phase=c.Infra.ReleasePhase.VERSION,
             workspace_root=workspace_root,
             version=next_version,
             tag=f"v{next_version}",
@@ -400,7 +405,7 @@ class FlextInfraReleaseOrchestrator(
         phase = ctx.phase
         if phase == c.Infra.VERB_VALIDATE:
             return self.phase_validate(ctx.workspace_root, dry_run=ctx.dry_run)
-        if phase == c.VERSION:
+        if phase == c.Infra.ReleasePhase.VERSION:
             return self.phase_version(ctx)
         if phase == c.Infra.DIR_BUILD:
             return self.phase_build(ctx)

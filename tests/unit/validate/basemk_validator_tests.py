@@ -24,7 +24,7 @@ def _generated_content() -> str:
     gen = FlextInfraBaseMkGenerator()
     result = gen.generate_basemk()
     assert result.success
-    return result.value
+    return str(result.value)
 
 
 @pytest.fixture
@@ -132,7 +132,7 @@ class TestBaseMkValidatorSha256:
 
     @staticmethod
     def _sha(path: Path) -> str:
-        return u.Cli.sha256_file(path)
+        return str(u.Cli.sha256_file(path))
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
         f = tf.create_in("content", "test.txt", tmp_path)

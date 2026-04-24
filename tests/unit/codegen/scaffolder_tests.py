@@ -18,20 +18,22 @@ from tests import m, t, u
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:
-    return u.Infra.Tests.create_scaffolder_test_project(
+    project: Path = u.Infra.Tests.create_scaffolder_test_project(
         tmp_path=tmp_path,
         with_all_modules=with_all_modules,
     )
+    return project
 
 
 def _project_info(
     project: Path, *, package_name: str = "test_project"
 ) -> m.Infra.ProjectInfo:
-    return u.Infra.Tests.create_project_info(
+    project_info: m.Infra.ProjectInfo = u.Infra.Tests.create_project_info(
         project,
         name=project.name,
         package_name=package_name,
     )
+    return project_info
 
 
 class TestScaffoldProjectNoop:

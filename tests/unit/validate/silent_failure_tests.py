@@ -17,7 +17,7 @@ from tests import m, t, u
 def _create_silent_failure_project(
     tmp_path: Path, *, name: str = "flext-infra"
 ) -> Path:
-    project = u.Infra.Tests.create_codegen_project(
+    project: Path = u.Infra.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
         pkg_name=name.replace("-", "_"),

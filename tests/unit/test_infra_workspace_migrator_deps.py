@@ -25,12 +25,13 @@ class TestWorkspaceMigratorDependencyBehavior:
         (project_root / "Makefile").write_text("content", encoding="utf-8")
         (project_root / "pyproject.toml").write_text(pyproject, encoding="utf-8")
         (project_root / ".gitignore").write_text("", encoding="utf-8")
-        return u.Infra.Tests.build_project_migrator(
+        migrator: FlextInfraProjectMigrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(project_root),
             base_mk,
             workspace_root=tmp_path,
             dry_run=True,
         )
+        return migrator
 
     def test_existing_poetry_dependency_is_reported(self, tmp_path: Path) -> None:
         migrator = self._build_migrator(

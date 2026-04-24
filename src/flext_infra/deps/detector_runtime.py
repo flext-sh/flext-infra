@@ -10,9 +10,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_cli import m
-
-from flext_infra import FlextInfraModelsDeps, c, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraDependencyDetectorRuntime:
@@ -22,10 +20,8 @@ class FlextInfraDependencyDetectorRuntime:
         self,
         detector: p.Infra.DetectorRuntime,
         workspace_report_factory: Callable[..., p.Infra.WorkspaceReport],
-        dependency_limits_factory: Callable[
-            ..., FlextInfraModelsDeps.DependencyLimitsInfo
-        ],
-        pip_check_factory: Callable[..., FlextInfraModelsDeps.PipCheckReport],
+        dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo],
+        pip_check_factory: Callable[..., m.Infra.PipCheckReport],
     ) -> None:
         """Store runtime collaborators used by dependency detection orchestration."""
         self._detector = detector
@@ -33,7 +29,7 @@ class FlextInfraDependencyDetectorRuntime:
         self._dependency_limits_factory = dependency_limits_factory
         self._pip_check_factory = pip_check_factory
 
-    def run(self, params: FlextInfraModelsDeps.DetectCommand) -> p.Result[bool]:
+    def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report."""
         detector = self._detector
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
@@ -87,8 +83,8 @@ class FlextInfraDependencyDetectorRuntime:
                     else {}
                 )
                 python_version = (
-                    str(python_cfg.get(c.VERSION))
-                    if python_cfg.get(c.VERSION) is not None
+                    str(python_cfg.get(c.Infra.VERSION))
+                    if python_cfg.get(c.Infra.VERSION) is not None
                     else None
                 )
                 report_model.dependency_limits = self._dependency_limits_factory(

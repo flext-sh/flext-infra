@@ -310,7 +310,7 @@ class FlextInfraUtilitiesRopeSource:
     def first_constants_class_name(source: str) -> str:
         """Find the first class ending with the constants suffix."""
         for match in c.Infra.CLASS_NAME_RE.finditer(source):
-            name = match.group(1)
+            name = str(match.group(1))
             if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
                 return name
         return ""
@@ -319,11 +319,12 @@ class FlextInfraUtilitiesRopeSource:
     def parse_class_bases(source: str, class_name: str) -> t.StrSequence:
         """Extract terminal base-class names from one class definition."""
         for match in c.Infra.CLASS_WITH_BASES_RE.finditer(source):
-            if match.group(1) != class_name:
+            if str(match.group(1)) != class_name:
                 continue
+            base_group = str(match.group(2))
             return [
                 terminal
-                for base_part in match.group(2).split(",")
+                for base_part in base_group.split(",")
                 if (stripped := base_part.strip())
                 if (
                     terminal := stripped

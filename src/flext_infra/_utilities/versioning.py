@@ -31,7 +31,7 @@ class FlextInfraUtilitiesVersioning:
             if line.startswith("[") and line.endswith("]"):
                 in_project_section = line == c.Infra.SEMVER_PROJECT_SECTION
                 continue
-            if not in_project_section or not line.startswith(c.VERSION):
+            if not in_project_section or not line.startswith(c.Infra.VERSION):
                 continue
             match = c.Infra.VERSION_RE.match(line)
             if match:
@@ -58,7 +58,11 @@ class FlextInfraUtilitiesVersioning:
                 in_project_section = line == c.Infra.SEMVER_PROJECT_SECTION
                 updated_lines.append(raw_line)
                 continue
-            if in_project_section and line.startswith(c.VERSION) and (not replaced):
+            if (
+                in_project_section
+                and line.startswith(c.Infra.VERSION)
+                and (not replaced)
+            ):
                 line_ending = "\n" if raw_line.endswith("\n") else ""
                 updated_lines.append(f'version = "{version}"{line_ending}')
                 replaced = True

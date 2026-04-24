@@ -307,7 +307,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestOrchestratorFailures",
                 "TestOrchestratorGateNormalization",
             ),
-            ".test_ssot_enforcement": ("test_ssot_enforcement",),
             ".transformers.test_infra_transformer_helper_consolidation": (
                 "TestHelperConsolidationTransformer",
             ),

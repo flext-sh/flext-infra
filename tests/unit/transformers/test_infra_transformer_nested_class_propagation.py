@@ -19,7 +19,8 @@ def _transform_source(tmp_path: Path, source: str) -> str:
         if resource is None:
             raise FileNotFoundError(file_path)
         transformed, _ = transformer.transform(rope_project, resource)
-        return transformed
+        transformed_source: str = transformed
+        return transformed_source
     finally:
         rope_project.close()
 

@@ -54,7 +54,7 @@ class TestsFlextInfraWorkspaceFactory:
 
     def create_workspace(self, tmp_path: Path, projects: int = 3) -> Path:
         """Create a multi-project workspace using real project fixtures."""
-        workspace_root = tmp_path / "workspace"
+        workspace_root: Path = tmp_path / "workspace"
         workspace_root.mkdir(parents=True, exist_ok=True)
         project_names = [f"test-proj-{idx + 1}" for idx in range(projects)]
         for project_name in project_names:
@@ -86,9 +86,10 @@ class TestsFlextInfraWorkspaceFactory:
         deps: t.StrSequence,
     ) -> Path:
         """Create a project structure with package and tests directories."""
-        project_root = tmp_path / name
-        package_dir = project_root / "src" / name.replace("-", "_")
-        tests_dir = project_root / "tests"
+        project_name = str(name)
+        project_root: Path = tmp_path / project_name
+        package_dir: Path = project_root / "src" / project_name.replace("-", "_")
+        tests_dir: Path = project_root / "tests"
         package_dir.mkdir(parents=True, exist_ok=True)
         tests_dir.mkdir(parents=True, exist_ok=True)
         (project_root / "pyproject.toml").write_text(
@@ -108,19 +109,24 @@ class TestsFlextInfraWorkspaceFactory:
 
     def _project_pyproject(self, name: t.NonEmptyStr, deps: t.StrSequence) -> str:
         """Generate pyproject.toml content using infra constants."""
-        dependency_lines = [f'python = "^{self.default_python.removeprefix("^")}"']
+        project_name = str(name)
+        default_python = str(self.default_python)
+        default_version = str(self.default_version)
+        poetry_tool = str(c.Infra.POETRY)
+        dependency_group = str(c.Infra.DEPENDENCIES)
+        dependency_lines = [f'python = "^{default_python.removeprefix("^")}"']
         dependency_lines.extend(f'{dep} = "*"' for dep in deps)
         dependencies = "\n".join(dependency_lines)
-        tool_poetry = f"[tool.{c.Infra.POETRY}]\n"
-        poetry_deps = f"[tool.{c.Infra.POETRY}.{c.Infra.DEPENDENCIES}]\n"
+        tool_poetry = f"[tool.{poetry_tool}]\n"
+        poetry_deps = f"[tool.{poetry_tool}.{dependency_group}]\n"
         return (
             tool_poetry
-            + f'name = "{name}"\n'
-            + f'version = "{self.default_version}"\n'
+            + f'name = "{project_name}"\n'
+            + f'version = "{default_version}"\n'
             + 'description = "Generated test project"\n'
             + 'authors = ["FLEXT Tests <tests@flext.dev>"]\n'
             + 'packages = [{ include = "'
-            + name.replace("-", "_")
+            + project_name.replace("-", "_")
             + '", from = "src" }]\n\n'
             + poetry_deps
             + f"{dependencies}\n"

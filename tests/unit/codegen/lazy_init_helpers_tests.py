@@ -12,11 +12,12 @@ class TestsFlextInfraLazyInitHelpers:
 
     @staticmethod
     def _workspace(tmp_path: Path) -> tuple[Path, Path]:
-        return u.Infra.Tests.create_lazy_init_workspace(
+        workspace: tuple[Path, Path] = u.Infra.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
         )
+        return workspace
 
     @staticmethod
     def _generated_init(package_root: Path) -> str:

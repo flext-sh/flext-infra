@@ -15,7 +15,7 @@ from tests import m, u
 def _render_base_mk() -> str:
     result = FlextInfraBaseMkGenerator().generate_basemk()
     tm.ok(result)
-    return result.value
+    return str(result.value)
 
 
 def _write_executable(path: Path, body: str) -> None:

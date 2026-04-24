@@ -234,7 +234,7 @@ class FlextInfraUtilitiesDocsApi:
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
                 "package_name": "",
                 "description": str(project_meta.get("description", "")).strip(),
-                "version": str(project_meta.get(c.VERSION, "")).strip(),
+                "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
                 "site_title": site_title,
                 "site_url": str(
                     project_urls.get("Documentation")

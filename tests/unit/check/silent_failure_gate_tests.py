@@ -11,7 +11,7 @@ from tests import t, u
 
 
 def _create_gate_project(tmp_path: Path, *, name: str) -> Path:
-    return u.Infra.Tests.create_codegen_project(
+    project: Path = u.Infra.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
         pkg_name=name.replace("-", "_"),
@@ -27,6 +27,7 @@ def _create_gate_project(tmp_path: Path, *, name: str) -> Path:
             ),
         },
     )
+    return project
 
 
 class TestSilentFailureGate:

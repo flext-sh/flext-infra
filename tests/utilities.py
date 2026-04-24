@@ -967,7 +967,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 Sequence[m.Infra.MRORewriteResult],
                 t.StrSequence,
             ]:
-                return FlextInfraRefactorMROImportRewriter.migrate_workspace(
+                result: tuple[
+                    Sequence[m.Infra.MROFileMigration],
+                    Sequence[m.Infra.MRORewriteResult],
+                    t.StrSequence,
+                ] = FlextInfraRefactorMROImportRewriter.migrate_workspace(
                     workspace_root=workspace_root,
                     scan_results=[
                         TestsFlextInfraUtilities.Infra.Tests.create_mro_scan_report(
@@ -976,6 +980,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     ],
                     apply=apply,
                 )
+                return result
 
             @staticmethod
             def patch_mro_import_rewriter_write_failure(

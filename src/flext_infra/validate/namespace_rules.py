@@ -22,13 +22,13 @@ if TYPE_CHECKING:
 class FlextInfraNamespaceRules:
     """Implementation of namespace rules 0-3 for AST-based validation."""
 
-    _CANONICAL_FACADE_FILES = frozenset({
-        c.Infra.CONSTANTS_PY,
-        c.Infra.MODELS_PY,
-        c.Infra.PROTOCOLS_PY,
-        c.Infra.TYPINGS_PY,
-        c.Infra.UTILITIES_PY,
-    })
+    _DIRECT_FACADE_IMPORT_RULES = (
+        ("FlextInfraConstants", c.Infra.CONSTANTS_PY, "_constants"),
+        ("FlextInfraModels", c.Infra.MODELS_PY, "_models"),
+        ("FlextInfraProtocols", c.Infra.PROTOCOLS_PY, "_protocols"),
+        ("FlextInfraTypes", c.Infra.TYPINGS_PY, "_typings"),
+        ("FlextInfraUtilities", c.Infra.UTILITIES_PY, "_utilities"),
+    )
 
     @staticmethod
     def _annotation_contains(
@@ -359,9 +359,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
-        """Rule 3 -- Runtime modules use namespaced MRO aliases, not direct utility imports."""
-        if self._allows_direct_utilities_import(filepath):
-            return []
+        """Rule 3 -- Runtime modules use namespaced MRO aliases, not direct local facade imports."""
         violations: MutableSequence[str] = []
         seq = 0
         for node in ast.walk(tree):
@@ -370,18 +368,30 @@ class FlextInfraNamespaceRules:
             if node.module != f"{c.Infra.PKG_PREFIX_UNDERSCORE}infra":
                 continue
             for alias in node.names:
-                if not alias.name.startswith("FlextInfraUtilities"):
+                if self._allows_direct_facade_import(filepath, alias.name):
+                    continue
+                if not self._is_local_facade_owner_import(alias.name):
                     continue
                 seq += 1
                 violations.append(
-                    f"[NS-003-{seq:03d}] {filepath}:{node.lineno} — Runtime module must use u.Infra namespaced MRO access instead of direct import '{alias.name}'",
+                    f"[NS-003-{seq:03d}] {filepath}:{node.lineno} — Runtime module must use namespaced MRO aliases (c/m/p/t/u) instead of direct import '{alias.name}'",
                 )
         return violations
 
-    def _allows_direct_utilities_import(self, filepath: Path) -> bool:
-        if filepath.name in self._CANONICAL_FACADE_FILES:
-            return True
-        return "_utilities" in filepath.parts
+    def _allows_direct_facade_import(self, filepath: Path, imported_name: str) -> bool:
+        for prefix, facade_filename, private_dir in self._DIRECT_FACADE_IMPORT_RULES:
+            if not imported_name.startswith(prefix):
+                continue
+            if filepath.name == facade_filename:
+                return True
+            return private_dir in filepath.parts
+        return False
+
+    def _is_local_facade_owner_import(self, imported_name: str) -> bool:
+        return any(
+            imported_name.startswith(prefix)
+            for prefix, _facade_filename, _private_dir in self._DIRECT_FACADE_IMPORT_RULES
+        )
 
     # -- Module-level statement allowlist ---
 

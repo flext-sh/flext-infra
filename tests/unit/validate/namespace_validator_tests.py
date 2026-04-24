@@ -275,7 +275,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.passed, eq=False)
         tm.that(
             any(
-                "must use u.Infra namespaced MRO access" in violation
+                "must use namespaced MRO aliases (c/m/p/t/u)" in violation
                 for violation in result.value.violations
             ),
             eq=True,
@@ -298,6 +298,59 @@ class TestFlextInfraNamespaceValidator:
             tmp_path,
             module_source=module_source,
             module_name="utilities.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(result.value.passed, eq=True)
+
+    def test_rule3_direct_runtime_models_import_detected(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n"
+            "from flext_infra import FlextInfraModelsDeps\n\n"
+            "class FlextTestDetector:\n"
+            "    pass\n"
+        )
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=module_source,
+            module_name="detector.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(result.value.passed, eq=False)
+        tm.that(
+            any(
+                "instead of direct import 'FlextInfraModelsDeps'" in violation
+                for violation in result.value.violations
+            ),
+            eq=True,
+        )
+
+    def test_rule3_models_facade_import_remains_allowed(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n"
+            "from flext_cli import m\n"
+            "from flext_infra import FlextInfraModelsDeps\n\n"
+            "class FlextTestModels(m):\n"
+            "    class Infra(FlextInfraModelsDeps):\n"
+            "        pass\n"
+        )
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=module_source,
+            module_name="models.py",
         )
 
         result = validator.validate(root)

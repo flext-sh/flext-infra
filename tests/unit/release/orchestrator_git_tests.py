@@ -49,10 +49,11 @@ def publish_ctx(
 
 
 def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
-    return u.Cli.capture(
+    result = u.Cli.capture(
         ["git", "show-ref", "--verify", ref_name],
         cwd=repo_root,
-    ).success
+    )
+    return not result.failure
 
 
 def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:

@@ -179,7 +179,7 @@ class FlextInfraDependencyDetectionAnalysis:
         current_set = set(current)
         python_cfg = limits.get(c.Infra.PYTHON)
         version_val = (
-            python_cfg.get(c.VERSION) if isinstance(python_cfg, Mapping) else None
+            python_cfg.get(c.Infra.VERSION) if isinstance(python_cfg, Mapping) else None
         )
         python_version = str(version_val) if version_val is not None else None
         report = m.Infra.TypingsReport(

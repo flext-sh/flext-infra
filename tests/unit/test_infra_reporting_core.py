@@ -18,7 +18,8 @@ class TestFlextInfraReportingServiceCore:
     @pytest.fixture
     def service(self) -> type[u.Cli]:
         """Create a reporting service instance."""
-        return u.Cli
+        service_cls: type[u.Cli] = u.Cli
+        return service_cls
 
     def test_get_report_dir_project_scope(
         self,

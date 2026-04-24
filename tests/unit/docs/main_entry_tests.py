@@ -11,11 +11,12 @@ from tests import u
 
 
 def _workspace(tmp_path: Path, *, fixable: bool = False) -> Path:
-    return u.Infra.Tests.create_docs_workspace(
+    workspace: Path = u.Infra.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         include_fixable_link=fixable,
     )
+    return workspace
 
 
 def test_docs_cli_requires_subcommand() -> None:

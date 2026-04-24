@@ -53,7 +53,7 @@ class FlextInfraUtilitiesDocsContract:
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),
-            "version": str(project_meta.get(c.VERSION, "")).strip(),
+            "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
             "site_title": str(docs_meta.get("site_title", "")).strip()
             or "FLEXT Workspace",
             "site_url": str(

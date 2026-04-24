@@ -240,11 +240,12 @@ class FlextInfraRefactorOrchestrator(
         self, args: t.Infra.CliNamespace
     ) -> MutableSequence[Path] | None:
         if args.project:
-            return u.Infra.collect_engine_project_files(
+            collected = u.Infra.collect_engine_project_files(
                 self.loader.settings,
                 args.project,
                 pattern=args.pattern,
             )
+            return None if collected is None else list(collected)
         if args.workspace:
             return list(
                 u.Infra.collect_engine_workspace_files(
