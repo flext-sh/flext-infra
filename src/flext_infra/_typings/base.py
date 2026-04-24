@@ -13,10 +13,8 @@ from collections.abc import (
     Callable,
     Mapping,
     MutableMapping,
-    MutableSequence,
     Sequence,
 )
-from io import TextIOBase as _TextIOBase
 from pathlib import Path as _Path
 
 from flext_cli import m, t
@@ -29,14 +27,10 @@ from tomlkit.items import Item as _TOMLItem, Table
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
-    type CliArgumentParser = _argparse.ArgumentParser
-    "argparse ArgumentParser for CLI command definitions."
     type CliNamespace = _argparse.Namespace
     "argparse Namespace for parsed CLI arguments."
     type RegexPattern = _re.Pattern[str]
     "Compiled regex pattern for string matching."
-    type TextStream = _TextIOBase
-    "Text I/O stream (file-like object with write/read)."
     type JinjaEnvironment = _JinjaEnvironment
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate
@@ -63,12 +57,6 @@ class FlextInfraTypesBase:
     "AST statement node."
     type AstCall = _ast.Call
     "AST function call node."
-    type AstAssign = _ast.Assign
-    "AST assignment node."
-    type AstAnnAssign = _ast.AnnAssign
-    "AST annotated assignment node."
-    type AstTypeAlias = _ast.TypeAlias
-    "AST PEP 695 type alias node."
     type AstKeyword = _ast.keyword
     "AST keyword argument node."
 
@@ -106,8 +94,6 @@ class FlextInfraTypesBase:
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
-    type MetricRecord = m.BaseModel | Mapping[str, MetricValue]
-    "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."
     type StrPair = tuple[str, str]
@@ -126,33 +112,17 @@ class FlextInfraTypesBase:
     "Result for per-directory lazy init processing."
     type LazyInitWriteResult = tuple[int, LazyImportMap]
     "Result for writing generated __init__.py."
-    type VersionExportsResult = tuple[t.StrMapping, LazyImportMap]
-    "Result for __version__.py export extraction (inline constants, eager import map)."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
-    type PathSet = set[_Path]
-    "Mutable path set."
-    type IntSet = set[int]
-    "Mutable integer set."
-    type StrPairSet = set[StrPair]
-    "Mutable set of (str, str) tuples."
-    type IntPairSet = set[StrIntPair]
-    "Mutable set of (str, int) tuples."
-    type CanonicalScalar = str | int
-    "Canonical governance scalar: string or integer."
-    type CanonicalValue = CanonicalScalar | t.StrSequence
+    type CanonicalValue = str | int | t.StrSequence
     "Canonical governance value: scalar string, integer, or string list."
     type AstMethodNode = _ast.FunctionDef | _ast.AsyncFunctionDef
     "AST node for a method definition (sync or async)."
     type AstModule = _ast.Module
     "AST module node from ast.parse()."
-    type TomlData = dict[str, InfraValue]
-    "Unwrapped TOML table data — nested dicts of primitives from tomlkit unwrap()."
 
     type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."
-    type MutableCensusRecordList = MutableSequence[CensusRecord]
-    "Mutable list of census records."
 
     type InfraMapping = ContainerDict
     "Read-only validated infra payload mapping."
@@ -160,14 +130,6 @@ class FlextInfraTypesBase:
     "Mutable validated infra payload mapping."
     type InfraSequence = t.JsonList
     "Read-only validated infra payload sequence."
-    type MutableInfraSequence = MutableSequence[InfraValue]
-    "Mutable validated infra payload sequence."
-    type RuleDefinition = InfraMapping
-    "Canonical declarative rule definition payload."
-    type RuleDefinitions = Sequence[ContainerDict]
-    "Read-only sequence of declarative rule definitions."
-    type RuleSkipPredicate = Callable[[ContainerDict], bool]
-    "Predicate deciding whether one rule definition should be skipped."
     type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
     type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
@@ -179,8 +141,6 @@ class FlextInfraTypesBase:
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = Sequence[DomainResult]
     "Read-only sequence of typed service result payloads."
-    type DomainOutput = DomainResult | DomainResultSequence
-    "Single or batched service result payload for infra services."
 
     # ── Transformer / edit result types ──────────────────────────────
 

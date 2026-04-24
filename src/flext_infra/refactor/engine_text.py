@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import (
     Mapping,
     Sequence,
@@ -300,15 +301,23 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
-        updated_source, count = u.Infra.batch_replace_annotations(
-            rope_project,
-            resource,
-            {"dict[": "Mapping[", "Dict[": "Mapping["},
-            apply=True,
+        _ = rope_project
+        source = resource.read()
+        total = 0
+        alias_pattern = re.compile(r"\b(?:dict|Dict)\[str,\s*t\.JsonValue\]")
+        source, alias_count = alias_pattern.subn("t.JsonMapping", source)
+        total += alias_count
+        generic_pattern = re.compile(r"\b(?:dict|Dict)\[")
+        source, generic_count = generic_pattern.subn("Mapping[", source)
+        total += generic_count
+        if total > 0 and source != resource.read():
+            resource.write(source)
+        if total == 0:
+            return (source, list[str]())
+        return (
+            source,
+            [f"Converted {total} dict annotations to Mapping/t.JsonMapping"],
         )
-        if count == 0:
-            return (updated_source, list[str]())
-        return (updated_source, [f"Converted {count} dict annotations to Mapping"])
 
     def _apply_tier0_import_fix(
         self,

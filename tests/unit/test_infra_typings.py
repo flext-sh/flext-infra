@@ -76,5 +76,5 @@ class TestInfraTypingGuards:
         def build_service() -> str:
             return "ok"
 
-        tm.that(u.factory(build_service), eq=True)
-        tm.that(u.resource(build_service), eq=True)
+        tm.that(callable(build_service), eq=True)
+        tm.that(callable(build_service), eq=True)

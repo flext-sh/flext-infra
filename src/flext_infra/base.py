@@ -147,16 +147,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         """Normalize repeated project selectors into a compact sequence."""
         return u.Infra.normalize_sequence_values(selected_projects)
 
-    def selected_project_dirs(
-        self,
-        selected_projects: t.StrSequence | None,
-    ) -> Sequence[Path] | None:
-        """Resolve selected project directories relative to the workspace root."""
-        names = self.normalize_selected_projects(selected_projects)
-        if names is None:
-            return None
-        return [self.root / name for name in names]
-
     def command_payload(self) -> t.JsonMapping:
         """Return the normalized shared command payload once."""
         payload: t.MutableJsonMapping = {
@@ -209,7 +199,10 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
     @property
     def project_dirs(self) -> Sequence[Path] | None:
         """Resolve selected project directories relative to the workspace root."""
-        return self.selected_project_dirs(self.selected_projects)
+        names = self.normalize_selected_projects(self.selected_projects)
+        if names is None:
+            return None
+        return [self.root / name for name in names]
 
     def run_scoped_docs(
         self,

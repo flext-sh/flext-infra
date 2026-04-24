@@ -25,7 +25,7 @@ class FlextInfraModelsRelease:
         log: t.NonEmptyStr = m.Field(description="Build log file path")
 
     class ReleaseSpec(
-        mm.ReleaseVersionTagMixin,
+        mm.VersionTagMixin,
         m.ArbitraryTypesModel,
     ):
         """Release descriptor with version, tag, and bump metadata."""
@@ -59,8 +59,8 @@ class FlextInfraModelsRelease:
     class ReleaseOrchestratorConfig(
         mm.ProjectNamesOptionalMixin,
         mm.WorkspaceRootPathMixin,
-        mm.ReleaseVersionTagMixin,
-        mm.ReleaseAutomationMixin,
+        mm.VersionTagMixin,
+        mm.AutomationMixin,
         m.ArbitraryTypesModel,
     ):
         """Configuration for release workflow execution."""
@@ -76,8 +76,8 @@ class FlextInfraModelsRelease:
     class ReleasePhaseDispatchConfig(
         mm.ProjectNamesListMixin,
         mm.WorkspaceRootPathMixin,
-        mm.ReleaseVersionTagMixin,
-        mm.ReleaseAutomationMixin,
+        mm.VersionTagMixin,
+        mm.AutomationMixin,
         m.ArbitraryTypesModel,
     ):
         """Configuration for single release phase dispatch."""

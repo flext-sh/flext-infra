@@ -16,15 +16,14 @@ from flext_infra import FlextInfraModelsMixins as mm, c, t
 class FlextInfraModelsCheck:
     """Quality-gate check domain models."""
 
-    class RunCommand(mm.ProjectMixin, m.ContractModel):
-        """Canonical CLI payload for ``flext-infra check run``."""
+    class RunCommand(mm.WriteMixin, m.ContractModel):
+        """Canonical CLI payload for ``flext-infra check run``.
 
-        gates: Annotated[
-            str,
-            m.Field(
-                description="Comma-separated quality gates to execute",
-            ),
-        ] = c.Infra.DEFAULT_CSV
+        Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
+        ``apply``/``dry_run``, ``rollback``, ``diff``, ``workspace``,
+        ``projects``, ``fail_fast``, ``verbose`` from ``WriteMixin``.
+        """
+
         reports_dir: Annotated[
             str,
             m.Field(
@@ -67,8 +66,7 @@ class FlextInfraModelsCheck:
             return (Path.cwd() / reports_dir).resolve()
 
     class FixPyreflyConfigCommand(
-        mm.ApplyDryRunMixin,
-        mm.ProjectMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""

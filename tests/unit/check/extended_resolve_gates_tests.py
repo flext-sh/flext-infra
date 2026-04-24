@@ -58,19 +58,3 @@ class TestWorkspaceCheckerResolveGates:
         result = FlextInfraWorkspaceChecker.resolve_gates(["silent-failure"])
         tm.ok(result)
         tm.that(result.value, eq=["silent-failure"])
-
-
-class TestWorkspaceCheckerParseGateCSV:
-    """Test FlextInfraWorkspaceChecker.parse_gate_csv."""
-
-    def test_parse_gate_csv_simple(self) -> None:
-        result = FlextInfraWorkspaceChecker.parse_gate_csv("lint,format,type")
-        tm.that(result, eq=["lint", "format", "type"])
-
-    def test_parse_gate_csv_with_spaces(self) -> None:
-        result = FlextInfraWorkspaceChecker.parse_gate_csv("lint , format , type")
-        tm.that(result, eq=["lint", "format", "type"])
-
-    def test_parse_gate_csv_empty_entries(self) -> None:
-        result = FlextInfraWorkspaceChecker.parse_gate_csv("lint,,format")
-        tm.that("" not in result, eq=True)

@@ -1,9 +1,8 @@
 """Auto-generate standardized ``[tool.flext.*]`` tables in each project's pyproject.toml.
 
 Uses ``tomlkit`` round-trip parsing to preserve existing formatting, comments,
-and ordering.  Managed keys are defined in ``c.MANAGED_PYPROJECT_KEYS``.
-Project discovery uses ``u.Infra.discover_projects`` — the canonical
-workspace member list.
+and ordering. Project discovery uses ``u.Infra.discover_projects`` — the
+canonical workspace member list.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

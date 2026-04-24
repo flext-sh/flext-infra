@@ -24,18 +24,13 @@ from flext_infra import (
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     """Models for dependency detection and modernization reporting."""
 
-    class DetectCommand(mm.ProjectMixin, m.ContractModel):
-        """Canonical CLI payload for ``flext-infra deps detect``."""
+    class DetectCommand(mm.WriteMixin, m.ContractModel):
+        """Canonical CLI payload for ``flext-infra deps detect``.
 
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply follow-up typing dependency installs",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
-                },
-            ),
-        ] = False
+        Inherits ``apply``/``dry_run``, ``workspace``, ``projects``,
+        ``fail_fast``, ``verbose`` from ``WriteMixin``.
+        """
+
         output_format: Annotated[
             str,
             m.Field(
@@ -81,12 +76,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             m.Field(None, description="Path to dependency limits TOML"),
         ] = None
 
-        @u.computed_field()
-        @property
-        def dry_run(self) -> bool:
-            """Whether follow-up dependency installation is disabled."""
-            return not self.apply
-
         @property
         def output_path(self) -> Path | None:
             """Return the resolved explicit output path when provided."""
@@ -102,18 +91,16 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             return Path(self.limits).expanduser().resolve()
 
     class ExtraPathsCommand(
-        mm.ApplyDryRunMixin,
-        mm.ProjectMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
-    class InternalSyncCommand(mm.BaseMixin, m.ContractModel):
+    class InternalSyncCommand(mm.ScopeMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps internal-sync``."""
 
     class ModernizeCommand(
-        mm.ApplyDryRunMixin,
-        mm.ProjectMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
@@ -141,8 +128,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         ] = False
 
     class PathSyncCommand(
-        mm.ApplyDryRunMixin,
-        mm.ProjectMixin,
+        mm.WriteMixin,
         m.ContractModel,
     ):
         """Canonical CLI payload for ``flext-infra deps path-sync``."""

@@ -17,17 +17,6 @@ class TestWorkspaceChecker:
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
-            ("ruff,pyrefly", ["ruff", "pyrefly"]),
-            (" ruff , pyrefly , ", ["ruff", "pyrefly"]),
-            ("", []),
-        ],
-    )
-    def test_parse_gate_csv(self, raw: str, expected: t.StrSequence) -> None:
-        tm.that(FlextInfraWorkspaceChecker.parse_gate_csv(raw), eq=list(expected))
-
-    @pytest.mark.parametrize(
-        ("raw", "expected"),
-        [
             ("--fix --unsafe-fixes", ["--fix", "--unsafe-fixes"]),
             (None, []),
             ("", []),

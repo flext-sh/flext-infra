@@ -53,7 +53,7 @@ class FlextInfraModelsGithub:
             return Path(self.repo_root).resolve()
 
     class GithubPullRequestWorkspaceRequest(
-        mm.GithubWorkspaceCliRequestMixin,
+        mm.WorkspaceCliRequestMixin,
         mm.GithubPullRequestFieldsMixin,
         mm.WriteMixin,
         m.ContractModel,

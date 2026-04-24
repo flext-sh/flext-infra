@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -9,19 +10,29 @@ from flext_cli import m, u
 
 from flext_infra import (
     FlextInfraUtilitiesBase as ub,
-    FlextInfraUtilitiesRelease as ur,
     c,
     t,
 )
 
 
 class FlextInfraModelsMixins:
-    """Centralized reusable field and helper mixins for models."""
+    """Centralized reusable field and helper mixins for models.
 
-    # ── Hierarchy: BaseMixin → ProjectMixin → ReadMixin / WriteMixin ──
+    Structure (flat — no sub-namespaces): CLI parameter mixins, field
+    contract mixins, violation/detail mixins, release mixins, github
+    mixins, and project-name variants. All exposed directly under
+    ``mm.<Mixin>`` for consumers.
+    """
 
-    class BaseMixin:
-        """Foundation for all CLI commands: workspace path and verbose flag."""
+    # ═══════════════════ CLI PARAMETER MIXINS ═══════════════════
+
+    class ScopeMixin:
+        """Canonical CLI scope contract — workspace + project selection.
+
+        Consolidates the former ``BaseMixin`` and ``ProjectMixin``
+        surfaces into a single flat mixin used by every read/write
+        command.
+        """
 
         model_config = m.ConfigDict(populate_by_name=True)
 
@@ -33,16 +44,6 @@ class FlextInfraModelsMixins:
                 description="Workspace root",
             ),
         ] = "."
-        verbose: Annotated[bool, m.Field(description="Verbose output")] = False
-
-        @property
-        def workspace_path(self) -> Path:
-            """Return the resolved workspace path for CLI execution."""
-            return Path(self.workspace).resolve()
-
-    class ProjectMixin(BaseMixin):
-        """Commands that operate on one or more projects."""
-
         projects: Annotated[
             t.StrSequence | None,
             m.Field(
@@ -50,28 +51,32 @@ class FlextInfraModelsMixins:
             ),
         ] = None
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
+        verbose: Annotated[bool, m.Field(description="Verbose output")] = False
+
+        @property
+        def workspace_path(self) -> Path:
+            """Return the resolved workspace path for CLI execution."""
+            return Path(self.workspace).resolve()
 
         @property
         def project_names(self) -> t.StrSequence | None:
             """Return normalized project names from repeated selectors."""
             return ub.normalize_sequence_values(self.projects)
 
-    class ReadMixin(ProjectMixin):
-        """Read-only commands with output configuration."""
+    class ReadMixin(ScopeMixin):
+        """Read-only commands — report file + output directory only.
 
-        check: Annotated[bool, m.Field(description="Enable check mode")] = False
+        Previous ``check`` and ``json_output`` fields removed (YAGNI —
+        single canonical report path and a directory for multi-file
+        outputs).
+        """
+
+        report: Annotated[
+            str | None, m.Field(description="Output report file path")
+        ] = None
         output_dir: Annotated[
             str | None, m.Field(description="Output directory for reports")
         ] = None
-        report: Annotated[str | None, m.Field(description="Output report file")] = None
-        json_output: Annotated[
-            str | None, m.Field(description="Path to write JSON report")
-        ] = None
-
-        @property
-        def output_dir_path(self) -> Path | None:
-            """Return the resolved output directory when provided."""
-            return ub.normalize_optional_path(self.output_dir)
 
         @property
         def report_path(self) -> Path | None:
@@ -79,16 +84,16 @@ class FlextInfraModelsMixins:
             return ub.normalize_optional_path(self.report)
 
         @property
-        def json_output_path(self) -> Path | None:
-            """Return the resolved JSON export path when provided."""
-            return ub.normalize_optional_path(self.json_output)
+        def output_dir_path(self) -> Path | None:
+            """Return the resolved output directory when provided."""
+            return ub.normalize_optional_path(self.output_dir)
 
-    class ApplyDryRunMixin(BaseMixin):
-        """Commands with a simple apply/dry-run flag pair.
+    class WriteMixin(ScopeMixin):
+        """Canonical write contract — apply/dry-run + safety gates.
 
-        Provides a single ``apply: bool`` field and derives ``dry_run``
-        as its inverse. Intended for commands that do NOT need the full
-        ``WriteMixin`` rollback/diff/gates surface.
+        Gates are stored as ``t.StrSequence`` — CSV strings are parsed
+        by ``@field_validator`` so downstream consumers always see a
+        normalized list.
         """
 
         apply: Annotated[
@@ -100,35 +105,34 @@ class FlextInfraModelsMixins:
                 },
             ),
         ] = False
-
-        @u.computed_field()
-        @property
-        def dry_run(self) -> bool:
-            """Whether the command should skip writing to disk."""
-            return not self.apply
-
-    class WriteMixin(ProjectMixin):
-        """Commands that modify files with safety and rollback support."""
-
-        apply: Annotated[
-            bool,
-            m.Field(
-                description="Apply changes",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
-                },
-            ),
-        ] = False
         diff: Annotated[bool, m.Field(description="Show diff without applying")] = False
         rollback: Annotated[
             bool, m.Field(description="Enable automatic rollback on gate failure")
         ] = True
         gates: Annotated[
-            str,
+            t.StrSequence,
             m.Field(
-                description="Comma-separated gate names for post-transform validation",
+                default_factory=lambda: tuple(
+                    gate.strip()
+                    for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
+                    if gate.strip()
+                ),
+                description="Gate names for post-transform validation",
             ),
-        ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
+        ]
+
+        @u.field_validator("gates", mode="before")
+        @classmethod
+        def _parse_gates(
+            cls,
+            value: str | Sequence[str] | None,
+        ) -> t.StrSequence:
+            """Accept CSV string, sequence, or None; normalize to StrSequence."""
+            if value is None:
+                return ()
+            if isinstance(value, str):
+                return tuple(part.strip() for part in value.split(",") if part.strip())
+            return tuple(part.strip() for part in value if part and part.strip())
 
         @u.computed_field()
         @property
@@ -146,76 +150,36 @@ class FlextInfraModelsMixins:
                 return c.Infra.ExecutionMode.APPLY_SAFE
             return c.Infra.ExecutionMode.APPLY_FORCE
 
-    # ── Specialized mixins that extend WriteMixin ──
+    # ═══════════════════ RELEASE MIXINS ═══════════════════
 
-    class AliasSelectionMixin(WriteMixin):
-        """Comma-separated canonical alias selector."""
+    class VersionTagMixin:
+        """Shared release identity fields."""
 
-        aliases: Annotated[
-            str,
-            m.Field(
-                description="Comma-separated canonical aliases to normalize to local MRO imports",
-            ),
-        ] = "r,s"
+        version: Annotated[str, m.Field(description="Version string")] = ""
+        tag: Annotated[str, m.Field(description="Git tag (e.g. v1.0.0)")] = ""
 
-        @property
-        def alias_names(self) -> t.StrSequence:
-            """Return normalized runtime alias names."""
-            return ub.normalize_cli_values(self.aliases)
+    class AutomationMixin:
+        """Shared release automation toggles."""
 
-    class ReleasePhaseMixin(WriteMixin):
-        """Release phase selector with normalized expansion."""
+        push: Annotated[bool, m.Field(description="Push to remote")] = False
+        dev_suffix: Annotated[bool, m.Field(description="Add dev suffix")] = False
 
-        phase: Annotated[str, m.Field(description="Release phase")] = "all"
+    # ═══════════════════ GITHUB REQUEST MIXINS ═══════════════════
 
-        @property
-        def phase_names(self) -> t.StrSequence:
-            """Return the normalized phase sequence for release execution."""
-            return ur.resolve_phase_names(self.phase)
+    class WorkspaceCliRequestMixin:
+        """CLI workspace request fields — branch/checkpoint + canonical fail-fast.
 
-    class MakeArgMixin(WriteMixin):
-        """Repeated --make-arg option with normalized accessor."""
-
-        make_arg: Annotated[
-            t.StrSequence,
-            m.Field(default_factory=tuple),
-        ] = m.Field(default_factory=tuple)
-
-        @property
-        def make_args(self) -> t.StrSequence:
-            """Return normalized make arguments without blank entries."""
-            return ub.normalize_make_args(self.make_arg)
-
-    class CanonicalRootMixin(WriteMixin):
-        """Canonical root selector with resolved accessor."""
-
-        canonical_root: Annotated[
-            str, m.Field(description="Canonical workspace root")
-        ] = ""
-
-        @property
-        def canonical_root_path(self) -> Path | None:
-            """Return the resolved canonical root when provided."""
-            return ub.normalize_optional_path(
-                self.canonical_root,
-            )
-
-    class GithubWorkspaceRequestMixin:
-        """Shared branch/checkpoint flags for workspace GitHub requests."""
-
-        include_root: Annotated[bool, m.Field(description="Include root project")] = (
-            True
-        )
-        branch: Annotated[str, m.Field(description="Branch name filter")] = ""
-        checkpoint: Annotated[bool, m.Field(description="Enable checkpoints")] = True
-        fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
-
-    class GithubWorkspaceCliRequestMixin(GithubWorkspaceRequestMixin):
-        """CLI-specific defaults for workspace GitHub requests."""
+        Merged surface of the former ``GithubWorkspaceRequestMixin`` +
+        ``GithubWorkspaceCliRequestMixin``. ``fail_fast`` default aligned
+        to the canonical ``ScopeMixin`` value (``True``); commands that
+        need the legacy ``False`` declare it locally.
+        """
 
         include_root: Annotated[bool, m.Field(description="Include root project")] = (
             False
         )
+        branch: Annotated[str, m.Field(description="Branch name filter")] = ""
+        checkpoint: Annotated[bool, m.Field(description="Enable checkpoints")] = True
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
 
     class GithubPullRequestFieldsMixin:
@@ -239,6 +203,8 @@ class FlextInfraModelsMixins:
         release_on_merge: Annotated[bool, m.Field(description="Release on merge")] = (
             True
         )
+
+    # ═══════════════════ FIELD CONTRACT MIXINS ═══════════════════
 
     class FilePathMixin:
         """Shared required file path field."""
@@ -278,6 +244,8 @@ class FlextInfraModelsMixins:
 
         current_import: Annotated[str, m.Field(description="Current import statement")]
 
+    # ═══════════════════ VIOLATION/DETAIL MIXINS ═══════════════════
+
     class ViolationDetailMixin:
         """Shared violation detail field."""
 
@@ -298,17 +266,7 @@ class FlextInfraModelsMixins:
 
         rewrite_scope: Annotated[str, m.Field(description="Rewrite scope")] = "file"
 
-    class ReleaseVersionTagMixin:
-        """Shared release identity fields."""
-
-        version: Annotated[str, m.Field(description="Version string")] = ""
-        tag: Annotated[str, m.Field(description="Git tag (e.g. v1.0.0)")] = ""
-
-    class ReleaseAutomationMixin:
-        """Shared release automation toggles."""
-
-        push: Annotated[bool, m.Field(description="Push to remote")] = False
-        dev_suffix: Annotated[bool, m.Field(description="Add dev suffix")] = False
+    # ═══════════════════ PROJECT NAME / PATH VARIANTS ═══════════════════
 
     class ProjectNameMixin:
         """Shared required project-name field."""
@@ -324,11 +282,6 @@ class FlextInfraModelsMixins:
         """Shared required project_name field."""
 
         project_name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
-
-    class OptionalProjectNameFieldMixin:
-        """Shared optional project_name field."""
-
-        project_name: Annotated[str | None, m.Field(description="Project name")] = None
 
     class WorkspaceRootPathMixin:
         """Shared workspace root path field."""
