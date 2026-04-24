@@ -1,0 +1,22 @@
+tests/utilities.py
+  h_9db9d35f50cf33 246-248,250
+src/flext_infra/_typings/base.py
+  h_9db9d35f50cf33 117-118
+tests/unit/io/test_infra_terminal_detection.py
+  h_9db9d35f50cf33 12-25
+src/flext_infra/_models/codegen.py
+  h_9db9d35f50cf33 12,341-344,350-366,422-425
+tests/unit/refactor/test_infra_refactor_safety.py
+  h_9db9d35f50cf33 88,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b1477161d7a5aef5ff3670234aa1a844336fd1c0",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
