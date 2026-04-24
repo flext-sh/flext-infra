@@ -9,7 +9,7 @@ from collections.abc import (
 )
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
@@ -338,11 +338,32 @@ class FlextInfraModelsCodegen:
             t.Infra.CanonicalValue,
             m.Field(description="Canonical value"),
         ]
-        type: str = m.Field(description="Canonical type")
+        type: Annotated[
+            Literal["int", "str", "regex", "frozenset", "tuple"],
+            m.Field(description="Canonical type"),
+        ]
         canonical_ref: str = m.Field(description="Canonical reference")
         semantic_names: t.StrSequence = m.Field(
             default_factory=tuple, description="semantic_names"
         )
+
+        @u.model_validator(mode="after")
+        def validate_value_shape(self) -> Self:
+            """Keep canonical governance values aligned with their declared kind."""
+            if self.type == "int":
+                if not isinstance(self.value, int) or isinstance(self.value, bool):
+                    msg = "int canonical values must use an integer payload"
+                    raise TypeError(msg)
+                return self
+            if self.type in {"str", "regex"}:
+                if not isinstance(self.value, str):
+                    msg = "string canonical values must use a string payload"
+                    raise TypeError(msg)
+                return self
+            if isinstance(self.value, str):
+                msg = "sequence canonical values must use a string sequence payload"
+                raise TypeError(msg)
+            return self
 
     class NsRule(m.ArbitraryTypesModel):
         id: str = m.Field(description="Rule ID")
@@ -397,6 +418,11 @@ class FlextInfraModelsCodegen:
                 description="Set of unique modified file paths",
             ),
         ]
+
+        @property
+        def has_changes(self) -> bool:
+            """Return whether at least one file was modified."""
+            return bool(self.files_modified)
 
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
             self.violations_skipped.append(

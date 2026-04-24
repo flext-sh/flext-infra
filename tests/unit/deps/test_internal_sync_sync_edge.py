@@ -175,9 +175,6 @@ class TestSyncMethodEdgeCases:
             ],
         )
 
-        def _infer_owner(_root: Path) -> None:
-            return None
-
         tm.fail(service.sync(tmp_path))
 
     def test_sync_symlink_failure(

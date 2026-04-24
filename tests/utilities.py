@@ -242,7 +242,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return r[ValueT].ok(value)
 
             @staticmethod
-            def fail_result[ValueT](message: str) -> p.Result[ValueT]:
+            def fail_result[ValueT](
+                message: str,
+                *,
+                expected_type: type[ValueT] | None = None,
+            ) -> p.Result[ValueT]:
+                del expected_type
                 return r[ValueT].fail(message)
 
             @staticmethod

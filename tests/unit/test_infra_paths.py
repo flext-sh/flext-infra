@@ -14,12 +14,10 @@ class TestFlextInfraPathResolver:
 
     def test_resolve_workspace_root_with_current_directory(self) -> None:
         result = u.Infra.resolve_workspace_root_or_cwd(None)
-        tm.that(isinstance(result, Path), eq=True)
         tm.that(result.is_absolute(), eq=True)
 
     def test_resolve_workspace_root_with_absolute_path(self, tmp_path: Path) -> None:
         result = u.Infra.resolve_workspace_root_or_cwd(tmp_path)
-        tm.that(isinstance(result, Path), eq=True)
         tm.that(result.is_absolute(), eq=True)
 
     def test_resolve_workspace_root_returns_resolved_path(self, tmp_path: Path) -> None:

@@ -85,8 +85,9 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
             return r[bool].ok(True)
         return None
 
+    @property
     @override
-    def is_emergency_stop_requested(self) -> bool:
+    def emergency_stop_requested(self) -> bool:
         self.calls.append("is_stop")
         return False
 

@@ -114,10 +114,8 @@ class FlextInfraTypesBase:
     "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
-    type CanonicalScalarValue = str | int
-    "Canonical governance scalar value: string or integer."
-    type CanonicalValue = CanonicalScalarValue | t.StrSequence
-    "Canonical governance value: scalar string, integer, or string list."
+    type CanonicalValue = t.Scalar | t.StrSequence
+    "Canonical governance value: scalar payload or string sequence."
     type AstMethodNode = _ast.FunctionDef | _ast.AsyncFunctionDef
     "AST node for a method definition (sync or async)."
     type AstModule = _ast.Module
