@@ -29,7 +29,7 @@ class FlextInfraUtilitiesDocsValidate:
     def docs_has_adr_reference(skill_path: Path) -> bool:
         """Return whether a skill file contains an ADR reference."""
         text = skill_path.read_text(
-            encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+            encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
         )
         return "adr" in text.lower()
 
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesDocsValidate:
             "- [ ] Resolve documentation validation findings from "
             "`.reports/docs/validate-report.md`.\n"
         )
-        _ = path.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
+        _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
         return True
 
     @staticmethod

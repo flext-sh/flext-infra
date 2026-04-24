@@ -28,7 +28,7 @@ class FlextInfraClassNestingPostCheckGate:
     @staticmethod
     def _read_source_safe(file_path: Path) -> str | None:
         try:
-            return file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except (OSError, UnicodeDecodeError):
             return None
 
@@ -36,7 +36,7 @@ class FlextInfraClassNestingPostCheckGate:
         self,
         result: m.Infra.Result,
         expected: t.Infra.ContainerDict,
-    ) -> t.Infra.Pair[bool, t.StrSequence]:
+    ) -> t.Pair[bool, t.StrSequence]:
         """Validate post-check expectations against one transformed file result."""
         if not result.success:
             return (False, [result.error] if result.error else ["transform_failed"])
@@ -260,7 +260,9 @@ class FlextInfraRefactorFileExecutor:
         for key in c.Infra.NESTING_SECTION_KEYS:
             entries.extend(
                 self._filter_class_nesting_entries(
-                    u.Infra.entry_list(config.get(key)), file_path, threshold
+                    u.Infra.entry_list(config.get(key)),
+                    file_path,
+                    threshold,
                 )
             )
         violations: MutableSequence[str] = []
@@ -289,7 +291,9 @@ class FlextInfraRefactorFileExecutor:
     ) -> t.MutableStrMapping:
         result: t.MutableStrMapping = {}
         for entry in self._filter_class_nesting_entries(
-            u.Infra.entry_list(config.get(section)), file_path, threshold
+            u.Infra.entry_list(config.get(section)),
+            file_path,
+            threshold,
         ):
             name = entry.get(name_key)
             target = entry.get(c.Infra.RK_TARGET_NAMESPACE)

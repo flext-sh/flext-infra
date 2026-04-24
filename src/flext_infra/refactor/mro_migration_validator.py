@@ -17,7 +17,7 @@ class FlextInfraRefactorMROMigrationValidator:
         workspace_root: Path,
         target: str,
         project_names: t.StrSequence | None = None,
-    ) -> t.Infra.IntPair:
+    ) -> t.IntPair:
         """Return count of remaining symbols and unsupported entries."""
         file_results, _ = u.Infra.scan_workspace(
             workspace_root=workspace_root,

@@ -27,7 +27,7 @@ class FlextInfraUtilitiesLogParser:
         log_path: Path,
         *,
         max_lines: int = 5,
-    ) -> t.Infra.Pair[int, t.StrSequence]:
+    ) -> t.Pair[int, t.StrSequence]:
         """Read log tail and extract error lines.
 
         Args:
@@ -41,9 +41,7 @@ class FlextInfraUtilitiesLogParser:
         if not log_path.exists():
             return (0, [])
         try:
-            text = log_path.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT, errors="replace"
-            )
+            text = log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="replace")
         except OSError:
             return (0, [])
         tail = text.splitlines()[-c.Infra.LOG_TAIL_LINES :]

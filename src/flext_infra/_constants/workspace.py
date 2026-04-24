@@ -38,7 +38,7 @@ class FlextInfraConstantsWorkspace:
         WORKSPACE_ROLE_ATTACHED,
     })
 
-    MAKEFILE_REPLACEMENTS: Final[t.Infra.VariadicTuple[t.Infra.StrPair]] = (
+    MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.Infra.StrPair]] = (
         (
             'python3 "$(BASE_MK_DIR)/scripts/mode.py"',
             "python -m flext_infra workspace detect",

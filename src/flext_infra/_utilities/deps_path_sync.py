@@ -51,7 +51,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         payload: MutableMapping[str, t.JsonValue],
         *,
         internal_names: t.Infra.StrSet,
-    ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
+    ) -> t.Pair[t.StrSequence, t.Infra.StrSet]:
         project_section = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
@@ -214,7 +214,7 @@ class FlextInfraUtilitiesDependencyPathSync:
     ) -> p.Result[m.Infra.PathSyncDocumentState]:
         """Read one pyproject into a validated plain payload state."""
         try:
-            original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            original_rendered = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError:
             return r[m.Infra.PathSyncDocumentState].fail(f"failed to read TOML: {path}")
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)

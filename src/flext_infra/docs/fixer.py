@@ -8,7 +8,15 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
@@ -68,7 +76,11 @@ class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
                     ),
                 )
         items = tuple(collected)
-        u.Infra.docs_write_fix_reports(scope, items=items, apply=apply)
+        u.Infra.docs_write_fix_reports(
+            scope,
+            items=items,
+            apply=apply,
+        )
         report = m.Infra.DocsPhaseReport(
             phase="fix",
             scope=scope.name,
@@ -98,8 +110,11 @@ class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
         *,
         apply: bool,
     ) -> m.Infra.DocsPhaseItemModel:
-        """Delegate one-file markdown fixing to ``u.Infra``."""
-        return u.Infra.docs_process_markdown_file(md_file, apply=apply)
+        """Delegate one-file markdown fixing to the docs fix utilities."""
+        return u.Infra.docs_process_markdown_file(
+            md_file,
+            apply=apply,
+        )
 
 
 __all__: list[str] = ["FlextInfraDocFixer"]

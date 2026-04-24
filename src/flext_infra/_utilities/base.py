@@ -40,7 +40,7 @@ class FlextInfraUtilitiesBase:
             raw_text = (
                 files("flext_infra.deps")
                 .joinpath("tool_config.yml")
-                .read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                .read_text(encoding=c.Cli.ENCODING_DEFAULT)
             )
             parsed = u.Cli.yaml_parse(raw_text)
             if parsed.failure:

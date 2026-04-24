@@ -33,7 +33,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if not facade_path.exists():
             return {}
         alias_map: MutableMapping[str, t.Infra.StrPair] = {}
-        lines = facade_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
+        lines = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
         in_target = False
         for line in lines:
             trimmed = line.strip()
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if not facade_path.exists():
             return {}
         name_map: t.MutableStrMapping = {}
-        lines = facade_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
+        lines = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
         in_target = False
         for line in lines:
             trimmed = line.strip()
@@ -120,8 +120,8 @@ class FlextInfraUtilitiesRefactorCensus:
         parse_errors: int,
     ) -> mrc.UtilitiesCensusReport:
         """Pivot raw AST method visit occurrences into a structured usage report."""
-        cnt: Counter[t.Infra.Triple[str, str, str]] = Counter()
-        pcnt: Counter[t.Infra.Quad[str, str, str, str]] = Counter()
+        cnt: Counter[t.Triple[str, str, str]] = Counter()
+        pcnt: Counter[t.Quad[str, str, str, str]] = Counter()
 
         for rec in records:
             cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
@@ -199,14 +199,14 @@ class FlextInfraUtilitiesRefactorCensus:
         """Serialize any Pydantic model payload to a JSON file."""
         export_path.write_text(
             model_payload.model_dump_json(indent=2),
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
     @staticmethod
     def plan_simple_removal_edits(
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> Mapping[Path, tuple[t.Infra.IntPair, ...]] | None:
+    ) -> Mapping[Path, tuple[t.IntPair, ...]] | None:
         """Plan safe line-range removals for simple top-level removal candidates."""
         if candidate.scope_path != candidate.object_name:
             return None
@@ -219,7 +219,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
         if definition_range is None:
             return None
-        ranges_by_file: dict[Path, list[t.Infra.IntPair]] = defaultdict(list)
+        ranges_by_file: dict[Path, list[t.IntPair]] = defaultdict(list)
         ranges_by_file[definition_path].append(definition_range)
         for site in FlextInfraUtilitiesRefactorCensus._supporting_reference_sites(
             candidate
@@ -489,7 +489,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def apply_line_ranges(
         source: str,
-        ranges: Sequence[t.Infra.IntPair],
+        ranges: Sequence[t.IntPair],
     ) -> str:
         """Remove one or more 1-based inclusive line ranges from Python source."""
         merged_ranges = FlextInfraUtilitiesRefactorCensus.merge_line_ranges(ranges)
@@ -532,13 +532,13 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def merge_line_ranges(
-        ranges: Sequence[t.Infra.IntPair],
-    ) -> tuple[t.Infra.IntPair, ...]:
+        ranges: Sequence[t.IntPair],
+    ) -> tuple[t.IntPair, ...]:
         """Merge overlapping or adjacent 1-based inclusive line ranges."""
         if not ranges:
             return ()
         ordered_ranges = sorted(ranges)
-        merged: list[t.Infra.IntPair] = [ordered_ranges[0]]
+        merged: list[t.IntPair] = [ordered_ranges[0]]
         for start, end in ordered_ranges[1:]:
             previous_start, previous_end = merged[-1]
             if start <= previous_end + 1:
@@ -561,7 +561,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def _definition_line_range(
         source: str,
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> t.Infra.IntPair | None:
+    ) -> t.IntPair | None:
         block = FlextInfraUtilitiesRopeHelpers.extract_definition(
             source,
             candidate.object_name,
@@ -575,7 +575,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def _reference_line_range(
         source: str,
         site: m.Infra.Census.ReferenceSite,
-    ) -> t.Infra.IntPair | None:
+    ) -> t.IntPair | None:
         lines = source.splitlines()
         if site.line < 1 or site.line > len(lines):
             return None
@@ -599,7 +599,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def _line_range_for_snippet(
         source: str,
         snippet: str,
-    ) -> t.Infra.IntPair | None:
+    ) -> t.IntPair | None:
         start_offset = source.find(snippet)
         if start_offset < 0:
             return None

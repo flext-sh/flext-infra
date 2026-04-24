@@ -73,6 +73,93 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
                 resolved.append(mapped)
         return r[list[str]].ok(list(resolved))
 
+    @staticmethod
+    def _generate_markdown(
+        results: Sequence[m.Infra.ProjectResult],
+        gates: t.StrSequence,
+        timestamp: str,
+    ) -> str:
+        """Render markdown check report from project gate results."""
+        lines: list[str] = [
+            "# Workspace Check Report",
+            "",
+            f"Generated: {timestamp}",
+            f"Projects: {len(results)}",
+            "",
+            "## Summary",
+            "",
+            "| Project | Status | Errors |",
+            "|---|---:|---:|",
+        ]
+        for project in results:
+            status = "PASS" if project.passed else "FAIL"
+            lines.append(f"| {project.project} | {status} | {project.total_errors} |")
+        lines.extend(["", "## Details", ""])
+        for project in results:
+            lines.append(f"### {project.project}")
+            for gate in gates:
+                execution = project.gates.get(gate)
+                if execution is None:
+                    continue
+                gate_status = "PASS" if execution.result.passed else "FAIL"
+                lines.append(
+                    f"- {gate}: {gate_status} ({len(execution.issues)} issues)",
+                )
+                lines.extend(f"  - {issue.formatted}" for issue in execution.issues)
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _generate_sarif(
+        results: Sequence[m.Infra.ProjectResult],
+        gates: t.StrSequence,
+    ) -> t.JsonMapping:
+        """Render SARIF 2.1.0 payload from workspace gate results."""
+        rules_by_id: dict[str, m.Infra.SarifRule] = {}
+        sarif_results: list[m.Infra.SarifResult] = []
+        for project in results:
+            for gate in gates:
+                execution = project.gates.get(gate)
+                if execution is None:
+                    continue
+                for issue in execution.issues:
+                    rule_id = issue.code or gate
+                    if rule_id not in rules_by_id:
+                        rules_by_id[rule_id] = m.Infra.SarifRule(
+                            id=rule_id,
+                            short_description=f"{gate} issue",
+                        )
+                    sarif_results.append(
+                        m.Infra.SarifResult(
+                            rule_id=rule_id,
+                            level=(
+                                "warning"
+                                if issue.severity.lower()
+                                == c.Infra.SeverityLevel.WARNING
+                                else "error"
+                            ),
+                            message=issue.message,
+                            locations=[
+                                m.Infra.SarifLocation(
+                                    uri=issue.file,
+                                    start_line=issue.line,
+                                    start_column=issue.column,
+                                )
+                            ],
+                        )
+                    )
+        report = m.Infra.SarifReport(
+            runs=(
+                m.Infra.SarifRun(
+                    tool_name="flext-infra-check",
+                    information_uri="https://github.com/flext-sh/flext-infra",
+                    rules=tuple(rules_by_id.values()),
+                    results=tuple(sarif_results),
+                ),
+            ),
+        )
+        return report.model_dump(mode="json")
+
     @override
     def execute(self) -> p.Result[bool]:
         return r[bool].fail("Use execute_command() directly")
@@ -146,14 +233,21 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         md_path = report_base / "check-report.md"
         md_write_result = u.Cli.atomic_write_text_file(
             md_path,
-            u.Infra.generate_markdown(results, resolved_gates, timestamp),
+            FlextInfraWorkspaceChecker._generate_markdown(
+                results,
+                resolved_gates,
+                timestamp,
+            ),
         )
         if md_write_result.failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
                 md_write_result.error or "failed to write markdown report",
             )
         sarif_path = report_base / "check-report.sarif"
-        sarif_payload = u.Infra.generate_sarif(results, resolved_gates)
+        sarif_payload = FlextInfraWorkspaceChecker._generate_sarif(
+            results,
+            resolved_gates,
+        )
         json_write_result = u.Cli.json_write(sarif_path, sarif_payload)
         if json_write_result.failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(

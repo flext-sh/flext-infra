@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 from collections.abc import (
     Mapping,
     MutableSequence,
@@ -12,7 +13,6 @@ from pathlib import Path
 from flext_infra import (
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorViolationAnalyzer,
-    FlextInfraUtilitiesRefactorEngine,
     c,
     m,
     t,
@@ -73,6 +73,48 @@ class FlextInfraRefactorOrchestrator(
             refactored_code=None,
         )
 
+    @staticmethod
+    def _refactor_debug(message: str) -> None:
+        """Emit one compact refactor debug line."""
+        u.Cli.info(message)
+
+    @staticmethod
+    def _refactor_header(message: str) -> None:
+        """Emit one refactor section header."""
+        u.Cli.header(message)
+
+    @staticmethod
+    def _print_violation_summary(analysis: m.Infra.ViolationAnalysisReport) -> None:
+        """Print high-level violation analysis summary."""
+        u.Cli.header("Violation Analysis")
+        u.Cli.info(f"Files scanned: {analysis.files_scanned}")
+        for key, value in sorted(analysis.totals.items()):
+            u.Cli.info(f"- {key}: {value}")
+
+    @staticmethod
+    def _print_diff(original: str, updated: str, file_path: Path) -> None:
+        """Print unified diff for one updated file."""
+        diff = difflib.unified_diff(
+            original.splitlines(),
+            updated.splitlines(),
+            fromfile=f"a/{file_path}",
+            tofile=f"b/{file_path}",
+            lineterm="",
+        )
+        for line in diff:
+            u.Cli.info(line)
+
+    @staticmethod
+    def _print_summary(results: Sequence[m.Infra.Result], *, dry_run: bool) -> None:
+        """Print refactor execution summary."""
+        total = len(results)
+        success = sum(1 for item in results if item.success)
+        failed = total - success
+        modified = sum(1 for item in results if item.modified)
+        mode = "[DRY-RUN] " if dry_run else ""
+        u.Cli.info(f"{mode}Processed: {total} file(s)")
+        u.Cli.info(f"Success: {success}  Failed: {failed}  Modified: {modified}")
+
     def refactor_file(
         self,
         file_path: Path,
@@ -84,7 +126,7 @@ class FlextInfraRefactorOrchestrator(
             if file_path.suffix != c.Infra.EXT_PYTHON:
                 return self._skip_result(file_path)
             workspace_root = u.Infra.project_root(file_path) or file_path.parent
-            original = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            original = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             current, all_changes = original, list[str]()
             if self.loader.file_rules:
                 with u.Infra.open_project(workspace_root) as rope_project:
@@ -174,7 +216,7 @@ class FlextInfraRefactorOrchestrator(
                     "refactor_noop",
                     file=str(result.file_path),
                 )
-                u.Infra.refactor_debug(f"Unchanged: {file_path.name}")
+                self._refactor_debug(f"Unchanged: {file_path.name}")
             else:
                 u.Cli.error(f"Failed: {file_path.name} - {result.error}")
         return results
@@ -185,7 +227,7 @@ class FlextInfraRefactorOrchestrator(
         if files is None:
             return 1
         analysis = FlextInfraRefactorViolationAnalyzer.analyze_files(files)
-        u.Infra.print_violation_summary(analysis)
+        self._print_violation_summary(analysis)
         if args.analysis_output is not None:
             _ = u.Cli.json_write(
                 args.analysis_output,
@@ -198,14 +240,14 @@ class FlextInfraRefactorOrchestrator(
         self, args: t.Infra.CliNamespace
     ) -> MutableSequence[Path] | None:
         if args.project:
-            return FlextInfraUtilitiesRefactorEngine.collect_engine_project_files(
+            return u.Infra.collect_engine_project_files(
                 self.loader.settings,
                 args.project,
                 pattern=args.pattern,
             )
         if args.workspace:
             return list(
-                FlextInfraUtilitiesRefactorEngine.collect_engine_workspace_files(
+                u.Infra.collect_engine_workspace_files(
                     self.loader.settings,
                     args.workspace,
                     pattern=args.pattern,
@@ -242,10 +284,10 @@ class FlextInfraRefactorOrchestrator(
             if not args.file.exists():
                 u.Cli.error(f"File not found: {args.file}")
                 return 1
-            original = args.file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            original = args.file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             result = self.refactor_file(args.file, dry_run=args.dry_run)
             if args.show_diff and result.modified:
-                u.Infra.print_diff(
+                self._print_diff(
                     original,
                     result.refactored_code or original,
                     args.file,
@@ -259,9 +301,12 @@ class FlextInfraRefactorOrchestrator(
             results = list(self.refactor_files(existing, dry_run=args.dry_run))
         else:
             results = list[m.Infra.Result]()
-        u.Infra.print_summary(results, dry_run=args.dry_run)
+        self._print_summary(results, dry_run=args.dry_run)
         if args.impact_map_output is not None:
-            _ = u.Infra.write_impact_map(results, args.impact_map_output)
+            _ = u.Infra.write_impact_map(
+                results,
+                args.impact_map_output,
+            )
         return 0 if u.count(results, lambda item: not item.success) == 0 else 1
 
     def _try_safety_stash(
@@ -270,7 +315,7 @@ class FlextInfraRefactorOrchestrator(
         *,
         apply_safety: bool,
         dry_run: bool,
-    ) -> t.Infra.Pair[str, Sequence[m.Infra.Result] | None]:
+    ) -> t.Pair[str, Sequence[m.Infra.Result] | None]:
         if not apply_safety or dry_run:
             return "", None
         stash = self.safety_manager.create_pre_transformation_stash(target)
@@ -340,7 +385,7 @@ class FlextInfraRefactorOrchestrator(
         if error_results is not None:
             results_out: Sequence[m.Infra.Result] = error_results
             return results_out
-        collected = FlextInfraUtilitiesRefactorEngine.collect_engine_project_files(
+        collected = u.Infra.collect_engine_project_files(
             self.loader.settings,
             project_path,
             pattern=pattern,
@@ -378,7 +423,7 @@ class FlextInfraRefactorOrchestrator(
         if not root.exists() or not root.is_dir():
             u.Cli.error(f"Invalid workspace root: {workspace_root}")
             return []
-        projects = FlextInfraUtilitiesRefactorEngine.discover_engine_projects(
+        projects = u.Infra.discover_engine_projects(
             self.loader.settings,
             root,
         )
@@ -399,7 +444,7 @@ class FlextInfraRefactorOrchestrator(
         for project in projects:
             if apply_safety and self.safety_manager.emergency_stop_requested:
                 break
-            u.Infra.refactor_header(f"Project: {project}")
+            self._refactor_header(f"Project: {project}")
             results.extend(
                 self.refactor_project(
                     project,

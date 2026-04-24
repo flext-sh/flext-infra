@@ -8,7 +8,15 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
@@ -59,7 +67,7 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
     def _run_adr_skill_check(
         self,
         workspace_root: Path,
-    ) -> t.Infra.Pair[int, t.StrSequence]:
+    ) -> t.Pair[int, t.StrSequence]:
         """Run the ADR skill validation check for the root docs scope."""
         required_result = u.Infra.docs_load_required_skills(workspace_root)
         if required_result.failure:
@@ -77,8 +85,8 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
         missing: list[str] = []
         for skill_name in required_skills:
             skill_path = skills_root / skill_name / "SKILL.md"
-            if not skill_path.exists() or not u.Infra.docs_has_adr_reference(
-                skill_path
+            if not skill_path.exists() or not (
+                u.Infra.docs_has_adr_reference(skill_path)
             ):
                 missing.append(skill_name)
         return (0 if not missing else 1, missing)
@@ -113,7 +121,10 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
             status = c.Infra.ResultStatus.FAIL
             messages.extend(contract_messages)
         message = "; ".join(messages) if messages else "validation passed"
-        wrote_todo = u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
+        wrote_todo = u.Infra.docs_write_todo(
+            scope,
+            apply_mode=apply_mode,
+        )
         report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,

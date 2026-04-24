@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from collections.abc import (
     Mapping,
-    MutableSequence,
     Sequence,
 )
 from pathlib import Path
@@ -76,57 +75,6 @@ class FlextInfraRefactorEngine:
         if args.analyze_violations:
             return engine.run_analyze_violations(args)
         return engine.run_refactor(args)
-
-    @property
-    def settings(self) -> Mapping[str, t.Infra.InfraValue]:
-        """Expose the loader settings for existing consumers."""
-        return self.rule_loader.settings
-
-    @settings.setter
-    def settings(self, value: Mapping[str, t.Infra.InfraValue]) -> None:
-        self.rule_loader.settings = value
-
-    @property
-    def rules(
-        self,
-    ) -> MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]]:
-        """Expose loaded text-rule selections for compatibility."""
-        return self.rule_loader.rules
-
-    @rules.setter
-    def rules(
-        self,
-        value: MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]],
-    ) -> None:
-        self.rule_loader.rules = value
-
-    @property
-    def file_rules(
-        self,
-    ) -> MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorFileRuleKind]]:
-        """Expose loaded file-rule selections for compatibility."""
-        return self.rule_loader.file_rules
-
-    @file_rules.setter
-    def file_rules(
-        self,
-        value: MutableSequence[t.Infra.RuleSelection[c.Infra.RefactorFileRuleKind]],
-    ) -> None:
-        self.rule_loader.file_rules = value
-
-    @property
-    def rule_filters(self) -> MutableSequence[str]:
-        """Expose normalized rule filters for compatibility."""
-        return self.rule_loader.rule_filters
-
-    @property
-    def safety_manager(self) -> FlextInfraRefactorSafetyManager:
-        """Expose the orchestrator safety manager for compatibility."""
-        return self.orchestrator.safety_manager
-
-    @safety_manager.setter
-    def safety_manager(self, value: FlextInfraRefactorSafetyManager) -> None:
-        self.orchestrator.safety_manager = value
 
     def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Delegate config loading to the dedicated refactor loader."""

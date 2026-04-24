@@ -33,7 +33,7 @@ def _make_project_with_module(
 
 
 class TestFlextInfraNamespaceValidator:
-    """Test suite for namespace validator rules 0-2."""
+    """Test suite for namespace validator rules 0-3."""
 
     def test_public_project_layout_uses_flext_for_core_exception(
         self,
@@ -250,6 +250,59 @@ class TestFlextInfraNamespaceValidator:
         )
         result = validator.validate(root)
         tm.that(result.success, eq=True)
+        tm.that(result.value.passed, eq=True)
+
+    def test_rule3_direct_runtime_utilities_import_detected(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n"
+            "from flext_infra import FlextInfraUtilitiesCodegen\n\n"
+            "class FlextTestModels(Models):\n"
+            "    pass\n"
+        )
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=module_source,
+            module_name="models.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(result.value.passed, eq=False)
+        tm.that(
+            any(
+                "must use u.Infra namespaced MRO access" in violation
+                for violation in result.value.violations
+            ),
+            eq=True,
+        )
+
+    def test_rule3_utilities_facade_import_remains_allowed(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "from flext_cli import u\n"
+            "from flext_infra import FlextInfraUtilitiesCodegen\n\n"
+            "class FlextTestUtilities(u):\n"
+            "    class Infra(FlextInfraUtilitiesCodegen):\n"
+            "        pass\n"
+        )
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=module_source,
+            module_name="utilities.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
         tm.that(result.value.passed, eq=True)
 
     def test_rule2_typevar_in_class_detected(self, tmp_path: Path) -> None:

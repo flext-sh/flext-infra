@@ -1,6 +1,6 @@
 """Namespace validation service.
 
-AST-based validator enforcing namespace rules 0-2 for flext projects.
+AST-based validator enforcing namespace rules 0-3 for flext projects.
 Detection-only -- does not auto-fix any files.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -26,7 +26,7 @@ from flext_infra import (
 
 
 class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
-    """AST-based namespace validator for flext projects (Rules 0-2).
+    """AST-based namespace validator for flext projects (Rules 0-3).
 
     Validates that each module follows the one-namespace-class-per-file
     convention, constants are centralized in ``constants.py``, and type
@@ -39,7 +39,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         *,
         scan_tests: bool = False,
     ) -> p.Result[m.Infra.ValidationReport]:
-        """Validate namespace rules 0-2 for all discovered Python files."""
+        """Validate namespace rules 0-3 for all discovered Python files."""
         try:
             files_result = u.Infra.iter_python_files(
                 workspace_root=project_root,
@@ -70,6 +70,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 violations.extend(self.check_rule_0(tree, rel, prefix))
                 violations.extend(self.check_rule_1(tree, rel))
                 violations.extend(self.check_rule_2(tree, rel))
+                violations.extend(self.check_rule_3(tree, rel))
             passed = not violations
             summary = (
                 f"namespace validation passed ({len(files)} files checked)"
@@ -98,7 +99,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""
         try:
-            return ast.parse(path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+            return ast.parse(path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         except (OSError, SyntaxError):
             return None
 

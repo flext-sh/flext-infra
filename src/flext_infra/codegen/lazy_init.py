@@ -284,7 +284,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 child_packages_for_tc=child_packages_for_tc or [],
             )
             previous = (
-                init_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 if init_path.exists()
                 else None
             )

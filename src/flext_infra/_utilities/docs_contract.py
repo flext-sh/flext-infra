@@ -53,7 +53,7 @@ class FlextInfraUtilitiesDocsContract:
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),
-            "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
+            "version": str(project_meta.get(c.VERSION, "")).strip(),
             "site_title": str(docs_meta.get("site_title", "")).strip()
             or "FLEXT Workspace",
             "site_url": str(
@@ -81,13 +81,13 @@ class FlextInfraUtilitiesDocsContract:
         if path.exists() and not overwrite:
             return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
         current = (
-            path.read_text(encoding=c.Infra.ENCODING_DEFAULT) if path.exists() else ""
+            path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if path.exists() else ""
         )
         if current == content:
             return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
         if apply:
             path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
+            _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.GeneratedFile(path=path.as_posix(), written=apply)
 
 

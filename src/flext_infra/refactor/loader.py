@@ -84,9 +84,9 @@ class FlextInfraRefactorRuleLoader:
                 c.Infra.RK_ID: str(
                     settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
                 ),
-                c.Infra.NAME: str(
+                c.NAME: str(
                     settings.get(
-                        c.Infra.NAME,
+                        c.NAME,
                         settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
                     )
                 ),

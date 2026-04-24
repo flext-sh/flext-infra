@@ -21,7 +21,7 @@ class FlextInfraReleaseOrchestratorPhases:
     """Build, publish, and version phase implementations."""
 
     @staticmethod
-    def _run_make(project_path: Path, verb: str) -> p.Result[t.Infra.Pair[int, str]]:
+    def _run_make(project_path: Path, verb: str) -> p.Result[t.Pair[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
         result = u.Cli.run_raw([
             c.Infra.MAKE,
@@ -30,12 +30,10 @@ class FlextInfraReleaseOrchestratorPhases:
             verb,
         ])
         if result.failure:
-            return r[t.Infra.Pair[int, str]].fail(
-                result.error or "make execution failed"
-            )
+            return r[t.Pair[int, str]].fail(result.error or "make execution failed")
         output_model = result.value
         output = (output_model.stdout + "\n" + output_model.stderr).strip()
-        return r[t.Infra.Pair[int, str]].ok((output_model.exit_code, output))
+        return r[t.Pair[int, str]].ok((output_model.exit_code, output))
 
     def phase_build(
         self,
@@ -70,7 +68,7 @@ class FlextInfraReleaseOrchestratorPhases:
             if code != 0:
                 failures += 1
             log = output_dir / f"build-{name}.log"
-            u.write_file(log, output + "\n", encoding=c.Infra.ENCODING_DEFAULT)
+            u.write_file(log, output + "\n", encoding=c.Cli.ENCODING_DEFAULT)
             records.append(
                 m.Infra.BuildRecord(
                     project=name,
@@ -198,7 +196,7 @@ class FlextInfraReleaseOrchestratorPhases:
         for path in files:
             if not path.exists():
                 continue
-            content = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            content = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             match = c.Infra.VERSION_RE.search(content)
             if match and match.group(1) == target:
                 continue
@@ -218,7 +216,7 @@ class FlextInfraReleaseOrchestratorPhases:
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[t.Infra.Pair[str, Path]]:
+    ) -> Sequence[t.Pair[str, Path]]:
         raise NotImplementedError
 
     def _generate_notes(

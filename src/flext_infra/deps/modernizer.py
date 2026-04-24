@@ -96,7 +96,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
     ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Read one pyproject once and keep one validated plain payload state."""
         try:
-            original_rendered = path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            original_rendered = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError:
             return r[m.Infra.PyprojectDocumentState].fail(f"failed to read {path}")
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
@@ -208,7 +208,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         if normalized_rendered == normalized_original:
             return []
         if not dry_run:
-            u.write_file(path, rendered, encoding=c.Infra.ENCODING_DEFAULT)
+            u.write_file(path, rendered, encoding=c.Cli.ENCODING_DEFAULT)
         return changes
 
     def _ensure_build_system_payload(

@@ -20,7 +20,15 @@ if TYPE_CHECKING:
 
 
 class FlextInfraNamespaceRules:
-    """Implementation of namespace rules 0-2 for AST-based validation."""
+    """Implementation of namespace rules 0-3 for AST-based validation."""
+
+    _CANONICAL_FACADE_FILES = frozenset({
+        c.Infra.CONSTANTS_PY,
+        c.Infra.MODELS_PY,
+        c.Infra.PROTOCOLS_PY,
+        c.Infra.TYPINGS_PY,
+        c.Infra.UTILITIES_PY,
+    })
 
     @staticmethod
     def _annotation_contains(
@@ -345,6 +353,35 @@ class FlextInfraNamespaceRules:
             f"[NS-002-{seq:03d}] {filepath}:{node.lineno} — PEP 695 TypeAlias '{name_str}' belongs in typings.py",
         )
         return seq, violations
+
+    def check_rule_3(
+        self,
+        tree: ast.Module,
+        filepath: Path,
+    ) -> t.StrSequence:
+        """Rule 3 -- Runtime modules use namespaced MRO aliases, not direct utility imports."""
+        if self._allows_direct_utilities_import(filepath):
+            return []
+        violations: MutableSequence[str] = []
+        seq = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            if node.module != f"{c.Infra.PKG_PREFIX_UNDERSCORE}infra":
+                continue
+            for alias in node.names:
+                if not alias.name.startswith("FlextInfraUtilities"):
+                    continue
+                seq += 1
+                violations.append(
+                    f"[NS-003-{seq:03d}] {filepath}:{node.lineno} — Runtime module must use u.Infra namespaced MRO access instead of direct import '{alias.name}'",
+                )
+        return violations
+
+    def _allows_direct_utilities_import(self, filepath: Path) -> bool:
+        if filepath.name in self._CANONICAL_FACADE_FILES:
+            return True
+        return "_utilities" in filepath.parts
 
     # -- Module-level statement allowlist ---
 

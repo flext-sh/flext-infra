@@ -19,8 +19,8 @@ class TestFlextInfraRopeWorkspace:
         module_path = package_root / "models.py"
         u.Infra.Tests.write_lazy_init_namespace_module(
             module_path,
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
 
@@ -34,8 +34,8 @@ class TestFlextInfraRopeWorkspace:
             assert rope.module(module_path) is not None
             assert rope.package(package_root) is not None
             exports = rope.exports(module_path, allow_assignments=True)
-            assert c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS in exports
-            assert c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS in exports
+            assert "FlextTestsModels" in exports
+            assert "m" in exports
         finally:
             rope.close()
 
@@ -47,15 +47,15 @@ class TestFlextInfraRopeWorkspace:
         module_path = package_root / "models.py"
         u.Infra.Tests.write_lazy_init_namespace_module(
             module_path,
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             state = rope.semantic(module_path)
             assert any(
-                class_info.name == c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS
+                class_info.name == "FlextTestsModels"
                 for class_info in state.class_infos
             )
 

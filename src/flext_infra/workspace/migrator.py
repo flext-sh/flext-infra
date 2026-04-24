@@ -174,9 +174,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             return r[str].fail(generated.error or "base.mk generation failed")
         generated_text: str = generated.value
         current = (
-            target.read_text(encoding=c.Infra.ENCODING_DEFAULT)
-            if target.exists()
-            else ""
+            target.read_text(encoding=c.Cli.ENCODING_DEFAULT) if target.exists() else ""
         )
         if u.Cli.sha256_content(current) == u.Cli.sha256_content(generated_text):
             if dry_run:
@@ -186,7 +184,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             return r[str].ok("")
         if not dry_run:
             try:
-                u.write_file(target, generated_text, encoding=c.Infra.ENCODING_DEFAULT)
+                u.write_file(target, generated_text, encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
                 return r[str].fail(f"base.mk update failed: {exc}")
         return r[str].ok(
@@ -200,7 +198,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         gitignore_path = project_root / c.Infra.GITIGNORE
         try:
             existing_lines = (
-                gitignore_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
+                gitignore_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
                 if gitignore_path.exists()
                 else list[str]()
             )
@@ -234,7 +232,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         if not dry_run:
             body = "\n".join(next_lines).rstrip("\n") + "\n"
             try:
-                u.write_file(gitignore_path, body, encoding=c.Infra.ENCODING_DEFAULT)
+                u.write_file(gitignore_path, body, encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
                 return r[str].fail(f".gitignore update failed: {exc}")
         return r[str].ok(
@@ -249,7 +247,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         if not makefile_path.exists():
             return self._no_change_result("Makefile not found", dry_run=dry_run)
         try:
-            original = makefile_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            original = makefile_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
             return r[str].fail(f"Makefile read failed: {exc}")
         updated = original
@@ -260,7 +258,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             return self._no_change_result("Makefile already migrated", dry_run=dry_run)
         if not dry_run:
             try:
-                u.write_file(makefile_path, updated, encoding=c.Infra.ENCODING_DEFAULT)
+                u.write_file(makefile_path, updated, encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
                 return r[str].fail(f"Makefile update failed: {exc}")
         return r[str].ok(

@@ -45,7 +45,7 @@ class FlextInfraUtilitiesDocsFix:
     ) -> m.Infra.DocsPhaseItemModel:
         """Fix one markdown file and return the phase item summary."""
         original = md_file.read_text(
-            encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+            encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
         )
         link_count = 0
 
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesDocsFix:
         )
         updated, toc_changed = FlextInfraUtilitiesDocsFix.docs_update_toc(updated)
         if apply and (link_count > 0 or toc_changed > 0) and updated != original:
-            _ = md_file.write_text(updated, encoding=c.Infra.ENCODING_DEFAULT)
+            _ = md_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.DocsPhaseItemModel(
             phase="fix",
             file=md_file.as_posix(),

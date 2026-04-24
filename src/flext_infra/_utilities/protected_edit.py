@@ -217,21 +217,21 @@ class FlextInfraUtilitiesProtectedEdit:
     ) -> tuple[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
         """Preview lint output for ``updated_source`` while restoring the file."""
         original_source = py_file.read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         before = cls.lint_snapshot(py_file, workspace, gates=gates)
         if updated_source == original_source:
             return before, before
         py_file.write_text(
             updated_source,
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         try:
             after = cls.lint_snapshot(py_file, workspace, gates=gates)
         finally:
             py_file.write_text(
                 original_source,
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
         return before, after
 
@@ -257,7 +257,7 @@ class FlextInfraUtilitiesProtectedEdit:
         for path in normalized_updates:
             if path.exists():
                 before_sources[path] = path.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
                 before_lints[path] = cls.lint_snapshot(path, workspace, gates=gates)
                 continue
@@ -272,7 +272,7 @@ class FlextInfraUtilitiesProtectedEdit:
                     continue
                 path.write_text(
                     original_source,
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
 
         try:
@@ -280,7 +280,7 @@ class FlextInfraUtilitiesProtectedEdit:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(
                     updated_source,
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
             if post_write is not None:
                 post_write()
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesProtectedEdit:
                 rel = cls._relative_path(path, workspace)
                 before_source = before_sources[path] or ""
                 modified = path.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
                 diff = list(
                     difflib.unified_diff(
@@ -384,7 +384,7 @@ class FlextInfraUtilitiesProtectedEdit:
                 return
             py_file.write_text(
                 before_source,
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
 
         edit_completed = False
@@ -406,7 +406,7 @@ class FlextInfraUtilitiesProtectedEdit:
             return (True, [f"  BACKUP {rel} -> {backup_path.name}"])
 
         modified = py_file.read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         diff = list(
             difflib.unified_diff(
@@ -441,7 +441,7 @@ class FlextInfraUtilitiesProtectedEdit:
     ) -> t.Infra.EditResult:
         """Write *updated_source* with protected validation and rollback."""
         original_source = py_file.read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         if updated_source == original_source:
             return (True, [])
@@ -449,13 +449,13 @@ class FlextInfraUtilitiesProtectedEdit:
         def _write_updated() -> None:
             py_file.write_text(
                 updated_source,
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
 
         def _restore_original() -> None:
             py_file.write_text(
                 original_source,
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
 
         return cls.protected_file_edit(
@@ -500,7 +500,7 @@ class FlextInfraUtilitiesProtectedEdit:
         for path in normalized_updates:
             if path.exists():
                 before_sources[path] = path.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
                 before_lints[path] = cls.lint_snapshot(path, workspace, gates=gates)
                 if (
@@ -520,7 +520,7 @@ class FlextInfraUtilitiesProtectedEdit:
                     continue
                 path.write_text(
                     original_source,
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
 
         write_completed = False
@@ -529,7 +529,7 @@ class FlextInfraUtilitiesProtectedEdit:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(
                     updated_source,
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
             if post_write is not None:
                 post_write()
@@ -555,7 +555,7 @@ class FlextInfraUtilitiesProtectedEdit:
             rel = cls._relative_path(path, workspace)
             before_source = before_sources[path] or ""
             modified = path.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
             diff = list(
                 difflib.unified_diff(

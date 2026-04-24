@@ -125,7 +125,7 @@ class FlextInfraUtilitiesGithub:
     def _github_render_template(cls, template_path: Path) -> p.Result[str]:
         try:
             body = template_path.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
         except OSError as exc:
             return r[str].fail(f"failed to read template: {exc}")
@@ -191,13 +191,13 @@ class FlextInfraUtilitiesGithub:
         rel_path = str(destination.relative_to(ctx.project_root))
         if destination.exists():
             current = destination.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
             if current != ctx.rendered_template:
                 if ctx.apply:
                     _ = destination.write_text(
                         ctx.rendered_template,
-                        encoding=c.Infra.ENCODING_DEFAULT,
+                        encoding=c.Cli.ENCODING_DEFAULT,
                     )
                 operations.append(
                     m.Infra.GithubWorkflowSyncOperation.model_validate(
@@ -225,7 +225,7 @@ class FlextInfraUtilitiesGithub:
                 ctx.workflows_dir.mkdir(parents=True, exist_ok=True)
                 _ = destination.write_text(
                     ctx.rendered_template,
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
             operations.append(
                 m.Infra.GithubWorkflowSyncOperation.model_validate(

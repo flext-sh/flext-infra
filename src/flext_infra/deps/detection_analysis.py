@@ -121,14 +121,14 @@ class FlextInfraDependencyDetectionAnalysis:
         tool = self._mapping_from_value(data.get(c.Infra.TOOL))
         poetry = self._mapping_from_value(tool.get(c.Infra.POETRY))
         group = self._mapping_from_value(poetry.get(c.Infra.GROUP))
-        typings_group = self._mapping_from_value(group.get(c.Infra.DIR_TYPINGS))
+        typings_group = self._mapping_from_value(group.get(c.Infra.TYPINGS))
         deps = self._mapping_from_value(typings_group.get(c.Infra.DEPENDENCIES))
         names.update(str(key) for key in deps)
         project = self._mapping_from_value(data.get(c.Infra.PROJECT))
         optional = self._mapping_from_value(
             project.get(c.Infra.OPTIONAL_DEPENDENCIES),
         )
-        typings = optional.get(c.Infra.DIR_TYPINGS)
+        typings = optional.get(c.Infra.TYPINGS)
         if isinstance(typings, list):
             for spec in typings:
                 spec_text = str(spec)
@@ -167,7 +167,7 @@ class FlextInfraDependencyDetectionAnalysis:
                 return r[m.Infra.TypingsReport].fail(
                     hints_result.error or "typing hint detection failed",
                 )
-            typed_hints: t.Infra.Pair[t.StrSequence, t.StrSequence] = hints_result.value
+            typed_hints: t.Pair[t.StrSequence, t.StrSequence] = hints_result.value
             hinted, missing_modules = typed_hints
         required_set: t.Infra.StrSet = set(hinted)
         for module_name in missing_modules:
@@ -179,7 +179,7 @@ class FlextInfraDependencyDetectionAnalysis:
         current_set = set(current)
         python_cfg = limits.get(c.Infra.PYTHON)
         version_val = (
-            python_cfg.get(c.Infra.VERSION) if isinstance(python_cfg, Mapping) else None
+            python_cfg.get(c.VERSION) if isinstance(python_cfg, Mapping) else None
         )
         python_version = str(version_val) if version_val is not None else None
         report = m.Infra.TypingsReport(
@@ -234,11 +234,11 @@ class FlextInfraDependencyDetectionAnalysis:
         config_path: Path | None = None,
         json_output_path: Path | None = None,
         extend_exclude: t.StrSequence | None = None,
-    ) -> p.Result[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
         """Run deptry analysis on a project and parse JSON output."""
         settings = config_path or project_path / c.Infra.PYPROJECT_FILENAME
         if not settings.exists():
-            return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
+            return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
         cmd: MutableSequence[str] = [
             str(venv_bin / c.Infra.DEPTRY),
@@ -258,12 +258,12 @@ class FlextInfraDependencyDetectionAnalysis:
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if result.failure:
-            return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
+            return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
                 result.error or "deptry execution failed",
             )
         issues: Sequence[t.Infra.ContainerDict] = []
         if out_file.exists():
-            raw = out_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            raw = out_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             loaded_result = u.Cli.json_parse(raw) if raw.strip() else None
             if (
                 loaded_result is not None
@@ -286,11 +286,11 @@ class FlextInfraDependencyDetectionAnalysis:
                 try:
                     out_file.unlink()
                 except OSError as exc:
-                    return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
+                    return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
                         f"failed to cleanup deptry temp output: {exc}",
                     )
         cmd_result: m.Cli.CommandOutput = result.value
-        return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok((
+        return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok((
             issues,
             cmd_result.exit_code,
         ))
@@ -301,11 +301,11 @@ class FlextInfraDependencyDetectionAnalysis:
         venv_bin: Path,
         *,
         timeout: int = c.Infra.TIMEOUT_DEFAULT,
-    ) -> p.Result[t.Infra.Pair[t.StrSequence, t.StrSequence]]:
+    ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
         """Run mypy to detect missing type stubs and hinted packages."""
         mypy_bin = venv_bin / c.Infra.MYPY
         if not mypy_bin.exists():
-            return r[t.Infra.Pair[t.StrSequence, t.StrSequence]].ok(([], []))
+            return r[t.Pair[t.StrSequence, t.StrSequence]].ok(([], []))
         cmd: t.StrSequence = [
             str(mypy_bin),
             c.Infra.DEFAULT_SRC_DIR,
@@ -316,7 +316,7 @@ class FlextInfraDependencyDetectionAnalysis:
         env = {"VIRTUAL_ENV": str(venv_bin.parent)}
         result = self._run_raw(cmd, cwd=project_path, timeout=timeout, env=env)
         if result.failure:
-            return r[t.Infra.Pair[t.StrSequence, t.StrSequence]].fail(
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
                 result.error or "mypy execution failed",
             )
         cmd_result: m.Cli.CommandOutput = result.value
@@ -331,7 +331,7 @@ class FlextInfraDependencyDetectionAnalysis:
             for match in u.Infra.MYPY_STUB_RE.finditer(output)
             if match.group(1).strip()
         }
-        return r[t.Infra.Pair[t.StrSequence, t.StrSequence]].ok((
+        return r[t.Pair[t.StrSequence, t.StrSequence]].ok((
             sorted(hinted),
             sorted(missing),
         ))
@@ -340,11 +340,11 @@ class FlextInfraDependencyDetectionAnalysis:
         self,
         workspace_root: Path,
         venv_bin: Path,
-    ) -> p.Result[t.Infra.Pair[t.StrSequence, int]]:
+    ) -> p.Result[t.Pair[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
         if not pip.exists():
-            return r[t.Infra.Pair[t.StrSequence, int]].ok(([], 0))
+            return r[t.Pair[t.StrSequence, int]].ok(([], 0))
         env = {"VIRTUAL_ENV": str(venv_bin.parent)}
         result = self._run_raw(
             [str(pip), c.Infra.VERB_CHECK],
@@ -353,13 +353,13 @@ class FlextInfraDependencyDetectionAnalysis:
             env=env,
         )
         if result.failure:
-            return r[t.Infra.Pair[t.StrSequence, int]].fail(
+            return r[t.Pair[t.StrSequence, int]].fail(
                 result.error or "pip check failed"
             )
         cmd_result: m.Cli.CommandOutput = result.value
         output = cmd_result.stdout
         lines = output.strip().splitlines() if output else []
-        return r[t.Infra.Pair[t.StrSequence, int]].ok((lines, cmd_result.exit_code))
+        return r[t.Pair[t.StrSequence, int]].ok((lines, cmd_result.exit_code))
 
 
 __all__: list[str] = [

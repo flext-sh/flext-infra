@@ -211,7 +211,7 @@ class FlextInfraUtilitiesDiscovery:
         if init_path is None:
             return frozenset()
         try:
-            module = ast.parse(init_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+            module = ast.parse(init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         except (OSError, SyntaxError):
             return frozenset()
         for node in module.body:
@@ -365,7 +365,7 @@ class FlextInfraUtilitiesDiscovery:
             return cached
         try:
             syntax_tree = ast.parse(
-                constants_file.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
             )
         except (OSError, SyntaxError):
             syntax_tree = ast.Module(body=[], type_ignores=[])

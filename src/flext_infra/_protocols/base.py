@@ -224,7 +224,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_path: Path,
             venv_bin: Path,
-        ) -> p.Result[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+        ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
             """Run deptry on a project and return issues."""
             ...
 
@@ -266,7 +266,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             workspace_root: Path,
             venv_bin: Path,
-        ) -> p.Result[t.Infra.Pair[t.StrSequence, int]]:
+        ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
 

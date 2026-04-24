@@ -6,7 +6,7 @@ import sys
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import FlextCli, FlextCliSettings, u
+from flext_cli import FlextCli, FlextCliSettings
 from flext_core import FlextSettings
 
 from flext_infra import (
@@ -47,9 +47,6 @@ from flext_infra import (
     FlextInfraStubSupplyChain,
     FlextInfraSyncService,
     FlextInfraTextPatternScanner,
-    FlextInfraUtilitiesDependencyPathSync,
-    FlextInfraUtilitiesGithub,
-    FlextInfraUtilitiesGithubPr,
     FlextInfraValidateFreshImport,
     FlextInfraValidateImportCycles,
     FlextInfraValidateLazyMapFreshness,
@@ -60,6 +57,7 @@ from flext_infra import (
     c,
     m,
     t,
+    u,
 )
 
 
@@ -275,9 +273,7 @@ class FlextInfraCli:
                 name="path-sync",
                 help_text="Rewrite internal FLEXT dependency paths",
                 model_cls=m.Infra.PathSyncCommand,
-                handler=lambda params: (
-                    FlextInfraUtilitiesDependencyPathSync.execute_command(params)
-                ),
+                handler=lambda params: u.Infra.execute_command(params),
             ),
         ),
         c.Infra.CLI_GROUP_DOCS: (
@@ -322,25 +318,25 @@ class FlextInfraCli:
                 name="workflows",
                 help_text="Sync GitHub workflow files across workspace",
                 model_cls=m.Infra.GithubWorkflowSyncRequest,
-                handler=FlextInfraUtilitiesGithub.sync_github_workflows,
+                handler=u.Infra.sync_github_workflows,
             ),
             _route(
                 name=c.Infra.LINT_SECTION,
                 help_text="Lint GitHub workflow files",
                 model_cls=m.Infra.GithubWorkflowLintRequest,
-                handler=FlextInfraUtilitiesGithub.lint_github_workflows,
+                handler=u.Infra.lint_github_workflows,
             ),
             _route(
                 name=c.Infra.PR,
                 help_text="Manage pull requests for a single project",
                 model_cls=m.Infra.GithubPullRequestRequest,
-                handler=FlextInfraUtilitiesGithubPr.run_github_pull_request,
+                handler=u.Infra.run_github_pull_request,
             ),
             _route(
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
                 model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=FlextInfraUtilitiesGithubPr.run_github_workspace_pull_requests,
+                handler=u.Infra.run_github_workspace_pull_requests,
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (

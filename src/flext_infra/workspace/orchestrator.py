@@ -99,6 +99,18 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
                 return r[bool].fail(f"{project.name}: {sync_error}")
         return r[bool].ok(True)
 
+    @staticmethod
+    def _failure_summary(
+        verb: str,
+        failures: Sequence[t.Triple[str, int, Path]],
+    ) -> None:
+        """Print compact failure summary for workspace orchestration."""
+        if not failures:
+            return
+        u.Cli.error(f"{verb} failures: {len(failures)} project(s)")
+        for project, error_count, log_path in failures:
+            u.Cli.error(f"- {project}: {error_count} errors ({log_path})")
+
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the workspace-orchestrate CLI flow."""
@@ -141,7 +153,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         idx: int,
         *,
         make_args: t.StrSequence,
-    ) -> t.Infra.Pair[m.Cli.CommandOutput, bool]:
+    ) -> t.Pair[m.Cli.CommandOutput, bool]:
         """Run one project and return (output, succeeded)."""
         output_result = self._run_project(project, verb, idx, make_args=list(make_args))
         if output_result.failure:
@@ -161,9 +173,9 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
     def _collect_failures(
         projects: t.StrSequence,
         results: Sequence[m.Cli.CommandOutput],
-    ) -> Sequence[t.Infra.Triple[str, int, Path]]:
+    ) -> Sequence[t.Triple[str, int, Path]]:
         """Collect failure details for projects with non-zero exit codes."""
-        failures: MutableSequence[t.Infra.Triple[str, int, Path]] = []
+        failures: MutableSequence[t.Triple[str, int, Path]] = []
         for proj_name, cmd_result in zip(projects, results, strict=False):
             if cmd_result.exit_code != 0:
                 log_file = (
@@ -247,7 +259,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
             )
             if failed > 0:
                 failures = self._collect_failures(projects, results)
-                u.Infra.failure_summary(verb, failures)
+                self._failure_summary(verb, failures)
             return r[Sequence[m.Cli.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             return r[Sequence[m.Cli.CommandOutput]].fail(

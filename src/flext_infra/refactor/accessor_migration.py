@@ -243,7 +243,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         new_lint_error_totals: dict[str, int] = {}
         with u.Infra.open_project(self.workspace_root) as rope_project:
             for py_file in iter_result.value:
-                source = py_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 updated_source, automated_changes = self._apply_automated_rewrites(
                     rope_project,
                     py_file,

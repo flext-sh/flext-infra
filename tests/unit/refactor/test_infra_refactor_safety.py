@@ -106,7 +106,7 @@ def test_refactor_project_integrates_safety_manager(tmp_path: Path) -> None:
     (src_dir / "sample.py").write_text("import os\n", encoding="utf-8")
     engine = FlextInfraRefactorEngine(config_path=config_path)
     stub = EngineSafetyStub()
-    engine.safety_manager = stub
+    engine.orchestrator.safety_manager = stub
     loaded = engine.load_rules()
     assert loaded.success
     results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)

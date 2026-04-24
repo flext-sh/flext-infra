@@ -191,7 +191,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         *,
         policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy] | None = None,
         policy_path: Path | None = None,
-    ) -> t.Infra.Pair[bool, t.StrMapping | None]:
+    ) -> t.Pair[bool, t.StrMapping | None]:
         """Validate one class/helper nesting entry against the family policy."""
         symbol = entry.get(c.Infra.RK_LOOSE_NAME, "") or entry.get(
             "helper_name",

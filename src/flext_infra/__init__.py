@@ -73,7 +73,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
-    from flext_infra._utilities.compat import FlextInfraUtilitiesCompatibility
     from flext_infra._utilities.deps_path_sync import (
         FlextInfraUtilitiesDependencyPathSync,
     )
@@ -121,6 +120,9 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
     from flext_infra._utilities.rope_module_patch import (
         FlextInfraUtilitiesRopeModulePatch,
+    )
+    from flext_infra._utilities.rope_mro_transform import (
+        FlextInfraUtilitiesRopeMroTransform,
     )
     from flext_infra._utilities.rope_pep695_patch import (
         FlextInfraUtilitiesRopePep695Patch,
@@ -459,7 +461,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.base": ("FlextInfraUtilitiesBase",),
             "._utilities.census": ("FlextInfraUtilitiesRefactorCensus",),
             "._utilities.codegen": ("FlextInfraUtilitiesCodegen",),
-            "._utilities.compat": ("FlextInfraUtilitiesCompatibility",),
             "._utilities.deps_path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
             "._utilities.deps_repos": ("FlextInfraInternalSyncRepoMixin",),
             "._utilities.discovery": ("FlextInfraUtilitiesDiscovery",),
@@ -504,6 +505,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_imports": ("FlextInfraUtilitiesRopeImports",),
             "._utilities.rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
             "._utilities.rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
+            "._utilities.rope_mro_transform": ("FlextInfraUtilitiesRopeMroTransform",),
             "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
@@ -935,7 +937,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenNamespace",
-    "FlextInfraUtilitiesCompatibility",
     "FlextInfraUtilitiesDependencyPathSync",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -971,6 +972,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
     "FlextInfraUtilitiesRopeModulePatch",
+    "FlextInfraUtilitiesRopeMroTransform",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,13 @@ import pytest
 import flext_infra
 from flext_infra import FlextInfraRefactorCensus, main as infra_main
 from tests import t, u
+
+
+def _parse_source_ast(source: str) -> ast.Module | None:
+    try:
+        return ast.parse(source)
+    except SyntaxError:
+        return None
 
 
 def _mapping(value: t.JsonValue | t.JsonMapping) -> t.JsonMapping:
@@ -405,8 +413,8 @@ class TestFlextInfraRefactorMainCli:
         test_source = test_file.read_text(encoding="utf-8")
         assert "only_for_tests" not in service_source
         assert "only_for_tests" not in test_source
-        assert u.Infra.parse_source_ast(service_source) is not None
-        assert u.Infra.parse_source_ast(test_source) is not None
+        assert _parse_source_ast(service_source) is not None
+        assert _parse_source_ast(test_source) is not None
 
         report_result = FlextInfraRefactorCensus(
             workspace=workspace,
@@ -450,9 +458,9 @@ class TestFlextInfraRefactorMainCli:
         assert "only_for_tests" not in test_source
         assert "helper_used" in init_source
         assert "helper_used" in helpers_source
-        assert u.Infra.parse_source_ast(init_source) is not None
-        assert u.Infra.parse_source_ast(helpers_source) is not None
-        assert u.Infra.parse_source_ast(test_source) is not None
+        assert _parse_source_ast(init_source) is not None
+        assert _parse_source_ast(helpers_source) is not None
+        assert _parse_source_ast(test_source) is not None
 
         report_result = FlextInfraRefactorCensus(
             workspace=workspace,
@@ -540,7 +548,7 @@ class TestFlextInfraRefactorMainCli:
         assert "only_for_tests" not in service_source
         assert "@log_entry" not in service_source
         assert "def log_entry" in service_source
-        assert u.Infra.parse_source_ast(service_source) is not None
+        assert _parse_source_ast(service_source) is not None
 
     def test_refactor_census_strip_module_all_entry_multi_line(self) -> None:
         source = (
@@ -622,7 +630,7 @@ class TestFlextInfraRefactorMainCli:
         service_source = service_file.read_text(encoding="utf-8")
         assert "def only_for_cleanup" not in service_source
         assert "from collections.abc import Sequence" not in service_source
-        assert u.Infra.parse_source_ast(service_source) is not None
+        assert _parse_source_ast(service_source) is not None
 
         report_result = FlextInfraRefactorCensus(
             workspace=workspace,

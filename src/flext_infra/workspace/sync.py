@@ -64,7 +64,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
 
         lock_file = resolved / ".flext-sync.lock"
         try:
-            with lock_file.open("w", encoding=c.Infra.ENCODING_DEFAULT) as handle:
+            with lock_file.open("w", encoding=c.Cli.ENCODING_DEFAULT) as handle:
                 try:
                     fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     return self._sync_locked_content(
@@ -256,7 +256,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             existing_lines: t.StrSequence = []
             if gitignore.exists():
                 existing_lines = gitignore.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 ).splitlines()
             existing_patterns = {
                 line.strip() for line in existing_lines if line.strip()
@@ -264,7 +264,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             missing = [p for p in required if p not in existing_patterns]
             if not missing:
                 return r[bool].ok(False)
-            with gitignore.open("a", encoding=c.Infra.ENCODING_DEFAULT) as handle:
+            with gitignore.open("a", encoding=c.Cli.ENCODING_DEFAULT) as handle:
                 _ = handle.write(
                     "\n# --- workspace-sync: required ignores (auto-managed) ---\n",
                 )

@@ -212,20 +212,13 @@ class FlextInfraUtilitiesIteration:
         optional = u.Cli.json_as_mapping(
             project.get(c.Infra.OPTIONAL_DEPENDENCIES, None),
         )
-        groups: dict[str, t.StrSequence] = {}
-        for group in (
-            c.Infra.DEV,
-            c.Infra.DIR_DOCS,
-            c.Infra.SECURITY,
-            c.Infra.TEST,
-            c.Infra.DIR_TYPINGS,
-        ):
-            values = [
+        groups = {
+            str(group): tuple(
                 str(item) for item in u.Cli.json_as_sequence(optional.get(group, None))
-            ]
-            if values:
-                groups[group] = tuple(values)
-        return groups
+            )
+            for group in c.Infra.CANONICAL_DEV_DEPENDENCY_GROUPS
+        }
+        return {group: values for group, values in groups.items() if values}
 
     @classmethod
     def project_dev_groups(
@@ -257,11 +250,9 @@ class FlextInfraUtilitiesIteration:
         """Merge all canonical dev dependency groups from one normalized payload."""
         groups = cls.project_dev_groups_from_payload(payload)
         return cls.dedupe_specs([
-            *groups.get(c.Infra.DEV, ()),
-            *groups.get(c.Infra.DIR_DOCS, ()),
-            *groups.get(c.Infra.SECURITY, ()),
-            *groups.get(c.Infra.TEST, ()),
-            *groups.get(c.Infra.DIR_TYPINGS, ()),
+            requirement
+            for group in c.Infra.CANONICAL_DEV_DEPENDENCY_GROUPS
+            for requirement in groups.get(str(group), ())
         ])
 
     @classmethod
@@ -298,7 +289,7 @@ class FlextInfraUtilitiesIteration:
             return {}
         try:
             raw_payload = tomllib.loads(
-                path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
             )
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_payload)
         except (OSError, tomllib.TOMLDecodeError, c.ValidationError):
@@ -334,7 +325,7 @@ class FlextInfraUtilitiesIteration:
             return ()
         try:
             payload = tomllib.loads(
-                path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
             )
         except (OSError, tomllib.TOMLDecodeError):
             return ()
@@ -608,7 +599,7 @@ class FlextInfraUtilitiesIteration:
         try:
             payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 tomllib.loads(
-                    pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                    pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
                 ),
             )
         except (OSError, tomllib.TOMLDecodeError, c.ValidationError):
@@ -875,7 +866,7 @@ class FlextInfraUtilitiesIteration:
         *,
         exclude_packages: frozenset[str] | None = None,
         include_tests: bool = True,
-    ) -> p.Result[Sequence[t.Infra.Pair[Path, Path]]]:
+    ) -> p.Result[Sequence[t.Pair[Path, Path]]]:
         """Discover all Python modules across workspace projects.
 
         Returns tuples of (project_root, file_path) for every Python file
@@ -896,7 +887,7 @@ class FlextInfraUtilitiesIteration:
                 workspace_root=workspace_root,
             )
             effective_exclude = exclude_packages or frozenset()
-            result: MutableSequence[t.Infra.Pair[Path, Path]] = []
+            result: MutableSequence[t.Pair[Path, Path]] = []
             for project_root in roots:
                 if project_root.name in effective_exclude:
                     continue
@@ -910,9 +901,9 @@ class FlextInfraUtilitiesIteration:
                 result.extend(
                     (project_root, file_path) for file_path in files_result.value
                 )
-            return r[Sequence[t.Infra.Pair[Path, Path]]].ok(result)
+            return r[Sequence[t.Pair[Path, Path]]].ok(result)
         except OSError as exc:
-            return r[Sequence[t.Infra.Pair[Path, Path]]].fail(
+            return r[Sequence[t.Pair[Path, Path]]].fail(
                 f"workspace python module iteration failed: {exc}",
             )
 

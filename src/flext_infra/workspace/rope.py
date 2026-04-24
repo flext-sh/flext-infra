@@ -10,16 +10,11 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Annotated, ClassVar, Final, Self, override
 
 from flext_infra import c, m, r, s, t, u
-from flext_infra._utilities.rope_pep695_patch import (
-    FlextInfraUtilitiesRopePep695Patch as _FlextRopePep695Patch,
-)
 
 _IDENTIFIER_PATTERN: Final[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
 
 if TYPE_CHECKING:
     from flext_infra import p
-
-_FlextRopePep695Patch.apply()
 
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
@@ -239,7 +234,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         for entry in self.workspace_index.modules_by_path.values():
             py_file = entry.file_path
             try:
-                source_text = py_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                source_text = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except OSError:
                 continue
             surface = self._reference_surface_for(py_file)
@@ -347,7 +342,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         init_path = resolved_dir / c.Infra.INIT_PY
         current_pkg = package_entry.package_name if package_entry is not None else ""
         generated_init = init_path.is_file() and init_path.read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         ).startswith(c.Infra.AUTOGEN_HEADER)
         context = m.Infra.LazyInitPackageContext(
             pkg_dir=resolved_dir,

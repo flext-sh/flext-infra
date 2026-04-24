@@ -26,7 +26,7 @@ class FlextInfraConstantsCodegen:
 
     EXCLUDED_PROJECTS: Final[frozenset[str]] = frozenset({"flexcore"})
     "Projects excluded from all codegen operations (Go/Python hybrid)."
-    SRC_MODULES: Final[t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]]] = (
+    SRC_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),
         ("protocols.py", "Protocols", "FlextProtocols", "Protocol definitions"),
@@ -34,7 +34,7 @@ class FlextInfraConstantsCodegen:
         ("utilities.py", "Utilities", "FlextUtilities", "Utility functions"),
     )
     "Base module definitions for src/: (filename, class_suffix, base_class, docstring)."
-    TESTS_MODULES: Final[t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]]] = (
+    TESTS_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextTestsConstants", "Test constants"),
         ("typings.py", "Types", "TestsFlextTypes", "Test type aliases"),
         ("protocols.py", "Protocols", "TestsFlextProtocols", "Test protocols"),

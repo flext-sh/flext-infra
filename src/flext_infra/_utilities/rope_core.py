@@ -22,6 +22,9 @@ from rope.base.pyobjectsdef import PyFunction, PyModule
 from rope.base.resources import File
 
 from flext_infra import FlextInfraUtilitiesIteration, c, t
+from flext_infra._utilities.rope_pep695_patch import (
+    FlextInfraUtilitiesRopePep695Patch,
+)
 
 
 class FlextInfraUtilitiesRopeCore:
@@ -49,6 +52,7 @@ class FlextInfraUtilitiesRopeCore:
     ) -> Project:
         """Create a rope Project over workspace_root with no disk artifacts."""
         _ = (project_prefix, src_dir)
+        FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
         source_folders = sorted({
             str(scan_path.relative_to(resolved_root))

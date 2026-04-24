@@ -169,7 +169,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 FlextInfraRefactorLazyImportFixer(),
                 source,
             )
-        runtime_aliases = set(c.Infra.RUNTIME_ALIAS_NAMES)
+        runtime_aliases = set(c.RUNTIME_ALIAS_NAMES)
         blocked = set(u.Infra.collect_blocked_aliases(source, runtime_aliases))
         blocked.update(u.Infra.collect_shadowed_aliases(source, runtime_aliases))
         forbidden = settings.get(c.Infra.RK_FORBIDDEN_IMPORTS)

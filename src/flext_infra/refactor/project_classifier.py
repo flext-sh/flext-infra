@@ -98,7 +98,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_mapping: Mapping[str, t.Infra.InfraValue],
     ) -> str:
-        raw_name = raw_mapping.get(c.Infra.NAME)
+        raw_name = raw_mapping.get(c.NAME)
         if isinstance(raw_name, str):
             return self._normalize_dependency_name(raw_name)
         return ""
@@ -211,7 +211,7 @@ class FlextInfraProjectClassifier:
 
     def _discover_facade_inheritance(
         self,
-    ) -> t.Infra.Pair[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]:
+    ) -> t.Pair[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]:
         family_bases: Mapping[str, t.Infra.StrSet] = {
             family: set() for family in c.Infra.FAMILY_SUFFIXES
         }
@@ -232,9 +232,9 @@ class FlextInfraProjectClassifier:
         self,
         file_path: Path,
         suffix: str,
-    ) -> t.Infra.Pair[t.Infra.StrSet, t.Infra.StrSet]:
+    ) -> t.Pair[t.Infra.StrSet, t.Infra.StrSet]:
         try:
-            source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except (OSError, UnicodeDecodeError):
             return (set(), set())
         base_names: t.Infra.StrSet = set()

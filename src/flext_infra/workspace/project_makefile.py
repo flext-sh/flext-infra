@@ -68,7 +68,7 @@ class FlextInfraProjectMakefileUpdater:
 
         if makefile_path.exists():
             try:
-                existing = makefile_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                existing = makefile_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
 

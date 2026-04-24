@@ -61,7 +61,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         if not pyproject_path.exists():
             return {}
         try:
-            raw = pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            raw = pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError:
             return {}
         payload = u.Cli.toml_mapping_from_text(raw)
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             f'__all__: list[str] = ["{class_name}", "{family}"]\n'
         )
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        _ = file_path.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
+        _ = file_path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
 
     @staticmethod
     def ensure_missing_facades(
@@ -193,7 +193,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
-        lines = target_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
+        lines = target_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
         base_class = FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(
             family=family,
             base_chains=base_chains,
@@ -269,7 +269,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         if mutated:
             _ = target_path.write_text(
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
 
 

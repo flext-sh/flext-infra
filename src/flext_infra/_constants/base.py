@@ -16,6 +16,17 @@ from flext_infra import (
 )
 
 
+@unique
+class FlextInfraDependencyGroup(StrEnum):
+    """Canonical pyproject dependency-group names."""
+
+    DEV = "dev"
+    DOCS = "docs"
+    SECURITY = "security"
+    TEST = "test"
+    TYPINGS = "typings"
+
+
 class FlextInfraConstantsBase(
     FlextInfraConstantsSharedInfra,
     FlextInfraConstantsMake,
@@ -127,20 +138,36 @@ class FlextInfraConstantsBase(
     "Deptry JSON code field key."
     MODULE: Final[str] = "module"
     "Deptry JSON module field key."
-    DEV: Final[str] = "dev"
+    DEV: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.DEV
     "Development dependency group name."
-    DOCS: Final[str] = "docs"
+    DOCS: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.DOCS
     "Documentation dependency group name."
-    SECURITY: Final[str] = "security"
+    SECURITY: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.SECURITY
     "Security dependency group name."
-    TEST: Final[str] = "test"
+    TEST: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.TEST
     "Test dependency group name."
+    TYPINGS: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.TYPINGS
+    "Typing stubs dependency group name."
     TYPING_LIBRARIES: Final[str] = "typing_libraries"
     "Project limits typing_libraries key."
     MODULE_TO_PACKAGE: Final[str] = "module_to_package"
     "Typing libraries module_to_package mapping key."
     PYTHON: Final[str] = "python"
     "Python settings subsection key (in limits)."
+
+    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[tuple[FlextInfraDependencyGroup, ...]] = (
+        DEV,
+        DOCS,
+        SECURITY,
+        TEST,
+        TYPINGS,
+    )
+    LEGACY_DEV_DEPENDENCY_GROUPS: Final[tuple[FlextInfraDependencyGroup, ...]] = (
+        DOCS,
+        SECURITY,
+        TEST,
+        TYPINGS,
+    )
 
     # ANSI color codes and terminal symbols (SSOT for output styling).
 

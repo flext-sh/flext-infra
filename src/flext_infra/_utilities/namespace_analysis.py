@@ -136,7 +136,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         line_buffer = source.splitlines(keepends=True)
         replacements_by_line: Mapping[
             int,
-            MutableSequence[t.Infra.Triple[int, int, str]],
+            MutableSequence[t.Triple[int, int, str]],
         ] = defaultdict(list)
         token_generator = tokenize.generate_tokens(StringIO(source).readline)
         for tok in token_generator:
@@ -196,7 +196,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             f"Flext{suffix}" for suffix in c.Infra.FAMILY_SUFFIXES.values()
         )
         for file_path, grouped in violations_by_file.items():
-            source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             lines = source.splitlines()
             missing_by_facade: Mapping[str, t.Infra.StrSet] = defaultdict(set)
             for violation in grouped:
@@ -234,7 +234,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             )
             _ = file_path.write_text(
                 "\n".join(rewritten_lines).rstrip() + "\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(file_path)])
             _ = u.Cli.run_checked(["ruff", "format", str(file_path)])
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             if file_path.name == c.Infra.PY_TYPED:
                 continue
             try:
-                source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except (OSError, UnicodeDecodeError):
                 continue
             if c.Infra.FUTURE_ANNOTATIONS in source:
@@ -329,7 +329,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             )
             _ = file_path.write_text(
                 "\n".join(rewritten).rstrip() + "\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
 
 

@@ -58,7 +58,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 ):
                     continue
                 try:
-                    source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                    source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 except OSError:
                     continue
                 if FlextInfraUtilitiesRopeSource.looks_like_facade_file(
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         rope_project,
                         resource,
                         package_name=project_package,
-                        aliases=tuple(sorted(c.Infra.RUNTIME_ALIAS_NAMES)),
+                        aliases=tuple(sorted(c.RUNTIME_ALIAS_NAMES)),
                         apply=True,
                     )
                 )
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     continue
                 target_class = class_candidates[0]
                 lines = file_path.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 ).splitlines()
                 kept = [
                     line
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     "\n".join(kept).rstrip() + f"\n\n{alias_name} = {target_class}\n"
                 )
                 original_source = file_path.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
                 if rewritten == original_source:
                     continue
@@ -161,9 +161,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         grouped: Mapping[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
             grouped[Path(violation.file)].add(violation.name)
-        protocol_moves: MutableSequence[
-            t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]]
-        ] = []
+        protocol_moves: MutableSequence[t.Triple[Path, Path, t.VariadicTuple[str]]] = []
         for source_file, protocol_names in grouped.items():
             move = FlextInfraUtilitiesRefactorNamespaceMoves._move_named_blocks(
                 project_root=project_root,
@@ -221,7 +219,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         file_path: Path,
         alias_map: t.StrMapping,
     ) -> None:
-        source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         kept_source = "\n".join(
             line
             for line in source.splitlines()
@@ -251,11 +249,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         target_filename: str,
         names: t.Infra.StrSet,
         header_prefix: str,
-    ) -> t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]] | None:
-        source = source_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+    ) -> t.Triple[Path, Path, t.VariadicTuple[str]] | None:
+        source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         blocks: MutableSequence[str] = []
-        ranges: MutableSequence[t.Infra.IntPair] = []
+        ranges: MutableSequence[t.IntPair] = []
         moved: MutableSequence[str] = []
         for name in sorted(names):
             found = FlextInfraUtilitiesRefactorNamespaceCommon.find_top_level_block(
@@ -282,7 +280,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             )
         )
         target_source = (
-            target_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            target_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             if target_file.exists()
             else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
@@ -361,7 +359,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_file: Path,
         alias_names: t.Infra.StrSet,
     ) -> None:
-        source = source_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         moved_lines: MutableSequence[str] = []
         moved_line_numbers: MutableSequence[int] = []
@@ -402,7 +400,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             filename=c.Infra.TYPINGS_PY,
         )
         target_source = (
-            target_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            target_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             if target_file.exists()
             else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
@@ -454,7 +452,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         moved_aliases = {
             node.id
             for node in ast.walk(ast.parse(moved_source))
-            if isinstance(node, ast.Name) and node.id in c.Infra.RUNTIME_ALIAS_NAMES
+            if isinstance(node, ast.Name) and node.id in c.RUNTIME_ALIAS_NAMES
         }
         if not moved_aliases:
             return []
@@ -516,12 +514,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         *,
         project_root: Path,
         py_files: Sequence[Path],
-        moves: Sequence[t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]]],
+        moves: Sequence[t.Triple[Path, Path, t.VariadicTuple[str]]],
     ) -> None:
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
-            mappings: MutableSequence[
-                t.Infra.Triple[str, str, t.Infra.VariadicTuple[str]]
-            ] = []
+            mappings: MutableSequence[t.Triple[str, str, t.VariadicTuple[str]]] = []
             for source, target, names in moves:
                 source_resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, source
@@ -553,7 +549,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 if resource is None:
                     continue
                 original_source = py_file.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
                 changed = False
                 for source_module, target_module, names in mappings:
@@ -580,7 +576,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     if not backup_path.exists():
                         backup_path.write_text(
                             original_source,
-                            encoding=c.Infra.ENCODING_DEFAULT,
+                            encoding=c.Cli.ENCODING_DEFAULT,
                         )
 
 

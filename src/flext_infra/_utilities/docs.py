@@ -224,7 +224,7 @@ class FlextInfraUtilitiesDocs:
             u.write_file(
                 path,
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
             return r[bool].ok(True)
         except OSError as exc:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, t, u
+from tests import t, u
 
 
 class TestFlextInfraCodegenLazyInit:
@@ -52,8 +52,8 @@ class TestFlextInfraCodegenLazyInit:
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
 
@@ -61,7 +61,7 @@ class TestFlextInfraCodegenLazyInit:
 
         assert result == 0
         init_content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS in init_content
+        assert "FlextTestsModels" in init_content
         assert ".models" in init_content
 
     def test_generate_bottom_up(self, tmp_path: Path) -> None:
@@ -73,14 +73,14 @@ class TestFlextInfraCodegenLazyInit:
         sub_dir.mkdir(parents=True)
         u.Infra.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             sub_dir / "service.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_ALIAS,
+            class_name="FlextTestsService",
+            alias="s",
             docstring="Service.",
         )
 
@@ -89,16 +89,10 @@ class TestFlextInfraCodegenLazyInit:
         assert result == 0
         child_init = sub_dir / "__init__.py"
         assert child_init.exists()
-        assert (
-            c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_CLASS
-            in child_init.read_text(encoding="utf-8")
-        )
+        assert "FlextTestsService" in child_init.read_text(encoding="utf-8")
         parent_content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS in parent_content
-        assert (
-            c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_CLASS
-            in parent_content
-        )
+        assert "FlextTestsModels" in parent_content
+        assert "FlextTestsService" in parent_content
         assert "merge_lazy_imports" in parent_content
 
     def test_generate_rewrites_to_canonical_docstring(self, tmp_path: Path) -> None:
@@ -112,8 +106,8 @@ class TestFlextInfraCodegenLazyInit:
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
 
@@ -122,7 +116,7 @@ class TestFlextInfraCodegenLazyInit:
         assert result == 0
         content = (package_root / "__init__.py").read_text(encoding="utf-8")
         assert "My custom package docstring" not in content
-        assert '"""Test Pkg package."""' in content
+        assert '"""Flext Test Project package."""' in content
 
     def test_fails_when_public_exports_collide(self, tmp_path: Path) -> None:
         """Conflicting exports must fail instead of generating a broken __init__.py."""

@@ -70,8 +70,8 @@ class FlextInfraTransformerTier0ImportFixer:
             self,
             *,
             file_path: Path,
-            tier0_modules: t.Infra.VariadicTuple[str],
-            core_aliases: t.Infra.VariadicTuple[str],
+            tier0_modules: t.VariadicTuple[str],
+            core_aliases: t.VariadicTuple[str],
         ) -> None:
             """Initialize analyzer state for Tier 0 import scanning."""
             self._file_path = file_path
@@ -97,11 +97,11 @@ class FlextInfraTransformerTier0ImportFixer:
                     package_name="",
                     file_path=self._file_path,
                 )
-            source = self._file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            source = self._file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
             alias_map: dict[str, str] = {
-                alias_name: alias_name for alias_name in c.Infra.RUNTIME_ALIAS_NAMES
+                alias_name: alias_name for alias_name in c.RUNTIME_ALIAS_NAMES
             }
             if u.Infra.matches_module_toplevel(self._file_path):
                 return FlextInfraTransformerTier0ImportFixer.Analysis(

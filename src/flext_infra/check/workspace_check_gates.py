@@ -35,7 +35,7 @@ from flext_infra import (
 class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
-    GATE_CLASSES: t.Infra.VariadicTuple[type[FlextInfraGate]] = (
+    GATE_CLASSES: t.VariadicTuple[type[FlextInfraGate]] = (
         FlextInfraRuffLintGate,
         FlextInfraRuffFormatGate,
         FlextInfraPyreflyGate,

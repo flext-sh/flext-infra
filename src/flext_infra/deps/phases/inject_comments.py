@@ -37,7 +37,7 @@ class FlextInfraInjectCommentsPhase:
     def _strip_managed_lines(
         cls,
         lines: t.StrSequence,
-    ) -> t.Infra.Pair[t.StrSequence, t.StrSequence]:
+    ) -> t.Pair[t.StrSequence, t.StrSequence]:
         changes: MutableSequence[str] = []
         managed_lines = cls._managed_marker_lines()
         cleaned: MutableSequence[str] = []
@@ -91,7 +91,7 @@ class FlextInfraInjectCommentsPhase:
             previous_blank = is_blank
         return normalized
 
-    def apply(self, rendered: str) -> t.Infra.Pair[str, t.StrSequence]:
+    def apply(self, rendered: str) -> t.Pair[str, t.StrSequence]:
         """Inject managed banner/markers and return updated TOML plus change messages."""
         changes: MutableSequence[str] = []
         lines = rendered.splitlines()

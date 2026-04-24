@@ -156,7 +156,7 @@ class FlextInfraCodegenScaffolder(s[str]):
         *,
         target_dir: Path,
         prefix: str,
-        modules: t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]],
+        modules: t.VariadicTuple[t.Quad[str, str, str, str]],
         test_prefix: str,
         inherit_project_facade: bool,
         dry_run: bool,
@@ -182,7 +182,7 @@ class FlextInfraCodegenScaffolder(s[str]):
             if dry_run:
                 files_created.append(str(filepath))
                 continue
-            u.write_file(filepath, content, encoding=c.Infra.ENCODING_DEFAULT)
+            u.write_file(filepath, content, encoding=c.Cli.ENCODING_DEFAULT)
             u.Infra.run_ruff_fix(filepath)
             files_created.append(str(filepath))
 

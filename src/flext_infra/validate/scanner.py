@@ -55,7 +55,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         for file_path in files:
             try:
                 text: str = file_path.read_text(
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                     errors=c.Infra.IGNORE,
                 )
             except OSError:

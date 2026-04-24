@@ -65,7 +65,7 @@ class FlextInfraReleaseOrchestrator(
         phases = self.phase_names
         project_names = self.project_names
         needs_version = bool(
-            {c.Infra.VERSION, c.Infra.DIR_BUILD, c.Infra.VERB_PUBLISH} & set(phases),
+            {c.VERSION, c.Infra.DIR_BUILD, c.Infra.VERB_PUBLISH} & set(phases),
         )
         if needs_version:
             version_result = self._resolve_version(
@@ -232,7 +232,7 @@ class FlextInfraReleaseOrchestrator(
         active: set[str] = set(phases)
         phase_order: t.StrSequence = [
             c.Infra.VERB_VALIDATE,
-            c.Infra.VERSION,
+            c.VERSION,
             c.Infra.DIR_BUILD,
             c.Infra.VERB_PUBLISH,
         ]
@@ -299,9 +299,9 @@ class FlextInfraReleaseOrchestrator(
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[t.Infra.Pair[str, Path]]:
+    ) -> Sequence[t.Pair[str, Path]]:
         """Resolve unique build targets from project names."""
-        targets: MutableSequence[t.Infra.Pair[str, Path]] = [
+        targets: MutableSequence[t.Pair[str, Path]] = [
             (c.Infra.RK_ROOT, workspace_root),
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
@@ -309,7 +309,7 @@ class FlextInfraReleaseOrchestrator(
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: t.Infra.StrSet = set()
         seen_paths: set[Path] = set()
-        unique: MutableSequence[t.Infra.Pair[str, Path]] = []
+        unique: MutableSequence[t.Pair[str, Path]] = []
         for name, path in targets:
             resolved_path = path.resolve()
             if name in seen or resolved_path in seen_paths or not path.exists():
@@ -332,7 +332,7 @@ class FlextInfraReleaseOrchestrator(
             return r[bool].fail(bump_result.error or "bump failed")
         next_version = bump_result.value
         ctx = m.Infra.ReleasePhaseDispatchConfig(
-            phase=c.Infra.VERSION,
+            phase=c.VERSION,
             workspace_root=workspace_root,
             version=next_version,
             tag=f"v{next_version}",
@@ -400,7 +400,7 @@ class FlextInfraReleaseOrchestrator(
         phase = ctx.phase
         if phase == c.Infra.VERB_VALIDATE:
             return self.phase_validate(ctx.workspace_root, dry_run=ctx.dry_run)
-        if phase == c.Infra.VERSION:
+        if phase == c.VERSION:
             return self.phase_version(ctx)
         if phase == c.Infra.DIR_BUILD:
             return self.phase_build(ctx)

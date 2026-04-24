@@ -91,9 +91,9 @@ class FlextInfraModelsGithub:
             t.NonNegativeInt, m.Field(description="Successful executions")
         ]
         fail: Annotated[t.NonNegativeInt, m.Field(description="Failed executions")]
-        outcomes: t.Infra.VariadicTuple[
-            FlextInfraModelsGithub.GithubPullRequestOutcome
-        ] = m.Field(default_factory=tuple, description="Per-repository outcomes")
+        outcomes: t.VariadicTuple[FlextInfraModelsGithub.GithubPullRequestOutcome] = (
+            m.Field(default_factory=tuple, description="Per-repository outcomes")
+        )
 
         @property
         def message(self) -> str:
@@ -158,7 +158,7 @@ class FlextInfraModelsGithub:
             t.JsonMapping,
             m.Field(description="Count of operations by action"),
         ]
-        operations: t.Infra.VariadicTuple[
+        operations: t.VariadicTuple[
             FlextInfraModelsGithub.GithubWorkflowSyncOperation
         ] = m.Field(default_factory=tuple, description="Workflow operations")
 

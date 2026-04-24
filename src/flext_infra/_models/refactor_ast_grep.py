@@ -71,19 +71,19 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ""
         facade_alias: Annotated[str, m.Field(description="Facade alias letter")] = "c"
-        candidates: t.Infra.VariadicTuple[
-            FlextInfraModelsRefactorGrep.MROSymbolCandidate
-        ] = m.Field(default_factory=tuple, description="Module-level symbol candidates")
+        candidates: t.VariadicTuple[FlextInfraModelsRefactorGrep.MROSymbolCandidate] = (
+            m.Field(default_factory=tuple, description="Module-level symbol candidates")
+        )
 
     class MROFileMigration(m.ArbitraryTypesModel):
         """Migration summary for one transformed file."""
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
-        moved_symbols: t.Infra.VariadicTuple[str] = m.Field(
+        moved_symbols: t.VariadicTuple[str] = m.Field(
             default_factory=tuple, description="Symbols moved to facade class"
         )
-        created_classes: t.Infra.VariadicTuple[str] = m.Field(
+        created_classes: t.VariadicTuple[str] = m.Field(
             default_factory=tuple, description="Facade classes created during migration"
         )
 
@@ -107,7 +107,7 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Workspace root path"),
         ]
         target: Annotated[t.NonEmptyStr, m.Field(description="constants|typings|all")]
-        selected_projects: t.Infra.VariadicTuple[str] = m.Field(
+        selected_projects: t.VariadicTuple[str] = m.Field(
             default_factory=tuple,
             description="Project scope used for the run; empty means whole workspace",
         )
@@ -129,12 +129,12 @@ class FlextInfraModelsRefactorGrep:
                 description="Files containing movable declarations",
             ),
         ]
-        migrations: t.Infra.VariadicTuple[
-            FlextInfraModelsRefactorGrep.MROFileMigration
-        ] = m.Field(default_factory=tuple, description="File migration summaries")
-        rewrites: t.Infra.VariadicTuple[
-            FlextInfraModelsRefactorGrep.MRORewriteResult
-        ] = m.Field(default_factory=tuple, description="Reference rewrite summaries")
+        migrations: t.VariadicTuple[FlextInfraModelsRefactorGrep.MROFileMigration] = (
+            m.Field(default_factory=tuple, description="File migration summaries")
+        )
+        rewrites: t.VariadicTuple[FlextInfraModelsRefactorGrep.MRORewriteResult] = (
+            m.Field(default_factory=tuple, description="Reference rewrite summaries")
+        )
         remaining_violations: Annotated[
             int,
             m.Field(
@@ -166,10 +166,10 @@ class FlextInfraModelsRefactorGrep:
         total_duration_seconds: Annotated[
             float, m.Field(ge=0.0, description="Total run duration in seconds")
         ] = 0.0
-        warnings: t.Infra.VariadicTuple[str] = m.Field(
+        warnings: t.VariadicTuple[str] = m.Field(
             default_factory=tuple, description="Warnings"
         )
-        errors: t.Infra.VariadicTuple[str] = m.Field(
+        errors: t.VariadicTuple[str] = m.Field(
             default_factory=tuple, description="Errors"
         )
 
@@ -333,17 +333,17 @@ class FlextInfraModelsRefactorGrep:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
-        lint_tools: t.Infra.VariadicTuple[str] = m.Field(
+        lint_tools: t.VariadicTuple[str] = m.Field(
             default_factory=tuple,
             description="Selected lint tools used for preview rendering",
         )
-        automated_changes: t.Infra.VariadicTuple[
+        automated_changes: t.VariadicTuple[
             FlextInfraModelsRefactorGrep.AccessorMigrationChange
         ] = m.Field(
             default_factory=tuple,
             description="Automated rewrites captured for this file",
         )
-        warnings: t.Infra.VariadicTuple[
+        warnings: t.VariadicTuple[
             FlextInfraModelsRefactorGrep.AccessorMigrationChange
         ] = m.Field(
             default_factory=tuple,
@@ -392,7 +392,7 @@ class FlextInfraModelsRefactorGrep:
             t.NonNegativeInt,
             m.Field(description="Total manual follow-up warnings detected"),
         ]
-        lint_tools: t.Infra.VariadicTuple[str] = m.Field(
+        lint_tools: t.VariadicTuple[str] = m.Field(
             default_factory=tuple,
             description="Canonical lint tool list used by this run",
         )
@@ -408,11 +408,11 @@ class FlextInfraModelsRefactorGrep:
             t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
-        files: t.Infra.VariadicTuple[
-            FlextInfraModelsRefactorGrep.AccessorMigrationFile
-        ] = m.Field(
-            default_factory=tuple,
-            description="Preview entries included in this report",
+        files: t.VariadicTuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile] = (
+            m.Field(
+                default_factory=tuple,
+                description="Preview entries included in this report",
+            )
         )
 
 

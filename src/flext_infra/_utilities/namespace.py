@@ -550,7 +550,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         module_path = project_path / module
         if not module_path.is_file():
             return ()
-        return module_path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
+        return module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
 
     @classmethod
     def _build_violation_key(

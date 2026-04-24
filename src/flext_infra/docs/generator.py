@@ -8,7 +8,15 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra import (
+    FlextInfraProjectSelectionServiceBase,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraDocGenerator(FlextInfraProjectSelectionServiceBase[bool]):
@@ -61,7 +69,7 @@ class FlextInfraDocGenerator(FlextInfraProjectSelectionServiceBase[bool]):
         workspace_root: Path,
         projects: t.StrSequence | None = None,
     ) -> m.Infra.DocsPhaseReport:
-        """Generate one scope via ``u.Infra`` and log the result."""
+        """Generate one scope via the docs generator utilities and log the result."""
         report = u.Infra.docs_generate_scope(
             scope,
             apply=apply,

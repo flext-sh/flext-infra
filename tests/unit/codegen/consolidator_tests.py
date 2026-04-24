@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import u as infra_u
-from tests import c, m, p, t, u
+from tests import m, p, t, u
 
 
 def test_execute_uses_codegen_project_discovery_and_project_filter(
@@ -17,14 +17,14 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
 ) -> None:
     discover_called = 0
     project_a = u.Infra.Tests.create_project_info(
-        tmp_path / "nested" / c.Infra.Tests.Fixtures.Codegen.PROJECT_A_NAME,
-        name=c.Infra.Tests.Fixtures.Codegen.PROJECT_A_NAME,
-        stack=c.Infra.Tests.Fixtures.Codegen.PROJECT_STACK,
+        tmp_path / "nested" / "project-a",
+        name="project-a",
+        stack="python",
     )
     project_b = u.Infra.Tests.create_project_info(
-        tmp_path / "nested" / c.Infra.Tests.Fixtures.Codegen.PROJECT_B_NAME,
-        name=c.Infra.Tests.Fixtures.Codegen.PROJECT_B_NAME,
-        stack=c.Infra.Tests.Fixtures.Codegen.PROJECT_STACK,
+        tmp_path / "nested" / "project-b",
+        name="project-b",
+        stack="python",
     )
     for project in (project_a, project_b):
         package_dir = project.path / "src" / project.name.replace("-", "_")
@@ -56,7 +56,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
 
     result = u.Infra.Tests.consolidate_codegen(
         workspace_root=tmp_path,
-        project=c.Infra.Tests.Fixtures.Codegen.PROJECT_B_NAME,
+        project="project-b",
         dry_run=True,
     )
 
@@ -80,9 +80,9 @@ def test_execute_scans_real_package_layout(
     (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
     project = u.Infra.Tests.create_project_info(
         project_root,
-        name=c.Infra.Tests.Fixtures.Codegen.DEMO_PROJECT_NAME,
-        stack=c.Infra.Tests.Fixtures.Codegen.PROJECT_STACK,
-        package_name=c.Infra.Tests.Fixtures.Codegen.PACKAGE_NAME,
+        name="flext-demo",
+        stack="python",
+        package_name="test_package",
     )
 
     def _projects(

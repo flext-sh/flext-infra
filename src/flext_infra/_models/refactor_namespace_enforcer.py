@@ -93,10 +93,10 @@ class FlextInfraModelsNamespaceEnforcer:
 
     class CyclicImportViolation(m.ContractModel):
         cycle: Annotated[
-            t.Infra.VariadicTuple[str], m.Field(description="Import cycle chain")
+            t.VariadicTuple[str], m.Field(description="Import cycle chain")
         ]
         files: Annotated[
-            t.Infra.VariadicTuple[str],
+            t.VariadicTuple[str],
             m.Field(description="Files in cycle"),
         ] = m.Field(default_factory=tuple)
 

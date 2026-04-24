@@ -40,7 +40,7 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
                 continue
 
             pyproject_path = project_info.path / c.Infra.PYPROJECT_FILENAME
-            original_text = pyproject_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            original_text = pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             doc = tomlkit.parse(original_text)
 
             tool_flext_config = u.read_tool_flext_config(project_info.path)
@@ -76,7 +76,7 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
                 generated += 1
                 continue
 
-            pyproject_path.write_text(rendered, encoding=c.Infra.ENCODING_DEFAULT)
+            pyproject_path.write_text(rendered, encoding=c.Cli.ENCODING_DEFAULT)
             generated += 1
             u.Cli.info(
                 f"  generated: {pyproject_path.relative_to(self.workspace_root)}",

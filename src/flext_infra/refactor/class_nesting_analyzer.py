@@ -11,7 +11,15 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, p, r, t, u
+from flext_infra import (
+    FlextInfraRefactorLooseClassScanner,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 
 
 class FlextInfraRefactorClassNestingAnalyzer:
@@ -130,14 +138,12 @@ class FlextInfraRefactorClassNestingAnalyzer:
         try:
             typed_doc = u.Cli.yaml_load_mapping(mapping_path)
         except (OSError, TypeError) as exc:
-            return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
+            return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
         raw_nesting = typed_doc.get(c.Infra.RK_CLASS_NESTING)
         if not isinstance(raw_nesting, list):
-            return r[
-                Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]
-            ].ok({})
+            return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].ok({})
         try:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 raw_nesting,
@@ -146,7 +152,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 m.Infra.ClassNestingMapping.model_validate(item) for item in typed_items
             ]
         except c.ValidationError as exc:
-            return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
+            return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
         index: MutableMapping[t.Infra.StrPair, m.Infra.ClassNestingMapping] = {}
@@ -162,7 +168,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 target_name=entry.target_name,
                 reason=entry.reason,
             )
-        return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].ok(index)
+        return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].ok(index)
 
     @classmethod
     def _normalize_rewrite_scope(cls, raw_scope: str | None) -> str:

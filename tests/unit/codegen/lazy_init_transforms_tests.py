@@ -20,19 +20,19 @@ class TestsFlextInfraLazyInitTransforms:
         utilities_dir.mkdir()
         (utilities_dir / c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         (utilities_dir / "mapper.py").write_text(
             "from __future__ import annotations\n\n"
             "class FlextDemoUtilitiesMapper:\n"
             "    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         content = (utilities_dir / c.Infra.INIT_PY).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         assert result == 0
         assert '".mapper": (' in content
@@ -49,13 +49,13 @@ class TestsFlextInfraLazyInitTransforms:
             "from __future__ import annotations\n\n"
             '__version__ = "1.0.0"\n'
             "__version_info__ = (1, 0, 0)\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         assert result == 0
         assert "from flext_demo.__version__ import *" in content

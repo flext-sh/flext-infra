@@ -27,11 +27,11 @@ class FlextInfraConsolidateGroupsPhase:
         existing = u.Infra.project_dev_groups(doc)
         merged_dev = u.Infra.dedupe_specs([
             *canonical_dev,
-            *existing.get(c.Infra.DEV, []),
-            *existing.get(c.Infra.DIR_DOCS, []),
-            *existing.get(c.Infra.SECURITY, []),
-            *existing.get(c.Infra.TEST, []),
-            *existing.get(c.Infra.DIR_TYPINGS, []),
+            *[
+                requirement
+                for group in c.Infra.CANONICAL_DEV_DEPENDENCY_GROUPS
+                for requirement in existing.get(str(group), ())
+            ],
         ])
         current_dev = [
             str(item)
@@ -42,12 +42,7 @@ class FlextInfraConsolidateGroupsPhase:
         if sorted(current_dev) != sorted(merged_dev):
             optional[c.Infra.DEV] = u.Cli.toml_array(sorted(merged_dev))
             changes.append("project.optional-dependencies.dev consolidated")
-        for old_key in (
-            c.Infra.DOCS,
-            c.Infra.SECURITY,
-            c.Infra.TEST,
-            c.Infra.DIR_TYPINGS,
-        ):
+        for old_key in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
             if old_key in optional:
                 del optional[old_key]
                 changes.append(f"project.optional-dependencies.{old_key} removed")
@@ -55,12 +50,7 @@ class FlextInfraConsolidateGroupsPhase:
         poetry = u.Cli.toml_ensure_table(tool, c.Infra.POETRY)
         poetry_group = u.Cli.toml_ensure_table(poetry, c.Infra.GROUP)
         poetry_dev_table: t.Infra.TomlTable | None = None
-        for old_group in (
-            c.Infra.DOCS,
-            c.Infra.SECURITY,
-            c.Infra.TEST,
-            c.Infra.DIR_TYPINGS,
-        ):
+        for old_group in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
             if old_group not in poetry_group:
                 continue
             old_group_table = poetry_group[old_group]
@@ -70,7 +60,10 @@ class FlextInfraConsolidateGroupsPhase:
             if isinstance(old_deps, Table):
                 if poetry_dev_table is None:
                     poetry_dev_table = u.Cli.toml_ensure_table(
-                        u.Cli.toml_ensure_table(poetry_group, c.Infra.DEV),
+                        u.Cli.toml_ensure_table(
+                            poetry_group,
+                            c.Infra.DEV,
+                        ),
                         c.Infra.DEPENDENCIES,
                     )
                 if not isinstance(poetry_dev_table, Table):
@@ -110,11 +103,11 @@ class FlextInfraConsolidateGroupsPhase:
         existing = u.Infra.project_dev_groups_from_payload(payload)
         merged_dev = u.Infra.dedupe_specs([
             *canonical_dev,
-            *existing.get(c.Infra.DEV, []),
-            *existing.get(c.Infra.DIR_DOCS, []),
-            *existing.get(c.Infra.SECURITY, []),
-            *existing.get(c.Infra.TEST, []),
-            *existing.get(c.Infra.DIR_TYPINGS, []),
+            *[
+                requirement
+                for group in c.Infra.CANONICAL_DEV_DEPENDENCY_GROUPS
+                for requirement in existing.get(str(group), ())
+            ],
         ])
         _ = u.Cli.toml_mapping_sync_string_list(
             optional,
@@ -123,12 +116,7 @@ class FlextInfraConsolidateGroupsPhase:
             changes,
             "project.optional-dependencies.dev consolidated",
         )
-        for old_key in (
-            c.Infra.DOCS,
-            c.Infra.SECURITY,
-            c.Infra.TEST,
-            c.Infra.DIR_TYPINGS,
-        ):
+        for old_key in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
             _ = u.Cli.toml_mapping_remove_key_if_present(
                 optional,
                 old_key,
@@ -140,12 +128,7 @@ class FlextInfraConsolidateGroupsPhase:
             (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
         )
         poetry_dev_table: MutableMapping[str, t.JsonValue] | None = None
-        for old_group in (
-            c.Infra.DOCS,
-            c.Infra.SECURITY,
-            c.Infra.TEST,
-            c.Infra.DIR_TYPINGS,
-        ):
+        for old_group in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
             old_group_table = (
                 u.Cli.toml_mapping_child(poetry_group, old_group)
                 if poetry_group is not None

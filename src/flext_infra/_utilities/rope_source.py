@@ -640,7 +640,7 @@ class FlextInfraUtilitiesRopeSource:
         )
         if workspace_root is None:
             return (source, [])
-        original_disk_source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        original_disk_source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         try:
             with FlextInfraUtilitiesRopeCore.open_project(
                 workspace_root,
@@ -657,12 +657,12 @@ class FlextInfraUtilitiesRopeSource:
                 return (new_source, list(changes))
         finally:
             if (
-                file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 != original_disk_source
             ):
                 file_path.write_text(
                     original_disk_source,
-                    encoding=c.Infra.ENCODING_DEFAULT,
+                    encoding=c.Cli.ENCODING_DEFAULT,
                 )
 
 

@@ -16,7 +16,6 @@ from typing import override
 
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
-    FlextInfraUtilitiesIteration,
     c,
     m,
     p,
@@ -41,7 +40,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
             raise ValueError(msg)
         self._tool_config = tool_config_result.value
         self._workspace_project_names = set(
-            FlextInfraUtilitiesIteration.workspace_member_names(self.workspace_root)
+            u.Infra.workspace_member_names(self.workspace_root)
         )
 
     @override
@@ -71,14 +70,12 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
             dep_pyproject = self.root / name / c.Infra.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
-            dep_payload = FlextInfraUtilitiesIteration.cached_pyproject_payload(
+            dep_payload = u.Infra.cached_pyproject_payload(
                 dep_pyproject,
             )
-            transitive = (
-                FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
-                    dep_payload,
-                    workspace_project_names=tuple(self._workspace_project_names),
-                )
+            transitive = u.Infra.local_dependency_names_from_payload(
+                dep_payload,
+                workspace_project_names=tuple(self._workspace_project_names),
             )
             if not transitive:
                 continue
@@ -101,13 +98,11 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
         dep_skip = c.Infra.COMMON_EXCLUDED_DIRS | frozenset({c.Infra.DIR_TESTS})
         project_table = payload.get(c.Infra.PROJECT)
         current_project_name = (
-            project_table.get(c.Infra.NAME)
-            if isinstance(project_table, Mapping)
-            else None
+            project_table.get(c.NAME) if isinstance(project_table, Mapping) else None
         )
         resolved: MutableSequence[str] = []
         for name in self._resolve_transitive_deps(
-            FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
+            u.Infra.local_dependency_names_from_payload(
                 payload,
                 workspace_project_names=tuple(self._workspace_project_names),
             )
@@ -281,7 +276,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
         if is_root and rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
             if pyproject.exists():
-                payload = FlextInfraUtilitiesIteration.cached_pyproject_payload(
+                payload = u.Infra.cached_pyproject_payload(
                     pyproject,
                 )
                 paths.update(self._dep_paths(payload, is_root=True))

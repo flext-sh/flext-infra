@@ -403,11 +403,11 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         report_txt = report_dir / "latest.txt"
         report_json.write_text(
             t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
-                c.Infra.ENCODING_DEFAULT,
+                c.Cli.ENCODING_DEFAULT,
             ),
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        report_txt.write_text(render_text, encoding=c.Infra.ENCODING_DEFAULT)
+        report_txt.write_text(render_text, encoding=c.Cli.ENCODING_DEFAULT)
         return {"report_json": str(report_json), "report_text": str(report_txt)}
 
     @classmethod

@@ -19,8 +19,8 @@ class TestProcessDirectory:
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
 
@@ -29,10 +29,8 @@ class TestProcessDirectory:
         assert result == 0
         init_content = (package_root / "__init__.py").read_text(encoding="utf-8")
         assert '".models": (' in init_content
-        assert c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS in init_content
-        assert (
-            f'"{c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS}"' in init_content
-        )
+        assert "FlextTestsModels" in init_content
+        assert f'"{"m"}"' in init_content
 
     def test_check_only_does_not_write(self, tmp_path: Path) -> None:
         """check_only mode reports without creating __init__.py."""
@@ -41,8 +39,8 @@ class TestProcessDirectory:
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
         original_init = (package_root / "__init__.py").read_text(encoding="utf-8")
@@ -103,7 +101,7 @@ class TestProcessDirectory:
             f"{c.Infra.AUTOGEN_HEADER}\n"
             "from __future__ import annotations\n\n"
             "from models.base import FlextDemoModels\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
@@ -127,17 +125,17 @@ class TestProcessDirectory:
             project.mkdir(parents=True)
             (project / c.Infra.PYPROJECT_FILENAME).write_text(
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n',
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
         parent_package.mkdir(parents=True)
         child_package.mkdir(parents=True)
         (parent_package / c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child_package / c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         for module_name, alias, suffix in (
             ("models.py", "m", "Models"),
@@ -152,7 +150,7 @@ class TestProcessDirectory:
                 "    pass\n\n"
                 f"{alias} = {parent_class}\n"
                 f'__all__: list[str] = ["{parent_class}", "{alias}"]\n',
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
             (child_package / module_name).write_text(
                 "from __future__ import annotations\n\n"
@@ -161,14 +159,14 @@ class TestProcessDirectory:
                 "    pass\n\n"
                 f"{alias} = {child_class}\n"
                 f'__all__: list[str] = ["{child_class}", "{alias}"]\n',
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
 
         result = u.Infra.Tests.run_lazy_init(tmp_path)
 
         assert result == 0
         init_content = (child_package / c.Infra.INIT_PY).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         for module_key, alias, class_name in (
             ('".models": (', "m", "FlextChildModels"),
@@ -196,21 +194,21 @@ class TestProcessDirectory:
         mcp_dir.mkdir(parents=True)
         (mcp_dir / c.Infra.INIT_PY).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         (mcp_dir / "tools.py").write_text(
             "from __future__ import annotations\n\n"
             "def quality_tool() -> str:\n"
             '    return "ok"\n\n'
             '__all__: list[str] = ["quality_tool"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
         init_content = (mcp_dir / c.Infra.INIT_PY).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         assert "_LAZY_IMPORTS = build_lazy_import_map(" in init_content
         assert "merge_lazy_imports" not in init_content
@@ -226,31 +224,29 @@ class TestProcessDirectory:
         sub_dir.mkdir(parents=True)
         u.Infra.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             sub_dir / "service.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_ALIAS,
+            class_name="FlextTestsService",
+            alias="s",
             docstring="Service.",
         )
         (sub_dir / "registry.py").write_text(
             "from __future__ import annotations\n\n"
             "ALL_STREAMS = {}\n\n"
             '__all__: list[str] = ["ALL_STREAMS"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
         parent_init = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS in parent_init
-        assert (
-            c.Infra.Tests.Fixtures.Codegen.LazyInit.CHILD_SERVICE_CLASS in parent_init
-        )
+        assert "FlextTestsModels" in parent_init
+        assert "FlextTestsService" in parent_init
         assert "ALL_STREAMS" in parent_init
 
     @pytest.mark.parametrize(
@@ -299,16 +295,14 @@ class TestProcessDirectory:
         """Test nested examples/tests packages keep the examples prefix."""
         workspace_root, _package_root = u.Infra.Tests.create_lazy_init_workspace(
             tmp_path,
-            package_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.ROOT_PACKAGE_NAME,
+            package_name="flext_test_root",
         )
         examples_tests_dir = workspace_root / "examples" / "tests"
         examples_tests_dir.mkdir(parents=True)
         u.Infra.Tests.write_lazy_init_namespace_module(
             examples_tests_dir / "utilities.py",
-            class_name=(
-                c.Infra.Tests.Fixtures.Codegen.LazyInit.EXAMPLES_UTILITIES_CLASS
-            ),
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.EXAMPLES_UTILITIES_ALIAS,
+            class_name=("ExampleUtilities"),
+            alias="u",
             docstring="Example tests.",
         )
 
@@ -316,14 +310,8 @@ class TestProcessDirectory:
 
         assert result == 0
         init_content = (examples_tests_dir / "__init__.py").read_text(encoding="utf-8")
-        assert (
-            c.Infra.Tests.Fixtures.Codegen.LazyInit.EXAMPLES_UTILITIES_CLASS
-            in init_content
-        )
-        assert (
-            f'"{c.Infra.Tests.Fixtures.Codegen.LazyInit.EXAMPLES_UTILITIES_ALIAS}"'
-            in init_content
-        )
+        assert "ExampleUtilities" in init_content
+        assert f'"{"u"}"' in init_content
 
     def test_generates_tests_root_with_static_analysis_hints(
         self,
@@ -332,14 +320,14 @@ class TestProcessDirectory:
         """Test tests/ wrappers get the same static hints as src/ wrappers."""
         workspace_root, _package_root = u.Infra.Tests.create_lazy_init_workspace(
             tmp_path,
-            package_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.ROOT_PACKAGE_NAME,
+            package_name="flext_test_root",
         )
         tests_dir = workspace_root / "tests"
         tests_dir.mkdir(parents=True)
         u.Infra.Tests.write_lazy_init_namespace_module(
             tests_dir / "typings.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.TESTS_TYPES_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.TESTS_TYPES_ALIAS,
+            class_name="TestsFlextTypes",
+            alias="t",
             docstring="Typings.",
         )
 
@@ -349,11 +337,8 @@ class TestProcessDirectory:
         init_content = (tests_dir / "__init__.py").read_text(encoding="utf-8")
         assert "if _t.TYPE_CHECKING:" in init_content
         assert "__all__: list[str] = [" in init_content
-        assert c.Infra.Tests.Fixtures.Codegen.LazyInit.TESTS_TYPES_CLASS in init_content
-        assert (
-            f'"{c.Infra.Tests.Fixtures.Codegen.LazyInit.TESTS_TYPES_ALIAS}"'
-            in init_content
-        )
+        assert "TestsFlextTypes" in init_content
+        assert f'"{"t"}"' in init_content
 
     def test_subpackage_keeps_module_entries_without_symbol_exports(
         self, tmp_path: Path
@@ -361,7 +346,7 @@ class TestProcessDirectory:
         """Generated subpackages keep importable modules without leaking internals."""
         workspace_root, _package_root = u.Infra.Tests.create_lazy_init_workspace(
             tmp_path,
-            package_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.ROOT_PACKAGE_NAME,
+            package_name="flext_test_root",
         )
         tests_dir = workspace_root / "tests"
         unit_dir = tests_dir / "unit"
@@ -407,17 +392,17 @@ class TestProcessDirectory:
             "    return None\n\n"
             "def settings_factory() -> None:\n"
             "    return None\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
         fixture_init = (fixture_dir / "__init__.py").read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         root_init = (package_root / "__init__.py").read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         assert '"reset_settings"' in fixture_init
         assert '"settings"' in fixture_init
@@ -433,8 +418,8 @@ class TestProcessDirectory:
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_CLASS,
-            alias=c.Infra.Tests.Fixtures.Codegen.LazyInit.MODELS_ALIAS,
+            class_name="FlextTestsModels",
+            alias="m",
             docstring="Models.",
         )
         u.Infra.Tests.write_lazy_init_version_module(package_root)
@@ -443,11 +428,7 @@ class TestProcessDirectory:
 
         assert result == 0
         content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert (
-            "from "
-            f"{c.Infra.Tests.Fixtures.Codegen.LazyInit.PACKAGE_NAME}.__version__ "
-            "import *"
-        ) in content
+        assert (f"from {'flext_test_project'}.__version__ import *") in content
         assert '".__version__": (' in content
         assert '"__version__"' in content
         assert '"__version_info__"' in content
@@ -466,14 +447,14 @@ class TestProcessDirectory:
             "from __future__ import annotations\n\n"
             "class FlextDemoSettings:\n"
             "    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
         init_content = (package_root / "__init__.py").read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         assert '".settings": (' in init_content
         assert '"FlextDemoSettings"' in init_content
@@ -494,14 +475,14 @@ class TestProcessDirectory:
             "from __future__ import annotations\n\n"
             "class FlextDemoBaseTypesMixin:\n"
             "    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
         typings_init = (typings_dir / "__init__.py").read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         assert '".base": (' in typings_init
         assert '"FlextDemoBaseTypesMixin"' in typings_init

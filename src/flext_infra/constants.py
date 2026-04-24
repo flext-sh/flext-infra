@@ -1,7 +1,4 @@
-"""Constants for flext-infra.
-
-Defines configuration constants and enumerations for infrastructure services
-including validation rules, check types, and workspace settings.
+"""Constants facade for flext-infra — c.Infra project namespace.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,22 +20,13 @@ from flext_infra import (
     FlextInfraConstantsRefactor,
     FlextInfraConstantsRelease,
     FlextInfraConstantsRope,
+    FlextInfraConstantsSharedInfra,
     FlextInfraConstantsWorkspace,
 )
 
 
 class FlextInfraConstants(c):
-    """Centralized constants for FLEXT infrastructure (Layer 0).
-
-    Provides immutable, namespace-organized constants for infrastructure
-    configuration, validation rules, check types, and workspace settings.
-
-    Usage:
-        >>> from flext_infra import c
-        >>> c.Infra.ResultStatus.PASSED
-        >>> c.Infra.VENV_BIN_REL
-        >>> c.Infra.EXCLUDED_PROJECTS
-    """
+    """Infra constants facade — access via c.Infra.*."""
 
     class Infra(
         FlextInfraConstantsBase,
@@ -52,9 +40,10 @@ class FlextInfraConstants(c):
         FlextInfraConstantsGithub,
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRelease,
+        FlextInfraConstantsSharedInfra,
         FlextInfraConstantsWorkspace,
     ):
-        """Merged infra-domain constants from all sub-packages."""
+        """Infra-domain constants — merged mixin namespace."""
 
 
 c = FlextInfraConstants

@@ -21,7 +21,7 @@ class TestsFlextInfraLazyInitHelpers:
     @staticmethod
     def _generated_init(package_root: Path) -> str:
         return package_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
     def test_discover_package_from_standard_roots(self) -> None:
@@ -66,7 +66,7 @@ class TestsFlextInfraLazyInitHelpers:
         workspace_root, package_root = self._workspace(tmp_path)
         (package_root / "_internal.py").write_text(
             "from __future__ import annotations\n\nclass FlextDemoInternal:\n    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
@@ -84,7 +84,7 @@ class TestsFlextInfraLazyInitHelpers:
             "demo = FlextDemo()\n"
             "hidden = FlextDemo()\n\n"
             '__all__: list[str] = ["FlextDemo", "demo"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
@@ -98,21 +98,21 @@ class TestsFlextInfraLazyInitHelpers:
         workspace_root, package_root = self._workspace(tmp_path)
         child_dir = package_root / "services"
         child_dir.mkdir()
-        (child_dir / c.Infra.INIT_PY).write_text("", encoding=c.Infra.ENCODING_DEFAULT)
+        (child_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         (child_dir / "service.py").write_text(
             "from __future__ import annotations\n\n"
             "class FlextDemoService:\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextDemoService"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child_dir / "colors.py").write_text(
             'from __future__ import annotations\n\nBLUE = "blue"\n\n__all__: list[str] = ["BLUE"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child_dir / "cli.py").write_text(
             'from __future__ import annotations\n\ndef main() -> str:\n    return "ok"\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             child_dir / "models.py",
@@ -133,14 +133,14 @@ class TestsFlextInfraLazyInitHelpers:
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.INIT_PY).write_text(
             '__all__: list[str] = ["d"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class FlextDemoConstants:\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextDemoConstants"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_support_root = (
             tmp_path / "flext-tests" / c.Infra.DEFAULT_SRC_DIR / "flext_tests"
@@ -150,23 +150,23 @@ class TestsFlextInfraLazyInitHelpers:
             c.Infra.PYPROJECT_FILENAME
         ).write_text(
             '[project]\nname = "flext-tests"\nversion = "0.1.0"\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_support_root.joinpath(c.Infra.INIT_PY).write_text(
             '__all__: list[str] = ["d", "td"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_support_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class FlextTestsConstants:\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextTestsConstants"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_root = workspace_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
         tests_root.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Infra.ENCODING_DEFAULT
+            "", encoding=c.Cli.ENCODING_DEFAULT
         )
         tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
@@ -178,22 +178,22 @@ class TestsFlextInfraLazyInitHelpers:
             "    pass\n\n"
             "c = TestsFlextDemoConstants\n\n"
             '__all__: list[str] = ["TestsFlextDemoConstants", "c"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         child_dir = tests_root / "unit"
         child_dir.mkdir()
-        (child_dir / c.Infra.INIT_PY).write_text("", encoding=c.Infra.ENCODING_DEFAULT)
+        (child_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         (child_dir / "child.py").write_text(
             "from __future__ import annotations\n\n"
             "class Child:\n"
             "    pass\n\n"
             '__all__: list[str] = ["Child"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert '"d"' in init_content
@@ -212,10 +212,10 @@ class TestsFlextInfraLazyInitHelpers:
         core_root.mkdir(parents=True)
         core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         core_root.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Infra.ENCODING_DEFAULT
+            "", encoding=c.Cli.ENCODING_DEFAULT
         )
         u.Infra.Tests.write_lazy_init_namespace_module(
             core_root / "result.py",
@@ -228,17 +228,17 @@ class TestsFlextInfraLazyInitHelpers:
             "class FlextCoreConstants:\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextCoreConstants"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         cli_root = tmp_path / "flext-cli" / c.Infra.DEFAULT_SRC_DIR / "flext_cli"
         cli_root.mkdir(parents=True)
         cli_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-cli"\nversion = "0.1.0"\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         cli_root.joinpath(c.Infra.INIT_PY).write_text(
             '__all__: list[str] = ["c"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         cli_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
@@ -246,7 +246,7 @@ class TestsFlextInfraLazyInitHelpers:
             "class FlextCliConstants(FlextCoreConstants):\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextCliConstants"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
@@ -254,7 +254,7 @@ class TestsFlextInfraLazyInitHelpers:
             "class FlextMeltanoConstants(c):\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextMeltanoConstants"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
@@ -269,29 +269,29 @@ class TestsFlextInfraLazyInitHelpers:
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.RESULT_PY).write_text(
             "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_unit_root = workspace_root / c.Infra.DIR_TESTS / "unit"
         tests_unit_root.mkdir(parents=True)
         tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Infra.ENCODING_DEFAULT
+            "", encoding=c.Cli.ENCODING_DEFAULT
         )
         tests_unit_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitConstants:\n"
             "    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_unit_root.joinpath(c.Infra.MODELS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitModels:\n"
             "    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert "TestsFlextDemoUnitConstants" in init_content
@@ -306,17 +306,17 @@ class TestsFlextInfraLazyInitHelpers:
         deep_dir = package_root / "services" / "http"
         deep_dir.mkdir(parents=True)
         (package_root / "services" / c.Infra.INIT_PY).write_text(
-            "", encoding=c.Infra.ENCODING_DEFAULT
+            "", encoding=c.Cli.ENCODING_DEFAULT
         )
         deep_dir.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Infra.ENCODING_DEFAULT
+            "", encoding=c.Cli.ENCODING_DEFAULT
         )
         deep_dir.joinpath("transport.py").write_text(
             "from __future__ import annotations\n\n"
             "class FlextDemoHttpTransport:\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextDemoHttpTransport"]\n',
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
@@ -328,11 +328,11 @@ class TestsFlextInfraLazyInitHelpers:
         workspace_root, package_root = self._workspace(tmp_path)
         (package_root / "alpha.py").write_text(
             "from __future__ import annotations\n\nclass Shared:\n    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         (package_root / "beta.py").write_text(
             "from __future__ import annotations\n\nclass Shared:\n    pass\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         assert u.Infra.Tests.run_lazy_init(workspace_root) == 1

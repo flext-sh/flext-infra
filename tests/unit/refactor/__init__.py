@@ -42,9 +42,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_refactor_namespace_moves": (
             "test_infra_refactor_namespace_moves",
         ),
-        ".test_infra_refactor_namespace_source": (
-            "test_infra_refactor_namespace_source",
-        ),
         ".test_infra_refactor_pattern_corrections": (
             "test_infra_refactor_pattern_corrections",
         ),

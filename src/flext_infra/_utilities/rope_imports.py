@@ -302,7 +302,7 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeResource,
         *,
         package_name: str,
-        aliases: t.StrSequence = tuple(c.Infra.RUNTIME_ALIAS_NAMES),
+        aliases: t.StrSequence = tuple(c.RUNTIME_ALIAS_NAMES),
         apply: bool,
     ) -> str | None:
         """Hoist ``from package.sub import alias`` into ``from package import alias``."""

@@ -87,8 +87,8 @@ class FlextInfraDependencyDetectorRuntime:
                     else {}
                 )
                 python_version = (
-                    str(python_cfg.get(c.Infra.VERSION))
-                    if python_cfg.get(c.Infra.VERSION) is not None
+                    str(python_cfg.get(c.VERSION))
+                    if python_cfg.get(c.VERSION) is not None
                     else None
                 )
                 report_model.dependency_limits = self._dependency_limits_factory(

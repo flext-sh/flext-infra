@@ -265,7 +265,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         min_quoted_length = 2
         value_map: t.MutableStrMapping = {}
         try:
-            source = constants_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            source = constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except (OSError, UnicodeDecodeError):
             return value_map
 

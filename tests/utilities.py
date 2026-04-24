@@ -739,14 +739,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def create_project_info(
                 project_root: Path,
                 *,
-                name: str = c.Infra.Tests.Fixtures.Deps.PROJECT_NAME,
-                stack: str = c.Infra.Tests.Fixtures.Workspace.PROJECT_STACK,
+                name: str = "test-project",
+                stack: str = "python",
                 has_tests: bool = False,
                 has_src: bool = True,
-                project_class: str = c.Infra.Tests.Fixtures.Workspace.PROJECT_CLASS,
-                package_name: str = (
-                    c.Infra.Tests.Fixtures.Workspace.PROJECT_PACKAGE_NAME
-                ),
+                project_class: str = "FlextTestProject",
+                package_name: str = "test_project",
                 workspace_role: c.Infra.WorkspaceProjectRole = (
                     c.Infra.WorkspaceProjectRole.ATTACHED
                 ),
@@ -809,8 +807,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def create_lazy_init_workspace(
                 tmp_path: Path,
                 *,
-                project_name: str = c.Infra.Tests.Fixtures.Codegen.LazyInit.PROJECT_NAME,
-                package_name: str = c.Infra.Tests.Fixtures.Codegen.LazyInit.PACKAGE_NAME,
+                project_name: str = "flext-test-project",
+                package_name: str = "flext_test_project",
             ) -> tuple[Path, Path]:
                 workspace_root = tmp_path / project_name
                 package_root = workspace_root / c.Infra.DEFAULT_SRC_DIR / package_name
@@ -853,11 +851,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             @staticmethod
             def write_lazy_init_version_module(package_root: Path) -> None:
                 (package_root / "__version__.py").write_text(
-                    (
-                        f'__version__ = "{c.Infra.Tests.Fixtures.Codegen.LazyInit.VERSION}"\n'
-                        "__version_info__ = "
-                        f"{c.Infra.Tests.Fixtures.Codegen.LazyInit.VERSION_INFO}\n"
-                    ),
+                    ('__version__ = "0.1.0"\n__version_info__ = (0, 1, 0)\n'),
                     encoding=c.Infra.ENCODING_DEFAULT,
                 )
 
@@ -910,14 +904,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 tmp_path: Path,
             ) -> tuple[Path, Path, Path]:
                 workspace_root = tmp_path
-                project_root = (
-                    workspace_root / c.Infra.Tests.Fixtures.Refactor.PROJECT_NAME
-                )
-                package_root = (
-                    project_root
-                    / c.Infra.DEFAULT_SRC_DIR
-                    / c.Infra.Tests.Fixtures.Refactor.PACKAGE_NAME
-                )
+                project_root = workspace_root / "flext-demo"
+                package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "demo_pkg"
                 package_root.mkdir(parents=True)
                 (project_root / ".git").mkdir()
                 (project_root / "Makefile").write_text(
@@ -935,17 +923,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 constants_path = package_root / "constants.py"
                 constants_path.write_text(
                     "from __future__ import annotations\n\n"
-                    f'{c.Infra.Tests.Fixtures.Refactor.SYMBOL_NAME} = "{c.Infra.Tests.Fixtures.Refactor.SYMBOL_VALUE}"\n\n'
-                    f"class {c.Infra.Tests.Fixtures.Refactor.CONSTANTS_CLASS}:\n"
+                    'DEMO_VALUE = "demo"\n\n'
+                    "class DemoConstants:\n"
                     "    pass\n\n"
-                    f"{c.Infra.Tests.Fixtures.Refactor.FACADE_ALIAS} = {c.Infra.Tests.Fixtures.Refactor.CONSTANTS_CLASS}\n",
+                    "c = DemoConstants\n",
                     encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 consumer_path = package_root / "consumer.py"
                 consumer_path.write_text(
                     "from __future__ import annotations\n\n"
-                    f"from demo_pkg.constants import {c.Infra.Tests.Fixtures.Refactor.SYMBOL_NAME}\n\n"
-                    f"value = {c.Infra.Tests.Fixtures.Refactor.SYMBOL_NAME}\n",
+                    "from demo_pkg.constants import DEMO_VALUE\n\n"
+                    "value = DEMO_VALUE\n",
                     encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 return (workspace_root, constants_path, consumer_path)
@@ -955,15 +943,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return m.Infra.MROScanReport(
                     file=str(constants_path),
                     module="demo_pkg.constants",
-                    constants_class=c.Infra.Tests.Fixtures.Refactor.CONSTANTS_CLASS,
-                    facade_alias=c.Infra.Tests.Fixtures.Refactor.FACADE_ALIAS,
+                    constants_class="DemoConstants",
+                    facade_alias="c",
                     candidates=(
                         m.Infra.MROSymbolCandidate(
-                            symbol=c.Infra.Tests.Fixtures.Refactor.SYMBOL_NAME,
+                            symbol="DEMO_VALUE",
                             line=3,
                             kind="constant",
                             class_name="",
-                            facade_name=c.Infra.Tests.Fixtures.Refactor.FACADE_ALIAS,
+                            facade_name="c",
                         ),
                     ),
                 )

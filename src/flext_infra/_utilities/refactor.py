@@ -9,15 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import (
-    c,
-    t,
-)
+from flext_cli import u
+
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesRefactor:
@@ -70,6 +67,32 @@ class FlextInfraUtilitiesRefactor:
             if suffix:
                 return Path(*suffix).as_posix()
         return path.as_posix().lstrip("./")
+
+    @staticmethod
+    def write_impact_map(
+        results: Sequence[m.Infra.Result],
+        output_path: Path,
+    ) -> p.Result[bool]:
+        """Write refactor impact map JSON to disk."""
+        payload = {
+            "files": [
+                {
+                    "path": str(item.file_path),
+                    "success": item.success,
+                    "modified": item.modified,
+                    "error": item.error,
+                    "changes": list(item.changes),
+                }
+                for item in results
+            ]
+        }
+        normalized_payload: t.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_python(
+            payload,
+        )
+        write_result = u.Cli.json_write(output_path, normalized_payload)
+        if write_result.failure:
+            return r[bool].fail(write_result.error or "impact map write failed")
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactor"]

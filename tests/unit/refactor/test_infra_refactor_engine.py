@@ -26,8 +26,8 @@ def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
     assert result.success
-    assert len(engine.rules) == 8
-    assert [rule_kind for rule_kind, _settings in engine.rules] == [
+    assert len(engine.rule_loader.rules) == 8
+    assert [rule_kind for rule_kind, _settings in engine.rule_loader.rules] == [
         c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
         c.Infra.RefactorRuleKind.IMPORT_MODERNIZER,
         c.Infra.RefactorRuleKind.CLASS_RECONSTRUCTOR,
@@ -68,7 +68,7 @@ def test_rule_dispatch_ignores_unknown_rule_mapping(tmp_path: Path) -> None:
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
     assert result.success
-    assert engine.rules == []
+    assert engine.rule_loader.rules == []
 
 
 def test_engine_keeps_file_rules_declarative(tmp_path: Path) -> None:
@@ -85,7 +85,7 @@ def test_engine_keeps_file_rules_declarative(tmp_path: Path) -> None:
     engine.set_rule_filters(["custom-import-rule"])
     result = engine.load_rules()
     assert result.success
-    assert engine.file_rules == []
+    assert engine.rule_loader.file_rules == []
 
 
 def test_rule_dispatch_drops_legacy_id_fallback_mapping(tmp_path: Path) -> None:
@@ -101,7 +101,7 @@ def test_rule_dispatch_drops_legacy_id_fallback_mapping(tmp_path: Path) -> None:
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
     assert result.success
-    assert engine.rules == []
+    assert engine.rule_loader.rules == []
 
 
 def test_refactor_project_scans_tests_and_scripts_dirs(tmp_path: Path) -> None:
@@ -167,13 +167,13 @@ def test_refactor_file_rolls_back_invalid_output_and_preserves_backup(
     original = "value = 1\n"
     file_path.write_text(original, encoding="utf-8")
     engine = FlextInfraRefactorEngine(config_path=tmp_path / "missing.yml")
-    engine.rules = [
+    engine.rule_loader.rules = [
         (
             c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
             {c.Infra.RK_ID: "broken", c.Infra.RK_ENABLED: True},
         )
     ]
-    engine.file_rules = []
+    engine.rule_loader.file_rules = []
     monkeypatch.setattr(
         engine.orchestrator,
         "_apply_text_rule_selection",

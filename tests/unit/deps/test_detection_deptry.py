@@ -10,12 +10,12 @@ from tests import c, t, u
 class TestDiscoverProjectPathsDeptry:
     def test_success(self, tmp_path: Path) -> None:
         project = u.Infra.Tests.create_project_info(
-            tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_NAME,
+            tmp_path / "test-project",
         )
         project.path.mkdir()
         (project.path / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         service = u.Infra.Tests.create_deptry_service(projects=[project])
 
@@ -26,15 +26,15 @@ class TestDiscoverProjectPathsDeptry:
 
     def test_failure(self, tmp_path: Path) -> None:
         service = u.Infra.Tests.create_deptry_service(
-            selection_error=c.Infra.Tests.Fixtures.Deps.SELECTOR_FAILED,
+            selection_error="selector failed",
         )
 
         tm.fail(service.discover_project_paths(tmp_path))
 
     def test_filters_without_pyproject(self, tmp_path: Path) -> None:
         project = u.Infra.Tests.create_project_info(
-            tmp_path / c.Infra.Tests.Fixtures.Deps.EMPTY_PROJECT_NAME,
-            name=c.Infra.Tests.Fixtures.Deps.EMPTY_PROJECT_NAME,
+            tmp_path / "empty-project",
+            name="empty-project",
         )
         project.path.mkdir()
         service = u.Infra.Tests.create_deptry_service(projects=[project])
@@ -53,13 +53,13 @@ class TestRunDeptry:
     ) -> None:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
+        project = tmp_path / "test-project-dir"
         project.mkdir()
         (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        out_file = project / c.Infra.Tests.Fixtures.Deps.REPORT_FILENAME
+        out_file = project / ".deptry-report.json"
         write_result = u.Cli.json_write(out_file, deptry_report_payload)
         tm.ok(write_result)
         service = u.Infra.Tests.create_deptry_service(
@@ -77,7 +77,7 @@ class TestRunDeptry:
         service = u.Infra.Tests.create_deptry_service()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
+        project = tmp_path / "test-project-dir"
         project.mkdir()
 
         result = service.run_deptry(project, venv_bin)
@@ -87,15 +87,15 @@ class TestRunDeptry:
 
     def test_runner_failure(self, tmp_path: Path) -> None:
         service = u.Infra.Tests.create_deptry_service(
-            run_error=c.Infra.Tests.Fixtures.Deps.RUNNER_FAILED,
+            run_error="runner failed",
         )
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
+        project = tmp_path / "test-project-dir"
         project.mkdir()
         (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         tm.fail(service.run_deptry(project, venv_bin))
@@ -106,15 +106,15 @@ class TestRunDeptry:
         )
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
+        project = tmp_path / "test-project-dir"
         project.mkdir()
         (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        for payload in (c.Infra.Tests.Fixtures.Deps.INVALID_JSON, ""):
-            out_file = project / c.Infra.Tests.Fixtures.Deps.REPORT_FILENAME
-            out_file.write_text(payload, encoding=c.Infra.ENCODING_DEFAULT)
+        for payload in ("{ invalid json }", ""):
+            out_file = project / ".deptry-report.json"
+            out_file.write_text(payload, encoding=c.Cli.ENCODING_DEFAULT)
 
             result = service.run_deptry(project, venv_bin, json_output_path=out_file)
 
@@ -127,14 +127,14 @@ class TestRunDeptry:
         )
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        project = tmp_path / c.Infra.Tests.Fixtures.Deps.PROJECT_DIRNAME
+        project = tmp_path / "test-project-dir"
         project.mkdir()
         (project / c.Infra.PYPROJECT_FILENAME).write_text(
             "",
-            encoding=c.Infra.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        default_out = project / c.Infra.Tests.Fixtures.Deps.REPORT_FILENAME
-        default_out.write_text("[]", encoding=c.Infra.ENCODING_DEFAULT)
+        default_out = project / ".deptry-report.json"
+        default_out.write_text("[]", encoding=c.Cli.ENCODING_DEFAULT)
 
         extend_result = service.run_deptry(
             project,

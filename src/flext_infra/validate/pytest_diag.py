@@ -24,7 +24,7 @@ from flext_infra import c, m, p, r, s, t, u
 class _DiagResult:
     """Internal container for extracted diagnostics."""
 
-    __slots__: ClassVar[t.Infra.Quint[str, str, str, str, str]] = (
+    __slots__: ClassVar[t.Quint[str, str, str, str, str]] = (
         "error_traces",
         "failed_cases",
         "skip_cases",
@@ -147,10 +147,10 @@ class FlextInfraPytestDiagExtractor(s[bool]):
     def _process_testcase(
         case: p.Infra.XmlElementLike,
         diag: _DiagResult,
-    ) -> t.Infra.Pair[float, str]:
+    ) -> t.Pair[float, str]:
         """Process a single testcase element; returns (seconds, label)."""
         classname = case.attrib.get("classname", "")
-        name = case.attrib.get(c.Infra.NAME, "")
+        name = case.attrib.get(c.NAME, "")
         label = f"{classname}::{name}" if classname else name
         try:
             secs = float(case.attrib.get("time", "0") or 0.0)
@@ -191,7 +191,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         root = FlextInfraPytestDiagExtractor._as_xml_element(root_raw)
         if root is None:
             return False
-        slow_rows: MutableSequence[t.Infra.Pair[float, str]] = []
+        slow_rows: MutableSequence[t.Pair[float, str]] = []
         for case_raw in root.iter("testcase"):
             if case_raw is None:
                 continue
@@ -225,7 +225,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         """
         try:
             log_text = (
-                log_path.read_text(encoding=c.Infra.ENCODING_DEFAULT, errors="replace")
+                log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="replace")
                 if log_path.exists()
                 else ""
             )
@@ -277,7 +277,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             u.write_file(
                 output_path,
                 separator.join(items) + "\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
             )
         return r[bool].ok(True)
 

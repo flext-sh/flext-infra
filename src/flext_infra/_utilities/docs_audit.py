@@ -74,7 +74,7 @@ class FlextInfraUtilitiesDocsAudit:
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             in_fenced_code = False
             for number, line in enumerate(content.splitlines(), start=1):
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesDocsAudit:
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             text = md_file.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             for token in tokens:
                 if token in text:
@@ -153,7 +153,7 @@ class FlextInfraUtilitiesDocsAudit:
             if not md_file.exists():
                 continue
             text = md_file.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             for token in excluded:
                 if token in text:
@@ -239,7 +239,7 @@ class FlextInfraUtilitiesDocsAudit:
             if rel in exempt_paths:
                 continue
             text = md_file.read_text(
-                encoding=c.Infra.ENCODING_DEFAULT,
+                encoding=c.Cli.ENCODING_DEFAULT,
                 errors=c.Infra.IGNORE,
             )
             for token in tokens:

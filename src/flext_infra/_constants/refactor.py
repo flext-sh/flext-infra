@@ -13,7 +13,10 @@ from typing import Final
 
 from flext_core import c, t
 
-from flext_infra import FlextInfraConstantsBase as cb
+from flext_infra import (
+    FlextInfraConstantsBase as cb,
+    FlextInfraConstantsSharedInfra as csi,
+)
 
 
 class FlextInfraConstantsRefactor:
@@ -55,7 +58,7 @@ class FlextInfraConstantsRefactor:
     )
     """Allowed keys under the ``refactor_engine`` config scope."""
 
-    RUNTIME_ALIAS_NAMES: Final[frozenset[str]] = c.RUNTIME_ALIAS_NAMES
+    RUNTIME_ALIAS_NAMES: Final[frozenset[str]] = csi.ALIAS_NAMES
     NAMESPACE_SOURCE_UNIVERSAL_ALIASES: Final[frozenset[str]] = frozenset(
         c.UNIVERSAL_ALIAS_PARENT_SOURCES
     )

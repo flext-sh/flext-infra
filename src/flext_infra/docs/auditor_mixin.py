@@ -33,7 +33,7 @@ class FlextInfraDocAuditorMixin:
     @staticmethod
     def parse_audit_gate(
         audit_gate: Mapping[str, t.Infra.InfraValue],
-    ) -> t.Infra.Pair[int | None, t.IntMapping]:
+    ) -> t.Pair[int | None, t.IntMapping]:
         """Extract default budget and per-scope budgets from an audit_gate mapping."""
         default_budget = audit_gate.get("max_issues_default")
         by_scope_raw_value = audit_gate.get("max_issues_by_scope")
@@ -59,7 +59,7 @@ class FlextInfraDocAuditorMixin:
     def load_audit_budgets(
         cls,
         workspace_root: Path,
-    ) -> t.Infra.Pair[int | None, t.IntMapping]:
+    ) -> t.Pair[int | None, t.IntMapping]:
         """Load audit budgets from the nearest architecture settings."""
         settings = cls.find_architecture_config(workspace_root)
         if settings is None:

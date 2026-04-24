@@ -116,10 +116,28 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         report: m.Infra.WorkspaceEnforcementReport,
     ) -> str:
         """Render a workspace enforcement report as plain text."""
-        text: str = u.Infra.render_namespace_enforcement_report(
-            report,
-        )
-        return text
+        lines = [
+            "Namespace Enforcement Report",
+            f"Workspace: {report.workspace}",
+            f"Projects: {len(report.projects)}",
+            f"Violations: {'YES' if report.has_violations else 'NO'}",
+            f"Missing facades: {report.total_facades_missing}",
+            f"Loose objects: {report.total_loose_objects}",
+            f"Import violations: {report.total_import_violations}",
+            f"Namespace source violations: {report.total_namespace_source_violations}",
+            f"Internal import violations: {report.total_internal_import_violations}",
+            f"Manual protocol violations: {report.total_manual_protocol_violations}",
+            f"Cyclic imports: {report.total_cyclic_imports}",
+            f"Runtime alias violations: {report.total_runtime_alias_violations}",
+            f"Future violations: {report.total_future_violations}",
+            f"Manual typing violations: {report.total_manual_typing_violations}",
+            f"Compatibility alias violations: {report.total_compatibility_alias_violations}",
+            f"Class placement violations: {report.total_class_placement_violations}",
+            f"MRO completeness violations: {report.total_mro_completeness_violations}",
+            f"Parse failures: {report.total_parse_failures}",
+            f"Files scanned: {report.total_files_scanned}",
+        ]
+        return "\n".join(lines)
 
     @classmethod
     def execute_command(

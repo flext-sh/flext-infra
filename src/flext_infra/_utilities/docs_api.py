@@ -234,7 +234,7 @@ class FlextInfraUtilitiesDocsApi:
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
                 "package_name": "",
                 "description": str(project_meta.get("description", "")).strip(),
-                "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
+                "version": str(project_meta.get(c.VERSION, "")).strip(),
                 "site_title": site_title,
                 "site_url": str(
                     project_urls.get("Documentation")
@@ -257,7 +257,7 @@ class FlextInfraUtilitiesDocsApi:
         )
         if not init_path.exists():
             return FlextInfraUtilitiesDocsApi.public_contract(project_root, "")
-        source = init_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        source = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         all_exports = list(
             FlextInfraUtilitiesDocsApi._assignment_strings(source, "__all__")
         )
@@ -327,7 +327,7 @@ class FlextInfraUtilitiesDocsApi:
             "package_name": package_name,
             "description": str(project_meta.get("description", "")).strip(),
             "keywords": FlextInfraUtilitiesDocsApi._project_keywords(project_meta),
-            "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
+            "version": str(project_meta.get(c.VERSION, "")).strip(),
             "site_title": str(docs_meta.get("site_title", "")).strip()
             or str(project_meta.get("name", "")).strip(),
             "site_url": str(
@@ -365,7 +365,7 @@ class FlextInfraUtilitiesDocsApi:
                 project_root, package_name
             )
             if root_module.exists():
-                source = root_module.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                source = root_module.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 if not FlextInfraUtilitiesDocsApi._has_module_docstring(source):
                     issues.append(
                         m.Infra.AuditIssue(
@@ -381,7 +381,7 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not module_file.exists():
                 continue
-            source = module_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             if not FlextInfraUtilitiesDocsApi._has_module_docstring(source):
                 issues.append(
                     m.Infra.AuditIssue(
@@ -402,7 +402,7 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not module_file.exists():
                 continue
-            source = module_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             if FlextInfraUtilitiesDocsApi._has_symbol_docstring(source, export_name):
                 continue
             issues.append(

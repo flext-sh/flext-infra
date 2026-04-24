@@ -74,7 +74,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         if json_file.exists():
             try:
-                raw_text = json_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                raw_text = json_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 parsed_result = u.Cli.json_parse(raw_text)
                 parsed_value = parsed_result.unwrap() if parsed_result.success else None
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []

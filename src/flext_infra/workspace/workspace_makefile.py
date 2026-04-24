@@ -73,7 +73,7 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         if makefile.exists():
             try:
-                existing = makefile.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+                existing = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
             if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
@@ -118,7 +118,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         if not makefile.exists():
             return r[bool].ok(False)
         try:
-            content = makefile.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            content = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
             return r[bool].fail(f"Makefile read failed: {exc}")
         if c.Infra.MAKEFILE_GENERATED_MARKER in content:

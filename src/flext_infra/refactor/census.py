@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import time
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -115,8 +115,102 @@ class FlextInfraRefactorCensus(
     @staticmethod
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
         """Render the canonical workspace census report."""
-        rendered: str = u.Infra.render_census_report(report)
-        return rendered
+        data = report.model_dump(mode="json")
+        if "total_objects" in data:
+            projects = data.get("projects", [])
+            duplicates = data.get("duplicates", [])
+            candidates = data.get("removal_candidates", [])
+            lines = [
+                "Workspace Census Report",
+                f"Objects: {int(data.get('total_objects', 0))}",
+                f"Violations: {int(data.get('total_violations', 0))}",
+                f"Fixable: {int(data.get('total_fixable', 0))}",
+                f"Fixes: {int(data.get('fixes_total', 0))}",
+                f"Unused: {int(data.get('unused_count', 0))}",
+                f"Test-only: {int(data.get('test_only_count', 0))}",
+                f"Removal candidates: {int(data.get('removal_candidate_count', 0))}",
+                f"Duplicate groups: {len(duplicates) if isinstance(duplicates, list) else 0}",
+                f"Duration: {float(data.get('scan_duration_seconds', 0.0)):.2f}s",
+                "",
+            ]
+            if isinstance(projects, list):
+                for project in projects:
+                    if not isinstance(project, Mapping):
+                        continue
+                    project_name = str(project.get("project", ""))
+                    if not project_name:
+                        continue
+                    lines.append(
+                        "- "
+                        f"{project_name}: "
+                        f"objects={int(project.get('objects_total', 0))} "
+                        f"violations={int(project.get('violations_total', 0))} "
+                        f"unused={int(project.get('unused_count', 0))} "
+                        f"test-only={int(project.get('test_only_count', 0))} "
+                        f"candidates={int(project.get('removal_candidate_count', 0))}"
+                    )
+            if isinstance(candidates, list) and candidates:
+                lines.extend(("", "Candidate preview:"))
+                for candidate in candidates[:10]:
+                    if not isinstance(candidate, Mapping):
+                        continue
+                    reference_groups = (
+                        candidate.get("test_reference_sites", []),
+                        candidate.get("runtime_reference_sites", []),
+                        candidate.get("example_reference_sites", []),
+                        candidate.get("script_reference_sites", []),
+                    )
+                    reference_preview = ""
+                    for group in reference_groups:
+                        if not isinstance(group, list) or not group:
+                            continue
+                        preview_sites: list[str] = []
+                        for site in group[:3]:
+                            if not isinstance(site, Mapping):
+                                continue
+                            site_path = str(site.get("file_path", ""))
+                            site_line = int(site.get("line", 0))
+                            preview_sites.append(f"{site_path}:{site_line}")
+                        if preview_sites:
+                            reference_preview = ", ".join(preview_sites)
+                            break
+                    lines.append(
+                        "- "
+                        f"{candidate.get('reason', 'candidate')!s} "
+                        f"{candidate.get('object_name', '')!s} "
+                        f"@ {candidate.get('file_path', '')!s}:{int(candidate.get('line', 0))}"
+                        + (f" refs={reference_preview}" if reference_preview else "")
+                    )
+            return "\n".join(lines)
+        totals = {
+            "classes": data.get("total_classes", 0),
+            "methods": data.get("total_methods", 0),
+            "usages": data.get("total_usages", 0),
+            "unused": data.get("total_unused", 0),
+            "files_scanned": data.get("files_scanned", 0),
+            "parse_errors": data.get("parse_errors", 0),
+        }
+        lines = [
+            "Utilities Census Report",
+            f"Classes: {totals['classes']}",
+            f"Methods: {totals['methods']}",
+            f"Usages: {totals['usages']}",
+            f"Unused: {totals['unused']}",
+            f"Files scanned: {totals['files_scanned']}",
+            f"Parse errors: {totals['parse_errors']}",
+            "",
+        ]
+        projects = data.get("projects", [])
+        if isinstance(projects, list):
+            for project in projects:
+                if isinstance(project, Mapping):
+                    project_name = str(
+                        project.get("project", project.get("project_name", ""))
+                    )
+                    total = int(project.get("total", 0))
+                    if project_name:
+                        lines.append(f"- {project_name}: {total}")
+        return "\n".join(lines)
 
     @override
     def execute(self) -> p.Result[m.Infra.Census.WorkspaceReport]:
