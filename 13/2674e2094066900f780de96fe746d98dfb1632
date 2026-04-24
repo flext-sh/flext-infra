@@ -1,0 +1,159 @@
+tests/unit/workspace/test_main.py
+  9123441aa21a4185 121-131,134-144,147-153,156-167,176-184,187-188,192-196,204
+tests/unit/transformers/test_infra_transformer_nested_class_propagation.py
+  9123441aa21a4185 30-46
+tests/unit/workspace/test_makefile_dry_run.py
+  9123441aa21a4185 73-150
+tests/unit/deps/test_internal_sync_update.py
+  9123441aa21a4185 86-126,128-139,141-142,150-155,166-168,172-174,179-181,184-185,189-197,208-229,234
+tests/unit/deps/test_extra_paths_manager.py
+  9123441aa21a4185 105-121,124-159,161-162,164,166-176,181-186,190-191,193-196
+tests/unit/refactor/test_infra_refactor_project_classifier.py
+  9123441aa21a4185 16-31,33-34,36-37,39-40
+tests/unit/refactor/test_infra_refactor_namespace_enforcer.py
+  9123441aa21a4185 19-551
+tests/unit/_utilities/test_discovery_consolidated.py
+  9123441aa21a4185 8
+src/flext_infra/refactor/accessor_migration.py
+  h_9db9d35f50cf33 305-311
+tests/unit/refactor/test_infra_refactor_cli_models_workflow.py
+  9123441aa21a4185 15-17
+tests/unit/refactor/test_infra_refactor_safety.py
+  9123441aa21a4185 99-120,123-139
+tests/unit/refactor/test_infra_refactor_pattern_corrections.py
+  9123441aa21a4185 30-73,76-85,88-133
+tests/unit/deps/test_internal_sync_workspace.py
+  9123441aa21a4185 79-86,101-102,104,115,132-133,137-139,151-152,174-176,179-181,189-191,201,206-210,212-216,219-220
+tests/unit/deps/test_modernizer_pyrefly.py
+  9123441aa21a4185 52-65,68-83,86-136,186-201,204-210
+tests/unit/deps/test_path_sync_rewrite_deps.py
+  1e8c46a785af34f8 122-135,137
+tests/unit/deps/test_path_sync_main_edges.py
+  9123441aa21a4185 14-17,19-26,28,30-36,38-45,47,49-51
+tests/unit/test_infra_versioning.py
+  9123441aa21a4185 37-76,78,80,89-90,94-136,138-153
+tests/unit/test_infra_constants_core.py
+  9123441aa21a4185 16
+tests/unit/refactor/test_infra_refactor_engine.py
+  9123441aa21a4185 20-33,35-40,44-66,68-73,77-80,82-89,92-98,100-106,109-117,119-136,141-147,149-161,164-167
+tests/unit/workspace/test_makefile_generator.py
+  9123441aa21a4185 30-50,52-75,77-95,97-122,124-150,152-181,186-212,214-222,224-228,230-232,234-237,239-241
+tests/unit/workspace/test_sync.py
+  9123441aa21a4185 77,84-88,90-91,109-120,123-125,131-139,142-144,149-156,160-162,165-168,181-187
+tests/unit/basemk/test_make_contract.py
+  9123441aa21a4185 116-132,135-149,152-156,158-165,168-183,185-186,189-220,222-226,229-258,260-268,270-289,291-299,301-321,323-341,343-347,349-365,367-377
+tests/unit/deps/test_path_sync_main.py
+  9123441aa21a4185 45-52,54-169
+tests/unit/refactor/test_infra_refactor_class_placement.py
+  0e281ac49bf08b47 105,126
+  9123441aa21a4185 12-103,121-124,142-194
+tests/unit/codegen/test_codegen_pipeline_dag.py
+  9123441aa21a4185 70
+tests/unit/refactor/test_infra_refactor_mro_import_rewriter.py
+  9123441aa21a4185 18,23-26,28-29,36-42,46,52-54,58-61,64-75
+tests/unit/_utilities/test_rope_hooks.py
+  8c2cbdeb70613e9e 41
+tests/unit/test_infra_workspace_detector.py
+  9123441aa21a4185 13
+tests/unit/deps/test_modernizer_helpers.py
+  9123441aa21a4185 76-140,155-166,188-192,199-240,242-249,253,255,257-261
+tests/unit/refactor/test_infra_refactor_namespace_moves.py
+  9123441aa21a4185 28-144
+tests/unit/refactor/test_accessor_migration.py
+  9123441aa21a4185 140-151,153-158,160-182,184-195,197-203,205-206,208-214,216-226,228-232,234-239,241-245,247-250
+tests/unit/transformers/test_infra_transformer_class_nesting.py
+  9123441aa21a4185 33-69
+tests/unit/test_infra_workspace_orchestrator.py
+  9123441aa21a4185 26
+tests/unit/refactor/test_infra_refactor_import_modernizer.py
+  9123441aa21a4185 29-41,44-70,73-82,85-95,98-111,114-131,144-151,154-161
+tests/unit/refactor/test_infra_refactor_namespace_aliases.py
+  9123441aa21a4185 12-142
+tests/unit/release/test_release_dag.py
+  9123441aa21a4185 42-52,54-57,59-61,75-77
+  0e281ac49bf08b47 85
+  1e8c46a785af34f8 67
+tests/unit/refactor/test_infra_refactor_migrate_to_class_mro.py
+  9123441aa21a4185 19-57,59-61,99-124,127-131,133-140,143-171,173-211,213-241,243-247,249-256,258-261,263-300
+tests/unit/deps/test_extra_paths_sync.py
+  9123441aa21a4185 45-76,79,81-83,86-90,92-95,98-123,152-159
+tests/unit/deps/test_path_sync_main_more.py
+  9123441aa21a4185 51-54,58-62,66-73,82,86,92,94-97,102-104,114,117,126-127,139-140,145,147-149,157-178,180-186
+tests/unit/deps/test_path_sync_rewrite_pep621.py
+  8c2cbdeb70613e9e 106
+tests/unit/discovery/test_infra_discovery.py
+  9123441aa21a4185 19
+tests/unit/test_infra_protocols.py
+  9123441aa21a4185 12
+tests/unit/deps/test_internal_sync_resolve.py
+  9123441aa21a4185 55-60,64-66,88-90,101-103,118-120,129-131,133-136
+tests/unit/test_infra_constants_extra.py
+  9123441aa21a4185 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "132674e2094066900f780de96fe746d98dfb1632",
+  "prompts": {
+    "0e281ac49bf08b47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3dc343f6-cf6e-4d84-acb3-04781db438b3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 519,
+      "overriden_lines": 1
+    },
+    "1e8c46a785af34f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa25f2cb-80b0-440b-a64c-b692f5b15b99",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 60,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/af5efdcc0200e139077fc7b18481e513b3706be61239861a240355240d98ee7d"
+    },
+    "8c2cbdeb70613e9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e74716b-0d32-4eb3-b239-a0f08c033edc",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 104,
+      "total_deletions": 105,
+      "accepted_lines": 2,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/706145b2680536c13695a49b930e38dda7f238dd65b47cd51f5875dfcd88843a"
+    },
+    "9123441aa21a4185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9169874-590d-4541-8054-007b2d9cac16",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 2711,
+      "total_deletions": 2433,
+      "accepted_lines": 1805,
+      "overriden_lines": 174,
+      "messages_url": "https://usegitai.com/cas/5f8a56b206d73cce2c10b6c64af168ec3eccfe88fbc1d419366a712cc941a6da"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
