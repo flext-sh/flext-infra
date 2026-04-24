@@ -481,6 +481,7 @@ class FlextInfraUtilitiesRefactorCensus:
             workspace=workspace,
             gates=gates,
             post_write=_post_write,
+            skip_pytest=True,
         )
         rope.reload()
         return bool(result[0])

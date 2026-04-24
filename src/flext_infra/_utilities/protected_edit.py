@@ -477,8 +477,16 @@ class FlextInfraUtilitiesProtectedEdit:
         keep_backup: bool = False,
         gates: t.StrSequence | None = None,
         post_write: Callable[[], None] | None = None,
+        skip_pytest: bool = False,
     ) -> t.Infra.EditResult:
-        """Write multiple files transactionally with lint delta validation."""
+        """Write multiple files transactionally with lint delta validation.
+
+        ``skip_pytest=True`` bypasses the per-file pytest invocation performed
+        after the lint delta check. Callers that only remove code (e.g. the
+        census apply path) can opt out because pytest on the shrunk file is
+        guaranteed to collect no tests and return exit code 5 — a ~5s
+        per-file no-op that dominates the wall-clock time in monorepo scale.
+        """
         if not updates:
             return (True, [])
 
@@ -537,7 +545,10 @@ class FlextInfraUtilitiesProtectedEdit:
                 before_lints[path],
                 cls.lint_snapshot(path, workspace, gates=gates),
             )
-            test_fail = None if new_errors else cls._pytest_failure(path, workspace)
+            if new_errors or skip_pytest:
+                test_fail = None
+            else:
+                test_fail = cls._pytest_failure(path, workspace)
             if not new_errors and not test_fail:
                 continue
             failed = True
