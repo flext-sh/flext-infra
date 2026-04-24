@@ -1,0 +1,80 @@
+tests/unit/validate/stub_chain_tests.py
+  h_9db9d35f50cf33 145-179
+tests/unit/test_ssot_enforcement.py
+  h_9db9d35f50cf33 10,13-18,76,100-101,110
+tests/unit/check/extended_models_tests.py
+  h_9db9d35f50cf33 41-66
+src/flext_infra/codegen/fixer.py
+  h_9db9d35f50cf33 133-137
+src/flext_infra/_models/mixins.py
+  h_9db9d35f50cf33 135-140,142
+tests/unit/validate/scanner_tests.py
+  h_9db9d35f50cf33 16,157-158,163,165,167-168,172-173,176,179-207
+src/flext_infra/refactor/safety.py
+  h_9db9d35f50cf33 49-52
+src/flext_infra/validate/stub_chain.py
+  h_9db9d35f50cf33 50-52
+src/flext_infra/codegen/lazy_init_planner.py
+  h_9db9d35f50cf33 11,196
+src/flext_infra/_utilities/iteration.py
+  h_9db9d35f50cf33 125,427,430-431,437,494-496,524-533,725,727,860
+tests/unit/_utilities/test_discovery_consolidated.py
+  h_9db9d35f50cf33 9-20,84-108,110-111,185-203
+tests/__init__.py
+  0e281ac49bf08b47 69,400,839
+src/flext_infra/_utilities/rope_source.py
+  h_9db9d35f50cf33 7,14-15,20,28-29,47-335
+tests/unit/refactor/test_infra_refactor_namespace_enforcer.py
+  0e281ac49bf08b47 309,311
+src/flext_infra/codegen/consolidator.py
+  h_9db9d35f50cf33 66,68
+tests/_constants/domain.py
+  h_9db9d35f50cf33 15-52
+tests/unit/refactor/test_infra_refactor_namespace_source.py
+  h_9db9d35f50cf33 6,25,38,40
+src/flext_infra/utilities.py
+  0e281ac49bf08b47 58-59
+src/flext_infra/validate/namespace_validator.py
+  h_9db9d35f50cf33 44-60,100-102
+tests/unit/validate/namespace_validator_tests.py
+  h_9db9d35f50cf33 62-99
+src/flext_infra/_utilities/mro_scan.py
+  h_9db9d35f50cf33 50,56-65,68-71,73
+pyproject.toml
+  h_9db9d35f50cf33 27
+src/flext_infra/_constants/base.py
+  h_9db9d35f50cf33 48-49
+tests/unit/refactor/test_infra_refactor_safety.py
+  h_9db9d35f50cf33 13,133-166
+src/flext_infra/validate/scanner.py
+  h_9db9d35f50cf33 57,94,96-97
+src/flext_infra/_utilities/rope_mro_transform.py
+  h_9db9d35f50cf33 1-64,66-69,71-211
+  0e281ac49bf08b47 212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e8c62f8f210e411ac9c2067c61662615da0d9e39",
+  "prompts": {
+    "0e281ac49bf08b47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3dc343f6-cf6e-4d84-acb3-04781db438b3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 38,
+      "accepted_lines": 10,
+      "overriden_lines": 2,
+      "messages_url": "https://usegitai.com/cas/557ca1f4e96a4491c3ad2a5ab240afbcba9653c4fdb95f12843ba90196bcfa36"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
