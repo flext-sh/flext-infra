@@ -132,7 +132,14 @@ class FlextInfraModelsMixins:
                 return ()
             if isinstance(value, str):
                 return tuple(part.strip() for part in value.split(",") if part.strip())
-            return tuple(part.strip() for part in value if part and part.strip())
+            normalized: list[str] = []
+            for part in value:
+                if not part:
+                    continue
+                normalized.extend(
+                    token.strip() for token in part.split(",") if token.strip()
+                )
+            return tuple(normalized)
 
         @u.computed_field()
         @property

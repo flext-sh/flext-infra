@@ -7,33 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from tests import t
+from tests import c, t
 
-WORKSPACE = Path(__file__).resolve().parents[3]  # flext/ root
 
-# Methods that must have exactly ONE implementation across the workspace.
-SSOT_METHODS = [
-    ("sha256_content", "flext_cli"),
-    ("sha256_file", "flext_cli"),
-    ("json_read", "flext_cli"),
-    ("json_write", "flext_cli"),
-    ("json_parse", "flext_cli"),
-]
-
-# MRO parent chain: child -> parent.  A child MUST NOT re-implement a method
-# from any of its parents' _utilities/ directories.
-_MRO_CHAIN: t.SequenceOf[t.Pair[str, str]] = [
-    ("flext_cli", "flext_core"),
-    ("flext_infra", "flext_core"),
-    ("flext_infra", "flext_cli"),
-]
-
-# Methods that legitimately have different semantics across packages (e.g.,
-# ``run`` for CLI execution vs service execution, ``to_str`` with different
-# input types).  Keyed by (child_package, parent_package) -> frozenset of names.
-_ALLOWED_OVERLAPS: t.MappingKV[t.Pair[str, str], frozenset[str]] = {
-    ("flext_cli", "flext_core"): frozenset({"run", "to_str"}),
-}
+def _workspace_root() -> Path:
+    return (
+        Path(__file__)
+        .resolve()
+        .parents[c.Infra.Tests.SsotEnforcement.WORKSPACE_ROOT_PARENT_DEPTH]
+    )
 
 
 def _find_method_definitions(
@@ -54,7 +36,7 @@ def _find_method_definitions(
             except SyntaxError:
                 continue
             found.extend(
-                f"{py_file.relative_to(WORKSPACE)}"
+                f"{py_file.relative_to(_workspace_root())}"
                 for node in ast.walk(tree)
                 if isinstance(node, ast.FunctionDef) and node.name == method_name
             )
@@ -76,14 +58,14 @@ def _collect_utility_methods(src_dir: Path) -> t.MutableMappingKV[str, str]:
             continue
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
-                methods[node.name] = str(py_file.relative_to(WORKSPACE))
+                methods[node.name] = str(py_file.relative_to(_workspace_root()))
     return methods
 
 
 @pytest.mark.parametrize(
     ("method", "canonical_package"),
-    SSOT_METHODS,
-    ids=[m for m, _ in SSOT_METHODS],
+    c.Infra.Tests.SsotEnforcement.SSOT_METHODS,
+    ids=[m for m, _ in c.Infra.Tests.SsotEnforcement.SSOT_METHODS],
 )
 def test_no_duplicate_utility_implementations(
     method: str,
@@ -91,9 +73,9 @@ def test_no_duplicate_utility_implementations(
 ) -> None:
     """Each utility method must have exactly one implementation in its canonical package."""
     search_dirs = (
-        WORKSPACE / "flext-core" / "src" / "flext_core",
-        WORKSPACE / "flext-cli" / "src" / "flext_cli",
-        WORKSPACE / "flext-infra" / "src" / "flext_infra",
+        _workspace_root() / "flext-core" / "src" / "flext_core",
+        _workspace_root() / "flext-cli" / "src" / "flext_cli",
+        _workspace_root() / "flext-infra" / "src" / "flext_infra",
     )
     definitions = _find_method_definitions(method, search_dirs)
     canonical_defs = [d for d in definitions if canonical_package in d]
@@ -110,19 +92,25 @@ def test_no_duplicate_utility_implementations(
 def _src_dir_for(package: str) -> Path:
     """Resolve the src directory for a flext package name."""
     project = package.replace("_", "-")
-    return WORKSPACE / project / "src" / package
+    return _workspace_root() / project / "src" / package
 
 
 @pytest.mark.parametrize(
     ("child", "parent"),
-    _MRO_CHAIN,
-    ids=[f"{c}_shadows_{p}" for c, p in _MRO_CHAIN],
+    c.Infra.Tests.SsotEnforcement.MRO_CHAIN,
+    ids=[
+        f"{child}_shadows_{parent}"
+        for child, parent in c.Infra.Tests.SsotEnforcement.MRO_CHAIN
+    ],
 )
 def test_no_utility_method_shadows_parent(child: str, parent: str) -> None:
     """A child _utilities/ MUST NOT re-implement a method from its parent facade."""
     parent_methods = _collect_utility_methods(_src_dir_for(parent))
     child_methods = _collect_utility_methods(_src_dir_for(child))
-    allowed = _ALLOWED_OVERLAPS.get((child, parent), frozenset())
+    allowed = c.Infra.Tests.SsotEnforcement.ALLOWED_OVERLAPS.get(
+        (child, parent),
+        frozenset(),
+    )
     collisions = {
         name: (child_methods[name], parent_methods[name])
         for name in child_methods

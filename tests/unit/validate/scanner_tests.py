@@ -13,7 +13,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraTextPatternScanner
-from tests import c, t
+from tests import c, t, u
 
 
 def _scanner() -> FlextInfraTextPatternScanner:
@@ -154,27 +154,58 @@ class TestScannerMultiFile:
 class TestScannerHelpers:
     """Tests for scanner helper methods."""
 
-    def test_collect_files_glob_patterns(self, tmp_path: Path) -> None:
-        """_collect_files respects include/exclude glob patterns."""
+    def test_iter_matching_files_glob_patterns(self, tmp_path: Path) -> None:
+        """Canonical file selection respects include/exclude glob patterns."""
         (tmp_path / "file1.py").write_text("")
         (tmp_path / "file2.txt").write_text("")
         (tmp_path / "file3.py").write_text("")
         (tmp_path / "test.py").write_text("")
-        included = FlextInfraTextPatternScanner._collect_files(tmp_path, ["*.py"], [])
+        included = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
         tm.that(len(included), eq=3)
-        excluded = FlextInfraTextPatternScanner._collect_files(
+        excluded = u.Infra.iter_matching_files(
             tmp_path,
-            ["*.py"],
-            ["test*"],
+            includes=["*.py"],
+            excludes=["test*"],
         )
         tm.that(len(excluded), eq=2)
 
-    def test_collect_files_skips_directories(self, tmp_path: Path) -> None:
-        """_collect_files skips directories."""
+    def test_iter_matching_files_skips_directories(self, tmp_path: Path) -> None:
+        """Canonical file selection skips directories."""
         (tmp_path / "file.txt").write_text("")
         (tmp_path / "subdir").mkdir()
-        files = FlextInfraTextPatternScanner._collect_files(tmp_path, ["*"], [])
+        files = u.Infra.iter_matching_files(tmp_path, includes=["*"])
         tm.that(len(files), eq=1)
+
+    def test_iter_matching_files_prefers_git_tracked_files(
+        self, tmp_path: Path
+    ) -> None:
+        """Canonical file selection prefers tracked files when Git is active."""
+        init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
+        assert init_result.success
+        assert init_result.value.exit_code == 0
+        email_result = u.Cli.run_raw(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=tmp_path,
+        )
+        assert email_result.success
+        assert email_result.value.exit_code == 0
+        name_result = u.Cli.run_raw(
+            ["git", "config", "user.name", "Test User"],
+            cwd=tmp_path,
+        )
+        assert name_result.success
+        assert name_result.value.exit_code == 0
+        tracked_file = tmp_path / "tracked.py"
+        tracked_file.write_text("")
+        untracked_file = tmp_path / "untracked.py"
+        untracked_file.write_text("")
+        add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
+        assert add_result.success
+        assert add_result.value.exit_code == 0
+
+        files = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
+
+        tm.that(files, eq=[tracked_file])
 
     def test_count_matches(self, tmp_path: Path) -> None:
         """_count_matches counts regex matches and handles edge cases."""

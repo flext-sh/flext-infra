@@ -66,13 +66,13 @@ if _t.TYPE_CHECKING:
     from tests.unit.check.extended_models_tests import (
         TestCheckIssueFormatted,
         TestProjectResultProperties,
+        TestRunCommandGateParsing,
         TestWorkspaceCheckerErrorSummary,
     )
     from tests.unit.check.extended_project_runners_tests import (
         TestsExtendedProjectRunners,
     )
     from tests.unit.check.extended_resolve_gates_tests import (
-        TestWorkspaceCheckerParseGateCSV,
         TestWorkspaceCheckerResolveGates,
     )
     from tests.unit.check.extended_run_projects_tests import (
@@ -397,13 +397,13 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.check.extended_models_tests": (
                 "TestCheckIssueFormatted",
                 "TestProjectResultProperties",
+                "TestRunCommandGateParsing",
                 "TestWorkspaceCheckerErrorSummary",
             ),
             ".unit.check.extended_project_runners_tests": (
                 "TestsExtendedProjectRunners",
             ),
             ".unit.check.extended_resolve_gates_tests": (
-                "TestWorkspaceCheckerParseGateCSV",
                 "TestWorkspaceCheckerResolveGates",
             ),
             ".unit.check.extended_run_projects_tests": (
@@ -836,6 +836,7 @@ __all__: list[str] = [
     "TestRewriteDepPaths",
     "TestRewritePep621",
     "TestRewritePoetry",
+    "TestRunCommandGateParsing",
     "TestRunDeptry",
     "TestRunMypyStubHints",
     "TestRunProjectsPublicBehavior",
@@ -856,7 +857,6 @@ __all__: list[str] = [
     "TestWorkspaceCheckCLI",
     "TestWorkspaceCheckCli",
     "TestWorkspaceCheckerErrorSummary",
-    "TestWorkspaceCheckerParseGateCSV",
     "TestWorkspaceCheckerResolveGates",
     "TestWorkspaceDetector",
     "TestWorkspaceLevelRefactor",

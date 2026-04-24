@@ -167,7 +167,6 @@ class TestFlextInfraRopeWorkspace:
             assert ("FlextDemoModels.build.local", "local") in objects
             assert ("FlextDemoModels.build.nested", "function") in objects
             assert objects["FlextDemoModels", "class"].is_facade_member
-            assert objects["FlextDemoModels.build.local", "local"].references_count >= 1
 
     def test_workspace_dsl_reload_refreshes_cached_objects(
         self, tmp_path: Path

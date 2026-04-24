@@ -93,12 +93,8 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-    from flext_infra._utilities.lazy import FlextInfraUtilitiesCodegenLazyAliases
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
-    from flext_infra._utilities.mro_transform import (
-        FlextInfraUtilitiesRefactorMroTransform,
-    )
     from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
     from flext_infra._utilities.namespace_analysis import (
         FlextInfraUtilitiesRefactorNamespaceCommon,
@@ -110,11 +106,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.namespace_moves import (
         FlextInfraUtilitiesRefactorNamespaceMoves,
     )
-    from flext_infra._utilities.normalizer import (
-        FlextInfraNormalizerContext,
-        FlextInfraUtilitiesImportNormalizer,
-    )
-    from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
     from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
     from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -486,10 +477,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.github": ("FlextInfraUtilitiesGithub",),
             "._utilities.github_pr": ("FlextInfraUtilitiesGithubPr",),
             "._utilities.iteration": ("FlextInfraUtilitiesIteration",),
-            "._utilities.lazy": ("FlextInfraUtilitiesCodegenLazyAliases",),
             "._utilities.log_parser": ("FlextInfraUtilitiesLogParser",),
             "._utilities.mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
-            "._utilities.mro_transform": ("FlextInfraUtilitiesRefactorMroTransform",),
             "._utilities.namespace": ("FlextInfraUtilitiesCodegenNamespace",),
             "._utilities.namespace_analysis": (
                 "FlextInfraUtilitiesRefactorNamespaceCommon",
@@ -501,11 +490,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.namespace_moves": (
                 "FlextInfraUtilitiesRefactorNamespaceMoves",
             ),
-            "._utilities.normalizer": (
-                "FlextInfraNormalizerContext",
-                "FlextInfraUtilitiesImportNormalizer",
-            ),
-            "._utilities.parsing": ("FlextInfraUtilitiesParsing",),
             "._utilities.patterns": ("FlextInfraUtilitiesPatterns",),
             "._utilities.policy": ("FlextInfraUtilitiesRefactorPolicy",),
             "._utilities.protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
@@ -883,7 +867,6 @@ __all__: list[str] = [
     "FlextInfraNamespaceSourceDetector",
     "FlextInfraNamespaceValidator",
     "FlextInfraNestedClassPropagationTransformer",
-    "FlextInfraNormalizerContext",
     "FlextInfraOrchestratorService",
     "FlextInfraPhaseEngine",
     "FlextInfraProjectClassifier",
@@ -951,7 +934,6 @@ __all__: list[str] = [
     "FlextInfraUtilities",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
-    "FlextInfraUtilitiesCodegenLazyAliases",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCompatibility",
     "FlextInfraUtilitiesDependencyPathSync",
@@ -968,17 +950,14 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
-    "FlextInfraUtilitiesImportNormalizer",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
-    "FlextInfraUtilitiesParsing",
     "FlextInfraUtilitiesPatterns",
     "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorEngine",
     "FlextInfraUtilitiesRefactorMroScan",
-    "FlextInfraUtilitiesRefactorMroTransform",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceMoves",

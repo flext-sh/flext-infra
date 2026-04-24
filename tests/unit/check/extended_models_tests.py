@@ -38,6 +38,32 @@ class TestCheckIssueFormatted:
         tm.that(issue.formatted, contains="test.py:10:5")
 
 
+class TestRunCommandGateParsing:
+    """Test run-command gate parsing for check workflows."""
+
+    def test_run_command_splits_csv_gate_in_sequence_payload(self) -> None:
+        command = m.Infra.RunCommand.model_validate(
+            {
+                "projects": ["flext-core"],
+                "gates": ["lint,format,pyrefly,mypy,pyright,security,markdown,go"],
+            },
+        )
+
+        tm.that(
+            command.gates,
+            eq=(
+                "lint",
+                "format",
+                "pyrefly",
+                "mypy",
+                "pyright",
+                "security",
+                "markdown",
+                "go",
+            ),
+        )
+
+
 class TestProjectResultProperties:
     """Test _ProjectResult computed properties."""
 

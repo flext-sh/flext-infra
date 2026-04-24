@@ -28,10 +28,8 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".github": ("FlextInfraUtilitiesGithub",),
         ".github_pr": ("FlextInfraUtilitiesGithubPr",),
         ".iteration": ("FlextInfraUtilitiesIteration",),
-        ".lazy": ("FlextInfraUtilitiesCodegenLazyAliases",),
         ".log_parser": ("FlextInfraUtilitiesLogParser",),
         ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
-        ".mro_transform": ("FlextInfraUtilitiesRefactorMroTransform",),
         ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
         ".namespace_analysis": (
             "FlextInfraUtilitiesRefactorNamespaceCommon",
@@ -39,11 +37,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
         ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
-        ".normalizer": (
-            "FlextInfraNormalizerContext",
-            "FlextInfraUtilitiesImportNormalizer",
-        ),
-        ".parsing": ("FlextInfraUtilitiesParsing",),
         ".patterns": ("FlextInfraUtilitiesPatterns",),
         ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
         ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),

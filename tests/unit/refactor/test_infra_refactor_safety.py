@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import overload, override
 
 from flext_infra import FlextInfraRefactorEngine, FlextInfraRefactorSafetyManager, t
-from tests import p, r
+from tests import p, r, u
 
 
 class EngineSafetyStub(FlextInfraRefactorSafetyManager):
@@ -130,3 +130,37 @@ def test_clear_checkpoint_preserves_requested_backups(tmp_path: Path) -> None:
     assert cleared.success
     assert keep_file.with_suffix(".py.bak").exists()
     assert not drop_file.with_suffix(".py.bak").exists()
+
+
+def test_create_pre_transformation_stash_ignores_untracked_git_python_files(
+    tmp_path: Path,
+) -> None:
+    init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
+    assert init_result.success
+    assert init_result.value.exit_code == 0
+    email_result = u.Cli.run_raw(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+    )
+    assert email_result.success
+    assert email_result.value.exit_code == 0
+    name_result = u.Cli.run_raw(
+        ["git", "config", "user.name", "Test User"],
+        cwd=tmp_path,
+    )
+    assert name_result.success
+    assert name_result.value.exit_code == 0
+    tracked_file = tmp_path / "tracked.py"
+    tracked_file.write_text("value = 1\n", encoding="utf-8")
+    untracked_file = tmp_path / "untracked.py"
+    untracked_file.write_text("value = 2\n", encoding="utf-8")
+    add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
+    assert add_result.success
+    assert add_result.value.exit_code == 0
+    manager = FlextInfraRefactorSafetyManager()
+
+    created = manager.create_pre_transformation_stash(tmp_path)
+
+    assert created.success
+    assert tracked_file.with_suffix(".py.bak").exists()
+    assert not untracked_file.with_suffix(".py.bak").exists()

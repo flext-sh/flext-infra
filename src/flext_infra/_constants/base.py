@@ -45,6 +45,8 @@ class FlextInfraConstantsBase(
     "Top-level [project] section key."
     DEPENDENCIES: Final[str] = "dependencies"
     "Dependencies key within project or poetry sections."
+    DEPENDENCY_GROUPS: Final[str] = "dependency-groups"
+    "PEP 735 dependency-groups table key."
     OPTIONAL_DEPENDENCIES: Final[str] = "optional-dependencies"
     "Optional dependencies key within [project]."
     GROUP: Final[str] = "group"

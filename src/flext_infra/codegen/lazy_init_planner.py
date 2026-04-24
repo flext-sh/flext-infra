@@ -8,7 +8,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated
 
-from flext_infra import FlextInfraUtilitiesParsing, c, m, p, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
@@ -193,24 +193,16 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         cached = self._module_exports_cache.get(cache_key)
         if cached is not None:
             return dict(cached)
-        if require_explicit_all and not include_dunder:
-            names = FlextInfraUtilitiesParsing.module_export_names(
-                py_file,
-                include_dunder=include_dunder,
-                allow_main=allow_main,
-                allow_assignments=allow_assignments,
-            )
-        else:
-            if self.rope_workspace.resource(py_file) is None:
-                return {}
-            names = self.rope_workspace.exports(
-                py_file,
-                include_dunder=include_dunder,
-                allow_main=allow_main,
-                allow_assignments=allow_assignments,
-                allow_functions=allow_functions,
-                require_explicit_all=require_explicit_all and not include_dunder,
-            )
+        if self.rope_workspace.resource(py_file) is None:
+            return {}
+        names = self.rope_workspace.exports(
+            py_file,
+            include_dunder=include_dunder,
+            allow_main=allow_main,
+            allow_assignments=allow_assignments,
+            allow_functions=allow_functions,
+            require_explicit_all=require_explicit_all and not include_dunder,
+        )
         exports = {
             name: (module_path, name)
             for name in names

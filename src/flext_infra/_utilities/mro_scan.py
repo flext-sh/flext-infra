@@ -47,18 +47,30 @@ class FlextInfraUtilitiesRefactorMroScan:
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
         project_name_set: set[str] = set(project_names or ())
+        scan_dirs = frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root,
         ):
             if project_name_set and project_root.name not in project_name_set:
                 continue
+            iter_result = FlextInfraUtilitiesIteration.iter_python_files(
+                workspace_root=project_root,
+                project_roots=[project_root],
+                include_tests=c.Infra.DIR_TESTS in scan_dirs,
+                include_examples=c.Infra.DIR_EXAMPLES in scan_dirs,
+                include_scripts=c.Infra.DIR_SCRIPTS in scan_dirs,
+                src_dirs=scan_dirs or None,
+            )
+            if iter_result.failure:
+                continue
             with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_proj:
                 for target_spec in target_specs:
-                    for (
-                        file_path
-                    ) in FlextInfraUtilitiesRefactorMroScan._iter_target_files(
-                        project_root=project_root, target_spec=target_spec
-                    ):
+                    for file_path in iter_result.value:
+                        if (
+                            file_path.name not in target_spec.file_names
+                            and target_spec.package_directory not in file_path.parts
+                        ):
+                            continue
                         scanned += 1
                         res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                             rope_proj,
@@ -330,27 +342,6 @@ class FlextInfraUtilitiesRefactorMroScan:
         if match is None:
             return False
         return bool(cls._MRO_SCAN_PROTOCOL_BASE_PATTERN.search(match.group("bases")))
-
-    @staticmethod
-    def _iter_target_files(
-        *,
-        project_root: Path,
-        target_spec: m.Infra.MROTargetSpec,
-    ) -> Sequence[Path]:
-        cands: set[Path] = set()
-        for dn in c.Infra.MRO_SCAN_DIRECTORIES:
-            root = project_root / dn
-            if not root.is_dir():
-                continue
-            for file_path in FlextInfraUtilitiesIteration.iter_directory_python_files(
-                root
-            ):
-                if (
-                    file_path.name in target_spec.file_names
-                    or target_spec.package_directory in file_path.parts
-                ):
-                    cands.add(file_path)
-        return sorted(cands)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorMroScan"]

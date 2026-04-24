@@ -130,7 +130,11 @@ class FlextInfraCodegenFixer(s[str]):
                 message=initial_violations_result.error
                 or "namespace validation failed",
             )
-        py_files = tuple(project_path.rglob(c.Infra.EXT_PYTHON_GLOB))
+        py_files_result = u.Infra.iter_python_files(
+            workspace_root=project_path,
+            project_roots=[project_path],
+        )
+        py_files = tuple(py_files_result.value) if py_files_result.success else ()
         bak_paths = u.Infra.backup_files(py_files)
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)

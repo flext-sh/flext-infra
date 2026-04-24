@@ -16,9 +16,9 @@ from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeSource,
     c,
     m,
     p,
@@ -493,7 +493,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         lines = source.splitlines()
         if import_line in lines:
             return source
-        insert_at = FlextInfraUtilitiesParsing.find_import_insert_position(
+        insert_at = FlextInfraUtilitiesRopeSource.find_import_insert_position(
             lines,
             past_existing=False,
         )

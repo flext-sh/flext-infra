@@ -24,13 +24,11 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".extended_models_tests": (
             "TestCheckIssueFormatted",
             "TestProjectResultProperties",
+            "TestRunCommandGateParsing",
             "TestWorkspaceCheckerErrorSummary",
         ),
         ".extended_project_runners_tests": ("TestsExtendedProjectRunners",),
-        ".extended_resolve_gates_tests": (
-            "TestWorkspaceCheckerParseGateCSV",
-            "TestWorkspaceCheckerResolveGates",
-        ),
+        ".extended_resolve_gates_tests": ("TestWorkspaceCheckerResolveGates",),
         ".extended_run_projects_tests": ("TestRunProjectsPublicBehavior",),
         ".extended_runners_extra_tests": ("TestExtendedRunnerExtras",),
         ".extended_runners_ruff_tests": ("extended_runners_ruff_tests",),

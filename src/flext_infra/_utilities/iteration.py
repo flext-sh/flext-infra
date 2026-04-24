@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import fnmatch
 import tomllib
 from collections.abc import (
     Mapping,
@@ -16,6 +17,7 @@ from functools import cache
 from pathlib import Path
 
 from flext_cli import u
+from git import InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_infra import c, p, r, t
 
@@ -28,15 +30,6 @@ class FlextInfraUtilitiesIteration:
 
     Used by: build orchestration, validation, and code generation tools.
     """
-
-    _ITERATION_EXCLUDED_PARTS = c.Infra.ITERATION_EXCLUDED_PARTS
-    _ITERATION_KNOWN_DIRS = frozenset({
-        c.Infra.DEFAULT_SRC_DIR,
-        c.Infra.DIR_TESTS,
-        c.Infra.DIR_EXAMPLES,
-        c.Infra.DIR_SCRIPTS,
-    })
-    _DEPENDENCY_GROUPS_KEY = "dependency-groups"
 
     @staticmethod
     def dep_name(requirement: str) -> str | None:
@@ -129,7 +122,7 @@ class FlextInfraUtilitiesIteration:
         payload: t.Infra.ContainerDict,
         names: set[str],
     ) -> None:
-        dependency_groups = payload.get(cls._DEPENDENCY_GROUPS_KEY)
+        dependency_groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
         if not isinstance(dependency_groups, Mapping):
             return
         for raw_requirements in dependency_groups.values():
@@ -416,6 +409,133 @@ class FlextInfraUtilitiesIteration:
         return include_dynamic_dirs if isinstance(include_dynamic_dirs, bool) else False
 
     @staticmethod
+    @cache
+    def _git_tracked_scope_relative_paths(scope_root: str) -> tuple[str, ...] | None:
+        """Return tracked file paths relative to one scope or ``None`` outside Git."""
+        resolved_root = Path(scope_root)
+        try:
+            repo = Repo(resolved_root, search_parent_directories=True)
+        except (InvalidGitRepositoryError, NoSuchPathError, OSError, ValueError):
+            return None
+        if repo.bare or repo.working_tree_dir is None:
+            return None
+        repo_root = Path(repo.working_tree_dir).resolve()
+        try:
+            scope_prefix = resolved_root.resolve().relative_to(repo_root)
+        except ValueError:
+            return None
+        scope_prefix_text = "" if not scope_prefix.parts else scope_prefix.as_posix()
+        prefix_with_sep = f"{scope_prefix_text}/" if scope_prefix_text else ""
+        normalized: set[str] = set()
+        for tracked_path, _stage in repo.index.entries:
+            path_text = str(Path(tracked_path).as_posix())
+            if not path_text:
+                continue
+            if prefix_with_sep:
+                if not path_text.startswith(prefix_with_sep):
+                    continue
+                relative_path = path_text[len(prefix_with_sep) :]
+            else:
+                relative_path = path_text
+            if relative_path:
+                normalized.add(relative_path)
+        return tuple(sorted(normalized))
+
+    @classmethod
+    def _git_tracked_scope_paths(cls, scope_root: Path) -> Sequence[Path] | None:
+        """Return tracked files under one scope as absolute paths when Git is active."""
+        resolved_root = scope_root.resolve()
+        relative_paths = cls._git_tracked_scope_relative_paths(str(resolved_root))
+        if relative_paths is None:
+            return None
+        return [
+            resolved_root / Path(relative_path)
+            for relative_path in relative_paths
+            if (resolved_root / Path(relative_path)).is_file()
+        ]
+
+    @classmethod
+    def _git_tracked_top_level_dir_names(
+        cls,
+        scope_root: Path,
+    ) -> frozenset[str] | None:
+        """Return tracked top-level directory names under one scope when Git is active."""
+        relative_paths = cls._git_tracked_scope_relative_paths(
+            str(scope_root.resolve())
+        )
+        if relative_paths is None:
+            return None
+        return frozenset(
+            relative.parts[0]
+            for relative_path in relative_paths
+            if (relative := Path(relative_path)).parts
+        )
+
+    @classmethod
+    def _project_descriptor_is_tracked(
+        cls,
+        workspace_root: Path,
+        project_root: Path,
+    ) -> bool:
+        """Return whether one candidate project has a tracked descriptor file."""
+        relative_paths = cls._git_tracked_scope_relative_paths(
+            str(workspace_root.resolve()),
+        )
+        if relative_paths is None:
+            return True
+        tracked_paths = frozenset(relative_paths)
+        resolved_workspace = workspace_root.resolve()
+        resolved_project = project_root.resolve()
+        relative_prefix = ""
+        if resolved_project != resolved_workspace:
+            relative_prefix = (
+                resolved_project.relative_to(resolved_workspace).as_posix() + "/"
+            )
+        tracked_gitlink = relative_prefix.removesuffix("/")
+        if tracked_gitlink and tracked_gitlink in tracked_paths:
+            return True
+        return any(
+            f"{relative_prefix}{filename}" in tracked_paths
+            for filename in (c.Infra.PYPROJECT_FILENAME, c.Infra.GO_MOD)
+        )
+
+    @classmethod
+    def iter_matching_files(
+        cls,
+        root: Path,
+        *,
+        includes: t.StrSequence,
+        excludes: t.StrSequence = (),
+    ) -> Sequence[Path]:
+        """Return files in one scope through the canonical git-aware selection path."""
+        if not root.is_dir():
+            return []
+        tracked_files = cls._git_tracked_scope_paths(root)
+        candidates = (
+            tracked_files
+            if tracked_files is not None
+            else [path for path in root.rglob("*") if path.is_file()]
+        )
+        return sorted(
+            {
+                path
+                for path in candidates
+                if path.is_file()
+                if (
+                    not includes
+                    or any(
+                        fnmatch.fnmatch(path.relative_to(root).as_posix(), pattern)
+                        for pattern in includes
+                    )
+                )
+                if not any(
+                    fnmatch.fnmatch(path.relative_to(root).as_posix(), pattern)
+                    for pattern in excludes
+                )
+            },
+        )
+
+    @staticmethod
     def discover_project_roots(
         workspace_root: Path,
         *,
@@ -516,22 +636,42 @@ class FlextInfraUtilitiesIteration:
         )
         configured_member_set = frozenset(configured_members)
         resolved_workspace_root = workspace_root.resolve()
+        tracked_child_dirs = (
+            FlextInfraUtilitiesIteration._git_tracked_top_level_dir_names(
+                resolved_workspace_root,
+            )
+        )
 
         if FlextInfraUtilitiesIteration._looks_like_project(
             resolved_workspace_root,
             effective_scan_dirs=effective_scan_dirs,
             configured_member_set=configured_member_set,
+        ) and FlextInfraUtilitiesIteration._project_descriptor_is_tracked(
+            resolved_workspace_root,
+            resolved_workspace_root,
         ):
             roots.append(resolved_workspace_root)
+        candidate_entries = (
+            [
+                resolved_workspace_root / dir_name
+                for dir_name in sorted(tracked_child_dirs)
+            ]
+            if tracked_child_dirs is not None
+            else sorted(
+                workspace_root.iterdir(),
+                key=lambda item: item.name,
+            )
+        )
         roots.extend(
             [
                 entry.resolve()
-                for entry in sorted(
-                    workspace_root.iterdir(),
-                    key=lambda item: item.name,
-                )
+                for entry in candidate_entries
                 if entry.is_dir()
                 and (not entry.name.startswith("."))
+                and FlextInfraUtilitiesIteration._project_descriptor_is_tracked(
+                    resolved_workspace_root,
+                    entry.resolve(),
+                )
                 and FlextInfraUtilitiesIteration._looks_like_project(
                     entry.resolve(),
                     effective_scan_dirs=effective_scan_dirs,
@@ -568,12 +708,23 @@ class FlextInfraUtilitiesIteration:
         if not directory.is_dir():
             return []
         effective_pattern = pattern or c.Infra.EXT_PYTHON_GLOB
-        files = sorted(directory.rglob(effective_pattern))
+        tracked_files = FlextInfraUtilitiesIteration._git_tracked_scope_paths(directory)
+        files = (
+            sorted(directory.rglob(effective_pattern))
+            if tracked_files is None
+            else [
+                file_path
+                for file_path in tracked_files
+                if fnmatch.fnmatch(
+                    file_path.relative_to(directory).as_posix(),
+                    effective_pattern,
+                )
+            ]
+        )
         ignored_parts = (
-            FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
+            c.Infra.ITERATION_EXCLUDED_PARTS
             if skip_pycache
-            else FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
-            - {c.Infra.DUNDER_PYCACHE}
+            else c.Infra.ITERATION_EXCLUDED_PARTS - {c.Infra.DUNDER_PYCACHE}
         )
         return [
             file_path
@@ -601,9 +752,7 @@ class FlextInfraUtilitiesIteration:
         ignored_parts: frozenset[str] | None = None,
     ) -> bool:
         """Return whether a Python path lives under an ignored directory tree."""
-        effective_ignored_parts = (
-            ignored_parts or FlextInfraUtilitiesIteration._ITERATION_EXCLUDED_PARTS
-        )
+        effective_ignored_parts = ignored_parts or c.Infra.ITERATION_EXCLUDED_PARTS
         return any(
             part in effective_ignored_parts
             or (part.startswith(".") and part not in {".", ".."})
@@ -699,13 +848,20 @@ class FlextInfraUtilitiesIteration:
         files: MutableSequence[Path],
     ) -> None:
         """Discover additional directories with Python files (docs/, tools/, etc.)."""
+        tracked_dir_names = (
+            FlextInfraUtilitiesIteration._git_tracked_top_level_dir_names(
+                project_root,
+            )
+        )
         for subdir in project_root.iterdir():
             if not subdir.is_dir():
                 continue
             dir_name = subdir.name
-            if dir_name in FlextInfraUtilitiesIteration._ITERATION_KNOWN_DIRS:
+            if dir_name in frozenset(c.Infra.MRO_SCAN_DIRECTORIES):
                 continue
             if dir_name.startswith("."):
+                continue
+            if tracked_dir_names is not None and dir_name not in tracked_dir_names:
                 continue
             py_files = FlextInfraUtilitiesIteration.iter_directory_python_files(
                 subdir,

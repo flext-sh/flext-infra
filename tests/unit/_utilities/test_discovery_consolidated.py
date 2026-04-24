@@ -6,6 +6,18 @@ from tests import c, m, u
 
 
 class TestsFlextInfraUtilitiesDiscoveryConsolidated:
+    @staticmethod
+    def _init_git_repo(repo_root: Path) -> None:
+        commands = (
+            ["git", "init"],
+            ["git", "config", "user.email", "test@example.com"],
+            ["git", "config", "user.name", "Test User"],
+        )
+        for command in commands:
+            result = u.Cli.run_raw(command, cwd=repo_root)
+            assert result.success
+            assert result.value.exit_code == 0
+
     def test_discover_project_roots_with_real_workspace_root(self) -> None:
         # Walk up from the test file to find the workspace root (contains flext-core)
         candidate = Path(__file__).resolve()
@@ -68,6 +80,34 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         roots = u.Infra.discover_project_roots(tmp_path)
 
         assert roots == [tmp_path / "beta", tmp_path / "alpha"]
+
+    def test_discover_project_roots_skips_untracked_git_projects(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        self._init_git_repo(tmp_path)
+        tracked_project = tmp_path / "tracked"
+        (tracked_project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (tracked_project / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='tracked'\n",
+            encoding="utf-8",
+        )
+        untracked_project = tmp_path / "untracked"
+        (untracked_project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (untracked_project / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='untracked'\n",
+            encoding="utf-8",
+        )
+        add_result = u.Cli.run_raw(
+            ["git", "add", "tracked/pyproject.toml"],
+            cwd=tmp_path,
+        )
+        assert add_result.success
+        assert add_result.value.exit_code == 0
+
+        roots = u.Infra.discover_project_roots(tmp_path)
+
+        assert roots == [tracked_project]
 
     def test_iter_python_files_returns_result_with_paths(self, tmp_path: Path) -> None:
         project = tmp_path / "pkg"
@@ -141,6 +181,26 @@ class TestsFlextInfraUtilitiesDiscoveryConsolidated:
         assert result.success
         assert legit_file in result.value
         assert nested_venv_file not in result.value
+
+    def test_iter_matching_files_uses_git_tracked_scope_when_available(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        self._init_git_repo(tmp_path)
+        tracked_file = tmp_path / "tracked.py"
+        tracked_file.write_text("x = 1\n", encoding="utf-8")
+        untracked_file = tmp_path / "untracked.py"
+        untracked_file.write_text("x = 2\n", encoding="utf-8")
+        add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
+        assert add_result.success
+        assert add_result.value.exit_code == 0
+
+        files = u.Infra.iter_matching_files(
+            tmp_path,
+            includes=[c.Infra.EXT_PYTHON_GLOB],
+        )
+
+        assert files == [tracked_file]
 
     def test_find_all_pyproject_files_with_project_paths(self, tmp_path: Path) -> None:
         first = tmp_path / "first"

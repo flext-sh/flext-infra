@@ -47,12 +47,9 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         """Discover projects that should participate in stub checks."""
         _ = self
         return [
-            entry
-            for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name)
-            if entry.is_dir()
-            and not entry.name.startswith(".")
-            and (entry / c.Infra.PYPROJECT_FILENAME).exists()
-            and (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            project_root
+            for project_root in u.Infra.discover_project_roots(workspace_root)
+            if (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
         ]
 
     def _is_internal(self, module_name: str, project_name: str) -> bool:

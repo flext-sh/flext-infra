@@ -306,9 +306,9 @@ def test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain(
     service_file = pkg / "service.py"
     _ = service_file.write_text(
         "from __future__ import annotations\n"
-        "from flext_core import FlextLogger\n"
+        "import logging\n"
         "from typing import Protocol\n\n"
-        "logger = u.fetch_logger(__name__)\n\n"
+        "logger = logging.getLogger(__name__)\n\n"
         "class ServiceContract(Protocol):\n"
         "    def run(self) -> str:\n"
         "        ...\n",

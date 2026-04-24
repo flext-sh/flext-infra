@@ -1,6 +1,7 @@
 """Rope-driven migration of module constants into MRO constants facades.
 
-Centralizes the MRO migration logic into the MRO utility chain, removing legacy CST dependency.
+Centralizes the MRO migration logic into the rope utility chain, removing
+legacy CST-era placement from the non-rope utility surface.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,24 +12,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra import (
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
 
 
-class FlextInfraUtilitiesRefactorMroTransform:
-    """Move module-level constants into the constants facade class.
-
-    Usage via namespace::
-
-        from flext_infra import u
-
-        code, migration, symbol_map = u.Infra.migrate_file(
-            scan_result=scan_result,
-        )
-    """
+class FlextInfraUtilitiesRopeMroTransform:
+    """Move module-level constants into the constants facade class."""
 
     @staticmethod
     def migrate_file(
@@ -51,7 +39,6 @@ class FlextInfraUtilitiesRefactorMroTransform:
         class_name = scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
         facade_alias = scan_result.facade_alias or class_name
 
-        # Process from bottom to top to preserve line indices when deleting
         candidates = sorted(scan_result.candidates, key=lambda x: x.line, reverse=True)
 
         moved_symbols: list[str] = []
@@ -74,10 +61,9 @@ class FlextInfraUtilitiesRefactorMroTransform:
             target = cand.symbol.lstrip("_") or cand.symbol
             symbol_map[cand.symbol] = target
 
-            # Replace target name if symbol was private
             if cand.symbol != target:
                 block_lines = (
-                    FlextInfraUtilitiesRefactorMroTransform._rename_symbol_in_block(
+                    FlextInfraUtilitiesRopeMroTransform._rename_symbol_in_block(
                         block_lines=block_lines,
                         symbol=cand.symbol,
                         target=target,
@@ -85,23 +71,21 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 )
 
             moved_code = (
-                FlextInfraUtilitiesRefactorMroTransform._indent_block(block_lines)
+                FlextInfraUtilitiesRopeMroTransform._indent_block(block_lines)
                 + moved_code
             )
             del lines[start_idx : end_idx + 1]
 
-            # Remove trailing blank lines above
             while start_idx - 1 >= 0 and not lines[start_idx - 1].strip():
                 del lines[start_idx - 1]
                 start_idx -= 1
 
-        # Find or create class
         class_found = False
         insert_idx = -1
-        for i, line in enumerate(lines):
+        for index, line in enumerate(lines):
             if line.startswith(f"class {class_name}"):
                 class_found = True
-                insert_idx = i + 1
+                insert_idx = index + 1
                 break
 
         if class_found:
@@ -119,13 +103,13 @@ class FlextInfraUtilitiesRefactorMroTransform:
             )
             created_classes = (class_name,)
 
-        lines = FlextInfraUtilitiesRefactorMroTransform._drop_redundant_class_aliases(
+        lines = FlextInfraUtilitiesRopeMroTransform._drop_redundant_class_aliases(
             lines=lines,
             class_name=class_name,
             symbol_map=symbol_map,
         )
         new_source = "\n".join(lines) + "\n"
-        new_source = FlextInfraUtilitiesRefactorMroTransform._qualify_local_references(
+        new_source = FlextInfraUtilitiesRopeMroTransform._qualify_local_references(
             source=new_source,
             facade_alias=facade_alias,
             symbol_map=symbol_map,
@@ -225,4 +209,4 @@ class FlextInfraUtilitiesRefactorMroTransform:
         return updated_source
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRefactorMroTransform"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeMroTransform"]

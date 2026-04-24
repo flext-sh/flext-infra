@@ -12,6 +12,44 @@ from typing import Final
 class TestsFlextInfraConstantsDomain:
     """Domain constants mixin for infra tests."""
 
+    class NamespaceSource:
+        """Namespace-source detector constants for infra tests."""
+
+        FAMILY_FILE_MAP: Final[dict[str, str]] = {
+            "c": "constants.py",
+            "t": "typings.py",
+            "p": "protocols.py",
+            "m": "models.py",
+            "u": "utilities.py",
+        }
+        FAMILY_SUFFIX_MAP: Final[dict[str, str]] = {
+            "c": "Constants",
+            "t": "Types",
+            "p": "Protocols",
+            "m": "Models",
+            "u": "Utilities",
+        }
+
+    class SsotEnforcement:
+        """SSOT enforcement constants for infra tests."""
+
+        WORKSPACE_ROOT_PARENT_DEPTH: Final[int] = 3
+        SSOT_METHODS: Final[tuple[tuple[str, str], ...]] = (
+            ("sha256_content", "flext_cli"),
+            ("sha256_file", "flext_cli"),
+            ("json_read", "flext_cli"),
+            ("json_write", "flext_cli"),
+            ("json_parse", "flext_cli"),
+        )
+        MRO_CHAIN: Final[tuple[tuple[str, str], ...]] = (
+            ("flext_cli", "flext_core"),
+            ("flext_infra", "flext_core"),
+            ("flext_infra", "flext_cli"),
+        )
+        ALLOWED_OVERLAPS: Final[dict[tuple[str, str], frozenset[str]]] = {
+            ("flext_cli", "flext_core"): frozenset({"run", "to_str"}),
+        }
+
     class Projects:
         """Project names and identifiers for infra testing."""
 

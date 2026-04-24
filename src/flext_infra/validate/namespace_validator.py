@@ -12,7 +12,6 @@ from __future__ import annotations
 import ast
 from collections.abc import (
     MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -34,12 +33,6 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     definitions are centralized in ``typings.py``.
     """
 
-    @staticmethod
-    def derive_prefix(project_root: Path) -> str:
-        """Public wrapper for deriving the class name prefix from a project."""
-        layout = u.Infra.layout(project_root)
-        return layout.class_stem if layout is not None else ""
-
     def validate(
         self,
         project_root: Path,
@@ -48,7 +41,24 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate namespace rules 0-2 for all discovered Python files."""
         try:
-            files = self._discover_files(project_root, scan_tests=scan_tests)
+            files_result = u.Infra.iter_python_files(
+                workspace_root=project_root,
+                project_roots=[project_root],
+                include_tests=scan_tests,
+                include_examples=False,
+                include_scripts=False,
+                include_dynamic_dirs=False,
+            )
+            if files_result.failure:
+                return r[m.Infra.ValidationReport].fail(
+                    files_result.error
+                    or "Namespace validation failed: discovery failed",
+                )
+            files = [
+                py_file
+                for py_file in files_result.value
+                if not self._is_exempt_file(py_file)
+            ]
             layout = u.Infra.layout(project_root)
             prefix = layout.class_stem if layout is not None else ""
             violations: MutableSequence[str] = []
@@ -78,33 +88,6 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 f"Namespace validation failed: {exc}",
             )
 
-    def _discover_files(
-        self,
-        workspace_root: Path,
-        *,
-        scan_tests: bool,
-    ) -> Sequence[Path]:
-        """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
-        result: MutableSequence[Path] = []
-        dirs_to_scan = [
-            workspace_root / c.Infra.DEFAULT_SRC_DIR,
-        ]
-        if scan_tests:
-            dirs_to_scan.append(
-                workspace_root / c.Infra.DIR_TESTS,
-            )
-        for base_dir in dirs_to_scan:
-            if not base_dir.is_dir():
-                continue
-            result.extend(
-                py_file
-                for py_file in u.Infra.iter_directory_python_files(
-                    base_dir,
-                )
-                if not self._is_exempt_file(py_file)
-            )
-        return sorted(result)
-
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""
         name = filepath.name
@@ -114,8 +97,10 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
 
     def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""
-        module: ast.Module | None = u.Infra.parse_module_ast(path)
-        return module
+        try:
+            return ast.parse(path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+        except (OSError, SyntaxError):
+            return None
 
 
 __all__: list[str] = ["FlextInfraNamespaceValidator"]

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import fnmatch
 import re
 from collections.abc import (
     Sequence,
@@ -17,7 +16,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t
+from flext_infra import c, m, p, r, s, t, u
 
 
 class FlextInfraTextPatternScanner(s[bool]):
@@ -50,33 +49,12 @@ class FlextInfraTextPatternScanner(s[bool]):
     ] = c.Infra.MatchMode.PRESENT
 
     @staticmethod
-    def _collect_files(
-        scan_root: Path,
-        includes: t.StrSequence,
-        excludes: t.StrSequence,
-    ) -> Sequence[Path]:
-        """Collect files matching include/exclude globs."""
-        return [
-            path
-            for path in scan_root.rglob("*")
-            if path.is_file()
-            and any(
-                fnmatch.fnmatch(path.relative_to(scan_root).as_posix(), pat)
-                for pat in includes
-            )
-            and not any(
-                fnmatch.fnmatch(path.relative_to(scan_root).as_posix(), pat)
-                for pat in excludes
-            )
-        ]
-
-    @staticmethod
     def _count_matches(files: Sequence[Path], regex: t.Infra.RegexPattern) -> int:
         """Count regex matches across files."""
         total = 0
         for file_path in files:
             try:
-                text = file_path.read_text(
+                text: str = file_path.read_text(
                     encoding=c.Infra.ENCODING_DEFAULT,
                     errors=c.Infra.IGNORE,
                 )
@@ -113,7 +91,11 @@ class FlextInfraTextPatternScanner(s[bool]):
             return r[t.ScalarMapping].fail(error)
         try:
             regex = re.compile(pattern, flags=re.MULTILINE)
-            files = self._collect_files(scan_root, includes, excludes or [])
+            files = u.Infra.iter_matching_files(
+                scan_root,
+                includes=includes,
+                excludes=excludes or [],
+            )
             matches = self._count_matches(files, regex)
             violation_count = (
                 matches

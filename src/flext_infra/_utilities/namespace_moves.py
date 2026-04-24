@@ -15,12 +15,12 @@ from flext_cli import u
 
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRopeSource,
     c,
     m,
     t,
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     source = file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
                 except OSError:
                     continue
-                if FlextInfraUtilitiesParsing.looks_like_facade_file(
+                if FlextInfraUtilitiesRopeSource.looks_like_facade_file(
                     file_path=file_path,
                     source=source,
                 ):
@@ -462,15 +462,15 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         for match in c.Infra.FROM_IMPORT_RE.finditer(target_source):
             imported_aliases.update(
                 bound
-                for _, bound in FlextInfraUtilitiesParsing.parse_import_names(
-                    match.group(2),
+                for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+                    match.group(2)
                 )
             )
         for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(target_source):
             imported_aliases.update(
                 bound
-                for _, bound in FlextInfraUtilitiesParsing.parse_import_names(
-                    match.group(2),
+                for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+                    match.group(2)
                 )
             )
         missing_aliases = sorted(moved_aliases - imported_aliases)

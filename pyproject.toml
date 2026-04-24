@@ -24,6 +24,7 @@ classifiers = [
 dependencies = [
   "flext-cli",
   "flext-core",
+  "gitpython>=3.1",
   "libcst (>=1.5.1,<2)",
   "mkdocs-exclude>=1",
   "mkdocs-material>=9.5",

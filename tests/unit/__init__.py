@@ -57,11 +57,11 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".check.extended_models_tests": (
                 "TestCheckIssueFormatted",
                 "TestProjectResultProperties",
+                "TestRunCommandGateParsing",
                 "TestWorkspaceCheckerErrorSummary",
             ),
             ".check.extended_project_runners_tests": ("TestsExtendedProjectRunners",),
             ".check.extended_resolve_gates_tests": (
-                "TestWorkspaceCheckerParseGateCSV",
                 "TestWorkspaceCheckerResolveGates",
             ),
             ".check.extended_run_projects_tests": ("TestRunProjectsPublicBehavior",),

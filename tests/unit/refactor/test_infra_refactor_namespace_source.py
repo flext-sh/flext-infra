@@ -3,23 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraNamespaceSourceDetector
-from tests import m, t, u
-
-FAMILY_FILE_MAP = {
-    "c": "constants.py",
-    "t": "typings.py",
-    "p": "protocols.py",
-    "m": "models.py",
-    "u": "utilities.py",
-}
-
-FAMILY_SUFFIX_MAP = {
-    "c": "Constants",
-    "t": "Types",
-    "p": "Protocols",
-    "m": "Models",
-    "u": "Utilities",
-}
+from tests import c, m, t, u
 
 
 def _create_project_with_facades(
@@ -38,7 +22,7 @@ def _create_project_with_facades(
     )
     lazy_imports = "\n".join(
         (
-            f'    "{family}": ("{package_name}.{FAMILY_FILE_MAP[family].removesuffix(".py")}", "{family}"),'
+            f'    "{family}": ("{package_name}.{c.Infra.Tests.NamespaceSource.FAMILY_FILE_MAP[family].removesuffix(".py")}", "{family}"),'
         )
         for family in families
     )
@@ -51,9 +35,11 @@ def _create_project_with_facades(
     )
     class_stem = "FlextXyz"
     for family in families:
-        suffix = FAMILY_SUFFIX_MAP[family]
+        suffix = c.Infra.Tests.NamespaceSource.FAMILY_SUFFIX_MAP[family]
         class_name = f"{class_stem}{suffix}"
-        facade_file = package_dir / FAMILY_FILE_MAP[family]
+        facade_file = (
+            package_dir / c.Infra.Tests.NamespaceSource.FAMILY_FILE_MAP[family]
+        )
         if family == "c":
             facade_file.write_text(
                 "from __future__ import annotations\n"

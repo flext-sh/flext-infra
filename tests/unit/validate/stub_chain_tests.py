@@ -142,6 +142,41 @@ class TestStubChain:
         tm.ok(result)
         tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
 
+    def test_build_report_ignores_untracked_git_projects(self, tmp_path: Path) -> None:
+        init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
+        assert init_result.success
+        assert init_result.value.exit_code == 0
+        email_result = u.Cli.run_raw(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=tmp_path,
+        )
+        assert email_result.success
+        assert email_result.value.exit_code == 0
+        name_result = u.Cli.run_raw(
+            ["git", "config", "user.name", "Test User"],
+            cwd=tmp_path,
+        )
+        assert name_result.success
+        assert name_result.value.exit_code == 0
+        tracked_project = u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        _untracked_project = u.Infra.Tests.mk_project(
+            tmp_path,
+            "project-b",
+            with_src=True,
+        )
+        add_result = u.Cli.run_raw(
+            ["git", "add", "project-a"],
+            cwd=tmp_path,
+        )
+        assert add_result.success
+        assert add_result.value.exit_code == 0
+
+        result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
+
+        tm.ok(result)
+        tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
+        tm.that(tracked_project.exists(), eq=True)
+
     def test_build_report_fails_for_missing_workspace(self, tmp_path: Path) -> None:
         result = self.make_chain(
             workspace_root=tmp_path,

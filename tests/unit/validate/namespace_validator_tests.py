@@ -59,6 +59,46 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
 
+    def test_validate_ignores_untracked_git_files(self, tmp_path: Path) -> None:
+        validator = FlextInfraNamespaceValidator()
+        project_root = tmp_path / "project"
+        package_dir = project_root / "src" / "flext_test"
+        package_dir.mkdir(parents=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        tracked_module = package_dir / "models.py"
+        tracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
+        untracked_module = package_dir / "constants.py"
+        untracked_module.write_text(
+            _read_fixture("rule0_multiple_classes.py"), encoding="utf-8"
+        )
+        init_result = u.Cli.run_raw(["git", "init"], cwd=project_root)
+        assert init_result.success
+        assert init_result.value.exit_code == 0
+        email_result = u.Cli.run_raw(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=project_root,
+        )
+        assert email_result.success
+        assert email_result.value.exit_code == 0
+        name_result = u.Cli.run_raw(
+            ["git", "config", "user.name", "Test User"],
+            cwd=project_root,
+        )
+        assert name_result.success
+        assert name_result.value.exit_code == 0
+        add_result = u.Cli.run_raw(
+            ["git", "add", "src/flext_test/models.py", "src/flext_test/__init__.py"],
+            cwd=project_root,
+        )
+        assert add_result.success
+        assert add_result.value.exit_code == 0
+
+        result = validator.validate(project_root)
+
+        tm.ok(result)
+        tm.that(result.value.passed, eq=True)
+        tm.that(result.value.violations, empty=True)
+
     def test_rule0_multiple_classes_detected(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(

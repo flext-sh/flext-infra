@@ -45,7 +45,12 @@ class FlextInfraRefactorSafetyManager:
     ) -> p.Result[str]:
         """Back up files in workspace root and return label as reference."""
         _ = label
-        py_files = list(workspace_root.rglob(c.Infra.EXT_PYTHON_GLOB))
+        py_files = list(
+            u.Infra.iter_matching_files(
+                workspace_root,
+                includes=[c.Infra.EXT_PYTHON_GLOB],
+            ),
+        )
         self._bak_paths = u.Infra.backup_files(py_files)
         return r[str].ok(str(workspace_root))
 

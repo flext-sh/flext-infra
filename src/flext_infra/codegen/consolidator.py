@@ -63,8 +63,9 @@ class FlextInfraCodegenConsolidator(s[str]):
 
                 for python_file in (
                     path
-                    for path in u.Infra.iter_directory_python_files(
+                    for path in u.Infra.iter_matching_files(
                         project_layout.package_dir,
+                        includes=[c.Infra.EXT_PYTHON_GLOB],
                     )
                     if "_constants" not in path.parts
                 ):

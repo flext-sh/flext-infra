@@ -19,7 +19,7 @@ from flext_cli import u
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesRopeSource,
     c,
     m,
     t,
@@ -72,7 +72,9 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         if not imports:
             return list(lines)
         insert_idx = (
-            FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(lines)
+            FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
+                lines
+            )
         )
         return [*lines[:insert_idx], *imports, *lines[insert_idx:]]
 
@@ -316,7 +318,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             if not lines:
                 continue
             insert_idx = (
-                FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
+                FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
                     lines
                 )
             )
