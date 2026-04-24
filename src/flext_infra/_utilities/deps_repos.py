@@ -38,7 +38,8 @@ class FlextInfraInternalSyncRepoMixin:
         for pattern in c.Infra.GITHUB_OWNER_PATTERNS:
             match = pattern.match(remote_url)
             if match:
-                return match.group("owner")
+                owner: str = match.group("owner")
+                return owner
         return None
 
     @staticmethod
@@ -140,15 +141,15 @@ class FlextInfraInternalSyncRepoMixin:
             branch_val = branch.value
             current = branch_val.strip()
             if current and current != c.Infra.GIT_HEAD:
-                return current
+                return str(current)
         tag = u.Cli.capture(
             [c.Infra.GIT, "describe", "--tags", "--exact-match"],
             cwd=project_root,
         )
         if tag.success:
             tag_val = tag.value
-            return tag_val.strip()
-        return c.Infra.GIT_MAIN
+            return str(tag_val.strip())
+        return str(c.Infra.GIT_MAIN)
 
     def synthesized_repo_map(
         self,

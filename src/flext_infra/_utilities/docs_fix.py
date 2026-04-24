@@ -54,7 +54,8 @@ class FlextInfraUtilitiesDocsFix:
             text, link = match.groups()
             fixed = FlextInfraUtilitiesDocsFix.docs_maybe_fix_link(md_file, link)
             if fixed is None:
-                return match.group(0)
+                original_match: str = match.group(0)
+                return original_match
             link_count += 1
             return f"[{text}]({fixed})"
 

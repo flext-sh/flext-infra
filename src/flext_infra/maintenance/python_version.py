@@ -120,7 +120,8 @@ class FlextInfraPythonVersionEnforcer(s[int]):
     def _resolve_workspace_root(self) -> Path:
         """Prefer the validated CLI workspace when provided, otherwise auto-detect."""
         if "workspace_root" in self.model_fields_set:
-            return self.workspace_root.resolve()
+            resolved: Path = self.workspace_root.resolve()
+            return resolved
         return self._workspace_root_from_file(__file__)
 
     def _ensure_python_version_file(self, project: Path, required_minor: int) -> bool:

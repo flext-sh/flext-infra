@@ -104,7 +104,10 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
             return source
         nested_block = "\n".join(extracted)
         if ns_exists:
-            return u.Infra.append_to_class_body(source, namespace, nested_block)
+            appended: str = u.Infra.append_to_class_body(
+                source, namespace, nested_block
+            )
+            return appended
         return source.rstrip("\n") + f"\n\nclass {namespace}:\n{nested_block}\n"
 
     def _is_nesting_allowed(self, class_name: str, target_namespace: str) -> bool:
@@ -113,10 +116,11 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
             return True
         if not policy.enable_class_nesting:
             return False
-        return u.Infra.target_allowed(
+        allowed: bool = u.Infra.target_allowed(
             policy=policy,
             target_namespace=target_namespace,
         )
+        return allowed
 
     def _ns_op_allowed(
         self,

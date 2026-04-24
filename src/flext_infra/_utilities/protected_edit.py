@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import difflib
+import hashlib
 import re
 import shutil
 from collections.abc import (
@@ -12,6 +14,7 @@ from collections.abc import (
     MutableSequence,
 )
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -95,6 +98,15 @@ class FlextInfraUtilitiesProtectedEdit:
     def _command_env() -> t.StrMapping:
         return u.Cli.process_env(remove_keys=("PYTHONPATH",))
 
+    _snapshot_cache: ClassVar[
+        MutableMapping[tuple[str, str, tuple[str, ...]], t.Infra.LintSnapshot]
+    ] = {}
+
+    @classmethod
+    def clear_snapshot_cache(cls) -> None:
+        """Reset the content-hash keyed lint snapshot cache."""
+        cls._snapshot_cache.clear()
+
     @classmethod
     def lint_snapshot(
         cls,
@@ -103,20 +115,66 @@ class FlextInfraUtilitiesProtectedEdit:
         *,
         gates: t.StrSequence | None = None,
     ) -> t.Infra.LintSnapshot:
-        """Run selected lint tools on *py_file* and return failing output lines."""
+        """Run selected lint tools on *py_file*, concurrent and content-cached.
+
+        Each gate tool spawns an independent subprocess; they are dispatched
+        through a thread pool so that wall-clock time is bounded by the
+        slowest tool rather than the sum of all tools. Results are cached
+        by ``(resolved_path, content_sha256, gate_set)`` so that repeated
+        snapshots of the same file content reuse prior subprocess output —
+        a common pattern when the census measures a baseline before each
+        candidate write.
+        """
+        selected_tools = cls._selected_lint_tools(gates)
+        if not selected_tools:
+            return {}
+        gate_key = tuple(tool for tool, _ in selected_tools)
+        cache_key: tuple[str, str, tuple[str, ...]] | None = None
+        try:
+            raw_bytes = py_file.read_bytes()
+        except OSError:
+            raw_bytes = None
+        if raw_bytes is not None:
+            cache_key = (
+                str(py_file.resolve()),
+                hashlib.sha256(raw_bytes).hexdigest(),
+                gate_key,
+            )
+            cached = cls._snapshot_cache.get(cache_key)
+            if cached is not None:
+                return cached
+
         errors: MutableMapping[str, t.StrSequence] = {}
         command_cwd = cls._command_cwd(py_file, workspace)
-        for tool, tmpl in cls._selected_lint_tools(gates):
+        command_env = cls._command_env()
+
+        def _run_gate(tool_name: str, tmpl: tuple[str, ...]) -> tuple[str, t.StrSequence]:
             cmd = [item.replace("{file}", str(py_file)) for item in tmpl]
             result = u.Cli.run_raw(
                 cmd,
                 cwd=command_cwd,
-                env=cls._command_env(),
+                env=command_env,
                 timeout=c.Infra.TIMEOUT_SHORT,
             )
             if result.success and result.value.exit_code != 0:
                 output = (result.value.stdout + result.value.stderr).strip()
-                errors[tool] = [line for line in output.splitlines() if line.strip()]
+                return tool_name, [
+                    line for line in output.splitlines() if line.strip()
+                ]
+            return tool_name, ()
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, len(selected_tools)),
+        ) as pool:
+            futures = [
+                pool.submit(_run_gate, tool, tmpl) for tool, tmpl in selected_tools
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                tool_name, lines = future.result()
+                if lines:
+                    errors[tool_name] = lines
+        if cache_key is not None:
+            cls._snapshot_cache[cache_key] = dict(errors)
         return errors
 
     @staticmethod
@@ -289,7 +347,7 @@ class FlextInfraUtilitiesProtectedEdit:
         ):
             return None
         if result.value.exit_code != 0:
-            return output
+            return str(output)
         return None
 
     @staticmethod

@@ -61,11 +61,14 @@ class FlextInfraUtilitiesDocsApi:
     def _module_file(project_root: Path, module_name: str) -> Path:
         """Resolve a Python module path to its file path."""
         parts = module_name.split(".")
-        base = project_root / c.Infra.DEFAULT_SRC_DIR / parts[0]
+        src_dir: str = c.Infra.DEFAULT_SRC_DIR
+        init_py: str = c.Infra.INIT_PY
+        ext_python: str = c.Infra.EXT_PYTHON
+        base = project_root / src_dir / parts[0]
         return (
-            base / c.Infra.INIT_PY
+            base / init_py
             if len(parts) == 1
-            else base.joinpath(*parts[1:]).with_suffix(c.Infra.EXT_PYTHON)
+            else base.joinpath(*parts[1:]).with_suffix(ext_python)
         )
 
     @classmethod

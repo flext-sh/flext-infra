@@ -266,7 +266,10 @@ class FlextInfraUtilitiesRopeAnalysis:
             column = line.find(symbol)
             if column < 0:
                 return None
-            return sum(len(item) for item in lines[: definition_line - 1]) + column
+            offset: int = (
+                sum(len(item) for item in lines[: definition_line - 1]) + column
+            )
+            return offset
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return None
 
@@ -451,10 +454,13 @@ class FlextInfraUtilitiesRopeAnalysis:
         resource: t.Infra.RopeResource,
     ) -> Sequence[m.Infra.ClassInfo]:
         """Return ClassInfo (name, line, bases) for all classes in a module."""
-        return FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
-            rope_project,
-            resource,
-        ).class_infos
+        class_infos: Sequence[m.Infra.ClassInfo] = (
+            FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
+                rope_project,
+                resource,
+            ).class_infos
+        )
+        return class_infos
 
     @staticmethod
     def get_class_symbol_count(

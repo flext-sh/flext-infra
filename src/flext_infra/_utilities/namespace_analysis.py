@@ -84,11 +84,12 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         filename: str,
     ) -> Path:
         parts = source_file.parts
-        if c.Infra.DEFAULT_SRC_DIR in parts:
-            src_index = parts.index(c.Infra.DEFAULT_SRC_DIR)
+        src_dir: str = c.Infra.DEFAULT_SRC_DIR
+        if src_dir in parts:
+            src_index = parts.index(src_dir)
             if src_index + 1 < len(parts):
                 package_name = parts[src_index + 1]
-                return project_root / c.Infra.DEFAULT_SRC_DIR / package_name / filename
+                return project_root / src_dir / package_name / filename
         return source_file.parent / filename
 
     @staticmethod

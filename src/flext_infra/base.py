@@ -118,7 +118,8 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     @classmethod
     def _normalize_report_path(cls, value: str | Path | None) -> Path | None:
         """Resolve report file paths eagerly so report writes are absolute."""
-        return u.Infra.normalize_optional_path(value)
+        normalized: Path | None = u.Infra.normalize_optional_path(value)
+        return normalized
 
     @u.field_validator("output_dir", mode="before")
     @classmethod

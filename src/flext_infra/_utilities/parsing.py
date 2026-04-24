@@ -464,7 +464,7 @@ class FlextInfraUtilitiesParsing:
     def first_constants_class_name(source: str) -> str:
         """Find the first class ending with Constants suffix."""
         for match in c.Infra.CLASS_NAME_RE.finditer(source):
-            name = match.group(1)
+            name: str = match.group(1)
             if name.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
                 return name
         return ""

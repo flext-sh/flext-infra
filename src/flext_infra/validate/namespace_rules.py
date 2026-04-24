@@ -369,7 +369,7 @@ class FlextInfraNamespaceRules:
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
         if isinstance(node, ast.TypeAlias):
-            return filepath.name == c.Infra.TYPINGS_PY
+            return bool(filepath.name == c.Infra.TYPINGS_PY)
         return self._is_allowed_ann_assign(node, filepath)
 
     @staticmethod
@@ -395,7 +395,7 @@ class FlextInfraNamespaceRules:
         if isinstance(node.value, ast.Call):
             func_name = self._get_call_name(node.value.func)
             if func_name in c.Infra.TYPEVAR_CALLABLES:
-                return filepath.name == c.Infra.TYPINGS_PY
+                return bool(filepath.name == c.Infra.TYPINGS_PY)
         return False
 
     def _is_allowed_ann_assign(
@@ -404,13 +404,13 @@ class FlextInfraNamespaceRules:
         filepath: Path,
     ) -> bool:
         if self._annotation_contains(node.annotation, "TypeAlias"):
-            return filepath.name == c.Infra.TYPINGS_PY
+            return bool(filepath.name == c.Infra.TYPINGS_PY)
         if (
             isinstance(node.target, ast.Name)
             and node.target.id.startswith("_")
             and self._annotation_contains(node.annotation, "Final")
         ):
-            return filepath.name == c.Infra.CONSTANTS_PY
+            return bool(filepath.name == c.Infra.CONSTANTS_PY)
         return False
 
 

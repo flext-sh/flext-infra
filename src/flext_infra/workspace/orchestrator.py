@@ -341,7 +341,8 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         return normalized_args
 
     def _is_go_project(self, project: str) -> bool:
-        return (Path(project) / c.Infra.GO_MOD).exists()
+        go_mod: str = c.Infra.GO_MOD
+        return (Path(project) / go_mod).exists()
 
     def _normalize_check_gates_for_go(self, gates_value: str) -> str:
         raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]

@@ -116,9 +116,10 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         report: m.Infra.WorkspaceEnforcementReport,
     ) -> str:
         """Render a workspace enforcement report as plain text."""
-        return u.Infra.render_namespace_enforcement_report(
+        text: str = u.Infra.render_namespace_enforcement_report(
             report,
         )
+        return text
 
     @classmethod
     def execute_command(

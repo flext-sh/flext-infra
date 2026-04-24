@@ -166,8 +166,9 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _normalize_rewrite_scope(cls, raw_scope: str | None) -> str:
+        default_scope: str = c.Infra.RK_FILE
         if not isinstance(raw_scope, str):
-            return c.Infra.RK_FILE
+            return default_scope
         candidate = u.norm_str(raw_scope, case="lower")
         if candidate in {
             c.Infra.RK_FILE,
@@ -175,7 +176,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             c.Infra.RK_WORKSPACE,
         }:
             return candidate
-        return c.Infra.RK_FILE
+        return default_scope
 
 
 __all__: list[str] = ["FlextInfraRefactorClassNestingAnalyzer"]

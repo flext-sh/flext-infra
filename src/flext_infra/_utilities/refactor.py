@@ -36,7 +36,10 @@ class FlextInfraUtilitiesRefactor:
         if value is None:
             return []
         try:
-            return t.Infra.STR_MAPPING_SEQ_ADAPTER.validate_python(value)
+            entries: Sequence[t.StrMapping] = (
+                t.Infra.STR_MAPPING_SEQ_ADAPTER.validate_python(value)
+            )
+            return entries
         except c.ValidationError:
             msg = "class nesting entries must be a list"
             raise ValueError(msg) from None

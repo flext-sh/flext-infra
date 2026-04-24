@@ -49,7 +49,8 @@ class FlextInfraGoGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> int:
         _ = project_dir, ctx
-        return c.Infra.TIMEOUT_CI
+        timeout: int = c.Infra.TIMEOUT_CI
+        return timeout
 
     @override
     def _parse_check_output(

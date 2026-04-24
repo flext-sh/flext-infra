@@ -107,19 +107,22 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 **data: t.JsonValue | t.JsonPayload | Sequence[t.JsonPayload],
             ) -> Self:
                 operation_item = operation_type.model_validate(data)
-                return self._replace(
+                replaced: Self = self._replace(
                     self.state.model_copy(
                         update={
                             "operations": (*self.state.operations, operation_item),
                         }
                     )
                 )
+                return replaced
 
             def root(self, *path: str) -> Self:
-                return self._path("root_path", *path)
+                result: Self = self._path("root_path", *path)
+                return result
 
             def table(self, *path: str) -> Self:
-                return self._path("table_path", *path)
+                result: Self = self._path("table_path", *path)
+                return result
 
             def value(self, key: str, value: t.JsonValue) -> Self:
                 return self.operation(
@@ -168,7 +171,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                         )
                     ),
                 )
-                return self._replace(
+                replaced: Self = self._replace(
                     self.state.model_copy(
                         update={
                             "nested_tables": (
@@ -178,11 +181,13 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                         }
                     )
                 )
+                return replaced
 
             def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
-                return self._replace(
+                replaced: Self = self._replace(
                     self.state.model_copy(update={"custom_handler": fn})
                 )
+                return replaced
 
 
 __all__: list[str] = ["FlextInfraModelsEngine"]

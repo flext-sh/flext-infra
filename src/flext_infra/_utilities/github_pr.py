@@ -91,7 +91,8 @@ class FlextInfraUtilitiesGithubPr:
         if run_result.success:
             outcome = run_result.value
             context.outcomes.append(outcome)
-            return outcome.exit_code != 0
+            failed: bool = outcome.exit_code != 0
+            return failed
         return True
 
     @classmethod

@@ -567,11 +567,12 @@ class FlextInfraCli:
 
     @classmethod
     def _normalize_group_args(cls, args: t.StrSequence) -> list[str]:
-        return u.Cli.reorder_prefixed_options(
+        reordered: list[str] = u.Cli.reorder_prefixed_options(
             args,
             bool_options=tuple(cls._SHARED_BOOL_FLAGS),
             value_options=tuple(cls._SHARED_VALUE_FLAGS),
         )
+        return reordered
 
     def _register_group_commands(self, group: str, app: t.Cli.CliApp) -> None:
         self._CLI_SERVICE.register_result_routes(app, self._GROUP_COMMANDS[group])

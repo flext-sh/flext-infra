@@ -338,7 +338,8 @@ class FlextInfraRefactorOrchestrator(
             dry_run=dry_run,
         )
         if error_results is not None:
-            return error_results
+            results_out: Sequence[m.Infra.Result] = error_results
+            return results_out
         collected = FlextInfraUtilitiesRefactorEngine.collect_engine_project_files(
             self.loader.settings,
             project_path,
@@ -391,7 +392,8 @@ class FlextInfraRefactorOrchestrator(
             dry_run=dry_run,
         )
         if error_results is not None:
-            return error_results
+            results_out: Sequence[m.Infra.Result] = error_results
+            return results_out
         results: MutableSequence[m.Infra.Result] = []
         processed: MutableSequence[str] = []
         for project in projects:

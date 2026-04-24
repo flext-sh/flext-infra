@@ -114,7 +114,8 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
 
     def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""
-        return u.Infra.parse_module_ast(path)
+        module: ast.Module | None = u.Infra.parse_module_ast(path)
+        return module
 
 
 __all__: list[str] = ["FlextInfraNamespaceValidator"]

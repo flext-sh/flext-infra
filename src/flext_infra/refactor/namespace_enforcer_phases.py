@@ -313,7 +313,8 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         if py_files_result.failure:
             return []
-        return py_files_result.value
+        files: Sequence[Path] = py_files_result.value
+        return files
 
     def diff(
         self,

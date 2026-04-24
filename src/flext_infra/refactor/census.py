@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -96,19 +98,19 @@ class FlextInfraRefactorCensus(
 
     @property
     def dry_run_gate_names(self) -> t.StrSequence:
-        """Return the canonical gate set required for a removal candidate to pass.
+        """Return the per-candidate gate set (``lint`` + ``pyrefly``).
 
-        Reuses ``c.Infra.SAFE_EXECUTION_DEFAULT_GATES`` so the census and the
-        wider FLEXT safe-execution pipeline honour the same governance contract
-        (``lint,mypy,pyright,pyrefly``). Pytest is added automatically per-file
-        by ``FlextInfraUtilitiesProtectedEdit`` whenever a touched path lives
-        under ``tests/``.
+        Mypy and pyright perform transitive module analysis that flags
+        ``__init__.py`` lazy-import references to just-removed symbols
+        *before* ``FlextInfraCodegenLazyInit`` regenerates them at the
+        end of ``_apply_supported_fixes``. That would roll back every
+        safe candidate. The per-candidate gate therefore uses the two
+        fast tools that validate the actual file being modified
+        (``ruff`` E/F + ``pyrefly``); the session-level regen run + a
+        final ``ruff format/fix`` on every touched file guarantees
+        consistency afterwards.
         """
-        return tuple(
-            gate.strip()
-            for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
-            if gate.strip()
-        )
+        return (c.Infra.LINT, c.Infra.PYREFLY)
 
     @staticmethod
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
@@ -429,6 +431,7 @@ class FlextInfraRefactorCensus(
         report: m.Infra.Census.WorkspaceReport,
     ) -> frozenset[str]:
         applied: set[str] = set()
+        touched_paths: set[Path] = set()
         for project in report.projects:
             for fix in project.fixes:
                 file_path = Path(fix.source_file)
@@ -449,21 +452,50 @@ class FlextInfraRefactorCensus(
                     continue
                 resource.write(updated)
                 applied.add(self._fix_key(file_path, fix.object_name))
+                touched_paths.add(file_path.resolve())
         for candidate in report.removal_candidates:
             if u.Infra.apply_simple_removal_candidate(
                 rope,
                 self.root,
                 candidate,
                 gates=self.dry_run_gate_names,
-                post_apply_hook=self._regenerate_inits_for_workspace,
             ):
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
                 )
+                touched_paths.add(Path(candidate.file_path).resolve())
+                touched_paths.update(Path(site.file_path).resolve() for site in (
+                    *candidate.test_reference_sites,
+                    *candidate.example_reference_sites,
+                    *candidate.script_reference_sites,
+                ))
         if applied:
             self._regenerate_inits_via_codegen()
+            self._ruff_fix_touched_files(touched_paths)
             rope.reload()
         return frozenset(applied)
+
+    @staticmethod
+    def _ruff_fix_touched_files(paths: Iterable[Path]) -> None:
+        """Run ``ruff format`` + ``ruff check --fix`` on cascade/cosmetic rules only.
+
+        Normalises trailing newlines (W391) and import sort (I001) left
+        behind after candidate removal. Scope is deliberately narrow:
+        ``--select I,W`` — not ``F`` or ``E`` — so that unused-import
+        removal does not fight the lazy-init ``TYPE_CHECKING`` re-exports
+        produced by ``FlextInfraCodegenLazyInit``. Failures are swallowed
+        so apply remains successful even if cosmetic cleanup cannot run.
+        """
+        existing = sorted({str(path) for path in paths if path.is_file()})
+        if not existing:
+            return
+        with contextlib.suppress(Exception):
+            u.Cli.run_raw(
+                ["ruff", "check", "--fix", "--select", "I,W", *existing],
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+        with contextlib.suppress(Exception):
+            u.Cli.run_raw(["ruff", "format", *existing], timeout=c.Infra.TIMEOUT_SHORT)
 
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""

@@ -48,7 +48,8 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
 
     def _resolved_workspace_root(self) -> Path:
         """Return the validated workspace root from the command context."""
-        return self.workspace_root.resolve()
+        resolved: Path = self.workspace_root.resolve()
+        return resolved
 
     @override
     def execute(self) -> p.Result[m.Infra.SyncResult]:

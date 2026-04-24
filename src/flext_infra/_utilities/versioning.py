@@ -35,7 +35,8 @@ class FlextInfraUtilitiesVersioning:
                 continue
             match = c.Infra.VERSION_RE.match(line)
             if match:
-                return match.group(1)
+                version: str = match.group(1)
+                return version
         return None
 
     @staticmethod

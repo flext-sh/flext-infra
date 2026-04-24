@@ -113,7 +113,8 @@ class FlextInfraSkillValidator(s[bool]):
             if isinstance(val_obj, int):
                 bl_counts[str(key_obj)] = int(val_obj)
         if strategy == c.Infra.RK_TOTAL:
-            return total <= sum(bl_counts.values())
+            total_ok: bool = total <= sum(bl_counts.values())
+            return total_ok
         return all(
             counts.get(g, 0) <= bl_counts.get(g, 0)
             for g in set(counts) | set(bl_counts)

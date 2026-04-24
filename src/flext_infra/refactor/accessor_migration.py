@@ -328,6 +328,8 @@ class FlextInfraAccessorMigrationOrchestrator(
         lint_before: dict[str, tuple[str, ...]] = {}
         lint_after: dict[str, tuple[str, ...]] = {}
         new_lint_errors: dict[str, tuple[str, ...]] = {}
+        before: t.Infra.LintSnapshot = {}
+        after: t.Infra.LintSnapshot = {}
         if automated_changes:
             if self.dry_run and include_preview:
                 before, after = u.Infra.preview_source_lint(
@@ -337,7 +339,6 @@ class FlextInfraAccessorMigrationOrchestrator(
                     gates=self.gate_names,
                 )
             elif not self.dry_run:
-                before: t.Infra.LintSnapshot = {}
                 before = (
                     u.Infra.lint_snapshot(
                         py_file,
@@ -364,7 +365,6 @@ class FlextInfraAccessorMigrationOrchestrator(
                             reason=" ; ".join(report[:3]) or "protected write failed",
                         )
                     )
-                after: t.Infra.LintSnapshot = {}
                 after = (
                     u.Infra.lint_snapshot(
                         py_file,

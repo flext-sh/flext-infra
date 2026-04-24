@@ -203,7 +203,8 @@ class FlextInfraDependencyDetectionAnalysis:
         result = self._read_plain(path)
         if result.failure:
             return {}
-        return self._to_toml_config(result.value)
+        config: Mapping[str, t.Infra.InfraValue] = self._to_toml_config(result.value)
+        return config
 
     def module_to_types_package(
         self,
@@ -222,7 +223,7 @@ class FlextInfraDependencyDetectionAnalysis:
                 return str(value) if value is not None else None
         default_package = c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root)
         if default_package is not None:
-            return default_package
+            return str(default_package)
         return f"types-{root.lower()}"
 
     def run_deptry(

@@ -52,12 +52,11 @@ class FlextInfraProjectClassifier:
     def _read_project_metadata(self) -> t.Infra.TransformResult:
         if self._pyproject_payload is not None:
             return self._project_metadata_from_payload(self._pyproject_payload)
+        empty_dependencies: list[str] = []
         if not self._pyproject_path.is_file():
-            empty_dependencies: list[str] = []
             return ("", empty_dependencies)
         data_result = u.Cli.toml_read_json(self._pyproject_path)
         if data_result.failure:
-            empty_dependencies: list[str] = []
             return ("", empty_dependencies)
         return self._project_metadata_from_payload(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(data_result.value),
@@ -89,7 +88,10 @@ class FlextInfraProjectClassifier:
         raw_value: t.Infra.InfraValue | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         if isinstance(raw_value, Mapping):
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
+            validated: Mapping[
+                str, t.Infra.InfraValue
+            ] = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
+            return validated
         return {}
 
     def _normalized_name_from_mapping(

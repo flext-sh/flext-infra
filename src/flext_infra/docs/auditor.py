@@ -44,7 +44,7 @@ class FlextInfraDocAuditor(
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Return forbidden-term issues configured for one scope."""
-        return u.Infra.docs_text_token_issues(
+        issues: Sequence[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
             scope,
             tokens=u.Infra.docs_policy_list(
                 scope,
@@ -53,13 +53,14 @@ class FlextInfraDocAuditor(
             ),
             issue_type="forbidden_term",
         )
+        return issues
 
     @staticmethod
     def placeholder_issues(
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Return placeholder-text issues for one scope."""
-        return u.Infra.docs_text_token_issues(
+        issues: Sequence[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
             scope,
             tokens=u.Infra.docs_policy_list(
                 scope,
@@ -68,6 +69,7 @@ class FlextInfraDocAuditor(
             ),
             issue_type="placeholder",
         )
+        return issues
 
     def audit(
         self,

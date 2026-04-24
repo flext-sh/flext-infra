@@ -47,7 +47,8 @@ class FlextInfraPyrightGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> int:
         _ = project_dir, ctx
-        return c.Infra.TIMEOUT_LONG
+        timeout: int = c.Infra.TIMEOUT_LONG
+        return timeout
 
     @override
     def _parse_check_output(

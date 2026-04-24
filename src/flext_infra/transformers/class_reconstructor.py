@@ -212,13 +212,15 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             ),
             default=node.col_offset,
         )
-        return line_offsets[start_line - 1] + start_col
+        start_offset: int = line_offsets[start_line - 1] + start_col
+        return start_offset
 
     @staticmethod
     def _node_end_offset(node: t.Infra.AstStmt, line_offsets: Sequence[int]) -> int:
         end_line = node.end_lineno or node.lineno
         end_col = node.end_col_offset or 0
-        return line_offsets[end_line - 1] + end_col
+        end_offset: int = line_offsets[end_line - 1] + end_col
+        return end_offset
 
     @staticmethod
     def _is_method_node(

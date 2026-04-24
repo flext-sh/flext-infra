@@ -45,7 +45,8 @@ class FlextInfraUtilitiesCompatibility:
         )
         if format_result.failure and not quiet:
             u.Cli.error(format_result.error or f"ruff format failed: {path}")
-        return format_result.success
+        success: bool = format_result.success
+        return success
 
     @staticmethod
     def generate_module_skeleton(

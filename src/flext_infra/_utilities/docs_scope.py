@@ -179,7 +179,9 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def config_path(workspace_root: Path) -> Path:
         """Return the minimal docs policy settings path."""
-        return workspace_root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME
+        dir_docs: str = c.Infra.DIR_DOCS
+        docs_config: str = c.Infra.DOCS_CONFIG_FILENAME
+        return workspace_root / dir_docs / docs_config
 
     @staticmethod
     def project_payload(project_root: Path) -> t.Infra.ContainerDict:
@@ -328,7 +330,7 @@ class FlextInfraUtilitiesDocsScope:
         if src_dir.is_dir():
             for child in sorted(src_dir.iterdir()):
                 if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                    return child.name
+                    return str(child.name)
         project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
             project_root,
             payload,
@@ -345,7 +347,8 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def project_package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project."""
-        return FlextInfraUtilitiesDocsScope.project_state(project_root).package_name
+        name: str = FlextInfraUtilitiesDocsScope.project_state(project_root).package_name
+        return name
 
     @staticmethod
     def discover_projects(

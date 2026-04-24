@@ -11,9 +11,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import (
+    Mapping,
     MutableMapping,
     Sequence,
 )
+from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import t
@@ -48,10 +50,10 @@ class FlextInfraTypesAdapters:
     )
     "Validates t.StrMapping."
 
-    CONTAINER_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.JsonMapping]] = (
-        t.flat_container_mapping_adapter()
-    )
-    "Validates flat container mappings through the shared flext-core adapter."
+    CONTAINER_MAPPING_ADAPTER: ClassVar[
+        m.TypeAdapter[Mapping[str, t.Scalar | Path]]
+    ] = m.TypeAdapter(Mapping[str, t.Scalar | Path])
+    "Validates flat scalar/path mappings (no nested containers)."
 
     # ── Sequence adapters ────────────────────────────────────────────
     INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[FlextInfraTypesBase.InfraSequence]] = (

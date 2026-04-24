@@ -73,10 +73,11 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
             return True
         if not getattr(policy, attr, True):
             return False
-        return u.Infra.target_allowed(
+        allowed: bool = u.Infra.target_allowed(
             policy=policy,
             target_namespace=target_ns,
         )
+        return allowed
 
     def _sig_allowed(self, source: str, name: str) -> bool:
         policy = self._policy_for(name)

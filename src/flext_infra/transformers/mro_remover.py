@@ -16,6 +16,11 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
     """
 
     @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """No-op text transform. This transformer requires rope resources."""
+        return source, list(self.changes)
+
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,

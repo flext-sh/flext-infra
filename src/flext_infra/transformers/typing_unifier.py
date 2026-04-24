@@ -130,7 +130,9 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return annotations
 
     def _rewrite_annotation(self, annotation: ast.expr) -> ast.expr | None:
-        rewritten = self._AnnotationRewriter().visit(copy.deepcopy(annotation))
+        rewritten: ast.expr = self._AnnotationRewriter().visit(
+            copy.deepcopy(annotation)
+        )
         if ast.dump(rewritten) == ast.dump(annotation):
             return None
         self._record_change(
@@ -340,10 +342,11 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         for package_name in ("tests", "examples", "scripts"):
             if package_name in parts:
                 return package_name
-        return u.Infra.package_name(self._file_path).split(
+        module_head: str = u.Infra.package_name(self._file_path).split(
             ".",
             maxsplit=1,
         )[0]
+        return module_head
 
     @staticmethod
     def _import_insertion_offset(source: str) -> int:

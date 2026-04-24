@@ -136,7 +136,8 @@ class FlextInfraGate(ABC):
     ) -> int:
         """Timeout for the check command. Override for long-running tools."""
         _ = project_dir, ctx
-        return c.Infra.TIMEOUT_DEFAULT
+        timeout: int = c.Infra.TIMEOUT_DEFAULT
+        return timeout
 
     def _check_env(
         self,
@@ -204,7 +205,8 @@ class FlextInfraGate(ABC):
 
     def _fix_raw_output(self, result: m.Cli.CommandOutput) -> str:
         """Assemble raw output from fix result. Default: stderr only."""
-        return result.stderr
+        stderr: str = result.stderr
+        return stderr
 
     def _run(
         self,

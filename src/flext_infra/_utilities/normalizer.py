@@ -38,7 +38,10 @@ def _load_import_normalization_config() -> Mapping[str, t.Infra.InfraValue]:
     loaded = u.Cli.yaml_load_mapping(rules_path)
     root = loaded.get("import_normalization")
     if isinstance(root, Mapping):
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)
+        validated: Mapping[
+            str, t.Infra.InfraValue
+        ] = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(root)
+        return validated
     return {}
 
 

@@ -237,12 +237,13 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             child_entry = self._package_entry(child_dir)
             if child_entry is None or not child_entry.package_name:
                 continue
-            if self._is_fixture_package(child_dir):
-                continue
-            descendants.append(child_entry.package_name)
+            is_fixture_child = self._is_fixture_package(child_dir)
+            if not is_fixture_child:
+                descendants.append(child_entry.package_name)
             if child_dir.parent != pkg_dir:
                 continue
-            direct.append(child_entry.package_name)
+            if not is_fixture_child:
+                direct.append(child_entry.package_name)
             for name, (module_name, attr) in dir_exports.get(
                 str(child_dir), {}
             ).items():
@@ -398,7 +399,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     ) -> str:
         for package_name in reversed(tuple(name for name in package_names if name)):
             if alias_name in self._export_names_for_package(package_name):
-                return package_name
+                return str(package_name)
         return ""
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -458,10 +459,13 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None or package_entry.project_root is None:
             return ""
-        return self.rope_workspace.workspace_index.project_package_by_root.get(
-            str(package_entry.project_root),
-            "",
+        project_pkg: str = (
+            self.rope_workspace.workspace_index.project_package_by_root.get(
+                str(package_entry.project_root),
+                "",
+            )
         )
+        return project_pkg
 
     def _package_name_from_target(self, target: str) -> str:
         parts = tuple(part for part in target.split(".") if part)
@@ -525,7 +529,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if attr == name:
             score += 3
         score -= module_path.count(".")
-        return score
+        final_score: int = score
+        return final_score
 
     def _pick_preferred_target(
         self,

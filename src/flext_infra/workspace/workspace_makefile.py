@@ -46,9 +46,8 @@ class FlextInfraWorkspaceMakefileGenerator:
     @property
     def template_path(self) -> Path:
         """Path to the Makefile Jinja2 template used for workspace generation."""
-        return (
-            Path(__file__).parent.parent / "templates" / c.Infra.MAKEFILE_TEMPLATE_NAME
-        )
+        template_name: str = c.Infra.MAKEFILE_TEMPLATE_NAME
+        return Path(__file__).parent.parent / "templates" / template_name
 
     def generate(self, workspace_root: Path) -> p.Result[bool]:
         """Regenerate the workspace root Makefile from the stored template.
@@ -185,10 +184,11 @@ class FlextInfraWorkspaceMakefileGenerator:
         pr_branch: str,
     ) -> str:
         """Render a validated template object into the final Makefile text."""
-        return template.render(
+        rendered: str = template.render(
             pr_branch=pr_branch,
             make=c.Infra,
         )
+        return rendered
 
     @staticmethod
     def _current_branch(workspace_root: Path) -> str:
@@ -200,7 +200,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         if capture_result.success:
             branch = capture_result.value
             if branch and branch != c.Infra.GIT_HEAD:
-                return branch
+                return str(branch)
 
         # Fallback: read version from pyproject.toml
         pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
@@ -212,7 +212,7 @@ class FlextInfraWorkspaceMakefileGenerator:
                 version_raw = project_raw.get("version", c.Infra.GIT_MAIN)
                 if isinstance(version_raw, str):
                     return version_raw
-        return c.Infra.GIT_MAIN
+        return str(c.Infra.GIT_MAIN)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceMakefileGenerator"]

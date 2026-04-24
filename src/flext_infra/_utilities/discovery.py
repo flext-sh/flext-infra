@@ -119,7 +119,7 @@ class FlextInfraUtilitiesDiscovery:
         if src_dir.is_dir():
             for child in sorted(src_dir.iterdir()):
                 if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                    return child.name
+                    return str(child.name)
         absolute_parts = (
             resolved.parts[:-1]
             if resolved.name == c.Infra.INIT_PY
@@ -195,7 +195,7 @@ class FlextInfraUtilitiesDiscovery:
         )
         for candidate in candidates:
             if candidate.is_file():
-                return candidate
+                return Path(candidate)
         return None
 
     @staticmethod
@@ -423,8 +423,8 @@ class FlextInfraUtilitiesDiscovery:
                 package_root = target_name.split(".", maxsplit=1)[0]
                 if package_root == current_root:
                     continue
-                imported_name = target_name.rsplit(".", maxsplit=1)[-1]
-                target = package_root if return_module else imported_name
+                local_imported: str = target_name.rsplit(".", maxsplit=1)[-1]
+                target: str = package_root if return_module else local_imported
                 if target and target not in resolved:
                     resolved.append(target)
         result = tuple(resolved)

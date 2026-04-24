@@ -133,7 +133,7 @@ class FlextInfraUtilitiesRopeSource:
     ) -> str:
         """Apply offset-based edits (start, end, replacement) to source."""
         _ = rope_project
-        source = resource.read()
+        source: str = resource.read()
         for start, end, replacement in sorted(
             changes,
             key=itemgetter(0),
