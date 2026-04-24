@@ -135,10 +135,6 @@ class TestReadRequiredMinor:
 class TestWorkspaceRoot:
     """Tests for _workspace_root_from_file()."""
 
-    @pytest.fixture
-    def enforcer(self) -> FlextInfraPythonVersionEnforcer:
-        return FlextInfraPythonVersionEnforcer()
-
     def test_success(
         self,
         enforcer: FlextInfraPythonVersionEnforcer,
@@ -164,10 +160,6 @@ class TestWorkspaceRoot:
 
 class TestEnsurePythonVersionFile:
     """Tests for _ensure_python_version_file()."""
-
-    @pytest.fixture
-    def enforcer(self) -> FlextInfraPythonVersionEnforcer:
-        return FlextInfraPythonVersionEnforcer()
 
     def test_mismatch_check_mode(
         self,
