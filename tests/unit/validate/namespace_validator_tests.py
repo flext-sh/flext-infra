@@ -32,6 +32,22 @@ def _make_project_with_module(
     return project_root
 
 
+def _make_project_with_module_path(
+    tmp_path: Path,
+    *,
+    module_source: str,
+    module_path: str,
+) -> Path:
+    project_root = tmp_path / "project"
+    package_dir = project_root / "src" / "flext_test"
+    package_dir.mkdir(parents=True)
+    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    target = package_dir / module_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _ = target.write_text(module_source, encoding="utf-8")
+    return project_root
+
+
 class TestFlextInfraNamespaceValidator:
     """Test suite for namespace validator rules 0-3."""
 
@@ -501,3 +517,137 @@ class TestFlextInfraNamespaceValidator:
         tm.that(len(result.value.violations), gt=0)
         first = result.value.violations[0]
         tm.that(re.search(r"^\[NS-\d{3}-\d{3}\] .+\.py:\d+ — .+$", first), none=False)
+
+    def test_rule0_allows_type_checking_block(self, tmp_path: Path) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n"
+            "from typing import TYPE_CHECKING\n\n"
+            "if TYPE_CHECKING:\n"
+            "    from collections.abc import Sequence\n\n"
+            "class FlextTestModels(Models):\n"
+            "    pass\n"
+        )
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=module_source,
+            module_name="models.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "Disallowed top-level statement: If" in violation
+                for violation in result.value.violations
+            ),
+            eq=False,
+        )
+
+    def test_rule0_allows_annotated_dunder_assign(self, tmp_path: Path) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "class FlextTestModels(Models):\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextTestModels"]\n'
+        )
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=module_source,
+            module_name="models.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "Disallowed top-level statement: AnnAssign" in violation
+                for violation in result.value.violations
+            ),
+            eq=False,
+        )
+
+    def test_rule1_skips_enum_detection_inside_private_constants_dir(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n"
+            "from enum import Enum\n\n"
+            "class FlextTestModelsConstants:\n"
+            "    class Status(Enum):\n"
+            '        OK = "ok"\n'
+        )
+        root = _make_project_with_module_path(
+            tmp_path,
+            module_source=module_source,
+            module_path="_constants/sample.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "Loose Enum 'Status' belongs in constants.py" in v
+                for v in result.value.violations
+            ),
+            eq=False,
+        )
+
+    def test_rule2_skips_typealias_detection_inside_private_typings_dir(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\ntype LocalAlias = str | int\n"
+        )
+        root = _make_project_with_module_path(
+            tmp_path,
+            module_source=module_source,
+            module_path="_typings/typeadapters.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "PEP 695 TypeAlias 'LocalAlias' belongs in typings.py" in v
+                for v in result.value.violations
+            ),
+            eq=False,
+        )
+
+    def test_rule3_skips_direct_imports_inside_private_dirs(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n"
+            "from flext_test import FlextTestModelsSomething\n\n"
+            "class FlextTestModelsThing(Models):\n"
+            "    pass\n"
+        )
+        root = _make_project_with_module_path(
+            tmp_path,
+            module_source=module_source,
+            module_path="_utilities/private_runtime.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "instead of direct import 'FlextTestModelsSomething'" in v
+                for v in result.value.violations
+            ),
+            eq=False,
+        )
