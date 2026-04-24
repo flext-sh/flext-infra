@@ -455,6 +455,7 @@ class FlextInfraRefactorCensus(
                 self.root,
                 candidate,
                 gates=self.dry_run_gate_names,
+                post_apply_hook=self._regenerate_inits_for_workspace,
             ):
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
@@ -467,6 +468,13 @@ class FlextInfraRefactorCensus(
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
         FlextInfraCodegenLazyInit(workspace=self.root).generate_inits(
+            check_only=False,
+        )
+
+    @staticmethod
+    def _regenerate_inits_for_workspace(workspace: Path) -> None:
+        """Post-apply hook that regenerates ``__init__.py`` for ``workspace``."""
+        FlextInfraCodegenLazyInit(workspace=workspace).generate_inits(
             check_only=False,
         )
 

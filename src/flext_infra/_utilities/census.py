@@ -7,6 +7,7 @@ import re
 import shutil
 from collections import Counter, defaultdict
 from collections.abc import (
+    Callable as _CensusCallable,
     Mapping,
     MutableMapping,
     MutableSequence,
@@ -86,9 +87,11 @@ class FlextInfraUtilitiesRefactorCensus:
             root for root in project_roots if file_path.is_relative_to(root)
         ]
         if not matching_roots:
-            return c.Infra.DEFAULT_UNKNOWN
+            unknown: str = c.Infra.DEFAULT_UNKNOWN
+            return unknown
         best = max(matching_roots, key=lambda root: len(root.parts))
-        return best.name
+        name: str = best.name
+        return name
 
     @staticmethod
     def build_mro_target(
@@ -436,8 +439,18 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         gates: t.StrSequence,
+        post_apply_hook: _CensusCallable[[Path], None] | None = None,
     ) -> bool:
-        """Apply one simple removal candidate permanently, Ruff/Pyrefly-gated."""
+        """Apply one simple removal candidate permanently, gates-validated.
+
+        ``post_apply_hook`` is executed **after** sources are written and rope
+        imports are organised, but **before** the gate snapshot runs. Callers
+        that need to regenerate governance artefacts (e.g. ``__init__.py``
+        lazy maps via ``FlextInfraCodegenLazyInit``) pass the regeneration
+        routine here. This keeps ``flext_infra._utilities.census`` outside
+        the ``flext_infra.codegen.lazy_init`` import cycle while still
+        giving gates a chance to verify post-cascade correctness.
+        """
         updates = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources(
             rope,
             candidate,
@@ -459,6 +472,9 @@ class FlextInfraUtilitiesRefactorCensus:
                         resource,
                         apply=True,
                     )
+            if post_apply_hook is not None:
+                with contextlib.suppress(Exception):
+                    post_apply_hook(workspace)
 
         result = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
@@ -606,6 +622,13 @@ class FlextInfraUtilitiesRefactorCensus:
             if line.startswith((" ", "\t")):
                 start -= 1
                 continue
+            prior_balance = sum(
+                FlextInfraUtilitiesRefactorCensus._bracket_balance(lines[i])
+                for i in range(start)
+            )
+            if prior_balance > 0:
+                start -= 1
+                continue
             while start > 0:
                 previous = lines[start - 1]
                 if previous.startswith("@"):
@@ -623,17 +646,63 @@ class FlextInfraUtilitiesRefactorCensus:
     ) -> int | None:
         if start_index < 0 or start_index >= len(lines):
             return None
+        bracket_balance = FlextInfraUtilitiesRefactorCensus._bracket_balance(
+            lines[start_index]
+        )
         end = start_index
         for index in range(start_index + 1, len(lines)):
             line = lines[index]
             stripped = line.strip()
+            if bracket_balance > 0:
+                end = index
+                bracket_balance += FlextInfraUtilitiesRefactorCensus._bracket_balance(
+                    line
+                )
+                continue
             if not stripped:
                 end = index
                 continue
             if not line.startswith((" ", "\t")):
                 return end
             end = index
+            bracket_balance += FlextInfraUtilitiesRefactorCensus._bracket_balance(line)
         return end
+
+    @staticmethod
+    def _bracket_balance(line: str) -> int:
+        """Return the net bracket depth delta for a line, ignoring strings and comments."""
+        delta = 0
+        in_single = False
+        in_double = False
+        escape = False
+        for ch in line:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if in_single:
+                if ch == "'":
+                    in_single = False
+                continue
+            if in_double:
+                if ch == '"':
+                    in_double = False
+                continue
+            if ch == "#":
+                break
+            if ch == "'":
+                in_single = True
+                continue
+            if ch == '"':
+                in_double = True
+                continue
+            if ch in "([{":
+                delta += 1
+            elif ch in ")]}":
+                delta -= 1
+        return delta
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorCensus"]

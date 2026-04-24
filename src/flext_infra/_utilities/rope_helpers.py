@@ -118,7 +118,13 @@ class FlextInfraUtilitiesRopeHelpers:
         *,
         kind: str = "function",
     ) -> str | None:
-        """Extract full def/class block by name using regex."""
+        r"""Extract full def/class block by name using regex.
+
+        Handles single-line signatures. Multi-line return-annotation
+        signatures (``def foo() -> tuple[\n    A,\n]:``) are detected
+        by a fallback bracket-balance scan that extends the regex match
+        through any unclosed bracket groups.
+        """
         if kind == "function":
             pattern = re.compile(
                 rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
@@ -136,7 +142,14 @@ class FlextInfraUtilitiesRopeHelpers:
         else:
             return None
         match = pattern.search(source)
-        return match.group(0).rstrip("\n") if match else None
+        if match is None:
+            return None
+        block = match.group(0)
+        return FlextInfraUtilitiesRopeHelpers._extend_block_through_open_brackets(
+            source,
+            block,
+            match_end=match.end(),
+        ).rstrip("\n")
 
     @staticmethod
     def remove_definition(
@@ -163,6 +176,83 @@ class FlextInfraUtilitiesRopeHelpers:
         else:
             return source
         return pattern.sub("", source, count=1)
+
+    @staticmethod
+    def _extend_block_through_open_brackets(
+        source: str,
+        block: str,
+        *,
+        match_end: int,
+    ) -> str:
+        r"""Extend ``block`` when its regex capture ends mid-bracket-group.
+
+        The existing regex terminates on the first column-0 non-empty line; a
+        multi-line signature like ``-> tuple[\n    A,\n]:`` therefore cuts
+        off at the unindented ``]:`` line. When the captured block has
+        unbalanced brackets, consume further lines until balance reaches 0.
+        """
+        balance = FlextInfraUtilitiesRopeHelpers._bracket_balance_total(block)
+        if balance <= 0:
+            return block
+        remaining = source[match_end:]
+        additional = 0
+        for line in remaining.splitlines(keepends=True):
+            additional += len(line)
+            balance += FlextInfraUtilitiesRopeHelpers._bracket_balance_line(line)
+            if balance <= 0:
+                break
+        extended = block + source[match_end : match_end + additional]
+        tail_start = match_end + additional
+        tail = source[tail_start:]
+        for line in tail.splitlines(keepends=True):
+            stripped = line.strip()
+            if not stripped or line.startswith((" ", "\t")):
+                extended += line
+                continue
+            break
+        return extended
+
+    @staticmethod
+    def _bracket_balance_total(text: str) -> int:
+        total = 0
+        for line in text.splitlines():
+            total += FlextInfraUtilitiesRopeHelpers._bracket_balance_line(line)
+        return total
+
+    @staticmethod
+    def _bracket_balance_line(line: str) -> int:
+        delta = 0
+        in_single = False
+        in_double = False
+        escape = False
+        for ch in line:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if in_single:
+                if ch == "'":
+                    in_single = False
+                continue
+            if in_double:
+                if ch == '"':
+                    in_double = False
+                continue
+            if ch == "#":
+                break
+            if ch == "'":
+                in_single = True
+                continue
+            if ch == '"':
+                in_double = True
+                continue
+            if ch in "([{":
+                delta += 1
+            elif ch in ")]}":
+                delta -= 1
+        return delta
 
     @staticmethod
     def append_to_class_body(
@@ -270,21 +360,26 @@ class FlextInfraUtilitiesRopeHelpers:
     def categorize_method(name: str, decorators: t.StrSequence) -> str:
         """Categorize a method by its decorators and name pattern."""
         if FlextInfraUtilitiesRopeHelpers._PROPERTY_DECORATORS.intersection(decorators):
-            return c.Infra.MethodCategory.PROPERTY
+            property_cat: str = c.Infra.MethodCategory.PROPERTY
+            return property_cat
         for (
             decorator_name,
             category,
         ) in FlextInfraUtilitiesRopeHelpers._DECORATOR_TO_CATEGORY:
             if decorator_name in decorators:
-                return category
-        # Fallback: categorize by name convention
+                cat: str = category
+                return cat
         if name.startswith("__") and name.endswith("__"):
-            return c.Infra.MethodCategory.MAGIC
+            magic: str = c.Infra.MethodCategory.MAGIC
+            return magic
         if name.startswith("__"):
-            return c.Infra.MethodCategory.PRIVATE
+            private: str = c.Infra.MethodCategory.PRIVATE
+            return private
         if name.startswith("_"):
-            return c.Infra.MethodCategory.PROTECTED
-        return c.Infra.MethodCategory.PUBLIC
+            protected: str = c.Infra.MethodCategory.PROTECTED
+            return protected
+        public: str = c.Infra.MethodCategory.PUBLIC
+        return public
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeHelpers"]

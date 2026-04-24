@@ -36,6 +36,7 @@ class FlextInfraUtilitiesRopeInventory:
         module_entry: m.Infra.RopeModuleIndexEntry | None,
         convention: m.Infra.RopeModuleConvention,
         include_local_scopes: bool,
+        rope_workspace: object | None = None,
     ) -> tuple[m.Infra.Census.Object, ...]:
         """Return all same-file defined objects for one Rope module."""
         try:
@@ -67,6 +68,7 @@ class FlextInfraUtilitiesRopeInventory:
                 scope_chain=(),
                 class_chain=(),
                 child_scope=cls._child_scope_for(child_scopes, pyname),
+                rope_workspace=rope_workspace,
             )
             if record is None:
                 continue
@@ -89,6 +91,7 @@ class FlextInfraUtilitiesRopeInventory:
                             class_chain=tuple(
                                 part for part in record.class_path.split(".") if part
                             ),
+                            rope_workspace=rope_workspace,
                         )
                     )
         return tuple(items)
@@ -106,6 +109,7 @@ class FlextInfraUtilitiesRopeInventory:
         scope: p.Infra.RopeScopeDsl,
         scope_chain: tuple[str, ...],
         class_chain: tuple[str, ...],
+        rope_workspace: object | None = None,
     ) -> tuple[m.Infra.Census.Object, ...]:
         items: MutableSequence[m.Infra.Census.Object] = []
         child_scopes = tuple(scope.get_scopes())
@@ -123,6 +127,7 @@ class FlextInfraUtilitiesRopeInventory:
                 scope_chain=scope_chain,
                 class_chain=class_chain,
                 child_scope=child_scope,
+                rope_workspace=rope_workspace,
             )
             if record is None:
                 continue
@@ -146,6 +151,7 @@ class FlextInfraUtilitiesRopeInventory:
                     scope=child_scope,
                     scope_chain=(*scope_chain, record.name),
                     class_chain=next_class_chain,
+                    rope_workspace=rope_workspace,
                 )
             )
         return tuple(items)
@@ -211,6 +217,7 @@ class FlextInfraUtilitiesRopeInventory:
         scope_chain: tuple[str, ...],
         class_chain: tuple[str, ...],
         child_scope: p.Infra.RopeScopeDsl | None,
+        rope_workspace: object | None = None,
     ) -> m.Infra.Census.Object | None:
         line = cls._definition_line(pyname, resource)
         if line is None:
@@ -226,6 +233,7 @@ class FlextInfraUtilitiesRopeInventory:
             source=source,
             name=name,
             line=line,
+            rope_workspace=rope_workspace,
         )
         references_count = sum(
             len(reference_sites)
@@ -285,7 +293,8 @@ class FlextInfraUtilitiesRopeInventory:
         origin = module.get_resource() if module is not None else None
         if line is None or origin is None or origin.path != resource.path:
             return None
-        return line
+        result: int = line
+        return result
 
     @staticmethod
     def _child_scope_for(
@@ -339,6 +348,7 @@ class FlextInfraUtilitiesRopeInventory:
         source: str,
         name: str,
         line: int,
+        rope_workspace: object | None = None,
     ) -> tuple[
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
@@ -356,6 +366,16 @@ class FlextInfraUtilitiesRopeInventory:
             rope_project,
             resource,
         )
+        if rope_workspace is not None and definition_path is not None:
+            fast_path = (
+                FlextInfraUtilitiesRopeInventory._fast_reference_sites_from_index(
+                    rope_workspace,
+                    name=name,
+                    definition_path=definition_path,
+                )
+            )
+            if fast_path is not None:
+                return fast_path
         hits = FlextInfraUtilitiesRopeImports.find_occurrences(
             rope_project,
             resource,
@@ -436,6 +456,44 @@ class FlextInfraUtilitiesRopeInventory:
             tuple(example_reference_sites),
             tuple(script_reference_sites),
         )
+
+    @staticmethod
+    def _fast_reference_sites_from_index(
+        rope_workspace: object,
+        *,
+        name: str,
+        definition_path: Path,
+    ) -> (
+        tuple[
+            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[m.Infra.Census.ReferenceSite, ...],
+        ]
+        | None
+    ):
+        """Fast-path reference classification from pre-scanned workspace text index.
+
+        Only short-circuits rope when the index shows the symbol has ZERO
+        external-file occurrences (truly unused candidate). For any symbol
+        with external references the caller falls back to rope's semantic
+        ``find_occurrences`` to correctly handle intra-module ``__all__``
+        literals, decorator references, and same-name collisions.
+        """
+        name_index_getter = getattr(rope_workspace, "name_index", None)
+        if name_index_getter is None:
+            return None
+        occurrences = name_index_getter().get(name, ())
+        if not occurrences:
+            return ((), (), (), ())
+        resolved_definition = definition_path.resolve()
+        has_external = any(
+            path.resolve() != resolved_definition and path.name != c.Infra.INIT_PY
+            for path, _surface, _lines in occurrences
+        )
+        if has_external:
+            return None
+        return ((), (), (), ())
 
     @staticmethod
     def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:
@@ -521,16 +579,20 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _reference_surface(file_path: Path | None) -> str:
+        default_src: str = c.Infra.DEFAULT_SRC_DIR
         if file_path is None:
-            return c.Infra.DEFAULT_SRC_DIR
+            return default_src
         parts = set(file_path.parts)
-        if c.Infra.DIR_TESTS in parts:
-            return c.Infra.DIR_TESTS
-        if c.Infra.DIR_EXAMPLES in parts:
-            return c.Infra.DIR_EXAMPLES
-        if c.Infra.DIR_SCRIPTS in parts:
-            return c.Infra.DIR_SCRIPTS
-        return c.Infra.DEFAULT_SRC_DIR
+        tests_dir: str = c.Infra.DIR_TESTS
+        if tests_dir in parts:
+            return tests_dir
+        examples_dir: str = c.Infra.DIR_EXAMPLES
+        if examples_dir in parts:
+            return examples_dir
+        scripts_dir: str = c.Infra.DIR_SCRIPTS
+        if scripts_dir in parts:
+            return scripts_dir
+        return default_src
 
     @staticmethod
     def _fingerprint(
@@ -550,18 +612,22 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _actual_tier(convention: m.Infra.RopeModuleConvention) -> str:
         policy = convention.module_policy
-        if policy.expected_family:
-            return policy.expected_family
+        expected: str = policy.expected_family or ""
+        if expected:
+            return expected
         if "services" in convention.relative_path.parts:
             return "Services"
-        return convention.file_path.stem
+        stem: str = convention.file_path.stem
+        return stem
 
     @staticmethod
     def _expected_tier(convention: m.Infra.RopeModuleConvention, *, kind: str) -> str:
-        if convention.module_policy.expected_family:
-            return convention.module_policy.expected_family or ""
+        expected: str = convention.module_policy.expected_family or ""
+        if expected:
+            return expected
         if kind == "constant":
-            return c.Infra.FAMILY_SUFFIXES.get("c", "Constants")
+            constants: str = c.Infra.FAMILY_SUFFIXES.get("c", "Constants")
+            return constants
         return FlextInfraUtilitiesRopeInventory._actual_tier(convention)
 
     @staticmethod

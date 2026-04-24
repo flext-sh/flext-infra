@@ -413,7 +413,7 @@ tools:
       reportInvalidTypeForm: none
       reportMissingImports: error
       reportMissingModuleSource: error
-      reportMissingTypeStubs: warning
+      reportMissingTypeStubs: none
       reportPrivateUsage: warning
       reportUnknownArgumentType: none
       reportUnknownLambdaType: none

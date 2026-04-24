@@ -98,10 +98,10 @@ class TestFlextInfraRefactorMainCli:
             "import typing as _t\n\n"
             "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
             "if _t.TYPE_CHECKING:\n"
-            "    from sample_pkg.helpers import helper_used, only_for_tests\n"
+            "    from sample_pkg.operations import helper_used, only_for_tests\n"
             "_LAZY_IMPORTS = build_lazy_import_map(\n"
             "    {\n"
-            '        ".helpers": ("helper_used", "only_for_tests"),\n'
+            '        ".operations": ("helper_used", "only_for_tests"),\n'
             "    },\n"
             ")\n\n"
             "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)\n\n"
@@ -110,7 +110,7 @@ class TestFlextInfraRefactorMainCli:
             '    "only_for_tests",\n'
             "]\n",
         )
-        service_file = workspace / "src" / "sample_pkg" / "helpers.py"
+        service_file = workspace / "src" / "sample_pkg" / "operations.py"
         TestFlextInfraRefactorMainCli._write(
             service_file,
             "from __future__ import annotations\n\n"
@@ -123,14 +123,14 @@ class TestFlextInfraRefactorMainCli:
         TestFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "runtime.py",
             "from __future__ import annotations\n\n"
-            "from sample_pkg.helpers import helper_used\n\n"
+            "from sample_pkg.operations import helper_used\n\n"
             "def compute(value: int) -> int:\n"
             "    return helper_used(value)\n",
         )
         TestFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_helpers.py",
+            workspace / "tests" / "test_operations.py",
             "from __future__ import annotations\n\n"
-            "from sample_pkg.helpers import only_for_tests\n\n"
+            "from sample_pkg.operations import only_for_tests\n\n"
             "def test_only_for_tests_returns_incremented_value() -> None:\n"
             "    assert only_for_tests(1) == 2\n",
         )
@@ -427,7 +427,7 @@ class TestFlextInfraRefactorMainCli:
         workspace, helpers_file, init_path = self._build_lazy_init_cascade_workspace(
             tmp_path,
         )
-        test_file = workspace / "tests" / "test_helpers.py"
+        test_file = workspace / "tests" / "test_operations.py"
 
         result = self._refactor_main(
             "--workspace",
@@ -569,7 +569,7 @@ class TestFlextInfraRefactorMainCli:
         )
         clone_helpers = clone / origin_helpers.relative_to(origin)
         clone_init = clone / origin_init.relative_to(origin)
-        clone_test = clone / "tests" / "test_helpers.py"
+        clone_test = clone / "tests" / "test_operations.py"
 
         result = self._refactor_main(
             "--workspace",

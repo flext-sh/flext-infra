@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
-from typing import TYPE_CHECKING, Annotated, Self, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, Final, Self, override
 
 from flext_infra import c, m, r, s, t, u
 from flext_infra._utilities.rope_pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch as _FlextRopePep695Patch,
 )
+
+_IDENTIFIER_PATTERN: Final[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -67,6 +71,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     )
     _resource_cache: dict[str, t.Infra.RopeResource | None] = u.PrivateAttr(
         default_factory=dict
+    )
+    _name_index: dict[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None = (
+        u.PrivateAttr(default_factory=lambda: None)
     )
 
     @override
@@ -213,7 +220,58 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def source(self, file_path: Path) -> str:
         """Return one module source snapshot from the active Rope workspace."""
-        return self._resource_for(file_path).read()
+        text: str = self._resource_for(file_path).read()
+        return text
+
+    def name_index(
+        self,
+    ) -> Mapping[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
+        """Return a cached ``{name: ((path, surface, lines), ...)}`` workspace index.
+
+        Built once per workspace session via a single regex scan of every
+        indexed ``.py`` module. Short-circuits rope's ``find_occurrences``
+        when a symbol's surface distribution alone answers the
+        unused/test_only classification question.
+        """
+        if self._name_index is not None:
+            return self._name_index
+        index: dict[str, list[tuple[Path, str, list[int]]]] = {}
+        for entry in self.workspace_index.modules_by_path.values():
+            py_file = entry.file_path
+            try:
+                source_text = py_file.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            except OSError:
+                continue
+            surface = self._reference_surface_for(py_file)
+            lines_by_name: dict[str, list[int]] = {}
+            for match in _IDENTIFIER_PATTERN.finditer(source_text):
+                name = match.group(0)
+                lineno = source_text.count("\n", 0, match.start()) + 1
+                lines_by_name.setdefault(name, []).append(lineno)
+            for name, line_numbers in lines_by_name.items():
+                index.setdefault(name, []).append(
+                    (py_file, surface, line_numbers),
+                )
+        self._name_index = {
+            name: tuple((path, surface, tuple(lines)) for path, surface, lines in refs)
+            for name, refs in index.items()
+        }
+        return self._name_index
+
+    _SURFACE_DIRS: ClassVar[tuple[str, ...]] = (
+        c.Infra.DIR_TESTS,
+        c.Infra.DIR_EXAMPLES,
+        c.Infra.DIR_SCRIPTS,
+    )
+
+    @classmethod
+    def _reference_surface_for(cls, file_path: Path) -> str:
+        for part in file_path.parts:
+            if part in cls._SURFACE_DIRS:
+                surface: str = part
+                return surface
+        default_src: str = c.Infra.DEFAULT_SRC_DIR
+        return default_src
 
     def objects(
         self,
@@ -233,6 +291,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             module_entry=self.module(resolved_file),
             convention=self.convention(resolved_file),
             include_local_scopes=include_local_scopes,
+            rope_workspace=self,
         )
         self._module_object_cache[cache_key] = objects
         return objects

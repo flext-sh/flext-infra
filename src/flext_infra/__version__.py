@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from importlib.metadata import PackageMetadata, metadata
 
-from flext_core import FlextVersion
+from flext_core.__version__ import FlextVersion
 
 
 class FlextInfraVersion(FlextVersion):

@@ -22,6 +22,24 @@ from flext_infra import (
     t,
 )
 
+_LOCAL_INFERRED_SEGMENTS: frozenset[str] = frozenset({
+    "_constants",
+    "_exceptions",
+    "_models",
+    "_protocols",
+    "_typings",
+    "_utilities",
+    "constants",
+    "exceptions",
+    "models",
+    "protocols",
+    "typings",
+    "utilities",
+    "services",
+    "docs",
+    "tools",
+})
+
 
 class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
@@ -53,6 +71,19 @@ class FlextInfraCodegenGeneration:
         prefix = f"{current_pkg}."
         if mod.startswith(prefix):
             return f".{mod.removeprefix(prefix)}"
+        root_pkg = current_pkg.split(".", maxsplit=1)[0]
+        first_segment = mod.split(".", maxsplit=1)[0]
+        if first_segment == root_pkg:
+            return mod
+        internal_segments = frozenset(current_pkg.split(".")[1:])
+        if first_segment in internal_segments:
+            return f".{mod}"
+        if (
+            current_pkg == root_pkg
+            and "." in mod
+            and first_segment in _LOCAL_INFERRED_SEGMENTS
+        ):
+            return f".{mod}"
         return mod
 
     @staticmethod
@@ -60,9 +91,24 @@ class FlextInfraCodegenGeneration:
         mod: str,
         local_package_root: str | None,
     ) -> str:
-        if not local_package_root or not mod.startswith("_"):
+        if not local_package_root:
             return mod
-        return f"{local_package_root.split('.', maxsplit=1)[0]}.{mod}"
+        root_pkg = local_package_root.split(".", maxsplit=1)[0]
+        first_segment = mod.split(".", maxsplit=1)[0]
+        if first_segment == root_pkg:
+            return mod
+        if mod.startswith("_"):
+            return f"{root_pkg}.{mod}"
+        internal_segments = frozenset(local_package_root.split(".")[1:])
+        if first_segment in internal_segments:
+            return f"{root_pkg}.{mod}"
+        if (
+            local_package_root == root_pkg
+            and "." in mod
+            and first_segment in _LOCAL_INFERRED_SEGMENTS
+        ):
+            return f"{root_pkg}.{mod}"
+        return mod
 
     @staticmethod
     def _reject_non_absolute_import(
