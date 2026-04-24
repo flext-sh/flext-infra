@@ -61,16 +61,29 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
             ]
             layout = u.Infra.layout(project_root)
             prefix = layout.class_stem if layout is not None else ""
+            package_name = (
+                layout.package_dir.name
+                if layout is not None
+                else project_root.name.replace("-", "_")
+            )
             violations: MutableSequence[str] = []
             for filepath in files:
                 tree = self._parse_file(filepath)
                 if tree is None:
                     continue
                 rel = filepath.relative_to(project_root)
-                violations.extend(self.check_rule_0(tree, rel, prefix))
-                violations.extend(self.check_rule_1(tree, rel))
-                violations.extend(self.check_rule_2(tree, rel))
-                violations.extend(self.check_rule_3(tree, rel))
+                if self._is_namespace_governed_file(rel):
+                    violations.extend(self.check_rule_0(tree, rel, prefix))
+                    violations.extend(self.check_rule_1(tree, rel))
+                    violations.extend(self.check_rule_2(tree, rel))
+                violations.extend(
+                    self.check_rule_3(
+                        tree,
+                        rel,
+                        class_stem=prefix,
+                        package_name=package_name,
+                    )
+                )
             passed = not violations
             summary = (
                 f"namespace validation passed ({len(files)} files checked)"
@@ -102,6 +115,28 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
             return ast.parse(path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         except (OSError, SyntaxError):
             return None
+
+    def _is_namespace_governed_file(self, rel_path: Path) -> bool:
+        """Return whether NS-000/001/002 structural rules apply to this file."""
+        if rel_path.name in {
+            c.Infra.CONSTANTS_PY,
+            c.Infra.MODELS_PY,
+            c.Infra.PROTOCOLS_PY,
+            c.Infra.TYPINGS_PY,
+            c.Infra.UTILITIES_PY,
+        }:
+            return True
+        return any(
+            part
+            in {
+                "_constants",
+                "_models",
+                "_protocols",
+                "_typings",
+                "_utilities",
+            }
+            for part in rel_path.parts
+        )
 
 
 __all__: list[str] = ["FlextInfraNamespaceValidator"]

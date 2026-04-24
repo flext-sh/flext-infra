@@ -259,7 +259,7 @@ class TestFlextInfraNamespaceValidator:
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n"
-            "from flext_infra import FlextInfraUtilitiesCodegen\n\n"
+            "from flext_test import FlextTestUtilitiesCodegen\n\n"
             "class FlextTestModels(Models):\n"
             "    pass\n"
         )
@@ -289,9 +289,9 @@ class TestFlextInfraNamespaceValidator:
         module_source = (
             "from __future__ import annotations\n\n"
             "from flext_cli import u\n"
-            "from flext_infra import FlextInfraUtilitiesCodegen\n\n"
+            "from flext_test import FlextTestUtilitiesCodegen\n\n"
             "class FlextTestUtilities(u):\n"
-            "    class Infra(FlextInfraUtilitiesCodegen):\n"
+            "    class Infra(FlextTestUtilitiesCodegen):\n"
             "        pass\n"
         )
         root = _make_project_with_module(
@@ -312,7 +312,7 @@ class TestFlextInfraNamespaceValidator:
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n"
-            "from flext_infra import FlextInfraModelsDeps\n\n"
+            "from flext_test import FlextTestModelsDeps\n\n"
             "class FlextTestDetector:\n"
             "    pass\n"
         )
@@ -328,7 +328,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.passed, eq=False)
         tm.that(
             any(
-                "instead of direct import 'FlextInfraModelsDeps'" in violation
+                "instead of direct import 'FlextTestModelsDeps'" in violation
                 for violation in result.value.violations
             ),
             eq=True,
@@ -342,9 +342,9 @@ class TestFlextInfraNamespaceValidator:
         module_source = (
             "from __future__ import annotations\n"
             "from flext_cli import m\n"
-            "from flext_infra import FlextInfraModelsDeps\n\n"
+            "from flext_test import FlextTestModelsDeps\n\n"
             "class FlextTestModels(m):\n"
-            "    class Infra(FlextInfraModelsDeps):\n"
+            "    class Infra(FlextTestModelsDeps):\n"
             "        pass\n"
         )
         root = _make_project_with_module(
@@ -357,6 +357,33 @@ class TestFlextInfraNamespaceValidator:
 
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
+
+    def test_rule0_does_not_flag_non_namespace_runtime_module(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "VALUE = 1\n\n"
+            "def helper() -> int:\n"
+            "    return VALUE\n"
+        )
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=module_source,
+            module_name="api.py",
+        )
+
+        result = validator.validate(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                violation.startswith("[NS-000") for violation in result.value.violations
+            ),
+            eq=False,
+        )
 
     def test_rule2_typevar_in_class_detected(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()

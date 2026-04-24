@@ -22,12 +22,12 @@ if TYPE_CHECKING:
 class FlextInfraNamespaceRules:
     """Implementation of namespace rules 0-3 for AST-based validation."""
 
-    _DIRECT_FACADE_IMPORT_RULES = (
-        ("FlextInfraConstants", c.Infra.CONSTANTS_PY, "_constants"),
-        ("FlextInfraModels", c.Infra.MODELS_PY, "_models"),
-        ("FlextInfraProtocols", c.Infra.PROTOCOLS_PY, "_protocols"),
-        ("FlextInfraTypes", c.Infra.TYPINGS_PY, "_typings"),
-        ("FlextInfraUtilities", c.Infra.UTILITIES_PY, "_utilities"),
+    _DIRECT_FACADE_SUFFIX_RULES = (
+        ("Constants", c.Infra.CONSTANTS_PY, "_constants"),
+        ("Models", c.Infra.MODELS_PY, "_models"),
+        ("Protocols", c.Infra.PROTOCOLS_PY, "_protocols"),
+        ("Types", c.Infra.TYPINGS_PY, "_typings"),
+        ("Utilities", c.Infra.UTILITIES_PY, "_utilities"),
     )
 
     @staticmethod
@@ -51,10 +51,40 @@ class FlextInfraNamespaceRules:
 
     @staticmethod
     def _base_contains(base: ast.expr, name: str) -> bool:
-        """Check whether a class base AST node references a given name."""
+        """Check whether a class base AST node references a given name (exact)."""
         if isinstance(base, ast.Name) and base.id == name:
             return True
         return isinstance(base, ast.Attribute) and base.attr == name
+
+    @staticmethod
+    def _base_is_alias(base: ast.expr, alias: str) -> bool:
+        """Check whether a class base is a known MRO alias (e.g. 'c' for Constants)."""
+        return isinstance(base, ast.Name) and base.id == alias
+
+    @staticmethod
+    def _base_name_contains(base: ast.expr, name: str) -> bool:
+        """Check whether a class base NAME contains a given string (substring match)."""
+        if isinstance(base, ast.Name) and name in base.id:
+            return True
+        return isinstance(base, ast.Attribute) and name in base.attr
+
+    @staticmethod
+    def _is_private_dir_file(filepath: Path) -> bool:
+        """Return True if the file is inside a private (_xxx) directory."""
+        return any(
+            part.startswith("_") and not part.startswith("__")
+            for part in filepath.parts
+            if "." not in part
+        )
+
+    @staticmethod
+    def _is_type_checking_guard(node: ast.stmt) -> bool:
+        """Return True if the node is an `if TYPE_CHECKING:` block."""
+        return (
+            isinstance(node, ast.If)
+            and isinstance(node.test, ast.Name)
+            and node.test.id == "TYPE_CHECKING"
+        )
 
     @staticmethod
     def _get_assign_target_name(node: ast.Assign) -> str:
@@ -130,7 +160,11 @@ class FlextInfraNamespaceRules:
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         for cls in outer_classes:
-            if not any(self._base_contains(b, "Constants") for b in cls.bases):
+            # Use substring match: FlextXxxConstants, FlextConstants, etc. are all valid bases.
+            if not any(
+                self._base_name_contains(b, "Constants") or self._base_is_alias(b, "c")
+                for b in cls.bases
+            ):
                 seq += 1
                 violations.append(
                     f"[NS-001-{seq:03d}] {filepath}:{cls.lineno} — Constants class '{cls.name}' must inherit from a Constants base",
@@ -158,9 +192,13 @@ class FlextInfraNamespaceRules:
                 seq,
                 violations,
             )
-        outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
-        for cls in outer_classes:
-            seq, violations = self._check_loose_enums(cls, filepath, seq, violations)
+        # Files in _constants/ are proper constants sub-modules — enums belong there.
+        if filepath.parent.name != "_constants":
+            outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
+            for cls in outer_classes:
+                seq, violations = self._check_loose_enums(
+                    cls, filepath, seq, violations
+                )
         return violations
 
     def _check_loose_final(
@@ -234,6 +272,9 @@ class FlextInfraNamespaceRules:
         """Rule 2 -- Types centralization."""
         if filepath.name == c.Infra.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
+        # Files in _typings/ are proper types sub-modules — TypeAliases/TypeVars belong there.
+        if filepath.parent.name == "_typings":
+            return []
         return self._check_rule_2_non_canonical(tree, filepath)
 
     def _check_rule_2_canonical(
@@ -245,7 +286,11 @@ class FlextInfraNamespaceRules:
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         for cls in outer_classes:
-            if not any(self._base_contains(b, "Types") for b in cls.bases):
+            # Use substring match: FlextXxxTypes, FlextTypes, etc. are all valid bases.
+            if not any(
+                self._base_name_contains(b, "Types") or self._base_is_alias(b, "t")
+                for b in cls.bases
+            ):
                 seq += 1
                 violations.append(
                     f"[NS-002-{seq:03d}] {filepath}:{cls.lineno} — Types class '{cls.name}' must inherit from a Types base",
@@ -358,19 +403,26 @@ class FlextInfraNamespaceRules:
         self,
         tree: ast.Module,
         filepath: Path,
+        *,
+        class_stem: str,
+        package_name: str,
     ) -> t.StrSequence:
         """Rule 3 -- Runtime modules use namespaced MRO aliases, not direct local facade imports."""
+        # Private implementation directories may import sibling classes directly per AGENTS.md §4.
+        if self._is_private_dir_file(filepath):
+            return []
         violations: MutableSequence[str] = []
         seq = 0
+        owner_rules = self._owner_direct_facade_rules(class_stem)
         for node in ast.walk(tree):
             if not isinstance(node, ast.ImportFrom):
                 continue
-            if node.module != f"{c.Infra.PKG_PREFIX_UNDERSCORE}infra":
+            if node.module != package_name:
                 continue
             for alias in node.names:
-                if self._allows_direct_facade_import(filepath, alias.name):
+                if self._allows_direct_facade_import(filepath, alias.name, owner_rules):
                     continue
-                if not self._is_local_facade_owner_import(alias.name):
+                if not self._is_local_facade_owner_import(alias.name, owner_rules):
                     continue
                 seq += 1
                 violations.append(
@@ -378,8 +430,13 @@ class FlextInfraNamespaceRules:
                 )
         return violations
 
-    def _allows_direct_facade_import(self, filepath: Path, imported_name: str) -> bool:
-        for prefix, facade_filename, private_dir in self._DIRECT_FACADE_IMPORT_RULES:
+    def _allows_direct_facade_import(
+        self,
+        filepath: Path,
+        imported_name: str,
+        owner_rules: tuple[tuple[str, str, str], ...],
+    ) -> bool:
+        for prefix, facade_filename, private_dir in owner_rules:
             if not imported_name.startswith(prefix):
                 continue
             if filepath.name == facade_filename:
@@ -387,10 +444,23 @@ class FlextInfraNamespaceRules:
             return private_dir in filepath.parts
         return False
 
-    def _is_local_facade_owner_import(self, imported_name: str) -> bool:
+    def _is_local_facade_owner_import(
+        self,
+        imported_name: str,
+        owner_rules: tuple[tuple[str, str, str], ...],
+    ) -> bool:
         return any(
             imported_name.startswith(prefix)
-            for prefix, _facade_filename, _private_dir in self._DIRECT_FACADE_IMPORT_RULES
+            for prefix, _facade_filename, _private_dir in owner_rules
+        )
+
+    def _owner_direct_facade_rules(
+        self,
+        class_stem: str,
+    ) -> tuple[tuple[str, str, str], ...]:
+        return tuple(
+            (f"{class_stem}{suffix}", facade_filename, private_dir)
+            for suffix, facade_filename, private_dir in self._DIRECT_FACADE_SUFFIX_RULES
         )
 
     # -- Module-level statement allowlist ---
@@ -404,6 +474,8 @@ class FlextInfraNamespaceRules:
             return True
         if self._is_module_docstring(node):
             return True
+        if self._is_type_checking_guard(node):
+            return True
         if isinstance(node, (ast.Assign, ast.TypeAlias, ast.AnnAssign)):
             return self._is_allowed_assignment(node, filepath)
         return False
@@ -416,7 +488,11 @@ class FlextInfraNamespaceRules:
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
         if isinstance(node, ast.TypeAlias):
-            return bool(filepath.name == c.Infra.TYPINGS_PY)
+            # TypeAlias allowed in typings.py and _typings/ sub-modules.
+            return (
+                filepath.name == c.Infra.TYPINGS_PY
+                or filepath.parent.name == "_typings"
+            )
         return self._is_allowed_ann_assign(node, filepath)
 
     @staticmethod
@@ -442,7 +518,11 @@ class FlextInfraNamespaceRules:
         if isinstance(node.value, ast.Call):
             func_name = self._get_call_name(node.value.func)
             if func_name in c.Infra.TYPEVAR_CALLABLES:
-                return bool(filepath.name == c.Infra.TYPINGS_PY)
+                # TypeVar allowed in typings.py and _typings/ sub-modules.
+                return (
+                    filepath.name == c.Infra.TYPINGS_PY
+                    or filepath.parent.name == "_typings"
+                )
         return False
 
     def _is_allowed_ann_assign(
@@ -450,14 +530,28 @@ class FlextInfraNamespaceRules:
         node: ast.AnnAssign,
         filepath: Path,
     ) -> bool:
+        # __all__: list[str] = [...] and other dunders with annotations are always allowed.
+        if (
+            isinstance(node.target, ast.Name)
+            and node.target.id in c.Infra.DUNDER_ALLOWED
+        ):
+            return True
         if self._annotation_contains(node.annotation, "TypeAlias"):
-            return bool(filepath.name == c.Infra.TYPINGS_PY)
+            # TypeAlias allowed in typings.py and _typings/ sub-modules.
+            return (
+                filepath.name == c.Infra.TYPINGS_PY
+                or filepath.parent.name == "_typings"
+            )
         if (
             isinstance(node.target, ast.Name)
             and node.target.id.startswith("_")
             and self._annotation_contains(node.annotation, "Final")
         ):
-            return bool(filepath.name == c.Infra.CONSTANTS_PY)
+            # Private Final constants allowed in constants.py and _constants/ sub-modules.
+            return (
+                filepath.name == c.Infra.CONSTANTS_PY
+                or filepath.parent.name == "_constants"
+            )
         return False
 
 

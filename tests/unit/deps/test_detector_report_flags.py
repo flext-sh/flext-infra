@@ -43,10 +43,10 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> p.Result[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
         del project_path
         del venv_bin
-        return r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
+        return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
 
     @override
     def build_project_report(
