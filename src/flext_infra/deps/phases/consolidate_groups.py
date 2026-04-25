@@ -67,8 +67,6 @@ class FlextInfraConsolidateGroupsPhase:
                         ),
                         c.Infra.DEPENDENCIES,
                     )
-                if not isinstance(poetry_dev_table, Table):
-                    continue
                 current_dev_table: Table = poetry_dev_table
                 for dep_name_raw in old_deps:
                     dep_name = dep_name_raw
