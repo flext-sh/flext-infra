@@ -23,7 +23,6 @@ from flext_infra import (
     FlextInfraModelsEngine,
     FlextInfraModelsGates,
     FlextInfraModelsGithub,
-    FlextInfraModelsGuard,
     FlextInfraModelsMixins,
     FlextInfraModelsRefactor,
     FlextInfraModelsRelease,
@@ -31,7 +30,6 @@ from flext_infra import (
     FlextInfraModelsScan,
     FlextInfraModelsWorkspace,
 )
-from flext_infra._models.scope import FlextInfraModelsScope
 
 
 class FlextInfraModels(m):
@@ -46,14 +44,12 @@ class FlextInfraModels(m):
         FlextInfraModelsDocs,
         FlextInfraModelsGates,
         FlextInfraModelsGithub,
-        FlextInfraModelsGuard,
         FlextInfraModelsRefactor,
         FlextInfraModelsRelease,
         FlextInfraModelsMixins,
         FlextInfraModelsWorkspace,
         FlextInfraModelsRope,
         FlextInfraModelsScan,
-        FlextInfraModelsScope,
         FlextInfraModelsCore,
         FlextInfraModelsBase,
         FlextInfraModelsEngine,

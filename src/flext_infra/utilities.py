@@ -29,7 +29,6 @@ from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-from flext_infra._utilities.guard_gates import FlextInfraUtilitiesGuardGates
 from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
@@ -66,8 +65,6 @@ from flext_infra._utilities.rope_pep695_patch import (
 )
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-from flext_infra._utilities.scope_selector import FlextInfraUtilitiesScopeSelector
-from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 
 
@@ -125,11 +122,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
-        FlextInfraUtilitiesGuardGates,
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesScopeSelector,
-        FlextInfraUtilitiesSnapshot,
         FlextInfraUtilitiesVersioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
