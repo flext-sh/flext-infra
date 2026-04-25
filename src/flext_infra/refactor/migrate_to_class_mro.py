@@ -16,6 +16,7 @@ from flext_cli import cli
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,
+    FlextInfraRefactorSafetyManager,
     c,
     m,
     p,
@@ -54,6 +55,19 @@ class FlextInfraRefactorMigrateToClassMRO:
         scan_duration = perf_counter() - scan_start
         warnings: list[str] = []
         stash_ref = ""
+        safety_manager: FlextInfraRefactorSafetyManager | None = None
+        if apply:
+            safety_manager = FlextInfraRefactorSafetyManager()
+            stash_outcome = safety_manager.create_pre_transformation_stash(
+                self._workspace_root,
+                label="flext-infra-refactor-migrate-to-class-mro",
+            )
+            if stash_outcome.failure:
+                warnings.append(
+                    f"Pre-transformation stash failed: {stash_outcome.error}",
+                )
+            else:
+                stash_ref = stash_outcome.value
         rewrite_start = perf_counter()
         migrations, rewrites, errors = (
             FlextInfraRefactorMROImportRewriter.migrate_workspace(
@@ -74,6 +88,25 @@ class FlextInfraRefactorMigrateToClassMRO:
                 )
             )
             validation_mode = "post-apply-rescan"
+            if safety_manager is not None and (errors or mro_failures):
+                rollback_outcome = safety_manager.rollback(
+                    self._workspace_root,
+                    stash_ref=stash_ref,
+                )
+                if rollback_outcome.failure:
+                    warnings.append(
+                        f"Safety rollback failed: {rollback_outcome.error}",
+                    )
+                else:
+                    warnings.append(
+                        "Safety rollback applied — verb left workspace at pre-run state.",
+                    )
+            elif safety_manager is not None:
+                clear_outcome = safety_manager.clear_checkpoint()
+                if clear_outcome.failure:
+                    warnings.append(
+                        f"Checkpoint cleanup failed: {clear_outcome.error}",
+                    )
         else:
             remaining_violations = sum(
                 len(scan_result.candidates) for scan_result in scan_results

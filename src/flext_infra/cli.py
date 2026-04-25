@@ -105,6 +105,8 @@ class FlextInfraCli(FlextCli):
         "--workspace",
         "--projects",
         "--project",
+        "--module",
+        "--namespace",
         "--gates",
         "--format",
         "--output",

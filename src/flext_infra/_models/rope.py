@@ -62,13 +62,15 @@ class FlextInfraModelsRope:
         declared_imports: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=dict, description="Declared import targets by name"
+                default_factory=lambda: MappingProxyType({}),
+                description="Declared import targets by name",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         semantic_imports: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=dict, description="Resolved import targets by name"
+                default_factory=lambda: MappingProxyType({}),
+                description="Resolved import targets by name",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
@@ -167,28 +169,28 @@ class FlextInfraModelsRope:
         packages_by_dir: Annotated[
             Mapping[str, FlextInfraModelsRope.RopePackageIndexEntry],
             m.Field(
-                default_factory=dict,
+                default_factory=lambda: MappingProxyType({}),
                 description="Package entries keyed by absolute directory path",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         modules_by_path: Annotated[
             Mapping[str, FlextInfraModelsRope.RopeModuleIndexEntry],
             m.Field(
-                default_factory=dict,
+                default_factory=lambda: MappingProxyType({}),
                 description="Module entries keyed by absolute file path",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         package_dir_by_name: Annotated[
             Mapping[str, Path],
             m.Field(
-                default_factory=dict,
+                default_factory=lambda: MappingProxyType({}),
                 description="Importable package directory keyed by package name",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         project_package_by_root: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=dict,
+                default_factory=lambda: MappingProxyType({}),
                 description="Canonical source package name keyed by project root path",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))

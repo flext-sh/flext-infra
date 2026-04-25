@@ -50,6 +50,25 @@ class FlextInfraModelsMixins:
                 description="Projects to process; repeat --projects NAME as needed",
             ),
         ] = None
+        module: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Dotted module path to scope verb to a single module "
+                    "(e.g. flext_core.result). Mutually compatible with "
+                    "--projects/--workspace; narrows the run."
+                ),
+            ),
+        ] = None
+        namespace: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope "
+                    "the verb to a single facade slot."
+                ),
+            ),
+        ] = None
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
         verbose: Annotated[bool, m.Field(description="Verbose output")] = False
 
