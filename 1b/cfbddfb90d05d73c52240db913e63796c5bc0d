@@ -1,0 +1,31 @@
+src/flext_infra/templates/workspace_makefile.mk.j2
+  f2bb2fdfbd6a4428 615
+src/flext_infra/cli.py
+  f2bb2fdfbd6a4428 81,541,549,551,555-558,562,565-566,571,575,583,589,598
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "1bcfbddfb90d05d73c52240db913e63796c5bc0d",
+  "prompts": {
+    "f2bb2fdfbd6a4428": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b38f5a0-c3ca-4a9b-8acb-2a903f84272b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 20,
+      "accepted_lines": 17,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/32fb759da75ae6268a4ec62867558cad71175e44da2cbe8ae5111e09957324b1"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
