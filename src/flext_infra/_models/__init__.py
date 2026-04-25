@@ -32,6 +32,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".release": ("FlextInfraModelsRelease",),
         ".rope": ("FlextInfraModelsRope",),
         ".scan": ("FlextInfraModelsScan",),
+        ".scope": ("FlextInfraModelsScope",),
         ".validate": ("FlextInfraModelsCore",),
         ".workspace": ("FlextInfraModelsWorkspace",),
     },

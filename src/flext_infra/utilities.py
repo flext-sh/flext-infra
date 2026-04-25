@@ -65,6 +65,7 @@ from flext_infra._utilities.rope_pep695_patch import (
 )
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+from flext_infra._utilities.scope_selector import FlextInfraUtilitiesScopeSelector
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 
 
@@ -124,6 +125,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
+        FlextInfraUtilitiesScopeSelector,
         FlextInfraUtilitiesVersioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""

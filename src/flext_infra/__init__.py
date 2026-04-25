@@ -62,6 +62,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.release import FlextInfraModelsRelease
     from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.scan import FlextInfraModelsScan
+    from flext_infra._models.scope import FlextInfraModelsScope
     from flext_infra._models.validate import FlextInfraModelsCore
     from flext_infra._models.workspace import FlextInfraModelsWorkspace
     from flext_infra._protocols.base import FlextInfraProtocolsBase
@@ -129,6 +130,9 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+    from flext_infra._utilities.scope_selector import (
+        FlextInfraUtilitiesScopeSelector,
+    )
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import (
@@ -448,6 +452,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._models.release": ("FlextInfraModelsRelease",),
             "._models.rope": ("FlextInfraModelsRope",),
             "._models.scan": ("FlextInfraModelsScan",),
+            "._models.scope": ("FlextInfraModelsScope",),
             "._models.validate": ("FlextInfraModelsCore",),
             "._models.workspace": ("FlextInfraModelsWorkspace",),
             "._protocols.base": ("FlextInfraProtocolsBase",),
@@ -507,6 +512,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
+            "._utilities.scope_selector": ("FlextInfraUtilitiesScopeSelector",),
             "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
             ".api": (
                 "FlextInfra",
@@ -867,6 +873,7 @@ __all__: list[str] = [
     "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
+    "FlextInfraModelsScope",
     "FlextInfraModelsWorkspace",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
@@ -982,6 +989,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
+    "FlextInfraUtilitiesScopeSelector",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",

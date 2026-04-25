@@ -799,5 +799,121 @@ class FlextInfraRefactorCensus(
             *candidate.script_reference_sites,
         )
 
+    _UPSTREAM_PARENT_PACKAGES: ClassVar[t.StrSequence] = (
+        "flext_core",
+        "flext_cli",
+        "flext_tests",
+        "flext_infra",
+        "flext_web",
+        "flext_meltano",
+        "flext_observability",
+        "flext_quality",
+    )
+    _UPSTREAM_ALIAS_NAMES: ClassVar[t.StrSequence] = (
+        "c",
+        "m",
+        "p",
+        "t",
+        "u",
+    )
+
+    @staticmethod
+    def _is_flext_owned(value: object) -> bool:
+        """Return True iff `value`'s defining module is in the flext package tree.
+
+        Used to filter the parent inventory so that builtin attributes
+        inherited by str/int/dict/list constants do not pollute collision
+        candidates with names like `count`, `index`, `replace`, etc.
+        """
+        module_name = getattr(value, "__module__", None)
+        if not isinstance(module_name, str):
+            return False
+        return module_name.startswith("flext_")
+
+    @classmethod
+    def _build_parent_inventory(cls) -> Mapping[str, t.StrSequence]:
+        """Inventory upstream-package alias attributes for collision lookup.
+
+        Imports each parent package and walks its ``c/m/p/t/u`` aliases up
+        to depth 2 (top-level facade attributes + one level of nesting).
+        Returns a mapping ``{symbol_name: (parent_path, ...)}`` so a
+        consumer-defined symbol with the same name can be cross-referenced
+        against every parent that declares it.
+
+        Filters out attributes whose values' ``__module__`` is not in the
+        flext package tree (i.e. inherited str/int/dict methods like
+        ``count``, ``replace``, ``index``).
+
+        Read-only runtime introspection — NO Rope, NO source-tree walking,
+        NO subprocess. Skips parent packages that fail to import (sub-repo
+        environments may not have every flext-* installed).
+        """
+        inventory: dict[str, list[str]] = defaultdict(list)
+        for pkg_name in cls._UPSTREAM_PARENT_PACKAGES:
+            try:
+                module = __import__(pkg_name)
+            except ImportError:
+                continue
+            for alias_name in cls._UPSTREAM_ALIAS_NAMES:
+                alias = getattr(module, alias_name, None)
+                if alias is None:
+                    continue
+                for attr in dir(alias):
+                    if attr.startswith("_"):
+                        continue
+                    nested = getattr(alias, attr, None)
+                    if nested is None or not cls._is_flext_owned(nested):
+                        continue
+                    inventory[attr].append(f"{pkg_name}.{alias_name}.{attr}")
+                    for sub_attr in dir(nested):
+                        if sub_attr.startswith("_"):
+                            continue
+                        sub_value = getattr(nested, sub_attr, None)
+                        if sub_value is None or not cls._is_flext_owned(sub_value):
+                            continue
+                        inventory[sub_attr].append(
+                            f"{pkg_name}.{alias_name}.{attr}.{sub_attr}",
+                        )
+        return {name: tuple(paths) for name, paths in inventory.items()}
+
+    @classmethod
+    def parent_alias_collisions(
+        cls,
+        report: m.Infra.Census.WorkspaceReport,
+    ) -> tuple[tuple[m.Infra.Census.Object, t.StrSequence], ...]:
+        """Cross-reference workspace objects against upstream parent inventory.
+
+        Returns a tuple of ``(object, parent_paths)`` pairs where the
+        consumer's public symbol name appears on at least one parent
+        package's ``c/m/p/t/u`` alias. Sorted descending by the number of
+        matching parent paths (i.e. broadest collision surface first).
+
+        Args:
+            report: A `WorkspaceReport` produced by `execute()` or
+                `_collect_report(...)`. Reusing the existing report avoids
+                a second Rope-walk; the inventory is the only new I/O.
+
+        Returns:
+            Tuple of ``(object, parent_paths)`` pairs. Empty tuple if
+            no collisions are found.
+
+        """
+        inventory = cls._build_parent_inventory()
+        flext_core_marker = "flext-core"
+        collisions: list[tuple[m.Infra.Census.Object, t.StrSequence]] = []
+        for project_report in report.projects:
+            project_name = project_report.project
+            if flext_core_marker in project_name:
+                continue
+            for obj in project_report.objects:
+                if obj.name.startswith("_"):
+                    continue
+                parent_paths = inventory.get(obj.name)
+                if not parent_paths:
+                    continue
+                collisions.append((obj, parent_paths))
+        collisions.sort(key=lambda entry: -len(entry[1]))
+        return tuple(collisions)
+
 
 __all__: list[str] = ["FlextInfraRefactorCensus"]
