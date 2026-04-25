@@ -1,0 +1,29 @@
+src/flext_infra/base.py
+  f2bb2fdfbd6a4428 133,139,196,202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "6f6db35dd84597847bd33e18d059146bea6b069e",
+  "prompts": {
+    "f2bb2fdfbd6a4428": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b38f5a0-c3ca-4a9b-8acb-2a903f84272b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/fcd0c196899b724f2fcd8d39837a5b11536d2d1f81a0b06eb7eb788e819636ab"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
