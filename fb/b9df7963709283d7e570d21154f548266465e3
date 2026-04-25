@@ -1,0 +1,70 @@
+src/flext_infra/refactor/census.py
+  d47817c7586d1e59 835,837-848,851,873
+src/flext_infra/_utilities/rope_pep695_patch.py
+  h_9db9d35f50cf33 37-47,70,90,110,119,128,134
+src/flext_infra/_utilities/snapshot.py
+  afc29eb099521e6a 63,66-72
+  d47817c7586d1e59 1-62,64-65,73-86
+src/flext_infra/_constants/base.py
+  h_9db9d35f50cf33 26-29,36-46,151,153,155,157,159,168,175
+src/flext_infra/_utilities/release.py
+  h_9db9d35f50cf33 77,131-135
+src/flext_infra/utilities.py
+  afc29eb099521e6a 32
+  h_9db9d35f50cf33 137-140
+tests/unit/_utilities/test_snapshot.py
+  afc29eb099521e6a 1-14,17-53,55-64
+  d47817c7586d1e59 15-16,54
+src/flext_infra/_models/guard.py
+  d47817c7586d1e59 73
+src/flext_infra/_utilities/guard_gates.py
+  afc29eb099521e6a 58-88
+src/flext_infra/_utilities/mro_scan.py
+  h_9db9d35f50cf33 150,153,332,335
+tests/unit/_utilities/test_guard_gates.py
+  afc29eb099521e6a 1-79
+src/flext_infra/__init__.py
+  afc29eb099521e6a 52,96-98,140,460,521,523,875,976
+src/flext_infra/_utilities/scope_selector.py
+  h_9db9d35f50cf33 140,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "fbb9df7963709283d7e570d21154f548266465e3",
+  "prompts": {
+    "afc29eb099521e6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "491e2c5e-762d-4a28-a137-abf6db4cc57c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 169,
+      "total_deletions": 19,
+      "accepted_lines": 160,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/e13d461e834b5d8822c5cd7d0697844c60228060e9d31cdf4df00b9fc3bd235c"
+    },
+    "d47817c7586d1e59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc7f6bd0-731d-49b0-9c44-6c380d65f6ff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 100,
+      "total_deletions": 19,
+      "accepted_lines": 98,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/877bd361b5786c7be8728d3180815893dc45ff325c632773d8524a6bf20233e3"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
