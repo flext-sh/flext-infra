@@ -111,7 +111,8 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         template: p.Infra.RenderableTemplate,
         **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
     ) -> str:
-        return template.render(**kwargs)
+        rendered: str = template.render(**kwargs)
+        return rendered
 
     def render_all(
         self,

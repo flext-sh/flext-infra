@@ -275,13 +275,13 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
             or not (project_dir / directory / c.Infra.PYPROJECT_FILENAME).is_file()
         ]
         paths: t.Infra.StrSet = {*typings_paths}
-        if is_root and rules.include_path_dependencies_in_search_path:
+        if rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
             if pyproject.exists():
                 payload = u.Infra.cached_pyproject_payload(
                     pyproject,
                 )
-                paths.update(self._dep_paths(payload, is_root=True))
+                paths.update(self._dep_paths(payload, is_root=is_root))
         if (project_dir / source_root).is_dir():
             paths.add(source_root)
         if (

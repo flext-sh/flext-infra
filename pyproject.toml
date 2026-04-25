@@ -241,7 +241,18 @@ project-excludes = [
 ]
 project-includes = [ "src/**/*.py*", "tests/**/*.py*", "tmp_flow_test/**/*.py*" ]
 python-version = "3.13"
-search-path = [ ".", "src", "../flext-cli/src", "../flext-core/src", "../flext-tests/src" ]
+search-path = [
+  ".",
+  "../flext-cli/examples",
+  "../flext-cli/src",
+  "../flext-core/examples",
+  "../flext-core/scripts",
+  "../flext-core/src",
+  "../flext-infra/src",
+  "../flext-infra/tmp_flow_test",
+  "../flext-tests/src",
+  "src",
+]
 site-package-path = [ "../.venv/lib/python3.13/site-packages" ]
 skip-interpreter-query = true
 use-ignore-files = false
