@@ -130,11 +130,13 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         path = value if isinstance(value, Path) else Path(value)
         return path.resolve() if path.is_absolute() else path
 
+    @u.computed_field()
     @property
     def root(self) -> Path:
         """Return the canonical normalized workspace root."""
         return self.workspace_root
 
+    @u.computed_field()
     @property
     def effective_dry_run(self) -> bool:
         """Return the normalized write-mode decision for CLI services."""
@@ -191,11 +193,13 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
         m.Field(alias="projects", description="Projects to process"),
     ] = None
 
+    @u.computed_field()
     @property
     def project_names(self) -> t.StrSequence | None:
         """Return normalized selected project names."""
         return self.normalize_selected_projects(self.selected_projects)
 
+    @u.computed_field()
     @property
     def project_dirs(self) -> Sequence[Path] | None:
         """Resolve selected project directories relative to the workspace root."""

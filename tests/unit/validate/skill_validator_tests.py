@@ -14,9 +14,6 @@ from flext_tests import tm
 from flext_infra import FlextInfraSkillValidator
 from tests import c, t, u
 
-_yaml_load_infra_mapping = u.Cli.yaml_load_mapping
-_string_list = u.Infra.string_list
-
 
 class TestSafeLoadYaml:
     """Test u.Infra.yaml_load_infra_mapping helper function."""
@@ -25,7 +22,7 @@ class TestSafeLoadYaml:
         """Valid YAML file loads correctly."""
         f = tmp_path / "test.yml"
         f.write_text("key: value\nlist:\n  - item1\n  - item2")
-        result = _yaml_load_infra_mapping(f)
+        result = u.Cli.yaml_load_mapping(f)
         assert result.get("key") == "value"
         list_value = result.get("list")
         assert isinstance(list_value, list)
@@ -34,16 +31,16 @@ class TestSafeLoadYaml:
     def test_empty_and_null(self, tmp_path: Path) -> None:
         """Empty/null YAML returns empty dict."""
         (tmp_path / "empty.yml").write_text("")
-        assert dict(_yaml_load_infra_mapping(tmp_path / "empty.yml")) == {}
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "empty.yml")) == {}
         (tmp_path / "null.yml").write_text("null")
-        assert dict(_yaml_load_infra_mapping(tmp_path / "null.yml")) == {}
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "null.yml")) == {}
 
     def test_non_dict_returns_empty_mapping(self, tmp_path: Path) -> None:
         """Non-mapping YAML normalizes to an empty mapping."""
         (tmp_path / "list.yml").write_text("- item1\n- item2")
-        assert dict(_yaml_load_infra_mapping(tmp_path / "list.yml")) == {}
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "list.yml")) == {}
         (tmp_path / "str.yml").write_text("just a string")
-        assert dict(_yaml_load_infra_mapping(tmp_path / "str.yml")) == {}
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "str.yml")) == {}
 
 
 class TestStringList:
@@ -51,22 +48,22 @@ class TestStringList:
 
     def test_none_returns_empty(self) -> None:
         """None returns empty list."""
-        tm.that(_string_list(None), empty=True)
+        tm.that(u.Infra.string_list(None), empty=True)
 
     def test_valid_list(self) -> None:
         """Valid string list passes through."""
-        tm.that(_string_list(["a", "b", "c"]), eq=["a", "b", "c"])
+        tm.that(u.Infra.string_list(["a", "b", "c"]), eq=["a", "b", "c"])
 
     def test_string_wraps_to_list(self) -> None:
         """Bare string is wrapped into a single-element list."""
-        tm.that(_string_list("not a list"), eq=["not a list"])
+        tm.that(u.Infra.string_list("not a list"), eq=["not a list"])
 
     def test_invalid_input_raises(self) -> None:
         """Non-string items and non-list values raise."""
         with pytest.raises(TypeError):
-            _string_list(["a", 123, "c"])
+            u.Infra.string_list(["a", 123, "c"])
         with pytest.raises(TypeError, match="expected list"):
-            _string_list({"key": "value"})
+            u.Infra.string_list({"key": "value"})
 
 
 class TestSkillValidatorCore:
