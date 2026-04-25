@@ -147,6 +147,7 @@ class FlextInfraUtilitiesProtectedEdit:
         errors: MutableMapping[str, t.StrSequence] = {}
         command_cwd = cls._command_cwd(py_file, workspace)
         command_env = cls._command_env()
+        gate_timeout = max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
         def _run_gate(
             tool_name: str, tmpl: tuple[str, ...]
@@ -156,23 +157,62 @@ class FlextInfraUtilitiesProtectedEdit:
                 cmd,
                 cwd=command_cwd,
                 env=command_env,
-                timeout=c.Infra.TIMEOUT_SHORT,
+                timeout=gate_timeout,
             )
+            if result.failure:
+                return tool_name, [result.error or f"{tool_name} failed"]
             if result.success and result.value.exit_code != 0:
                 output = (result.value.stdout + result.value.stderr).strip()
                 return tool_name, [line for line in output.splitlines() if line.strip()]
             return tool_name, ()
 
+        ruff_template = next(
+            (tmpl for tool, tmpl in selected_tools if tool == "ruff"),
+            None,
+        )
+        if ruff_template is not None:
+            ruff_tool, ruff_lines = _run_gate("ruff", ruff_template)
+            if ruff_lines:
+                errors[ruff_tool] = ruff_lines
+                if cache_key is not None:
+                    cls._snapshot_cache[cache_key] = dict(errors)
+                return errors
+            if cache_key is not None:
+                cls._snapshot_cache[cache_key] = dict(errors)
+            return errors
+
+        remaining_tools = tuple(
+            (tool, tmpl) for tool, tmpl in selected_tools if tool != "ruff"
+        )
+        if not remaining_tools:
+            if cache_key is not None:
+                cls._snapshot_cache[cache_key] = dict(errors)
+            return errors
+
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(selected_tools)),
+            max_workers=max(1, len(remaining_tools)),
         ) as pool:
-            futures = [
-                pool.submit(_run_gate, tool, tmpl) for tool, tmpl in selected_tools
-            ]
-            for future in concurrent.futures.as_completed(futures):
-                tool_name, lines = future.result()
-                if lines:
-                    errors[tool_name] = lines
+            futures_by_tool = {
+                pool.submit(_run_gate, tool, tmpl): tool
+                for tool, tmpl in remaining_tools
+            }
+            timeout_budget = max(1, gate_timeout + 10)
+            try:
+                for future in concurrent.futures.as_completed(
+                    tuple(futures_by_tool),
+                    timeout=timeout_budget,
+                ):
+                    tool_name, lines = future.result()
+                    if lines:
+                        errors[tool_name] = lines
+            except concurrent.futures.TimeoutError:
+                for future, tool_name in futures_by_tool.items():
+                    if future.done():
+                        continue
+                    _ = future.cancel()
+                    errors[tool_name] = [
+                        f"timeout {timeout_budget}s: lint gate '{tool_name}' did not finish"
+                    ]
         if cache_key is not None:
             cls._snapshot_cache[cache_key] = dict(errors)
         return errors

@@ -7,10 +7,10 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".test_main": ("test_main",),
-        ".test_makefile_dry_run": ("test_makefile_dry_run",),
-        ".test_makefile_generator": ("test_makefile_generator",),
-        ".test_sync": ("test_sync",),
+        ".test_main": ("TestsFlextInfraWorkspaceMain",),
+        ".test_makefile_dry_run": ("TestsFlextInfraWorkspaceMakefileDryRun",),
+        ".test_makefile_generator": ("TestsFlextInfraWorkspaceMakefileGenerator",),
+        ".test_sync": ("TestsFlextInfraWorkspaceSync",),
     },
 )
 

@@ -8,7 +8,9 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".test_infra_integration": ("TestsFlextInfraIntegrationInfraIntegration",),
-        ".test_refactor_nesting_file": ("test_refactor_nesting_file",),
+        ".test_refactor_nesting_file": (
+            "TestsFlextInfraIntegrationRefactorNestingFile",
+        ),
         ".test_refactor_nesting_idempotency": (
             "TestsFlextInfraIntegrationRefactorNestingIdempotency",
         ),

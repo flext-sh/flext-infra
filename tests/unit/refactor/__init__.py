@@ -7,53 +7,57 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".test_accessor_migration": ("test_accessor_migration",),
+        ".test_accessor_migration": ("TestsFlextInfraRefactorAccessorMigration",),
         ".test_infra_refactor_class_and_propagation": (
-            "test_infra_refactor_class_and_propagation",
+            "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
         ),
         ".test_infra_refactor_class_placement": (
-            "test_infra_refactor_class_placement",
+            "TestsFlextInfraRefactorInfraRefactorClassPlacement",
         ),
         ".test_infra_refactor_cli_models_workflow": (
-            "test_infra_refactor_cli_models_workflow",
+            "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
         ),
-        ".test_infra_refactor_engine": ("test_infra_refactor_engine",),
+        ".test_infra_refactor_engine": ("TestsFlextInfraRefactorInfraRefactorEngine",),
         ".test_infra_refactor_import_modernizer": (
-            "test_infra_refactor_import_modernizer",
+            "TestsFlextInfraRefactorInfraRefactorImportModernizer",
         ),
         ".test_infra_refactor_legacy_and_annotations": (
-            "test_infra_refactor_legacy_and_annotations",
+            "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
         ),
         ".test_infra_refactor_migrate_to_class_mro": (
-            "test_infra_refactor_migrate_to_class_mro",
+            "TestsFlextInfraRefactorInfraRefactorMigrateToClassMro",
         ),
         ".test_infra_refactor_mro_completeness": (
-            "test_infra_refactor_mro_completeness",
+            "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
         ),
         ".test_infra_refactor_mro_import_rewriter": (
             "test_infra_refactor_mro_import_rewriter",
         ),
         ".test_infra_refactor_namespace_aliases": (
-            "test_infra_refactor_namespace_aliases",
+            "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
         ),
         ".test_infra_refactor_namespace_enforcer": (
-            "test_infra_refactor_namespace_enforcer",
+            "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
         ),
         ".test_infra_refactor_namespace_moves": (
-            "test_infra_refactor_namespace_moves",
+            "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
         ),
         ".test_infra_refactor_pattern_corrections": (
-            "test_infra_refactor_pattern_corrections",
+            "TestsFlextInfraRefactorInfraRefactorPatternCorrections",
         ),
         ".test_infra_refactor_policy_family_rules": (
-            "test_infra_refactor_policy_family_rules",
+            "TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules",
         ),
         ".test_infra_refactor_project_classifier": (
-            "test_infra_refactor_project_classifier",
+            "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
         ),
-        ".test_infra_refactor_safety": ("EngineSafetyStub",),
+        ".test_infra_refactor_safety": (
+            "EngineSafetyStub",
+            "TestsFlextInfraRefactorInfraRefactorSafety",
+        ),
         ".test_infra_refactor_typing_unifier": (
             "FlextInfraRefactorTypingUnificationRule",
+            "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
         ),
         ".test_main_cli": ("TestsFlextInfraRefactorMainCli",),
     },
