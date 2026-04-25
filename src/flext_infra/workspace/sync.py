@@ -10,11 +10,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
+import fcntl
 from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraBaseMkGenerator,
+    FlextInfraProjectMakefileUpdater,
+    FlextInfraWorkspaceMakefileGenerator,
     c,
     m,
     p,
@@ -54,8 +57,6 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     @override
     def execute(self) -> p.Result[m.Infra.SyncResult]:
         """Execute the workspace sync flow."""
-        import fcntl
-
         resolved = self._resolved_workspace_root()
         if not resolved.exists():
             return r[m.Infra.SyncResult].fail(
@@ -197,10 +198,6 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         canonical_root: Path,
     ) -> p.Result[bool]:
         """Sync the generated section of a project Makefile from pyproject.toml."""
-        from flext_infra import (
-            FlextInfraProjectMakefileUpdater,
-        )
-
         return FlextInfraProjectMakefileUpdater().update(
             workspace_root,
             canonical_root=canonical_root,
@@ -209,10 +206,6 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     @staticmethod
     def _sync_workspace_makefile(workspace_root: Path) -> p.Result[bool]:
         """Sync the workspace root Makefile from the canonical generator."""
-        from flext_infra import (
-            FlextInfraWorkspaceMakefileGenerator,
-        )
-
         return FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
 
     @staticmethod
