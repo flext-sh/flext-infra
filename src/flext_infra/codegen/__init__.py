@@ -10,7 +10,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".census": ("FlextInfraCodegenCensus",),
         ".codegen_generation": ("FlextInfraCodegenGeneration",),
         ".consolidator": ("FlextInfraCodegenConsolidator",),
-        ".constants_quality_gate": ("FlextInfraConstantsCodegenQualityGate",),
+        ".constants_quality_gate": ("FlextInfraCodegenQualityGate",),
         ".fixer": ("FlextInfraCodegenFixer",),
         ".lazy_init": ("FlextInfraCodegenLazyInit",),
         ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),

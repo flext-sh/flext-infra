@@ -27,7 +27,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraConstantsCodegenQualityGate(s[bool]):
+class FlextInfraCodegenQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
 
     @override
@@ -467,4 +467,4 @@ class FlextInfraConstantsCodegenQualityGate(s[bool]):
         return verdict == "PASS"
 
 
-__all__: list[str] = ["FlextInfraConstantsCodegenQualityGate"]
+__all__: list[str] = ["FlextInfraCodegenQualityGate"]

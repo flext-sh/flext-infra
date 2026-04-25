@@ -21,7 +21,7 @@ def _manager(
     return FlextInfraExtraPathsManager(workspace=workspace_root or _TEST_WORKSPACE_ROOT)
 
 
-class TestFlextInfraExtraPathsManager:
+class TestsFlextInfraExtraPathsManager:
     def test_manager_initialization(self) -> None:
         manager = _manager()
         tm.that(manager.__class__.__name__, eq="FlextInfraExtraPathsManager")
@@ -29,8 +29,6 @@ class TestFlextInfraExtraPathsManager:
     def test_manager_has_required_services(self) -> None:
         _manager()
 
-
-class TestSyncOne:
     def test_sync_one_missing_file(self, tmp_path: Path) -> None:
         tm.that(
             not _manager().sync_one(tmp_path / "nonexistent.toml").success,
@@ -92,14 +90,10 @@ class TestSyncOne:
 
         tm.fail(_manager().sync_one(pyproject, is_root=True), has="TOML write error")
 
-
-class TestConstants:
     def test_base_constants(self) -> None:
         manager = _manager()
         tm.that(manager.root.is_absolute(), eq=True)
 
-
-class TestsFlextInfraDepsExtraPathsManager:
     """Behavior contract for test_extra_paths_manager."""
 
     def test_pyrefly_search_paths_only_use_local_project_dirs(

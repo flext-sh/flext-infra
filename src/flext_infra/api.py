@@ -3,22 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Self, override
+from typing import ClassVar, Self, override
 
 from flext_core import r
 
 from flext_infra import (
-    FlextInfraConstantsBase,
     FlextInfraRopeWorkspace,
     c,
     p,
     s,
     t,
 )
-
-_PYDANTIC_TYPES_MARKER: Annotated[int, "runtime-namespace"] = 0
-_PYDANTIC_PATH_MARKER: Path | None = None
-_PYDANTIC_CONSTANTS_MARKER: type[FlextInfraConstantsBase] = FlextInfraConstantsBase
 
 
 class FlextInfra(

@@ -118,12 +118,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".deps.test_detector_report_flags": (
                 "TestsFlextInfraDepsDetectorReportFlags",
             ),
-            ".deps.test_extra_paths_manager": (
-                "TestConstants",
-                "TestFlextInfraExtraPathsManager",
-                "TestSyncOne",
-                "TestsFlextInfraDepsExtraPathsManager",
-            ),
+            ".deps.test_extra_paths_manager": ("TestsFlextInfraExtraPathsManager",),
             ".deps.test_extra_paths_sync": ("TestsFlextInfraDepsExtraPathsSync",),
             ".deps.test_init": ("TestsFlextInfraDepsInit",),
             ".deps.test_internal_sync_discovery": (
@@ -172,10 +167,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraDepsModernizerMainExtra",
             ),
             ".deps.test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
-            ".deps.test_modernizer_pyrefly": (
-                "TestEnsurePyreflyConfigPhase",
-                "TestsFlextInfraDepsModernizerPyrefly",
-            ),
+            ".deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
             ".deps.test_modernizer_pyright": ("TestsFlextInfraDepsModernizerPyright",),
             ".deps.test_modernizer_pytest": ("TestsFlextInfraDepsModernizerPytest",),
             ".deps.test_modernizer_tooling": ("TestsFlextInfraDepsModernizerTooling",),

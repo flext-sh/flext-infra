@@ -26,7 +26,7 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
     return result.value
 
 
-class TestEnsurePyreflyConfigPhase:
+class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
     def test_ensure_pyrefly_config_sets_fields_root(self) -> None:
@@ -44,8 +44,6 @@ class TestEnsurePyreflyConfigPhase:
         )
         tm.that(changes, empty=False)
 
-
-class TestsFlextInfraDepsModernizerPyrefly:
     """Behavior contract for test_modernizer_pyrefly."""
 
     def test_ensure_pyrefly_config_phase_apply_python_version(self) -> None:

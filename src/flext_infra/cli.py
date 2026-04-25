@@ -20,10 +20,10 @@ from flext_infra import (
     FlextInfraCodegenPipeline,
     FlextInfraCodegenPyprojectKeys,
     FlextInfraCodegenPyTyped,
+    FlextInfraCodegenQualityGate,
     FlextInfraCodegenScaffolder,
     FlextInfraCodegenVersionFile,
     FlextInfraConfigFixer,
-    FlextInfraConstantsCodegenQualityGate,
     FlextInfraDocAuditor,
     FlextInfraDocBuilder,
     FlextInfraDocFixer,
@@ -203,9 +203,9 @@ class FlextInfraCli:
             _route(
                 name="constants-quality-gate",
                 help_text="Run constants migration quality gate",
-                model_cls=FlextInfraConstantsCodegenQualityGate,
-                handler=lambda params: (
-                    FlextInfraConstantsCodegenQualityGate.execute_command(params)
+                model_cls=FlextInfraCodegenQualityGate,
+                handler=lambda params: FlextInfraCodegenQualityGate.execute_command(
+                    params
                 ),
                 success_message="constants quality gate passed",
             ),

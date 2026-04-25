@@ -146,10 +146,7 @@ if _t.TYPE_CHECKING:
         TestsFlextInfraDepsDetectorReportFlags,
     )
     from tests.unit.deps.test_extra_paths_manager import (
-        TestConstants,
-        TestFlextInfraExtraPathsManager,
-        TestsFlextInfraDepsExtraPathsManager,
-        TestSyncOne,
+        TestsFlextInfraExtraPathsManager,
     )
     from tests.unit.deps.test_extra_paths_sync import TestsFlextInfraDepsExtraPathsSync
     from tests.unit.deps.test_init import TestsFlextInfraDepsInit
@@ -205,10 +202,7 @@ if _t.TYPE_CHECKING:
         TestsFlextInfraDepsModernizerMainExtra,
     )
     from tests.unit.deps.test_modernizer_mypy import TestsFlextInfraDepsModernizerMypy
-    from tests.unit.deps.test_modernizer_pyrefly import (
-        TestEnsurePyreflyConfigPhase,
-        TestsFlextInfraDepsModernizerPyrefly,
-    )
+    from tests.unit.deps.test_modernizer_pyrefly import TestsFlextInfraModernizerPyrefly
     from tests.unit.deps.test_modernizer_pyright import (
         TestsFlextInfraDepsModernizerPyright,
     )
@@ -557,10 +551,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraDepsDetectorReportFlags",
             ),
             ".unit.deps.test_extra_paths_manager": (
-                "TestConstants",
-                "TestFlextInfraExtraPathsManager",
-                "TestSyncOne",
-                "TestsFlextInfraDepsExtraPathsManager",
+                "TestsFlextInfraExtraPathsManager",
             ),
             ".unit.deps.test_extra_paths_sync": ("TestsFlextInfraDepsExtraPathsSync",),
             ".unit.deps.test_init": ("TestsFlextInfraDepsInit",),
@@ -616,10 +607,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraDepsModernizerMainExtra",
             ),
             ".unit.deps.test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
-            ".unit.deps.test_modernizer_pyrefly": (
-                "TestEnsurePyreflyConfigPhase",
-                "TestsFlextInfraDepsModernizerPyrefly",
-            ),
+            ".unit.deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
             ".unit.deps.test_modernizer_pyright": (
                 "TestsFlextInfraDepsModernizerPyright",
             ),
@@ -883,14 +871,11 @@ __all__: list[str] = [
     "TestConfigFixerPublicBehavior",
     "TestConfigFixerRun",
     "TestConfigFixerToArray",
-    "TestConstants",
     "TestEdgeCases",
-    "TestEnsurePyreflyConfigPhase",
     "TestExcludedDirectories",
     "TestExtendedRunnerExtras",
     "TestFlextInfraCheck",
     "TestFlextInfraConfigFixer",
-    "TestFlextInfraExtraPathsManager",
     "TestFlextInfraNamespaceValidator",
     "TestFlextInfraWorkspaceChecker",
     "TestGateErrorReportingPublicBehavior",
@@ -906,7 +891,6 @@ __all__: list[str] = [
     "TestRunRuffFix",
     "TestRunnerPublicBehavior",
     "TestSelectedProjectNames",
-    "TestSyncOne",
     "TestValidateCli",
     "TestWorkspaceCheckCLI",
     "TestWorkspaceCheckCli",
@@ -937,7 +921,6 @@ __all__: list[str] = [
     "TestsFlextInfraDepsDetectorModels",
     "TestsFlextInfraDepsDetectorReport",
     "TestsFlextInfraDepsDetectorReportFlags",
-    "TestsFlextInfraDepsExtraPathsManager",
     "TestsFlextInfraDepsExtraPathsSync",
     "TestsFlextInfraDepsInit",
     "TestsFlextInfraDepsInternalSyncDiscovery",
@@ -960,7 +943,6 @@ __all__: list[str] = [
     "TestsFlextInfraDepsModernizerMain",
     "TestsFlextInfraDepsModernizerMainExtra",
     "TestsFlextInfraDepsModernizerMypy",
-    "TestsFlextInfraDepsModernizerPyrefly",
     "TestsFlextInfraDepsModernizerPyright",
     "TestsFlextInfraDepsModernizerPytest",
     "TestsFlextInfraDepsModernizerTooling",
@@ -974,6 +956,7 @@ __all__: list[str] = [
     "TestsFlextInfraDepsPathSyncRewritePep621",
     "TestsFlextInfraDepsPathSyncRewritePoetry",
     "TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases",
+    "TestsFlextInfraExtraPathsManager",
     "TestsFlextInfraInfraConstantsCore",
     "TestsFlextInfraInfraConstantsExtra",
     "TestsFlextInfraInfraInitLazyCore",
@@ -1014,6 +997,7 @@ __all__: list[str] = [
     "TestsFlextInfraLazyInitHelpers",
     "TestsFlextInfraLazyInitTransforms",
     "TestsFlextInfraModels",
+    "TestsFlextInfraModernizerPyrefly",
     "TestsFlextInfraProtocols",
     "TestsFlextInfraRefactorAccessorMigration",
     "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",

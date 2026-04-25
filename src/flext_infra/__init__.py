@@ -148,7 +148,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
     from flext_infra.codegen.constants_quality_gate import (
-        FlextInfraConstantsCodegenQualityGate,
+        FlextInfraCodegenQualityGate,
     )
     from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -533,9 +533,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".codegen.census": ("FlextInfraCodegenCensus",),
             ".codegen.codegen_generation": ("FlextInfraCodegenGeneration",),
             ".codegen.consolidator": ("FlextInfraCodegenConsolidator",),
-            ".codegen.constants_quality_gate": (
-                "FlextInfraConstantsCodegenQualityGate",
-            ),
+            ".codegen.constants_quality_gate": ("FlextInfraCodegenQualityGate",),
             ".codegen.fixer": ("FlextInfraCodegenFixer",),
             ".codegen.lazy_init": ("FlextInfraCodegenLazyInit",),
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
@@ -788,6 +786,7 @@ __all__: list[str] = [
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenPyprojectKeys",
+    "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
     "FlextInfraCompatibilityAliasDetector",
@@ -799,7 +798,6 @@ __all__: list[str] = [
     "FlextInfraConstantsCensus",
     "FlextInfraConstantsCheck",
     "FlextInfraConstantsCodegen",
-    "FlextInfraConstantsCodegenQualityGate",
     "FlextInfraConstantsDeps",
     "FlextInfraConstantsDocs",
     "FlextInfraConstantsGithub",

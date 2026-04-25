@@ -9,9 +9,7 @@ from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
-    FlextInfraConstantsBase,
-    FlextInfraModelsBasemk,
-    FlextInfraProtocolsBase,
+    c,
     m,
     p,
     r,
@@ -32,7 +30,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     ] = None
 
     template_engine: Annotated[
-        FlextInfraProtocolsBase.TemplateRenderer | None,
+        p.Infra.TemplateRenderer | None,
         m.Field(exclude=True, description="Template engine"),
     ] = None
 
@@ -64,7 +62,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def generate_basemk(
         self,
-        settings: FlextInfraModelsBasemk.BaseMkConfig | t.ScalarMapping | None = None,
+        settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> p.Result[str]:
         """Generate base.mk content from configuration."""
         config_result = FlextInfraBaseMkTemplateEngine.normalize_config(settings)
@@ -83,7 +81,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         content: str,
         *,
         output: Path | None = None,
-        stream: FlextInfraProtocolsBase.OutputStream | None = None,
+        stream: p.Infra.OutputStream | None = None,
     ) -> p.Result[bool]:
         """Write generated content to file or stream."""
         if output is None:
@@ -99,7 +97,7 @@ class FlextInfraBaseMkGenerator(s[str]):
             output.parent.mkdir(parents=True, exist_ok=True)
             _ = output.write_text(
                 content,
-                encoding=FlextInfraConstantsBase.ENCODING_DEFAULT,
+                encoding=c.Infra.ENCODING_DEFAULT,
             )
             return r[bool].ok(True)
         except OSError as exc:
@@ -110,18 +108,18 @@ class FlextInfraBaseMkGenerator(s[str]):
         try:
             with tempfile.TemporaryDirectory(prefix="flext-basemk-") as temp_dir_name:
                 temp_dir = Path(temp_dir_name)
-                base_mk_path = temp_dir / FlextInfraConstantsBase.BASE_MK
-                makefile_path = temp_dir / FlextInfraConstantsBase.MAKEFILE_FILENAME
+                base_mk_path = temp_dir / c.Infra.BASE_MK
+                makefile_path = temp_dir / c.Infra.MAKEFILE_FILENAME
                 _ = base_mk_path.write_text(
                     content,
-                    encoding=FlextInfraConstantsBase.ENCODING_DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 _ = makefile_path.write_text(
                     "include base.mk\n",
-                    encoding=FlextInfraConstantsBase.ENCODING_DEFAULT,
+                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
                 process_result = self._get_runner.run([
-                    FlextInfraConstantsBase.MAKE,
+                    c.Infra.MAKE,
                     "-C",
                     str(temp_dir),
                     "--dry-run",

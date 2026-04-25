@@ -14,7 +14,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import (
-    FlextInfraConstantsCodegenQualityGate,
+    FlextInfraCodegenQualityGate,
     main,
 )
 from tests import t
@@ -64,29 +64,27 @@ class TestConstantsQualityGateVerdict:
     def test_success_verdict_accepts_pass(self) -> None:
         """successful_verdict returns True for PASS."""
         tm.that(
-            FlextInfraConstantsCodegenQualityGate.successful_verdict("PASS"),
+            FlextInfraCodegenQualityGate.successful_verdict("PASS"),
             eq=True,
         )
 
     def test_success_verdict_rejects_conditional_pass(self) -> None:
         """successful_verdict returns False for removed conditional verdicts."""
         tm.that(
-            not FlextInfraConstantsCodegenQualityGate.successful_verdict(
-                "CONDITIONAL_PASS"
-            ),
+            not FlextInfraCodegenQualityGate.successful_verdict("CONDITIONAL_PASS"),
             eq=True,
         )
 
     def test_success_verdict_rejects_fail(self) -> None:
         """successful_verdict returns False for FAIL."""
         tm.that(
-            not FlextInfraConstantsCodegenQualityGate.successful_verdict("FAIL"),
+            not FlextInfraCodegenQualityGate.successful_verdict("FAIL"),
             eq=True,
         )
 
     def test_real_workspace_run_returns_report(self, tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
-        gate = FlextInfraConstantsCodegenQualityGate(workspace=tmp_path)
+        gate = FlextInfraCodegenQualityGate(workspace=tmp_path)
         report = gate.build_report()
         assert isinstance(report, dict)
         assert "verdict" in report
