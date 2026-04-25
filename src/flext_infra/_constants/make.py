@@ -50,6 +50,7 @@ class FlextInfraConstantsMake:
     PR_ACTIONS_ALLOWED: Final[str] = "status|create|view|checks|merge|close"
     PR_MERGE_METHODS_ALLOWED: Final[str] = "squash|merge|rebase"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
+        "audit",
         "boot",
         "build",
         "check",
@@ -64,6 +65,10 @@ class FlextInfraConstantsMake:
         ("DIAG", "0"),
         ("CHECK_GATES", ""),
         ("VALIDATE_GATES", ""),
+        ("SCOPE", "project"),
+        ("NAMESPACE", ""),
+        ("GATES", ""),
+        ("PROPAGATE", ""),
         ("DOCS_PHASE", "all"),
         ("FIX", ""),
         ("PR_ACTION", "status"),
@@ -98,6 +103,10 @@ class FlextInfraConstantsMake:
         ("JOBS", ""),
         ("CHECK_GATES", ""),
         ("VALIDATE_GATES", ""),
+        ("SCOPE", "project"),
+        ("NAMESPACE", ""),
+        ("GATES", ""),
+        ("PROPAGATE", ""),
         ("FIX", ""),
         ("FILE", ""),
         ("FILES", ""),
@@ -136,6 +145,10 @@ class FlextInfraConstantsMake:
         ("VERBOSE", ""),
     )
     PROJECT_CORE_VERBS: Final[t.Infra.StrPairSequence] = (
+        (
+            "audit",
+            "Run SSOT enforcement audit (SCOPE/NAMESPACE/GATES/PROPAGATE selectors)",
+        ),
         ("boot", "Install dependencies and hooks"),
         ("build", "Build distributable artifacts"),
         ("check", "Run lint gates (CHECK_GATES= to select)"),
@@ -178,6 +191,10 @@ class FlextInfraConstantsMake:
         "PR_RELEASE_ON_MERGE=0|1",
     )
     WORKSPACE_CORE_VERBS: Final[t.Infra.StrPairSequence] = (
+        (
+            "audit",
+            "Run SSOT enforcement audit across selected projects (SCOPE/GATES/FIX)",
+        ),
         (
             "boot",
             "Install all projects into workspace .venv, then run val VALIDATE_SCOPE=workspace",

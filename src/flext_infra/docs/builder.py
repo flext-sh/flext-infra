@@ -6,26 +6,20 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
-    r,
     t,
     u,
 )
+from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
-class FlextInfraDocBuilder(FlextInfraProjectSelectionServiceBase[bool]):
+class FlextInfraDocBuilder(FlextInfraDocServiceBase):
     """Build MkDocs sites for governed FLEXT scopes."""
-
-    output_dir: Annotated[
-        Path | None,
-        m.Field(description="Docs output dir"),
-    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     _runner: p.Cli.CommandRunner = u.PrivateAttr(default_factory=u.Cli)
 
@@ -47,19 +41,15 @@ class FlextInfraDocBuilder(FlextInfraProjectSelectionServiceBase[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the configured docs build flow."""
-        result = self.build(
-            workspace_root=self.workspace_root,
-            projects=self.selected_projects,
-            output_dir=self.output_dir,
+        return self._propagate_phase_outcome(
+            "build",
+            self.build(
+                workspace_root=self.workspace_root,
+                projects=self.selected_projects,
+                output_dir=self.output_dir,
+            ),
+            failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
-        if result.failure:
-            return r[bool].fail(result.error or "build failed")
-        failures = sum(
-            1 for report in result.value if report.result == c.Infra.ResultStatus.FAIL
-        )
-        if failures:
-            return r[bool].fail(f"Build had {failures} failure(s)")
-        return r[bool].ok(True)
 
     def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
         """Build one scope via the docs build utilities and persist its reports."""

@@ -55,10 +55,7 @@ class FlextInfraScanner:
             pattern = c.Infra.FAMILY_FILES[family]
             found_class, found_file, symbols = "", "", 0
             for file_path in src_dir.rglob(pattern):
-                res = u.Infra.get_resource_from_path(
-                    rope_project,
-                    file_path,
-                )
+                res = u.Infra.fetch_python_resource(rope_project, file_path)
                 if res is None:
                     continue
                 classes = u.Infra.get_module_classes(rope_project, res)

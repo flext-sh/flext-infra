@@ -95,6 +95,7 @@ class FlextInfraDocAuditorMixin:
                 "scope-boundary",
                 "generated-ownership",
                 "docstrings",
+                "python-codeblocks",
             }
         return checks
 

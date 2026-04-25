@@ -104,6 +104,41 @@ class FlextInfraUtilitiesRopeCore:
             return None
 
     @staticmethod
+    def fetch_python_resource(
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
+        *,
+        skip_protected: bool = False,
+        skip_settings: bool = False,
+        skip_alias_modules: bool = False,
+        skip_init_py: bool = False,
+    ) -> t.Infra.RopeResource | None:
+        """Resolve a Python source as a Rope resource (or ``None`` to skip).
+
+        Centralizes the per-detector pre-amble: Python-extension filter,
+        optional skip lists for protected/settings/alias-module files,
+        plus the Rope resource resolution. Returns ``None`` when the
+        caller should bail out of the file — the canonical "skip this
+        file" sentinel.
+        """
+        if file_path.suffix != c.Infra.EXT_PYTHON:
+            return None
+        if skip_init_py and file_path.name == c.Infra.INIT_PY:
+            return None
+        if skip_protected and file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
+            return None
+        if skip_settings and file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
+            return None
+        if (
+            skip_alias_modules
+            and file_path.stem in c.Infra.NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS
+        ):
+            return None
+        return FlextInfraUtilitiesRopeCore.get_resource_from_path(
+            rope_project, file_path
+        )
+
+    @staticmethod
     def python_resources(
         rope_project: t.Infra.RopeProject,
     ) -> Sequence[t.Infra.RopeResource]:

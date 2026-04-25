@@ -26,18 +26,18 @@ class FlextInfraLooseObjectDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
+        res = u.Infra.fetch_python_resource(
+            ctx.rope_project,
+            ctx.file_path,
+            skip_protected=True,
+            skip_settings=True,
+            skip_alias_modules=True,
+        )
+        if res is None:
+            return []
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         project_name = ctx.project_name
-        if (
-            file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
-            or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
-            or file_path.stem in c.Infra.NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS
-        ):
-            return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
-        if res is None:
-            return []
         lines = res.read().splitlines()
         class_stem = u.derive_class_stem(project_name)
         file_str = str(file_path)

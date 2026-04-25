@@ -21,15 +21,15 @@ class FlextInfraInternalImportDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.InternalImportViolation]:
         """Detect private module/symbol imports in a single file."""
-        file_path = ctx.file_path
-        rope_project = ctx.rope_project
-        if file_path.name == c.Infra.INIT_PY:
-            return []
-        current_package = u.Infra.package_name(file_path)
-        current_root = current_package.split(".", 1)[0] if current_package else ""
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.fetch_python_resource(
+            ctx.rope_project, ctx.file_path, skip_init_py=True
+        )
         if res is None:
             return []
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
+        current_package = u.Infra.package_name(file_path)
+        current_root = current_package.split(".", 1)[0] if current_package else ""
         imports = u.Infra.get_semantic_module_imports(rope_project, res)
         return [
             m.Infra.InternalImportViolation(

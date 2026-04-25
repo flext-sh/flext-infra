@@ -10,26 +10,20 @@ from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraDocAuditorMixin,
-    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
-    r,
     t,
     u,
 )
+from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
 class FlextInfraDocAuditor(
-    FlextInfraProjectSelectionServiceBase[bool],
+    FlextInfraDocServiceBase,
     FlextInfraDocAuditorMixin,
 ):
     """Audit governed docs scopes using code-backed and policy-backed checks."""
-
-    output_dir: Annotated[
-        Path | None,
-        m.Field(description="Docs output dir"),
-    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     strict_mode: Annotated[
         bool,
@@ -161,21 +155,19 @@ class FlextInfraDocAuditor(
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the configured docs audit flow."""
-        result = self.audit(
-            workspace_root=self.workspace_root,
-            projects=self.selected_projects,
-            output_dir=self.output_dir,
-            params=m.Infra.AuditScopeParams(
-                check="all",
-                strict=self.strict_mode,
+        return self._propagate_phase_outcome(
+            "audit",
+            self.audit(
+                workspace_root=self.workspace_root,
+                projects=self.selected_projects,
+                output_dir=self.output_dir,
+                params=m.Infra.AuditScopeParams(
+                    check="all",
+                    strict=self.strict_mode,
+                ),
             ),
+            failure_predicate=lambda report: not report.passed,
         )
-        if result.failure:
-            return r[bool].fail(result.error or "audit failed")
-        failures = sum(1 for report in result.value if not report.passed)
-        if failures:
-            return r[bool].fail(f"Audit found {failures} failing scope(s)")
-        return r[bool].ok(True)
 
     def _audit_params(
         self,
@@ -219,6 +211,8 @@ class FlextInfraDocAuditor(
             issues.extend(u.Infra.docs_generated_ownership_issues(scope))
         if "docstrings" in checks:
             issues.extend(u.Infra.docs_public_docstring_issues(scope))
+        if "python-codeblocks" in checks:
+            issues.extend(u.Infra.docs_python_codeblock_issues(scope))
         return tuple(issues)
 
 

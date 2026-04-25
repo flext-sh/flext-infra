@@ -21,17 +21,18 @@ class FlextInfraManualProtocolDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""
-        file_path = ctx.file_path
-        rope_project = ctx.rope_project
         if (
-            file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
-            or c.Infra.MRO_PROTOCOLS_DIRECTORY in file_path.parts
-            or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
+            ctx.file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
+            or c.Infra.MRO_PROTOCOLS_DIRECTORY in ctx.file_path.parts
         ):
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.fetch_python_resource(
+            ctx.rope_project, ctx.file_path, skip_protected=True
+        )
         if res is None:
             return []
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
         return [
             m.Infra.ManualProtocolViolation(
                 file=str(file_path), line=ci.line, name=ci.name

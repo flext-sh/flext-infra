@@ -68,6 +68,17 @@ class FlextInfraModelsRefactor(
             ),
         ] = 10
 
+    class RefactorAuditInput(
+        mm.WriteMixin,
+        m.ContractModel,
+    ):
+        """CLI/service request for the SSOT enforcement audit.
+
+        Inherits ``workspace`` / ``projects`` / ``apply`` / ``diff`` /
+        ``fail_fast`` / ``verbose`` from ``ScopeMixin`` + ``WriteMixin``
+        — no extra fields required.
+        """
+
     class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""
 

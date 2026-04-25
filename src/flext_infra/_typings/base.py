@@ -16,6 +16,7 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path as _Path
+from typing import Literal
 
 from flext_cli import m, t
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
@@ -130,3 +131,6 @@ class FlextInfraTypesBase:
     "(success, descriptions, report_lines) — includes what was attempted."
     type LintSnapshot = Mapping[str, t.StrSequence]
     "Lint errors per tool: {tool_name: [error_lines]}."
+
+    type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
+    "Closed string set selecting which docs orchestrator phase to execute."

@@ -21,13 +21,11 @@ class FlextInfraCompatibilityAliasDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file."""
-        file_path = ctx.file_path
-        rope_project = ctx.rope_project
-        if file_path.suffix != c.Infra.EXT_PYTHON:
-            return []
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
             return []
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
         lines = resource.read().splitlines()
         violations: list[m.Infra.CompatibilityAliasViolation] = []
         for symbol in u.Infra.get_module_symbols(rope_project, resource):

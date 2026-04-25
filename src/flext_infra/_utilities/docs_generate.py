@@ -79,6 +79,11 @@ class FlextInfraUtilitiesDocsGenerate:
         ]
         files: MutableSequence[m.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                scope.path / "README.md",
+                FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract),
+                apply=apply,
+            ),
+            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 scope.path / "docs/index.md",
                 FlextInfraUtilitiesDocsRender.docs_project_index(scope, contract),
                 apply=apply,

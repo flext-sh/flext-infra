@@ -8,7 +8,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_core import u
+from flext_cli import u
 
 from flext_infra import (
     FlextInfraUtilitiesDocs,
@@ -251,6 +251,53 @@ class FlextInfraUtilitiesDocsAudit:
                         issue_type="stale_symbol",
                         severity="medium",
                         message=f"contains `{token}`",
+                    ),
+                )
+        return issues
+
+    @staticmethod
+    def docs_python_codeblock_issues(
+        scope: m.Infra.DocScope,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Lint embedded ``python`` fenced blocks under one docs scope.
+
+        Captures every ``python`` fenced block via ``c.Infra.PYTHON_FENCE_RE``
+        and gates each block through ``ruff check --stdin-filename`` (piped
+        body bytes — no temp files). Failures land as ``m.Infra.AuditIssue``
+        records flowing through the standard audit report pipeline.
+        """
+        issues: MutableSequence[m.Infra.AuditIssue] = []
+        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+            rel = md_file.relative_to(scope.path).as_posix()
+            content = md_file.read_text(
+                encoding=c.Cli.ENCODING_DEFAULT,
+                errors=c.Infra.IGNORE,
+            )
+            for index, match in enumerate(
+                c.Infra.PYTHON_FENCE_RE.finditer(content),
+            ):
+                outcome = u.Cli.run_raw(
+                    [
+                        c.Infra.RUFF,
+                        c.Infra.VERB_CHECK,
+                        "--stdin-filename",
+                        f"{rel}#block{index}.py",
+                        "-",
+                    ],
+                    input_data=match.group("body").encode(),
+                )
+                if outcome.failure:
+                    detail = outcome.error
+                elif outcome.value.exit_code == 0:
+                    continue
+                else:
+                    detail = outcome.value.stdout.strip().splitlines()[-1]
+                issues.append(
+                    m.Infra.AuditIssue(
+                        file=rel,
+                        issue_type="python_codeblock",
+                        severity="medium",
+                        message=f"block #{index}: {detail}",
                     ),
                 )
         return issues

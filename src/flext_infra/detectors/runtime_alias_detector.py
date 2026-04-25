@@ -22,11 +22,12 @@ class FlextInfraRuntimeAliasDetector:
     ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         """Detect missing/duplicate runtime alias assignments in a facade file."""
         file_path = ctx.file_path
-        rope_project = ctx.rope_project
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
-        if family is None or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
+        if family is None:
             return []
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        resource = u.Infra.fetch_python_resource(
+            ctx.rope_project, file_path, skip_protected=True
+        )
         if resource is None:
             return []
         source = resource.read()

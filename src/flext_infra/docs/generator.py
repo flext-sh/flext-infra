@@ -6,26 +6,20 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
-    r,
     t,
     u,
 )
+from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
-class FlextInfraDocGenerator(FlextInfraProjectSelectionServiceBase[bool]):
+class FlextInfraDocGenerator(FlextInfraDocServiceBase):
     """Generate managed docs artifacts from package exports and docstrings."""
-
-    output_dir: Annotated[
-        Path | None,
-        m.Field(description="Docs output dir"),
-    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     def generate(
         self,
@@ -51,15 +45,15 @@ class FlextInfraDocGenerator(FlextInfraProjectSelectionServiceBase[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the configured docs generation flow."""
-        result = self.generate(
-            workspace_root=self.workspace_root,
-            projects=self.selected_projects,
-            output_dir=self.output_dir,
-            apply=self.apply_changes,
+        return self._propagate_phase_outcome(
+            "generate",
+            self.generate(
+                workspace_root=self.workspace_root,
+                projects=self.selected_projects,
+                output_dir=self.output_dir,
+                apply=self.apply_changes,
+            ),
         )
-        if result.failure:
-            return r[bool].fail(result.error or "generate failed")
-        return r[bool].ok(True)
 
     def _generate_scope(
         self,

@@ -6,26 +6,20 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
-    r,
     t,
     u,
 )
+from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
-class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
+class FlextInfraDocFixer(FlextInfraDocServiceBase):
     """Fix links and TOCs across governed FLEXT docs scopes."""
-
-    output_dir: Annotated[
-        Path | None,
-        m.Field(description="Docs output dir"),
-    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     def fix(
         self,
@@ -46,15 +40,15 @@ class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the configured docs fix flow."""
-        result = self.fix(
-            workspace_root=self.workspace_root,
-            projects=self.selected_projects,
-            output_dir=self.output_dir,
-            apply=self.apply_changes,
+        return self._propagate_phase_outcome(
+            "fix",
+            self.fix(
+                workspace_root=self.workspace_root,
+                projects=self.selected_projects,
+                output_dir=self.output_dir,
+                apply=self.apply_changes,
+            ),
         )
-        if result.failure:
-            return r[bool].fail(result.error or "fix failed")
-        return r[bool].ok(True)
 
     def _fix_scope(
         self,

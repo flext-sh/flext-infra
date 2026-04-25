@@ -14,10 +14,17 @@ class FlextInfraConstantsRope:
 
     ROPE_IGNORED_RESOURCES: Final[tuple[str, ...]] = (
         ".venv",
+        "venv",
+        "node_modules",
         "*.pyc",
         "dist/",
+        "build/",
+        ".tox/",
+        ".cache/",
         "__pycache__",
         ".mypy_cache",
+        ".pyrefly_cache",
+        ".pytest_cache",
         ".git",
     )
     "Resources rope should ignore when scanning the project tree."

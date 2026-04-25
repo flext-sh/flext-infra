@@ -25,15 +25,12 @@ class FlextInfraImportAliasDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
-        file_path = ctx.file_path
-        if file_path.name == c.Infra.INIT_PY:
-            return []
-        resource = u.Infra.get_resource_from_path(
-            ctx.rope_project,
-            file_path,
+        resource = u.Infra.fetch_python_resource(
+            ctx.rope_project, ctx.file_path, skip_init_py=True
         )
         if resource is None:
             return []
+        file_path = ctx.file_path
         source = resource.read()
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return []

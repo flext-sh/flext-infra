@@ -27,7 +27,7 @@ class FlextInfraNamespaceSourceDetector:
         """Detect runtime aliases imported from a different flext package root."""
         file_path = ctx.file_path
         project_root = ctx.project_root
-        if project_root is None or file_path.name == c.Infra.INIT_PY:
+        if project_root is None:
             return []
         project_layout = u.Infra.layout(project_root)
         if project_layout is None:
@@ -39,9 +39,8 @@ class FlextInfraNamespaceSourceDetector:
             project_root=project_root,
             file_path=file_path,
         )
-        resource = u.Infra.get_resource_from_path(
-            ctx.rope_project,
-            file_path,
+        resource = u.Infra.fetch_python_resource(
+            ctx.rope_project, file_path, skip_init_py=True
         )
         if resource is None:
             return []

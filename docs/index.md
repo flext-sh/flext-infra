@@ -18,30 +18,30 @@ This project portal is generated from `pyproject.toml`, package exports, and rea
 
 ## Public Surface Summary
 
-- Primary facades: `FlextInfraConstantsCodegen`, `FlextInfraUtilitiesDocsValidate`, `FlextInfraValidateFreshImport`, `FlextInfraConstantsDeps`, `FlextInfraSettings`, `FlextInfraConfigFixer` (+225 more)
+- Primary facades: `FlextInfraUtilitiesRefactorPolicy`, `FlextInfraRefactorMROImportRewriter`, `FlextInfraTypesBase`, `FlextInfraProjectMakefileUpdater`, `FlextInfraPythonVersionEnforcer`, `FlextInfraRefactorImportModernizer` (+226 more)
 - Alias namespaces: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `233`
+- Public symbol exports: `234`
 - Exported module shortcuts: _none_
 
 ## Collection Rules (regras de coletas)
 
 Required pre-work before changing this project (per AGENTS.md §9):
 
-1. Read `/flext/AGENTS.md` (governance) and the project's `pyproject.toml`.
+1. Read [`/flext/AGENTS.md`](../../../AGENTS.md) (governance) and this project's `pyproject.toml`.
 2. Confirm parent MRO chain via `pyproject.toml` `dependencies` filtered by `flext-*` (excluding `flext-infra` self).
 3. Verify Scope: `cd <project> && scope status` (re-bootstrap per `flext-scope-bootstrap` if absent).
-4. Load skills relevant to the change scope in `.agents/skills/` (start with `flext-mro-namespace-rules`, `flext-import-rules`, `flext-patterns`).
+4. Load skills relevant to the change scope from [`/flext/.agents/skills/`](../../../.agents/skills/) (start with `flext-mro-namespace-rules`, `flext-import-rules`, `flext-patterns`).
 5. Confirm the canonical zero-debt baseline:
-    - `cd <project> && make check` exits 0
-    - `cd <project> && make val VALIDATE_SCOPE=project` exits 0
-    - `cd <project> && make docs DOCS_PHASE=audit` reports zero issues
-6. Cross-check the c/p/t/m/u slot registry in `.agents/skills/flext-mro-namespace-rules/SKILL.md` to confirm this project's owned slots before adding/renaming any symbol.
+    - `make check` exits 0
+    - `make val VALIDATE_SCOPE=project` exits 0
+    - `make docs DOCS_PHASE=audit` reports zero issues
+6. Cross-check the c/p/t/m/u slot registry in [`flext-mro-namespace-rules`](../../../.agents/skills/flext-mro-namespace-rules/SKILL.md) to confirm this project's owned slots before adding/renaming any symbol.
 
 ## Quality Gates
 
 - `make check` — Lint suite (ruff, pyrefly, mypy, pyright per project).
 - `make test` — Pytest with project coverage threshold from `pyproject.toml`.
-- `make val VALIDATE_SCOPE=project` — Validation gates (complexity, docstring).
+- `make val VALIDATE_SCOPE=project` — Validation gates (complexity, docstring, namespace).
 - `make docs DOCS_PHASE=audit` — Docs audit (broken links, stale symbols, missing docstrings).
 - `make docs DOCS_PHASE=build` — Build mkdocs HTML output to `.reports/docs/site/`.
 

@@ -49,6 +49,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.engine_ops import FlextInfraModelsEngineOperation
     from flext_infra._models.gates import FlextInfraModelsGates
     from flext_infra._models.github import FlextInfraModelsGithub
+    from flext_infra._models.guard import FlextInfraModelsGuard
     from flext_infra._models.mixins import FlextInfraModelsMixins
     from flext_infra._models.refactor import FlextInfraModelsRefactor
     from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
@@ -62,6 +63,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.release import FlextInfraModelsRelease
     from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.scan import FlextInfraModelsScan
+    from flext_infra._models.scope import FlextInfraModelsScope
     from flext_infra._models.validate import FlextInfraModelsCore
     from flext_infra._models.workspace import FlextInfraModelsWorkspace
     from flext_infra._protocols.base import FlextInfraProtocolsBase
@@ -97,8 +99,10 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
     from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
     from flext_infra._utilities.namespace_analysis import (
-        FlextInfraUtilitiesRefactorNamespaceCommon,
         FlextInfraUtilitiesRefactorNamespaceMro,
+    )
+    from flext_infra._utilities.namespace_common import (
+        FlextInfraUtilitiesRefactorNamespaceCommon,
     )
     from flext_infra._utilities.namespace_facades import (
         FlextInfraUtilitiesRefactorNamespaceFacades,
@@ -130,6 +134,8 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+    from flext_infra._utilities.scope_selector import FlextInfraUtilitiesScopeSelector
+    from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import (
@@ -236,6 +242,7 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra.docs.auditor import FlextInfraDocAuditor
     from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
+    from flext_infra.docs.base import FlextInfraDocServiceBase
     from flext_infra.docs.builder import FlextInfraDocBuilder
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
@@ -367,6 +374,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
+    from flext_infra.workspace.propagate import FlextInfraWorkspacePropagator
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
     from flext_infra.workspace.sync import FlextInfraSyncService
     from flext_infra.workspace.workspace_makefile import (
@@ -438,6 +446,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._models.engine_ops": ("FlextInfraModelsEngineOperation",),
             "._models.gates": ("FlextInfraModelsGates",),
             "._models.github": ("FlextInfraModelsGithub",),
+            "._models.guard": ("FlextInfraModelsGuard",),
             "._models.mixins": ("FlextInfraModelsMixins",),
             "._models.refactor": ("FlextInfraModelsRefactor",),
             "._models.refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
@@ -449,6 +458,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._models.release": ("FlextInfraModelsRelease",),
             "._models.rope": ("FlextInfraModelsRope",),
             "._models.scan": ("FlextInfraModelsScan",),
+            "._models.scope": ("FlextInfraModelsScope",),
             "._models.validate": ("FlextInfraModelsCore",),
             "._models.workspace": ("FlextInfraModelsWorkspace",),
             "._protocols.base": ("FlextInfraProtocolsBase",),
@@ -482,8 +492,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
             "._utilities.namespace": ("FlextInfraUtilitiesCodegenNamespace",),
             "._utilities.namespace_analysis": (
-                "FlextInfraUtilitiesRefactorNamespaceCommon",
                 "FlextInfraUtilitiesRefactorNamespaceMro",
+            ),
+            "._utilities.namespace_common": (
+                "FlextInfraUtilitiesRefactorNamespaceCommon",
             ),
             "._utilities.namespace_facades": (
                 "FlextInfraUtilitiesRefactorNamespaceFacades",
@@ -509,6 +521,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
+            "._utilities.scope_selector": ("FlextInfraUtilitiesScopeSelector",),
+            "._utilities.snapshot": ("FlextInfraUtilitiesSnapshot",),
             "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
             ".api": (
                 "FlextInfra",
@@ -602,6 +616,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".detectors.silent_failure_detector": ("FlextInfraSilentFailureDetector",),
             ".docs.auditor": ("FlextInfraDocAuditor",),
             ".docs.auditor_mixin": ("FlextInfraDocAuditorMixin",),
+            ".docs.base": ("FlextInfraDocServiceBase",),
             ".docs.builder": ("FlextInfraDocBuilder",),
             ".docs.fixer": ("FlextInfraDocFixer",),
             ".docs.generator": ("FlextInfraDocGenerator",),
@@ -727,6 +742,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".workspace.migrator": ("FlextInfraProjectMigrator",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.project_makefile": ("FlextInfraProjectMakefileUpdater",),
+            ".workspace.propagate": ("FlextInfraWorkspacePropagator",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".workspace.sync": ("FlextInfraSyncService",),
             ".workspace.workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
@@ -817,6 +833,7 @@ __all__: list[str] = [
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
+    "FlextInfraDocServiceBase",
     "FlextInfraDocValidator",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureFormattingToolingPhase",

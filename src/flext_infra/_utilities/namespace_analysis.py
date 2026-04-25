@@ -175,7 +175,4 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             )
 
 
-__all__: list[str] = [
-    "FlextInfraUtilitiesRefactorNamespaceCommon",
-    "FlextInfraUtilitiesRefactorNamespaceMro",
-]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceMro"]

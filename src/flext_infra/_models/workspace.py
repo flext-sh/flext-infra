@@ -10,6 +10,7 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import FlextInfraModelsMixins as mm, c, t
+from flext_infra._models.guard import FlextInfraModelsGuard
 
 
 class FlextInfraModelsWorkspace:
@@ -110,6 +111,62 @@ class FlextInfraModelsWorkspace:
             t.StrSequence,
             m.Field(description="Migration errors"),
         ] = m.Field(default_factory=tuple)
+
+    class VerbStatus(m.BaseModel):
+        """Per-verb outcome captured by the workspace propagator."""
+
+        model_config = m.ConfigDict(frozen=True, extra="forbid")
+
+        verb: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Make verb name (docs / refactor / check / ...)."),
+        ]
+        success: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "True when the make verb returned success AND no guard "
+                    "gate restored a path."
+                ),
+            ),
+        ]
+        guard_report: Annotated[
+            FlextInfraModelsGuard.GuardGateReport,
+            m.Field(
+                description=(
+                    "Guard-gate report collected after the verb finished — "
+                    "always present, even when no snapshots were captured."
+                ),
+            ),
+        ]
+        message: Annotated[
+            str,
+            m.Field(
+                default="",
+                description="Optional free-form message (callback failure reason).",
+            ),
+        ]
+
+    class PropagateReport(m.BaseModel):
+        """Outcome envelope for ``FlextInfraWorkspacePropagator.propagate``."""
+
+        model_config = m.ConfigDict(frozen=True, extra="forbid")
+
+        started_at: Annotated[
+            datetime,
+            m.Field(description="UTC timestamp captured before the first verb ran."),
+        ]
+        ended_at: Annotated[
+            datetime,
+            m.Field(description="UTC timestamp captured after the last verb ran."),
+        ]
+        verb_statuses: Annotated[
+            tuple[FlextInfraModelsWorkspace.VerbStatus, ...],
+            m.Field(
+                default_factory=tuple,
+                description="Per-verb status records in execution order.",
+            ),
+        ]
 
 
 __all__: list[str] = ["FlextInfraModelsWorkspace"]

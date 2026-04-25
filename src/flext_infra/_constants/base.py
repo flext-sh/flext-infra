@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum, unique
+from types import MappingProxyType
 from typing import Final
 
 from flext_infra import (
@@ -43,6 +45,20 @@ class FlextInfraConstantsBase(
         PROJECTS = "projects"
         FILES = "files"
         WORKSPACE = "workspace"
+
+    NAMESPACE_TO_CANONICAL_FILENAME: Final[Mapping[str, str]] = MappingProxyType({
+        "c": "constants.py",
+        "m": "models.py",
+        "p": "protocols.py",
+        "t": "typings.py",
+        "u": "utilities.py",
+    })
+    """SSOT mapping from canonical alias (c/m/p/t/u) to its facade filename.
+
+    Used by ``FlextInfraUtilitiesScopeSelector`` (NAMESPACE-level resolution)
+    and any future tooling that needs to translate ``--namespace m`` into the
+    on-disk ``models.py`` plus ``_models/`` subtree per AGENTS.md §2.2.
+    """
 
     KNOWN_VERBS: Final[frozenset[str]] = frozenset({
         "build",

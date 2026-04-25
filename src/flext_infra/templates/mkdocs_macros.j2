@@ -1,0 +1,58 @@
+{# Shared mkdocs.yml macros — single source of truth for theme, plugins, validation. #}
+{# Imported by mkdocs_project.yml.j2 and mkdocs_root.yml.j2 — DO NOT INLINE THESE. #}
+{# All loop/conditional logic is pre-formatted in Python and passed as ready strings. #}
+{%- macro material_theme() -%}
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.integrate
+    - content.code.copy
+    - content.tabs.link
+    - search.highlight
+    - search.share
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+{%- endmacro %}
+{%- macro plugins_block(exclude_plugin_block, mkdocstrings_paths_block) -%}
+plugins:
+  - search
+{{ exclude_plugin_block }}  - autorefs
+  - section-index
+  - mkdocstrings:
+      handlers:
+        python:
+{{ mkdocstrings_paths_block }}          docstring_style: auto
+          docstring_options:
+            warnings: false
+            warn_unknown_params: false
+            warn_missing_types: false
+          options:
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: false
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            docstring_section_style: spacy
+{%- endmacro %}
+{%- macro validation_block() -%}
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+{%- endmacro %}

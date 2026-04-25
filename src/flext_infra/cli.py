@@ -59,6 +59,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.refactor.enforcement_auditor import FlextInfraEnforcementAuditor
 
 
 def _route(
@@ -380,6 +381,17 @@ class FlextInfraCli(FlextCli):
                 model_cls=FlextInfraAccessorMigrationOrchestrator,
                 handler=lambda params: (
                     FlextInfraAccessorMigrationOrchestrator.execute_command(params)
+                ),
+            ),
+            _route(
+                name="audit",
+                help_text=(
+                    "Run SSOT enforcement audit (ENFORCE-039/041/043/044) "
+                    "across the workspace"
+                ),
+                model_cls=m.Infra.RefactorAuditInput,
+                handler=lambda params: FlextInfraEnforcementAuditor.execute_command(
+                    params
                 ),
             ),
         ),

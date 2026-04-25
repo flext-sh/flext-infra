@@ -23,20 +23,20 @@ from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraNamespaceEnforcer,
     FlextInfraNamespaceValidator,
+    FlextInfraProjectSelectionServiceBase,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
     c,
     m,
     p,
     r,
-    s,
     u,
 )
 
 _log = u.fetch_logger(__name__)
 
 
-class FlextInfraCodegenFixer(s[str]):
+class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
     """Rope-oriented auto-fixer for namespace violations (Rules 1-5)."""
 
     dry_run: Annotated[
@@ -280,7 +280,7 @@ class FlextInfraCodegenFixer(s[str]):
         *,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
     ) -> Sequence[m.Infra.AutoFixResult]:
-        """Run auto-fix on all projects in workspace.
+        """Run auto-fix on selected projects (defaults to ``--projects`` scope or full workspace).
 
         Args:
             projects: Pre-discovered projects to skip redundant discovery.
@@ -290,8 +290,14 @@ class FlextInfraCodegenFixer(s[str]):
             selected_projects = tuple(projects)
         else:
             projects_result = u.Infra.projects(self.workspace_root)
-            selected_projects = (
+            discovered = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
+            )
+            scope = frozenset(self.project_names or ())
+            selected_projects = (
+                tuple(p for p in discovered if p.path.name in scope)
+                if scope
+                else discovered
             )
         return [self._fix_project(project) for project in selected_projects]
 

@@ -6,26 +6,20 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
-    r,
     t,
     u,
 )
+from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
-class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
+class FlextInfraDocValidator(FlextInfraDocServiceBase):
     """Validate the governed docs contract for root and FLEXT projects."""
-
-    output_dir: Annotated[
-        Path | None,
-        m.Field(description="Docs output dir"),
-    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     def validate_workspace(
         self,
@@ -55,14 +49,11 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
             output_dir=self.output_dir,
             apply=self.apply_changes,
         )
-        if result.failure:
-            return r[bool].fail(result.error or "validate failed")
-        failures = sum(
-            1 for report in result.value if report.result == c.Infra.ResultStatus.FAIL
+        return self._propagate_phase_outcome(
+            "validate",
+            result,
+            failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
-        if failures:
-            return r[bool].fail(f"Validate found {failures} failure(s)")
-        return r[bool].ok(True)
 
     def _run_adr_skill_check(
         self,

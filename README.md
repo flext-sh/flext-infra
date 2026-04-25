@@ -1,69 +1,57 @@
-# FLEXT-Infra
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-**FLEXT-Infra** is the infrastructure tooling library for the FLEXT ecosystem, providing build automation, code generation, workspace management, and quality validation for all FLEXT projects.
+# flext-infra
 
-**Version**: 0.12.0-dev | Part of the [FLEXT](https://github.com/flext-sh/flext) ecosystem.
+**Version**: `unknown` | **Python**: 3.13+ | **Project class**: `infra`
 
-## Key Features
+## Purpose
 
-- **Build Automation**: Standardized `base.mk` generation for consistent project builds.
-- **Code Generation**: Automated `__init__.py` lazy-export generation and code scaffolding.
-- **Dependency Management**: `pyproject.toml` modernization and workspace-wide dependency synchronization.
-- **Quality Validation**: Multi-gate validation (ruff, mypy, pyright, pyrefly) with configurable scopes.
-- **Workspace Sync**: Cross-project configuration synchronization and drift detection.
+FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management
 
-## Documentation SSOT
+## Module Map
 
-`flext-infra` treats documentation as code and uses two primary sources of truth:
+- Primary facades: `FlextInfraUtilitiesRefactorPolicy`, `FlextInfraRefactorMROImportRewriter`, `FlextInfraTypesBase`, `FlextInfraProjectMakefileUpdater`, `FlextInfraPythonVersionEnforcer`, `FlextInfraRefactorImportModernizer` (+226 more)
+- Alias namespaces: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
+- Public symbol exports: `234`
+- Exported module shortcuts: _none_
 
-1. `pyproject.toml` metadata (project identity, version, packaging metadata)
-2. Python docstrings (module/class/function behavior contracts)
+## Collection Rules (regras de coletas)
 
-Generated docs consume these inputs directly (see `flext-infra/docs/index.md` and
-`flext-infra/docs/api-reference/README.md`).
+Required pre-work before changing this project (per AGENTS.md §9):
 
-### Docstring Automation
+1. Read [`/flext/AGENTS.md`](../AGENTS.md) (governance) and this project's `pyproject.toml`.
+2. Confirm parent MRO chain via `pyproject.toml` `dependencies` filtered by `flext-*` (excluding `flext-infra` self).
+3. Verify Scope: `cd <project> && scope status` (re-bootstrap per `flext-scope-bootstrap` if absent).
+4. Load skills relevant to the change scope from [`/flext/.agents/skills/`](../.agents/skills/) (start with `flext-mro-namespace-rules`, `flext-import-rules`, `flext-patterns`).
+5. Confirm the canonical zero-debt baseline:
+    - `make check` exits 0
+    - `make val VALIDATE_SCOPE=project` exits 0
+    - `make docs DOCS_PHASE=audit` reports zero issues
+6. Cross-check the c/p/t/m/u slot registry in [`flext-mro-namespace-rules`](../.agents/skills/flext-mro-namespace-rules/SKILL.md) to confirm this project's owned slots before adding/renaming any symbol.
 
-The workspace already ships docstring automation helpers under `scripts/`:
+## Operation Flow
 
-- `scripts/validate_docstrings.py` — audits missing/invalid docstrings
-- `scripts/fix_docstrings.py` — inserts safe placeholder docstrings
-- `scripts/ai_docstring_generator.py` — assisted generation with validation
+- Public surface: see [`docs/index.md`](docs/index.md) and [`docs/api-reference/README.md`](docs/api-reference/README.md).
+- Generated module overview: [`docs/api-reference/generated/overview.md`](docs/api-reference/generated/overview.md).
+- Settings env prefix: see project `pyproject.toml` `[tool.flext]` and `FlextSettings` ConfigDict.
 
-Use these with quality gates to keep docstrings as reliable SSOT inputs.
+## Integration Points
 
-### Recommended Maintenance Flow
+- Parent MRO chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.
+- Public extensions exposed by this project: `FlextInfraUtilitiesRefactorPolicy`, `FlextInfraRefactorMROImportRewriter`, `FlextInfraTypesBase`, `FlextInfraProjectMakefileUpdater`, `FlextInfraPythonVersionEnforcer`, `FlextInfraRefactorImportModernizer` (+226 more).
+- Library abstraction boundaries: see AGENTS.md §2.7.
 
-1. Update code and docstrings in `src/`
-2. Ensure package metadata is current in `pyproject.toml`
-3. Run validation gates (including docstring-related checks)
-4. Regenerate documentation artifacts via workspace automation
+## Quality Gates
 
-## CLI
+- `make check` — Lint suite (ruff, pyrefly, mypy, pyright per project).
+- `make test` — Pytest with project coverage threshold from `pyproject.toml`.
+- `make val VALIDATE_SCOPE=project` — Validation gates (complexity, docstring, namespace).
+- `make docs DOCS_PHASE=audit` — Docs audit (broken links, stale symbols, missing docstrings).
+- `make docs DOCS_PHASE=build` — Build mkdocs HTML output to `.reports/docs/site/`.
 
-Use the centralized entrypoint:
+## Governance Pointer
 
-```bash
-flext-infra <group> <command> [options]
-```
-
-Examples:
-
-```bash
-flext-infra basemk render --projects-name flext-core
-flext-infra check run --projects flext-core
-flext-infra codegen init --workspace .
-flext-infra validate inventory --workspace .
-flext-infra docs audit --workspace .
-flext-infra workspace sync --workspace .
-```
-
-## Installation
-
-```bash
-poetry add flext-infra
-```
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
+- Canonical engineering law: [`/flext/AGENTS.md`](../AGENTS.md).
+- Project skills index: [`/flext/.agents/skills/`](../.agents/skills/).
+- Workspace onboarding: [`/flext/docs/guides/onboarding.md`](../docs/guides/onboarding.md).
+- Full project portal: [`docs/index.md`](docs/index.md).

@@ -61,6 +61,7 @@ These pages are generated from public modules and their docstrings.
 - [flext_infra.detectors.silent_failure_detector](detectors/silent_failure_detector.md)
 - [flext_infra.docs.auditor](docs/auditor.md)
 - [flext_infra.docs.auditor_mixin](docs/auditor_mixin.md)
+- [flext_infra.docs.base](docs/base.md)
 - [flext_infra.docs.builder](docs/builder.md)
 - [flext_infra.docs.fixer](docs/fixer.md)
 - [flext_infra.docs.generator](docs/generator.md)

@@ -21,18 +21,21 @@ class FlextInfraClassPlacementDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ClassPlacementViolation]:
         """Detect misplaced Pydantic model classes."""
-        file_path = ctx.file_path
-        rope_project = ctx.rope_project
         if (
-            file_path.name in c.Infra.PLACEMENT_CANONICAL_MODEL_FILES
-            or "models" in file_path.parts
-            or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
-            or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
+            ctx.file_path.name in c.Infra.PLACEMENT_CANONICAL_MODEL_FILES
+            or "models" in ctx.file_path.parts
         ):
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.fetch_python_resource(
+            ctx.rope_project,
+            ctx.file_path,
+            skip_protected=True,
+            skip_settings=True,
+        )
         if res is None:
             return []
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
         violations: list[m.Infra.ClassPlacementViolation] = []
         for ci in u.Infra.get_class_info(rope_project, res):
             if ci.name.startswith("_"):

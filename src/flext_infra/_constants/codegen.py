@@ -200,6 +200,10 @@ class FlextInfraConstantsCodegen:
     "L0-typings __getattr__ + __dir__ + namespace-cleanup."
     TEMPLATE_VERSION_FILE: Final[str] = "version_file.py.j2"
     "Per-project ``__version__.py`` (inherits ``FlextVersion``)."
+    TEMPLATE_MKDOCS_PROJECT: Final[str] = "mkdocs_project.yml.j2"
+    "Per-project ``mkdocs.yml`` (Material theme + mkdocstrings + validation)."
+    TEMPLATE_MKDOCS_ROOT: Final[str] = "mkdocs_root.yml.j2"
+    "Workspace-root ``mkdocs.yml`` (Material theme + nav)."
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique

@@ -25,9 +25,11 @@ class FlextInfraMROCompletenessDetector:
         rope_project = ctx.rope_project
         parse_failures = ctx.parse_failures
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
-        if family is None or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
+        if family is None:
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.fetch_python_resource(
+            rope_project, file_path, skip_protected=True
+        )
         if res is None:
             if parse_failures is not None:
                 parse_failures.append(

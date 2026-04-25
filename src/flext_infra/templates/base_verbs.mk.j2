@@ -9,6 +9,7 @@ PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_
 PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) {{ make.CLI_GROUP_DEPS }}
 PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_DOCS }}
 PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_GITHUB }}
+PROJECT_INFRA_REFACTOR := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_REFACTOR }}
 PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_VALIDATE }}
 
 help: ## Show commands
@@ -36,6 +37,13 @@ help: ## Show commands
 {% for help_line in make.PROJECT_PR_OPTION_LINES %}
 	$(Q)echo "  {{ help_line | replace('"', '\\"') }}"
 {% endfor %}
+
+audit: ## Run SSOT enforcement audit (GATES=docs scopes to mkdocs python-codeblocks)
+	$(Q)if [ "$(GATES)" = "docs" ]; then \
+		$(PROJECT_INFRA_DOCS) audit --workspace "$(CURDIR)" --output-dir .reports/docs --strict; \
+	else \
+		$(PROJECT_INFRA_REFACTOR) audit --workspace "$(CURDIR)" $(if $(PROJECTS),--projects "$(PROJECTS)",) $(if $(filter 1,$(FIX)),--apply,); \
+	fi
 
 boot: ## Complete setup
 	$(Q)if [ "$(CORE_STACK)" = "go" ]; then \

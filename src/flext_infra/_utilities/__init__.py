@@ -31,10 +31,8 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".log_parser": ("FlextInfraUtilitiesLogParser",),
         ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
         ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
-        ".namespace_analysis": (
-            "FlextInfraUtilitiesRefactorNamespaceCommon",
-            "FlextInfraUtilitiesRefactorNamespaceMro",
-        ),
+        ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceMro",),
+        ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),
         ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
         ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
         ".patterns": ("FlextInfraUtilitiesPatterns",),

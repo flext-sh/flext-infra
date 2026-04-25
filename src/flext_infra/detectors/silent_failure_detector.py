@@ -6,7 +6,7 @@ from collections.abc import (
     Sequence,
 )
 
-from flext_infra import c, m, u
+from flext_infra import m, u
 
 
 class FlextInfraSilentFailureDetector:
@@ -17,12 +17,10 @@ class FlextInfraSilentFailureDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.Issue]:
         """Detect silent-failure findings in one Python file."""
-        file_path = ctx.file_path
-        if file_path.suffix != c.Infra.EXT_PYTHON:
-            return []
-        resource = u.Infra.get_resource_from_path(ctx.rope_project, file_path)
+        resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
             return []
+        file_path = ctx.file_path
         source = resource.read()
         if not source.strip():
             return []

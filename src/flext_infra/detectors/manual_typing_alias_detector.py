@@ -22,17 +22,16 @@ class FlextInfraManualTypingAliasDetector:
         ctx: m.Infra.DetectorContext,
     ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
         """Detect typing declaration placement violations in a single file."""
-        file_path = ctx.file_path
-        rope_project = ctx.rope_project
         if (
-            file_path.suffix != c.Infra.EXT_PYTHON
-            or file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
-            or c.Infra.MRO_TYPINGS_DIRECTORY in file_path.parts
+            ctx.file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
+            or c.Infra.MRO_TYPINGS_DIRECTORY in ctx.file_path.parts
         ):
             return []
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
             return []
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
         lines = resource.read().splitlines()
         violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
         for symbol in u.Infra.get_module_symbols(rope_project, resource):

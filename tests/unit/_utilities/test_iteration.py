@@ -102,5 +102,62 @@ class TestsFlextInfraUtilitiesiteration:
         except FileNotFoundError:
             assert True
 
+    @staticmethod
+    def _create_attached_subrepo(workspace: Path, name: str) -> Path:
+        sub_root = workspace / name
+        package_name = name.replace("-", "_")
+        (sub_root / "src" / package_name).mkdir(parents=True)
+        (sub_root / "tests").mkdir()
+        (sub_root / "Makefile").touch()
+        (sub_root / "pyproject.toml").write_text(
+            (
+                '[project]\nname = "' + name + '"\nversion = "0.1.0"\n'
+                "[tool.flext.workspace]\nattached = true\n"
+            ),
+            encoding="utf-8",
+        )
+        return sub_root
+
+    def test_attached_helper_returns_only_opted_in_dirs(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "ws"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        opted = self._create_attached_subrepo(tmp_path, "alpha-attached")
+        (tmp_path / "noisy").mkdir()
+        (tmp_path / ".hidden").mkdir()
+        unopted = tmp_path / "beta-not-attached"
+        unopted.mkdir()
+        (unopted / "pyproject.toml").write_text(
+            '[project]\nname = "beta"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+
+        names = u.Infra._attached_top_level_dir_names(tmp_path)
+
+        assert names == frozenset({opted.name})
+
+    def test_discover_project_candidates_includes_attached_when_requested(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "ws"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        self._create_project(tmp_path, "host_pkg")
+        external = self._create_attached_subrepo(tmp_path, "external-repo")
+
+        candidates = u.Infra.discover_project_candidates(
+            workspace_root=tmp_path,
+            include_attached=True,
+        )
+
+        names = {path.name for path in candidates}
+        assert external.name in names
+
 
 __all__: t.StrSequence = []

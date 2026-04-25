@@ -19,7 +19,7 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfraConstantsCodegen`, `FlextInfraUtilitiesDocsValidate`, `FlextInfraValidateFreshImport`, `FlextInfraConstantsDeps`, `FlextInfraSettings`, `FlextInfraConfigFixer` (+225 more)
-- Generated module pages: `136`
+- Primary facades: `FlextInfraUtilitiesRefactorPolicy`, `FlextInfraRefactorMROImportRewriter`, `FlextInfraTypesBase`, `FlextInfraProjectMakefileUpdater`, `FlextInfraPythonVersionEnforcer`, `FlextInfraRefactorImportModernizer` (+226 more)
+- Generated module pages: `137`
 
 - [Back to project docs](../index.md)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 from collections.abc import (
     Mapping,
     Sequence,
@@ -15,7 +14,6 @@ from flext_infra import (
     m,
     p,
     t,
-    u,
 )
 
 from .loader import FlextInfraRefactorRuleLoader
@@ -33,48 +31,6 @@ class FlextInfraRefactorEngine:
             self.rule_loader,
             safety_manager=FlextInfraRefactorSafetyManager(),
         )
-
-    @staticmethod
-    def main() -> int:
-        """Run the refactor CLI entrypoint."""
-        parser = argparse.ArgumentParser(
-            description="Flext Refactor Engine",
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-        )
-        mode = parser.add_mutually_exclusive_group(required=True)
-        _ = mode.add_argument("--project", "-p", type=Path)
-        _ = mode.add_argument("--workspace", "-w", type=Path)
-        _ = mode.add_argument("--file", "-f", type=Path)
-        _ = mode.add_argument("--files", nargs="+", type=Path)
-        _ = mode.add_argument("--list-rules", "-l", action="store_true")
-        _ = parser.add_argument("--rules", "-r", type=str)
-        _ = parser.add_argument("--pattern", default=c.Infra.EXT_PYTHON_GLOB)
-        _ = parser.add_argument("--dry-run", "-n", action="store_true")
-        _ = parser.add_argument("--show-diff", "-d", action="store_true")
-        _ = parser.add_argument("--impact-map-output", type=Path)
-        _ = parser.add_argument("--analyze-violations", action="store_true")
-        _ = parser.add_argument("--analysis-output", type=Path)
-        _ = parser.add_argument("--config", "-c", type=Path)
-        args = parser.parse_args()
-        engine = FlextInfraRefactorEngine(config_path=args.config)
-        cfg = engine.load_config()
-        if not cfg.success:
-            u.Cli.error(f"Config error: {cfg.error}")
-            return 1
-        if args.rules:
-            engine.set_rule_filters([
-                item.strip() for item in args.rules.split(",") if item.strip()
-            ])
-        rules_r = engine.load_rules()
-        if not rules_r.success:
-            u.Cli.error(f"Rules error: {rules_r.error}")
-            return 1
-        if args.list_rules:
-            engine.print_rules_table(engine.list_rules())
-            return 0
-        if args.analyze_violations:
-            return engine.run_analyze_violations(args)
-        return engine.run_refactor(args)
 
     def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
         """Delegate config loading to the dedicated refactor loader."""
