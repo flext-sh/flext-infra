@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fnmatch
-import tomllib
 from collections.abc import (
     Mapping,
     MutableSequence,
@@ -281,20 +280,21 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     @cache
-    def _pyproject_payload(
-        pyproject_path: str,
+    def pyproject_payload(
+        pyproject_path: Path,
     ) -> t.Infra.ContainerDict:
         """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
 
         Disk read is delegated to ``u.load_pyproject_toml`` (cached at
         flext-core); this layer caches the validated typed payload. No
         parallel ``tomllib`` call sites; the file is read once per process.
+        ``pyproject_path`` is the file path; ``Path`` is the canonical
+        cache key (no ``str(...)`` proxy round-trip).
         """
-        path = Path(pyproject_path)
-        if not path.is_file():
+        if not pyproject_path.is_file():
             return {}
         try:
-            raw_payload = u.load_pyproject_toml(path.parent)
+            raw_payload = u.load_pyproject_toml(pyproject_path.parent)
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_payload)
         except (OSError, ValueError):
             # OSError covers FileNotFoundError; ValueError covers
@@ -302,19 +302,12 @@ class FlextInfraUtilitiesIteration:
             return {}
 
     @staticmethod
-    def cached_pyproject_payload(
-        pyproject_path: Path,
-    ) -> t.Infra.ContainerDict:
-        """Return one parsed ``pyproject.toml`` payload through the shared cache."""
-        return FlextInfraUtilitiesIteration._pyproject_payload(str(pyproject_path))
-
-    @staticmethod
     def _tool_flext_meta(
         project_root: Path,
     ) -> t.Infra.ContainerDict:
         """Return the normalized ``tool.flext`` table from a project root."""
-        payload = FlextInfraUtilitiesIteration._pyproject_payload(
-            str(project_root / c.Infra.PYPROJECT_FILENAME),
+        payload = FlextInfraUtilitiesIteration.pyproject_payload(
+            project_root / c.Infra.PYPROJECT_FILENAME,
         )
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -324,16 +317,19 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     @cache
-    def _pyproject_workspace_member_names(pyproject_path: str) -> t.StrSequence:
-        """Return workspace member names through a lightweight TOML parse."""
-        path = Path(pyproject_path)
-        if not path.is_file():
+    def workspace_member_names(workspace_root: Path) -> t.StrSequence:
+        """Return configured workspace members from ``[tool.flext.workspace]`` or ``[tool.uv.workspace]``.
+
+        Cached by ``workspace_root`` (``Path`` is hashable). Disk read flows
+        through ``u.load_pyproject_toml`` (cached at flext-core); no parallel
+        ``tomllib`` call site. Both ``[tool.flext.workspace] members`` and
+        ``[tool.uv.workspace] members`` are honoured (first non-empty wins).
+        """
+        if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return ()
         try:
-            payload = tomllib.loads(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            )
-        except (OSError, tomllib.TOMLDecodeError):
+            payload = u.load_pyproject_toml(workspace_root)
+        except (OSError, ValueError):
             return ()
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -354,18 +350,6 @@ class FlextInfraUtilitiesIteration:
             if normalized:
                 return normalized
         return ()
-
-    @staticmethod
-    def _workspace_member_names(workspace_root: Path) -> t.StrSequence:
-        """Return configured workspace members from ``tool.flext`` or ``tool.uv``."""
-        return FlextInfraUtilitiesIteration._pyproject_workspace_member_names(
-            str(workspace_root / c.Infra.PYPROJECT_FILENAME),
-        )
-
-    @staticmethod
-    def workspace_member_names(workspace_root: Path) -> t.StrSequence:
-        """Return canonical workspace members for public utility consumers."""
-        return FlextInfraUtilitiesIteration._workspace_member_names(workspace_root)
 
     @staticmethod
     def namespace_meta(project_root: Path) -> t.Infra.ContainerDict:
@@ -559,7 +543,7 @@ class FlextInfraUtilitiesIteration:
             At minimum returns [workspace_root] if workspace_root/src/ exists.
 
         """
-        configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
+        configured_members = FlextInfraUtilitiesIteration.workspace_member_names(
             workspace_root,
         )
         candidates = FlextInfraUtilitiesIteration.discover_project_candidates(
@@ -604,11 +588,11 @@ class FlextInfraUtilitiesIteration:
             return True
         try:
             payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                tomllib.loads(
-                    pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-                ),
+                u.load_pyproject_toml(pyproject_path.parent),
             )
-        except (OSError, tomllib.TOMLDecodeError, c.ValidationError):
+        except (OSError, ValueError):
+            # OSError covers FileNotFoundError; ValueError covers
+            # tomllib.TOMLDecodeError and pydantic.ValidationError.
             return False
         dependency_names: set[str] = set(
             FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(
@@ -661,7 +645,7 @@ class FlextInfraUtilitiesIteration:
         """
         roots: MutableSequence[Path] = []
         effective_scan_dirs = scan_dirs or frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
-        configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
+        configured_members = FlextInfraUtilitiesIteration.workspace_member_names(
             workspace_root,
         )
         configured_member_set = frozenset(configured_members)
@@ -688,22 +672,18 @@ class FlextInfraUtilitiesIteration:
             resolved_workspace_root,
         ):
             roots.append(resolved_workspace_root)
-        candidate_dir_names: frozenset[str] | None = (
-            frozenset(tracked_child_dirs) | attached_child_dirs
-            if tracked_child_dirs is not None
-            else (attached_child_dirs or None)
-        )
-        candidate_entries = (
-            [
-                resolved_workspace_root / dir_name
-                for dir_name in sorted(candidate_dir_names)
-            ]
-            if candidate_dir_names is not None
-            else sorted(
+        if tracked_child_dirs is None and not attached_child_dirs:
+            candidate_entries: Sequence[Path] = sorted(
                 workspace_root.iterdir(),
                 key=lambda item: item.name,
             )
-        )
+        else:
+            candidate_entries = [
+                resolved_workspace_root / dir_name
+                for dir_name in sorted(
+                    frozenset(tracked_child_dirs or ()) | attached_child_dirs,
+                )
+            ]
         roots.extend(
             [
                 entry.resolve()

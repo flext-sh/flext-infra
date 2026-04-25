@@ -72,7 +72,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
             dep_pyproject = self.root / name / c.Infra.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
-            dep_payload = u.Infra.cached_pyproject_payload(
+            dep_payload = u.Infra.pyproject_payload(
                 dep_pyproject,
             )
             transitive = u.Infra.local_dependency_names_from_payload(
@@ -278,7 +278,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
         if rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
             if pyproject.exists():
-                payload = u.Infra.cached_pyproject_payload(
+                payload = u.Infra.pyproject_payload(
                     pyproject,
                 )
                 paths.update(self._dep_paths(payload, is_root=is_root))

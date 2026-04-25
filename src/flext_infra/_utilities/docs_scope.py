@@ -37,7 +37,7 @@ class FlextInfraUtilitiesDocsScope:
         """
         root = Path(project_root)
         pyproject_path = root / c.Infra.PYPROJECT_FILENAME
-        payload = FlextInfraUtilitiesIteration.cached_pyproject_payload(pyproject_path)
+        payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         dependency_names = tuple(
             FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(
@@ -149,9 +149,7 @@ class FlextInfraUtilitiesDocsScope:
         if not pyproject.is_file():
             return None
         # Pre-validate [project].name BEFORE triggering the strict cached state builder.
-        payload_preview = FlextInfraUtilitiesIteration.cached_pyproject_payload(
-            pyproject
-        )
+        payload_preview = FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
         project_section = payload_preview.get("project")
         if (
             not isinstance(project_section, dict)
