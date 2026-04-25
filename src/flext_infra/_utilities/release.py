@@ -18,9 +18,6 @@ if TYPE_CHECKING:
     from flext_infra import m
 
 
-logger = u.fetch_logger(__name__)
-
-
 class FlextInfraUtilitiesRelease:
     """Release notes and changelog utility methods exposed via u.Infra."""
 
@@ -77,7 +74,9 @@ class FlextInfraUtilitiesRelease:
                 "\n".join(lines).rstrip() + "\n",
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
-            logger.info("release_notes_written", path=str(output_path))
+            u.fetch_logger(__name__).info(
+                "release_notes_written", path=str(output_path)
+            )
             return r[bool].ok(True)
         except OSError as exc:
             return r[bool].fail(f"failed to write release notes: {exc}")
@@ -129,8 +128,14 @@ class FlextInfraUtilitiesRelease:
                 notes_text,
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
-            logger.info("release_changelog_written", path=str(changelog_path))
-            logger.info("release_tagged_notes_written", path=str(tagged_path))
+            u.fetch_logger(__name__).info(
+                "release_changelog_written",
+                path=str(changelog_path),
+            )
+            u.fetch_logger(__name__).info(
+                "release_tagged_notes_written",
+                path=str(tagged_path),
+            )
             return r[bool].ok(True)
         except OSError as exc:
             return r[bool].fail(f"changelog update failed: {exc}")

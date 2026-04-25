@@ -832,17 +832,23 @@ class FlextInfraRefactorCensus(
 
     @classmethod
     def _build_parent_inventory(cls) -> Mapping[str, t.StrSequence]:
-        """Inventory upstream-package alias attributes for collision lookup.
+        """Inventory upstream-package alias top-level facade names.
 
-        Imports each parent package and walks its ``c/m/p/t/u`` aliases up
-        to depth 2 (top-level facade attributes + one level of nesting).
-        Returns a mapping ``{symbol_name: (parent_path, ...)}`` so a
-        consumer-defined symbol with the same name can be cross-referenced
-        against every parent that declares it.
+        Imports each parent package and walks its ``c/m/p/t/u`` aliases at
+        depth 1 only — the top-level facade attributes (e.g.
+        ``flext_core.c.Result``). Returns a mapping
+        ``{symbol_name: (parent_path, ...)}`` so a consumer-defined symbol
+        with the same name can be cross-referenced against every parent
+        that declares it.
+
+        Only ``type`` instances (classes) are inventoried — method names
+        (``clear``, ``get``, etc.) inherited from ABCs are not collision
+        candidates because every mapping class shares them. Constants and
+        Enums-as-classes are kept because they ARE the canonical facade
+        symbols a consumer would want to migrate onto a parent.
 
         Filters out attributes whose values' ``__module__`` is not in the
-        flext package tree (i.e. inherited str/int/dict methods like
-        ``count``, ``replace``, ``index``).
+        flext package tree.
 
         Read-only runtime introspection — NO Rope, NO source-tree walking,
         NO subprocess. Skips parent packages that fail to import (sub-repo
@@ -864,16 +870,9 @@ class FlextInfraRefactorCensus(
                     nested = getattr(alias, attr, None)
                     if nested is None or not cls._is_flext_owned(nested):
                         continue
+                    if not isinstance(nested, type):
+                        continue
                     inventory[attr].append(f"{pkg_name}.{alias_name}.{attr}")
-                    for sub_attr in dir(nested):
-                        if sub_attr.startswith("_"):
-                            continue
-                        sub_value = getattr(nested, sub_attr, None)
-                        if sub_value is None or not cls._is_flext_owned(sub_value):
-                            continue
-                        inventory[sub_attr].append(
-                            f"{pkg_name}.{alias_name}.{attr}.{sub_attr}",
-                        )
         return {name: tuple(paths) for name, paths in inventory.items()}
 
     @classmethod

@@ -16,26 +16,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from enum import StrEnum, unique
 from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
 
+from flext_infra import c
+
 
 class FlextInfraModelsScope:
     """Scope resolution models exposed at ``m.Infra.ScopeResolution``."""
-
-    @unique
-    class ScopeLevel(StrEnum):
-        """The granularity at which a selector resolved."""
-
-        MODULE = "module"
-        NAMESPACE = "namespace"
-        PROJECT = "project"
-        PROJECTS = "projects"
-        FILES = "files"
-        WORKSPACE = "workspace"
 
     class ScopeResolution(m.ContractModel):
         """Resolved scope returned by ``u.Infra.scope_resolve``.
@@ -46,7 +36,7 @@ class FlextInfraModelsScope:
         """
 
         level: Annotated[
-            FlextInfraModelsScope.ScopeLevel,
+            c.Infra.ScopeLevel,
             m.Field(description="Granularity: module, namespace, project, …"),
         ]
         workspace_root: Annotated[

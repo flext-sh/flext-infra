@@ -49,6 +49,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.engine_ops import FlextInfraModelsEngineOperation
     from flext_infra._models.gates import FlextInfraModelsGates
     from flext_infra._models.github import FlextInfraModelsGithub
+    from flext_infra._models.guard import FlextInfraModelsGuard
     from flext_infra._models.mixins import FlextInfraModelsMixins
     from flext_infra._models.refactor import FlextInfraModelsRefactor
     from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
@@ -92,6 +93,9 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
+    from flext_infra._utilities.guard_gates import (
+        FlextInfraUtilitiesGuardGates,
+    )
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
@@ -133,6 +137,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.scope_selector import (
         FlextInfraUtilitiesScopeSelector,
     )
+    from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import (
@@ -452,6 +457,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._models.release": ("FlextInfraModelsRelease",),
             "._models.rope": ("FlextInfraModelsRope",),
             "._models.scan": ("FlextInfraModelsScan",),
+            "._models.guard": ("FlextInfraModelsGuard",),
             "._models.scope": ("FlextInfraModelsScope",),
             "._models.validate": ("FlextInfraModelsCore",),
             "._models.workspace": ("FlextInfraModelsWorkspace",),
@@ -512,7 +518,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
+            "._utilities.guard_gates": ("FlextInfraUtilitiesGuardGates",),
             "._utilities.scope_selector": ("FlextInfraUtilitiesScopeSelector",),
+            "._utilities.snapshot": ("FlextInfraUtilitiesSnapshot",),
             "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
             ".api": (
                 "FlextInfra",
@@ -864,6 +872,7 @@ __all__: list[str] = [
     "FlextInfraModelsEngineOperation",
     "FlextInfraModelsGates",
     "FlextInfraModelsGithub",
+    "FlextInfraModelsGuard",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsRefactor",
@@ -964,6 +973,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
+    "FlextInfraUtilitiesGuardGates",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesPatterns",
@@ -990,6 +1000,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesScopeSelector",
+    "FlextInfraUtilitiesSnapshot",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",

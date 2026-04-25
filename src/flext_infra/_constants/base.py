@@ -16,23 +16,33 @@ from flext_infra import (
 )
 
 
-@unique
-class FlextInfraDependencyGroup(StrEnum):
-    """Canonical pyproject dependency-group names."""
-
-    DEV = "dev"
-    DOCS = "docs"
-    SECURITY = "security"
-    TEST = "test"
-    TYPINGS = "typings"
-
-
 class FlextInfraConstantsBase(
     FlextInfraConstantsSharedInfra,
     FlextInfraConstantsMake,
     FlextInfraConstantsSourceCode,
 ):
     """Base constants for flext-infra project."""
+
+    @unique
+    class DependencyGroup(StrEnum):
+        """Canonical pyproject dependency-group names."""
+
+        DEV = "dev"
+        DOCS = "docs"
+        SECURITY = "security"
+        TEST = "test"
+        TYPINGS = "typings"
+
+    @unique
+    class ScopeLevel(StrEnum):
+        """Scope-resolution granularity enum for refactor selectors."""
+
+        MODULE = "module"
+        NAMESPACE = "namespace"
+        PROJECT = "project"
+        PROJECTS = "projects"
+        FILES = "files"
+        WORKSPACE = "workspace"
 
     KNOWN_VERBS: Final[frozenset[str]] = frozenset({
         "build",
@@ -138,15 +148,15 @@ class FlextInfraConstantsBase(
     "Deptry JSON code field key."
     MODULE: Final[str] = "module"
     "Deptry JSON module field key."
-    DEV: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.DEV
+    DEV: Final[DependencyGroup] = DependencyGroup.DEV
     "Development dependency group name."
-    DOCS: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.DOCS
+    DOCS: Final[DependencyGroup] = DependencyGroup.DOCS
     "Documentation dependency group name."
-    SECURITY: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.SECURITY
+    SECURITY: Final[DependencyGroup] = DependencyGroup.SECURITY
     "Security dependency group name."
-    TEST: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.TEST
+    TEST: Final[DependencyGroup] = DependencyGroup.TEST
     "Test dependency group name."
-    TYPINGS: Final[FlextInfraDependencyGroup] = FlextInfraDependencyGroup.TYPINGS
+    TYPINGS: Final[DependencyGroup] = DependencyGroup.TYPINGS
     "Typing stubs dependency group name."
     TYPING_LIBRARIES: Final[str] = "typing_libraries"
     "Project limits typing_libraries key."
@@ -155,14 +165,14 @@ class FlextInfraConstantsBase(
     PYTHON: Final[str] = "python"
     "Python settings subsection key (in limits)."
 
-    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[tuple[FlextInfraDependencyGroup, ...]] = (
+    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
         DEV,
         DOCS,
         SECURITY,
         TEST,
         TYPINGS,
     )
-    LEGACY_DEV_DEPENDENCY_GROUPS: Final[tuple[FlextInfraDependencyGroup, ...]] = (
+    LEGACY_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
         DOCS,
         SECURITY,
         TEST,

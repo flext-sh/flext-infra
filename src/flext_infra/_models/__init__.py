@@ -23,6 +23,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".engine_ops": ("FlextInfraModelsEngineOperation",),
         ".gates": ("FlextInfraModelsGates",),
         ".github": ("FlextInfraModelsGithub",),
+        ".guard": ("FlextInfraModelsGuard",),
         ".mixins": ("FlextInfraModelsMixins",),
         ".refactor": ("FlextInfraModelsRefactor",),
         ".refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),

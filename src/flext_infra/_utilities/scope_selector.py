@@ -20,25 +20,26 @@ from pathlib import Path
 
 from flext_core.result import FlextResult
 
+from flext_infra import c
 from flext_infra._models.scope import FlextInfraModelsScope
-
-_NAMESPACE_ALIASES: frozenset[str] = frozenset({
-    "c",
-    "m",
-    "p",
-    "t",
-    "u",
-    "r",
-    "e",
-    "h",
-    "s",
-    "x",
-    "d",
-})
 
 
 class FlextInfraUtilitiesScopeSelector:
     """Resolve scope selectors into a typed ``m.Infra.ScopeResolution``."""
+
+    _NAMESPACE_ALIASES: frozenset[str] = frozenset({
+        "c",
+        "m",
+        "p",
+        "t",
+        "u",
+        "r",
+        "e",
+        "h",
+        "s",
+        "x",
+        "d",
+    })
 
     @staticmethod
     def scope_resolve(
@@ -85,7 +86,7 @@ class FlextInfraUtilitiesScopeSelector:
             )
         return FlextResult[FlextInfraModelsScope.ScopeResolution].ok(
             FlextInfraModelsScope.ScopeResolution(
-                level=FlextInfraModelsScope.ScopeLevel.WORKSPACE,
+                level=c.Infra.ScopeLevel.WORKSPACE,
                 workspace_root=workspace_resolved,
             )
         )
@@ -123,7 +124,7 @@ class FlextInfraUtilitiesScopeSelector:
             )
         return FlextResult[FlextInfraModelsScope.ScopeResolution].ok(
             FlextInfraModelsScope.ScopeResolution(
-                level=FlextInfraModelsScope.ScopeLevel.MODULE,
+                level=c.Infra.ScopeLevel.MODULE,
                 workspace_root=workspace_root,
                 module=module,
                 files=tuple(sorted(set(candidate_paths))),
@@ -136,15 +137,15 @@ class FlextInfraUtilitiesScopeSelector:
     ) -> FlextResult[FlextInfraModelsScope.ScopeResolution]:
         parts = namespace.split(".")
         alias = parts[0]
-        if alias not in _NAMESPACE_ALIASES:
+        if alias not in FlextInfraUtilitiesScopeSelector._NAMESPACE_ALIASES:
             return FlextResult[FlextInfraModelsScope.ScopeResolution].fail(
                 f"unknown namespace alias: {alias!r}; expected one of "
-                f"{sorted(_NAMESPACE_ALIASES)}",
+                f"{sorted(FlextInfraUtilitiesScopeSelector._NAMESPACE_ALIASES)}",
             )
         path_segments = tuple(parts[1:])
         return FlextResult[FlextInfraModelsScope.ScopeResolution].ok(
             FlextInfraModelsScope.ScopeResolution(
-                level=FlextInfraModelsScope.ScopeLevel.NAMESPACE,
+                level=c.Infra.ScopeLevel.NAMESPACE,
                 workspace_root=workspace_root,
                 namespace_alias=alias,
                 namespace_path=path_segments,
@@ -170,7 +171,7 @@ class FlextInfraUtilitiesScopeSelector:
             absolute_files.append(resolved)
         return FlextResult[FlextInfraModelsScope.ScopeResolution].ok(
             FlextInfraModelsScope.ScopeResolution(
-                level=FlextInfraModelsScope.ScopeLevel.FILES,
+                level=c.Infra.ScopeLevel.FILES,
                 workspace_root=workspace_root,
                 files=tuple(sorted(set(absolute_files))),
             )
@@ -201,9 +202,9 @@ class FlextInfraUtilitiesScopeSelector:
         return FlextResult[FlextInfraModelsScope.ScopeResolution].ok(
             FlextInfraModelsScope.ScopeResolution(
                 level=(
-                    FlextInfraModelsScope.ScopeLevel.PROJECT
+                    c.Infra.ScopeLevel.PROJECT
                     if single
-                    else FlextInfraModelsScope.ScopeLevel.PROJECTS
+                    else c.Infra.ScopeLevel.PROJECTS
                 ),
                 workspace_root=workspace_root,
                 projects=tuple(sorted(set(names))),

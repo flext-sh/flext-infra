@@ -29,20 +29,21 @@ from typing import ClassVar, Protocol
 from rope.refactor import patchedast
 
 
-class _PatchingASTWalkerProtocol(Protocol):
-    """Structural contract for rope's internal AST walker used in monkey-patches."""
-
-    def _handle(self, node: ast.AST, children: list[object]) -> None: ...
-
-    def _child_nodes(
-        self, nodes: Sequence[ast.AST], separator: str
-    ) -> list[object]: ...
-
-
 class FlextInfraUtilitiesRopePep695Patch:
     """Idempotent monkey-patch applying PEP 695 support to rope's AST walker."""
 
     _applied: ClassVar[bool] = False
+
+    class PatchingASTWalkerProtocol(Protocol):
+        """Structural contract for rope's internal AST walker monkey-patch."""
+
+        def _handle(self, node: ast.AST, children: list[object]) -> None: ...
+
+        def _child_nodes(
+            self,
+            nodes: Sequence[ast.AST],
+            separator: str,
+        ) -> list[object]: ...
 
     @classmethod
     def apply(cls) -> None:
@@ -66,7 +67,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             return children
 
         def _patched_function_def(
-            self: _PatchingASTWalkerProtocol,
+            self: FlextInfraUtilitiesRopePep695Patch.PatchingASTWalkerProtocol,
             node: ast.FunctionDef | ast.AsyncFunctionDef,
             *,
             is_async: bool,
@@ -86,7 +87,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children)
 
         def _patched_class_def(
-            self: _PatchingASTWalkerProtocol,
+            self: FlextInfraUtilitiesRopePep695Patch.PatchingASTWalkerProtocol,
             node: ast.ClassDef,
         ) -> None:
             if not getattr(node, "type_params", None):
@@ -106,7 +107,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children)
 
         def _type_alias(
-            self: _PatchingASTWalkerProtocol,
+            self: FlextInfraUtilitiesRopePep695Patch.PatchingASTWalkerProtocol,
             node: ast.TypeAlias,
         ) -> None:
             children: list[object] = ["type", node.name]
@@ -115,7 +116,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children)
 
         def _type_var(
-            self: _PatchingASTWalkerProtocol,
+            self: FlextInfraUtilitiesRopePep695Patch.PatchingASTWalkerProtocol,
             node: ast.TypeVar,
         ) -> None:
             children: list[object] = [node.name]
@@ -124,13 +125,13 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children)
 
         def _param_spec(
-            self: _PatchingASTWalkerProtocol,
+            self: FlextInfraUtilitiesRopePep695Patch.PatchingASTWalkerProtocol,
             node: ast.ParamSpec,
         ) -> None:
             self._handle(node, ["**", node.name])
 
         def _type_var_tuple(
-            self: _PatchingASTWalkerProtocol,
+            self: FlextInfraUtilitiesRopePep695Patch.PatchingASTWalkerProtocol,
             node: ast.TypeVarTuple,
         ) -> None:
             self._handle(node, ["*", node.name])
@@ -142,9 +143,6 @@ class FlextInfraUtilitiesRopePep695Patch:
         setattr(walker, "_ParamSpec", _param_spec)
         setattr(walker, "_TypeVarTuple", _type_var_tuple)
         cls._applied = True
-
-
-FlextInfraUtilitiesRopePep695Patch.apply()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopePep695Patch"]

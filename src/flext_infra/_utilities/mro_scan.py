@@ -21,8 +21,6 @@ from flext_infra import (
     t,
 )
 
-logger = logging.getLogger(__name__)
-
 
 class FlextInfraUtilitiesRefactorMroScan:
     _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.CONSTANT_NAME_RE
@@ -149,7 +147,11 @@ class FlextInfraUtilitiesRefactorMroScan:
                 if cand:
                     candidates.append(cand)
         except Exception as exc:
-            logger.info("MRO scan skipped for %s: %s", resource.real_path, exc)
+            logging.getLogger(__name__).info(
+                "MRO scan skipped for %s: %s",
+                resource.real_path,
+                exc,
+            )
 
         return m.Infra.MROScanReport(
             file=resource.real_path,
@@ -327,7 +329,11 @@ class FlextInfraUtilitiesRefactorMroScan:
                 if any("Protocol" in str(b.get_name()) for b in bases):
                     return True
             except Exception as exc:
-                logger.info("Protocol base scan skipped for %s: %s", name, exc)
+                logging.getLogger(__name__).info(
+                    "Protocol base scan skipped for %s: %s",
+                    name,
+                    exc,
+                )
         return cls._class_header_declares_protocol(
             name=name,
             class_header=class_header,
