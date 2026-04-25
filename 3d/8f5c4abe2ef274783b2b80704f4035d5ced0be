@@ -1,0 +1,18 @@
+src/flext_infra/api.py
+  h_9db9d35f50cf33 6
+src/flext_infra/basemk/generator.py
+  h_9db9d35f50cf33 12,33,65,84,100,111-112,115,119,122
+src/flext_infra/basemk/engine.py
+  h_9db9d35f50cf33 33,43,57,59-60,62-65,67-71,73,78-79,82,85-86,88,91,93,102,111-112,118,125,133,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3d8f5c4abe2ef274783b2b80704f4035d5ced0be",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
