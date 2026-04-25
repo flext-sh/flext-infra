@@ -147,9 +147,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-    from flext_infra.codegen.constants_quality_gate import (
-        FlextInfraCodegenQualityGate,
-    )
+    from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
     from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
     from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
