@@ -1,0 +1,182 @@
+src/flext_infra/_utilities/docs_render.py
+  afc29eb099521e6a 226
+  32e53aadeab901d8 323-339,346-352,355-375,456-461,463-482
+src/flext_infra/docs/auditor.py
+  32e53aadeab901d8 158-167,169
+  afc29eb099521e6a 19,23
+src/flext_infra/templates/base_verbs.mk.j2
+  fb2546f80ae92e5c 12,41-47
+README.md
+  32e53aadeab901d8 1,3,5,7,9,11,14,16,18,20,22-30,32,34-36,38,40,42,44,46-50,52,54-57
+tests/unit/_utilities/test_scope_selector.py
+  afc29eb099521e6a 1-181
+src/flext_infra/templates/mkdocs_root.yml.j2
+  32e53aadeab901d8 1-24
+src/flext_infra/refactor/enforcement_auditor.py
+  afc29eb099521e6a 95
+  fb2546f80ae92e5c 26-84,118-120,122-125,134,137,165-303
+src/flext_infra/__init__.py
+  afc29eb099521e6a 52,66,377,449,461,497-499,524-525,619,745
+  32e53aadeab901d8 137-138
+src/flext_infra/workspace/__init__.py
+  afc29eb099521e6a 14
+src/flext_infra/detectors/loose_object_detector.py
+  afc29eb099521e6a 32-37
+src/flext_infra/codegen/fixer.py
+  d47817c7586d1e59 296-299
+tests/unit/workspace/test_propagate.py
+  afc29eb099521e6a 1-159
+src/flext_infra/docs/generator.py
+  32e53aadeab901d8 48-55
+  afc29eb099521e6a 9,18,21
+src/flext_infra/docs/builder.py
+  32e53aadeab901d8 44-51
+src/flext_infra/_constants/codegen.py
+  32e53aadeab901d8 203-206
+src/flext_infra/_models/scope.py
+  afc29eb099521e6a 1-53
+tests/unit/refactor/conftest.py
+  afc29eb099521e6a 1-277
+src/flext_infra/detectors/internal_import_detector.py
+  afc29eb099521e6a 26-28
+src/flext_infra/models.py
+  afc29eb099521e6a 26,32,49,56
+src/flext_infra/_constants/rope.py
+  fb2546f80ae92e5c 17-18,21-23,26-27
+src/flext_infra/workspace/propagate.py
+  afc29eb099521e6a 1-126
+base.mk
+  fb2546f80ae92e5c 20-23,197,207-208,288-293
+src/flext_infra/_models/workspace.py
+  afc29eb099521e6a 13,115-170
+src/flext_infra/_utilities/docs_audit.py
+  32e53aadeab901d8 264-300
+src/flext_infra/docs/validator.py
+  32e53aadeab901d8 52-55
+tests/unit/refactor/test_fixture_loads.py
+  afc29eb099521e6a 1-103
+src/flext_infra/detectors/manual_typing_alias_detector.py
+  32e53aadeab901d8 30
+  afc29eb099521e6a 26-27,33-34
+src/flext_infra/_constants/make.py
+  fb2546f80ae92e5c 53,68-71,106-109,148-151,194-197
+src/flext_infra/docs/base.py
+  32e53aadeab901d8 3-48
+src/flext_infra/_models/refactor.py
+  fb2546f80ae92e5c 71-81
+src/flext_infra/_utilities/rope_core.py
+  32e53aadeab901d8 107-140
+src/flext_infra/templates/mkdocs_project.yml.j2
+  32e53aadeab901d8 1-21
+tests/unit/_utilities/test_snapshot.py
+  afc29eb099521e6a 1-66
+src/flext_infra/_utilities/guard_gates.py
+  afc29eb099521e6a 1,5-6,8,16,19,21-30,38,40,43,46-48,51-55,57-65,67-75,77,80-86,89,92-99,101,103-108
+src/flext_infra/utilities.py
+  afc29eb099521e6a 32,69-70,114,131-132
+src/flext_infra/_models/guard.py
+  afc29eb099521e6a 1-61
+src/flext_infra/docs/fixer.py
+  32e53aadeab901d8 43-50
+src/flext_infra/_utilities/namespace_analysis.py
+  32e53aadeab901d8 178
+src/flext_infra/_constants/base.py
+  afc29eb099521e6a 9,11,49-62
+src/flext_infra/_utilities/scope_selector.py
+  afc29eb099521e6a 1-200
+src/flext_infra/_constants/docs.py
+  32e53aadeab901d8 18
+src/flext_infra/cli.py
+  fb2546f80ae92e5c 62
+  afc29eb099521e6a 393-394
+tests/unit/_utilities/test_guard_gates.py
+  afc29eb099521e6a 1-89
+src/flext_infra/_utilities/snapshot.py
+  afc29eb099521e6a 1-88
+tests/unit/_utilities/test_iteration.py
+  32e53aadeab901d8 105-161
+src/flext_infra/templates/mkdocs_macros.j2
+  32e53aadeab901d8 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "390db29842320bdacb6b6e5539612da35ada1675",
+  "prompts": {
+    "32e53aadeab901d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f27bad8-6ba1-4e78-9c42-68298683eae0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 566,
+      "total_deletions": 426,
+      "accepted_lines": 400,
+      "overriden_lines": 7,
+      "messages_url": "https://usegitai.com/cas/801bf1c9820f4d7abdfebb414dca2eec2c80a0c468b288e5764d41a58a72e127"
+    },
+    "aec9caac96eafd79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21e4e011-4151-4ada-8005-28dfb082479f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/2d6d85876d9da537ecf4c4faef6922ed0a2b0bdda2cae9d8beb52bec5b89a403"
+    },
+    "afc29eb099521e6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "491e2c5e-762d-4a28-a137-abf6db4cc57c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 1748,
+      "total_deletions": 249,
+      "accepted_lines": 1761,
+      "overriden_lines": 5,
+      "messages_url": "https://usegitai.com/cas/7568c2944465a4d0bada6dd693a7946ab722519819aa3b734cfbf403cc8fc91f"
+    },
+    "d47817c7586d1e59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc7f6bd0-731d-49b0-9c44-6c380d65f6ff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 59,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/8fd53f391aa146ac9b0471dbe1d667177b7ecab1d8d82bc63a79b4bd8d2da68a"
+    },
+    "fb2546f80ae92e5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47401c67-c23f-4bc6-8b20-da4d6af4540d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 324,
+      "total_deletions": 712,
+      "accepted_lines": 203,
+      "overriden_lines": 9,
+      "messages_url": "https://usegitai.com/cas/51f98167f25434b7310658673e7261957b3af12a7b965f152c27c56e2e9c3a62"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
