@@ -65,6 +65,7 @@ DOCS_SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(
 GIT_SELECTED_PROJECTS := $(strip $(if $(SELECTED_PROJECTS),$(SELECTED_PROJECTS),$(ALL_PROJECTS)))
 BOOT_VALIDATE_PROJECTS := $(strip $(filter $(WORKSPACE_PROJECTS),$(SELECTED_PROJECTS)))
 SELECTED_PROJECT_FLAGS := $(strip $(foreach proj,$(SELECTED_PROJECTS),--projects $(proj)))
+DOCS_PROJECT_FLAGS := $(strip $(foreach proj,$(DOCS_SELECTED_PROJECTS),--projects $(proj)))
 HAS_EXPLICIT_PROJECT_SELECTION := $(strip $(if $(PROJECT),1,$(if $(PROJECTS),1,)))
 MAKE_SELECTION_ARGS := $(strip $(if $(PROJECT),PROJECT="$(PROJECT)") $(if $(PROJECTS),PROJECTS="$(PROJECTS)"))
 MODERNIZE_SELECTION_FLAGS := $(strip $(if $(HAS_EXPLICIT_PROJECT_SELECTION),$(SELECTED_PROJECT_FLAGS),))
@@ -611,7 +612,7 @@ docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 	$(Q)$(ORCHESTRATOR) --verb docs \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
 {{ forward_make_args(make.DOCS_FORWARD_ARGS) | trim }}
-		$(ORCHESTRATOR_PROJECTS)
+		$(DOCS_PROJECT_FLAGS)
 
 test: ## Run tests only in all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)

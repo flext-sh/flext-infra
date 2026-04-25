@@ -78,7 +78,7 @@ def _route(
     )
 
 
-class FlextInfraCli:
+class FlextInfraCli(FlextCli):
     """Single CLI entry surface for every flext-infra command group."""
 
     app_name: ClassVar[str] = "flext-infra"
@@ -115,7 +115,6 @@ class FlextInfraCli:
         "--ruff-args",
         "--pyright-args",
     })
-    _CLI_SERVICE: ClassVar[FlextCli] = FlextCli()
     GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
         c.Infra.CLI_GROUP_BASEMK: "Base.mk template generation",
         c.Infra.CLI_GROUP_CHECK: "Lint gates and pyrefly settings management",
@@ -539,7 +538,7 @@ class FlextInfraCli:
             return 0
         group, group_args = cli_args[0], cli_args[1:]
         if group not in self.GROUPS:
-            self._CLI_SERVICE.display_message(
+            self.display_message(
                 f"unknown group '{group}'",
                 c.Cli.MessageTypes.ERROR,
             )
@@ -547,35 +546,33 @@ class FlextInfraCli:
             return 1
         return self._run_group(group, group_args)
 
-    @classmethod
-    def print_help(cls) -> None:
+    def print_help(self) -> None:
         """Display the canonical command groups."""
-        cls._CLI_SERVICE.display_message(
+        self.display_message(
             "Usage: flext-infra <group> [subcommand] [args...]",
             c.Cli.MessageTypes.INFO,
         )
-        cls._CLI_SERVICE.display_message("Groups", c.Cli.MessageTypes.INFO)
-        for group in sorted(cls.GROUPS):
-            cls._CLI_SERVICE.display_message(
-                f"  {group:<16}{cls.GROUPS[group]}",
+        self.display_message("Groups", c.Cli.MessageTypes.INFO)
+        for group in sorted(self.GROUPS):
+            self.display_message(
+                f"  {group:<16}{self.GROUPS[group]}",
                 c.Cli.MessageTypes.INFO,
             )
 
-    @classmethod
-    def _normalize_group_args(cls, args: t.StrSequence) -> list[str]:
+    def _normalize_group_args(self, args: t.StrSequence) -> list[str]:
         reordered: list[str] = u.Cli.reorder_prefixed_options(
             args,
-            bool_options=tuple(cls._SHARED_BOOL_FLAGS),
-            value_options=tuple(cls._SHARED_VALUE_FLAGS),
+            bool_options=tuple(self._SHARED_BOOL_FLAGS),
+            value_options=tuple(self._SHARED_VALUE_FLAGS),
         )
         return reordered
 
     def _register_group_commands(self, group: str, app: t.Cli.CliApp) -> None:
-        self._CLI_SERVICE.register_result_routes(app, self._GROUP_COMMANDS[group])
+        self.register_result_routes(app, self._GROUP_COMMANDS[group])
 
     def _run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute a registered flext-cli group."""
-        app = self._CLI_SERVICE.create_app_with_common_params(
+        app = self.create_app_with_common_params(
             name=f"{self.app_name} {group}",
             help_text=self.GROUPS[group],
             settings=self._cli_settings(),
@@ -583,13 +580,13 @@ class FlextInfraCli:
         self._register_group_commands(group, app)
         normalized_args = self._normalize_group_args(args)
         if not normalized_args:
-            _ = self._CLI_SERVICE.execute_app(
+            _ = self.execute_app(
                 app,
                 prog_name=f"{self.app_name} {group}",
                 args=["--help"],
             )
             return 1
-        result = self._CLI_SERVICE.execute_app(
+        result = self.execute_app(
             app,
             prog_name=f"{self.app_name} {group}",
             args=normalized_args,
@@ -598,7 +595,7 @@ class FlextInfraCli:
             return 0
         error_message = result.error
         if error_message:
-            self._CLI_SERVICE.display_message(
+            self.display_message(
                 error_message,
                 c.Cli.MessageTypes.ERROR,
             )
