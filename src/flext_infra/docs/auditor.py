@@ -76,7 +76,7 @@ class FlextInfraDocAuditor(
         workspace_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: Path | str = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         params: m.Infra.AuditScopeParams | None = None,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
@@ -164,7 +164,7 @@ class FlextInfraDocAuditor(
         result = self.audit(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.output_dir or Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+            output_dir=self.output_dir,
             params=m.Infra.AuditScopeParams(
                 check="all",
                 strict=self.strict_mode,

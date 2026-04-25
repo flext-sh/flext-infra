@@ -13,97 +13,77 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import subprocess
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Protocol
 
 from flext_core.result import FlextResult
 
-from flext_infra._models.guard import FlextInfraModelsGuard
-from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
-
-_DEFAULT_GATES: tuple[str, ...] = ("ruff", "pyrefly")
-_GATE_OUTPUT_TRUNCATE: int = 500
+from flext_infra import c, u
 
 
 class FlextInfraUtilitiesGuardGates:
     """Per-file gate runner with in-memory snapshot rollback."""
 
+    _DEFAULT_GATES: tuple[str, ...] = ("ruff", "pyrefly")
+
+    class FileSnapshot(Protocol):
+        """Minimal snapshot contract for per-file gate rollback."""
+
+        path: Path
+        content: str
+
     @staticmethod
     def guard_gates_run(
         *,
         workspace_root: Path,
-        snapshots: Sequence[FlextInfraModelsGuard.FileSnapshot],
-        gates: Sequence[str] = _DEFAULT_GATES,
+        snapshots: Sequence[FileSnapshot],
+        gates: Sequence[str] | None = None,
         revert_on_failure: bool = True,
-    ) -> FlextResult[FlextInfraModelsGuard.GuardGateReport]:
+    ) -> FlextResult[bool]:
         """Run each ``gate`` against each snapshotted file.
 
         On gate failure for a path, restore that path from its snapshot
         (when ``revert_on_failure``) and continue with the remaining files.
-        Returns a ``GuardGateReport`` with per-(file, gate) outcomes plus
-        the list of paths that were reverted.
 
-        ``workspace_root`` is documented but not used to locate the venv —
-        bare ``ruff`` / ``pyrefly`` commands resolve through the workspace
-        ``.venv`` on PATH (per AGENTS.md §5/§6).
+        Gate execution delegates to the canonical lint snapshot helper
+        (``u.Infra.lint_snapshot``) to preserve SSOT command/environment
+        behavior and cached snapshots.
         """
-        del workspace_root  # bare commands rely on PATH; param kept for callers
+        resolved_workspace = workspace_root.resolve()
+        active_gates = (
+            tuple(gates)
+            if gates is not None
+            else FlextInfraUtilitiesGuardGates._DEFAULT_GATES
+        )
         snapshots_by_path = {snap.path.resolve(): snap for snap in snapshots}
-        outcomes: list[FlextInfraModelsGuard.GuardGateOutcome] = []
         reverted: list[Path] = []
         for snap in snapshots:
             target = snap.path.resolve()
-            for gate in gates:
-                cmd = [gate, "check", str(target)]
-                if gate == "ruff":
-                    cmd.append("--no-fix")
-                proc = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                passed = proc.returncode == 0
-                message = ""
-                if not passed:
-                    raw = (proc.stdout or "") + (proc.stderr or "")
-                    message = raw.strip()[:_GATE_OUTPUT_TRUNCATE]
-                outcomes.append(
-                    FlextInfraModelsGuard.GuardGateOutcome(
-                        path=target,
-                        gate=gate,
-                        passed=passed,
-                        message=message,
-                    )
-                )
-                if not passed and revert_on_failure and target not in reverted:
-                    if target not in snapshots_by_path:
-                        return FlextResult[
-                            FlextInfraModelsGuard.GuardGateReport
-                        ].fail(
-                            f"gate failure on out-of-scope file: {target}",
-                        )
-                    restore_outcome = (
-                        FlextInfraUtilitiesSnapshot.restore_snapshots(
-                            (snapshots_by_path[target],)
-                        )
-                    )
-                    if restore_outcome.failure:
-                        return FlextResult[
-                            FlextInfraModelsGuard.GuardGateReport
-                        ].fail(
-                            restore_outcome.error
-                            or f"restore failed for {target}",
-                        )
-                    reverted.append(target)
-                    break
-        return FlextResult[FlextInfraModelsGuard.GuardGateReport].ok(
-            FlextInfraModelsGuard.GuardGateReport(
-                outcomes=tuple(outcomes),
-                files_reverted=tuple(reverted),
+            lint_errors = u.Infra.lint_snapshot(
+                target,
+                resolved_workspace,
+                gates=active_gates,
             )
-        )
+            if not lint_errors or not revert_on_failure or target in reverted:
+                continue
+            if target not in snapshots_by_path:
+                return FlextResult[bool].fail(
+                    f"gate failure on out-of-scope file: {target}",
+                )
+            snapshot = snapshots_by_path[target]
+            try:
+                target.write_text(
+                    snapshot.content,
+                    encoding=c.Cli.ENCODING_DEFAULT,
+                )
+            except OSError as exc:
+                return FlextResult[bool].fail(
+                    f"restore failed for {target}: {exc}",
+                )
+            reverted.append(target)
+        _ = reverted
+        return FlextResult[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGuardGates"]

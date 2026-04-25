@@ -19,7 +19,7 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfraMarkdownGate`, `FlextInfraUtilitiesDocsApi`, `FlextInfraCyclicImportDetector`, `FlextInfraRefactorLooseClassScanner`, `FlextInfraUtilitiesRefactorEngine`, `FlextInfraRuntimeDevDependencyDetector` (+224 more)
+- Primary facades: `FlextInfraConstantsCodegen`, `FlextInfraUtilitiesDocsValidate`, `FlextInfraValidateFreshImport`, `FlextInfraConstantsDeps`, `FlextInfraSettings`, `FlextInfraConfigFixer` (+225 more)
 - Generated module pages: `136`
 
 - [Back to project docs](../index.md)

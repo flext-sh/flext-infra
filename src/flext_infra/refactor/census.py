@@ -799,24 +799,6 @@ class FlextInfraRefactorCensus(
             *candidate.script_reference_sites,
         )
 
-    _UPSTREAM_PARENT_PACKAGES: ClassVar[t.StrSequence] = (
-        "flext_core",
-        "flext_cli",
-        "flext_tests",
-        "flext_infra",
-        "flext_web",
-        "flext_meltano",
-        "flext_observability",
-        "flext_quality",
-    )
-    _UPSTREAM_ALIAS_NAMES: ClassVar[t.StrSequence] = (
-        "c",
-        "m",
-        "p",
-        "t",
-        "u",
-    )
-
     @staticmethod
     def _is_flext_owned(value: object) -> bool:
         """Return True iff `value`'s defining module is in the flext package tree.
@@ -831,36 +813,44 @@ class FlextInfraRefactorCensus(
         return module_name.startswith("flext_")
 
     @classmethod
-    def _build_parent_inventory(cls) -> Mapping[str, t.StrSequence]:
-        """Inventory upstream-package alias top-level facade names.
+    def _build_parent_inventory(
+        cls,
+        workspace_root: Path,
+    ) -> Mapping[str, t.StrSequence]:
+        """Inventory governed-package alias top-level facade names.
 
-        Imports each parent package and walks its ``c/m/p/t/u`` aliases at
-        depth 1 only — the top-level facade attributes (e.g.
-        ``flext_core.c.Result``). Returns a mapping
-        ``{symbol_name: (parent_path, ...)}`` so a consumer-defined symbol
-        with the same name can be cross-referenced against every parent
-        that declares it.
+        Discovers governed projects via ``u.Infra.projects(workspace_root)``
+        (canonical workspace project discovery — SSOT). For each project
+        whose hyphenated name converts to a Python package, imports the
+        package and walks ``c.FACADE_ALIAS_NAMES`` aliases at depth 1
+        (top-level facade attributes — e.g. ``flext_core.c.Result``).
 
-        Only ``type`` instances (classes) are inventoried — method names
-        (``clear``, ``get``, etc.) inherited from ABCs are not collision
-        candidates because every mapping class shares them. Constants and
-        Enums-as-classes are kept because they ARE the canonical facade
-        symbols a consumer would want to migrate onto a parent.
+        Returns ``{symbol_name: (parent_path, ...)}`` so a consumer-defined
+        symbol with the same name can be cross-referenced against every
+        parent that declares it.
+
+        Only ``type`` instances (classes) are inventoried; method names
+        inherited from ABCs (``clear``, ``get``, …) are skipped — every
+        mapping class shares them, so they are not collision candidates.
 
         Filters out attributes whose values' ``__module__`` is not in the
         flext package tree.
 
         Read-only runtime introspection — NO Rope, NO source-tree walking,
-        NO subprocess. Skips parent packages that fail to import (sub-repo
+        NO subprocess. Skips packages that fail to import (sub-repo
         environments may not have every flext-* installed).
         """
+        projects_result = u.Infra.projects(workspace_root)
+        if projects_result.failure:
+            return {}
         inventory: dict[str, list[str]] = defaultdict(list)
-        for pkg_name in cls._UPSTREAM_PARENT_PACKAGES:
+        for project in projects_result.unwrap():
+            pkg_name = project.name.replace("-", "_")
             try:
                 module = __import__(pkg_name)
             except ImportError:
                 continue
-            for alias_name in cls._UPSTREAM_ALIAS_NAMES:
+            for alias_name in c.FACADE_ALIAS_NAMES:
                 alias = getattr(module, alias_name, None)
                 if alias is None:
                     continue
@@ -879,38 +869,52 @@ class FlextInfraRefactorCensus(
     def parent_alias_collisions(
         cls,
         report: m.Infra.Census.WorkspaceReport,
+        *,
+        workspace_root: Path,
     ) -> tuple[tuple[m.Infra.Census.Object, t.StrSequence], ...]:
         """Cross-reference workspace objects against upstream parent inventory.
 
-        Returns a tuple of ``(object, parent_paths)`` pairs where the
-        consumer's public symbol name appears on at least one parent
-        package's ``c/m/p/t/u`` alias. Sorted descending by the number of
-        matching parent paths (i.e. broadest collision surface first).
+        Returns ``(object, parent_paths)`` pairs where the consumer's
+        public symbol name appears on at least one governed parent
+        package's facade alias (``c/m/p/t/u`` per
+        ``c.FACADE_ALIAS_NAMES``). Sorted descending by the number of
+        matching parent paths (broadest collision surface first).
+
+        Self-references are filtered: an object in project ``flext-core``
+        whose name matches a symbol on ``flext_core.<alias>.<name>`` is
+        the canonical owner, not a duplicate.
 
         Args:
-            report: A `WorkspaceReport` produced by `execute()` or
-                `_collect_report(...)`. Reusing the existing report avoids
-                a second Rope-walk; the inventory is the only new I/O.
+            report: A ``WorkspaceReport`` produced by ``execute()`` or
+                ``_collect_report(...)``. Reusing the existing report
+                avoids a second Rope-walk; the inventory is the only new
+                I/O.
+            workspace_root: Workspace root used to discover governed
+                projects (parent packages).
 
         Returns:
             Tuple of ``(object, parent_paths)`` pairs. Empty tuple if
             no collisions are found.
 
         """
-        inventory = cls._build_parent_inventory()
-        flext_core_marker = "flext-core"
+        inventory = cls._build_parent_inventory(workspace_root)
         collisions: list[tuple[m.Infra.Census.Object, t.StrSequence]] = []
         for project_report in report.projects:
-            project_name = project_report.project
-            if flext_core_marker in project_name:
-                continue
+            self_pkg_prefix = f"{project_report.project.replace('-', '_')}."
             for obj in project_report.objects:
                 if obj.name.startswith("_"):
                     continue
                 parent_paths = inventory.get(obj.name)
                 if not parent_paths:
                     continue
-                collisions.append((obj, parent_paths))
+                foreign_paths = tuple(
+                    path
+                    for path in parent_paths
+                    if not path.startswith(self_pkg_prefix)
+                )
+                if not foreign_paths:
+                    continue
+                collisions.append((obj, foreign_paths))
         collisions.sort(key=lambda entry: -len(entry[1]))
         return tuple(collisions)
 

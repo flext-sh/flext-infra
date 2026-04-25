@@ -32,7 +32,7 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
         value: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: Path | str = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         apply: bool = False,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
@@ -52,7 +52,7 @@ class FlextInfraDocValidator(FlextInfraProjectSelectionServiceBase[bool]):
         result = self.validate_workspace(
             self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.output_dir or Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+            output_dir=self.output_dir,
             apply=self.apply_changes,
         )
         if result.failure:

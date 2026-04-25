@@ -80,10 +80,19 @@ class FlextInfraUtilitiesDocsScope:
     def resolve_projects(
         workspace_root: Path,
         names: t.StrSequence,
+        *,
+        include_attached: bool = False,
     ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
-        """Resolve project names into canonical project descriptors."""
+        """Resolve project names into canonical project descriptors.
+
+        ``include_attached`` is forwarded to
+        :meth:`FlextInfraUtilitiesDocsScope.discover_projects` so attached
+        sub-repos opted in via ``[tool.flext.workspace] attached = true`` are
+        surfaced when explicitly requested.
+        """
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
+            include_attached=include_attached,
         )
         if discover_result.failure:
             return r[Sequence[m.Infra.ProjectInfo]].fail(
@@ -355,8 +364,16 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def discover_projects(
         workspace_root: Path,
+        *,
+        include_attached: bool = False,
     ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
-        """Discover workspace projects that participate in the docs scope."""
+        """Discover workspace projects that participate in the docs scope.
+
+        ``include_attached`` is forwarded to
+        :meth:`FlextInfraUtilitiesIteration.discover_project_candidates`. When
+        True, sub-repos opted in via ``[tool.flext.workspace] attached = true``
+        are surfaced alongside the workspace's git-tracked projects.
+        """
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[Sequence[m.Infra.ProjectInfo]].fail(
                 f"discovery failed: invalid workspace root {workspace_root}",
@@ -367,6 +384,7 @@ class FlextInfraUtilitiesDocsScope:
         )
         project_roots = FlextInfraUtilitiesIteration.discover_project_candidates(
             workspace_root,
+            include_attached=include_attached,
         )
         root_project: m.Infra.ProjectInfo | None = None
         projects: list[m.Infra.ProjectInfo] = []

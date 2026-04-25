@@ -91,6 +91,7 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
+    from flext_infra._utilities.guard_gates import FlextInfraUtilitiesGuardGates
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
@@ -475,6 +476,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.engine": ("FlextInfraUtilitiesRefactorEngine",),
             "._utilities.github": ("FlextInfraUtilitiesGithub",),
             "._utilities.github_pr": ("FlextInfraUtilitiesGithubPr",),
+            "._utilities.guard_gates": ("FlextInfraUtilitiesGuardGates",),
             "._utilities.iteration": ("FlextInfraUtilitiesIteration",),
             "._utilities.log_parser": ("FlextInfraUtilitiesLogParser",),
             "._utilities.mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
@@ -957,6 +959,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
+    "FlextInfraUtilitiesGuardGates",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesPatterns",

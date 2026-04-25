@@ -32,7 +32,7 @@ class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
         workspace_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: Path | str = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         apply: bool = False,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes."""
@@ -49,7 +49,7 @@ class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
         result = self.fix(
             workspace_root=self.workspace_root,
             projects=self.selected_projects,
-            output_dir=self.output_dir or Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+            output_dir=self.output_dir,
             apply=self.apply_changes,
         )
         if result.failure:
@@ -65,7 +65,10 @@ class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
         """Run TOC and link fixes on one scope and persist the reports."""
         collected: list[m.Infra.DocsPhaseItemModel] = []
         for md_file in u.Infra.iter_scope_markdown_files(scope):
-            item = self._process_file(md_file, apply=apply)
+            item = u.Infra.docs_process_markdown_file(
+                md_file,
+                apply=apply,
+            )
             if item.links or item.toc:
                 collected.append(
                     m.Infra.DocsPhaseItemModel(
@@ -103,18 +106,6 @@ class FlextInfraDocFixer(FlextInfraProjectSelectionServiceBase[bool]):
             reason=report.reason,
         )
         return report
-
-    def _process_file(
-        self,
-        md_file: Path,
-        *,
-        apply: bool,
-    ) -> m.Infra.DocsPhaseItemModel:
-        """Delegate one-file markdown fixing to the docs fix utilities."""
-        return u.Infra.docs_process_markdown_file(
-            md_file,
-            apply=apply,
-        )
 
 
 __all__: list[str] = ["FlextInfraDocFixer"]

@@ -284,16 +284,21 @@ class FlextInfraUtilitiesIteration:
     def _pyproject_payload(
         pyproject_path: str,
     ) -> t.Infra.ContainerDict:
-        """Return one parsed ``pyproject.toml`` payload cached by absolute path."""
+        """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
+
+        Disk read is delegated to ``u.load_pyproject_toml`` (cached at
+        flext-core); this layer caches the validated typed payload. No
+        parallel ``tomllib`` call sites; the file is read once per process.
+        """
         path = Path(pyproject_path)
         if not path.is_file():
             return {}
         try:
-            raw_payload = tomllib.loads(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            )
+            raw_payload = u.load_pyproject_toml(path.parent)
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_payload)
-        except (OSError, tomllib.TOMLDecodeError, c.ValidationError):
+        except (OSError, ValueError):
+            # OSError covers FileNotFoundError; ValueError covers
+            # tomllib.TOMLDecodeError and pydantic.ValidationError.
             return {}
 
     @staticmethod
@@ -615,12 +620,45 @@ class FlextInfraUtilitiesIteration:
         return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
 
     @staticmethod
+    def _attached_top_level_dir_names(scope_root: Path) -> frozenset[str]:
+        """Return top-level dir names whose pyproject opts in via ``[tool.flext.workspace] attached = true``.
+
+        Reads each candidate's ``pyproject.toml`` through the canonical
+        ``u.read_tool_flext_config`` helper from flext-core; the typed
+        ``ProjectToolFlextWorkspace`` model enforces the contract. Sub-repos
+        without a pyproject or whose ``[tool.flext.workspace]`` table is
+        absent / ``attached = false`` are not surfaced.
+        """
+        attached: list[str] = []
+        for entry in sorted(scope_root.iterdir(), key=lambda item: item.name):
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+            if not (entry / c.Infra.PYPROJECT_FILENAME).is_file():
+                continue
+            try:
+                cfg = u.read_tool_flext_config(entry)
+            except (OSError, ValueError):
+                # OSError covers FileNotFoundError; ValueError covers
+                # tomllib.TOMLDecodeError and pydantic.ValidationError.
+                continue
+            if cfg.workspace.attached:
+                attached.append(entry.name)
+        return frozenset(attached)
+
+    @staticmethod
     def discover_project_candidates(
         workspace_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
+        include_attached: bool = False,
     ) -> Sequence[Path]:
-        """Return all canonical project candidates before any consumer-specific filtering."""
+        """Return all canonical project candidates before any consumer-specific filtering.
+
+        When ``include_attached`` is True, sub-repos whose own ``pyproject.toml``
+        carries ``[tool.flext.workspace] attached = true`` are surfaced
+        alongside the git-tracked dirs of ``workspace_root``. Default (False)
+        preserves the previous workspace-only enumeration.
+        """
         roots: MutableSequence[Path] = []
         effective_scan_dirs = scan_dirs or frozenset(c.Infra.MRO_SCAN_DIRECTORIES)
         configured_members = FlextInfraUtilitiesIteration._workspace_member_names(
@@ -633,6 +671,13 @@ class FlextInfraUtilitiesIteration:
                 resolved_workspace_root,
             )
         )
+        attached_child_dirs = (
+            FlextInfraUtilitiesIteration._attached_top_level_dir_names(
+                resolved_workspace_root,
+            )
+            if include_attached
+            else frozenset()
+        )
 
         if FlextInfraUtilitiesIteration._looks_like_project(
             resolved_workspace_root,
@@ -643,12 +688,17 @@ class FlextInfraUtilitiesIteration:
             resolved_workspace_root,
         ):
             roots.append(resolved_workspace_root)
+        candidate_dir_names: frozenset[str] | None = (
+            frozenset(tracked_child_dirs) | attached_child_dirs
+            if tracked_child_dirs is not None
+            else (attached_child_dirs or None)
+        )
         candidate_entries = (
             [
                 resolved_workspace_root / dir_name
-                for dir_name in sorted(tracked_child_dirs)
+                for dir_name in sorted(candidate_dir_names)
             ]
-            if tracked_child_dirs is not None
+            if candidate_dir_names is not None
             else sorted(
                 workspace_root.iterdir(),
                 key=lambda item: item.name,
@@ -660,9 +710,12 @@ class FlextInfraUtilitiesIteration:
                 for entry in candidate_entries
                 if entry.is_dir()
                 and (not entry.name.startswith("."))
-                and FlextInfraUtilitiesIteration._project_descriptor_is_tracked(
-                    resolved_workspace_root,
-                    entry.resolve(),
+                and (
+                    entry.name in attached_child_dirs
+                    or FlextInfraUtilitiesIteration._project_descriptor_is_tracked(
+                        resolved_workspace_root,
+                        entry.resolve(),
+                    )
                 )
                 and FlextInfraUtilitiesIteration._looks_like_project(
                     entry.resolve(),

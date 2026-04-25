@@ -25,27 +25,23 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import m, p, r, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 
 
 class FlextInfraValidateTierWhitelist(s[bool]):
-    """Enforces the flext-core abstraction boundary at runtime-import level."""
+    """Enforces the flext-core abstraction boundary at runtime-import level.
 
-    BANNED_LIBS: ClassVar[frozenset[str]] = frozenset({
-        "pydantic",
-        "pydantic_settings",
-        "pydantic_core",
-        "structlog",
-        "returns",
-        "orjson",
-        "yaml",
-        "pyyaml",
-        "dependency_injector",
+    Banned-lib set and canonical-wrapper allowlist are sourced from
+    ``c.Infra.BANNED_RUNTIME_LIBS`` and
+    ``c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS`` (SSOT) — no parallel lists
+    inside the validator.
+    """
+
+    NON_RUNTIME_DIR_PARTS: ClassVar[frozenset[str]] = frozenset({
+        c.Infra.DIR_TESTS,
+        c.Infra.DIR_EXAMPLES,
+        c.Infra.DIR_SCRIPTS,
     })
-    ALLOWLIST_PATH_MARKERS: ClassVar[tuple[str, ...]] = (
-        "flext-core/src/flext_core",
-        "flext-core/src/flext_tests",
-    )
 
     def build_report(
         self,
@@ -106,9 +102,17 @@ class FlextInfraValidateTierWhitelist(s[bool]):
         return tuple(violations)
 
     def _is_allowlisted(self, file_path: Path) -> bool:
-        """Return True iff ``file_path`` is inside a flext-core allowlist path."""
+        """Return True iff ``file_path`` is a canonical wrapper or non-runtime surface.
+
+        Sources the canonical-wrapper marker list from
+        ``c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS`` (SSOT). Also exempts
+        ``tests/``, ``examples/``, and ``scripts/`` directories — only
+        runtime ``src/`` modules are gated by the abstraction boundary.
+        """
         posix = file_path.as_posix()
-        return any(marker in posix for marker in self.ALLOWLIST_PATH_MARKERS)
+        if any(marker in posix for marker in c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS):
+            return True
+        return any(part in self.NON_RUNTIME_DIR_PARTS for part in file_path.parts)
 
     def _violations_for_module(
         self,
@@ -121,7 +125,7 @@ class FlextInfraValidateTierWhitelist(s[bool]):
             module_name = u.Infra.import_statement_module_name(import_statement)
             if module_name is not None:
                 top = self._top_module(module_name)
-                if top in self.BANNED_LIBS:
+                if top in c.Infra.BANNED_RUNTIME_LIBS:
                     out.append(
                         f"{file_path}: bare import of {module_name!r} "
                         "— use flext_core facades (c/m/p/t/u)",
@@ -131,7 +135,7 @@ class FlextInfraValidateTierWhitelist(s[bool]):
                 import_statement,
             ):
                 top = self._top_module(imported)
-                if top in self.BANNED_LIBS:
+                if top in c.Infra.BANNED_RUNTIME_LIBS:
                     out.append(
                         f"{file_path}: bare import of {imported!r} "
                         "— use flext_core facades (c/m/p/t/u)",

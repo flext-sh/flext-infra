@@ -606,7 +606,8 @@ class FlextInfraCli(FlextCli):
 
 def main(args: t.StrSequence | None = None) -> int:
     """Run the canonical flext-infra CLI."""
-    return FlextInfraCli().main(args)
+    cli_args = list(args) if args is not None else sys.argv[1:]
+    return FlextInfraCli().main(cli_args)
 
 
 __all__: list[str] = ["FlextInfraCli", "main"]

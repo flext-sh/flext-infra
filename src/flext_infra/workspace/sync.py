@@ -173,7 +173,9 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         """Sync workspace or project Makefile and surface generator failures."""
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
-            workspace_makefile_result = self._sync_workspace_makefile(resolved)
+            workspace_makefile_result = FlextInfraWorkspaceMakefileGenerator().generate(
+                resolved
+            )
             if workspace_makefile_result.failure:
                 return r[int].fail(
                     workspace_makefile_result.error
@@ -202,11 +204,6 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             workspace_root,
             canonical_root=canonical_root,
         )
-
-    @staticmethod
-    def _sync_workspace_makefile(workspace_root: Path) -> p.Result[bool]:
-        """Sync the workspace root Makefile from the canonical generator."""
-        return FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
 
     @staticmethod
     def _is_workspace_root(

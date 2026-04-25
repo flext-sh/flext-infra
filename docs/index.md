@@ -18,9 +18,9 @@ This project portal is generated from `pyproject.toml`, package exports, and rea
 
 ## Public Surface Summary
 
-- Primary facades: `FlextInfraMarkdownGate`, `FlextInfraUtilitiesDocsApi`, `FlextInfraCyclicImportDetector`, `FlextInfraRefactorLooseClassScanner`, `FlextInfraUtilitiesRefactorEngine`, `FlextInfraRuntimeDevDependencyDetector` (+224 more)
+- Primary facades: `FlextInfraConstantsCodegen`, `FlextInfraUtilitiesDocsValidate`, `FlextInfraValidateFreshImport`, `FlextInfraConstantsDeps`, `FlextInfraSettings`, `FlextInfraConfigFixer` (+225 more)
 - Alias namespaces: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `232`
+- Public symbol exports: `233`
 - Exported module shortcuts: _none_
 
 ## Collection Rules (regras de coletas)

@@ -11,13 +11,12 @@ from collections.abc import (
 from operator import itemgetter
 from pathlib import Path
 from tokenize import NAME, generate_tokens
-from typing import Annotated, ClassVar, override
+from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import cli
 
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
-    FlextInfraServiceBase,
     c,
     m,
     p,
@@ -299,7 +298,7 @@ class FlextInfraAccessorMigrationOrchestrator(
     @override
     def execute_command(
         cls,
-        params: FlextInfraServiceBase[m.Infra.AccessorMigrationReport],
+        params: Self,
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
         result = params.execute()

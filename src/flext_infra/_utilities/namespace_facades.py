@@ -20,18 +20,15 @@ from flext_infra import (
     m,
     t,
 )
+from flext_infra._utilities.namespace_common import (
+    FlextInfraUtilitiesRefactorNamespaceCommon,
+)
 
 
 class FlextInfraUtilitiesRefactorNamespaceFacades:
     """Facade generation and dependency-chain helpers."""
 
     _base_chains_cache: ClassVar[MutableMapping[Path, t.StrSequenceMapping]] = {}
-
-    @staticmethod
-    def _class_name_to_module(class_name: str) -> str:
-        """Convert CamelCase class names to snake_case module names."""
-        head = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", class_name)
-        return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", head).lower()
 
     @staticmethod
     def build_expected_base_chains(
@@ -91,7 +88,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             chain = base_chains.get(family, [])
             if chain:
                 return "\n".join(
-                    f"from {FlextInfraUtilitiesRefactorNamespaceFacades._class_name_to_module(base)} import {base}"
+                    f"from {FlextInfraUtilitiesRefactorNamespaceCommon.class_name_to_module(base)} import {base}"
                     for base in chain
                 )
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "Utilities")

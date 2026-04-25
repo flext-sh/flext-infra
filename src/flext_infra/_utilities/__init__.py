@@ -26,6 +26,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".engine": ("FlextInfraUtilitiesRefactorEngine",),
         ".github": ("FlextInfraUtilitiesGithub",),
         ".github_pr": ("FlextInfraUtilitiesGithubPr",),
+        ".guard_gates": ("FlextInfraUtilitiesGuardGates",),
         ".iteration": ("FlextInfraUtilitiesIteration",),
         ".log_parser": ("FlextInfraUtilitiesLogParser",),
         ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),

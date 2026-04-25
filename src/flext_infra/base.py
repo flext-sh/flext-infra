@@ -128,11 +128,12 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         """Normalize project filters into a compact comma-separated string."""
         if value is None:
             return None
-        if isinstance(value, str):
-            values = [item.strip() for item in value.split(",") if item.strip()]
-            return ",".join(values) or None
-        values = [item.strip() for item in value if item.strip()]
-        return ",".join(values) or None
+        normalized_values = (
+            u.Infra.normalize_cli_values(value)
+            if isinstance(value, str)
+            else u.Infra.normalize_cli_values(*value)
+        )
+        return ",".join(normalized_values) or None
 
     @u.field_validator("report_path", mode="before")
     @classmethod
@@ -147,7 +148,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         """Preserve relative output dirs so callers can scope them under workspace roots."""
         if value is None:
             return None
-        path = value if isinstance(value, Path) else Path(value)
+        path: Path = u.Cli.resolve_optional_path(value, default=Path())
         return path.resolve() if path.is_absolute() else path
 
     @u.computed_field()
@@ -161,13 +162,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     def effective_dry_run(self) -> bool:
         """Return the normalized write-mode decision for CLI services."""
         return bool(self.dry_run or self.check_only or (not self.apply_changes))
-
-    @staticmethod
-    def normalize_selected_projects(
-        selected_projects: t.StrSequence | None,
-    ) -> t.StrSequence | None:
-        """Normalize repeated project selectors into a compact sequence."""
-        return u.Infra.normalize_sequence_values(selected_projects)
 
     def command_payload(self) -> t.JsonMapping:
         """Return the normalized shared command payload once."""
@@ -217,13 +211,13 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
     @property
     def project_names(self) -> t.StrSequence | None:
         """Return normalized selected project names."""
-        return self.normalize_selected_projects(self.selected_projects)
+        return u.Infra.normalize_sequence_values(self.selected_projects)
 
     @u.computed_field()
     @property
     def project_dirs(self) -> Sequence[Path] | None:
         """Resolve selected project directories relative to the workspace root."""
-        names = self.normalize_selected_projects(self.selected_projects)
+        names = u.Infra.normalize_sequence_values(self.selected_projects)
         if names is None:
             return None
         return [self.root / name for name in names]
@@ -232,7 +226,7 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
         self,
         workspace_root: Path,
         *,
-        output_dir: Path | str,
+        output_dir: Path | str | None,
         handler: Callable[
             [m.Infra.DocScope],
             m.Infra.DocsPhaseReport,
@@ -243,7 +237,10 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
         return u.Infra.run_scoped(
             workspace_root,
             projects=self.selected_projects if projects is None else projects,
-            output_dir=output_dir,
+            output_dir=u.Cli.resolve_optional_path(
+                output_dir,
+                default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+            ),
             handler=handler,
         )
 

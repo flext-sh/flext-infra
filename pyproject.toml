@@ -198,7 +198,7 @@ extra_checks = true
 follow_imports = "normal"
 ignore_missing_imports = true
 local_partial_types = true
-mypy_path = [ ".", "../typings", "src" ]
+mypy_path = [ ".", "src" ]
 namespace_packages = true
 no_implicit_reexport = true
 overrides = [  ]
@@ -366,8 +366,8 @@ exclude = [
   ".sisyphus",
   ".venv",
 ]
-extraPaths = [ ".", "../typings", "src" ]
-ignore = [ "**/*.pyi", "../typings" ]
+extraPaths = [ ".", "src" ]
+ignore = [ "**/*.pyi" ]
 include = [ "src", "tests", "tmp_flow_test" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
@@ -397,7 +397,6 @@ reportUnusedClass = "error"
 reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
-stubPath = "../typings"
 typeCheckingMode = "strict"
 venv = ".venv"
 venvPath = ".."
