@@ -19,7 +19,7 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfraUtilitiesRefactorPolicy`, `FlextInfraRefactorMROImportRewriter`, `FlextInfraTypesBase`, `FlextInfraProjectMakefileUpdater`, `FlextInfraPythonVersionEnforcer`, `FlextInfraRefactorImportModernizer` (+226 more)
+- Primary facades: `FlextInfraModelsRefactorCensus`, `FlextInfraFutureAnnotationsDetector`, `FlextInfraConstantsWorkspace`, `FlextInfraUtilitiesRefactorPolicy`, `FlextInfraSilentFailureGate`, `FlextInfraModelsEngineOperation` (+226 more)
 - Generated module pages: `137`
 
 - [Back to project docs](../index.md)

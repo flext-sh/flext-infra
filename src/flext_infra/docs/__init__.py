@@ -9,6 +9,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".auditor": ("FlextInfraDocAuditor",),
         ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
+        ".base": ("FlextInfraDocServiceBase",),
         ".builder": ("FlextInfraDocBuilder",),
         ".fixer": ("FlextInfraDocFixer",),
         ".generator": ("FlextInfraDocGenerator",),

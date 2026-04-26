@@ -44,6 +44,8 @@ class FlextInfraUtilitiesIteration:
         for separator in ("[", "==", ">=", "<=", "~=", "!=", ">", "<"):
             if separator in text:
                 text = text.split(separator, maxsplit=1)[0].strip()
+        if "/" in text:
+            text = text.rsplit("/", maxsplit=1)[-1].strip()
         normalized = text.lower()
         return normalized or None
 
@@ -276,7 +278,33 @@ class FlextInfraUtilitiesIteration:
             normalized = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         except c.ValidationError:
             return ()
-        return cls.local_dependency_names_from_payload(normalized)
+        tool = normalized.get(c.Infra.TOOL)
+        if not isinstance(tool, Mapping):
+            return ()
+        uv = tool.get("uv")
+        if not isinstance(uv, Mapping):
+            return ()
+        sources = uv.get("sources")
+        if not isinstance(sources, Mapping):
+            return ()
+        workspace_project_names = tuple(
+            dependency_name
+            for raw_name, raw_source in sources.items()
+            if isinstance(raw_source, Mapping)
+            if raw_source.get("workspace") is True
+            if (dependency_name := cls.dep_name(str(raw_name))) is not None
+        )
+        if not workspace_project_names:
+            return ()
+        return tuple(
+            sorted(
+                dependency_name.replace("-", "_")
+                for dependency_name in cls.local_dependency_names_from_payload(
+                    normalized,
+                    workspace_project_names=workspace_project_names,
+                )
+            )
+        )
 
     @staticmethod
     @cache
@@ -285,20 +313,19 @@ class FlextInfraUtilitiesIteration:
     ) -> t.Infra.ContainerDict:
         """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
 
-        Disk read is delegated to ``u.load_pyproject_toml`` (cached at
-        flext-core); this layer caches the validated typed payload. No
-        parallel ``tomllib`` call sites; the file is read once per process.
+        Disk read is delegated to ``u.Cli.toml_read_json`` (cached at
+        flext-cli utility layer); this method caches the validated typed payload.
         ``pyproject_path`` is the file path; ``Path`` is the canonical
         cache key (no ``str(...)`` proxy round-trip).
         """
         if not pyproject_path.is_file():
             return {}
+        payload_result = u.Cli.toml_read_json(pyproject_path)
+        if payload_result.failure:
+            return {}
         try:
-            raw_payload = u.load_pyproject_toml(pyproject_path.parent)
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_payload)
-        except (OSError, ValueError):
-            # OSError covers FileNotFoundError; ValueError covers
-            # tomllib.TOMLDecodeError and pydantic.ValidationError.
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload_result.value)
+        except ValueError:
             return {}
 
     @staticmethod
@@ -320,16 +347,15 @@ class FlextInfraUtilitiesIteration:
     def workspace_member_names(workspace_root: Path) -> t.StrSequence:
         """Return configured workspace members from ``[tool.flext.workspace]`` or ``[tool.uv.workspace]``.
 
-        Cached by ``workspace_root`` (``Path`` is hashable). Disk read flows
-        through ``u.load_pyproject_toml`` (cached at flext-core); no parallel
-        ``tomllib`` call site. Both ``[tool.flext.workspace] members`` and
-        ``[tool.uv.workspace] members`` are honoured (first non-empty wins).
+        Cached by ``workspace_root`` (``Path`` is hashable). Both
+        ``[tool.flext.workspace] members`` and ``[tool.uv.workspace] members``
+        are honoured (first non-empty wins).
         """
-        if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
+        pyproject_path = workspace_root / c.Infra.PYPROJECT_FILENAME
+        if not pyproject_path.is_file():
             return ()
-        try:
-            payload = u.load_pyproject_toml(workspace_root)
-        except (OSError, ValueError):
+        payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
+        if not payload:
             return ()
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -586,13 +612,8 @@ class FlextInfraUtilitiesIteration:
             return True
         if (path / c.Infra.MAKEFILE_FILENAME).exists():
             return True
-        try:
-            payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                u.load_pyproject_toml(pyproject_path.parent),
-            )
-        except (OSError, ValueError):
-            # OSError covers FileNotFoundError; ValueError covers
-            # tomllib.TOMLDecodeError and pydantic.ValidationError.
+        payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
+        if not payload:
             return False
         dependency_names: set[str] = set(
             FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(

@@ -159,7 +159,7 @@ class FlextInfraEnsureRuffConfigPhase:
         stale_patterns = (
             [
                 pattern
-                for pattern in u.Cli.toml_table_string_keys(per_file_ignores)
+                for pattern in per_file_ignores
                 if pattern not in self._tool_config.tools.ruff.lint.per_file_ignores
             ]
             if per_file_ignores is not None

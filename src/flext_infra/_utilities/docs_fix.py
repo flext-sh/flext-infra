@@ -33,11 +33,6 @@ class FlextInfraUtilitiesDocsFix:
         return f"{base}.md{raw_link[len(base) :]}"
 
     @staticmethod
-    def docs_update_toc(content: str) -> t.Infra.StrIntPair:
-        """Insert or replace the standard docs TOC."""
-        return FlextInfraUtilitiesDocs.update_toc(content)
-
-    @staticmethod
     def docs_process_markdown_file(
         md_file: Path,
         *,
@@ -63,7 +58,7 @@ class FlextInfraUtilitiesDocsFix:
             replace_link,
             original,
         )
-        updated, toc_changed = FlextInfraUtilitiesDocsFix.docs_update_toc(updated)
+        updated, toc_changed = FlextInfraUtilitiesDocs.update_toc(updated)
         if apply and (link_count > 0 or toc_changed > 0) and updated != original:
             _ = md_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.DocsPhaseItemModel(

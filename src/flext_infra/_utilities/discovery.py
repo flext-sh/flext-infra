@@ -80,11 +80,6 @@ class FlextInfraUtilitiesDiscovery:
         return Path(project_root) if project_root else None
 
     @staticmethod
-    def discover_project_root_from_file(file_path: Path) -> Path | None:
-        """Return the enclosing project root for one file via the canonical resolver."""
-        return FlextInfraUtilitiesDiscovery.project_root(file_path)
-
-    @staticmethod
     @cache
     def _discover_package_from_path(file_path: str) -> str:
         """Discover the package path cached by file path."""

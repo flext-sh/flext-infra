@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections import Counter
 from collections.abc import (
     Iterator,
     Sequence,
@@ -161,33 +162,52 @@ class FlextInfraEnforcementAuditor:
         obj_name: str,
         obj_kind: str,
     ) -> m.Infra.Census.Violation:
+        rule = cce.ENFORCEMENT_CATALOG.by_id(rule_id)
         return m.Infra.Census.Violation(
             project=project_name,
             object_name=obj_name,
             object_kind=obj_kind,
             kind=_KIND,
-            severity=c.Infra.GateSeverity.ERROR.value,
+            severity=rule.severity.value
+            if rule is not None
+            else c.Infra.GateSeverity.ERROR.value,
             file_path=str(path),
             line=line,
             fixable=rule_id in {_ENFORCE_039, _ENFORCE_041, _ENFORCE_043},
             fix_action=rule_id,
+            description=rule.description if rule is not None else "",
         )
 
     @staticmethod
     def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
         """Render a workspace audit report as plain text."""
+        rule_counts = Counter(
+            viol.fix_action
+            for proj in report.projects
+            for viol in proj.violations
+            if viol.fix_action
+        )
         lines = [
             "SSOT Enforcement Audit Report",
             f"Projects scanned: {len(report.projects)}",
             f"Total violations: {report.total_violations}",
         ]
+        if rule_counts:
+            lines.append("Rules summary:")
+            for rule_id, count in sorted(rule_counts.items()):
+                rule = cce.ENFORCEMENT_CATALOG.by_id(rule_id)
+                description = (
+                    rule.description if rule is not None else "unregistered rule"
+                )
+                lines.append(f"  {rule_id} ({count}): {description}")
         for proj in report.projects:
             if proj.violations_total == 0:
                 continue
             lines.append(f"  {proj.project} ({proj.violations_total}):")
             lines.extend(
                 f"    {viol.fix_action} @ {viol.file_path}:{viol.line} "
-                f"({viol.object_kind}={viol.object_name})"
+                f"[{viol.severity}] ({viol.object_kind}={viol.object_name})"
+                + (f" - {viol.description}" if viol.description else "")
                 for viol in proj.violations
             )
         return "\n".join(lines)

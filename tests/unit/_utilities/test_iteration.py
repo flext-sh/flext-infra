@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import tomlkit
+
 from tests import t, u
 
 
@@ -158,6 +160,47 @@ class TestsFlextInfraUtilitiesiteration:
 
         names = {path.name for path in candidates}
         assert external.name in names
+
+    def test_workspace_dep_namespaces_from_payload_uses_workspace_sources(self) -> None:
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            {
+                "project": {
+                    "dependencies": [
+                        "flext-core>=0.1.0",
+                        "requests>=2.0",
+                        "flext-cli",
+                    ],
+                },
+                "tool": {
+                    "uv": {
+                        "sources": {
+                            "flext-core": {"workspace": True},
+                            "flext-cli": {"workspace": True},
+                            "requests": {"path": "../vendor/requests"},
+                        },
+                    },
+                },
+            },
+        )
+
+        namespaces = u.Infra.workspace_dep_namespaces_from_payload(payload)
+
+        assert namespaces == ("flext_cli", "flext_core")
+
+    def test_workspace_dep_namespaces_reads_toml_document(self) -> None:
+        doc = tomlkit.parse(
+            """
+[project]
+dependencies = ["flext-core>=0.1.0"]
+
+[tool.uv.sources.flext-core]
+workspace = true
+""",
+        )
+
+        namespaces = u.Infra.workspace_dep_namespaces(doc)
+
+        assert namespaces == ("flext_core",)
 
 
 __all__: t.StrSequence = []

@@ -8,7 +8,6 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
     c,
     m,
@@ -18,14 +17,6 @@ from flext_infra import (
 
 class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
-
-    @staticmethod
-    def docs_contract(
-        project_root: Path,
-        package_name: str,
-    ) -> t.Infra.ContainerDict:
-        """Return the public docs contract for a project."""
-        return FlextInfraUtilitiesDocsApi.public_contract(project_root, package_name)
 
     @staticmethod
     def docs_workspace_contract(

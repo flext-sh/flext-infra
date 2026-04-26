@@ -70,12 +70,6 @@ class TestsFlextInfraDepsPathSyncInit:
             has=FlextInfraUtilitiesDependencyPathSync.detect_mode(Path("/tmp")),
         )
 
-    def test_dep_name_normalizes_path_inputs(self) -> None:
-        tm.that(
-            FlextInfraUtilitiesDependencyPathSync.dep_name("../flext-core"),
-            eq="flext-core",
-        )
-
     def test_rewrite_dep_paths_with_no_deps(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[tool.poetry.dependencies]\npython = "^3.13"')

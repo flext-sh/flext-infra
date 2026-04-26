@@ -28,24 +28,6 @@ class FlextInfraUtilitiesDependencyPathSync:
     _log = u.fetch_logger(__name__)
     discover_projects = staticmethod(FlextInfraUtilitiesDocsScope.discover_projects)
 
-    @staticmethod
-    def dep_name(requirement: str) -> str | None:
-        """Extract normalized dependency name from one requirement/path spec."""
-        text = requirement.strip()
-        if not text:
-            return None
-        if ";" in text:
-            text = text.split(";", maxsplit=1)[0].strip()
-        if " @ " in text:
-            text = text.split(" @ ", maxsplit=1)[0].strip()
-        for separator in ("[", "==", ">=", "<=", "~=", "!=", ">", "<"):
-            if separator in text:
-                text = text.split(separator, maxsplit=1)[0].strip()
-        if "/" in text:
-            text = text.rsplit("/", maxsplit=1)[-1].strip()
-        normalized = text.lower()
-        return normalized or None
-
     def _rewrite_pep621(
         self,
         payload: MutableMapping[str, t.JsonValue],
@@ -68,7 +50,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         internal_deps: t.Infra.StrSet = set()
         for item in deps:
             requirement_part, _, marker_part = item.partition(";")
-            dep_name = type(self).dep_name(requirement_part)
+            dep_name = FlextInfraUtilitiesIteration.dep_name(requirement_part)
             if not dep_name or dep_name not in internal_names:
                 updated_deps.append(item)
                 continue
@@ -188,7 +170,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             raw_path = value.get(c.Infra.PATH, None)
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
-            dep_name = cls.dep_name(raw_path)
+            dep_name = FlextInfraUtilitiesIteration.dep_name(raw_path)
             if not dep_name:
                 continue
             new_path = (

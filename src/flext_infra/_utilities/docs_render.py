@@ -79,18 +79,16 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_directive_page(title: str, dotted_path: str) -> str:
         """Return a mkdocstrings page for a module path."""
-        return "\n".join([
-            c.Infra.GENERATED_HEADER,
-            "",
-            f"# {title}",
-            "",
-            f"::: {dotted_path}",
-            "    options:",
-            "      show_root_heading: true",
-            "      show_root_full_path: false",
-            "      show_source: false",
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._generated_page(
+            title,
+            [
+                f"::: {dotted_path}",
+                "    options:",
+                "      show_root_heading: true",
+                "      show_root_full_path: false",
+                "      show_source: false",
+            ],
+        )
 
     _LINK_PREFIX_DOCS_INDEX: ClassVar[str] = "../../.."
     """Relative path from ``<project>/docs/index.md`` to workspace root."""
@@ -99,21 +97,22 @@ class FlextInfraUtilitiesDocsRender:
     """Relative path from ``<project>/README.md`` to workspace root."""
 
     @staticmethod
-    def _public_surface_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
-        """Return the four-bullet public-surface summary used on every project page."""
-        aliases = FlextInfraUtilitiesDocsRender._string_list(data, "aliases")
-        facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
-        module_exports = FlextInfraUtilitiesDocsRender._string_list(
-            data, "module_exports"
-        )
-        public_symbols = FlextInfraUtilitiesDocsRender._string_list(
-            data, "public_symbols"
-        )
+    def _public_surface_lines(scope: m.Infra.DocScope) -> t.SequenceOf[str]:
+        """Return the canonical public-surface block — mkdocstrings autodoc.
+
+        Replaces the prior hardcoded four-bullet summary (frozen snapshot of
+        ``aliases`` / ``facades`` / ``public_symbols`` from contract data) with
+        a live mkdocstrings directive that renders the package-level docstring
+        + ``__all__`` exports at mkdocs build time. Real content from real
+        code, never frozen — the user's "fake markdown" complaint.
+        """
         return [
-            f"- Primary facades: {FlextInfraUtilitiesDocsRender._preview(facades)}",
-            f"- Alias namespaces: {FlextInfraUtilitiesDocsRender._preview(aliases, limit=11)}",
-            f"- Public symbol exports: `{len(public_symbols)}`",
-            f"- Exported module shortcuts: {FlextInfraUtilitiesDocsRender._preview(module_exports)}",
+            f"::: {scope.package_name}",
+            "    options:",
+            "      members: false",
+            "      show_root_heading: false",
+            "      show_root_toc_entry: false",
+            "      show_source: false",
         ]
 
     @staticmethod
@@ -122,45 +121,40 @@ class FlextInfraUtilitiesDocsRender:
         *,
         link_prefix: str,
     ) -> t.SequenceOf[str]:
-        """Return the canonical Collection Rules section (used by index + readme)."""
+        """Return a thin pointer to the canonical Collection Rules.
+
+        SSOT: the actual content lives in ``flext/AGENTS.md`` §9 — duplicating
+        it 33× per project (once for ``docs/index.md`` and once for
+        ``README.md``) is the "fake markdown" the user flagged. Each project
+        page now points back to the canonical source instead of carrying a
+        copy. ``scope`` is preserved on the signature for symmetry with the
+        other boilerplate helpers but is intentionally unused.
+        """
+        _ = scope
         return [
-            "## Collection Rules (regras de coletas)",
+            "## Collection Rules",
             "",
-            "Required pre-work before changing this project (per AGENTS.md §9):",
-            "",
-            f"1. Read [`/flext/AGENTS.md`]({link_prefix}/AGENTS.md) (governance) and this project's `pyproject.toml`.",
-            f"2. Confirm parent MRO chain via `pyproject.toml` `dependencies` filtered by `flext-*` (excluding `{scope.name}` self).",
-            "3. Verify Scope: `cd <project> && scope status` (re-bootstrap per `flext-scope-bootstrap` if absent).",
-            f"4. Load skills relevant to the change scope from [`/flext/.agents/skills/`]({link_prefix}/.agents/skills/) (start with `flext-mro-namespace-rules`, `flext-import-rules`, `flext-patterns`).",
-            "5. Confirm the canonical zero-debt baseline:",
-            "    - `make check` exits 0",
-            "    - `make val VALIDATE_SCOPE=project` exits 0",
-            "    - `make docs DOCS_PHASE=audit` reports zero issues",
-            f"6. Cross-check the c/p/t/m/u slot registry in [`flext-mro-namespace-rules`]({link_prefix}/.agents/skills/flext-mro-namespace-rules/SKILL.md) to confirm this project's owned slots before adding/renaming any symbol.",
+            f"Read [`/flext/AGENTS.md`]({link_prefix}/AGENTS.md) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).",
         ]
 
     @staticmethod
     def _quality_gates_lines() -> t.SequenceOf[str]:
-        """Return the canonical Quality Gates section (identical for every page)."""
+        """Return a thin pointer to the canonical Quality Gates surface."""
         return [
             "## Quality Gates",
             "",
-            "- `make check` — Lint suite (ruff, pyrefly, mypy, pyright per project).",
-            "- `make test` — Pytest with project coverage threshold from `pyproject.toml`.",
-            "- `make val VALIDATE_SCOPE=project` — Validation gates (complexity, docstring, namespace).",
-            "- `make docs DOCS_PHASE=audit` — Docs audit (broken links, stale symbols, missing docstrings).",
-            "- `make docs DOCS_PHASE=build` — Build mkdocs HTML output to `.reports/docs/site/`.",
+            "Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`](../../.agents/skills/flext-quality-gates/SKILL.md) skill for selectors and thresholds.",
         ]
 
     @staticmethod
     def _governance_pointer_lines(*, link_prefix: str) -> t.SequenceOf[str]:
-        """Return the canonical Governance Pointer section."""
+        """Return a thin pointer to the canonical governance surface."""
         return [
             "## Governance Pointer",
             "",
-            f"- Canonical engineering law: [`/flext/AGENTS.md`]({link_prefix}/AGENTS.md).",
-            f"- Project skills index: [`/flext/.agents/skills/`]({link_prefix}/.agents/skills/).",
-            f"- Workspace onboarding: [`/flext/docs/guides/onboarding.md`]({link_prefix}/docs/guides/onboarding.md).",
+            f"- Engineering law: [`/flext/AGENTS.md`]({link_prefix}/AGENTS.md)",
+            f"- Skills index: [`/flext/.agents/skills/`]({link_prefix}/.agents/skills/)",
+            f"- Onboarding: [`/flext/docs/guides/onboarding.md`]({link_prefix}/docs/guides/onboarding.md)",
         ]
 
     @staticmethod
@@ -173,40 +167,38 @@ class FlextInfraUtilitiesDocsRender:
         version = str(data.get("version", "")).strip() or "unknown"
         description = str(data.get("description", "")).strip() or "_not declared_"
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_DOCS_INDEX
-        return "\n".join([
-            c.Infra.GENERATED_HEADER,
-            "",
-            f"# {scope.name} Documentation",
-            "",
-            f"- Version: `{version}`",
-            f"- Project class: `{scope.project_class}`",
-            f"- Package: `{scope.package_name}`",
-            f"- Description: {description}",
-            "",
-            "This project portal is generated from `pyproject.toml`, package exports, and real docstrings.",
-            "",
-            "## Start Here",
-            "",
-            "- [Guides](guides/README.md)",
-            "- [API Reference](api-reference/README.md)",
-            "- [Generated API Overview](api-reference/generated/overview.md)",
-            "- [Generated Module Index](api-reference/generated/modules/index.md)",
-            "",
-            "## Public Surface Summary",
-            "",
-            *FlextInfraUtilitiesDocsRender._public_surface_lines(data),
-            "",
-            *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                scope, link_prefix=link_prefix
-            ),
-            "",
-            *FlextInfraUtilitiesDocsRender._quality_gates_lines(),
-            "",
-            *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                link_prefix=link_prefix
-            ),
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._generated_page(
+            f"{scope.name} Documentation",
+            [
+                f"- Version: `{version}`",
+                f"- Project class: `{scope.project_class}`",
+                f"- Package: `{scope.package_name}`",
+                f"- Description: {description}",
+                "",
+                "This project portal is generated from `pyproject.toml`, package exports, and real docstrings.",
+                "",
+                "## Start Here",
+                "",
+                "- [Guides](guides/README.md)",
+                "- [API Reference](api-reference/README.md)",
+                "- [Generated API Overview](api-reference/generated/overview.md)",
+                "- [Generated Module Index](api-reference/generated/modules/index.md)",
+                "",
+                "## Public Surface Summary",
+                "",
+                *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
+                "",
+                *FlextInfraUtilitiesDocsRender._collection_rules_lines(
+                    scope, link_prefix=link_prefix
+                ),
+                "",
+                *FlextInfraUtilitiesDocsRender._quality_gates_lines(),
+                "",
+                *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
+                    link_prefix=link_prefix
+                ),
+            ],
+        )
 
     @staticmethod
     def docs_project_readme(
@@ -239,7 +231,7 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "## Module Map",
             "",
-            *FlextInfraUtilitiesDocsRender._public_surface_lines(data),
+            *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
             "",
             *FlextInfraUtilitiesDocsRender._collection_rules_lines(
                 scope, link_prefix=link_prefix
@@ -316,6 +308,23 @@ class FlextInfraUtilitiesDocsRender:
             f"- Generated module pages: `{len(modules)}`",
             "",
             "- [Back to project docs](../index.md)",
+            "",
+        ])
+
+    @staticmethod
+    def _generated_page(title: str, body: t.SequenceOf[str]) -> str:
+        """Compose a generated markdown page with the canonical header + title.
+
+        SSOT for the ``[GENERATED_HEADER, "", "# title", "", ...body, ""]``
+        layout shared by every ``docs_*_page``/``docs_*_index``/``docs_*_readme``
+        renderer. Body lines are passed verbatim — no further escaping.
+        """
+        return "\n".join([
+            c.Infra.GENERATED_HEADER,
+            "",
+            f"# {title}",
+            "",
+            *body,
             "",
         ])
 

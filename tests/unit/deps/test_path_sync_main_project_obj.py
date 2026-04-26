@@ -30,8 +30,11 @@ def _service(
         @override
         def discover_projects(
             workspace_root: Path,
+            *,
+            include_attached: bool = False,
         ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
             _ = workspace_root
+            _ = include_attached
             return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 
     return _TestPathSync()

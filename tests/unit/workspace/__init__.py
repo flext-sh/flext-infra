@@ -10,6 +10,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_main": ("TestsFlextInfraWorkspaceMain",),
         ".test_makefile_dry_run": ("TestsFlextInfraWorkspaceMakefileDryRun",),
         ".test_makefile_generator": ("TestsFlextInfraWorkspaceMakefileGenerator",),
+        ".test_propagate": ("TestsFlextInfraWorkspacePropagator",),
         ".test_sync": ("TestsFlextInfraWorkspaceSync",),
     },
 )

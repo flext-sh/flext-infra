@@ -54,6 +54,7 @@ class TestsFlextInfraDepsModernizerHelpers:
             ("requests", "requests"),
             ("requests>=2.0", "requests"),
             ("requests @ git+https://github.com/psf/requests.git", "requests"),
+            ("../flext-core", "flext-core"),
             ("my_package", "my_package"),
             ("  requests  ", "requests"),
             ("", None),

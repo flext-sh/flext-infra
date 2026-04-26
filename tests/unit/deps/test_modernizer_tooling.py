@@ -111,6 +111,39 @@ skip = ".git,poetry.lock"
             "flext_sample",
         ]
 
+    def test_namespace_phase_includes_workspace_source_packages(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_dir = tmp_path / "flext-sample"
+        package_dir = project_dir / "src" / "flext_sample"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        doc = tomlkit.parse(
+            """
+[project]
+dependencies = ["flext-core>=0.1.0"]
+
+[tool.uv.sources.flext-core]
+workspace = true
+""",
+        )
+
+        _ = FlextInfraEnsureNamespaceToolingPhase().apply(
+            doc,
+            path=project_dir / "pyproject.toml",
+        )
+
+        deptry = u.Infra.Tests.toml_mapping(
+            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
+                "deptry"
+            ],
+        )
+        assert list(u.Infra.Tests.toml_strings(deptry["known_first_party"])) == [
+            "flext_core",
+            "flext_sample",
+        ]
+
     def test_ruff_phase_sets_expected_state(
         self,
         tmp_path: Path,

@@ -12,12 +12,17 @@ from flext_cli import u
 
 from flext_infra import (
     FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsRender,
     FlextInfraUtilitiesPatterns,
     c,
     m,
     t,
+)
+from flext_infra._utilities.docs_contract import (
+    FlextInfraUtilitiesDocsContract,
+    __all__,
 )
 
 
@@ -67,9 +72,8 @@ class FlextInfraUtilitiesDocsGenerate:
         apply: bool,
     ) -> Sequence[m.Infra.GeneratedFile]:
         """Generate the managed docs artifacts for one FLEXT project."""
-        contract = FlextInfraUtilitiesDocsContract.docs_contract(
-            scope.path,
-            scope.package_name,
+        contract = FlextInfraUtilitiesDocsApi.public_contract(
+            scope.path, scope.package_name
         )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
         expected_generated: MutableSequence[Path] = [
@@ -183,9 +187,8 @@ class FlextInfraUtilitiesDocsGenerate:
         path = scope.path / "mkdocs.yml"
         if path.exists():
             return []
-        contract = FlextInfraUtilitiesDocsContract.docs_contract(
-            scope.path,
-            scope.package_name,
+        contract = FlextInfraUtilitiesDocsApi.public_contract(
+            scope.path, scope.package_name
         )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
         return [
@@ -228,9 +231,8 @@ class FlextInfraUtilitiesDocsGenerate:
             class_counts[scope.project_class] = (
                 class_counts.get(scope.project_class, 0) + 1
             )
-            project_contract = FlextInfraUtilitiesDocsContract.docs_contract(
-                scope.path,
-                scope.package_name,
+            project_contract = FlextInfraUtilitiesDocsApi.public_contract(
+                scope.path, scope.package_name
             )
             catalog_entries.append({
                 "name": scope.name,
