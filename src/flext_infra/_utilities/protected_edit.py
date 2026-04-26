@@ -245,9 +245,8 @@ class FlextInfraUtilitiesProtectedEdit:
             )
         }
 
-    @classmethod
+    @staticmethod
     def preview_source_lint(
-        cls,
         py_file: Path,
         workspace: Path,
         *,
@@ -258,7 +257,11 @@ class FlextInfraUtilitiesProtectedEdit:
         original_source = py_file.read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        before = cls.lint_snapshot(py_file, workspace, gates=gates)
+        before = FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+            py_file,
+            workspace,
+            gates=gates,
+        )
         if updated_source == original_source:
             return before, before
         py_file.write_text(
@@ -266,7 +269,11 @@ class FlextInfraUtilitiesProtectedEdit:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         try:
-            after = cls.lint_snapshot(py_file, workspace, gates=gates)
+            after = FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                py_file,
+                workspace,
+                gates=gates,
+            )
         finally:
             py_file.write_text(
                 original_source,

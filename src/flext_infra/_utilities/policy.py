@@ -13,6 +13,7 @@ from collections.abc import (
     Mapping,
 )
 from pathlib import Path
+from typing import Annotated
 
 from flext_cli import u
 from flext_infra import (
@@ -26,6 +27,20 @@ from flext_infra import (
 
 class FlextInfraUtilitiesRefactorPolicy:
     """Policy document loading and class-nesting policy enforcement."""
+
+    class ClassNestingViolationRequest(m.ContractModel):
+        """Validated input for class-nesting policy violation checks."""
+
+        symbol: Annotated[t.NonEmptyStr, m.Field(description="Source symbol name")]
+        family: Annotated[t.NonEmptyStr, m.Field(description="Module family key")]
+        target_namespace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Destination namespace for the symbol"),
+        ]
+        operation: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Policy operation being validated"),
+        ]
 
     _MODULE_FAMILY_KEYS: t.StrSequence = (
         "models",
@@ -133,53 +148,52 @@ class FlextInfraUtilitiesRefactorPolicy:
     @staticmethod
     def _class_nesting_violation(
         *,
-        symbol: str,
-        family: str,
-        target_namespace: str,
-        is_helper: bool,
+        request: ClassNestingViolationRequest,
         policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy],
     ) -> t.StrMapping | None:
         """Build a policy violation payload when class nesting is forbidden."""
-        policy = policy_by_family.get(family)
+        policy = policy_by_family.get(request.family)
         if policy is None:
             return {
-                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
-                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_RULE_ID: f"precheck:{request.symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: request.symbol,
                 c.Infra.RK_VIOLATION_TYPE: "unknown_module_family",
-                c.Infra.RK_SUGGESTED_FIX: (f"declare explicit policy for {family}"),
+                c.Infra.RK_SUGGESTED_FIX: (
+                    f"declare explicit policy for {request.family}"
+                ),
             }
-        operation = (
-            c.Infra.RK_HELPER_CONSOLIDATION if is_helper else c.Infra.RK_CLASS_NESTING
-        )
+        operation = request.operation
         if operation not in policy.allowed_operations:
             return {
-                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
-                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_RULE_ID: f"precheck:{request.symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: request.symbol,
                 c.Infra.RK_VIOLATION_TYPE: "operation_not_allowed",
-                c.Infra.RK_SUGGESTED_FIX: (f"allow {operation} in policy for {family}"),
+                c.Infra.RK_SUGGESTED_FIX: (
+                    f"allow {operation} in policy for {request.family}"
+                ),
             }
         if operation in policy.forbidden_operations:
             return {
-                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
-                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_RULE_ID: f"precheck:{request.symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: request.symbol,
                 c.Infra.RK_VIOLATION_TYPE: "operation_forbidden",
                 c.Infra.RK_SUGGESTED_FIX: (
-                    f"remove {operation} from forbidden_operations for {family}"
+                    f"remove {operation} from forbidden_operations for {request.family}"
                 ),
             }
         if any(
             FlextInfraUtilitiesRefactorPolicy._class_nesting_target_matches(
-                target_namespace,
+                request.target_namespace,
                 pattern,
             )
             for pattern in policy.forbidden_targets
         ):
             return {
-                c.Infra.RK_RULE_ID: f"precheck:{symbol}",
-                c.Infra.RK_SOURCE_SYMBOL: symbol,
+                c.Infra.RK_RULE_ID: f"precheck:{request.symbol}",
+                c.Infra.RK_SOURCE_SYMBOL: request.symbol,
                 c.Infra.RK_VIOLATION_TYPE: "forbidden_target",
                 c.Infra.RK_SUGGESTED_FIX: (
-                    f"choose allowed target for family {family}"
+                    f"choose allowed target for family {request.family}"
                 ),
             }
         return None
@@ -210,11 +224,19 @@ class FlextInfraUtilitiesRefactorPolicy:
                 policy_path,
             )
         )
-        violation = FlextInfraUtilitiesRefactorPolicy._class_nesting_violation(
+        operation = (
+            c.Infra.RK_HELPER_CONSOLIDATION
+            if bool(entry.get("helper_name", ""))
+            else c.Infra.RK_CLASS_NESTING
+        )
+        request = FlextInfraUtilitiesRefactorPolicy.ClassNestingViolationRequest(
             symbol=symbol,
             family=family,
             target_namespace=target_namespace,
-            is_helper=bool(entry.get("helper_name", "")),
+            operation=operation,
+        )
+        violation = FlextInfraUtilitiesRefactorPolicy._class_nesting_violation(
+            request=request,
             policy_by_family=policies,
         )
         return (False, violation) if violation is not None else (True, None)

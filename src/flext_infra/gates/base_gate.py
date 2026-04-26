@@ -56,10 +56,14 @@ class FlextInfraGate(ABC):
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_gate_result(
-            project=project_dir.name,
-            passed=passed,
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=passed,
+                errors=[issue.formatted for issue in issues],
+                duration=round(time.monotonic() - started, 3),
+            ),
             issues=issues,
-            duration=time.monotonic() - started,
             raw_output=result.stderr,
         )
 
@@ -89,10 +93,14 @@ class FlextInfraGate(ABC):
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_gate_result(
-            project=project_dir.name,
-            passed=passed,
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=passed,
+                errors=[issue.formatted for issue in issues],
+                duration=round(time.monotonic() - started, 3),
+            ),
             issues=issues,
-            duration=time.monotonic() - started,
             raw_output=result.stderr,
         )
 
@@ -160,10 +168,14 @@ class FlextInfraGate(ABC):
         """Template method: timing + targets + skip + run fix + result."""
         if not self.can_fix:
             return self._build_gate_result(
-                project=project_dir.name,
-                passed=True,
+                result=m.Infra.GateResult(
+                    gate=self.gate_id,
+                    project=project_dir.name,
+                    passed=True,
+                    errors=[],
+                    duration=0.0,
+                ),
                 issues=[],
-                duration=0.0,
                 raw_output=f"Gate {self.gate_id} does not support fix",
             )
         started = time.monotonic()
@@ -173,10 +185,14 @@ class FlextInfraGate(ABC):
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
         return self._build_gate_result(
-            project=project_dir.name,
-            passed=result.exit_code == 0,
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=result.exit_code == 0,
+                errors=[],
+                duration=round(time.monotonic() - started, 3),
+            ),
             issues=[],
-            duration=time.monotonic() - started,
             raw_output=self._fix_raw_output(result),
         )
 
@@ -228,21 +244,12 @@ class FlextInfraGate(ABC):
     def _build_gate_result(
         self,
         *,
-        project: str,
-        passed: bool,
+        result: m.Infra.GateResult,
         issues: Sequence[m.Infra.Issue],
-        duration: float,
         raw_output: str = "",
     ) -> m.Infra.GateExecution:
-        model = m.Infra.GateResult(
-            gate=self.gate_id,
-            project=project,
-            passed=passed,
-            errors=[issue.formatted for issue in issues],
-            duration=round(duration, 3),
-        )
         return m.Infra.GateExecution(
-            result=model,
+            result=result,
             issues=tuple(issues),
             raw_output=raw_output,
         )
@@ -276,10 +283,14 @@ class FlextInfraGate(ABC):
         started: float,
     ) -> m.Infra.GateExecution:
         return self._build_gate_result(
-            project=project_dir.name,
-            passed=True,
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=True,
+                errors=[],
+                duration=round(time.monotonic() - started, 3),
+            ),
             issues=[],
-            duration=time.monotonic() - started,
             raw_output="",
         )
 

@@ -46,10 +46,14 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         started = time.monotonic()
         if project_dir.name not in self._FIRST_WAVE_PROJECTS:
             return self._build_gate_result(
-                project=project_dir.name,
-                passed=True,
+                result=m.Infra.GateResult(
+                    gate=self.gate_id,
+                    project=project_dir.name,
+                    passed=True,
+                    errors=[],
+                    duration=round(time.monotonic() - started, 3),
+                ),
                 issues=[],
-                duration=time.monotonic() - started,
                 raw_output="silent-failure gate not enforced for this project",
             )
         files_result = u.Infra.iter_python_files(
@@ -65,10 +69,14 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
                 message=files_result.error or "silent-failure scan failed",
             )
             return self._build_gate_result(
-                project=project_dir.name,
-                passed=False,
+                result=m.Infra.GateResult(
+                    gate=self.gate_id,
+                    project=project_dir.name,
+                    passed=False,
+                    errors=[issue.formatted],
+                    duration=round(time.monotonic() - started, 3),
+                ),
                 issues=[issue],
-                duration=time.monotonic() - started,
                 raw_output=issue.message,
             )
         rope_project = u.Infra.init_rope_project(project_dir)
@@ -87,10 +95,14 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         finally:
             rope_project.close()
         return self._build_gate_result(
-            project=project_dir.name,
-            passed=len(issues) == 0,
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=len(issues) == 0,
+                errors=[issue.formatted for issue in issues],
+                duration=round(time.monotonic() - started, 3),
+            ),
             issues=issues,
-            duration=time.monotonic() - started,
             raw_output="\n".join(issue.formatted for issue in issues),
         )
 

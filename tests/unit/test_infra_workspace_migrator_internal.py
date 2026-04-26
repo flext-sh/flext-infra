@@ -13,28 +13,34 @@ from tests import u
 class TestsFlextInfraInfraWorkspaceMigratorInternal:
     @staticmethod
     def _write_project_files(
-        project_root: Path,
+        tmp_path: Path,
         *,
-        base_mk: str = "base",
+        name: str = "project-a",
         makefile: str | None = "include base.mk\n",
         pyproject: str = "[project]\n",
         gitignore: str = "",
-    ) -> None:
-        project_root.mkdir(parents=True, exist_ok=True)
-        (project_root / ".git").mkdir(exist_ok=True)
-        (project_root / "base.mk").write_text(base_mk, encoding="utf-8")
-        if makefile is not None:
-            (project_root / "Makefile").write_text(makefile, encoding="utf-8")
-        (project_root / "pyproject.toml").write_text(pyproject, encoding="utf-8")
-        (project_root / ".gitignore").write_text(gitignore, encoding="utf-8")
+    ) -> Path:
+        r"""File-specific defaults for ``create_migrator_dir_layout``.
+
+        Pinned defaults (``base_mk="base"`` and Makefile=``include base.mk\n``)
+        match this module's migration scenarios; scaffold logic is centralized
+        in ``u.Infra.Tests.create_migrator_dir_layout`` (no duplication).
+        """
+        return u.Infra.Tests.create_migrator_dir_layout(
+            tmp_path,
+            name=name,
+            base_mk="base",
+            makefile=makefile,
+            pyproject=pyproject,
+            gitignore=gitignore,
+        )
 
     @staticmethod
     def _make_read_only(path: Path) -> None:
         path.chmod(0o444)
 
     def test_execute_reports_missing_makefile_in_dry_run(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "project-a"
-        self._write_project_files(project_root, makefile=None)
+        project_root = self._write_project_files(tmp_path, makefile=None)
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
@@ -55,8 +61,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         self,
         tmp_path: Path,
     ) -> None:
-        project_root = tmp_path / "project-a"
-        self._write_project_files(project_root, makefile=None)
+        project_root = self._write_project_files(tmp_path, makefile=None)
         (project_root / "Makefile").mkdir()
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
@@ -72,9 +77,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         self,
         tmp_path: Path,
     ) -> None:
-        project_root = tmp_path / "project-a"
-        self._write_project_files(
-            project_root,
+        project_root = self._write_project_files(
+            tmp_path,
             makefile=None,
             pyproject='[project]\ndependencies = ["flext-core"]\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
@@ -95,9 +99,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         self,
         tmp_path: Path,
     ) -> None:
-        project_root = tmp_path / "project-a"
-        self._write_project_files(
-            project_root,
+        project_root = self._write_project_files(
+            tmp_path,
             pyproject="[tool.poetry]\n",
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
@@ -117,9 +120,9 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         )
 
     def test_execute_skips_flext_core_dependency_changes(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "flext-core"
-        self._write_project_files(
-            project_root,
+        project_root = self._write_project_files(
+            tmp_path,
+            name="flext-core",
             pyproject='[project]\nname = "flext-core"\nversion = "0.1.0"\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )

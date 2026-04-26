@@ -27,14 +27,9 @@ class FlextInfraScanner:
         cls,
         *,
         project_root: Path,
-        project_name: str,
         rope_project: t.Infra.RopeProject,
-        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> Sequence[m.Infra.FacadeStatus]:
         """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
-        del parse_failures
-        del project_name
-
         layout = u.Infra.layout(project_root)
         if layout is None or not layout.src_dir.is_dir():
             return [

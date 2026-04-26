@@ -742,6 +742,36 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
 
             @staticmethod
+            def create_migrator_dir_layout(
+                tmp_path: Path,
+                *,
+                name: str = "project-a",
+                base_mk: str | None = "base.mk",
+                pyproject: str | None = "[project]\n",
+                gitignore: str | None = "",
+                makefile: str | None = "content",
+            ) -> Path:
+                """Create a temp project directory layout for migrator tests.
+
+                Centralized SSOT replacing the 6-line scaffold previously
+                duplicated across migrator test modules. Pass ``None`` for any
+                file kwarg to skip that file (used by ``*_not_found`` tests).
+                """
+                root = tmp_path / name
+                root.mkdir(parents=True)
+                (root / ".git").mkdir()
+                writes = (
+                    ("base.mk", base_mk),
+                    ("Makefile", makefile),
+                    ("pyproject.toml", pyproject),
+                    (".gitignore", gitignore),
+                )
+                for filename, content in writes:
+                    if content is not None:
+                        (root / filename).write_text(content, encoding="utf-8")
+                return root
+
+            @staticmethod
             def create_project_info(
                 project_root: Path,
                 *,

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import re
+import tokenize
 from collections.abc import (
     Sequence,
 )
@@ -222,38 +224,14 @@ class FlextInfraUtilitiesRopeHelpers:
     @staticmethod
     def bracket_balance_line(line: str) -> int:
         """Return net bracket depth delta of one line (strings + ``#`` comments ignored)."""
-        delta = 0
-        in_single = False
-        in_double = False
-        escape = False
-        for ch in line:
-            if escape:
-                escape = False
-                continue
-            if ch == "\\":
-                escape = True
-                continue
-            if in_single:
-                if ch == "'":
-                    in_single = False
-                continue
-            if in_double:
-                if ch == '"':
-                    in_double = False
-                continue
-            if ch == "#":
-                break
-            if ch == "'":
-                in_single = True
-                continue
-            if ch == '"':
-                in_double = True
-                continue
-            if ch in "([{":
-                delta += 1
-            elif ch in ")]}":
-                delta -= 1
-        return delta
+        try:
+            return sum(
+                1 if token.string in "([{" else -1
+                for token in tokenize.generate_tokens(io.StringIO(line).readline)
+                if token.type == tokenize.OP and token.string in "()[]{}"
+            )
+        except tokenize.TokenError:
+            return 0
 
     @staticmethod
     def append_to_class_body(
@@ -318,23 +296,29 @@ class FlextInfraUtilitiesRopeHelpers:
         """Check if a method matches an ordering rule."""
         decorators = set(method.decorators)
         excludes = set(rule.exclude_decorators)
-        if excludes and decorators.intersection(excludes):
-            return False
-        if rule.visibility == "public" and method.name.startswith("_"):
-            return False
-        if rule.visibility == "protected" and (
-            not method.name.startswith("_") or method.name.startswith("__")
-        ):
-            return False
-        if rule.visibility == "private" and (
-            not method.name.startswith("__") or method.name.endswith("__")
-        ):
-            return False
-        if rule.decorators and not decorators.intersection(rule.decorators):
-            return False
+        match rule.visibility:
+            case "public":
+                visibility_matches = not method.name.startswith("_")
+            case "protected":
+                visibility_matches = method.name.startswith(
+                    "_"
+                ) and not method.name.startswith("__")
+            case "private":
+                visibility_matches = method.name.startswith(
+                    "__"
+                ) and not method.name.endswith("__")
+            case _:
+                visibility_matches = True
+        decorators_match = not rule.decorators or bool(
+            decorators.intersection(rule.decorators)
+        )
+        excluded = bool(excludes and decorators.intersection(excludes))
         patterns = rule.patterns
-        return not patterns or any(
+        patterns_match = not patterns or any(
             re.match(pattern, method.name) for pattern in patterns
+        )
+        return (
+            visibility_matches and decorators_match and patterns_match and not excluded
         )
 
     @staticmethod

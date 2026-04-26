@@ -80,7 +80,6 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         facade_statuses = self._scan_facades(
             project=(project_root, project_name),
             rope_project=self._rope_project,
-            parse_failures=parse_failures,
             apply=apply,
             workspace_root=self._workspace_root,
         )
@@ -232,7 +231,6 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         *,
         project: tuple[Path, str],
         rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
         apply: bool,
         workspace_root: Path,
     ) -> Sequence[m.Infra.FacadeStatus]:
@@ -240,9 +238,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         project_root, project_name = project
         facade_statuses = FlextInfraScanner.scan_project(
             project_root=project_root,
-            project_name=project_name,
             rope_project=rope_project,
-            parse_failures=parse_failures,
         )
         if not apply:
             return facade_statuses
@@ -254,9 +250,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         return FlextInfraScanner.scan_project(
             project_root=project_root,
-            project_name=project_name,
             rope_project=rope_project,
-            parse_failures=parse_failures,
         )
 
     @staticmethod

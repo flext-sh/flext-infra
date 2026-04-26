@@ -48,11 +48,13 @@ class TestsFlextInfraInfraWorkspaceMigrator:
     def test_migrator_handles_missing_pyproject_gracefully(
         self, tmp_path: Path
     ) -> None:
-        project_root = tmp_path / "project-a"
-        project_root.mkdir(parents=True)
-        (project_root / ".git").mkdir(parents=True, exist_ok=True)
-        (project_root / "base.mk").write_text("OLD_BASE\n", encoding="utf-8")
-        (project_root / "Makefile").write_text("", encoding="utf-8")
+        project_root = u.Infra.Tests.create_migrator_dir_layout(
+            tmp_path,
+            base_mk="OLD_BASE\n",
+            makefile="",
+            pyproject=None,
+            gitignore=None,
+        )
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(project_root),
             "NEW_BASE\n",
@@ -123,19 +125,12 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that(len(migrations), gte=1)
 
     def test_migrator_no_changes_needed(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "project-a"
-        project_root.mkdir(parents=True)
-        (project_root / ".git").mkdir()
-        (project_root / "Makefile").write_text("migrated", encoding="utf-8")
-        (project_root / "pyproject.toml").write_text(
-            '[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
-            encoding="utf-8",
+        project_root = u.Infra.Tests.create_migrator_dir_layout(
+            tmp_path,
+            makefile="migrated",
+            pyproject='[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
+            gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        (project_root / ".gitignore").write_text(
-            ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
-            encoding="utf-8",
-        )
-        (project_root / "base.mk").write_text("base.mk", encoding="utf-8")
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(project_root),
             "base.mk",

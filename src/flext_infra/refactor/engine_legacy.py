@@ -148,23 +148,27 @@ class FlextInfraRefactorLegacyTextOps:
                 continue
             return False
         remaining_args = call.args[pos_index:]
-        if func.args.vararg is None:
-            if remaining_args:
-                return False
-        elif (
-            len(remaining_args) != 1
-            or not isinstance(remaining_args[0], ast.Starred)
-            or not _is_name(remaining_args[0].value, func.args.vararg.arg)
-        ):
-            return False
-        for name in keyword_names:
-            if name not in named_keywords or not _is_name(named_keywords[name], name):
-                return False
-        if func.args.kwarg is None:
-            return not keyword_unpack
-        return len(keyword_unpack) == 1 and _is_name(
-            keyword_unpack[0], func.args.kwarg.arg
+
+        vararg_ok = (
+            not remaining_args
+            if func.args.vararg is None
+            else (
+                len(remaining_args) == 1
+                and isinstance(remaining_args[0], ast.Starred)
+                and _is_name(remaining_args[0].value, func.args.vararg.arg)
+            )
         )
+        keywords_ok = all(
+            name in named_keywords and _is_name(named_keywords[name], name)
+            for name in keyword_names
+        )
+        kwarg_ok = (
+            not keyword_unpack
+            if func.args.kwarg is None
+            else len(keyword_unpack) == 1
+            and _is_name(keyword_unpack[0], func.args.kwarg.arg)
+        )
+        return vararg_ok and keywords_ok and kwarg_ok
 
     @staticmethod
     def _remove_import_bypasses(source: str) -> t.Infra.TransformResult:

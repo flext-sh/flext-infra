@@ -692,73 +692,71 @@ class TestsFlextInfraRefactorMainCli:
         assert "only_for_tests" in service_file.read_text(encoding="utf-8")
         assert "only_for_tests" in test_file.read_text(encoding="utf-8")
 
-    def test_refactor_census_dry_run_excludes_unsupported_method_candidate(
+    def _assert_dry_run_one_violation_no_candidate(
         self,
-        tmp_path: Path,
+        workspace: Path,
+        *,
+        impact_map_path: Path,
+        kind: str,
+        rule: str,
+        count_attr: str,
+        expected_object_name: str,
     ) -> None:
-        workspace = self._build_test_only_method_workspace(tmp_path)
-        impact_map_path = tmp_path / "method-impact-map.json"
+        """Assert one violation detected with no removal candidate.
 
+        Bundle: ``kind``/``rule`` violation detected, no removal candidate
+        produced, empty impact-map ``files``.
+        """
         report_result = FlextInfraRefactorCensus(
             workspace=workspace,
             impact_map_output=str(impact_map_path),
             include_local_scopes=True,
-            kinds=("method",),
-            rules=("test_only",),
+            kinds=(kind,),
+            rules=(rule,),
         ).execute()
-
         assert report_result.success, report_result.error
         report = report_result.unwrap()
         violations = [
             violation for project in report.projects for violation in project.violations
         ]
-        assert report.test_only_count == 1
+        assert getattr(report, count_attr) == 1
         assert report.removal_candidate_count == 0
         assert len(report.removal_candidates) == 0
         assert len(violations) == 1
-        assert violations[0].kind == "test_only"
-        assert violations[0].object_kind == "method"
-        assert violations[0].object_name == "only_for_tests"
-
+        assert violations[0].kind == rule
+        assert violations[0].object_kind == kind
+        assert violations[0].object_name == expected_object_name
         payload_result = u.Cli.json_read(impact_map_path)
         assert payload_result.success, payload_result.error
         payload = _mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         assert len(files) == 0
+
+    def test_refactor_census_dry_run_excludes_unsupported_method_candidate(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        self._assert_dry_run_one_violation_no_candidate(
+            self._build_test_only_method_workspace(tmp_path),
+            impact_map_path=tmp_path / "method-impact-map.json",
+            kind="method",
+            rule="test_only",
+            count_attr="test_only_count",
+            expected_object_name="only_for_tests",
+        )
 
     def test_refactor_census_dry_run_excludes_unsupported_nested_unused_function(
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = self._build_unused_nested_function_workspace(tmp_path)
-        impact_map_path = tmp_path / "nested-unused-impact-map.json"
-
-        report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
-            impact_map_output=str(impact_map_path),
-            include_local_scopes=True,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-
-        assert report_result.success, report_result.error
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
-        assert report.unused_count == 1
-        assert report.removal_candidate_count == 0
-        assert len(report.removal_candidates) == 0
-        assert len(violations) == 1
-        assert violations[0].kind == "unused"
-        assert violations[0].object_kind == "function"
-        assert violations[0].object_name == "only_for_cleanup"
-
-        payload_result = u.Cli.json_read(impact_map_path)
-        assert payload_result.success, payload_result.error
-        payload = _mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        assert len(files) == 0
+        self._assert_dry_run_one_violation_no_candidate(
+            self._build_unused_nested_function_workspace(tmp_path),
+            impact_map_path=tmp_path / "nested-unused-impact-map.json",
+            kind="function",
+            rule="unused",
+            count_attr="unused_count",
+            expected_object_name="only_for_cleanup",
+        )
 
     def test_refactor_census_dry_run_validates_unused_candidate_after_import_cleanup(
         self,
@@ -807,35 +805,14 @@ class TestsFlextInfraRefactorMainCli:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = self._build_unused_local_workspace(tmp_path)
-        impact_map_path = tmp_path / "local-unused-impact-map.json"
-
-        report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
-            impact_map_output=str(impact_map_path),
-            include_local_scopes=True,
-            kinds=("local",),
-            rules=("unused",),
-        ).execute()
-
-        assert report_result.success, report_result.error
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
-        assert report.unused_count == 1
-        assert report.removal_candidate_count == 0
-        assert len(report.removal_candidates) == 0
-        assert len(violations) == 1
-        assert violations[0].kind == "unused"
-        assert violations[0].object_kind == "local"
-        assert violations[0].object_name == "only_for_cleanup"
-
-        payload_result = u.Cli.json_read(impact_map_path)
-        assert payload_result.success, payload_result.error
-        payload = _mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        assert len(files) == 0
+        self._assert_dry_run_one_violation_no_candidate(
+            self._build_unused_local_workspace(tmp_path),
+            impact_map_path=tmp_path / "local-unused-impact-map.json",
+            kind="local",
+            rule="unused",
+            count_attr="unused_count",
+            expected_object_name="only_for_cleanup",
+        )
 
     def test_refactor_census_writes_impact_map_for_removal_candidates(
         self,

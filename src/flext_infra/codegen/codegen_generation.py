@@ -40,6 +40,8 @@ _LOCAL_INFERRED_SEGMENTS: frozenset[str] = frozenset({
     "tools",
 })
 
+type _LazyEntryContext = tuple[str, frozenset[str], bool]
+
 
 class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
@@ -333,12 +335,9 @@ class FlextInfraCodegenGeneration:
     def _build_lazy_entries(
         exports: t.StrSequence,
         lazy_filtered: t.Infra.LazyImportMap,
-        current_pkg: str,
-        children_lazy: tuple[str, ...],
-        *,
-        include_module_exports: bool = False,
+        context: _LazyEntryContext,
     ) -> Sequence[tuple[str, str, str]]:
-        child_aliases = set(children_lazy)
+        current_pkg, child_aliases, include_module_exports = context
         entries: MutableSequence[tuple[str, str, str]] = []
         for exp in exports:
             if exp not in lazy_filtered:
@@ -635,9 +634,7 @@ class FlextInfraCodegenGeneration:
         lazy_entries = FlextInfraCodegenGeneration._build_lazy_entries(
             published_exports,
             lazy_filtered,
-            current_pkg,
-            children_lazy,
-            include_module_exports=not publish_all,
+            (current_pkg, frozenset(children_lazy), not publish_all),
         )
         lazy_module_groups, lazy_alias_groups = (
             FlextInfraCodegenGeneration._group_lazy_entries(lazy_entries)

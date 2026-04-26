@@ -15,7 +15,7 @@ from collections.abc import (
 from functools import cache
 from pathlib import Path
 
-from git import InvalidGitRepositoryError, NoSuchPathError, Repo
+from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 from tomlkit import TOMLDocument
 
 from flext_cli import u
@@ -432,20 +432,17 @@ class FlextInfraUtilitiesIteration:
         except ValueError:
             return None
         scope_prefix_text = "" if not scope_prefix.parts else scope_prefix.as_posix()
-        prefix_with_sep = f"{scope_prefix_text}/" if scope_prefix_text else ""
-        normalized: set[str] = set()
-        for tracked_path, _stage in repo.index.entries:
-            path_text = str(Path(tracked_path).as_posix())
-            if not path_text:
-                continue
-            if prefix_with_sep:
-                if not path_text.startswith(prefix_with_sep):
-                    continue
-                relative_path = path_text[len(prefix_with_sep) :]
-            else:
-                relative_path = path_text
-            if relative_path:
-                normalized.add(relative_path)
+        try:
+            tracked_output = repo.git.ls_files(
+                *((scope_prefix_text,) if scope_prefix_text else ())
+            )
+        except GitCommandError:
+            return None
+        normalized = frozenset(
+            path_text
+            for raw_line in tracked_output.splitlines()
+            if (path_text := Path(raw_line).as_posix())
+        )
         return tuple(sorted(normalized))
 
     @classmethod

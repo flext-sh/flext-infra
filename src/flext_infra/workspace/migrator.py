@@ -277,35 +277,22 @@ class FlextInfraProjectMigrator(
         is_root = project.path.resolve() == workspace_root.resolve()
         changes: MutableSequence[str] = []
         errors: MutableSequence[str] = []
-        self._append_result(
+        for step_result in (
             self._migrate_basemk(
                 project.path,
                 dry_run=dry_run,
                 is_workspace_root=is_root,
             ),
-            changes,
-            errors,
-        )
-        self._append_result(
             self._migrate_makefile(project.path, dry_run=dry_run),
-            changes,
-            errors,
-        )
-        self._append_result(
             self._migrate_pyproject(
                 project.path,
                 project_name=project.name,
                 dry_run=dry_run,
             ),
-            changes,
-            errors,
-        )
-        self._append_result(
             self._migrate_gitignore(project.path, dry_run=dry_run),
-            changes,
-            errors,
-        )
-        if not changes and (not errors):
+        ):
+            self._append_result(step_result, changes, errors)
+        if not changes and not errors:
             changes.append("no changes needed")
         return m.Infra.MigrationResult(
             project=project.name,
@@ -334,7 +321,7 @@ class FlextInfraProjectMigrator(
                 document_result.error or "pyproject parse failed",
             )
         document: TOMLDocument = document_result.value
-        if self._has_flext_core_dependency(document):
+        if c.Infra.PKG_CORE in u.Infra.declared_dependency_names(document):
             return self._no_change_result(
                 "pyproject.toml already includes flext-core dependency",
                 dry_run=dry_run,

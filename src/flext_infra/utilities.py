@@ -51,6 +51,9 @@ from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
+from flext_infra._utilities.rope_analysis_workspace import (
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
+)
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
@@ -88,6 +91,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
         FlextInfraUtilitiesRopeAnalysis,
+        FlextInfraUtilitiesRopeAnalysisWorkspace,
         FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRopeHelpers,
         FlextInfraUtilitiesRopeInventory,

@@ -7,30 +7,19 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraProjectMigrator
-from tests import m as im, t, u
+from tests import t, u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
-    @staticmethod
-    def _setup_basic(tmp_path: Path) -> tuple[Path, im.Infra.ProjectInfo]:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        (root / ".git").mkdir()
-        (root / "base.mk").write_text("base", encoding="utf-8")
-        (root / "Makefile").write_text("content", encoding="utf-8")
-        (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
-        (root / ".gitignore").write_text("", encoding="utf-8")
-        return root, u.Infra.Tests.create_migrator_project(root)
-
     @staticmethod
     def _make_read_only(path: Path) -> None:
         path.chmod(0o444)
 
     def test_gitignore_write_failure(self, tmp_path: Path) -> None:
-        _root, proj = self._setup_basic(tmp_path)
-        self._make_read_only(tmp_path / "project-a" / ".gitignore")
+        root = u.Infra.Tests.create_migrator_dir_layout(tmp_path, base_mk="base")
+        self._make_read_only(root / ".gitignore")
         migrator = u.Infra.Tests.build_project_migrator(
-            proj,
+            u.Infra.Tests.create_migrator_project(root),
             "base",
             workspace_root=tmp_path,
             dry_run=False,
@@ -44,13 +33,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         )
 
     def test_basemk_write_failure(self, tmp_path: Path) -> None:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        (root / ".git").mkdir()
-        (root / "base.mk").write_text("old", encoding="utf-8")
-        (root / "Makefile").write_text("content", encoding="utf-8")
-        (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
-        (root / ".gitignore").write_text("", encoding="utf-8")
+        root = u.Infra.Tests.create_migrator_dir_layout(tmp_path, base_mk="old")
         self._make_read_only(root / "base.mk")
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(root),
@@ -86,12 +69,9 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         )
 
     def test_gitignore_read_failure(self, tmp_path: Path) -> None:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        (root / ".git").mkdir()
-        (root / "base.mk").write_text("base", encoding="utf-8")
-        (root / "Makefile").write_text("content", encoding="utf-8")
-        (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+        root = u.Infra.Tests.create_migrator_dir_layout(
+            tmp_path, base_mk="base", gitignore=None
+        )
         (root / ".gitignore").mkdir()
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(root),
@@ -129,13 +109,9 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         )
 
     def test_pyproject_parse_failure(self, tmp_path: Path) -> None:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        (root / ".git").mkdir()
-        (root / "base.mk").write_text("base.mk", encoding="utf-8")
-        (root / "Makefile").write_text("content", encoding="utf-8")
-        (root / "pyproject.toml").write_text("invalid toml {", encoding="utf-8")
-        (root / ".gitignore").write_text("", encoding="utf-8")
+        root = u.Infra.Tests.create_migrator_dir_layout(
+            tmp_path, pyproject="invalid toml {"
+        )
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(root),
             "base.mk",

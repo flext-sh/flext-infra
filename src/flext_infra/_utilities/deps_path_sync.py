@@ -213,13 +213,15 @@ class FlextInfraUtilitiesDependencyPathSync:
         self,
         pyproject_path: Path,
         *,
-        mode: c.Infra.PathSyncMode,
+        command: FlextInfraModelsDeps.PathSyncCommand,
         internal_names: t.Infra.StrSet,
         workspace_members: t.StrSequence,
-        is_root: bool = False,
-        dry_run: bool = False,
     ) -> p.Result[t.StrSequence]:
         """Rewrite PEP 621 and Poetry dependency paths."""
+        mode = command.mode
+        is_root = pyproject_path.resolve() == (
+            command.workspace_path / c.Infra.PYPROJECT_FILENAME
+        )
         state_result = self._read_document_state(pyproject_path)
         if state_result.failure:
             return r[t.StrSequence].fail(
@@ -250,7 +252,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             )
         )
         changes += list(self._rewrite_poetry(payload, is_root=is_root, mode=mode))
-        if changes and (not dry_run):
+        if changes and (not command.dry_run):
             write_result = u.Cli.toml_write_mapping(pyproject_path, state.payload)
             if write_result.failure:
                 return r[t.StrSequence].fail(
@@ -286,6 +288,7 @@ class FlextInfraUtilitiesDependencyPathSync:
 
         if mode == c.Infra.PathSyncMode.AUTO:
             mode = self.detect_mode(workspace_root)
+        effective_command = params.model_copy(update={"mode": mode})
 
         root_pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
 
@@ -359,11 +362,9 @@ class FlextInfraUtilitiesDependencyPathSync:
         if not selected_projects and root_pyproject.exists():
             changes_result = self.rewrite_dep_paths(
                 root_pyproject,
-                mode=mode,
+                command=effective_command,
                 internal_names=internal_names,
                 workspace_members=workspace_members,
-                is_root=True,
-                dry_run=dry_run,
             )
             if changes_result.failure:
                 root_error = changes_result.error or "sync_dep_paths_root_failed"
@@ -387,11 +388,9 @@ class FlextInfraUtilitiesDependencyPathSync:
                 continue
             changes_result = self.rewrite_dep_paths(
                 pyproject,
-                mode=mode,
+                command=effective_command,
                 internal_names=internal_names,
                 workspace_members=workspace_members,
-                is_root=False,
-                dry_run=dry_run,
             )
             if changes_result.failure:
                 project_error = changes_result.error or "sync_dep_paths_project_failed"
