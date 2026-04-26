@@ -1,0 +1,62 @@
+tests/unit/test_infra_workspace_migrator_dryrun.py
+  d47817c7586d1e59 20-22,37-39,57-59,77-79,99-102,121
+src/flext_infra/_utilities/policy.py
+  h_9db9d35f50cf33 16,31-44,151,155,158-159,162,165,168-169,172,177-178,181,186,192-193,196,227-232,236,238-239
+tests/unit/test_infra_workspace_migrator_errors.py
+  d47817c7586d1e59 10,19-20,22,36,72-74,112-114
+src/flext_infra/_utilities/protected_edit.py
+  h_9db9d35f50cf33 248,260,263,272,275
+src/flext_infra/gates/silent_failure.py
+  h_9db9d35f50cf33 49-50,52-55,72-73,75-78,98-99,101-104
+src/flext_infra/_utilities/rope_analysis_workspace.py
+  h_9db9d35f50cf33 1-212
+  d47817c7586d1e59 213
+tests/unit/test_infra_workspace_migrator_internal.py
+  d47817c7586d1e59 16,18,22-36,43,64,80-81,102-103,123-125
+src/flext_infra/workspace/migrator.py
+  h_9db9d35f50cf33 280,293-295,324
+src/flext_infra/codegen/codegen_generation.py
+  h_9db9d35f50cf33 43,338,340,637
+src/flext_infra/_utilities/rope_analysis.py
+  h_9db9d35f50cf33 7
+src/flext_infra/gates/base_gate.py
+  h_9db9d35f50cf33 59-60,62-65,96-97,99-102,171-172,174-177,188-189,191-194,247,252,286-287,289-292
+src/flext_infra/_utilities/rope_helpers.py
+  h_9db9d35f50cf33 5,7,227-234,299-303,306-307,310-312,314-315,317,320-322
+src/flext_infra/refactor/engine_legacy.py
+  h_9db9d35f50cf33 151-158,160-163,165-168,171
+src/flext_infra/utilities.py
+  h_9db9d35f50cf33 54-56,94
+tests/unit/test_infra_workspace_migrator.py
+  d47817c7586d1e59 51-57,128-132
+src/flext_infra/_utilities/iteration.py
+  h_9db9d35f50cf33 18,435-441,443-444
+src/flext_infra/_utilities/deps_path_sync.py
+  h_9db9d35f50cf33 216,221-224,255,291,365,391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "203cd67d76cb8521a572d1a4e2c98721ead45dc2",
+  "prompts": {
+    "d47817c7586d1e59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc7f6bd0-731d-49b0-9c44-6c380d65f6ff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 90,
+      "total_deletions": 142,
+      "accepted_lines": 107,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/aeadc0264a1273ac961d28b723f9c672c37965b972b6ee09cff2084f966f7d08"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
