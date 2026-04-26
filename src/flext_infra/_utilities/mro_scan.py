@@ -137,8 +137,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
                 cand = FlextInfraUtilitiesRefactorMroScan._create_candidate(
                     name=name,
-                    line=block_start,
-                    end_line=block_end,
+                    block=(block_start, block_end),
                     src_line=src_line,
                     class_header=class_header,
                     target_spec=target_spec,
@@ -165,13 +164,13 @@ class FlextInfraUtilitiesRefactorMroScan:
     def _create_candidate(
         *,
         name: str,
-        line: int,
-        end_line: int,
+        block: tuple[int, int],
         src_line: str,
         class_header: str,
         target_spec: m.Infra.MROTargetSpec,
         obj: t.Infra.RopePyObject,
     ) -> m.Infra.MROSymbolCandidate | None:
+        line, end_line = block
         alias = target_spec.family_alias
         kind = ""
 

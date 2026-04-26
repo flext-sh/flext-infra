@@ -88,43 +88,69 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         while i < len(lines):
             line = lines[i]
             stripped = line.lstrip()
-            # Check for from X import (multiline)
-            from_match = re.match(
-                r"from\s+([\w.]+)\s+import\s*\(",
+            next_i, rewritten, handled = self._consume_forbidden_multiline_import(
+                lines,
+                i,
                 stripped,
             )
-            if from_match:
-                module = from_match.group(1)
-                if module in self._imports_to_remove:
-                    # Collect full multiline import
-                    import_lines = [line]
-                    while i + 1 < len(lines) and ")" not in lines[i]:
-                        i += 1
-                        import_lines.append(lines[i])
-                    full_text = "".join(import_lines)
-                    rewritten = self._filter_import_names(module, full_text)
-                    if rewritten is not None:
-                        result.append(rewritten)
-                    i += 1
-                    continue
-            # Check for single-line from X import Y
-            from_single = re.match(
-                r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$",
+            if handled:
+                if rewritten is not None:
+                    result.append(rewritten)
+                i = next_i
+                continue
+            rewritten_single = self._rewrite_forbidden_single_line_import(
+                line,
                 stripped,
             )
-            if from_single:
-                module = from_single.group(1)
-                if module in self._imports_to_remove:
-                    rewritten = self._filter_import_names(module, line)
-                    if rewritten is not None:
-                        result.append(rewritten)
-                    else:
-                        pass  # Line removed entirely
-                    i += 1
-                    continue
+            if rewritten_single is not line:
+                if rewritten_single is not None:
+                    result.append(rewritten_single)
+                i += 1
+                continue
             result.append(line)
             i += 1
         return "".join(result)
+
+    def _consume_forbidden_multiline_import(
+        self,
+        lines: t.StrSequence,
+        start: int,
+        stripped_line: str,
+    ) -> tuple[int, str | None, bool]:
+        """Consume one forbidden parenthesized import statement when present."""
+        from_match = re.match(
+            r"from\s+([\w.]+)\s+import\s*\(",
+            stripped_line,
+        )
+        if from_match is None:
+            return start, None, False
+        module = from_match.group(1)
+        if module not in self._imports_to_remove:
+            return start, None, False
+        end = start
+        import_lines = [lines[start]]
+        while end + 1 < len(lines) and ")" not in lines[end]:
+            end += 1
+            import_lines.append(lines[end])
+        full_text = "".join(import_lines)
+        return end + 1, self._filter_import_names(module, full_text), True
+
+    def _rewrite_forbidden_single_line_import(
+        self,
+        original_line: str,
+        stripped_line: str,
+    ) -> str | None:
+        """Rewrite one forbidden single-line import or return the original line."""
+        from_single = re.match(
+            r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$",
+            stripped_line,
+        )
+        if from_single is None:
+            return original_line
+        module = from_single.group(1)
+        if module not in self._imports_to_remove:
+            return original_line
+        return self._filter_import_names(module, original_line)
 
     def _filter_import_names(
         self,

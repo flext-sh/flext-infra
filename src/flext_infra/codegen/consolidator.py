@@ -225,34 +225,29 @@ class FlextInfraCodegenConsolidator(s[str]):
             ))
             descs.append(f"{symbol.name} = {value} -> {ref}")
         if not edits:
-            empty_changes: list[str] = []
-            empty_report: list[str] = []
-            return (True, empty_changes, empty_report)
-
-        def _do_edit() -> None:
-            u.Infra.rewrite_source_at_offsets(
-                rope_project,
-                resource,
-                edits,
-                apply=True,
-            )
-            u.Infra.add_import(
-                rope_project,
-                resource,
-                pkg_name,
-                ["c"],
-                apply=True,
-            )
-
-        def _restore_edit() -> None:
-            resource.write(backup)
+            return (True, [], [])
 
         ok, report = u.Infra.protected_file_edit(
             py_file,
             workspace=workspace,
             before_source=backup,
-            edit_fn=_do_edit,
-            restore_fn=_restore_edit,
+            edit_fn=lambda: (
+                u.Infra.rewrite_source_at_offsets(
+                    rope_project,
+                    resource,
+                    edits,
+                    apply=True,
+                ),
+                u.Infra.add_import(
+                    rope_project,
+                    resource,
+                    pkg_name,
+                    ["c"],
+                    apply=True,
+                ),
+                None,
+            )[-1],
+            restore_fn=lambda: resource.write(backup),
             keep_backup=True,
             gates=cls._ALL_LINT_GATES,
         )
@@ -262,39 +257,21 @@ class FlextInfraCodegenConsolidator(s[str]):
 
     @classmethod
     def _build_value_map_from_constants_file(cls, constants_file: Path) -> t.StrMapping:
-        min_quoted_length = 2
         value_map: t.MutableStrMapping = {}
         try:
             source = constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except (OSError, UnicodeDecodeError):
             return value_map
 
-        class_stack: MutableSequence[tuple[str, int]] = []
-        for line in source.splitlines():
-            stripped = line.lstrip()
-            indent = len(line) - len(stripped)
-            if stripped.startswith("class ") and stripped.endswith(":"):
-                class_match = c.Infra.DETECTION_CLASS_DECL_RE.match(stripped)
-                if class_match is not None:
-                    while class_stack and class_stack[-1][1] >= indent:
-                        class_stack.pop()
-                    class_stack.append((class_match.group(1), indent))
-            elif class_stack:
-                while class_stack and indent <= class_stack[-1][1]:
-                    class_stack.pop()
-
-            match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
-            if match is None:
-                continue
-            name = match.group("name")
-            raw = match.group("value").strip()
+        for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
+            source.splitlines(),
+        ):
             if not raw:
                 continue
-            class_path = ".".join(item[0] for item in class_stack)
             canonical = f"{class_path}.{name}" if class_path else name
             value_map[raw] = canonical
             if (
-                len(raw) >= min_quoted_length
+                len(raw) >= c.Infra.DETECTION_MIN_QUOTED_LITERAL_LEN
                 and raw[0] in {'"', "'"}
                 and raw[-1] == raw[0]
             ):

@@ -34,10 +34,6 @@ class FlextInfraProjectMigrator(
         m.Field(exclude=True, description="Optional custom discovery service"),
     ] = None
 
-    def _get_discovery(self) -> p.Infra.Discovery | None:
-        """Return the configured discovery service."""
-        return self.discovery
-
     @staticmethod
     def _action_text(action: str, *, dry_run: bool) -> str:
         return f"[DRY-RUN] {action}" if dry_run else action
@@ -61,10 +57,6 @@ class FlextInfraProjectMigrator(
         val: str = result.value
         if val:
             changes.append(val)
-
-    @staticmethod
-    def _has_flext_core_dependency(document: TOMLDocument) -> bool:
-        return c.Infra.PKG_CORE in u.Infra.declared_dependency_names(document)
 
     @staticmethod
     def _workspace_root_project(
@@ -125,7 +117,7 @@ class FlextInfraProjectMigrator(
             return r[Sequence[m.Infra.MigrationResult]].fail(
                 f"workspace root does not exist: {resolved_root}",
             )
-        discovery = self._get_discovery()
+        discovery = self.discovery
         projects_result = (
             discovery.discover_projects(resolved_root)
             if discovery is not None

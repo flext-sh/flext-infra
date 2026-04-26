@@ -216,34 +216,36 @@ class FlextInfraUtilitiesDocsApi:
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
         project_meta: t.Infra.ContainerDict = (
-            {str(key): value for key, value in project_meta_value.items()}
-            if isinstance(project_meta_value, Mapping)
-            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                project_meta_value if isinstance(project_meta_value, Mapping) else {}
+            )
         )
         project_urls_value = project_meta.get("urls")
         project_urls: t.Infra.ContainerDict = (
-            {str(key): value for key, value in project_urls_value.items()}
-            if isinstance(project_urls_value, Mapping)
-            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
-        )
-        if not package_name:
-            site_title = (
-                str(docs_meta.get("site_title", "")).strip()
-                or str(project_meta.get("name", "")).strip()
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                project_urls_value if isinstance(project_urls_value, Mapping) else {}
             )
+        )
+        site_title = (
+            str(docs_meta.get("site_title", "")).strip()
+            or str(project_meta.get("name", "")).strip()
+        )
+        site_url = str(
+            project_urls.get("Documentation") or project_urls.get("Homepage") or ""
+        ).strip()
+        repo_url = str(
+            project_urls.get("Repository") or project_urls.get("Homepage") or ""
+        ).strip()
+        description = str(project_meta.get("description", "")).strip()
+        version = str(project_meta.get(c.Infra.VERSION, "")).strip()
+        if not package_name:
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
                 "package_name": "",
-                "description": str(project_meta.get("description", "")).strip(),
-                "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
+                "description": description,
+                "version": version,
                 "site_title": site_title,
-                "site_url": str(
-                    project_urls.get("Documentation")
-                    or project_urls.get("Homepage")
-                    or ""
-                ).strip(),
-                "repo_url": str(
-                    project_urls.get("Repository") or project_urls.get("Homepage") or ""
-                ).strip(),
+                "site_url": site_url,
+                "repo_url": repo_url,
                 "exports": [],
                 "aliases": [],
                 "facades": [],
@@ -325,17 +327,12 @@ class FlextInfraUtilitiesDocsApi:
         facades = [name for name in public_symbols if name.startswith("Flext")]
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "package_name": package_name,
-            "description": str(project_meta.get("description", "")).strip(),
+            "description": description,
             "keywords": FlextInfraUtilitiesDocsApi._project_keywords(project_meta),
-            "version": str(project_meta.get(c.VERSION, "")).strip(),
-            "site_title": str(docs_meta.get("site_title", "")).strip()
-            or str(project_meta.get("name", "")).strip(),
-            "site_url": str(
-                project_urls.get("Documentation") or project_urls.get("Homepage") or ""
-            ).strip(),
-            "repo_url": str(
-                project_urls.get("Repository") or project_urls.get("Homepage") or ""
-            ).strip(),
+            "version": version,
+            "site_title": site_title,
+            "site_url": site_url,
+            "repo_url": repo_url,
             "exports": all_exports,
             "aliases": aliases,
             "facades": facades,

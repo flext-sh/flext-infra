@@ -153,32 +153,38 @@ class FlextInfraCli(FlextCli):
                 (
                     "init",
                     "Generate/refresh PEP 562 lazy-import __init__.py files",
-                    FlextInfraCodegenLazyInit, "init complete",
+                    FlextInfraCodegenLazyInit,
+                    "init complete",
                 ),
                 (
                     "census",
                     "Count namespace violations across workspace projects",
-                    FlextInfraCodegenCensus, None,
+                    FlextInfraCodegenCensus,
+                    None,
                 ),
                 (
                     "scaffold",
                     "Generate missing base modules in src/ and tests/",
-                    FlextInfraCodegenScaffolder, None,
+                    FlextInfraCodegenScaffolder,
+                    None,
                 ),
                 (
                     "auto-fix",
                     "Auto-fix namespace violations (move Finals/TypeVars)",
-                    FlextInfraCodegenFixer, None,
+                    FlextInfraCodegenFixer,
+                    None,
                 ),
                 (
                     "py-typed",
                     "Create/remove PEP 561 py.typed markers",
-                    FlextInfraCodegenPyTyped, "py-typed markers updated",
+                    FlextInfraCodegenPyTyped,
+                    "py-typed markers updated",
                 ),
                 (
                     "pipeline",
                     "Run full codegen pipeline",
-                    FlextInfraCodegenPipeline, None,
+                    FlextInfraCodegenPipeline,
+                    None,
                 ),
                 (
                     "constants-quality-gate",
@@ -189,7 +195,8 @@ class FlextInfraCli(FlextCli):
                 (
                     "consolidate",
                     "Consolidate inline constants into c.Infra.* references",
-                    FlextInfraCodegenConsolidator, None,
+                    FlextInfraCodegenConsolidator,
+                    None,
                 ),
                 (
                     "pyproject-keys",
@@ -257,23 +264,30 @@ class FlextInfraCli(FlextCli):
                 (
                     "audit",
                     "Audit documentation for broken links and forbidden terms",
-                    FlextInfraDocAuditor, "Audit completed successfully",
+                    FlextInfraDocAuditor,
+                    "Audit completed successfully",
                 ),
                 (
-                    "fix", "Fix documentation issues", FlextInfraDocFixer,
+                    "fix",
+                    "Fix documentation issues",
+                    FlextInfraDocFixer,
                     "Fix completed successfully",
                 ),
                 (
-                    "build", "Build MkDocs sites", FlextInfraDocBuilder,
+                    "build",
+                    "Build MkDocs sites",
+                    FlextInfraDocBuilder,
                     "Build completed successfully",
                 ),
                 (
-                    "generate", "Generate project docs",
+                    "generate",
+                    "Generate project docs",
                     FlextInfraDocGenerator,
                     "Generate completed successfully",
                 ),
                 (
-                    "validate", "Validate documentation",
+                    "validate",
+                    "Validate documentation",
                     FlextInfraDocValidator,
                     "Validate completed successfully",
                 ),
@@ -386,23 +400,28 @@ class FlextInfraCli(FlextCli):
             )
             for route_name, help_text, model_cls in (
                 (
-                    "basemk-validate", "Validate base.mk sync",
+                    "basemk-validate",
+                    "Validate base.mk sync",
                     FlextInfraBaseMkValidator,
                 ),
                 (
-                    "inventory", "Generate scripts inventory",
+                    "inventory",
+                    "Generate scripts inventory",
                     FlextInfraInventoryService,
                 ),
                 (
-                    "pytest-diag", "Extract pytest diagnostics",
+                    "pytest-diag",
+                    "Extract pytest diagnostics",
                     FlextInfraPytestDiagExtractor,
                 ),
                 (
-                    "scan", "Scan text files for patterns",
+                    "scan",
+                    "Scan text files for patterns",
                     FlextInfraTextPatternScanner,
                 ),
                 (
-                    "skill-validate", "Validate a skill",
+                    "skill-validate",
+                    "Validate a skill",
                     FlextInfraSkillValidator,
                 ),
                 (
@@ -411,7 +430,8 @@ class FlextInfraCli(FlextCli):
                     FlextInfraSilentFailureValidator,
                 ),
                 (
-                    "stub-validate", "Validate stub supply chain",
+                    "stub-validate",
+                    "Validate stub supply chain",
                     FlextInfraStubSupplyChain,
                 ),
                 (
@@ -450,15 +470,18 @@ class FlextInfraCli(FlextCli):
             )
             for route_name, help_text, model_cls in (
                 (
-                    "detect", "Detect workspace or standalone mode",
+                    "detect",
+                    "Detect workspace or standalone mode",
                     FlextInfraWorkspaceDetector,
                 ),
                 (
-                    "sync", "Sync base.mk to project root",
+                    "sync",
+                    "Sync base.mk to project root",
                     FlextInfraSyncService,
                 ),
                 (
-                    "orchestrate", "Run make verb across projects",
+                    "orchestrate",
+                    "Run make verb across projects",
                     FlextInfraOrchestratorService,
                 ),
                 (

@@ -21,6 +21,16 @@ from flext_infra import (
 class FlextInfraRefactorMROImportRewriter:
     """Rewrite imports/references after MRO symbol absorption into facade classes."""
 
+    class RewriteFilesInput(m.BaseModel):
+        """Typed input envelope for workspace rewrite execution."""
+
+        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+
+        workspace_root: Path
+        file_moves: Mapping[Path, Mapping[str, t.Pair[str, t.StrMapping]]]
+        pending_sources: Mapping[Path, str]
+        apply: bool
+
     @classmethod
     def migrate_workspace(
         cls,
@@ -108,10 +118,12 @@ class FlextInfraRefactorMROImportRewriter:
             project_names=project_names,
         )
         return cls._rewrite_files(
-            workspace_root=workspace_root,
-            file_moves=file_moves,
-            pending_sources=pending_sources,
-            apply=apply,
+            request=cls.RewriteFilesInput(
+                workspace_root=workspace_root,
+                file_moves=file_moves,
+                pending_sources=pending_sources,
+                apply=apply,
+            ),
         )
 
     @classmethod
@@ -261,35 +273,29 @@ class FlextInfraRefactorMROImportRewriter:
     def _rewrite_files(
         cls,
         *,
-        workspace_root: Path,
-        file_moves: Mapping[
-            Path,
-            Mapping[str, t.Pair[str, t.StrMapping]],
-        ],
-        pending_sources: Mapping[Path, str],
-        apply: bool,
+        request: RewriteFilesInput,
     ) -> tuple[
         Sequence[m.Infra.MRORewriteResult],
         t.StrSequence,
     ]:
         rewrites: list[m.Infra.MRORewriteResult] = []
         errors: list[str] = []
-        for file_path in sorted(file_moves):
-            source = pending_sources.get(file_path)
+        for file_path in sorted(request.file_moves):
+            source = request.pending_sources.get(file_path)
             if source is None:
                 try:
                     source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 except OSError:
                     continue
             transformer = FlextInfraRefactorMROSymbolPropagator(
-                module_moves=file_moves[file_path],
+                module_moves=request.file_moves[file_path],
             )
             updated_source, changes = transformer.rewrite_source(source)
             if updated_source == source:
                 continue
-            if apply:
+            if request.apply:
                 ok, report = cls._protected_source_write(
-                    workspace_root=workspace_root,
+                    workspace_root=request.workspace_root,
                     file_path=file_path,
                     updated_source=updated_source,
                 )

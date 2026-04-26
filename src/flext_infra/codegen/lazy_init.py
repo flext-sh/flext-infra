@@ -136,9 +136,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
         - ``tests/``/``scripts/``/``examples/``/``docs/`` modules: duplicates
           forbidden only within the same owning project (they do not escape).
         """
-        by_name: defaultdict[str, defaultdict[str, set[str]]] = defaultdict(
-            lambda: defaultdict(set),
-        )
+        scoped_modules: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
         for entry in rope.workspace_index.modules_by_path.values():
             if entry.is_package_init or not entry.module_name:
                 continue
@@ -154,16 +152,16 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 name = class_info.name
                 if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
                     continue
-                by_name[name][scope_key].add(entry.module_name)
-        duplicates: dict[str, tuple[str, ...]] = {}
-        for name, by_scope in by_name.items():
-            for scope_key, modules in by_scope.items():
-                if len(modules) > 1:
-                    prefix = (
-                        f"[{Path(scope_key).name}] " if scope_key else "[workspace] "
-                    )
-                    duplicates[f"{prefix}{name}"] = tuple(sorted(modules))
-        return duplicates
+                scoped_modules[name, scope_key].add(entry.module_name)
+        return {
+            f"[{Path(scope_key).name}] {name}"
+            if scope_key
+            else f"[workspace] {name}": tuple(
+                sorted(modules),
+            )
+            for (name, scope_key), modules in scoped_modules.items()
+            if len(modules) > 1
+        }
 
     def _generate_all_inits(
         self,

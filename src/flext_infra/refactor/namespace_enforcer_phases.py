@@ -78,8 +78,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
     ) -> m.Infra.ProjectEnforcementReport:
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] = []
         facade_statuses = self._scan_facades(
-            project_root=project_root,
-            project_name=project_name,
+            project=(project_root, project_name),
             rope_project=self._rope_project,
             parse_failures=parse_failures,
             apply=apply,
@@ -88,28 +87,37 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         py_files = self._collect_py_files(project_root=project_root)
         project_layout = u.Infra.layout(project_root)
         package_name = project_layout.package_name if project_layout is not None else ""
+
+        # Closure factory for ``DetectorContext`` — every detector receives the
+        # same ``rope_project`` + ``parse_failures``; the two optional extras
+        # (``project_name``/``project_root``) are typed kwargs that map 1:1 to
+        # the model's defaults. Eliminates 11 near-identical 4-7 line
+        # constructor blocks.
+        def ctx(
+            file_path: Path,
+            *,
+            project_name: str = "",
+            project_root: Path | None = None,
+        ) -> m.Infra.DetectorContext:
+            return m.Infra.DetectorContext(
+                file_path=file_path,
+                rope_project=self._rope_project,
+                parse_failures=parse_failures,
+                project_name=project_name,
+                project_root=project_root,
+            )
+
         loose_objects = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    project_name=project_name,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
+                ctx(f, project_name=project_name),
             ),
             rewrite_fn=None,
             apply=apply,
         )
         import_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraImportAliasDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
-            ),
+            detect_fn=lambda f: FlextInfraImportAliasDetector.detect_file(ctx(f)),
             rewrite_fn=lambda _vs: u.Infra.rewrite_import_violations(
                 py_files=py_files,
                 project_package=package_name,
@@ -119,13 +127,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         namespace_source_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraNamespaceSourceDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    project_name=project_name,
-                    project_root=project_root,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
+                ctx(f, project_name=project_name, project_root=project_root),
             ),
             rewrite_fn=lambda _vs: None,
             apply=apply,
@@ -137,25 +139,14 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         internal_import_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraInternalImportDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
-            ),
+            detect_fn=lambda f: FlextInfraInternalImportDetector.detect_file(ctx(f)),
             rewrite_fn=None,
             apply=apply,
         )
         runtime_alias_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraRuntimeAliasDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    project_name=project_name,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
+                ctx(f, project_name=project_name),
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_runtime_alias_violations(
                 py_files=py_files,
@@ -164,13 +155,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         future_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraFutureAnnotationsDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
-            ),
+            detect_fn=lambda f: FlextInfraFutureAnnotationsDetector.detect_file(ctx(f)),
             rewrite_fn=lambda _vs: u.Infra.rewrite_missing_future_annotations(
                 py_files=py_files,
             ),
@@ -178,13 +163,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         manual_protocol_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraManualProtocolDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
-            ),
+            detect_fn=lambda f: FlextInfraManualProtocolDetector.detect_file(ctx(f)),
             rewrite_fn=lambda vs: u.Infra.rewrite_manual_protocol_violations(
                 project_root=project_root,
                 py_files=py_files,
@@ -194,13 +173,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         manual_typing_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraManualTypingAliasDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
-            ),
+            detect_fn=lambda f: FlextInfraManualTypingAliasDetector.detect_file(ctx(f)),
             rewrite_fn=lambda vs: u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=project_root,
                 violations=vs,
@@ -211,11 +184,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         compatibility_alias_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraCompatibilityAliasDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
+                ctx(f)
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_compatibility_alias_violations(
                 violations=vs,
@@ -225,25 +194,13 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         class_placement_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraClassPlacementDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    rope_project=self._rope_project,
-                    parse_failures=parse_failures,
-                ),
-            ),
+            detect_fn=lambda f: FlextInfraClassPlacementDetector.detect_file(ctx(f)),
             rewrite_fn=None,
             apply=apply,
         )
         mro_completeness_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraMROCompletenessDetector.detect_file(
-                m.Infra.DetectorContext(
-                    file_path=f,
-                    parse_failures=parse_failures,
-                    rope_project=self._rope_project,
-                ),
-            ),
+            detect_fn=lambda f: FlextInfraMROCompletenessDetector.detect_file(ctx(f)),
             rewrite_fn=lambda vs: u.Infra.rewrite_mro_completeness_violations(
                 violations=vs,
                 parse_failures=parse_failures,
@@ -273,14 +230,14 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
     @staticmethod
     def _scan_facades(
         *,
-        project_root: Path,
-        project_name: str,
+        project: tuple[Path, str],
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
         apply: bool,
         workspace_root: Path,
     ) -> Sequence[m.Infra.FacadeStatus]:
         """Scan facades and optionally create missing ones."""
+        project_root, project_name = project
         facade_statuses = FlextInfraScanner.scan_project(
             project_root=project_root,
             project_name=project_name,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -56,6 +57,53 @@ class FlextInfraUtilitiesCodegen:
         return any(
             child.is_file() and child.suffix == ".py" for child in pkg_dir.iterdir()
         )
+
+    @staticmethod
+    def parse_final_constant_definitions(
+        source_lines: Sequence[str],
+    ) -> Sequence[tuple[str, str, str, str, int]]:
+        """Parse ``NAME: Final[...] = VALUE`` definitions with class-path context."""
+        class_stack: MutableSequence[tuple[str, int]] = []
+        parsed: MutableSequence[tuple[str, str, str, str, int]] = []
+        for line_number, line in enumerate(source_lines, 1):
+            stripped = line.lstrip()
+            indent = len(line) - len(stripped)
+            FlextInfraUtilitiesCodegen.update_class_stack(
+                class_stack,
+                stripped,
+                indent,
+            )
+            match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
+            if match is None:
+                continue
+            parsed.append((
+                match.group("name"),
+                match.group("ann"),
+                match.group("value").strip(),
+                ".".join(name for name, _ in class_stack),
+                line_number,
+            ))
+        return tuple(parsed)
+
+    @staticmethod
+    def update_class_stack(
+        class_stack: MutableSequence[tuple[str, int]],
+        stripped_line: str,
+        indent: int,
+    ) -> None:
+        """Keep class-path stack in sync while iterating constant source lines."""
+        class_match = (
+            c.Infra.DETECTION_CLASS_DECL_RE.match(stripped_line)
+            if stripped_line.startswith("class ") and stripped_line.endswith(":")
+            else None
+        )
+        if class_match is not None:
+            while class_stack and class_stack[-1][1] >= indent:
+                class_stack.pop()
+            class_stack.append((class_match.group(1), indent))
+            return
+        while class_stack and indent <= class_stack[-1][1]:
+            class_stack.pop()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodegen"]

@@ -225,44 +225,45 @@ class FlextInfraCodegenQualityGate(s[bool]):
         ruff_check: Mapping[str, t.Infra.InfraValue],
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         """Build quality gate check entries from metrics and tool results."""
-        violations_total = u.Cli.json_nested_int(after_metrics, "total_violations")
-        mro_failures = u.Cli.json_nested_int(after_metrics, "mro_failures")
-        cross_reference = u.Cli.json_nested_int(
-            after_metrics, "cross_project_reference_violations"
+        # Metric-driven checks share the shape ``(name, value==0, "label=value")``.
+        # Each row maps to a single ``QualityGateCheck`` via Pydantic v2 batch
+        # construction. The detail-label key may differ from the metric path
+        # (e.g. ``total_violations`` → ``total``).
+        metric_check_rows: tuple[tuple[str, str, str], ...] = (
+            (
+                c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE,
+                "total_violations",
+                "total",
+            ),
+            (c.Infra.QG_CHECK_MRO_VALIDITY, "mro_failures", "mro_failures"),
+            (
+                c.Infra.QG_CHECK_IMPORT_RESOLUTION,
+                "cross_project_reference_violations",
+                "cross_project_reference_violations",
+            ),
+            (
+                c.Infra.QG_CHECK_LAYER_COMPLIANCE,
+                "layer_violations",
+                "layer_violations",
+            ),
+            (
+                c.Infra.QG_CHECK_DUPLICATION_REDUCTION,
+                "duplicate_groups",
+                "duplicate_groups",
+            ),
         )
-        layer_violations = u.Cli.json_nested_int(after_metrics, "layer_violations")
-        duplicate_groups = u.Cli.json_nested_int(after_metrics, "duplicate_groups")
-        checks: Sequence[m.Infra.QualityGateCheck] = (
+        metric_checks = tuple(
             m.Infra.QualityGateCheck(
-                name=c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE,
-                passed=violations_total == 0,
-                detail=f"total={violations_total}",
+                name=name,
+                passed=(value := u.Cli.json_nested_int(after_metrics, metric)) == 0,
+                detail=f"{label}={value}",
                 critical=True,
-            ),
-            m.Infra.QualityGateCheck(
-                name=c.Infra.QG_CHECK_MRO_VALIDITY,
-                passed=mro_failures == 0,
-                detail=f"mro_failures={mro_failures}",
-                critical=True,
-            ),
-            m.Infra.QualityGateCheck(
-                name=c.Infra.QG_CHECK_IMPORT_RESOLUTION,
-                passed=cross_reference == 0,
-                detail=f"cross_project_reference_violations={cross_reference}",
-                critical=True,
-            ),
-            m.Infra.QualityGateCheck(
-                name=c.Infra.QG_CHECK_LAYER_COMPLIANCE,
-                passed=layer_violations == 0,
-                detail=f"layer_violations={layer_violations}",
-                critical=True,
-            ),
-            m.Infra.QualityGateCheck(
-                name=c.Infra.QG_CHECK_DUPLICATION_REDUCTION,
-                passed=duplicate_groups == 0,
-                detail=f"duplicate_groups={duplicate_groups}",
-                critical=True,
-            ),
+            )
+            for name, metric, label in metric_check_rows
+        )
+        # Tool-result checks consume external dict payloads (pyrefly + ruff),
+        # so they keep their own shape inline next to the table.
+        tool_checks = (
             m.Infra.QualityGateCheck(
                 name=c.Infra.QG_CHECK_TYPE_SAFETY,
                 passed=bool(pyrefly_check.get("passed")),
@@ -276,6 +277,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 critical=True,
             ),
         )
+        checks: Sequence[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
         return [check.model_dump() for check in checks]
 
     @staticmethod
@@ -288,6 +290,81 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
 
     @staticmethod
+    def constants_file_path(workspace_root: Path, project: str) -> Path:
+        """Build the canonical constants.py path for a project."""
+        src_dir = str(c.Infra.DEFAULT_SRC_DIR)
+        constants_py = str(c.Infra.CONSTANTS_PY)
+        return Path(
+            workspace_root
+            / project
+            / src_dir
+            / project.replace("-", "_")
+            / constants_py
+        )
+
+    @staticmethod
+    def parse_constant_definitions(
+        *,
+        source: str,
+        constants_file: Path,
+        project: str,
+    ) -> Sequence[m.Infra.ConstantDefinition]:
+        """Parse constant declarations from a constants.py source blob."""
+        return [
+            m.Infra.ConstantDefinition(
+                name=name,
+                value_repr=value_repr,
+                type_annotation=annotation,
+                file_path=str(constants_file),
+                class_path=class_path,
+                project=project,
+                line=line_number,
+            )
+            for name, annotation, value_repr, class_path, line_number in (
+                u.Infra.parse_final_constant_definitions(source.splitlines())
+            )
+        ]
+
+    @staticmethod
+    def build_duplicate_groups(
+        definitions: Sequence[m.Infra.ConstantDefinition],
+    ) -> Sequence[m.Infra.DuplicateConstantGroup]:
+        """Build duplicate groups keyed by constant name and by raw value."""
+        by_name: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
+        by_value: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
+        for definition in definitions:
+            by_name[definition.name].append(definition)
+            by_value[definition.value_repr].append(definition)
+
+        duplicates: MutableSequence[m.Infra.DuplicateConstantGroup] = []
+        duplicates.extend(
+            m.Infra.DuplicateConstantGroup(
+                constant_name=name,
+                definitions=defs,
+                is_value_identical=len({item.value_repr for item in defs}) == 1,
+                canonical_ref="",
+            )
+            for name, defs in by_name.items()
+            if len(defs) > 1
+        )
+        duplicates.extend(
+            m.Infra.DuplicateConstantGroup(
+                constant_name=f"[value: {value_key}]",
+                definitions=defs,
+                is_value_identical=True,
+                canonical_ref="",
+            )
+            for value_key, defs in by_value.items()
+            if len(defs) > 1 and len({item.name for item in defs}) > 1
+        )
+        return [
+            group
+            for group in duplicates
+            if len({definition.project for definition in group.definitions})
+            >= c.Infra.MIN_DUPLICATE_PROJECT_COUNT
+        ]
+
+    @staticmethod
     def detect_duplicate_constant_groups(
         workspace_root: Path,
         census_reports: Sequence[m.Infra.CensusReport],
@@ -296,75 +373,21 @@ class FlextInfraCodegenQualityGate(s[bool]):
         definitions: MutableSequence[m.Infra.ConstantDefinition] = []
         with u.Infra.open_project(workspace_root) as rope_project:
             for report in census_reports:
-                constants_file = (
-                    workspace_root
-                    / report.project
-                    / c.Infra.DEFAULT_SRC_DIR
-                    / report.project.replace("-", "_")
-                    / c.Infra.CONSTANTS_PY
+                constants_file = FlextInfraCodegenQualityGate.constants_file_path(
+                    workspace_root,
+                    str(report.project),
                 )
                 resource = u.Infra.get_resource_from_path(rope_project, constants_file)
                 if resource is None:
                     continue
-                class_stack: MutableSequence[tuple[str, int]] = []
-                for line_number, line in enumerate(resource.read().splitlines(), 1):
-                    stripped = line.lstrip()
-                    indent = len(line) - len(stripped)
-                    if stripped.startswith("class ") and stripped.endswith(":"):
-                        class_match = c.Infra.DETECTION_CLASS_DECL_RE.match(stripped)
-                        if class_match is not None:
-                            while class_stack and class_stack[-1][1] >= indent:
-                                class_stack.pop()
-                            class_stack.append((class_match.group(1), indent))
-                    elif class_stack:
-                        while class_stack and indent <= class_stack[-1][1]:
-                            class_stack.pop()
-                    match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
-                    if match is None:
-                        continue
-                    definitions.append(
-                        m.Infra.ConstantDefinition(
-                            name=match.group("name"),
-                            value_repr=match.group("value").strip(),
-                            type_annotation=match.group("ann"),
-                            file_path=str(constants_file),
-                            class_path=".".join(name for name, _ in class_stack),
-                            project=report.project,
-                            line=line_number,
-                        )
-                    )
-        by_name: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
-        by_value: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
-        for definition in definitions:
-            by_name[definition.name].append(definition)
-            by_value[definition.value_repr].append(definition)
-        duplicates: MutableSequence[m.Infra.DuplicateConstantGroup] = []
-        for name, defs in by_name.items():
-            if len(defs) > 1:
-                duplicates.append(
-                    m.Infra.DuplicateConstantGroup(
-                        constant_name=name,
-                        definitions=defs,
-                        is_value_identical=len({item.value_repr for item in defs}) == 1,
-                        canonical_ref="",
+                definitions.extend(
+                    FlextInfraCodegenQualityGate.parse_constant_definitions(
+                        source=resource.read(),
+                        constants_file=constants_file,
+                        project=str(report.project),
                     )
                 )
-        for value_key, defs in by_value.items():
-            if len(defs) > 1 and len({item.name for item in defs}) > 1:
-                duplicates.append(
-                    m.Infra.DuplicateConstantGroup(
-                        constant_name=f"[value: {value_key}]",
-                        definitions=defs,
-                        is_value_identical=True,
-                        canonical_ref="",
-                    )
-                )
-        return [
-            group
-            for group in duplicates
-            if len({definition.project for definition in group.definitions})
-            >= c.Infra.MIN_DUPLICATE_PROJECT_COUNT
-        ]
+        return FlextInfraCodegenQualityGate.build_duplicate_groups(definitions)
 
     @staticmethod
     def project_findings(
