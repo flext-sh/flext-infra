@@ -93,7 +93,10 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-    from flext_infra._utilities.guard_gates import FlextInfraUtilitiesGuardGates
+    from flext_infra._utilities.guard_gates import (
+        FlextInfraUtilitiesGuardGates,
+        LintCallback,
+    )
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
@@ -267,6 +270,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
     )
+    from flext_infra.refactor.enforcement_auditor import FlextInfraEnforcementAuditor
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.engine_file import (
         FlextInfraClassNestingPostCheckGate,
@@ -486,7 +490,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.engine": ("FlextInfraUtilitiesRefactorEngine",),
             "._utilities.github": ("FlextInfraUtilitiesGithub",),
             "._utilities.github_pr": ("FlextInfraUtilitiesGithubPr",),
-            "._utilities.guard_gates": ("FlextInfraUtilitiesGuardGates",),
+            "._utilities.guard_gates": (
+                "FlextInfraUtilitiesGuardGates",
+                "LintCallback",
+            ),
             "._utilities.iteration": ("FlextInfraUtilitiesIteration",),
             "._utilities.log_parser": ("FlextInfraUtilitiesLogParser",),
             "._utilities.mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
@@ -647,6 +654,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".refactor.class_nesting_analyzer": (
                 "FlextInfraRefactorClassNestingAnalyzer",
             ),
+            ".refactor.enforcement_auditor": ("FlextInfraEnforcementAuditor",),
             ".refactor.engine": ("FlextInfraRefactorEngine",),
             ".refactor.engine_file": (
                 "FlextInfraClassNestingPostCheckGate",
@@ -835,6 +843,7 @@ __all__: list[str] = [
     "FlextInfraDocGenerator",
     "FlextInfraDocServiceBase",
     "FlextInfraDocValidator",
+    "FlextInfraEnforcementAuditor",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureFormattingToolingPhase",
     "FlextInfraEnsureMypyConfigPhase",
@@ -877,6 +886,7 @@ __all__: list[str] = [
     "FlextInfraModelsEngineOperation",
     "FlextInfraModelsGates",
     "FlextInfraModelsGithub",
+    "FlextInfraModelsGuard",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsRefactor",
@@ -886,6 +896,7 @@ __all__: list[str] = [
     "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
+    "FlextInfraModelsScope",
     "FlextInfraModelsWorkspace",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
@@ -1002,6 +1013,8 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
+    "FlextInfraUtilitiesScopeSelector",
+    "FlextInfraUtilitiesSnapshot",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
@@ -1013,6 +1026,8 @@ __all__: list[str] = [
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceMakefileGenerator",
+    "FlextInfraWorkspacePropagator",
+    "LintCallback",
     "__author__",
     "__author_email__",
     "__description__",

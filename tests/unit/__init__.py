@@ -33,9 +33,14 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilitiesdiscoveryconsolidated",
             ),
             "._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+            "._utilities.test_guard_gates": ("TestsFlextInfraUtilitiesGuardGates",),
             "._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
             "._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
             "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
+            "._utilities.test_scope_selector": (
+                "TestsFlextInfraUtilitiesScopeSelector",
+            ),
+            "._utilities.test_snapshot": ("TestsFlextInfraUtilitiesSnapshot",),
             ".basemk.test_engine": ("TestsFlextInfraBasemkEngine",),
             ".basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
             ".basemk.test_generator_edge_cases": (
@@ -234,6 +239,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".refactor.test_accessor_migration": (
                 "TestsFlextInfraRefactorAccessorMigration",
             ),
+            ".refactor.test_fixture_loads": (
+                "TestsFlextInfraRefactorEdgeCaseFixtures",
+            ),
             ".refactor.test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
             ),
@@ -358,6 +366,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".workspace.test_makefile_generator": (
                 "TestsFlextInfraWorkspaceMakefileGenerator",
             ),
+            ".workspace.test_propagate": ("TestsFlextInfraWorkspacePropagator",),
             ".workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
             ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         },
