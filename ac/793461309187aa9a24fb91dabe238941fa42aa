@@ -1,0 +1,71 @@
+src/flext_infra/_utilities/rope_inventory.py
+  h_9db9d35f50cf33 39,56-63,66,69-75,116,123-138,216,218,227-230,232,244-247,249,251,253,255,258,260,262,264,266-267,269-271,283-284,286
+src/flext_infra/refactor/loader.py
+  d47817c7586d1e59 54-59
+src/flext_infra/codegen/fixer.py
+  h_9db9d35f50cf33 140-141,155-156,160-164,166-167,172-173,178,180-183,188,190-191,195-217,222,225,230-231,240-241,246,248-253,258-261,266-267,270-271,277-278,283,285-286
+  d47817c7586d1e59 151-154,168-171,232-239,291-294
+src/flext_infra/_models/rope.py
+  h_9db9d35f50cf33 17,23-46,301-352
+src/flext_infra/_utilities/rope_analysis.py
+  h_9db9d35f50cf33 310,313,319-323,334,366,386,395,401,403
+src/flext_infra/codegen/lazy_init.py
+  d47817c7586d1e59 44
+src/flext_infra/_utilities/discovery.py
+  h_9db9d35f50cf33 368-374,376-387,389,395-401,403-405,407-417,421-424,426
+src/flext_infra/base.py
+  fb2546f80ae92e5c 54-56,77-81
+src/flext_infra/_protocols/rope.py
+  h_9db9d35f50cf33 49,143
+tests/unit/test_infra_rope_service.py
+  fb2546f80ae92e5c 8
+  h_9db9d35f50cf33 38-40,92-94
+tests/unit/deps/test_path_sync_init.py
+  fb2546f80ae92e5c 8,20-33,36
+tests/unit/deps/test_path_sync_rewrite_deps.py
+  fb2546f80ae92e5c 9,25-41,44
+src/flext_infra/workspace/rope.py
+  h_9db9d35f50cf33 448,451,455
+src/flext_infra/codegen/lazy_init_planner.py
+  h_9db9d35f50cf33 67-69,144-147,150-154,187,189,192-196,205-212,217-218,323-325,333-335,433-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "ac793461309187aa9a24fb91dabe238941fa42aa",
+  "prompts": {
+    "d47817c7586d1e59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc7f6bd0-731d-49b0-9c44-6c380d65f6ff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 29,
+      "total_deletions": 17,
+      "accepted_lines": 61,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/20ff0ad319b28d52a77fa8fcdead373b31e2cc593086e8f1c683c0abf6536b43"
+    },
+    "fb2546f80ae92e5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47401c67-c23f-4bc6-8b20-da4d6af4540d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 26,
+      "accepted_lines": 44,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/7939be43bccc5212d4f05fc0b873b09e93d8149de64cb4170560ae6b15ca94f5"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
