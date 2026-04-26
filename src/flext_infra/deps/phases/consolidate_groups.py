@@ -108,20 +108,15 @@ class FlextInfraConsolidateGroupsPhase:
                 for requirement in existing.get(str(group), ())
             ],
         ])
-        _ = u.Cli.toml_mapping_sync_string_list(
+        if u.Cli.toml_mapping_sync_string_list(
             optional,
             c.Infra.DEV,
             sorted(merged_dev),
-            changes,
-            "project.optional-dependencies.dev consolidated",
-        )
+        ):
+            changes.append("project.optional-dependencies.dev consolidated")
         for old_key in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
-            _ = u.Cli.toml_mapping_remove_key_if_present(
-                optional,
-                old_key,
-                changes,
-                f"project.optional-dependencies.{old_key} removed",
-            )
+            if u.Cli.toml_mapping_remove_key_if_present(optional, old_key):
+                changes.append(f"project.optional-dependencies.{old_key} removed")
         poetry_group = u.Cli.toml_mapping_path(
             payload,
             (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
@@ -155,23 +150,18 @@ class FlextInfraConsolidateGroupsPhase:
                         poetry_dev_table[dep_name] = dep_value
             if poetry_group is None:
                 continue
-            _ = u.Cli.toml_mapping_remove_key_if_present(
-                poetry_group,
-                old_group,
-                changes,
-                f"tool.poetry.group.{old_group} removed",
-            )
+            if u.Cli.toml_mapping_remove_key_if_present(poetry_group, old_group):
+                changes.append(f"tool.poetry.group.{old_group} removed")
         deptry = u.Cli.toml_mapping_ensure_path(
             payload,
             (c.Infra.TOOL, c.Infra.DEPTRY),
         )
-        _ = u.Cli.toml_mapping_sync_string_list(
+        if u.Cli.toml_mapping_sync_string_list(
             deptry,
             "pep621_dev_dependency_groups",
             [c.Infra.DEV],
-            changes,
-            "tool.deptry.pep621_dev_dependency_groups set to ['dev']",
-        )
+        ):
+            changes.append("tool.deptry.pep621_dev_dependency_groups set to ['dev']")
         return changes
 
 

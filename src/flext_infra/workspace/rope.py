@@ -7,11 +7,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
-from typing import TYPE_CHECKING, Annotated, ClassVar, Final, Self, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, Self, override
 
 from flext_infra import c, m, r, s, t, u
-
-_IDENTIFIER_PATTERN: Final[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -19,6 +17,8 @@ if TYPE_CHECKING:
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     """Open one shared Rope workspace with cached public DSL methods."""
+
+    _IDENTIFIER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
 
     project_prefix: Annotated[
         str,
@@ -239,7 +239,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
                 continue
             surface = self._reference_surface_for(py_file)
             lines_by_name: dict[str, list[int]] = {}
-            for match in _IDENTIFIER_PATTERN.finditer(source_text):
+            for match in self._IDENTIFIER_PATTERN.finditer(source_text):
                 name = match.group(0)
                 lineno = source_text.count("\n", 0, match.start()) + 1
                 lines_by_name.setdefault(name, []).append(lineno)

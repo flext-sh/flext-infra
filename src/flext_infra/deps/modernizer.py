@@ -298,6 +298,16 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         return ordered
 
     @classmethod
+    def _recurse_into_item(cls, item: Container | Item, table_key: str) -> None:
+        """Reorder children of one TOML node; Table/AoT only, no-op otherwise."""
+        match item:
+            case Table():
+                cls._reorder_table_inplace(item, table_key=table_key)
+            case AoT():
+                for entry in item.body:
+                    cls._reorder_table_inplace(entry, table_key=table_key)
+
+    @classmethod
     def _reorder_table_inplace(
         cls,
         table: Table,
@@ -315,23 +325,14 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         )
         if ordered_keys == original_keys:
             for key in ordered_keys:
-                child: Item = table[key]
-                if isinstance(child, Table):
-                    cls._reorder_table_inplace(child, table_key=key)
-                elif isinstance(child, AoT):
-                    for entry in child.body:
-                        cls._reorder_table_inplace(entry, table_key=key)
+                cls._recurse_into_item(table[key], key)
             return
         items: MutableMapping[str, Item] = {key: table[key] for key in original_keys}
         for key in original_keys:
             del table[key]
         for key in ordered_keys:
             item_value: Item = items[key]
-            if isinstance(item_value, Table):
-                cls._reorder_table_inplace(item_value, table_key=key)
-            elif isinstance(item_value, AoT):
-                for entry in item_value.body:
-                    cls._reorder_table_inplace(entry, table_key=key)
+            cls._recurse_into_item(item_value, key)
             table[key] = item_value
 
     @classmethod
@@ -356,12 +357,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         for key in ordered_root:
             if key == "tool":
                 continue
-            value = doc[key]
-            if isinstance(value, Table):
-                cls._reorder_table_inplace(value, table_key=key)
-            elif isinstance(value, AoT):
-                for entry in value.body:
-                    cls._reorder_table_inplace(entry, table_key=key)
+            cls._recurse_into_item(doc[key], key)
 
     def process_file(
         self,

@@ -11,8 +11,8 @@ from pathlib import Path
 import mkdocs.commands.build
 import mkdocs.config
 import mkdocs.exceptions
-from flext_cli import u
 
+from flext_cli import u
 from flext_infra import FlextInfraUtilitiesDocs, c, m, p
 
 

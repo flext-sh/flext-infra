@@ -10,7 +10,6 @@ from importlib.resources import files
 from pathlib import Path
 
 from flext_cli import u
-
 from flext_infra import (
     FlextInfraModelsDepsToolSettings as mdts,
     c,

@@ -34,43 +34,47 @@ class FlextInfraDocAuditor(
     ] = False
 
     @staticmethod
+    def _policy_token_issues(
+        scope: m.Infra.DocScope,
+        *,
+        policy_key: str,
+        issue_type: str,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Return text-token issues for one scope using the named policy list."""
+        return u.Infra.docs_text_token_issues(
+            scope,
+            tokens=u.Infra.docs_policy_list(scope, section="audit", key=policy_key),
+            issue_type=issue_type,
+        )
+
+    @staticmethod
     def forbidden_term_issues(
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Return forbidden-term issues configured for one scope."""
-        issues: Sequence[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
+        return FlextInfraDocAuditor._policy_token_issues(
             scope,
-            tokens=u.Infra.docs_policy_list(
-                scope,
-                section="audit",
-                key="forbidden_terms",
-            ),
+            policy_key="forbidden_terms",
             issue_type="forbidden_term",
         )
-        return issues
 
     @staticmethod
     def placeholder_issues(
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Return placeholder-text issues for one scope."""
-        issues: Sequence[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
+        return FlextInfraDocAuditor._policy_token_issues(
             scope,
-            tokens=u.Infra.docs_policy_list(
-                scope,
-                section="audit",
-                key="placeholder_terms",
-            ),
+            policy_key="placeholder_terms",
             issue_type="placeholder",
         )
-        return issues
 
     def audit(
         self,
         workspace_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        output_dir: Path | str | None = None,
         params: m.Infra.AuditScopeParams | None = None,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""

@@ -23,20 +23,16 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
 
     def validate_workspace(
         self,
-        value: Path,
-        *,
-        projects: t.StrSequence | None = None,
-        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
-        apply: bool = False,
+        request: m.Infra.DocsGenerateRequest,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
         return self.run_scoped_docs(
-            value,
-            projects=projects,
-            output_dir=output_dir,
+            request.workspace_root,
+            projects=request.projects,
+            output_dir=request.output_dir,
             handler=lambda scope: self._validate_scope(
                 scope,
-                apply_mode=apply,
+                apply_mode=request.apply,
             ),
         )
 
@@ -44,10 +40,12 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
     def execute(self) -> p.Result[bool]:
         """Execute the configured docs validation flow."""
         result = self.validate_workspace(
-            self.workspace_root,
-            projects=self.selected_projects,
-            output_dir=self.output_dir,
-            apply=self.apply_changes,
+            m.Infra.DocsGenerateRequest(
+                workspace_root=self.workspace_root,
+                projects=self.selected_projects,
+                output_dir=self.output_dir,
+                apply=self.apply_changes,
+            )
         )
         return self._propagate_phase_outcome(
             "validate",

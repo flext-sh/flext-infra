@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import m
-
 from flext_infra import (
     FlextInfraModelsBase,
     FlextInfraModelsBasemk,
@@ -23,13 +22,11 @@ from flext_infra import (
     FlextInfraModelsEngine,
     FlextInfraModelsGates,
     FlextInfraModelsGithub,
-    FlextInfraModelsGuard,
     FlextInfraModelsMixins,
     FlextInfraModelsRefactor,
     FlextInfraModelsRelease,
     FlextInfraModelsRope,
     FlextInfraModelsScan,
-    FlextInfraModelsScope,
     FlextInfraModelsWorkspace,
 )
 
@@ -46,14 +43,12 @@ class FlextInfraModels(m):
         FlextInfraModelsDocs,
         FlextInfraModelsGates,
         FlextInfraModelsGithub,
-        FlextInfraModelsGuard,
         FlextInfraModelsRefactor,
         FlextInfraModelsRelease,
         FlextInfraModelsMixins,
         FlextInfraModelsWorkspace,
         FlextInfraModelsRope,
         FlextInfraModelsScan,
-        FlextInfraModelsScope,
         FlextInfraModelsCore,
         FlextInfraModelsBase,
         FlextInfraModelsEngine,

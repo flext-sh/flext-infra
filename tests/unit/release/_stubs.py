@@ -141,7 +141,7 @@ class FakeReporting:
 
     _report_dir: Path | None = None
 
-    def get_report_dir(self, *args: str, **kwargs: str) -> Path:
+    def resolve_report_dir(self, *args: str, **kwargs: str) -> Path:
         if self._report_dir is not None:
             return self._report_dir
         msg = "report_dir not set on FakeReporting"

@@ -220,7 +220,9 @@ class FlextInfraProjectClassifier:
             return (family_bases, local_facade_classes)
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             file_pattern = c.Infra.FAMILY_FILES[family]
-            for file_path in self._src_path.rglob(file_pattern):
+            for file_path in u.Infra.iter_matching_files(
+                self._src_path, includes=[file_pattern]
+            ):
                 class_bases, class_names = self._parse_family_file(file_path, suffix)
                 family_bases[family].update(class_bases)
                 local_facade_classes.update(class_names)

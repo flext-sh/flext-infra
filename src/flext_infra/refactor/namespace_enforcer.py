@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import override
 
 from flext_cli import cli
-
 from flext_infra import (
     FlextInfraNamespaceEnforcerPhasesMixin,
     m,

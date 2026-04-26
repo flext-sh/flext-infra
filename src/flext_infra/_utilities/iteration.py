@@ -15,10 +15,10 @@ from collections.abc import (
 from functools import cache
 from pathlib import Path
 
-from flext_cli import u
 from git import InvalidGitRepositoryError, NoSuchPathError, Repo
 from tomlkit import TOMLDocument
 
+from flext_cli import u
 from flext_infra import c, p, r, t
 
 

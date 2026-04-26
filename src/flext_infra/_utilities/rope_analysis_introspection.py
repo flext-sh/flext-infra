@@ -25,8 +25,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     """Rope-backed class and module introspection helpers.
 
     Extracted mixin providing: get_class_nested_classes,
-    get_module_symbols, extract_public_methods_from_dir,
-    extract_public_methods_from_file.
+    get_module_symbols, extract_public_methods_from_dir.
     """
 
     _METHOD_KIND_LABELS: ClassVar[t.StrMapping] = {
@@ -319,43 +318,6 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                             ),
                             py_file.name,
                         ))
-        return result
-
-    @classmethod
-    def extract_public_methods_from_file(
-        cls: type[p.Infra.RopeAnalysisMethods],
-        file_path: Path,
-    ) -> Mapping[str, Sequence[t.Triple[str, str, str]]]:
-        """Extract public methods from a single Python file."""
-        if not file_path.exists():
-            return {}
-        result: MutableMapping[str, MutableSequence[t.Triple[str, str, str]]] = {}
-        project_root = FlextInfraUtilitiesDiscovery.project_root(
-            file_path,
-        )
-        if project_root is None:
-            return result
-        with FlextInfraUtilitiesRopeCore.open_project(project_root.parent) as rope_proj:
-            resource = cls.get_resource_from_path(rope_proj, file_path)
-            if resource is None:
-                return {}
-            classes = cls.get_module_classes(rope_proj, resource)
-            for class_name in classes:
-                class_methods = cls.get_class_methods(
-                    rope_proj,
-                    resource,
-                    class_name,
-                    include_private=False,
-                )
-                methods = result.setdefault(class_name, [])
-                for method_name, method_kind in class_methods.items():
-                    methods.append((
-                        method_name,
-                        FlextInfraUtilitiesRopeAnalysisIntrospection._METHOD_KIND_LABELS.get(
-                            method_kind, "instance"
-                        ),
-                        file_path.name,
-                    ))
         return result
 
 

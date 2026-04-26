@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import (
-    FlextInfraBaseMkGenerator,
     FlextInfraProjectMakefileUpdater,
     FlextInfraWorkspaceMakefileGenerator,
     c,
@@ -26,9 +25,13 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 
 
-class FlextInfraSyncService(s[m.Infra.SyncResult]):
+class FlextInfraSyncService(
+    FlextInfraWorkspaceGeneratorBase,
+    s[m.Infra.SyncResult],
+):
     """Infrastructure service for workspace base.mk synchronization.
 
     Generates a fresh base.mk via ``FlextInfraBaseMkGenerator``, compares its SHA256
@@ -37,17 +40,9 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
 
     """
 
-    generator: Annotated[
-        FlextInfraBaseMkGenerator | None,
-        m.Field(exclude=True, description="Optional custom generator service"),
-    ] = None
     canonical_root: Annotated[
         Path | None, m.Field(description="Optional canonical root path")
     ] = None
-
-    def _get_generator(self) -> FlextInfraBaseMkGenerator:
-        """Return the configured generator."""
-        return self.generator or FlextInfraBaseMkGenerator()
 
     def _resolved_workspace_root(self) -> Path:
         """Return the validated workspace root from the command context."""

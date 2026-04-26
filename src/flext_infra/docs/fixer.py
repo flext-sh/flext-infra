@@ -26,7 +26,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         workspace_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        output_dir: Path | str | None = None,
         apply: bool = False,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes."""

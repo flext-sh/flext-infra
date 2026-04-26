@@ -198,7 +198,7 @@ class FlextInfraUtilitiesRopeHelpers:
         additional = 0
         for line in remaining.splitlines(keepends=True):
             additional += len(line)
-            balance += FlextInfraUtilitiesRopeHelpers._bracket_balance_line(line)
+            balance += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(line)
             if balance <= 0:
                 break
         extended = block + source[match_end : match_end + additional]
@@ -216,11 +216,12 @@ class FlextInfraUtilitiesRopeHelpers:
     def _bracket_balance_total(text: str) -> int:
         total = 0
         for line in text.splitlines():
-            total += FlextInfraUtilitiesRopeHelpers._bracket_balance_line(line)
+            total += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(line)
         return total
 
     @staticmethod
-    def _bracket_balance_line(line: str) -> int:
+    def bracket_balance_line(line: str) -> int:
+        """Return net bracket depth delta of one line (strings + ``#`` comments ignored)."""
         delta = 0
         in_single = False
         in_double = False

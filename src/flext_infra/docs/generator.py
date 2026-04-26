@@ -5,14 +5,11 @@ from __future__ import annotations
 from collections.abc import (
     Sequence,
 )
-from pathlib import Path
 from typing import override
 
 from flext_infra import (
-    c,
     m,
     p,
-    t,
     u,
 )
 from flext_infra.docs.base import FlextInfraDocServiceBase
@@ -23,22 +20,16 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
 
     def generate(
         self,
-        workspace_root: Path,
-        *,
-        projects: t.StrSequence | None = None,
-        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
-        apply: bool = False,
+        request: m.Infra.DocsGenerateRequest,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Generate docs across the workspace root and governed FLEXT projects."""
         return self.run_scoped_docs(
-            workspace_root,
-            projects=projects,
-            output_dir=output_dir,
+            request.workspace_root,
+            projects=request.projects,
+            output_dir=request.output_dir,
             handler=lambda scope: self._generate_scope(
                 scope,
-                apply=apply,
-                workspace_root=workspace_root,
-                projects=projects,
+                request=request,
             ),
         )
 
@@ -48,10 +39,12 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         return self._propagate_phase_outcome(
             "generate",
             self.generate(
-                workspace_root=self.workspace_root,
-                projects=self.selected_projects,
-                output_dir=self.output_dir,
-                apply=self.apply_changes,
+                m.Infra.DocsGenerateRequest(
+                    workspace_root=self.workspace_root,
+                    projects=self.selected_projects,
+                    output_dir=self.output_dir,
+                    apply=self.apply_changes,
+                ),
             ),
         )
 
@@ -59,16 +52,14 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         self,
         scope: m.Infra.DocScope,
         *,
-        apply: bool,
-        workspace_root: Path,
-        projects: t.StrSequence | None = None,
+        request: m.Infra.DocsGenerateRequest,
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope via the docs generator utilities and log the result."""
         report = u.Infra.docs_generate_scope(
             scope,
-            apply=apply,
-            workspace_root=workspace_root,
-            projects=projects,
+            apply=request.apply,
+            workspace_root=request.workspace_root,
+            projects=request.projects,
         )
         self.logger.info(
             "docs_generate_scope_completed",

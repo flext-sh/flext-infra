@@ -5,12 +5,10 @@ from __future__ import annotations
 import contextlib
 import re
 import shutil
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import (
     Callable as _CensusCallable,
     Mapping,
-    MutableMapping,
-    MutableSequence,
     Sequence,
 )
 from pathlib import Path
@@ -23,59 +21,6 @@ from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 
 class FlextInfraUtilitiesRefactorCensus:
     """Census and source introspection helpers for refactor tools."""
-
-    @staticmethod
-    def build_facade_alias_map(
-        facade_path: Path,
-        facade_class_name: str,
-    ) -> Mapping[str, t.Infra.StrPair]:
-        """Parse a facade class to build flat alias -> (class, method) map."""
-        if not facade_path.exists():
-            return {}
-        alias_map: MutableMapping[str, t.Infra.StrPair] = {}
-        lines = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
-        in_target = False
-        for line in lines:
-            trimmed = line.strip()
-            if trimmed.startswith(f"class {facade_class_name}"):
-                in_target = True
-                continue
-            if in_target and "staticmethod" in trimmed and "=" in trimmed:
-                parts = trimmed.split("=", 1)
-                alias = parts[0].strip()
-                rhs = parts[1].strip()
-                if rhs.startswith("staticmethod(") and rhs.endswith(")"):
-                    target = rhs[13:-1].strip()
-                    if "." in target:
-                        cls_name, method_name = target.rsplit(".", 1)
-                        alias_map[alias] = (cls_name, method_name)
-        return alias_map
-
-    @staticmethod
-    def build_facade_inner_class_map(
-        facade_path: Path,
-        facade_class_name: str,
-    ) -> t.StrMapping:
-        """Map inner class names -> base class names in a facade."""
-        if not facade_path.exists():
-            return {}
-        name_map: t.MutableStrMapping = {}
-        lines = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
-        in_target = False
-        for line in lines:
-            trimmed = line.strip()
-            if trimmed.startswith(f"class {facade_class_name}"):
-                in_target = True
-                continue
-            if in_target and trimmed.startswith("class "):
-                parts = trimmed.split("class ", 1)[1].split(":", 1)[0].strip()
-                if "(" in parts and parts.endswith(")"):
-                    inner_name = parts.split("(", 1)[0].strip()
-                    base_name = parts.split("(", 1)[1][:-1].strip()
-                    if "," in base_name:
-                        base_name = base_name.split(",")[0].strip()
-                    name_map[inner_name] = base_name
-        return name_map
 
     @staticmethod
     def identify_project_by_roots(
@@ -110,88 +55,6 @@ class FlextInfraUtilitiesRefactorCensus:
             facade_module=c.Infra.MRO_FAMILY_FACADE_MODULES[family],
             facade_class_prefix=f"Flext{sf}",
             core_project=core_project,
-        )
-
-    @staticmethod
-    def aggregate_usage_metrics(
-        methods: Mapping[str, Sequence[mrc.CensusMethodInfo]],
-        records: Sequence[mrc.CensusUsageRecord],
-        files_scanned: int,
-        parse_errors: int,
-    ) -> mrc.UtilitiesCensusReport:
-        """Pivot raw AST method visit occurrences into a structured usage report."""
-        cnt: Counter[t.Triple[str, str, str]] = Counter()
-        pcnt: Counter[t.Quad[str, str, str, str]] = Counter()
-
-        for rec in records:
-            cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
-            pcnt[rec.project, rec.class_name, rec.method_name, rec.access_mode] += 1
-
-        cls_sums: MutableSequence[mrc.CensusClassSummary] = []
-        unused = 0
-        for cls, items in sorted(methods.items()):
-            m_list: MutableSequence[mrc.CensusMethodSummary] = []
-            for m_info in items:
-                af = cnt.get(
-                    (cls, m_info.name, c.Infra.CensusMode.ALIAS_FLAT),
-                    0,
-                )
-                an = cnt.get(
-                    (cls, m_info.name, c.Infra.CensusMode.ALIAS_NS),
-                    0,
-                )
-                dr = cnt.get((cls, m_info.name, c.Infra.CensusMode.DIRECT), 0)
-                tot = af + an + dr
-                if tot == 0:
-                    unused += 1
-                m_list.append(
-                    mrc.CensusMethodSummary(
-                        name=m_info.name,
-                        method_type=m_info.method_type,
-                        alias_flat=af,
-                        alias_namespaced=an,
-                        direct=dr,
-                        total=tot,
-                    ),
-                )
-            cls_sums.append(
-                mrc.CensusClassSummary(
-                    class_name=cls,
-                    source_file=items[0].source_file if items else "",
-                    methods=tuple(m_list),
-                ),
-            )
-
-        pj_sums: MutableMapping[
-            str,
-            MutableSequence[mrc.CensusProjectMethodUsage],
-        ] = defaultdict(list)
-        for (pj, cls, mx, mo), co in sorted(pcnt.items()):
-            pj_sums[pj].append(
-                mrc.CensusProjectMethodUsage(
-                    class_name=cls,
-                    method_name=mx,
-                    access_mode=mo,
-                    count=co,
-                ),
-            )
-
-        return mrc.UtilitiesCensusReport(
-            classes=tuple(cls_sums),
-            projects=tuple(
-                mrc.CensusProjectSummary(
-                    project_name=p,
-                    usages=tuple(us),
-                    total=sum(u.count for u in us),
-                )
-                for p, us in sorted(pj_sums.items())
-            ),
-            total_classes=len(methods),
-            total_methods=sum(len(v) for v in methods.values()),
-            total_usages=len(records),
-            total_unused=unused,
-            files_scanned=files_scanned,
-            parse_errors=parse_errors,
         )
 
     @staticmethod
@@ -624,7 +487,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 start -= 1
                 continue
             prior_balance = sum(
-                FlextInfraUtilitiesRefactorCensus._bracket_balance(lines[i])
+                FlextInfraUtilitiesRopeHelpers.bracket_balance_line(lines[i])
                 for i in range(start)
             )
             if prior_balance > 0:
@@ -647,7 +510,7 @@ class FlextInfraUtilitiesRefactorCensus:
     ) -> int | None:
         if start_index < 0 or start_index >= len(lines):
             return None
-        bracket_balance = FlextInfraUtilitiesRefactorCensus._bracket_balance(
+        bracket_balance = FlextInfraUtilitiesRopeHelpers.bracket_balance_line(
             lines[start_index]
         )
         end = start_index
@@ -656,7 +519,7 @@ class FlextInfraUtilitiesRefactorCensus:
             stripped = line.strip()
             if bracket_balance > 0:
                 end = index
-                bracket_balance += FlextInfraUtilitiesRefactorCensus._bracket_balance(
+                bracket_balance += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(
                     line
                 )
                 continue
@@ -666,44 +529,8 @@ class FlextInfraUtilitiesRefactorCensus:
             if not line.startswith((" ", "\t")):
                 return end
             end = index
-            bracket_balance += FlextInfraUtilitiesRefactorCensus._bracket_balance(line)
+            bracket_balance += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(line)
         return end
-
-    @staticmethod
-    def _bracket_balance(line: str) -> int:
-        """Return the net bracket depth delta for a line, ignoring strings and comments."""
-        delta = 0
-        in_single = False
-        in_double = False
-        escape = False
-        for ch in line:
-            if escape:
-                escape = False
-                continue
-            if ch == "\\":
-                escape = True
-                continue
-            if in_single:
-                if ch == "'":
-                    in_single = False
-                continue
-            if in_double:
-                if ch == '"':
-                    in_double = False
-                continue
-            if ch == "#":
-                break
-            if ch == "'":
-                in_single = True
-                continue
-            if ch == '"':
-                in_double = True
-                continue
-            if ch in "([{":
-                delta += 1
-            elif ch in ")]}":
-                delta -= 1
-        return delta
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorCensus"]

@@ -10,7 +10,6 @@ from collections.abc import (
     Callable,
 )
 
-from flext_core import t
 from rope.base.project import Project
 from rope.base.pynames import PyName
 from rope.base.pynamesdef import AssignedName
@@ -23,6 +22,8 @@ from rope.refactor.importutils.importinfo import (
     ImportStatement,
 )
 from rope.refactor.importutils.module_imports import ModuleImports
+
+from flext_core import t
 
 
 class FlextInfraTypesRope:

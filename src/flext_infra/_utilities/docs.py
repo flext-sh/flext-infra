@@ -11,7 +11,6 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import u
-
 from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDocsScope,

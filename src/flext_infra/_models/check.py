@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m, u
-
 from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 

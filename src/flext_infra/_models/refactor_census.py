@@ -8,7 +8,6 @@ from collections.abc import (
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-
 from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 

@@ -6,7 +6,6 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_core import m
-
 from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 

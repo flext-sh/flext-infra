@@ -14,7 +14,6 @@ from itertools import chain
 from typing import Annotated, Self
 
 from flext_cli import m
-
 from flext_infra import FlextInfraModelsEngineOperation, c, t
 
 

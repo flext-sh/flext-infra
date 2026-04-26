@@ -10,7 +10,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".accessor_migration": ("FlextInfraAccessorMigrationOrchestrator",),
         ".census": ("FlextInfraRefactorCensus",),
         ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
-        ".enforcement_auditor": ("FlextInfraEnforcementAuditor",),
         ".engine": ("FlextInfraRefactorEngine",),
         ".engine_file": (
             "FlextInfraClassNestingPostCheckGate",

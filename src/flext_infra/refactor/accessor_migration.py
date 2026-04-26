@@ -14,7 +14,6 @@ from tokenize import NAME, generate_tokens
 from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import cli
-
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
     c,
@@ -44,151 +43,97 @@ class FlextInfraAccessorMigrationOrchestrator(
         ),
     ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
 
-    _AUTOMATED_RULES: ClassVar[tuple[m.Infra.AccessorMigrationRule, ...]] = (
-        m.Infra.AccessorMigrationRule(
-            source_name="is_success_result",
-            replacement_name="successful_result",
-            reason="Rename result helper to the canonical success helper",
-            origin="flext_core",
+    # Compact data-table for accessor-migration rules. Origin is constant
+    # ``"flext_core"`` (all current rules target the flext-core surface) so it
+    # is hoisted into the comprehension below. Each row maps to a single
+    # ``m.Infra.AccessorMigrationRule`` via Pydantic v2 batch construction.
+    # Row layout: (source_name, replacement_name, reason).
+    #
+    # Token-level rename is idempotent — once ``source_name`` has been renamed,
+    # subsequent passes find zero matching tokens. The legacy table carried
+    # 4 redundant duplicates per ``is_success_result``/``is_failure_result``
+    # (one per AST stage label) that produced no additional rewrites. The
+    # canonical table below keeps a single entry per ``(source, replacement)``
+    # pair (18 unique rules vs 24 stale entries).
+    _AUTOMATED_RULE_ROWS: ClassVar[tuple[tuple[str, str, str], ...]] = (
+        (
+            "is_success_result", "successful_result",
+            "Rename result helper to the canonical success helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_failure_result",
-            replacement_name="failed_result",
-            reason="Rename result helper to the canonical failure helper",
-            origin="flext_core",
+        (
+            "is_failure_result", "failed_result",
+            "Rename result helper to the canonical failure helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_success_result",
-            replacement_name="successful_result",
-            reason="Rewrite result helper import to the canonical success helper",
-            origin="flext_core",
+        (
+            "is_success", "success",
+            "Rename boolean result predicate to the canonical success field",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_failure_result",
-            replacement_name="failed_result",
-            reason="Rewrite result helper import to the canonical failure helper",
-            origin="flext_core",
+        (
+            "is_failure", "failure",
+            "Rename boolean result predicate to the canonical failure field",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_success_result",
-            replacement_name="successful_result",
-            reason="Rewrite result helper call to the canonical success helper",
-            origin="flext_core",
+        (
+            "set_attribute", "update_attribute",
+            "Rewrite attribute mutator to the canonical update verb",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_failure_result",
-            replacement_name="failed_result",
-            reason="Rewrite result helper call to the canonical failure helper",
-            origin="flext_core",
+        (
+            "get_beartype_conf", "build_beartype_conf",
+            "Rewrite beartype settings accessor to the canonical build verb",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_success_result",
-            replacement_name="successful_result",
-            reason="Rewrite qualified result helper call to the canonical success helper",
-            origin="flext_core",
+        (
+            "get_message_route", "resolve_message_route",
+            "Rewrite route accessor to the canonical resolve helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_failure_result",
-            replacement_name="failed_result",
-            reason="Rewrite qualified result helper call to the canonical failure helper",
-            origin="flext_core",
+        (
+            "set_container_adapter", "container_set_adapter",
+            "Rewrite type adapter accessor to the canonical container_* name",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_success",
-            replacement_name="success",
-            reason="Rename boolean result predicate to the canonical success field",
-            origin="flext_core",
+        (
+            "set_str_adapter", "string_set_adapter",
+            "Rewrite type adapter accessor to the canonical string_* name",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_failure",
-            replacement_name="failure",
-            reason="Rename boolean result predicate to the canonical failure field",
-            origin="flext_core",
+        (
+            "set_scalar_adapter", "scalar_set_adapter",
+            "Rewrite type adapter accessor to the canonical scalar_* name",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="set_attribute",
-            replacement_name="update_attribute",
-            reason="Rewrite attribute mutator to the canonical update verb",
-            origin="flext_core",
+        (
+            "get_logger", "fetch_logger",
+            "Rewrite logger accessor to the canonical fetch verb",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="get_beartype_conf",
-            replacement_name="build_beartype_conf",
-            reason="Rewrite beartype settings accessor to the canonical build verb",
-            origin="flext_core",
+        (
+            "is_structlog_configured", "structlog_configured",
+            "Rewrite structlog predicate to the canonical boolean helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="get_message_route",
-            replacement_name="resolve_message_route",
-            reason="Rewrite route accessor to the canonical resolve helper",
-            origin="flext_core",
+        (
+            "get_log_level_from_config", "resolve_log_level_from_config",
+            "Rewrite log-level accessor to the canonical resolve helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="set_container_adapter",
-            replacement_name="container_set_adapter",
-            reason="Rewrite type adapter accessor to the canonical container_* name",
-            origin="flext_core",
+        (
+            "get_version_string", "resolve_version_string",
+            "Rewrite version accessor to the canonical resolve helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="set_str_adapter",
-            replacement_name="string_set_adapter",
-            reason="Rewrite type adapter accessor to the canonical string_* name",
-            origin="flext_core",
+        (
+            "get_version_info", "resolve_version_info",
+            "Rewrite version info accessor to the canonical resolve helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="set_scalar_adapter",
-            replacement_name="scalar_set_adapter",
-            reason="Rewrite type adapter accessor to the canonical scalar_* name",
-            origin="flext_core",
+        (
+            "get_package_info", "resolve_package_info",
+            "Rewrite package info accessor to the canonical resolve helper",
         ),
-        m.Infra.AccessorMigrationRule(
-            source_name="get_logger",
-            replacement_name="fetch_logger",
-            reason="Rewrite logger facade accessor to the canonical fetch verb",
-            origin="flext_core",
+        (
+            "is_version_at_least", "version_at_least",
+            "Rewrite version predicate to the canonical boolean helper",
         ),
+    )
+
+    _AUTOMATED_RULES: ClassVar[tuple[m.Infra.AccessorMigrationRule, ...]] = tuple(
         m.Infra.AccessorMigrationRule(
-            source_name="get_logger",
-            replacement_name="fetch_logger",
-            reason="Rewrite logger utility accessor to the canonical fetch verb",
+            source_name=src,
+            replacement_name=repl,
+            reason=reason,
             origin="flext_core",
-        ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_structlog_configured",
-            replacement_name="structlog_configured",
-            reason="Rewrite structlog predicate to the canonical boolean helper",
-            origin="flext_core",
-        ),
-        m.Infra.AccessorMigrationRule(
-            source_name="get_log_level_from_config",
-            replacement_name="resolve_log_level_from_config",
-            reason="Rewrite log-level accessor to the canonical resolve helper",
-            origin="flext_core",
-        ),
-        m.Infra.AccessorMigrationRule(
-            source_name="get_version_string",
-            replacement_name="resolve_version_string",
-            reason="Rewrite version accessor to the canonical resolve helper",
-            origin="flext_core",
-        ),
-        m.Infra.AccessorMigrationRule(
-            source_name="get_version_info",
-            replacement_name="resolve_version_info",
-            reason="Rewrite version info accessor to the canonical resolve helper",
-            origin="flext_core",
-        ),
-        m.Infra.AccessorMigrationRule(
-            source_name="get_package_info",
-            replacement_name="resolve_package_info",
-            reason="Rewrite package info accessor to the canonical resolve helper",
-            origin="flext_core",
-        ),
-        m.Infra.AccessorMigrationRule(
-            source_name="is_version_at_least",
-            replacement_name="version_at_least",
-            reason="Rewrite version predicate to the canonical boolean helper",
-            origin="flext_core",
-        ),
+        )
+        for src, repl, reason in _AUTOMATED_RULE_ROWS
     )
     _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset({
         "get_beartype_conf",

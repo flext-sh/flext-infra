@@ -9,6 +9,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from flext_infra import FlextInfraWorkspaceChecker
 from tests import u
 
@@ -40,28 +42,9 @@ class TestsExtendedProjectRunners:
         assert result.success
         assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
 
-    def test_lint_public_method_returns_lint_gate_result(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
-        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
-        fake_bin = tmp_path / "fake_bin"
-        fake_bin.mkdir(parents=True, exist_ok=True)
-        ruff = fake_bin / "ruff"
-        ruff.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-        ruff.chmod(0o755)
-        original_path = os.environ.get("PATH", "")
-        os.environ["PATH"] = f"{fake_bin}:{original_path}"
-        try:
-            result = checker.lint(project_dir)
-        finally:
-            os.environ["PATH"] = original_path
-
-        assert result.success
-        assert result.value.gate == "lint"
-
-    def test_format_public_method_returns_format_gate_result(
-        self,
-        tmp_path: Path,
+    @pytest.mark.parametrize("gate_method", ["lint", "format"])
+    def test_public_method_returns_gate_result(
+        self, gate_method: str, tmp_path: Path
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
@@ -74,9 +57,9 @@ class TestsExtendedProjectRunners:
         original_path = os.environ.get("PATH", "")
         os.environ["PATH"] = f"{fake_bin}:{original_path}"
         try:
-            result = checker.format(project_dir)
+            result = getattr(checker, gate_method)(project_dir)
         finally:
             os.environ["PATH"] = original_path
 
         assert result.success
-        assert result.value.gate == "format"
+        assert result.value.gate == gate_method

@@ -168,35 +168,26 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     ) -> None:
         """Apply one discriminated TOML operation to the target table."""
         if isinstance(operation, m.Infra.TomlSetOp):
-            u.Cli.toml_sync_value(
-                tbl,
-                operation.key,
-                operation.value,
-                out,
-                f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
-            )
+            if u.Cli.toml_sync_value(tbl, operation.key, operation.value):
+                out.append(
+                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
+                )
             return
         if isinstance(operation, m.Infra.TomlListOp):
             if operation.strategy in {
                 c.Infra.TomlMergeMode.ADDITIVE,
                 c.Infra.TomlMergeMode.MERGE,
             }:
-                u.Cli.toml_merge_string_list(
-                    tbl,
-                    operation.key,
-                    operation.values,
-                    out,
-                    f"{u.Cli.toml_dot_path(pfx, operation.key)} updated",
-                )
+                if u.Cli.toml_merge_string_list(tbl, operation.key, operation.values):
+                    out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
                 return
-            u.Cli.toml_sync_string_list(
+            if u.Cli.toml_sync_string_list(
                 tbl,
                 operation.key,
                 operation.values,
-                out,
-                f"{u.Cli.toml_dot_path(pfx, operation.key)} set",
                 sort_values=operation.sort,
-            )
+            ):
+                out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             return
         FlextInfraPhaseEngine._remove_operation(tbl, operation, out, pfx)
 
@@ -210,34 +201,26 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
         """Apply one discriminated TOML operation to one plain mapping table."""
         match operation.kind:
             case c.Infra.TomlOperationKind.SET:
-                u.Cli.toml_mapping_sync_value(
-                    tbl,
-                    operation.key,
-                    operation.value,
-                    out,
-                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
-                )
+                if u.Cli.toml_mapping_sync_value(tbl, operation.key, operation.value):
+                    out.append(
+                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
+                    )
             case c.Infra.TomlOperationKind.LIST:
                 if operation.strategy in {
                     c.Infra.TomlMergeMode.ADDITIVE,
                     c.Infra.TomlMergeMode.MERGE,
                 }:
-                    u.Cli.toml_mapping_merge_string_list(
-                        tbl,
-                        operation.key,
-                        operation.values,
-                        out,
-                        f"{u.Cli.toml_dot_path(pfx, operation.key)} updated",
-                    )
-                else:
-                    u.Cli.toml_mapping_sync_string_list(
-                        tbl,
-                        operation.key,
-                        operation.values,
-                        out,
-                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set",
-                        sort_values=operation.sort,
-                    )
+                    if u.Cli.toml_mapping_merge_string_list(
+                        tbl, operation.key, operation.values
+                    ):
+                        out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
+                elif u.Cli.toml_mapping_sync_string_list(
+                    tbl,
+                    operation.key,
+                    operation.values,
+                    sort_values=operation.sort,
+                ):
+                    out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             case c.Infra.TomlOperationKind.REMOVE:
                 FlextInfraPhaseEngine._remove_payload_operation(
                     tbl, operation, out, pfx
@@ -255,23 +238,17 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     ) -> None:
         """Apply one remove operation, optionally under a relative nested table."""
         if not operation.table_path:
-            u.Cli.toml_remove_key_if_present(
-                tbl,
-                operation.key,
-                out,
-                f"{u.Cli.toml_dot_path(pfx, operation.key)} removed",
-            )
+            if u.Cli.toml_remove_key_if_present(tbl, operation.key):
+                out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} removed")
             return
 
         target = u.Cli.toml_table_path(tbl, operation.table_path)
         if target is None:
             return
-        u.Cli.toml_remove_key_if_present(
-            target,
-            operation.key,
-            out,
-            f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed",
-        )
+        if u.Cli.toml_remove_key_if_present(target, operation.key):
+            out.append(
+                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed",
+            )
 
     @staticmethod
     def _remove_payload_operation(
@@ -282,22 +259,16 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     ) -> None:
         """Apply one remove operation to one plain mapping payload."""
         if not operation.table_path:
-            u.Cli.toml_mapping_remove_key_if_present(
-                tbl,
-                operation.key,
-                out,
-                f"{u.Cli.toml_dot_path(pfx, operation.key)} removed",
-            )
+            if u.Cli.toml_mapping_remove_key_if_present(tbl, operation.key):
+                out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} removed")
             return
         target = u.Cli.toml_mapping_path(tbl, operation.table_path)
         if target is None:
             return
-        u.Cli.toml_mapping_remove_key_if_present(
-            target,
-            operation.key,
-            out,
-            f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed",
-        )
+        if u.Cli.toml_mapping_remove_key_if_present(target, operation.key):
+            out.append(
+                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed",
+            )
 
 
 __all__: list[str] = ["FlextInfraPhaseEngine"]

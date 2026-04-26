@@ -73,8 +73,8 @@ class TestsFlextInfraInfraProtocols:
     def test_generator_protocol_has_generate_method(self) -> None:
         """Test that Generator defines generate method."""
 
-    def test_reporter_protocol_has_get_report_dir_method(self) -> None:
-        """Test that ReportingService defines get_report_dir method."""
+    def test_reporter_protocol_has_resolve_report_dir_method(self) -> None:
+        """Test that ReportingService defines resolve_report_dir method."""
 
     def test_validator_protocol_has_validate_method(self) -> None:
         """Test that Validator defines validate method."""

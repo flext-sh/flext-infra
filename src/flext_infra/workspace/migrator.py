@@ -12,7 +12,6 @@ from typing import Annotated, override
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import (
-    FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
     c,
     m,
@@ -21,27 +20,23 @@ from flext_infra import (
     s,
     u,
 )
+from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 
 
-class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
+class FlextInfraProjectMigrator(
+    FlextInfraWorkspaceGeneratorBase,
+    s[Sequence[m.Infra.MigrationResult]],
+):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 
     discovery: Annotated[
         p.Infra.Discovery | None,
         m.Field(exclude=True, description="Optional custom discovery service"),
     ] = None
-    generator: Annotated[
-        FlextInfraBaseMkGenerator | None,
-        m.Field(exclude=True, description="Optional custom generator service"),
-    ] = None
 
     def _get_discovery(self) -> p.Infra.Discovery | None:
         """Return the configured discovery service."""
         return self.discovery
-
-    def _get_generator(self) -> FlextInfraBaseMkGenerator:
-        """Return the configured generator."""
-        return self.generator or FlextInfraBaseMkGenerator()
 
     @staticmethod
     def _action_text(action: str, *, dry_run: bool) -> str:

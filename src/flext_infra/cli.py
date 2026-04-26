@@ -8,7 +8,6 @@ from typing import ClassVar
 
 from flext_cli import FlextCli, FlextCliSettings
 from flext_core import FlextSettings
-
 from flext_infra import (
     FlextInfraAccessorMigrationOrchestrator,
     FlextInfraBaseMkGenerator,
@@ -59,24 +58,9 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.refactor.enforcement_auditor import FlextInfraEnforcementAuditor
-
-
-def _route(
-    *,
-    handler: t.Cli.ResultRouteHandler,
-    help_text: str,
-    model_cls: type[m.BaseModel],
-    name: str,
-    success_message: str | None = None,
-) -> m.Cli.ResultCommandRoute:
-    return m.Cli.ResultCommandRoute(
-        name=name,
-        help_text=help_text,
-        model_cls=model_cls,
-        handler=handler,
-        success_message=success_message,
-    )
+from flext_infra.refactor.wrapper_root_namespace import (
+    FlextInfraWrapperRootNamespaceRefactor,
+)
 
 
 class FlextInfraCli(FlextCli):
@@ -133,7 +117,7 @@ class FlextInfraCli(FlextCli):
     })
     _GROUP_COMMANDS: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_BASEMK: (
-            _route(
+            m.Cli.ResultCommandRoute(
                 name="generate",
                 help_text="Generate base.mk content from the canonical template",
                 model_cls=FlextInfraBaseMkGenerator,
@@ -142,7 +126,7 @@ class FlextInfraCli(FlextCli):
             ),
         ),
         c.Infra.CLI_GROUP_CHECK: (
-            _route(
+            m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,
                 help_text="Run workspace quality gates",
                 model_cls=m.Infra.RunCommand,
@@ -150,191 +134,171 @@ class FlextInfraCli(FlextCli):
                     params
                 ),
             ),
-            _route(
+            m.Cli.ResultCommandRoute(
                 name="fix-pyrefly-settings",
                 help_text="Repair [tool.pyrefly] blocks",
                 model_cls=m.Infra.FixPyreflyConfigCommand,
                 handler=lambda params: FlextInfraConfigFixer.execute_command(params),
             ),
         ),
-        c.Infra.CLI_GROUP_CODEGEN: (
-            _route(
-                name="init",
-                help_text="Generate/refresh PEP 562 lazy-import __init__.py files",
-                model_cls=FlextInfraCodegenLazyInit,
-                handler=lambda params: FlextInfraCodegenLazyInit.execute_command(
-                    params
+        c.Infra.CLI_GROUP_CODEGEN: tuple(
+            m.Cli.ResultCommandRoute(
+                name=route_name,
+                help_text=help_text,
+                model_cls=model_cls,
+                handler=lambda params, mc=model_cls: mc.execute_command(params),
+                success_message=success_message,
+            )
+            for route_name, help_text, model_cls, success_message in (
+                (
+                    "init",
+                    "Generate/refresh PEP 562 lazy-import __init__.py files",
+                    FlextInfraCodegenLazyInit, "init complete",
                 ),
-                success_message="init complete",
-            ),
-            _route(
-                name="census",
-                help_text="Count namespace violations across workspace projects",
-                model_cls=FlextInfraCodegenCensus,
-                handler=lambda params: FlextInfraCodegenCensus.execute_command(params),
-            ),
-            _route(
-                name="scaffold",
-                help_text="Generate missing base modules in src/ and tests/",
-                model_cls=FlextInfraCodegenScaffolder,
-                handler=lambda params: FlextInfraCodegenScaffolder.execute_command(
-                    params
+                (
+                    "census",
+                    "Count namespace violations across workspace projects",
+                    FlextInfraCodegenCensus, None,
                 ),
-            ),
-            _route(
-                name="auto-fix",
-                help_text="Auto-fix namespace violations (move Finals/TypeVars)",
-                model_cls=FlextInfraCodegenFixer,
-                handler=lambda params: FlextInfraCodegenFixer.execute_command(params),
-            ),
-            _route(
-                name="py-typed",
-                help_text="Create/remove PEP 561 py.typed markers",
-                model_cls=FlextInfraCodegenPyTyped,
-                handler=lambda params: FlextInfraCodegenPyTyped.execute_command(params),
-                success_message="py-typed markers updated",
-            ),
-            _route(
-                name="pipeline",
-                help_text="Run full codegen pipeline",
-                model_cls=FlextInfraCodegenPipeline,
-                handler=lambda params: FlextInfraCodegenPipeline.execute_command(
-                    params
+                (
+                    "scaffold",
+                    "Generate missing base modules in src/ and tests/",
+                    FlextInfraCodegenScaffolder, None,
                 ),
-            ),
-            _route(
-                name="constants-quality-gate",
-                help_text="Run constants migration quality gate",
-                model_cls=FlextInfraCodegenQualityGate,
-                handler=lambda params: FlextInfraCodegenQualityGate.execute_command(
-                    params
+                (
+                    "auto-fix",
+                    "Auto-fix namespace violations (move Finals/TypeVars)",
+                    FlextInfraCodegenFixer, None,
                 ),
-                success_message="constants quality gate passed",
-            ),
-            _route(
-                name="consolidate",
-                help_text="Consolidate inline constants into c.Infra.* references",
-                model_cls=FlextInfraCodegenConsolidator,
-                handler=lambda params: FlextInfraCodegenConsolidator.execute_command(
-                    params
+                (
+                    "py-typed",
+                    "Create/remove PEP 561 py.typed markers",
+                    FlextInfraCodegenPyTyped, "py-typed markers updated",
                 ),
-            ),
-            _route(
-                name="pyproject-keys",
-                help_text="Generate [tool.flext.*] tables in pyproject.toml",
-                model_cls=FlextInfraCodegenPyprojectKeys,
-                handler=lambda params: FlextInfraCodegenPyprojectKeys.execute_command(
-                    params
+                (
+                    "pipeline",
+                    "Run full codegen pipeline",
+                    FlextInfraCodegenPipeline, None,
                 ),
-                success_message="pyproject-keys generation complete",
-            ),
-            _route(
-                name="version-file",
-                help_text="Generate __version__.py from project-metadata SSOT",
-                model_cls=FlextInfraCodegenVersionFile,
-                handler=lambda params: FlextInfraCodegenVersionFile.execute_command(
-                    params
+                (
+                    "constants-quality-gate",
+                    "Run constants migration quality gate",
+                    FlextInfraCodegenQualityGate,
+                    "constants quality gate passed",
                 ),
-                success_message="version-file generation complete",
-            ),
+                (
+                    "consolidate",
+                    "Consolidate inline constants into c.Infra.* references",
+                    FlextInfraCodegenConsolidator, None,
+                ),
+                (
+                    "pyproject-keys",
+                    "Generate [tool.flext.*] tables in pyproject.toml",
+                    FlextInfraCodegenPyprojectKeys,
+                    "pyproject-keys generation complete",
+                ),
+                (
+                    "version-file",
+                    "Generate __version__.py from project-metadata SSOT",
+                    FlextInfraCodegenVersionFile,
+                    "version-file generation complete",
+                ),
+            )
         ),
         c.Infra.CLI_GROUP_DEPS: (
-            _route(
-                name="detect",
-                help_text="Detect runtime vs dev dependencies",
-                model_cls=FlextInfraRuntimeDevDependencyDetector,
-                handler=lambda params: (
-                    FlextInfraRuntimeDevDependencyDetector.execute_command(params)
-                ),
+            *(
+                m.Cli.ResultCommandRoute(
+                    name=route_name,
+                    help_text=help_text,
+                    model_cls=model_cls,
+                    handler=lambda params, mc=model_cls: mc.execute_command(params),
+                )
+                for route_name, help_text, model_cls in (
+                    (
+                        "detect",
+                        "Detect runtime vs dev dependencies",
+                        FlextInfraRuntimeDevDependencyDetector,
+                    ),
+                    (
+                        "extra-paths",
+                        "Synchronize pyright/mypy extraPaths",
+                        FlextInfraExtraPathsManager,
+                    ),
+                    (
+                        "internal-sync",
+                        "Synchronize internal FLEXT dependencies",
+                        FlextInfraInternalDependencySyncService,
+                    ),
+                    (
+                        "modernize",
+                        "Modernize workspace pyproject files",
+                        FlextInfraPyprojectModernizer,
+                    ),
+                )
             ),
-            _route(
-                name="extra-paths",
-                help_text="Synchronize pyright/mypy extraPaths",
-                model_cls=FlextInfraExtraPathsManager,
-                handler=lambda params: FlextInfraExtraPathsManager.execute_command(
-                    params
-                ),
-            ),
-            _route(
-                name="internal-sync",
-                help_text="Synchronize internal FLEXT dependencies",
-                model_cls=FlextInfraInternalDependencySyncService,
-                handler=lambda params: (
-                    FlextInfraInternalDependencySyncService.execute_command(params)
-                ),
-            ),
-            _route(
-                name="modernize",
-                help_text="Modernize workspace pyproject files",
-                model_cls=FlextInfraPyprojectModernizer,
-                handler=lambda params: FlextInfraPyprojectModernizer.execute_command(
-                    params
-                ),
-            ),
-            _route(
+            # path-sync uses ``u.Infra.execute_command`` instead of the model's
+            # own classmethod (single-callable contract owned by utilities).
+            m.Cli.ResultCommandRoute(
                 name="path-sync",
                 help_text="Rewrite internal FLEXT dependency paths",
                 model_cls=m.Infra.PathSyncCommand,
                 handler=lambda params: u.Infra.execute_command(params),
             ),
         ),
-        c.Infra.CLI_GROUP_DOCS: (
-            _route(
-                name="audit",
-                help_text="Audit documentation for broken links and forbidden terms",
-                model_cls=FlextInfraDocAuditor,
-                handler=lambda params: FlextInfraDocAuditor.execute_command(params),
-                success_message="Audit completed successfully",
-            ),
-            _route(
-                name="fix",
-                help_text="Fix documentation issues",
-                model_cls=FlextInfraDocFixer,
-                handler=lambda params: FlextInfraDocFixer.execute_command(params),
-                success_message="Fix completed successfully",
-            ),
-            _route(
-                name="build",
-                help_text="Build MkDocs sites",
-                model_cls=FlextInfraDocBuilder,
-                handler=lambda params: FlextInfraDocBuilder.execute_command(params),
-                success_message="Build completed successfully",
-            ),
-            _route(
-                name="generate",
-                help_text="Generate project docs",
-                model_cls=FlextInfraDocGenerator,
-                handler=lambda params: FlextInfraDocGenerator.execute_command(params),
-                success_message="Generate completed successfully",
-            ),
-            _route(
-                name="validate",
-                help_text="Validate documentation",
-                model_cls=FlextInfraDocValidator,
-                handler=lambda params: FlextInfraDocValidator.execute_command(params),
-                success_message="Validate completed successfully",
-            ),
+        c.Infra.CLI_GROUP_DOCS: tuple(
+            m.Cli.ResultCommandRoute(
+                name=route_name,
+                help_text=help_text,
+                model_cls=model_cls,
+                handler=lambda params, mc=model_cls: mc.execute_command(params),
+                success_message=success_message,
+            )
+            for route_name, help_text, model_cls, success_message in (
+                (
+                    "audit",
+                    "Audit documentation for broken links and forbidden terms",
+                    FlextInfraDocAuditor, "Audit completed successfully",
+                ),
+                (
+                    "fix", "Fix documentation issues", FlextInfraDocFixer,
+                    "Fix completed successfully",
+                ),
+                (
+                    "build", "Build MkDocs sites", FlextInfraDocBuilder,
+                    "Build completed successfully",
+                ),
+                (
+                    "generate", "Generate project docs",
+                    FlextInfraDocGenerator,
+                    "Generate completed successfully",
+                ),
+                (
+                    "validate", "Validate documentation",
+                    FlextInfraDocValidator,
+                    "Validate completed successfully",
+                ),
+            )
         ),
         c.Infra.CLI_GROUP_GITHUB: (
-            _route(
+            m.Cli.ResultCommandRoute(
                 name="workflows",
                 help_text="Sync GitHub workflow files across workspace",
                 model_cls=m.Infra.GithubWorkflowSyncRequest,
                 handler=u.Infra.sync_github_workflows,
             ),
-            _route(
+            m.Cli.ResultCommandRoute(
                 name=c.Infra.LINT_SECTION,
                 help_text="Lint GitHub workflow files",
                 model_cls=m.Infra.GithubWorkflowLintRequest,
                 handler=u.Infra.lint_github_workflows,
             ),
-            _route(
+            m.Cli.ResultCommandRoute(
                 name=c.Infra.PR,
                 help_text="Manage pull requests for a single project",
                 model_cls=m.Infra.GithubPullRequestRequest,
                 handler=u.Infra.run_github_pull_request,
             ),
-            _route(
+            m.Cli.ResultCommandRoute(
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
                 model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
@@ -342,7 +306,7 @@ class FlextInfraCli(FlextCli):
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (
-            _route(
+            m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,
                 help_text="Enforce Python version constraints",
                 model_cls=FlextInfraPythonVersionEnforcer,
@@ -353,7 +317,10 @@ class FlextInfraCli(FlextCli):
             ),
         ),
         c.Infra.CLI_GROUP_REFACTOR: (
-            _route(
+            # ``migrate-mro`` and ``namespace-enforce`` register one input model
+            # but dispatch to a different orchestrator's classmethod; the rest
+            # follow the model_cls.execute_command default.
+            m.Cli.ResultCommandRoute(
                 name="migrate-mro",
                 help_text="Migrate loose declarations into MRO facade classes",
                 model_cls=m.Infra.RefactorMigrateMroInput,
@@ -361,7 +328,7 @@ class FlextInfraCli(FlextCli):
                     FlextInfraRefactorMigrateToClassMRO.execute_command(params)
                 ),
             ),
-            _route(
+            m.Cli.ResultCommandRoute(
                 name="namespace-enforce",
                 help_text="Scan workspace for namespace governance violations",
                 model_cls=m.Infra.RefactorNamespaceEnforceInput,
@@ -369,34 +336,38 @@ class FlextInfraCli(FlextCli):
                     params
                 ),
             ),
-            _route(
-                name="census",
-                help_text="Run a Rope-only workspace census for Python objects",
-                model_cls=FlextInfraRefactorCensus,
-                handler=lambda params: FlextInfraRefactorCensus.execute_command(params),
+            *(
+                m.Cli.ResultCommandRoute(
+                    name=route_name,
+                    help_text=help_text,
+                    model_cls=model_cls,
+                    handler=lambda params, mc=model_cls: mc.execute_command(params),
+                )
+                for route_name, help_text, model_cls in (
+                    (
+                        "census",
+                        "Run a Rope-only workspace census for Python objects",
+                        FlextInfraRefactorCensus,
+                    ),
+                    (
+                        "accessor-migrate",
+                        "Preview or apply automated get_/set_/is_ migration",
+                        FlextInfraAccessorMigrationOrchestrator,
+                    ),
+                )
             ),
-            _route(
-                name="accessor-migrate",
-                help_text="Preview or apply automated get_/set_/is_ migration",
-                model_cls=FlextInfraAccessorMigrationOrchestrator,
-                handler=lambda params: (
-                    FlextInfraAccessorMigrationOrchestrator.execute_command(params)
-                ),
-            ),
-            _route(
-                name="audit",
+            m.Cli.ResultCommandRoute(
+                name="wrapper-root-namespace",
                 help_text=(
-                    "Run SSOT enforcement audit (ENFORCE-039/041/043/044) "
-                    "across the workspace"
+                    "Normalize wrapper alias imports to wrapper root and "
+                    "flatten *.Core.Tests paths"
                 ),
-                model_cls=m.Infra.RefactorAuditInput,
-                handler=lambda params: FlextInfraEnforcementAuditor.execute_command(
-                    params
-                ),
+                model_cls=FlextInfraWrapperRootNamespaceRefactor,
+                handler=lambda params: params.execute(),
             ),
         ),
         c.Infra.CLI_GROUP_RELEASE: (
-            _route(
+            m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,
                 help_text="Run release orchestration CLI flow",
                 model_cls=FlextInfraReleaseOrchestrator,
@@ -406,133 +377,96 @@ class FlextInfraCli(FlextCli):
                 success_message="Release completed successfully",
             ),
         ),
-        c.Infra.CLI_GROUP_VALIDATE: (
-            _route(
-                name="basemk-validate",
-                help_text="Validate base.mk sync",
-                model_cls=FlextInfraBaseMkValidator,
-                handler=lambda params: FlextInfraBaseMkValidator.execute_command(
-                    params
+        c.Infra.CLI_GROUP_VALIDATE: tuple(
+            m.Cli.ResultCommandRoute(
+                name=route_name,
+                help_text=help_text,
+                model_cls=model_cls,
+                handler=lambda params, mc=model_cls: mc.execute_command(params),
+            )
+            for route_name, help_text, model_cls in (
+                (
+                    "basemk-validate", "Validate base.mk sync",
+                    FlextInfraBaseMkValidator,
                 ),
-            ),
-            _route(
-                name="inventory",
-                help_text="Generate scripts inventory",
-                model_cls=FlextInfraInventoryService,
-                handler=lambda params: FlextInfraInventoryService.execute_command(
-                    params
+                (
+                    "inventory", "Generate scripts inventory",
+                    FlextInfraInventoryService,
                 ),
-            ),
-            _route(
-                name="pytest-diag",
-                help_text="Extract pytest diagnostics",
-                model_cls=FlextInfraPytestDiagExtractor,
-                handler=lambda params: FlextInfraPytestDiagExtractor.execute_command(
-                    params
+                (
+                    "pytest-diag", "Extract pytest diagnostics",
+                    FlextInfraPytestDiagExtractor,
                 ),
-            ),
-            _route(
-                name="scan",
-                help_text="Scan text files for patterns",
-                model_cls=FlextInfraTextPatternScanner,
-                handler=lambda params: FlextInfraTextPatternScanner.execute_command(
-                    params
+                (
+                    "scan", "Scan text files for patterns",
+                    FlextInfraTextPatternScanner,
                 ),
-            ),
-            _route(
-                name="skill-validate",
-                help_text="Validate a skill",
-                model_cls=FlextInfraSkillValidator,
-                handler=lambda params: FlextInfraSkillValidator.execute_command(params),
-            ),
-            _route(
-                name="silent-failure",
-                help_text="Validate silent failure sentinel returns",
-                model_cls=FlextInfraSilentFailureValidator,
-                handler=lambda params: FlextInfraSilentFailureValidator.execute_command(
-                    params
+                (
+                    "skill-validate", "Validate a skill",
+                    FlextInfraSkillValidator,
                 ),
-            ),
-            _route(
-                name="stub-validate",
-                help_text="Validate stub supply chain",
-                model_cls=FlextInfraStubSupplyChain,
-                handler=lambda params: FlextInfraStubSupplyChain.execute_command(
-                    params
+                (
+                    "silent-failure",
+                    "Validate silent failure sentinel returns",
+                    FlextInfraSilentFailureValidator,
                 ),
-            ),
-            _route(
-                name="fresh-import",
-                help_text="Guard 7: fresh-process import smoke test",
-                model_cls=FlextInfraValidateFreshImport,
-                handler=lambda params: FlextInfraValidateFreshImport.execute_command(
-                    params
+                (
+                    "stub-validate", "Validate stub supply chain",
+                    FlextInfraStubSupplyChain,
                 ),
-            ),
-            _route(
-                name="import-cycles",
-                help_text="Guard 1: ROPE-backed import cycle detector",
-                model_cls=FlextInfraValidateImportCycles,
-                handler=lambda params: FlextInfraValidateImportCycles.execute_command(
-                    params
+                (
+                    "fresh-import",
+                    "Guard 7: fresh-process import smoke test",
+                    FlextInfraValidateFreshImport,
                 ),
-            ),
-            _route(
-                name="lazy-map-freshness",
-                help_text="Guard 2/3: lazy-map freshness validator",
-                model_cls=FlextInfraValidateLazyMapFreshness,
-                handler=lambda params: (
-                    FlextInfraValidateLazyMapFreshness.execute_command(params)
+                (
+                    "import-cycles",
+                    "Guard 1: ROPE-backed import cycle detector",
+                    FlextInfraValidateImportCycles,
                 ),
-            ),
-            _route(
-                name="tier-whitelist",
-                help_text="Guard 5: tier-whitelist/abstraction-boundary enforcer",
-                model_cls=FlextInfraValidateTierWhitelist,
-                handler=lambda params: FlextInfraValidateTierWhitelist.execute_command(
-                    params
+                (
+                    "lazy-map-freshness",
+                    "Guard 2/3: lazy-map freshness validator",
+                    FlextInfraValidateLazyMapFreshness,
                 ),
-            ),
-            _route(
-                name="metadata-discipline",
-                help_text="Guard 8: centralized metadata parser discipline",
-                model_cls=FlextInfraValidateMetadataDiscipline,
-                handler=lambda params: (
-                    FlextInfraValidateMetadataDiscipline.execute_command(params)
+                (
+                    "tier-whitelist",
+                    "Guard 5: tier-whitelist/abstraction-boundary enforcer",
+                    FlextInfraValidateTierWhitelist,
                 ),
-            ),
+                (
+                    "metadata-discipline",
+                    "Guard 8: centralized metadata parser discipline",
+                    FlextInfraValidateMetadataDiscipline,
+                ),
+            )
         ),
-        c.Infra.CLI_GROUP_WORKSPACE: (
-            _route(
-                name="detect",
-                help_text="Detect workspace or standalone mode",
-                model_cls=FlextInfraWorkspaceDetector,
-                handler=lambda params: FlextInfraWorkspaceDetector.execute_command(
-                    params
+        c.Infra.CLI_GROUP_WORKSPACE: tuple(
+            m.Cli.ResultCommandRoute(
+                name=route_name,
+                help_text=help_text,
+                model_cls=model_cls,
+                handler=lambda params, mc=model_cls: mc.execute_command(params),
+            )
+            for route_name, help_text, model_cls in (
+                (
+                    "detect", "Detect workspace or standalone mode",
+                    FlextInfraWorkspaceDetector,
                 ),
-            ),
-            _route(
-                name="sync",
-                help_text="Sync base.mk to project root",
-                model_cls=FlextInfraSyncService,
-                handler=lambda params: FlextInfraSyncService.execute_command(params),
-            ),
-            _route(
-                name="orchestrate",
-                help_text="Run make verb across projects",
-                model_cls=FlextInfraOrchestratorService,
-                handler=lambda params: FlextInfraOrchestratorService.execute_command(
-                    params
+                (
+                    "sync", "Sync base.mk to project root",
+                    FlextInfraSyncService,
                 ),
-            ),
-            _route(
-                name="migrate",
-                help_text="Migrate workspace projects to flext_infra tooling",
-                model_cls=FlextInfraProjectMigrator,
-                handler=lambda params: FlextInfraProjectMigrator.execute_command(
-                    params
+                (
+                    "orchestrate", "Run make verb across projects",
+                    FlextInfraOrchestratorService,
                 ),
-            ),
+                (
+                    "migrate",
+                    "Migrate workspace projects to flext_infra tooling",
+                    FlextInfraProjectMigrator,
+                ),
+            )
         ),
     }
 

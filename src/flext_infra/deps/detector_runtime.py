@@ -174,7 +174,7 @@ class FlextInfraDependencyDetectorRuntime:
         if params.output_path is not None:
             out_path = params.output_path
         elif params.apply:
-            out_path = u.Cli.get_report_path(
+            out_path = u.Cli.resolve_report_path(
                 root,
                 c.Infra.PROJECT,
                 c.Infra.DEPENDENCIES,

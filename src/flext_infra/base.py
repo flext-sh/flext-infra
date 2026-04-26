@@ -12,7 +12,6 @@ from typing import Annotated, Self, override
 
 from flext_cli import FlextCliSettings
 from flext_core import FlextSettings, s
-
 from flext_infra import (
     c,
     m,

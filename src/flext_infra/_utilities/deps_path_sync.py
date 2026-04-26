@@ -9,7 +9,6 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import u
-
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
@@ -108,14 +107,13 @@ class FlextInfraUtilitiesDependencyPathSync:
                     "editable": True,
                 }
             )
-            _ = u.Cli.toml_mapping_sync_mapping_table(
+            if u.Cli.toml_mapping_sync_mapping_table(
                 sources,
                 dep_name,
                 expected,
-                changes,
-                f"  uv.sources: synced source for {dep_name}",
                 sort_keys=True,
-            )
+            ):
+                changes.append(f"  uv.sources: synced source for {dep_name}")
         return changes
 
     def _rewrite_uv_workspace(
@@ -132,13 +130,12 @@ class FlextInfraUtilitiesDependencyPathSync:
         uv_section = u.Cli.toml_mapping_ensure_table(tool_section, "uv")
         workspace_section = u.Cli.toml_mapping_ensure_table(uv_section, "workspace")
         expected_members = sorted(set(members))
-        _ = u.Cli.toml_mapping_sync_string_list(
+        if u.Cli.toml_mapping_sync_string_list(
             workspace_section,
             "members",
             expected_members,
-            changes,
-            "  uv.workspace: members synchronized",
-        )
+        ):
+            changes.append("  uv.workspace: members synchronized")
         return changes
 
     @classmethod
@@ -193,17 +190,19 @@ class FlextInfraUtilitiesDependencyPathSync:
     def _read_document_state(
         self,
         path: Path,
-    ) -> p.Result[m.Infra.PathSyncDocumentState]:
+    ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Read one pyproject into a validated plain payload state."""
         try:
             original_rendered = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError:
-            return r[m.Infra.PathSyncDocumentState].fail(f"failed to read TOML: {path}")
+            return r[m.Infra.PyprojectDocumentState].fail(
+                f"failed to read TOML: {path}"
+            )
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
-            return r[m.Infra.PathSyncDocumentState].fail(f"TOML parse failed: {path}")
-        return r[m.Infra.PathSyncDocumentState].ok(
-            m.Infra.PathSyncDocumentState(
+            return r[m.Infra.PyprojectDocumentState].fail(f"TOML parse failed: {path}")
+        return r[m.Infra.PyprojectDocumentState].ok(
+            m.Infra.PyprojectDocumentState(
                 pyproject_path=path,
                 original_rendered=original_rendered,
                 payload={key: payload_source[key] for key in payload_source},

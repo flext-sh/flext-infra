@@ -204,21 +204,18 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
             return list[str]()
         mypy_table = u.Cli.toml_mapping_child(tool_table, c.Infra.MYPY)
         changes: MutableSequence[str] = []
-        _ = u.Cli.toml_mapping_sync_string_list(
+        if u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT)),
             "extraPaths",
             expected,
-            changes,
-            "synchronized pyright extraPaths",
-        )
-        if mypy_table is not None:
-            _ = u.Cli.toml_mapping_sync_string_list(
-                u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
-                "mypy_path",
-                expected,
-                changes,
-                "synchronized mypy mypy_path",
-            )
+        ):
+            changes.append("synchronized pyright extraPaths")
+        if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
+            u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
+            "mypy_path",
+            expected,
+        ):
+            changes.append("synchronized mypy mypy_path")
         return changes
 
     def sync_one(

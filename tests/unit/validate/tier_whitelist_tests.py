@@ -60,54 +60,27 @@ class TestTierWhitelistAbstractionBoundary:
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
-    def test_bare_pydantic_import_flagged(
+    @pytest.mark.parametrize(
+        ("source", "filename", "expected_substring"),
+        [
+            ("from pydantic import BaseModel\n", "bad.py", "pydantic"),
+            ("import structlog\n", "bad_structlog.py", "structlog"),
+            ("from returns.result import Result\n", "bad_returns.py", "returns"),
+        ],
+    )
+    def test_bare_abstracted_import_flagged(
         self,
         tmp_path: Path,
         v: FlextInfraValidateTierWhitelist,
+        source: str,
+        filename: str,
+        expected_substring: str,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in(
-            "from pydantic import BaseModel\n",
-            "bad.py",
-            pkg,
-        )
+        tf.create_in(source, filename, pkg)
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
-        joined = " | ".join(report.violations)
-        tm.that(joined, has="bad.py")
-        tm.that(joined, has="pydantic")
-
-    def test_bare_structlog_import_flagged(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
-    ) -> None:
-        pkg = _seed_pkg(tmp_path)
-        tf.create_in(
-            "import structlog\n",
-            "bad_structlog.py",
-            pkg,
-        )
-        report = tm.ok(v.build_report(tmp_path))
-        tm.that(report.passed, eq=False)
-        joined = " | ".join(report.violations)
-        tm.that(joined, has="structlog")
-
-    def test_bare_returns_import_flagged(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
-    ) -> None:
-        pkg = _seed_pkg(tmp_path)
-        tf.create_in(
-            "from returns.result import Result\n",
-            "bad_returns.py",
-            pkg,
-        )
-        report = tm.ok(v.build_report(tmp_path))
-        tm.that(report.passed, eq=False)
-        joined = " | ".join(report.violations)
-        tm.that(joined, has="returns")
+        tm.that(" | ".join(report.violations), has=expected_substring)
 
     def test_type_checking_pydantic_import_is_exempt(
         self,

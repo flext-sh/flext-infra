@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraNamespaceValidator
@@ -268,30 +269,50 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
 
-    def test_rule3_direct_runtime_utilities_import_detected(
+    @pytest.mark.parametrize(
+        ("module_source", "module_name", "expected_violation_substr"),
+        [
+            (
+                (
+                    "from __future__ import annotations\n"
+                    "from flext_test import FlextTestUtilitiesCodegen\n\n"
+                    "class FlextTestModels(Models):\n"
+                    "    pass\n"
+                ),
+                "models.py",
+                "must use namespaced MRO aliases (c/m/p/t/u)",
+            ),
+            (
+                (
+                    "from __future__ import annotations\n"
+                    "from flext_test import FlextTestModelsDeps\n\n"
+                    "class FlextTestDetector:\n"
+                    "    pass\n"
+                ),
+                "detector.py",
+                "instead of direct import 'FlextTestModelsDeps'",
+            ),
+        ],
+    )
+    def test_rule3_direct_runtime_import_detected(
         self,
         tmp_path: Path,
+        module_source: str,
+        module_name: str,
+        expected_violation_substr: str,
     ) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n"
-            "from flext_test import FlextTestUtilitiesCodegen\n\n"
-            "class FlextTestModels(Models):\n"
-            "    pass\n"
-        )
         root = _make_project_with_module(
             tmp_path,
             module_source=module_source,
-            module_name="models.py",
+            module_name=module_name,
         )
-
         result = validator.validate(root)
-
         tm.ok(result)
         tm.that(result.value.passed, eq=False)
         tm.that(
             any(
-                "must use namespaced MRO aliases (c/m/p/t/u)" in violation
+                expected_violation_substr in violation
                 for violation in result.value.violations
             ),
             eq=True,
@@ -320,35 +341,6 @@ class TestFlextInfraNamespaceValidator:
 
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
-
-    def test_rule3_direct_runtime_models_import_detected(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n"
-            "from flext_test import FlextTestModelsDeps\n\n"
-            "class FlextTestDetector:\n"
-            "    pass\n"
-        )
-        root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="detector.py",
-        )
-
-        result = validator.validate(root)
-
-        tm.ok(result)
-        tm.that(result.value.passed, eq=False)
-        tm.that(
-            any(
-                "instead of direct import 'FlextTestModelsDeps'" in violation
-                for violation in result.value.violations
-            ),
-            eq=True,
-        )
 
     def test_rule3_models_facade_import_remains_allowed(
         self,

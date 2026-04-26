@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import FlextSettings, m, u
-
 from flext_infra import c
 
 

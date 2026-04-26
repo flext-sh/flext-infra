@@ -11,12 +11,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
         ),
         ".test_formatting": ("TestsFlextInfraUtilitiesformatting",),
-        ".test_guard_gates": ("TestsFlextInfraUtilitiesGuardGates",),
         ".test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-        ".test_scope_selector": ("TestsFlextInfraUtilitiesScopeSelector",),
-        ".test_snapshot": ("TestsFlextInfraUtilitiesSnapshot",),
     },
 )
 

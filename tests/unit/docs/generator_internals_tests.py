@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraDocGenerator
-from tests import u
+from tests import m, u
 
 
 def test_anchorize_normalizes_headings() -> None:
@@ -39,9 +39,11 @@ def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
     )
 
     result = FlextInfraDocGenerator().generate(
-        workspace,
-        projects=["flext-a"],
-        apply=True,
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=True,
+        )
     )
 
     assert result.success

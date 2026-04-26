@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import ClassVar, Self, override
 
 from flext_core import r
-
 from flext_infra import (
     FlextInfraRopeWorkspace,
     c,

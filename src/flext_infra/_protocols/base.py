@@ -119,12 +119,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def generate(
             self,
-            workspace_root: Path,
-            *,
-            project: str | None = None,
-            projects: str | None = None,
-            output_dir: str = "",
-            apply: bool = False,
+            request: m.Infra.DocsGenerateRequest,
         ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...

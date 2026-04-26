@@ -156,7 +156,7 @@ class TestsFlextInfraInfraInitLazyCore:
 
     def test_lazy_import_reporting_helpers(self) -> None:
         """Test report path helpers stay reachable through the CLI utility facade."""
-        service = flext_infra.u.Cli.get_report_dir
+        service = flext_infra.u.Cli.resolve_report_dir
         assert service is not None
 
     def test_lazy_import_rope_workspace_service(self) -> None:

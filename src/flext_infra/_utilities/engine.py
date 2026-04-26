@@ -19,7 +19,6 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import cli, u
-
 from flext_infra import (
     FlextInfraUtilitiesIteration,
     c,

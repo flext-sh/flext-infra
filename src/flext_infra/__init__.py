@@ -10,12 +10,10 @@ from flext_core.lazy import (
     install_lazy_exports,
     merge_lazy_imports,
 )
-
 from flext_infra.__version__ import *
 
 if _t.TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
-
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.basemk import FlextInfraConstantsBasemk
     from flext_infra._constants.census import FlextInfraConstantsCensus
@@ -49,7 +47,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.engine_ops import FlextInfraModelsEngineOperation
     from flext_infra._models.gates import FlextInfraModelsGates
     from flext_infra._models.github import FlextInfraModelsGithub
-    from flext_infra._models.guard import FlextInfraModelsGuard
     from flext_infra._models.mixins import FlextInfraModelsMixins
     from flext_infra._models.refactor import FlextInfraModelsRefactor
     from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
@@ -63,7 +60,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._models.release import FlextInfraModelsRelease
     from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.scan import FlextInfraModelsScan
-    from flext_infra._models.scope import FlextInfraModelsScope
     from flext_infra._models.validate import FlextInfraModelsCore
     from flext_infra._models.workspace import FlextInfraModelsWorkspace
     from flext_infra._protocols.base import FlextInfraProtocolsBase
@@ -93,10 +89,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-    from flext_infra._utilities.guard_gates import (
-        FlextInfraUtilitiesGuardGates,
-        LintCallback,
-    )
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
@@ -137,8 +129,6 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.scope_selector import FlextInfraUtilitiesScopeSelector
-    from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import (
@@ -270,7 +260,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
     )
-    from flext_infra.refactor.enforcement_auditor import FlextInfraEnforcementAuditor
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.engine_file import (
         FlextInfraClassNestingPostCheckGate,
@@ -378,7 +367,6 @@ if _t.TYPE_CHECKING:
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
-    from flext_infra.workspace.propagate import FlextInfraWorkspacePropagator
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
     from flext_infra.workspace.sync import FlextInfraSyncService
     from flext_infra.workspace.workspace_makefile import (
@@ -450,7 +438,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._models.engine_ops": ("FlextInfraModelsEngineOperation",),
             "._models.gates": ("FlextInfraModelsGates",),
             "._models.github": ("FlextInfraModelsGithub",),
-            "._models.guard": ("FlextInfraModelsGuard",),
             "._models.mixins": ("FlextInfraModelsMixins",),
             "._models.refactor": ("FlextInfraModelsRefactor",),
             "._models.refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
@@ -462,7 +449,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._models.release": ("FlextInfraModelsRelease",),
             "._models.rope": ("FlextInfraModelsRope",),
             "._models.scan": ("FlextInfraModelsScan",),
-            "._models.scope": ("FlextInfraModelsScope",),
             "._models.validate": ("FlextInfraModelsCore",),
             "._models.workspace": ("FlextInfraModelsWorkspace",),
             "._protocols.base": ("FlextInfraProtocolsBase",),
@@ -490,10 +476,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.engine": ("FlextInfraUtilitiesRefactorEngine",),
             "._utilities.github": ("FlextInfraUtilitiesGithub",),
             "._utilities.github_pr": ("FlextInfraUtilitiesGithubPr",),
-            "._utilities.guard_gates": (
-                "FlextInfraUtilitiesGuardGates",
-                "LintCallback",
-            ),
             "._utilities.iteration": ("FlextInfraUtilitiesIteration",),
             "._utilities.log_parser": ("FlextInfraUtilitiesLogParser",),
             "._utilities.mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
@@ -528,8 +510,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
-            "._utilities.scope_selector": ("FlextInfraUtilitiesScopeSelector",),
-            "._utilities.snapshot": ("FlextInfraUtilitiesSnapshot",),
             "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
             ".api": (
                 "FlextInfra",
@@ -654,7 +634,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".refactor.class_nesting_analyzer": (
                 "FlextInfraRefactorClassNestingAnalyzer",
             ),
-            ".refactor.enforcement_auditor": ("FlextInfraEnforcementAuditor",),
             ".refactor.engine": ("FlextInfraRefactorEngine",),
             ".refactor.engine_file": (
                 "FlextInfraClassNestingPostCheckGate",
@@ -750,7 +729,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".workspace.migrator": ("FlextInfraProjectMigrator",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.project_makefile": ("FlextInfraProjectMakefileUpdater",),
-            ".workspace.propagate": ("FlextInfraWorkspacePropagator",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".workspace.sync": ("FlextInfraSyncService",),
             ".workspace.workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
@@ -843,7 +821,6 @@ __all__: list[str] = [
     "FlextInfraDocGenerator",
     "FlextInfraDocServiceBase",
     "FlextInfraDocValidator",
-    "FlextInfraEnforcementAuditor",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureFormattingToolingPhase",
     "FlextInfraEnsureMypyConfigPhase",
@@ -886,7 +863,6 @@ __all__: list[str] = [
     "FlextInfraModelsEngineOperation",
     "FlextInfraModelsGates",
     "FlextInfraModelsGithub",
-    "FlextInfraModelsGuard",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsRefactor",
@@ -896,7 +872,6 @@ __all__: list[str] = [
     "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
-    "FlextInfraModelsScope",
     "FlextInfraModelsWorkspace",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
@@ -987,7 +962,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
-    "FlextInfraUtilitiesGuardGates",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesPatterns",
@@ -1013,8 +987,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
-    "FlextInfraUtilitiesScopeSelector",
-    "FlextInfraUtilitiesSnapshot",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
@@ -1026,8 +998,6 @@ __all__: list[str] = [
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceMakefileGenerator",
-    "FlextInfraWorkspacePropagator",
-    "LintCallback",
     "__author__",
     "__author_email__",
     "__description__",

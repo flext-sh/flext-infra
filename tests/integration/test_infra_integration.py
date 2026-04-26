@@ -209,7 +209,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
     @pytest.mark.integration
     def test_path_utilities_via_mro(self, tmp_path: Path) -> None:
         """Test u.Infra path utility methods are available via MRO."""
-        assert callable(u.Infra.discover_project_root_from_file)
+        assert callable(u.Infra.resolve_project_root)
 
     @pytest.mark.integration
     def test_cli_capture_git_current_branch_in_real_repo(self, tmp_path: Path) -> None:

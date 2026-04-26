@@ -286,7 +286,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
             CommandOutput with log path in stdout, exit code, and timing.
 
         """
-        log_path = u.Cli.get_report_path(
+        log_path = u.Cli.resolve_report_path(
             Path.cwd(),
             c.Infra.RK_WORKSPACE,
             verb,

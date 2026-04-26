@@ -38,13 +38,6 @@ help: ## Show commands
 	$(Q)echo "  {{ help_line | replace('"', '\\"') }}"
 {% endfor %}
 
-audit: ## Run SSOT enforcement audit (GATES=docs scopes to mkdocs python-codeblocks)
-	$(Q)if [ "$(GATES)" = "docs" ]; then \
-		$(PROJECT_INFRA_DOCS) audit --workspace "$(CURDIR)" --output-dir .reports/docs --strict; \
-	else \
-		$(PROJECT_INFRA_REFACTOR) audit --workspace "$(CURDIR)" $(if $(PROJECTS),--projects "$(PROJECTS)",) $(if $(filter 1,$(FIX)),--apply,); \
-	fi
-
 boot: ## Complete setup
 	$(Q)if [ "$(CORE_STACK)" = "go" ]; then \
 		go mod download; \

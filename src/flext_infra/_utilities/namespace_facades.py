@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-
 from flext_infra import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesIteration,

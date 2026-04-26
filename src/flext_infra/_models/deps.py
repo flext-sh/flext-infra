@@ -12,7 +12,6 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m, u
-
 from flext_infra import (
     FlextInfraModelsDepsToolSettings,
     FlextInfraModelsMixins as mm,
@@ -152,28 +151,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
 
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
-
-        model_config = m.ConfigDict(validate_default=False)
-
-        pyproject_path: Annotated[
-            Path,
-            m.Field(description="Resolved pyproject path"),
-        ]
-        original_rendered: Annotated[
-            str,
-            m.Field(description="Original TOML source text"),
-        ] = ""
-        payload: Annotated[
-            MutableMapping[str, t.JsonValue],
-            m.Field(description="Validated plain TOML payload"),
-        ] = m.Field(default_factory=dict)
-
-    class PathSyncDocumentState(m.ArbitraryTypesModel):
-        """Centralized path-sync payload reused across dependency rewrite passes.
 
         Enforcement exemption: internal tooling model with intentional
         mutable state.

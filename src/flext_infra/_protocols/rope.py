@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import (
     Mapping,
     MutableSequence,
@@ -156,6 +157,21 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.SequenceOf[m.Infra.Result]:
             """Execute the hook and return results."""
             ...
+
+    class PatchingASTWalker(Protocol):
+        """Structural contract for rope's internal ``_PatchingASTWalker``.
+
+        Used by ``FlextInfraUtilitiesRopePep695Patch`` to install PEP 695
+        type-parameter handlers without depending on rope's private class.
+        """
+
+        def _handle(self, node: ast.AST, children: list[object]) -> None: ...
+
+        def _child_nodes(
+            self,
+            nodes: Sequence[ast.AST],
+            separator: str,
+        ) -> list[object]: ...
 
     class RopeAnalysisMethods(Protocol):
         """Class contract shared by the Rope analysis mixins."""

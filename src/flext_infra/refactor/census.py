@@ -9,9 +9,9 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from flext_cli import cli
 from rope.base.exceptions import RopeError
 
+from flext_cli import cli
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraProjectSelectionServiceBase,
@@ -710,36 +710,28 @@ class FlextInfraRefactorCensus(
         include_test_only: bool,
     ) -> m.Infra.Census.RemovalCandidate | None:
         if include_unused and cls._is_unused(item):
-            return m.Infra.Census.RemovalCandidate(
-                project=item.project,
-                object_name=item.name,
-                object_kind=item.kind,
-                file_path=item.file_path,
-                line=item.line,
-                scope_path=item.scope_path,
-                reason="unused",
-                suggested_action="delete_object_definition",
-                runtime_reference_sites=item.runtime_reference_sites,
-                test_reference_sites=item.test_reference_sites,
-                example_reference_sites=item.example_reference_sites,
-                script_reference_sites=item.script_reference_sites,
+            reason, suggested_action = "unused", "delete_object_definition"
+        elif include_test_only and cls._is_test_only(item):
+            reason, suggested_action = (
+                "test_only",
+                "delete_object_and_test_references",
             )
-        if include_test_only and cls._is_test_only(item):
-            return m.Infra.Census.RemovalCandidate(
-                project=item.project,
-                object_name=item.name,
-                object_kind=item.kind,
-                file_path=item.file_path,
-                line=item.line,
-                scope_path=item.scope_path,
-                reason="test_only",
-                suggested_action="delete_object_and_test_references",
-                runtime_reference_sites=item.runtime_reference_sites,
-                test_reference_sites=item.test_reference_sites,
-                example_reference_sites=item.example_reference_sites,
-                script_reference_sites=item.script_reference_sites,
-            )
-        return None
+        else:
+            return None
+        return m.Infra.Census.RemovalCandidate(
+            project=item.project,
+            object_name=item.name,
+            object_kind=item.kind,
+            file_path=item.file_path,
+            line=item.line,
+            scope_path=item.scope_path,
+            reason=reason,
+            suggested_action=suggested_action,
+            runtime_reference_sites=item.runtime_reference_sites,
+            test_reference_sites=item.test_reference_sites,
+            example_reference_sites=item.example_reference_sites,
+            script_reference_sites=item.script_reference_sites,
+        )
 
     @staticmethod
     def _object_key(item: m.Infra.Census.Object) -> str:

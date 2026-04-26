@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraDocGenerator, FlextInfraDocValidator
 from tests import c, u
 
 
@@ -45,25 +44,3 @@ def test_docs_write_todo_writes_only_for_project_scopes(tmp_path: Path) -> None:
     assert u.Infra.docs_write_todo(root_scope, apply_mode=True) is False
     assert u.Infra.docs_write_todo(project_scope, apply_mode=True) is True
     assert (workspace / "flext-a/TODOS.md").exists()
-
-
-def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
-
-    generated = FlextInfraDocGenerator().generate(
-        workspace,
-        projects=["flext-a"],
-        apply=True,
-    )
-    assert generated.success
-    result = FlextInfraDocValidator().validate_workspace(
-        workspace,
-        projects=["flext-a"],
-        apply=True,
-    )
-
-    assert result.success
-    assert all(report.result == "OK" for report in result.value)

@@ -38,7 +38,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             workspace_root or workspace,
         )
         self._registry = FlextInfraGateRegistry.default()
-        report_dir = u.Cli.get_report_dir(
+        report_dir = u.Cli.resolve_report_dir(
             self._workspace_root,
             c.Infra.PROJECT,
             c.Infra.VERB_CHECK,

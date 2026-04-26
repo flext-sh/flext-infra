@@ -26,10 +26,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".engine": ("FlextInfraUtilitiesRefactorEngine",),
         ".github": ("FlextInfraUtilitiesGithub",),
         ".github_pr": ("FlextInfraUtilitiesGithubPr",),
-        ".guard_gates": (
-            "FlextInfraUtilitiesGuardGates",
-            "LintCallback",
-        ),
         ".iteration": ("FlextInfraUtilitiesIteration",),
         ".log_parser": ("FlextInfraUtilitiesLogParser",),
         ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
@@ -56,8 +52,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
         ".rope_source": ("FlextInfraUtilitiesRopeSource",),
         ".safety": ("FlextInfraUtilitiesSafety",),
-        ".scope_selector": ("FlextInfraUtilitiesScopeSelector",),
-        ".snapshot": ("FlextInfraUtilitiesSnapshot",),
         ".versioning": ("FlextInfraUtilitiesVersioning",),
     },
 )

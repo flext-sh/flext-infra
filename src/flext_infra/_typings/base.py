@@ -18,11 +18,12 @@ from collections.abc import (
 from pathlib import Path as _Path
 from typing import Literal
 
-from flext_cli import m, t
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
 from tomlkit import TOMLDocument
 from tomlkit.container import Container as _TOMLContainer
 from tomlkit.items import Item as _TOMLItem, Table
+
+from flext_cli import m, t
 
 
 class FlextInfraTypesBase:

@@ -9,12 +9,32 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraModelsDocs:
     """Models for documentation services."""
+
+    class DocsGenerateRequest(m.ContractModel):
+        """Canonical docs generation request payload.
+
+        Consolidates generate-call parameters into one typed contract so callers
+        reuse the same validation rules and avoid ad-hoc multi-parameter calls.
+        """
+
+        workspace_root: Annotated[
+            Path,
+            m.Field(description="Workspace root for docs generation"),
+        ]
+        projects: Annotated[
+            t.StrSequence | None,
+            m.Field(description="Optional selected project names"),
+        ] = None
+        output_dir: Annotated[
+            Path | str | None,
+            m.Field(description="Optional docs output directory override"),
+        ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
+        apply: Annotated[bool, m.Field(description="Apply writes to disk")] = False
 
     class DocsPhaseItemModel(m.BaseModel):
         """Unified item payload for docs phase reports."""

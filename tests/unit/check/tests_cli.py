@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorkspaceChecker, main
@@ -41,9 +42,22 @@ class TestWorkspaceCheckCli:
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly"])
 
-    def test_run_cli_returns_zero_for_passing_project(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        ("source", "expected_exit"),
+        [
+            ("value = 1\n", 0),
+            ("def broken(:\n", 1),
+        ],
+        ids=["passing_project", "failing_project"],
+    )
+    def test_run_cli_lint_exit_code_matches_source_validity(
+        self,
+        tmp_path: Path,
+        source: str,
+        expected_exit: int,
+    ) -> None:
         workspace = self._create_workspace(tmp_path)
-        _ = self._write_module(workspace, "flext-core", "value = 1\n")
+        _ = self._write_module(workspace, "flext-core", source)
 
         exit_code = main(
             [
@@ -58,26 +72,7 @@ class TestWorkspaceCheckCli:
             ],
         )
 
-        tm.that(exit_code, eq=0)
-
-    def test_run_cli_returns_one_for_failing_project(self, tmp_path: Path) -> None:
-        workspace = self._create_workspace(tmp_path)
-        _ = self._write_module(workspace, "flext-core", "def broken(:\n")
-
-        exit_code = main(
-            [
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--gates",
-                "lint",
-                "--projects",
-                "flext-core",
-            ],
-        )
-
-        tm.that(exit_code, eq=1)
+        tm.that(exit_code, eq=expected_exit)
 
     def test_run_cli_returns_one_for_report_directory_error(
         self,

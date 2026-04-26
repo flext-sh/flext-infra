@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
-
 from flext_infra import (
     FlextInfraModelsMixins as mm,
     FlextInfraModelsNamespaceEnforcer,
@@ -67,17 +66,6 @@ class FlextInfraModelsRefactor(
                 description="Maximum number of file previews to include in the report",
             ),
         ] = 10
-
-    class RefactorAuditInput(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
-        """CLI/service request for the SSOT enforcement audit.
-
-        Inherits ``workspace`` / ``projects`` / ``apply`` / ``diff`` /
-        ``fail_fast`` / ``verbose`` from ``ScopeMixin`` + ``WriteMixin``
-        — no extra fields required.
-        """
 
     class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""

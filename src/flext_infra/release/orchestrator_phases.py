@@ -44,7 +44,7 @@ class FlextInfraReleaseOrchestratorPhases:
         version = ctx.version
         project_names = ctx.project_names
         output_dir = (
-            u.Cli.get_report_dir(
+            u.Cli.resolve_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
                 c.Infra.RK_RELEASE,
@@ -109,7 +109,7 @@ class FlextInfraReleaseOrchestratorPhases:
         workspace_root = ctx.workspace_root
         tag = ctx.tag
         notes_dir = (
-            u.Cli.get_report_dir(
+            u.Cli.resolve_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
                 c.Infra.RK_RELEASE,

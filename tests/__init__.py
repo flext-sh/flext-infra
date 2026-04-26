@@ -48,16 +48,9 @@ if _t.TYPE_CHECKING:
         TestsFlextInfraUtilitiesdiscoveryconsolidated,
     )
     from tests.unit._utilities.test_formatting import TestsFlextInfraUtilitiesformatting
-    from tests.unit._utilities.test_guard_gates import (
-        TestsFlextInfraUtilitiesGuardGates,
-    )
     from tests.unit._utilities.test_rope_hooks import TestsFlextInfraUtilitiesRopeHooks
     from tests.unit._utilities.test_safety import TestsFlextInfraUtilitiessafety
     from tests.unit._utilities.test_scanning import TestsFlextInfraUtilitiesscanning
-    from tests.unit._utilities.test_scope_selector import (
-        TestsFlextInfraUtilitiesScopeSelector,
-    )
-    from tests.unit._utilities.test_snapshot import TestsFlextInfraUtilitiesSnapshot
     from tests.unit.basemk.test_engine import TestsFlextInfraBasemkEngine
     from tests.unit.basemk.test_generator import TestsFlextInfraBasemkGenerator
     from tests.unit.basemk.test_generator_edge_cases import (
@@ -281,9 +274,6 @@ if _t.TYPE_CHECKING:
     from tests.unit.refactor.test_accessor_migration import (
         TestsFlextInfraRefactorAccessorMigration,
     )
-    from tests.unit.refactor.test_fixture_loads import (
-        TestsFlextInfraRefactorEdgeCaseFixtures,
-    )
     from tests.unit.refactor.test_infra_refactor_class_and_propagation import (
         TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
     )
@@ -406,7 +396,6 @@ if _t.TYPE_CHECKING:
     from tests.unit.workspace.test_makefile_generator import (
         TestsFlextInfraWorkspaceMakefileGenerator,
     )
-    from tests.unit.workspace.test_propagate import TestsFlextInfraWorkspacePropagator
     from tests.unit.workspace.test_sync import TestsFlextInfraWorkspaceSync
     from tests.unit.workspace_factory import TestsFlextInfraWorkspaceFactory
     from tests.utilities import TestsFlextInfraUtilities, u
@@ -464,16 +453,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilitiesdiscoveryconsolidated",
             ),
             ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
-            ".unit._utilities.test_guard_gates": (
-                "TestsFlextInfraUtilitiesGuardGates",
-            ),
             ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
             ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
             ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-            ".unit._utilities.test_scope_selector": (
-                "TestsFlextInfraUtilitiesScopeSelector",
-            ),
-            ".unit._utilities.test_snapshot": ("TestsFlextInfraUtilitiesSnapshot",),
             ".unit.basemk.test_engine": ("TestsFlextInfraBasemkEngine",),
             ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
             ".unit.basemk.test_generator_edge_cases": (
@@ -700,9 +682,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.refactor.test_accessor_migration": (
                 "TestsFlextInfraRefactorAccessorMigration",
             ),
-            ".unit.refactor.test_fixture_loads": (
-                "TestsFlextInfraRefactorEdgeCaseFixtures",
-            ),
             ".unit.refactor.test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
             ),
@@ -825,7 +804,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.workspace.test_makefile_generator": (
                 "TestsFlextInfraWorkspaceMakefileGenerator",
             ),
-            ".unit.workspace.test_propagate": ("TestsFlextInfraWorkspacePropagator",),
             ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
             ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
             ".utilities": (
@@ -1022,7 +1000,6 @@ __all__: list[str] = [
     "TestsFlextInfraModernizerPyrefly",
     "TestsFlextInfraProtocols",
     "TestsFlextInfraRefactorAccessorMigration",
-    "TestsFlextInfraRefactorEdgeCaseFixtures",
     "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
     "TestsFlextInfraRefactorInfraRefactorClassPlacement",
     "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
@@ -1048,10 +1025,7 @@ __all__: list[str] = [
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
-    "TestsFlextInfraUtilitiesGuardGates",
     "TestsFlextInfraUtilitiesRopeHooks",
-    "TestsFlextInfraUtilitiesScopeSelector",
-    "TestsFlextInfraUtilitiesSnapshot",
     "TestsFlextInfraUtilitiesdiscoveryconsolidated",
     "TestsFlextInfraUtilitiesformatting",
     "TestsFlextInfraUtilitiessafety",
@@ -1060,7 +1034,6 @@ __all__: list[str] = [
     "TestsFlextInfraWorkspaceMain",
     "TestsFlextInfraWorkspaceMakefileDryRun",
     "TestsFlextInfraWorkspaceMakefileGenerator",
-    "TestsFlextInfraWorkspacePropagator",
     "TestsFlextInfraWorkspaceSync",
     "c",
     "d",

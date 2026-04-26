@@ -92,14 +92,9 @@ class FlextInfraEnsureFormattingToolingPhase:
         codespell_table = u.Cli.toml_mapping_path(payload, ("tool", "codespell"))
         if codespell_table is None:
             return []
-        changes: list[str] = []
-        _ = u.Cli.toml_mapping_remove_key_if_present(
-            codespell_table,
-            "skip",
-            changes,
-            "removed codespell.skip hardcode",
-        )
-        return changes
+        if u.Cli.toml_mapping_remove_key_if_present(codespell_table, "skip"):
+            return ["removed codespell.skip hardcode"]
+        return []
 
     def apply(self, doc: TOMLDocument) -> t.StrSequence:
         """Apply canonical codespell, tomlsort, and yamlfix configuration."""

@@ -12,7 +12,6 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-
 from flext_infra import (
     FlextInfraModelsMixins as mm,
     c,

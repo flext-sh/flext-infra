@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import ClassVar, Final
 
 from flext_cli import u
-
 from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDiscovery,

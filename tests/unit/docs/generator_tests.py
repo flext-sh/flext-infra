@@ -15,9 +15,11 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
     )
 
     result = FlextInfraDocGenerator().generate(
-        workspace,
-        projects=["flext-a"],
-        apply=False,
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=False,
+        )
     )
 
     assert result.success
@@ -31,9 +33,11 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
     )
 
     result = FlextInfraDocGenerator().generate(
-        workspace,
-        projects=["flext-a"],
-        apply=True,
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=True,
+        )
     )
 
     assert result.success
@@ -45,7 +49,12 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
 def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:
     workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
 
-    result = FlextInfraDocGenerator().generate(workspace, apply=False)
+    result = FlextInfraDocGenerator().generate(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            apply=False,
+        )
+    )
 
     assert result.success
     assert result.value[0].result == "WARN"

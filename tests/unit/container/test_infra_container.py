@@ -13,8 +13,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
-from flext_core import FlextContainer
 
+from flext_core import FlextContainer
 from tests import c, u
 
 

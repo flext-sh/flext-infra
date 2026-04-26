@@ -11,7 +11,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".migrator": ("FlextInfraProjectMigrator",),
         ".orchestrator": ("FlextInfraOrchestratorService",),
         ".project_makefile": ("FlextInfraProjectMakefileUpdater",),
-        ".propagate": ("FlextInfraWorkspacePropagator",),
         ".rope": ("FlextInfraRopeWorkspace",),
         ".sync": ("FlextInfraSyncService",),
         ".workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),

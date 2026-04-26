@@ -54,14 +54,9 @@ class FlextInfraEnsureRuffConfigPhase:
         payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Remove the stale top-level ``[lint]`` table from one plain payload."""
-        changes: list[str] = []
-        _ = u.Cli.toml_mapping_remove_key_if_present(
-            payload,
-            c.Infra.LINT_SECTION,
-            changes,
-            "removed stale top-level [lint] section",
-        )
-        return changes
+        if u.Cli.toml_mapping_remove_key_if_present(payload, c.Infra.LINT_SECTION):
+            return ["removed stale top-level [lint] section"]
+        return []
 
     def _phase(
         self,

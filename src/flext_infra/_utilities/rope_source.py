@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import (
+    Iterable,
     MutableSequence,
     Sequence,
 )
@@ -12,7 +13,6 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRopeCore,
@@ -244,31 +244,27 @@ class FlextInfraUtilitiesRopeSource:
         runtime_aliases: t.Infra.StrSet,
     ) -> t.Infra.StrSet:
         """Collect aliases blocked by definitions, imports, and assignments."""
-        blocked: t.Infra.StrSet = set()
-        for match in c.Infra.DEF_CLASS_RE.finditer(source):
-            name = match.group(1)
-            if name in runtime_aliases:
-                blocked.add(name)
-        for match in c.Infra.FROM_IMPORT_RE.finditer(source):
-            module = match.group(1)
-            if module == c.Infra.PKG_CORE_UNDERSCORE:
-                continue
-            for _name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                match.group(2)
-            ):
-                if bound in runtime_aliases:
-                    blocked.add(bound)
-        for match in c.Infra.IMPORT_RE.finditer(source):
-            for _name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                match.group(1)
-            ):
-                if bound in runtime_aliases:
-                    blocked.add(bound)
-        for match in c.Infra.ASSIGN_RE.finditer(source):
-            name = match.group(1)
-            if name in runtime_aliases:
-                blocked.add(name)
-        return blocked
+        parse = FlextInfraUtilitiesRopeSource.parse_import_names
+        candidates: Iterable[str] = (
+            n
+            for source_iter in (
+                (m.group(1) for m in c.Infra.DEF_CLASS_RE.finditer(source)),
+                (m.group(1) for m in c.Infra.ASSIGN_RE.finditer(source)),
+                (
+                    bound
+                    for m in c.Infra.IMPORT_RE.finditer(source)
+                    for _, bound in parse(m.group(1))
+                ),
+                (
+                    bound
+                    for m in c.Infra.FROM_IMPORT_RE.finditer(source)
+                    if m.group(1) != c.Infra.PKG_CORE_UNDERSCORE
+                    for _, bound in parse(m.group(2))
+                ),
+            )
+            for n in source_iter
+        )
+        return {n for n in candidates if n in runtime_aliases}
 
     @staticmethod
     def collect_shadowed_aliases(

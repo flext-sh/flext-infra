@@ -12,7 +12,6 @@ from time import perf_counter
 from typing import ClassVar
 
 from flext_cli import cli
-
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,

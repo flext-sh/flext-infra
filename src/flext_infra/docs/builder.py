@@ -28,7 +28,7 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
         workspace_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: Path | str | None = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
+        output_dir: Path | str | None = None,
     ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes."""
         return self.run_scoped_docs(
