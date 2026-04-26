@@ -20,10 +20,6 @@ from flext_infra import (
     m,
     t,
 )
-from flext_infra._utilities.docs_contract import (
-    FlextInfraUtilitiesDocsContract,
-    __all__,
-)
 
 
 class FlextInfraUtilitiesDocsGenerate:
