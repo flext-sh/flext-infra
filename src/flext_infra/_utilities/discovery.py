@@ -364,64 +364,67 @@ class FlextInfraUtilitiesDiscovery:
             )
         except (OSError, SyntaxError):
             syntax_tree = ast.Module(body=[], type_ignores=[])
-        declared_imports_ast: dict[str, str] = {}
-        for node in syntax_tree.body:
-            if isinstance(node, ast.ImportFrom) and node.module:
-                for imported_name in node.names:
-                    if imported_name.name == "*":
-                        continue
-                    local_name = imported_name.asname or imported_name.name
-                    declared_imports_ast[local_name] = (
-                        f"{node.module}.{imported_name.name}"
-                    )
-            if isinstance(node, ast.Import):
-                for imported_name in node.names:
-                    local_name = (
-                        imported_name.asname
-                        or imported_name.name.split(
-                            ".",
-                            maxsplit=1,
-                        )[0]
-                    )
-                    declared_imports_ast[local_name] = imported_name.name
-        discovered_classes = [
-            (
-                node.name,
-                tuple(
-                    cls._ast_base_candidates(base_node)
-                    for base_node in node.bases
-                    if cls._ast_base_candidates(base_node)
-                ),
-            )
+        declared_imports_ast: dict[str, str] = {
+            (imported_name.asname or imported_name.name): f"{node.module}.{imported_name.name}"
             for node in syntax_tree.body
-            if isinstance(node, ast.ClassDef)
+            if isinstance(node, ast.ImportFrom) and node.module
+            for imported_name in node.names
+            if imported_name.name != "*"
+        }
+        declared_imports_ast.update({
+            (
+                imported_name.asname
+                or imported_name.name.split(
+                    ".",
+                    maxsplit=1,
+                )[0]
+            ): imported_name.name
+            for node in syntax_tree.body
+            if isinstance(node, ast.Import)
+            for imported_name in node.names
+        })
+        discovered_classes = [
+            node
+            for node in syntax_tree.body
+            if isinstance(node, ast.ClassDef) and "Constants" in node.name
         ]
         current_root = (
             current_module.split(".", maxsplit=1)[0] if current_module else ""
         )
         resolved: list[str] = []
-        for class_name, base_candidate_groups in discovered_classes:
-            if "Constants" not in class_name:
-                continue
+        resolved_seen: set[str] = set()
+        for class_node in discovered_classes:
+            base_candidate_groups = [
+                candidates
+                for base_node in class_node.bases
+                if (candidates := cls._ast_base_candidates(base_node))
+            ]
             for base_candidates in base_candidate_groups:
-                target_name = ""
-                for base_name in base_candidates:
-                    target_name = declared_imports_ast.get(base_name, "")
-                    if target_name:
-                        break
-                    root_name = base_name.split(".", maxsplit=1)[0]
-                    target_name = declared_imports_ast.get(root_name, "")
-                    if target_name:
-                        break
+                target_name = next(
+                    (
+                        imported_path
+                        for base_name in base_candidates
+                        for imported_path in (
+                            declared_imports_ast.get(base_name, ""),
+                            declared_imports_ast.get(
+                                base_name.split(".", maxsplit=1)[0],
+                                "",
+                            ),
+                        )
+                        if imported_path
+                    ),
+                    "",
+                )
                 if not target_name:
                     continue
                 package_root = target_name.split(".", maxsplit=1)[0]
-                if package_root == current_root:
+                target = (
+                    package_root if return_module else target_name.rsplit(".", maxsplit=1)[-1]
+                )
+                if not target or package_root == current_root or target in resolved_seen:
                     continue
-                local_imported: str = target_name.rsplit(".", maxsplit=1)[-1]
-                target: str = package_root if return_module else local_imported
-                if target and target not in resolved:
-                    resolved.append(target)
+                resolved_seen.add(target)
+                resolved.append(target)
         result = tuple(resolved)
         cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
         return result

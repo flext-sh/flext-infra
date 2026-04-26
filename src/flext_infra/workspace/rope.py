@@ -445,21 +445,14 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self,
         file_path: Path,
         *,
-        include_dunder: bool = False,
-        allow_main: bool = False,
-        allow_assignments: bool = False,
-        allow_functions: bool = False,
-        require_explicit_all: bool = False,
+        export_options: m.Infra.ExportOptions | None = None,
     ) -> t.StrSequence:
         """Return public export names for one module path."""
+        resolved_export_options = export_options or m.Infra.ExportOptions()
         return u.Infra.get_module_export_names(
             self.rope_project,
             self._resource_for(file_path),
-            include_dunder=include_dunder,
-            allow_main=allow_main,
-            allow_assignments=allow_assignments,
-            allow_functions=allow_functions,
-            require_explicit_all=require_explicit_all,
+            export_options=resolved_export_options,
         )
 
     def close(self) -> None:

@@ -5,7 +5,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
-from tests import c, p, t
+from tests import c, m, p, t
 
 
 def _rewrite_dep_paths(
@@ -17,13 +17,25 @@ def _rewrite_dep_paths(
     is_root: bool = False,
     dry_run: bool = False,
 ) -> p.Result[t.StrSequence]:
+    """Adapter that wraps the canonical ``rewrite_dep_paths`` API.
+
+    The centralized signature accepts a ``m.Infra.PathSyncCommand`` Pydantic
+    model instead of loose kwargs (per AGENTS.md §2.7 — typed contracts).
+    See ``test_path_sync_rewrite_deps.py`` for the same adapter.
+    """
+    workspace_path = (
+        pyproject_path.parent if is_root else pyproject_path.parent.parent
+    )
+    command = m.Infra.PathSyncCommand(
+        mode=mode,
+        workspace=str(workspace_path),
+        apply=not dry_run,
+    )
     return FlextInfraUtilitiesDependencyPathSync().rewrite_dep_paths(
         pyproject_path,
-        mode=mode,
+        command=command,
         internal_names=internal_names,
         workspace_members=workspace_members,
-        is_root=is_root,
-        dry_run=dry_run,
     )
 
 

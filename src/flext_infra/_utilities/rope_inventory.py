@@ -36,7 +36,7 @@ class FlextInfraUtilitiesRopeInventory:
         module_entry: m.Infra.RopeModuleIndexEntry | None,
         convention: m.Infra.RopeModuleConvention,
         include_local_scopes: bool,
-        rope_workspace: object | None = None,
+        rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
     ) -> tuple[m.Infra.Census.Object, ...]:
         """Return all same-file defined objects for one Rope module."""
         try:
@@ -53,22 +53,26 @@ class FlextInfraUtilitiesRopeInventory:
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
             record = cls._record(
-                rope_project=rope_project,
-                resource=resource,
-                source=source,
-                name=name,
-                pyname=pyname,
-                module_name=module_entry.module_name
-                if module_entry is not None
-                else "",
-                project_name=convention.project_layout.project_name
-                if convention.project_layout is not None
-                else convention.file_path.parent.name,
-                convention=convention,
-                scope_chain=(),
-                class_chain=(),
-                child_scope=cls._child_scope_for(child_scopes, pyname),
-                rope_workspace=rope_workspace,
+                m.Infra.RopeInventoryRecordInput.model_validate(
+                    {
+                        "rope_project": rope_project,
+                        "resource": resource,
+                        "source": source,
+                        "name": name,
+                        "pyname": pyname,
+                        "module_name": module_entry.module_name
+                        if module_entry is not None
+                        else "",
+                        "project_name": convention.project_layout.project_name
+                        if convention.project_layout is not None
+                        else convention.file_path.parent.name,
+                        "convention": convention,
+                        "scope_chain": (),
+                        "class_chain": (),
+                        "child_scope": cls._child_scope_for(child_scopes, pyname),
+                        "rope_workspace": rope_workspace,
+                    }
+                ),
             )
             if record is None:
                 continue
@@ -109,25 +113,29 @@ class FlextInfraUtilitiesRopeInventory:
         scope: p.Infra.RopeScopeDsl,
         scope_chain: tuple[str, ...],
         class_chain: tuple[str, ...],
-        rope_workspace: object | None = None,
+        rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
     ) -> tuple[m.Infra.Census.Object, ...]:
         items: MutableSequence[m.Infra.Census.Object] = []
         child_scopes = tuple(scope.get_scopes())
         for name, pyname in cls._sorted_scope_names(scope, resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
             record = cls._record(
-                rope_project=rope_project,
-                resource=resource,
-                source=source,
-                name=name,
-                pyname=pyname,
-                module_name=module_name,
-                project_name=project_name,
-                convention=convention,
-                scope_chain=scope_chain,
-                class_chain=class_chain,
-                child_scope=child_scope,
-                rope_workspace=rope_workspace,
+                m.Infra.RopeInventoryRecordInput.model_validate(
+                    {
+                        "rope_project": rope_project,
+                        "resource": resource,
+                        "source": source,
+                        "name": name,
+                        "pyname": pyname,
+                        "module_name": module_name,
+                        "project_name": project_name,
+                        "convention": convention,
+                        "scope_chain": scope_chain,
+                        "class_chain": class_chain,
+                        "child_scope": child_scope,
+                        "rope_workspace": rope_workspace,
+                    }
+                ),
             )
             if record is None:
                 continue
@@ -205,21 +213,9 @@ class FlextInfraUtilitiesRopeInventory:
     @classmethod
     def _record(
         cls,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        source: str,
-        *,
-        name: str,
-        pyname: t.Infra.RopePyName,
-        module_name: str,
-        project_name: str,
-        convention: m.Infra.RopeModuleConvention,
-        scope_chain: tuple[str, ...],
-        class_chain: tuple[str, ...],
-        child_scope: p.Infra.RopeScopeDsl | None,
-        rope_workspace: object | None = None,
+        options: m.Infra.RopeInventoryRecordInput,
     ) -> m.Infra.Census.Object | None:
-        line = cls._definition_line(pyname, resource)
+        line = cls._definition_line(options.pyname, options.resource)
         if line is None:
             return None
         (
@@ -228,12 +224,12 @@ class FlextInfraUtilitiesRopeInventory:
             example_reference_sites,
             script_reference_sites,
         ) = cls._reference_sites(
-            rope_project,
-            resource,
-            source=source,
-            name=name,
+            options.rope_project,
+            options.resource,
+            source=options.source,
+            name=options.name,
             line=line,
-            rope_workspace=rope_workspace,
+            rope_workspace=options.rope_workspace,
         )
         references_count = sum(
             len(reference_sites)
@@ -245,27 +241,34 @@ class FlextInfraUtilitiesRopeInventory:
             )
         )
         kind = cls._kind_for(
-            pyname, class_chain=class_chain, scope_chain=scope_chain, name=name
+            options.pyname,
+            class_chain=options.class_chain,
+            scope_chain=options.scope_chain,
+            name=options.name,
         )
-        if kind == "parameter" and name in {"self", "cls"}:
+        if kind == "parameter" and options.name in {"self", "cls"}:
             return None
-        scope_path = ".".join((*scope_chain, name))
+        scope_path = ".".join((*options.scope_chain, options.name))
         class_path = (
-            ".".join((*class_chain, name)) if kind == "class" else ".".join(class_chain)
+            ".".join((*options.class_chain, options.name))
+            if kind == "class"
+            else ".".join(options.class_chain)
         )
         return m.Infra.Census.Object(
-            name=name,
+            name=options.name,
             kind=kind,
-            file_path=str(convention.file_path),
+            file_path=str(options.convention.file_path),
             line=line,
-            project=project_name,
+            project=options.project_name,
             class_path=class_path,
-            module_name=module_name,
+            module_name=options.module_name,
             scope_path=scope_path,
-            actual_tier=cls._actual_tier(convention),
-            expected_tier=cls._expected_tier(convention, kind=kind),
+            actual_tier=cls._actual_tier(options.convention),
+            expected_tier=cls._expected_tier(options.convention, kind=kind),
             is_facade_member=cls._is_facade_member(
-                convention, name=name, scope_chain=scope_chain
+                options.convention,
+                name=options.name,
+                scope_chain=options.scope_chain,
             ),
             references_count=references_count,
             runtime_references_count=len(runtime_reference_sites),
@@ -277,7 +280,10 @@ class FlextInfraUtilitiesRopeInventory:
             example_reference_sites=example_reference_sites,
             script_reference_sites=script_reference_sites,
             fingerprint=cls._fingerprint(
-                source, name=name, line=line, child_scope=child_scope
+                options.source,
+                name=options.name,
+                line=line,
+                child_scope=options.child_scope,
             ),
         )
 

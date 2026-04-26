@@ -46,6 +46,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         def get_end(self) -> int: ...
 
+    @runtime_checkable
     class RopeWorkspaceDsl(Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
@@ -139,11 +140,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             file_path: Path,
             *,
-            include_dunder: bool = False,
-            allow_main: bool = False,
-            allow_assignments: bool = False,
-            allow_functions: bool = False,
-            require_explicit_all: bool = False,
+            export_options: m.Infra.ExportOptions | None = None,
         ) -> t.StrSequence: ...
 
     class RopePostHook(Protocol):

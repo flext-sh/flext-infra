@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from tests import c, u
+from tests import c, m, u
 
 
 class TestsFlextInfraInfraRopeService:
@@ -33,7 +33,12 @@ class TestsFlextInfraInfraRopeService:
             assert package_root in snapshot.workspace_index.package_dirs
             assert rope.module(module_path) is not None
             assert rope.package(package_root) is not None
-            exports = rope.exports(module_path, allow_assignments=True)
+            exports = rope.exports(
+                module_path,
+                export_options=m.Infra.ExportOptions.model_validate(
+                    {"allow_assignments": True}
+                ),
+            )
             assert "FlextTestsModels" in exports
             assert "m" in exports
         finally:
@@ -82,7 +87,12 @@ class TestsFlextInfraInfraRopeService:
         )
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            exports = rope.exports(fixture_module, allow_functions=True)
+            exports = rope.exports(
+                fixture_module,
+                export_options=m.Infra.ExportOptions.model_validate(
+                    {"allow_functions": True}
+                ),
+            )
 
         assert "reset_settings" in exports
         assert "settings_factory" in exports
@@ -153,7 +163,6 @@ class TestsFlextInfraInfraRopeService:
             ),
             encoding="utf-8",
         )
-
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             assert any(entry.file_path == module_path for entry in rope.modules())
             assert "class FlextDemoModels" in rope.source(module_path)
@@ -186,7 +195,6 @@ class TestsFlextInfraInfraRopeService:
             ),
             encoding="utf-8",
         )
-
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             assert {item.name for item in rope.objects(module_path)} == {"first"}
             module_path.write_text(

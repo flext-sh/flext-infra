@@ -307,23 +307,20 @@ class FlextInfraUtilitiesRopeAnalysis:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
-        include_dunder: bool = False,
-        allow_main: bool = False,
-        allow_assignments: bool = False,
-        allow_functions: bool = False,
-        require_explicit_all: bool = False,
+        export_options: m.Infra.ExportOptions | None = None,
     ) -> t.StrSequence:
         """Return module-local export names from Rope metadata."""
+        resolved_export_options = export_options or m.Infra.ExportOptions()
         cache_key = (
             *FlextInfraUtilitiesRopeAnalysis._resource_cache_key(
                 rope_project,
                 resource,
             ),
-            include_dunder,
-            allow_main,
-            allow_assignments,
-            allow_functions,
-            require_explicit_all,
+            resolved_export_options.include_dunder,
+            resolved_export_options.allow_main,
+            resolved_export_options.allow_assignments,
+            resolved_export_options.allow_functions,
+            resolved_export_options.require_explicit_all,
         )
         cached = FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE.get(cache_key)
         if cached is not None:
@@ -334,7 +331,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 resource,
             )
             attributes = pymodule.get_attributes()
-            if include_dunder:
+            if resolved_export_options.include_dunder:
                 exports = tuple(
                     dict.fromkeys(
                         name
@@ -366,7 +363,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 exports = tuple(dict.fromkeys(explicit_all))
                 FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = exports
                 return exports
-            if require_explicit_all:
+            if resolved_export_options.require_explicit_all:
                 FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()
                 return ()
             names: MutableSequence[str] = []
@@ -386,7 +383,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                         names.append(name)
                         continue
                     if (
-                        allow_main
+                        resolved_export_options.allow_main
                         and name == "main"
                         and isinstance(
                             obj,
@@ -395,13 +392,16 @@ class FlextInfraUtilitiesRopeAnalysis:
                     ):
                         names.append(name)
                         continue
-                    if allow_functions and isinstance(
+                    if resolved_export_options.allow_functions and isinstance(
                         obj,
                         FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
                     ):
                         names.append(name)
                         continue
-                if allow_assignments and isinstance(pyname, RopeAssignedName):
+                if resolved_export_options.allow_assignments and isinstance(
+                    pyname,
+                    RopeAssignedName,
+                ):
                     names.append(name)
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()

@@ -14,11 +14,35 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsCodegen, FlextInfraModelsMixins as mm, t
+from flext_infra import FlextInfraModelsCodegen, FlextInfraModelsMixins as mm, p, t
 
 
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
+
+    class ExportOptions(m.ContractModel):
+        """Canonical options for Rope module export discovery."""
+
+        include_dunder: Annotated[
+            bool,
+            m.Field(description="Whether dunder exports should be returned."),
+        ] = False
+        allow_main: Annotated[
+            bool,
+            m.Field(description="Whether a module-level main() may be exported."),
+        ] = False
+        allow_assignments: Annotated[
+            bool,
+            m.Field(description="Whether assignment-backed names may be exported."),
+        ] = False
+        allow_functions: Annotated[
+            bool,
+            m.Field(description="Whether module functions may be exported."),
+        ] = False
+        require_explicit_all: Annotated[
+            bool,
+            m.Field(description="Whether __all__ must exist for exports to be returned."),
+        ] = False
 
     class ClassInfo(
         mm.PositiveLineMixin,
@@ -272,6 +296,58 @@ class FlextInfraModelsRope:
             m.Field(
                 description="Resolved project layout, when the module belongs to one",
             ),
+        ] = None
+
+    class RopeInventoryRecordInput(m.ArbitraryTypesModel):
+        """Validated payload for building one rope inventory census object."""
+
+        rope_project: Annotated[
+            t.Infra.RopeProject,
+            m.Field(description="Rope project used for reference discovery"),
+        ]
+        resource: Annotated[
+            t.Infra.RopeResource,
+            m.Field(description="Rope resource containing the symbol definition"),
+        ]
+        source: Annotated[
+            str,
+            m.Field(description="Full source text used to compute fingerprints"),
+        ]
+        name: Annotated[
+            str,
+            m.Field(description="Resolved symbol name being recorded"),
+        ]
+        pyname: Annotated[
+            t.Infra.RopePyName,
+            m.Field(description="Rope pyname node for the symbol"),
+        ]
+        module_name: Annotated[
+            str,
+            m.Field(description="Resolved module name for the symbol"),
+        ]
+        project_name: Annotated[
+            str,
+            m.Field(description="Resolved project name for census attribution"),
+        ]
+        convention: Annotated[
+            FlextInfraModelsRope.RopeModuleConvention,
+            m.Field(description="Module convention metadata for tier/facade checks"),
+        ]
+        scope_chain: Annotated[
+            tuple[str, ...],
+            m.Field(description="Nested scope path leading to the symbol"),
+        ] = ()
+        class_chain: Annotated[
+            tuple[str, ...],
+            m.Field(description="Nested class path leading to the symbol"),
+        ] = ()
+        child_scope: Annotated[
+            p.Infra.RopeScopeDsl | None,
+            m.Field(description="Optional child scope object from rope"),
+        ] = None
+        rope_workspace: Annotated[
+            p.Infra.RopeWorkspaceDsl | None,
+            m.Field(description="Optional shared rope workspace/session handle"),
         ] = None
 
     class RopeWorkspaceSession(m.ContractModel):

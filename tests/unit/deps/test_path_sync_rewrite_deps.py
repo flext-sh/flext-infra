@@ -6,7 +6,7 @@ from typing import TypeGuard
 import tomlkit
 from flext_tests import tm
 
-from tests import c, p, t, u
+from tests import c, m, p, t, u
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
@@ -22,13 +22,28 @@ def _rewrite_dep_paths(
     is_root: bool = False,
     dry_run: bool = False,
 ) -> p.Result[t.StrSequence]:
+    """Adapter that wraps the canonical ``u.Infra.rewrite_dep_paths`` API.
+
+    The centralized signature accepts a ``m.Infra.PathSyncCommand`` Pydantic
+    model rather than loose kwargs (per AGENTS.md §2.7 — typed contracts).
+    ``is_root`` is derived inside the centralized method by comparing
+    ``pyproject_path`` against ``command.workspace_path / pyproject.toml`` —
+    when the test signals ``is_root=True`` we point the workspace at the
+    file's parent so the comparison succeeds.
+    """
+    workspace_path = (
+        pyproject_path.parent if is_root else pyproject_path.parent.parent
+    )
+    command = m.Infra.PathSyncCommand(
+        mode=mode,
+        workspace=str(workspace_path),
+        apply=not dry_run,
+    )
     return u.Infra().rewrite_dep_paths(
         pyproject_path,
-        mode=mode,
+        command=command,
         internal_names=internal_names,
         workspace_members=workspace_members,
-        is_root=is_root,
-        dry_run=dry_run,
     )
 
 

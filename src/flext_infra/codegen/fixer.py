@@ -134,11 +134,11 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             workspace_root=project_path,
             project_roots=[project_path],
         )
-        py_files = tuple(py_files_result.value) if py_files_result.success else ()
-        bak_paths = u.Infra.backup_files(py_files)
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
+        py_files = tuple(py_files_result.value) if py_files_result.success else ()
+        bak_paths = u.Infra.backup_files(py_files)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         report = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=project_path,
@@ -148,93 +148,150 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             project=project_path.name,
             migrations=len(report.migrations),
         )
-        for migration in report.migrations:
-            ctx.files_modified.add(migration.file)
-            symbols = ", ".join(migration.moved_symbols) or "symbols"
-            ctx.fix(
+        ctx.files_modified = {
+            *ctx.files_modified,
+            *(migration.file for migration in report.migrations),
+        }
+        ctx.violations_fixed.extend(
+            m.Infra.CensusViolation(
                 module=migration.module,
                 rule="MRO",
                 line=1,
-                message=f"migrated {symbols} into facade MRO",
+                message=(
+                    f"migrated {', '.join(migration.moved_symbols) or 'symbols'}"
+                    " into facade MRO"
+                ),
+                fixable=True,
             )
-        for rewrite in report.rewrites:
-            ctx.files_modified.add(rewrite.file)
-            ctx.fix(
+            for migration in report.migrations
+        )
+        ctx.files_modified = {
+            *ctx.files_modified,
+            *(rewrite.file for rewrite in report.rewrites),
+        }
+        ctx.violations_fixed.extend(
+            m.Infra.CensusViolation(
                 module=rewrite.file,
                 rule="MRO-REWRITE",
                 line=1,
                 message=f"rewrote {rewrite.replacements} consumer references",
+                fixable=True,
             )
-        for error in report.errors:
-            ctx.skip(
+            for rewrite in report.rewrites
+        )
+        ctx.violations_skipped.extend(
+            m.Infra.CensusViolation(
                 module=project_path.name,
                 rule="MRO",
                 line=0,
                 message=error,
+                fixable=False,
             )
+            for error in report.errors
+        )
         engine = FlextInfraRefactorEngine()
         config_result = engine.load_config()
         rules_result = engine.load_rules() if config_result.success else None
-        if config_result.failure:
+        refactor_load_error = next(
+            (
+                message
+                for failed, message in (
+                    (
+                        config_result.failure,
+                        config_result.error or "refactor settings load failed",
+                    ),
+                    (
+                        rules_result is not None and rules_result.failure,
+                        (
+                            rules_result.error
+                            if rules_result is not None
+                            else "refactor rule load failed"
+                        )
+                        or "refactor rule load failed",
+                    ),
+                )
+                if failed
+            ),
+            None,
+        )
+        if refactor_load_error is not None:
             ctx.skip(
                 module=project_path.name,
                 rule="REFACTOR",
                 line=0,
-                message=config_result.error or "refactor settings load failed",
-            )
-        elif rules_result is not None and rules_result.failure:
-            ctx.skip(
-                module=project_path.name,
-                rule="REFACTOR",
-                line=0,
-                message=rules_result.error or "refactor rule load failed",
+                message=refactor_load_error,
             )
         else:
-            for result in engine.refactor_project(
+            refactor_results = tuple(
+                engine.refactor_project(
                 project_path,
                 dry_run=False,
                 apply_safety=False,
-            ):
-                if result.success:
-                    ctx.files_modified.add(str(result.file_path))
-                if result.modified:
-                    changes = tuple(result.changes) or ("refactor applied",)
-                    for change in changes:
-                        ctx.fix(
-                            module=str(result.file_path),
-                            rule="REFACTOR",
-                            line=1,
-                            message=change,
-                        )
-                elif not result.success:
-                    ctx.skip(
-                        module=str(result.file_path),
-                        rule="REFACTOR",
-                        line=1,
-                        message=result.error or "refactor failed",
-                    )
+                ),
+            )
+            ctx.files_modified = {
+                *ctx.files_modified,
+                *(
+                    str(result.file_path)
+                    for result in refactor_results
+                    if result.success
+                ),
+            }
+            ctx.violations_fixed.extend(
+                m.Infra.CensusViolation(
+                    module=str(result.file_path),
+                    rule="REFACTOR",
+                    line=1,
+                    message=change,
+                    fixable=True,
+                )
+                for result in refactor_results
+                if result.modified
+                for change in (tuple(result.changes) or ("refactor applied",))
+            )
+            ctx.violations_skipped.extend(
+                m.Infra.CensusViolation(
+                    module=str(result.file_path),
+                    rule="REFACTOR",
+                    line=1,
+                    message=result.error or "refactor failed",
+                    fixable=False,
+                )
+                for result in refactor_results
+                if (not result.modified) and (not result.success)
+            )
         enforcement = FlextInfraNamespaceEnforcer(
             workspace_root=project_path,
         ).enforce(apply=True)
-        for project_report in enforcement.projects:
-            if project_report.has_violations:
-                _log.warning(
-                    "namespace_enforcement_failed",
-                    project=project_path.name,
-                    error="violations remain after namespace enforcement",
-                )
-                ctx.skip(
+        violating_projects = tuple(
+            project_report
+            for project_report in enforcement.projects
+            if project_report.has_violations
+        )
+        if violating_projects:
+            _log.warning(
+                "namespace_enforcement_failed",
+                project=project_path.name,
+                error="violations remain after namespace enforcement",
+            )
+            ctx.violations_skipped.extend(
+                m.Infra.CensusViolation(
                     module=project_report.project,
                     rule="NAMESPACE",
                     line=0,
                     message="violations remain after namespace enforcement",
+                    fixable=False,
                 )
+                for project_report in violating_projects
+            )
         lazy_generator = FlextInfraCodegenLazyInit.model_validate(
             {"workspace_root": project_path},
         )
         lazy_errors = lazy_generator.generate_inits(check_only=False)
-        for f in lazy_generator.modified_files:
-            ctx.files_modified.add(f)
+        ctx.files_modified = {
+            *ctx.files_modified,
+            *lazy_generator.modified_files,
+        }
         if lazy_errors > 0:
             ctx.skip(
                 module=project_path.name,

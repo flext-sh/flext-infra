@@ -51,7 +51,12 @@ class FlextInfraRefactorRuleLoader:
         ]
     ]:
         """Load enabled text/file rule selections from declarative YAML assets."""
-        result = cli.rules_load_local_definitions(
+        result: p.Result[
+            t.Infra.LoadedRuleSelections[
+                c.Infra.RefactorRuleKind,
+                c.Infra.RefactorFileRuleKind,
+            ]
+        ] = cli.rules_load_local_definitions(
             self.config_path,
             package_rules_dir=Path(__file__).resolve().parent.parent / c.Infra.RK_RULES,
             rule_filters=self.rule_filters,

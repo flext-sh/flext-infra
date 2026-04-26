@@ -11,7 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated
 
-from flext_cli import m, u
+from flext_cli import m
 from flext_infra import (
     FlextInfraModelsDepsToolSettings,
     FlextInfraModelsMixins as mm,
@@ -137,17 +137,12 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             m.Field(
                 c.Infra.PathSyncMode.AUTO, description="Dependency path rewrite mode"
             ),
+            m.BeforeValidator(
+                lambda v: c.Infra.PathSyncMode(v.strip().lower())
+                if isinstance(v, str)
+                else v,
+            ),
         ] = c.Infra.PathSyncMode.AUTO
-
-        @u.field_validator("mode", mode="before")
-        @classmethod
-        def _normalize_mode(
-            cls,
-            value: c.Infra.PathSyncMode | str,
-        ) -> c.Infra.PathSyncMode:
-            if isinstance(value, str):
-                return c.Infra.PathSyncMode(value.strip().lower())
-            return value
 
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.

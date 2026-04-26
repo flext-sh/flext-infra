@@ -51,6 +51,9 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
             alias="workspace",
             description="Workspace root",
         ),
+        m.BeforeValidator(
+            lambda v: (v if isinstance(v, Path) else Path(v)).resolve(),
+        ),
     ]
     apply_changes: Annotated[
         bool,
@@ -71,9 +74,11 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     ] = False
     dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
     fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
-    output_format: Annotated[str, m.Field(description="Output format (json|text)")] = (
-        "text"
-    )
+    output_format: Annotated[
+        str,
+        m.Field(description="Output format (json|text)"),
+        m.BeforeValidator(lambda v: v.strip().lower()),
+    ] = "text"
     project_filter: Annotated[
         str | None,
         m.Field(description="Project filter (comma-separated)", exclude=True),
@@ -99,24 +104,13 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         ),
     ] = None
     report_path: Annotated[
-        Path | None, m.Field(description="Report output path", exclude=True)
+        Path | None,
+        m.Field(description="Report output path", exclude=True),
+        m.BeforeValidator(u.Infra.normalize_optional_path),
     ] = None
     output_dir: Annotated[
         Path | None, m.Field(description="Output directory", exclude=True)
     ] = None
-
-    @u.field_validator("workspace_root", mode="before")
-    @classmethod
-    def _normalize_workspace_root(cls, value: str | Path) -> Path:
-        """Normalize workspace roots eagerly through Pydantic validation."""
-        path = value if isinstance(value, Path) else Path(value)
-        return path.resolve()
-
-    @u.field_validator("output_format", mode="before")
-    @classmethod
-    def _normalize_output_format(cls, value: str) -> str:
-        """Normalize CLI output format names once in the base layer."""
-        return value.strip().lower()
 
     @u.field_validator("project_filter", mode="before")
     @classmethod
@@ -133,13 +127,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
             else u.Infra.normalize_cli_values(*value)
         )
         return ",".join(normalized_values) or None
-
-    @u.field_validator("report_path", mode="before")
-    @classmethod
-    def _normalize_report_path(cls, value: str | Path | None) -> Path | None:
-        """Resolve report file paths eagerly so report writes are absolute."""
-        normalized: Path | None = u.Infra.normalize_optional_path(value)
-        return normalized
 
     @u.field_validator("output_dir", mode="before")
     @classmethod

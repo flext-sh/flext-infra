@@ -41,15 +41,8 @@ class FlextInfraCodegenLazyInit(s[bool]):
     Processes bottom-up so child packages are generated before parents.
     """
 
-    _modified_files: t.Infra.StrSet = u.PrivateAttr()
+    _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
     _duplicate_class_names: int = u.PrivateAttr(default_factory=lambda: 0)
-
-    @override
-    def model_post_init(self, __context: t.ScalarMapping | None, /) -> None:
-        """Create private lazy-init state after model validation."""
-        super().model_post_init(__context)
-        self._modified_files = set()
-        self._duplicate_class_names = 0
 
     @property
     def modified_files(self) -> t.StrSequence:
