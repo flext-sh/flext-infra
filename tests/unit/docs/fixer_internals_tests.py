@@ -26,7 +26,7 @@ def test_anchorize_and_build_toc_are_public_helpers() -> None:
 
 
 def test_fix_updates_docs_readme_when_apply_is_enabled(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         include_fixable_link=True,
     )

@@ -9,7 +9,7 @@ from tests import c, u
 
 
 def test_build_returns_root_and_selected_project_reports(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -26,7 +26,7 @@ def test_build_returns_root_and_selected_project_reports(tmp_path: Path) -> None
 
 
 def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -43,7 +43,7 @@ def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
 
 
 def test_build_skip_report_has_empty_site_dir(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocBuilder().build(workspace)
 

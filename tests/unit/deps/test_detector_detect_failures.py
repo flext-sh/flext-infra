@@ -12,8 +12,8 @@ class TestsFlextInfraDepsDetectorDetectFailures:
         self,
         tmp_path: Path,
     ) -> None:
-        deps = u.Infra.Tests.create_detector_deps_stub([])
-        result = u.Infra.Tests.setup_detector_runtime(
+        deps = u.Tests.create_detector_deps_stub([])
+        result = u.Tests.setup_detector_runtime(
             tmp_path,
             deps,
         ).execute()
@@ -23,10 +23,10 @@ class TestsFlextInfraDepsDetectorDetectFailures:
         self,
         tmp_path: Path,
     ) -> None:
-        deps = u.Infra.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
+        deps = u.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
         deps.discovery_failure = "discovery failed"
         error = tm.fail(
-            u.Infra.Tests.setup_detector_runtime(
+            u.Tests.setup_detector_runtime(
                 tmp_path,
                 deps,
             ).execute(),
@@ -40,10 +40,10 @@ class TestsFlextInfraDepsDetectorDetectFailures:
         self,
         tmp_path: Path,
     ) -> None:
-        deps = u.Infra.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
+        deps = u.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
         deps.deptry_failure = "deptry failed"
         error = tm.fail(
-            u.Infra.Tests
+            u.Tests
             .setup_detector_runtime(
                 tmp_path,
                 deps,
@@ -58,10 +58,10 @@ class TestsFlextInfraDepsDetectorDetectFailures:
         tmp_path: Path,
     ) -> None:
         (tmp_path / "proj-a" / "src").mkdir(parents=True)
-        deps = u.Infra.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
+        deps = u.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
         deps.typings_failure = "typing detection failed"
         error = tm.fail(
-            u.Infra.Tests
+            u.Tests
             .setup_detector_runtime(
                 tmp_path,
                 deps,

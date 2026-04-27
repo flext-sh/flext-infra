@@ -29,9 +29,9 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
 
     def test_get_current_typings_from_pyproject(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = u.Infra.Tests.TomlReaderSequence(
+        service.toml = u.Tests.TomlReaderSequence(
             [
-                u.Infra.Tests.infra_mapping_result(
+                u.Tests.infra_mapping_result(
                     {
                         "tool": {
                             "poetry": {
@@ -56,9 +56,9 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
 
     def test_get_current_typings_from_pyproject_variants(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = u.Infra.Tests.TomlReaderSequence(
+        service.toml = u.Tests.TomlReaderSequence(
             [
-                u.Infra.Tests.infra_mapping_result(
+                u.Tests.infra_mapping_result(
                     {
                         "project": {
                             "optional-dependencies": {
@@ -70,7 +70,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
                         },
                     },
                 ),
-                u.Infra.Tests.infra_mapping_result(
+                u.Tests.infra_mapping_result(
                     {
                         "project": {
                             "optional-dependencies": {
@@ -79,8 +79,8 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
                         },
                     },
                 ),
-                u.Infra.Tests.fail_result("not found"),
-                u.Infra.Tests.infra_mapping_result({}),
+                u.Tests.fail_result("not found"),
+                u.Tests.infra_mapping_result({}),
             ],
         )
         path = Path("/dummy")
@@ -94,12 +94,12 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         _ = (venv_bin / "mypy").write_text("", encoding="utf-8")
-        command_output = u.Infra.Tests.create_command_output()
-        service = u.Infra.Tests.create_deptry_service(command_output=command_output)
-        service.toml = u.Infra.Tests.TomlReaderSequence(
+        command_output = u.Tests.create_command_output()
+        service = u.Tests.create_deptry_service(command_output=command_output)
+        service.toml = u.Tests.TomlReaderSequence(
             [
-                u.Infra.Tests.infra_mapping_result({}),
-                u.Infra.Tests.infra_mapping_result(
+                u.Tests.infra_mapping_result({}),
+                u.Tests.infra_mapping_result(
                     {
                         "project": {"optional-dependencies": {"typings": []}},
                     },
@@ -108,16 +108,16 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin))
 
-        service.toml = u.Infra.Tests.TomlReaderSequence(
+        service.toml = u.Tests.TomlReaderSequence(
             [
-                u.Infra.Tests.infra_mapping_result({}),
-                u.Infra.Tests.infra_mapping_result({}),
+                u.Tests.infra_mapping_result({}),
+                u.Tests.infra_mapping_result({}),
             ],
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin, include_mypy=False))
 
-        failing_service = u.Infra.Tests.create_deptry_service(run_error="mypy crash")
-        failing_service.toml = u.Infra.Tests.TomlReaderSequence(
-            [u.Infra.Tests.infra_mapping_result({})],
+        failing_service = u.Tests.create_deptry_service(run_error="mypy crash")
+        failing_service.toml = u.Tests.TomlReaderSequence(
+            [u.Tests.infra_mapping_result({})],
         )
         tm.fail(failing_service.get_required_typings(tmp_path, venv_bin))

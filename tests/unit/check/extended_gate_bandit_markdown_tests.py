@@ -21,8 +21,8 @@ class TestBanditAndMarkdownGates:
     @staticmethod
     def make_runner(
         *results: p.Result[m.Cli.CommandOutput],
-    ) -> u.Infra.Tests.SequenceRunner:
-        return u.Infra.Tests.SequenceRunner(list(results))
+    ) -> u.Tests.SequenceRunner:
+        return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
         ("with_src", "runner_results", "passed", "issues_len"),
@@ -31,8 +31,8 @@ class TestBanditAndMarkdownGates:
             (
                 True,
                 (
-                    u.Infra.Tests.ok_result(
-                        u.Infra.Tests.stub_run(
+                    u.Tests.ok_result(
+                        u.Tests.stub_run(
                             stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
                             returncode=1,
                         ),
@@ -44,8 +44,8 @@ class TestBanditAndMarkdownGates:
             (
                 True,
                 (
-                    u.Infra.Tests.ok_result(
-                        u.Infra.Tests.stub_run(stdout="invalid json", returncode=1),
+                    u.Tests.ok_result(
+                        u.Tests.stub_run(stdout="invalid json", returncode=1),
                     ),
                 ),
                 False,
@@ -61,7 +61,7 @@ class TestBanditAndMarkdownGates:
         passed: bool,
         issues_len: int,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "bandit-project")
+        project_dir = u.Tests.mk_project(tmp_path, "bandit-project")
         if with_src:
             (project_dir / "src").mkdir()
             (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -89,8 +89,8 @@ class TestBanditAndMarkdownGates:
             (
                 "# Test\n",
                 None,
-                u.Infra.Tests.ok_result(
-                    u.Infra.Tests.stub_run(
+                u.Tests.ok_result(
+                    u.Tests.stub_run(
                         stdout="README.md:1:1 error MD001 Heading level",
                         returncode=1,
                     ),
@@ -102,8 +102,8 @@ class TestBanditAndMarkdownGates:
             (
                 "# Test\n",
                 None,
-                u.Infra.Tests.ok_result(
-                    u.Infra.Tests.stub_run(
+                u.Tests.ok_result(
+                    u.Tests.stub_run(
                         stderr="markdownlint failed",
                         returncode=1,
                     ),
@@ -124,7 +124,7 @@ class TestBanditAndMarkdownGates:
         issues_len: int,
         raw_output: str,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "markdown-project")
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-project")
         if markdown_text:
             (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
         if config_text is not None:
@@ -150,10 +150,10 @@ class TestBanditAndMarkdownGates:
         self,
         tmp_path: Path,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "markdown-settings-project")
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")
-        runner = self.make_runner(u.Infra.Tests.ok_result(u.Infra.Tests.stub_run()))
+        runner = self.make_runner(u.Tests.ok_result(u.Tests.stub_run()))
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
         _ = gate.check(project_dir, self.make_ctx(tmp_path))

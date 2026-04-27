@@ -16,10 +16,10 @@ class TestsFlextInfraRefactorInfraRefactorMroImportRewriter:
 
     def test_migrate_workspace_applies_consumer_rewrites(self, tmp_path: Path) -> None:
         workspace_root, constants_path, consumer_path = (
-            u.Infra.Tests.build_mro_import_workspace(tmp_path)
+            u.Tests.build_mro_import_workspace(tmp_path)
         )
 
-        migrations, rewrites, errors = u.Infra.Tests.migrate_workspace_mro_imports(
+        migrations, rewrites, errors = u.Tests.migrate_workspace_mro_imports(
             workspace_root=workspace_root,
             constants_path=constants_path,
             apply=True,
@@ -44,12 +44,12 @@ class TestsFlextInfraRefactorInfraRefactorMroImportRewriter:
 
     def test_migrate_workspace_dry_run_preserves_files(self, tmp_path: Path) -> None:
         workspace_root, constants_path, consumer_path = (
-            u.Infra.Tests.build_mro_import_workspace(tmp_path)
+            u.Tests.build_mro_import_workspace(tmp_path)
         )
         original_constants = constants_path.read_text(encoding="utf-8")
         original_consumer = consumer_path.read_text(encoding="utf-8")
 
-        migrations, rewrites, errors = u.Infra.Tests.migrate_workspace_mro_imports(
+        migrations, rewrites, errors = u.Tests.migrate_workspace_mro_imports(
             workspace_root=workspace_root,
             constants_path=constants_path,
             apply=False,
@@ -67,11 +67,11 @@ class TestsFlextInfraRefactorInfraRefactorMroImportRewriter:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace_root, constants_path, consumer_path = (
-            u.Infra.Tests.build_mro_import_workspace(tmp_path)
+            u.Tests.build_mro_import_workspace(tmp_path)
         )
-        u.Infra.Tests.patch_mro_import_rewriter_write_failure(monkeypatch)
+        u.Tests.patch_mro_import_rewriter_write_failure(monkeypatch)
 
-        migrations, rewrites, errors = u.Infra.Tests.migrate_workspace_mro_imports(
+        migrations, rewrites, errors = u.Tests.migrate_workspace_mro_imports(
             workspace_root=workspace_root,
             constants_path=constants_path,
             apply=True,

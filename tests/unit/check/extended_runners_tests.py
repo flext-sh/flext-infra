@@ -79,7 +79,7 @@ class TestRunnerPublicBehavior:
         return original_pythonpath or ""
 
     def test_run_pyrefly_with_json_output(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -89,7 +89,7 @@ class TestRunnerPublicBehavior:
             exit_code=0,
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
+            result = u.Tests.run_gate_check(
                 FlextInfraPyreflyGate,
                 tmp_path,
                 proj_dir,
@@ -101,7 +101,7 @@ class TestRunnerPublicBehavior:
         assert result.result.passed
 
     def test_run_pyrefly_with_errors(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -114,7 +114,7 @@ class TestRunnerPublicBehavior:
             exit_code=1,
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
+            result = u.Tests.run_gate_check(
                 FlextInfraPyreflyGate,
                 tmp_path,
                 proj_dir,
@@ -127,7 +127,7 @@ class TestRunnerPublicBehavior:
         assert len(result.issues) == 1
 
     def test_run_pyrefly_with_invalid_json(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -137,7 +137,7 @@ class TestRunnerPublicBehavior:
             exit_code=1,
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
+            result = u.Tests.run_gate_check(
                 FlextInfraPyreflyGate,
                 tmp_path,
                 proj_dir,
@@ -149,7 +149,7 @@ class TestRunnerPublicBehavior:
         assert not result.result.passed
 
     def test_run_pyrefly_with_list_output(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -162,7 +162,7 @@ class TestRunnerPublicBehavior:
             exit_code=1,
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
+            result = u.Tests.run_gate_check(
                 FlextInfraPyreflyGate,
                 tmp_path,
                 proj_dir,
@@ -176,7 +176,7 @@ class TestRunnerPublicBehavior:
     def test_run_pyrefly_limits_check_to_local_python_dirs(
         self, tmp_path: Path
     ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "tests").mkdir()
@@ -190,7 +190,7 @@ class TestRunnerPublicBehavior:
             log_file=log_file,
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
+            result = u.Tests.run_gate_check(
                 FlextInfraPyreflyGate,
                 tmp_path,
                 proj_dir,
@@ -211,7 +211,7 @@ class TestRunnerPublicBehavior:
         self,
         tmp_path: Path,
     ) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -222,7 +222,7 @@ class TestRunnerPublicBehavior:
             stderr="pyrefly crashed",
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
+            result = u.Tests.run_gate_check(
                 FlextInfraPyreflyGate,
                 tmp_path,
                 proj_dir,
@@ -237,15 +237,15 @@ class TestRunnerPublicBehavior:
         assert "pyrefly crashed" in result.issues[0].message
 
     def test_run_mypy_no_python_dirs(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path)
 
-        result = u.Infra.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
+        result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
 
         assert result.result.passed
         assert len(result.issues) == 0
 
     def test_run_mypy_with_json_output(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         original_pythonpath = self._install_fake_mypy(
             tmp_path,
@@ -256,9 +256,7 @@ class TestRunnerPublicBehavior:
             exit_code=1,
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
-                FlextInfraMypyGate, tmp_path, proj_dir
-            )
+            result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
         finally:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath
@@ -269,7 +267,7 @@ class TestRunnerPublicBehavior:
         assert len(result.issues) == 1
 
     def test_run_mypy_skips_empty_lines(self, tmp_path: Path) -> None:
-        _, proj_dir = u.Infra.Tests.create_checker_project(tmp_path, with_src=True)
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         original_pythonpath = self._install_fake_mypy(
             tmp_path,
@@ -282,9 +280,7 @@ class TestRunnerPublicBehavior:
             exit_code=1,
         )
         try:
-            result = u.Infra.Tests.run_gate_check(
-                FlextInfraMypyGate, tmp_path, proj_dir
-            )
+            result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
         finally:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath

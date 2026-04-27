@@ -28,7 +28,7 @@ def publish_ctx(
 
 
 def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         initialize_root_git=True,
     )
@@ -46,7 +46,7 @@ def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
 
 
 def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         initialize_root_git=True,
     )
@@ -66,7 +66,7 @@ def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> Non
 def test_phase_publish_push_without_origin_fails_after_local_tagging(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         initialize_root_git=True,
     )
@@ -84,7 +84,7 @@ def test_phase_publish_push_without_origin_fails_after_local_tagging(
 
 
 def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         initialize_root_git=True,

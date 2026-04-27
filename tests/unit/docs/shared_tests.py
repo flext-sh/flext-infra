@@ -33,7 +33,7 @@ def test_doc_scope_requires_name(tmp_path: Path) -> None:
 
 
 def test_build_scopes_returns_root_and_selected_projects(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -49,7 +49,7 @@ def test_build_scopes_returns_root_and_selected_projects(tmp_path: Path) -> None
 
 
 def test_build_scopes_without_filter_still_returns_root_scope(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = u.Infra.build_scopes(
         workspace,
@@ -62,7 +62,7 @@ def test_build_scopes_without_filter_still_returns_root_scope(tmp_path: Path) ->
 
 
 def test_build_scopes_uses_custom_output_dir(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -79,7 +79,7 @@ def test_build_scopes_uses_custom_output_dir(tmp_path: Path) -> None:
 
 
 def test_build_scopes_skips_missing_projects(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = u.Infra.build_scopes(
         workspace,

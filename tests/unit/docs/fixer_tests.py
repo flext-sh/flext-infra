@@ -9,7 +9,7 @@ from tests import m, u
 
 
 def test_fix_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         include_fixable_link=True,
@@ -26,7 +26,7 @@ def test_fix_returns_reports_for_root_and_selected_project(tmp_path: Path) -> No
 
 
 def test_fix_apply_updates_docs_file_and_writes_reports(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         include_fixable_link=True,
     )
@@ -39,7 +39,7 @@ def test_fix_apply_updates_docs_file_and_writes_reports(tmp_path: Path) -> None:
 
 
 def test_fix_report_warns_without_apply_when_changes_exist(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         include_fixable_link=True,
     )

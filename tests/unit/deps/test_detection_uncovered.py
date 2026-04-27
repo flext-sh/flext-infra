@@ -23,8 +23,8 @@ class TestsFlextInfraDepsDetectionUncovered:
             {"error": {"code": "DEP001"}},
         ])
         u.Cli.json_write(out_file, payload)
-        service = u.Infra.Tests.create_deptry_service(
-            command_output=u.Infra.Tests.create_command_output(),
+        service = u.Tests.create_deptry_service(
+            command_output=u.Tests.create_command_output(),
         )
         issues, exit_code = tm.ok(
             service.run_deptry(project, venv_bin, json_output_path=out_file),
@@ -39,8 +39,8 @@ class TestsFlextInfraDepsDetectionUncovered:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "pip").write_text("", encoding="utf-8")
-        service = u.Infra.Tests.create_deptry_service(
-            command_output=u.Infra.Tests.create_command_output(),
+        service = u.Tests.create_deptry_service(
+            command_output=u.Tests.create_command_output(),
         )
         lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
         assert list(lines) == []
@@ -58,8 +58,8 @@ class TestsFlextInfraDepsDetectionUncovered:
             "[python]\nversion = '3.13'\n",
             encoding="utf-8",
         )
-        service = u.Infra.Tests.create_deptry_service(
-            command_output=u.Infra.Tests.create_command_output(),
+        service = u.Tests.create_deptry_service(
+            command_output=u.Tests.create_command_output(),
         )
         report = tm.ok(
             service.get_required_typings(tmp_path, venv_bin, limits_path=limits_path),

@@ -48,18 +48,16 @@ class TestsFlextInfraDepsPathSyncMainMore:
     """Behavior contract for test_path_sync_main_more."""
 
     def test_run_cli_dry_run_preserves_pyproject_files(self, tmp_path: Path) -> None:
-        workspace = u.Infra.Tests.create_path_sync_workspace(
+        workspace = u.Tests.create_path_sync_workspace(
             tmp_path,
-            root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            root_pyproject=u.Tests.create_path_sync_pyproject(
                 name="flext-workspace",
                 dependency_path=".flext-deps/flext-core",
                 workspace_members=("flext-core", "flext-cli"),
             ),
             projects={
-                "flext-core": u.Infra.Tests.create_path_sync_pyproject(
-                    name="flext-core"
-                ),
-                "flext-cli": u.Infra.Tests.create_path_sync_pyproject(
+                "flext-core": u.Tests.create_path_sync_pyproject(name="flext-core"),
+                "flext-cli": u.Tests.create_path_sync_pyproject(
                     name="flext-cli",
                     dependency_path=".flext-deps/flext-core",
                 ),
@@ -91,22 +89,20 @@ class TestsFlextInfraDepsPathSyncMainMore:
         )
 
     def test_execute_only_rewrites_selected_projects(self, tmp_path: Path) -> None:
-        workspace = u.Infra.Tests.create_path_sync_workspace(
+        workspace = u.Tests.create_path_sync_workspace(
             tmp_path,
-            root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            root_pyproject=u.Tests.create_path_sync_pyproject(
                 name="flext-workspace",
                 dependency_path=".flext-deps/flext-core",
                 workspace_members=("flext-core", "flext-api", "flext-cli"),
             ),
             projects={
-                "flext-core": u.Infra.Tests.create_path_sync_pyproject(
-                    name="flext-core"
-                ),
-                "flext-cli": u.Infra.Tests.create_path_sync_pyproject(
+                "flext-core": u.Tests.create_path_sync_pyproject(name="flext-core"),
+                "flext-cli": u.Tests.create_path_sync_pyproject(
                     name="flext-cli",
                     dependency_path=".flext-deps/flext-core",
                 ),
-                "flext-api": u.Infra.Tests.create_path_sync_pyproject(
+                "flext-api": u.Tests.create_path_sync_pyproject(
                     name="flext-api",
                     dependency_path=".flext-deps/flext-core",
                 ),
@@ -158,18 +154,16 @@ class TestsFlextInfraDepsPathSyncMainMore:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_path_sync_workspace(
+        workspace = u.Tests.create_path_sync_workspace(
             tmp_path,
-            root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            root_pyproject=u.Tests.create_path_sync_pyproject(
                 name="flext-workspace",
                 dependency_path=".flext-deps/flext-core",
                 workspace_members=("flext-core",),
             ),
             projects={
-                "flext-core": u.Infra.Tests.create_path_sync_pyproject(
-                    name="flext-core"
-                ),
-                "algar-oud-mig": u.Infra.Tests.create_path_sync_pyproject(
+                "flext-core": u.Tests.create_path_sync_pyproject(name="flext-core"),
+                "algar-oud-mig": u.Tests.create_path_sync_pyproject(
                     name="algar-oud-mig",
                     dependency_path=".flext-deps/flext-core",
                 ),

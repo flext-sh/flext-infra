@@ -59,7 +59,7 @@ def _validate_class_names(
 def _project_info(
     project: Path, *, package_name: str = "test_project"
 ) -> m.Infra.ProjectInfo:
-    return u.Infra.Tests.create_project_info(
+    return u.Tests.create_project_info(
         project,
         name=project.name,
         package_name=package_name,
@@ -71,7 +71,7 @@ class TestGeneratedFilesAreValidPython:
         self,
         tmp_path: Path,
     ) -> None:
-        project = u.Infra.Tests.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=False,
         )
@@ -80,14 +80,14 @@ class TestGeneratedFilesAreValidPython:
         pkg = project / "src" / "test_project"
         _validate_modules_parse(
             pkg,
-            u.Infra.Tests.src_module_files(),
+            u.Tests.src_module_files(),
         )
 
     def test_generated_tests_modules_parse_successfully(
         self,
         tmp_path: Path,
     ) -> None:
-        project = u.Infra.Tests.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=True,
         )
@@ -97,13 +97,13 @@ class TestGeneratedFilesAreValidPython:
         _ = scaffolder.run(projects=[_project_info(project)])
         _validate_modules_parse(
             tests_dir,
-            u.Infra.Tests.src_module_files(),
+            u.Tests.src_module_files(),
         )
 
 
 class TestGeneratedClassNamingConvention:
     def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
-        project = u.Infra.Tests.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=False,
         )
@@ -125,7 +125,7 @@ class TestGeneratedClassNamingConvention:
         self,
         tmp_path: Path,
     ) -> None:
-        project = u.Infra.Tests.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=True,
         )
@@ -151,7 +151,7 @@ class TestGeneratedClassNamingConvention:
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
         [result] = scaffolder.run(
             projects=[
-                u.Infra.Tests.create_project_info(
+                u.Tests.create_project_info(
                     project,
                     name="empty-project",
                     package_name="",

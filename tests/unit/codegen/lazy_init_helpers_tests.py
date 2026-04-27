@@ -12,7 +12,7 @@ class TestsFlextInfraLazyInitHelpers:
 
     @staticmethod
     def _workspace(tmp_path: Path) -> tuple[Path, Path]:
-        workspace: tuple[Path, Path] = u.Infra.Tests.create_lazy_init_workspace(
+        workspace: tuple[Path, Path] = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -49,14 +49,14 @@ class TestsFlextInfraLazyInitHelpers:
         self, tmp_path: Path
     ) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
-        u.Infra.Tests.write_lazy_init_namespace_module(
+        u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
             class_name="FlextDemoModels",
             alias="m",
             docstring="Models.",
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
         assert '"FlextDemoModels"' in init_content
@@ -70,7 +70,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         assert "FlextDemoInternal" not in self._generated_init(package_root)
 
     def test_explicit_all_exports_keep_public_aliases_only(
@@ -88,7 +88,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
         assert '"FlextDemo"' in init_content
@@ -115,14 +115,14 @@ class TestsFlextInfraLazyInitHelpers:
             'from __future__ import annotations\n\ndef main() -> str:\n    return "ok"\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        u.Infra.Tests.write_lazy_init_namespace_module(
+        u.Tests.write_lazy_init_namespace_module(
             child_dir / "models.py",
             class_name="FlextDemoServicesModels",
             alias="m",
             docstring="Models.",
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
         assert "FlextDemoService" in init_content
@@ -192,7 +192,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
@@ -204,7 +204,7 @@ class TestsFlextInfraLazyInitHelpers:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-meltano",
             package_name="flext_meltano",
@@ -218,7 +218,7 @@ class TestsFlextInfraLazyInitHelpers:
         core_root.joinpath(c.Infra.INIT_PY).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
         )
-        u.Infra.Tests.write_lazy_init_namespace_module(
+        u.Tests.write_lazy_init_namespace_module(
             core_root / "result.py",
             class_name="FlextCoreResult",
             alias="r",
@@ -258,7 +258,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
         assert '"r"' in init_content
@@ -290,7 +290,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
@@ -320,7 +320,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
         assert "FlextDemoHttpTransport" in init_content
@@ -339,7 +339,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
         assert init_content.startswith(c.Infra.AUTOGEN_HEADER)
         assert "Shared" in init_content

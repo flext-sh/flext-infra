@@ -18,8 +18,8 @@ class TestsFlextInfraDepsDetectionDiscover:
         )
         proj.path.mkdir()
         (proj.path / "pyproject.toml").write_text("")
-        service.selector = u.Infra.Tests.DeptrySelector(
-            u.Infra.Tests.ok_result([proj]),
+        service.selector = u.Tests.DeptrySelector(
+            u.Tests.ok_result([proj]),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.success, eq=True)
@@ -28,8 +28,8 @@ class TestsFlextInfraDepsDetectionDiscover:
 
     def test_failure(self, tmp_path: Path) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.selector = u.Infra.Tests.DeptrySelector(
-            u.Infra.Tests.fail_result("failed"),
+        service.selector = u.Tests.DeptrySelector(
+            u.Tests.fail_result("failed"),
         )
         tm.fail(service.discover_project_paths(tmp_path))
 
@@ -44,8 +44,8 @@ class TestsFlextInfraDepsDetectionDiscover:
             stack="py",
         )
         proj.path.mkdir()
-        service.selector = u.Infra.Tests.DeptrySelector(
-            u.Infra.Tests.ok_result([proj]),
+        service.selector = u.Tests.DeptrySelector(
+            u.Tests.ok_result([proj]),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.success, eq=True)

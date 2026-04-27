@@ -23,7 +23,7 @@ class TestWorkspaceCheckCli:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
         for project_name in project_names:
-            _ = u.Infra.Tests.mk_project(
+            _ = u.Tests.mk_project(
                 workspace,
                 project_name,
                 pyproject=(f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),

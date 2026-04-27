@@ -61,7 +61,7 @@ class TestAuditorCore:
         auditor: FlextInfraDocAuditor,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+        workspace = u.Tests.create_docs_workspace(tmp_path)
         result = auditor.audit(workspace)
         tm.ok(result)
 

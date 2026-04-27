@@ -22,7 +22,7 @@ class TestGoGate:
     def make_runner(
         *results: p.Result[m.Cli.CommandOutput],
     ) -> p.Cli.CommandRunner:
-        return u.Infra.Tests.SequenceRunner(list(results))
+        return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
         ("go_mod", "go_file", "runner_results", "passed", "issues_len", "error_text"),
@@ -32,13 +32,13 @@ class TestGoGate:
                 True,
                 False,
                 (
-                    u.Infra.Tests.ok_result(
-                        u.Infra.Tests.stub_run(
+                    u.Tests.ok_result(
+                        u.Tests.stub_run(
                             stdout="main.go:10:5: error message",
                             returncode=1,
                         ),
                     ),
-                    u.Infra.Tests.ok_result(u.Infra.Tests.stub_run()),
+                    u.Tests.ok_result(u.Tests.stub_run()),
                 ),
                 False,
                 1,
@@ -48,9 +48,9 @@ class TestGoGate:
                 True,
                 True,
                 (
-                    u.Infra.Tests.ok_result(u.Infra.Tests.stub_run()),
-                    u.Infra.Tests.ok_result(
-                        u.Infra.Tests.stub_run(stdout="main.go", returncode=1),
+                    u.Tests.ok_result(u.Tests.stub_run()),
+                    u.Tests.ok_result(
+                        u.Tests.stub_run(stdout="main.go", returncode=1),
                     ),
                 ),
                 False,
@@ -61,10 +61,10 @@ class TestGoGate:
                 True,
                 False,
                 (
-                    u.Infra.Tests.ok_result(
-                        u.Infra.Tests.stub_run(stderr="go vet failed", returncode=1),
+                    u.Tests.ok_result(
+                        u.Tests.stub_run(stderr="go vet failed", returncode=1),
                     ),
-                    u.Infra.Tests.ok_result(u.Infra.Tests.stub_run()),
+                    u.Tests.ok_result(u.Tests.stub_run()),
                 ),
                 False,
                 0,
@@ -73,7 +73,7 @@ class TestGoGate:
             (
                 True,
                 False,
-                (u.Infra.Tests.fail_result("execution failed"),),
+                (u.Tests.fail_result("execution failed"),),
                 False,
                 0,
                 "execution failed",
@@ -90,7 +90,7 @@ class TestGoGate:
         issues_len: int,
         error_text: str,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "go-project")
+        project_dir = u.Tests.mk_project(tmp_path, "go-project")
         if go_mod:
             (project_dir / "go.mod").write_text("module test\n", encoding="utf-8")
         if go_file:

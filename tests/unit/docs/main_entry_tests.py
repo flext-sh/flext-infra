@@ -11,7 +11,7 @@ from tests import u
 
 
 def _workspace(tmp_path: Path, *, fixable: bool = False) -> Path:
-    workspace: Path = u.Infra.Tests.create_docs_workspace(
+    workspace: Path = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         include_fixable_link=fixable,
@@ -89,6 +89,6 @@ def test_docs_cli_fix_generate_and_build_use_public_routes(tmp_path: Path) -> No
     assert (workspace / "flext-a/.reports/docs/generate-report.md").exists()
     assert not (workspace / "flext-b/.reports/docs/generate-report.md").exists()
 
-    build_workspace = u.Infra.Tests.create_docs_workspace(tmp_path / "build-root")
+    build_workspace = u.Tests.create_docs_workspace(tmp_path / "build-root")
     assert infra_main(["docs", "build", "--workspace", str(build_workspace)]) == 0
     assert (build_workspace / ".reports/docs/build-report.md").exists()

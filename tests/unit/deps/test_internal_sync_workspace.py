@@ -34,7 +34,7 @@ def create_git_repo(tmp_path: Path, name: str) -> Path:
     repo = tmp_path / name
     repo.mkdir(parents=True, exist_ok=True)
     (repo / "README.md").write_text(f"# {name}\n", encoding="utf-8")
-    u.Infra.Tests.initialize_git_repo(repo)
+    u.Tests.initialize_git_repo(repo)
     return repo
 
 

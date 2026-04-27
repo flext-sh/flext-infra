@@ -32,24 +32,16 @@ class TestsFlextInfraConstants(
 
     __test__ = False
 
-    class Infra(
-        c.Infra,
+    class Tests(
+        FlextTestsConstants.Tests,
+        TestsFlextInfraConstantsFixtures,
+        TestsFlextInfraConstantsDomain,
     ):
-        """Infra-specific test constants namespace.
+        """Test-specific constants namespace with infra extensions.
 
-        All infra-specific test constants are organized under this namespace.
-        Access via FlextTestsConstants.Infra.*
+        All test-specific constants are organized under this namespace.
+        Access via FlextTestsConstants.Tests.* for infra test constants.
         """
-
-        class Tests(
-            TestsFlextInfraConstantsFixtures,
-            TestsFlextInfraConstantsDomain,
-        ):
-            """Test-specific constants namespace with infra extensions.
-
-            All test-specific constants are organized under this namespace.
-            Access via FlextTestsConstants.Infra.Tests.* for infra test constants.
-            """
 
 
 c = TestsFlextInfraConstants

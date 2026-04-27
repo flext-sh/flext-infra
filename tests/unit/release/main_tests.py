@@ -47,7 +47,7 @@ def test_release_orchestrator_normalizes_phase_and_projects() -> None:
 def test_release_run_validate_dry_run_succeeds(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = main(
         [
@@ -69,7 +69,7 @@ def test_release_run_validate_dry_run_succeeds(
 def test_release_run_validate_apply_propagates_make_failure(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         root_validate_exit_code="1",
     )

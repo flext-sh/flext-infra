@@ -74,7 +74,7 @@ def _setup(
     deps: _DepsStub,
 ) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
     detector: detector_module.FlextInfraRuntimeDevDependencyDetector = (
-        u.Infra.Tests.setup_detector_runtime(
+        u.Tests.setup_detector_runtime(
             tmp_path,
             deps,
         )

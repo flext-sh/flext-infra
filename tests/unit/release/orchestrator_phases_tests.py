@@ -48,7 +48,7 @@ def build_ctx(
 
 
 def test_phase_validate_dry_run_succeeds(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().phase_validate(workspace, dry_run=True)
 
@@ -56,7 +56,7 @@ def test_phase_validate_dry_run_succeeds(tmp_path: Path) -> None:
 
 
 def test_phase_validate_apply_propagates_make_failure(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         root_validate_exit_code="1",
     )
@@ -67,7 +67,7 @@ def test_phase_validate_apply_propagates_make_failure(tmp_path: Path) -> None:
 
 
 def test_phase_version_updates_root_and_selected_project(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -83,7 +83,7 @@ def test_phase_version_updates_root_and_selected_project(tmp_path: Path) -> None
 
 
 def test_phase_version_dry_run_leaves_files_unchanged(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().phase_version(
         version_ctx(workspace, dry_run=True),
@@ -96,7 +96,7 @@ def test_phase_version_dry_run_leaves_files_unchanged(tmp_path: Path) -> None:
 def test_phase_build_writes_report_and_logs_for_root_and_project(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -120,7 +120,7 @@ def test_phase_build_writes_report_and_logs_for_root_and_project(
 
 
 def test_phase_build_failure_still_writes_report(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         root_build_exit_code="1",
     )

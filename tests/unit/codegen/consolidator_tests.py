@@ -16,12 +16,12 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     discover_called = 0
-    project_a = u.Infra.Tests.create_project_info(
+    project_a = u.Tests.create_project_info(
         tmp_path / "nested" / "project-a",
         name="project-a",
         stack="python",
     )
-    project_b = u.Infra.Tests.create_project_info(
+    project_b = u.Tests.create_project_info(
         tmp_path / "nested" / "project-b",
         name="project-b",
         stack="python",
@@ -37,7 +37,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         nonlocal discover_called
         discover_called += 1
-        return u.Infra.Tests.ok_result((project_a, project_b))
+        return u.Tests.ok_result((project_a, project_b))
 
     def _unexpected_public_project_discovery(
         *args: t.Scalar,
@@ -54,7 +54,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
         staticmethod(_unexpected_public_project_discovery),
     )
 
-    result = u.Infra.Tests.consolidate_codegen(
+    result = u.Tests.consolidate_codegen(
         workspace_root=tmp_path,
         project="project-b",
         dry_run=True,
@@ -78,7 +78,7 @@ def test_execute_scans_real_package_layout(
         encoding="utf-8",
     )
     (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
-    project = u.Infra.Tests.create_project_info(
+    project = u.Tests.create_project_info(
         project_root,
         name="flext-demo",
         stack="python",
@@ -89,12 +89,12 @@ def test_execute_scans_real_package_layout(
         *args: t.Scalar,
         **kwargs: t.Scalar,
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
-        return u.Infra.Tests.ok_result((project,))
+        return u.Tests.ok_result((project,))
 
     # Patch flext_infra.u (not tests.u) since consolidator imports from flext_infra
     monkeypatch.setattr(infra_u.Infra, "projects", staticmethod(_projects))
 
-    result = u.Infra.Tests.consolidate_codegen(
+    result = u.Tests.consolidate_codegen(
         workspace_root=tmp_path,
         dry_run=True,
     )

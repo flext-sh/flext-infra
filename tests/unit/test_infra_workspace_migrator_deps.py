@@ -25,8 +25,8 @@ class TestsFlextInfraInfraWorkspaceMigratorDeps:
         (project_root / "Makefile").write_text("content", encoding="utf-8")
         (project_root / "pyproject.toml").write_text(pyproject, encoding="utf-8")
         (project_root / ".gitignore").write_text("", encoding="utf-8")
-        migrator: FlextInfraProjectMigrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator: FlextInfraProjectMigrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             base_mk,
             workspace_root=tmp_path,
             dry_run=True,

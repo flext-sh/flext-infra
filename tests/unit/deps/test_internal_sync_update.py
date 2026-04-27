@@ -37,7 +37,7 @@ def create_git_repo(tmp_path: Path, name: str) -> Path:
     repo = tmp_path / name
     repo.mkdir(parents=True, exist_ok=True)
     (repo / "README.md").write_text(f"# {name}\n", encoding="utf-8")
-    u.Infra.Tests.initialize_git_repo(repo)
+    u.Tests.initialize_git_repo(repo)
     return repo
 
 
@@ -88,7 +88,8 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         source.mkdir()
 
         new_target = tmp_path / "new-target"
-        assert u.Cli.ensure_symlink(
+        service = FlextInfraInternalDependencySyncService()
+        assert service.ensure_symlink(
             new_target,
             source,
         ).success
@@ -97,7 +98,7 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         existing_dir = tmp_path / "existing-dir"
         existing_dir.mkdir()
         (existing_dir / "file.txt").write_text("old", encoding="utf-8")
-        assert u.Cli.ensure_symlink(
+        assert service.ensure_symlink(
             existing_dir,
             source,
         ).success
@@ -107,7 +108,7 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         other.mkdir()
         wrong_link = tmp_path / "wrong-link"
         wrong_link.symlink_to(other.resolve(), target_is_directory=True)
-        assert u.Cli.ensure_symlink(
+        assert service.ensure_symlink(
             wrong_link,
             source,
         ).success
@@ -121,7 +122,7 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         parent_file = tmp_path / "parent"
         parent_file.write_text("not a directory", encoding="utf-8")
 
-        result = u.Cli.ensure_symlink(
+        result = FlextInfraInternalDependencySyncService().ensure_symlink(
             parent_file / "target",
             source,
         )

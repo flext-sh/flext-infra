@@ -15,9 +15,9 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         self, tmp_path: Path
     ) -> None:
         project_root = tmp_path / "project-a"
-        u.Infra.Tests.write_migrator_project(project_root)
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        u.Tests.write_migrator_project(project_root)
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "NEW_BASE\n",
             workspace_root=tmp_path,
             dry_run=True,
@@ -29,9 +29,9 @@ class TestsFlextInfraInfraWorkspaceMigrator:
 
     def test_migrator_apply_updates_project_files(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project-a"
-        u.Infra.Tests.write_migrator_project(project_root)
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        u.Tests.write_migrator_project(project_root)
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "NEW_BASE\n",
             workspace_root=tmp_path,
             dry_run=False,
@@ -48,15 +48,15 @@ class TestsFlextInfraInfraWorkspaceMigrator:
     def test_migrator_handles_missing_pyproject_gracefully(
         self, tmp_path: Path
     ) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(
+        project_root = u.Tests.create_migrator_dir_layout(
             tmp_path,
             base_mk="OLD_BASE\n",
             makefile="",
             pyproject=None,
             gitignore=None,
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "NEW_BASE\n",
             workspace_root=tmp_path,
             dry_run=False,
@@ -67,11 +67,11 @@ class TestsFlextInfraInfraWorkspaceMigrator:
 
     def test_migrator_preserves_custom_makefile_content(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project-a"
-        u.Infra.Tests.write_migrator_project(project_root)
+        u.Tests.write_migrator_project(project_root)
         custom = "# Custom rule\ncustom-target:\n\t@echo 'custom'\n"
         (project_root / "Makefile").write_text(custom, encoding="utf-8")
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "NEW_BASE\n",
             workspace_root=tmp_path,
             dry_run=False,
@@ -93,9 +93,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         migrator = FlextInfraProjectMigrator(
             workspace=tmp_path, dry_run=False, apply_changes=True
         )
-        migrator.discovery = u.Infra.Tests.create_migrator_discovery(
-            error="Discovery failed"
-        )
+        migrator.discovery = u.Tests.create_migrator_discovery(error="Discovery failed")
         result = migrator.execute()
         tm.fail(result, has="Discovery failed")
 
@@ -103,9 +101,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         migrator = FlextInfraProjectMigrator(
             workspace=tmp_path, dry_run=False, apply_changes=True
         )
-        migrator.discovery = u.Infra.Tests.create_migrator_discovery(
-            error="Execution failed"
-        )
+        migrator.discovery = u.Tests.create_migrator_discovery(error="Execution failed")
         result = migrator.execute()
         tm.fail(result, has="Execution failed")
 
@@ -118,21 +114,21 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         migrator = FlextInfraProjectMigrator(
             workspace=tmp_path, dry_run=True, apply_changes=False
         )
-        migrator.discovery = u.Infra.Tests.create_migrator_discovery([])
-        migrator.generator = u.Infra.Tests.create_migrator_generator("base.mk")
+        migrator.discovery = u.Tests.create_migrator_discovery([])
+        migrator.generator = u.Tests.create_migrator_generator("base.mk")
         result = migrator.execute()
         migrations = tm.ok(result)
         tm.that(len(migrations), gte=1)
 
     def test_migrator_no_changes_needed(self, tmp_path: Path) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(
+        project_root = u.Tests.create_migrator_dir_layout(
             tmp_path,
             makefile="migrated",
             pyproject='[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "base.mk",
             workspace_root=tmp_path,
             dry_run=False,

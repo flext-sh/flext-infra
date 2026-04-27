@@ -9,7 +9,7 @@ from tests import c, t, u
 
 class TestsFlextInfraDepsDetectionDeptry:
     def test_success(self, tmp_path: Path) -> None:
-        project = u.Infra.Tests.create_project_info(
+        project = u.Tests.create_project_info(
             tmp_path / "test-project",
         )
         project.path.mkdir()
@@ -17,7 +17,7 @@ class TestsFlextInfraDepsDetectionDeptry:
             "",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        service = u.Infra.Tests.create_deptry_service(projects=[project])
+        service = u.Tests.create_deptry_service(projects=[project])
 
         result = service.discover_project_paths(tmp_path)
 
@@ -25,19 +25,19 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.that(result.value, eq=[project.path])
 
     def test_failure(self, tmp_path: Path) -> None:
-        service = u.Infra.Tests.create_deptry_service(
+        service = u.Tests.create_deptry_service(
             selection_error="selector failed",
         )
 
         tm.fail(service.discover_project_paths(tmp_path))
 
     def test_filters_without_pyproject(self, tmp_path: Path) -> None:
-        project = u.Infra.Tests.create_project_info(
+        project = u.Tests.create_project_info(
             tmp_path / "empty-project",
             name="empty-project",
         )
         project.path.mkdir()
-        service = u.Infra.Tests.create_deptry_service(projects=[project])
+        service = u.Tests.create_deptry_service(projects=[project])
 
         result = service.discover_project_paths(tmp_path)
 
@@ -60,8 +60,8 @@ class TestsFlextInfraDepsDetectionDeptry:
         out_file = project / ".deptry-report.json"
         write_result = u.Cli.json_write(out_file, deptry_report_payload)
         tm.ok(write_result)
-        service = u.Infra.Tests.create_deptry_service(
-            command_output=u.Infra.Tests.create_command_output(),
+        service = u.Tests.create_deptry_service(
+            command_output=u.Tests.create_command_output(),
         )
 
         result = service.run_deptry(project, venv_bin, json_output_path=out_file)
@@ -72,7 +72,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.that(len(issues), eq=1)
 
     def test_no_config_file(self, tmp_path: Path) -> None:
-        service = u.Infra.Tests.create_deptry_service()
+        service = u.Tests.create_deptry_service()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         project = tmp_path / "test-project-dir"
@@ -84,7 +84,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.that(result.value, eq=([], 0))
 
     def test_runner_failure(self, tmp_path: Path) -> None:
-        service = u.Infra.Tests.create_deptry_service(
+        service = u.Tests.create_deptry_service(
             run_error="runner failed",
         )
         venv_bin = tmp_path / "venv" / "bin"
@@ -99,8 +99,8 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.fail(service.run_deptry(project, venv_bin))
 
     def test_invalid_and_empty_json_output(self, tmp_path: Path) -> None:
-        service = u.Infra.Tests.create_deptry_service(
-            command_output=u.Infra.Tests.create_command_output(),
+        service = u.Tests.create_deptry_service(
+            command_output=u.Tests.create_command_output(),
         )
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
@@ -120,8 +120,8 @@ class TestsFlextInfraDepsDetectionDeptry:
             tm.that(result.value, eq=([], 0))
 
     def test_with_extend_exclude_and_cleanup(self, tmp_path: Path) -> None:
-        service = u.Infra.Tests.create_deptry_service(
-            command_output=u.Infra.Tests.create_command_output(),
+        service = u.Tests.create_deptry_service(
+            command_output=u.Tests.create_command_output(),
         )
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)

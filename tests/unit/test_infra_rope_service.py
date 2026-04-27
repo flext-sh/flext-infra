@@ -13,11 +13,9 @@ class TestsFlextInfraInfraRopeService:
 
     def test_open_workspace_materializes_snapshot(self, tmp_path: Path) -> None:
         """Public service class exposes one typed workspace snapshot."""
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
-            tmp_path
-        )
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "models.py"
-        u.Infra.Tests.write_lazy_init_namespace_module(
+        u.Tests.write_lazy_init_namespace_module(
             module_path,
             class_name="FlextTestsModels",
             alias="m",
@@ -46,11 +44,9 @@ class TestsFlextInfraInfraRopeService:
 
     def test_public_facade_opens_rope_workspace(self, tmp_path: Path) -> None:
         """Public facade returns the same ergonomic Rope workspace DSL."""
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
-            tmp_path
-        )
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "models.py"
-        u.Infra.Tests.write_lazy_init_namespace_module(
+        u.Tests.write_lazy_init_namespace_module(
             module_path,
             class_name="FlextTestsModels",
             alias="m",
@@ -69,7 +65,7 @@ class TestsFlextInfraInfraRopeService:
         tmp_path: Path,
     ) -> None:
         """Fixture modules can publish pytest fixtures through the Rope DSL."""
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -102,13 +98,13 @@ class TestsFlextInfraInfraRopeService:
         tmp_path: Path,
     ) -> None:
         """Public Rope DSL centralizes project discovery and module naming rules."""
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
         )
         module_path = package_root / "models.py"
-        u.Infra.Tests.write_lazy_init_namespace_module(
+        u.Tests.write_lazy_init_namespace_module(
             module_path,
             class_name="FlextDemoModels",
             alias="m",
@@ -142,7 +138,7 @@ class TestsFlextInfraInfraRopeService:
         tmp_path: Path,
     ) -> None:
         """Public Rope DSL returns direct module inventory through census objects."""
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -181,7 +177,7 @@ class TestsFlextInfraInfraRopeService:
         self, tmp_path: Path
     ) -> None:
         """Reload drops Rope caches and reflects updated module objects."""
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -218,7 +214,7 @@ class TestsFlextInfraInfraRopeService:
         tmp_path: Path,
     ) -> None:
         """Public census objects keep runtime and test reference counts separate."""
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",

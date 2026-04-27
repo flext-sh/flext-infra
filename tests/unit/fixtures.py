@@ -43,7 +43,7 @@ def deptry_report_payload() -> t.JsonPayload:
 
 @pytest.fixture
 def tool_config_document() -> m.Infra.ToolConfigDocument:
-    return u.Infra.Tests.tool_config_document()
+    return u.Tests.tool_config_document()
 
 
 @pytest.fixture
@@ -144,12 +144,12 @@ def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
         _modernizer_workspace_pyproject("selected", "ignored"),
         encoding="utf-8",
     )
-    _ = u.Infra.Tests.mk_project(
+    _ = u.Tests.mk_project(
         modernizer_workspace,
         "selected",
         pyproject=_modernizer_pyproject("selected"),
     )
-    _ = u.Infra.Tests.mk_project(
+    _ = u.Tests.mk_project(
         modernizer_workspace,
         "ignored",
         pyproject=_modernizer_pyproject("ignored"),

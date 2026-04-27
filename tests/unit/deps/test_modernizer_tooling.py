@@ -25,10 +25,10 @@ class TestsFlextInfraDepsModernizerTooling:
 
         _ = FlextInfraEnsureFormattingToolingPhase(tool_config_document).apply(doc)
 
-        tool = u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])
-        codespell = u.Infra.Tests.toml_mapping(tool["codespell"])
-        tomlsort = u.Infra.Tests.toml_mapping(tool["tomlsort"])
-        yamlfix = u.Infra.Tests.toml_mapping(tool["yamlfix"])
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Tests.toml_mapping(tool["codespell"])
+        tomlsort = u.Tests.toml_mapping(tool["tomlsort"])
+        yamlfix = u.Tests.toml_mapping(tool["yamlfix"])
         assert (
             codespell["check-filenames"]
             == tool_config_document.tools.codespell.check_filenames
@@ -39,7 +39,7 @@ class TestsFlextInfraDepsModernizerTooling:
         )
         assert tomlsort["all"] == tool_config_document.tools.tomlsort.all
         assert tomlsort["in_place"] == tool_config_document.tools.tomlsort.in_place
-        assert list(u.Infra.Tests.toml_strings(tomlsort["sort_first"])) == sorted(
+        assert list(u.Tests.toml_strings(tomlsort["sort_first"])) == sorted(
             tool_config_document.tools.tomlsort.sort_first,
         )
         assert yamlfix["line_length"] == tool_config_document.tools.yamlfix.line_length
@@ -85,8 +85,8 @@ skip = ".git,poetry.lock"
 
         changes = phase.apply(doc)
 
-        tool = u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])
-        codespell = u.Infra.Tests.toml_mapping(tool["codespell"])
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Tests.toml_mapping(tool["codespell"])
         assert "skip" not in codespell
         tm.that(changes, has="removed codespell.skip hardcode")
 
@@ -102,12 +102,10 @@ skip = ".git,poetry.lock"
             path=project_dir / "pyproject.toml",
         )
 
-        deptry = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
-                "deptry"
-            ],
+        deptry = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"],
         )
-        assert list(u.Infra.Tests.toml_strings(deptry["known_first_party"])) == [
+        assert list(u.Tests.toml_strings(deptry["known_first_party"])) == [
             "flext_sample",
         ]
 
@@ -134,12 +132,10 @@ workspace = true
             path=project_dir / "pyproject.toml",
         )
 
-        deptry = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
-                "deptry"
-            ],
+        deptry = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"],
         )
-        assert list(u.Infra.Tests.toml_strings(deptry["known_first_party"])) == [
+        assert list(u.Tests.toml_strings(deptry["known_first_party"])) == [
             "flext_core",
             "flext_sample",
         ]
@@ -176,12 +172,12 @@ select = ["E501"]
             path=project_dir / "pyproject.toml",
         )
 
-        root = u.Infra.Tests.toml_doc_mapping(doc)
+        root = u.Tests.toml_doc_mapping(doc)
         assert "lint" not in root
-        ruff = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(root["tool"])["ruff"],
+        ruff = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(root["tool"])["ruff"],
         )
-        assert set(u.Infra.Tests.toml_strings(ruff["exclude"])) == set(
+        assert set(u.Tests.toml_strings(ruff["exclude"])) == set(
             tool_config_document.tools.ruff.exclude,
         )
         assert ruff["fix"] == tool_config_document.tools.ruff.fix
@@ -193,28 +189,28 @@ select = ["E501"]
         )
         assert ruff["show-fixes"] == tool_config_document.tools.ruff.show_fixes
         assert ruff["target-version"] == tool_config_document.tools.ruff.target_version
-        assert set(u.Infra.Tests.toml_strings(ruff["src"])) == {"src", "tests"}
-        format_section = u.Infra.Tests.toml_mapping(ruff["format"])
+        assert set(u.Tests.toml_strings(ruff["src"])) == {"src", "tests"}
+        format_section = u.Tests.toml_mapping(ruff["format"])
         assert (
             format_section["docstring-code-format"]
             == tool_config_document.tools.ruff.format.docstring_code_format
         )
-        lint_section = u.Infra.Tests.toml_mapping(ruff["lint"])
-        assert set(u.Infra.Tests.toml_strings(lint_section["select"])) == set(
+        lint_section = u.Tests.toml_mapping(ruff["lint"])
+        assert set(u.Tests.toml_strings(lint_section["select"])) == set(
             tool_config_document.tools.ruff.lint.select,
         )
-        assert set(u.Infra.Tests.toml_strings(lint_section["ignore"])) == set(
+        assert set(u.Tests.toml_strings(lint_section["ignore"])) == set(
             tool_config_document.tools.ruff.lint.ignore,
         )
-        isort = u.Infra.Tests.toml_mapping(lint_section["isort"])
+        isort = u.Tests.toml_mapping(lint_section["isort"])
         assert (
             isort["combine-as-imports"]
             == tool_config_document.tools.ruff.lint.isort.combine_as_imports
         )
-        assert list(u.Infra.Tests.toml_strings(isort["known-first-party"])) == [
+        assert list(u.Tests.toml_strings(isort["known-first-party"])) == [
             "flext_sample",
         ]
-        assert u.Infra.Tests.toml_mapping(lint_section["per-file-ignores"]) == {
+        assert u.Tests.toml_mapping(lint_section["per-file-ignores"]) == {
             pattern: sorted(rules)
             for pattern, rules in tool_config_document.tools.ruff.lint.per_file_ignores.items()
         }
@@ -278,13 +274,11 @@ select = ["E501"]
             path=workspace_root / "pyproject.toml",
         )
 
-        ruff = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
-                "ruff"
-            ],
+        ruff = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["ruff"],
         )
-        lint_section = u.Infra.Tests.toml_mapping(ruff["lint"])
-        isort = u.Infra.Tests.toml_mapping(lint_section["isort"])
-        known_first_party = list(u.Infra.Tests.toml_strings(isort["known-first-party"]))
+        lint_section = u.Tests.toml_mapping(ruff["lint"])
+        isort = u.Tests.toml_mapping(lint_section["isort"])
+        known_first_party = list(u.Tests.toml_strings(isort["known-first-party"]))
         tm.that(known_first_party, has="flext_core")
         tm.that("algar_oud_mig" in known_first_party, eq=False)

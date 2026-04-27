@@ -19,11 +19,8 @@ class TestsFlextInfraModels(m, FlextTestsModels):
 
     __test__ = False
 
-    class Infra(m.Infra):
-        """Infra-specific models namespace."""
-
-        class Tests:
-            """Tests use inherited flext-tests and production infra models."""
+    class Tests(FlextTestsModels.Tests):
+        """Tests use inherited flext-tests and production infra models."""
 
 
 m = TestsFlextInfraModels

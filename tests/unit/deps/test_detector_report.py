@@ -106,7 +106,7 @@ class TestsFlextInfraDepsDetectorReport:
         tm.that(
             tm.ok(
                 runtime.run(
-                    u.Infra.Tests.detect_command(
+                    u.Tests.detect_command(
                         tmp_path,
                         output=str(custom_output),
                         no_pip_check=True,
@@ -134,7 +134,7 @@ class TestsFlextInfraDepsDetectorReport:
         )
         error = tm.fail(
             runtime.run(
-                u.Infra.Tests.detect_command(
+                u.Tests.detect_command(
                     tmp_path,
                     output=str(blocked_output),
                     no_pip_check=True,
@@ -158,7 +158,7 @@ class TestsFlextInfraDepsDetectorReport:
         )
         error = tm.fail(
             runtime.run(
-                u.Infra.Tests.detect_command(
+                u.Tests.detect_command(
                     tmp_path,
                     output=str(blocked_output),
                     no_pip_check=True,

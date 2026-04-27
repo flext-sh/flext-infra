@@ -11,7 +11,7 @@ class TestsFlextInfraLazyInitTransforms:
     """Behavior tests for generated lazy-init transform output."""
 
     def test_subpackage_lazy_map_uses_symbol_names(self, tmp_path: Path) -> None:
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -29,7 +29,7 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        result = u.Infra.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(workspace_root)
 
         content = (utilities_dir / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
@@ -40,7 +40,7 @@ class TestsFlextInfraLazyInitTransforms:
         assert '"mapper"' not in content
 
     def test_version_exports_are_runtime_wildcard_imports(self, tmp_path: Path) -> None:
-        workspace_root, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -52,7 +52,7 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        result = u.Infra.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(workspace_root)
 
         content = (package_root / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,

@@ -33,7 +33,7 @@ def make_config(
 
 
 def test_execute_validate_dry_run_succeeds(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator.model_validate({
         "workspace_root": workspace,
@@ -45,7 +45,7 @@ def test_execute_validate_dry_run_succeeds(tmp_path: Path) -> None:
 
 
 def test_run_release_invalid_phase_fails(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().run_release(
         make_config(workspace, phases=["invalid"]),
@@ -56,7 +56,7 @@ def test_run_release_invalid_phase_fails(tmp_path: Path) -> None:
 
 
 def test_run_release_empty_phase_list_is_a_noop_success(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().run_release(
         make_config(workspace, phases=[]),
@@ -68,7 +68,7 @@ def test_run_release_empty_phase_list_is_a_noop_success(tmp_path: Path) -> None:
 def test_run_release_stops_on_validate_failure_before_version_update(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         root_validate_exit_code="1",
     )
@@ -87,7 +87,7 @@ def test_run_release_stops_on_validate_failure_before_version_update(
 def test_run_release_project_filter_updates_only_selected_project(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -109,7 +109,7 @@ def test_run_release_project_filter_updates_only_selected_project(
 def test_run_release_next_dev_updates_workspace_to_next_dev_version(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().run_release(
         make_config(

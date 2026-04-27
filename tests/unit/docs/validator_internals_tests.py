@@ -29,7 +29,7 @@ def test_docs_load_required_skills_reads_architecture_config(tmp_path: Path) -> 
 
 
 def test_docs_write_todo_writes_only_for_project_scopes(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )

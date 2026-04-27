@@ -9,7 +9,7 @@ from tests import m, u
 
 
 def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -27,7 +27,7 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
 
 
 def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -47,7 +47,7 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
 
 
 def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocGenerator().generate(
         m.Infra.DocsGenerateRequest(

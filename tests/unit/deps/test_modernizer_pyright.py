@@ -85,7 +85,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
         tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.root_venv_path)
         assert sorted(
-            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))
         ) == sorted(
             set(rules.default_excludes)
             | {
@@ -95,10 +95,10 @@ class TestsFlextInfraDepsModernizerPyright:
             },
         )
         assert sorted(
-            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
         ) == sorted([*rules.root_typings_paths, *rules.ignored_diagnostic_globs])
         assert sorted(
-            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
         ) == sorted([
             f"flext-api/{rules.source_dir}",
             f"flext-core/{rules.source_dir}",
@@ -148,7 +148,7 @@ class TestsFlextInfraDepsModernizerPyright:
             eq=rules.project_venv_path,
         )
         assert sorted(
-            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
         ) == sorted(rules.env_dirs)
         expected_envs = [
             {
@@ -205,17 +205,15 @@ class TestsFlextInfraDepsModernizerPyright:
         if not isinstance(pyright, MutableMapping):
             return
         assert sorted(
-            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
         ) == sorted([
             rules.project_typings_paths[0],
             *rules.ignored_diagnostic_globs,
         ])
         assert sorted(
-            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
         ) == sorted([rules.source_dir, rules.test_like_dirs[0]])
-        exclude = list(
-            u.Infra.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))
-        )
+        exclude = list(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"])))
         tm.that(exclude, has="**/tests/fixtures")
         tm.that(exclude, has="**/tests/fixtures/**")
 

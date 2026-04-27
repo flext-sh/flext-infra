@@ -12,9 +12,9 @@ class TestsFlextInfraDepsDetectorDetect:
         self,
         tmp_path: Path,
     ) -> None:
-        detector = u.Infra.Tests.setup_detector_runtime(
+        detector = u.Tests.setup_detector_runtime(
             tmp_path,
-            u.Infra.Tests.create_detector_deps_stub([]),
+            u.Tests.create_detector_deps_stub([]),
         ).model_copy(update={"no_pip_check": True})
         result = detector.execute()
         tm.fail(result, has="no projects found")
@@ -23,9 +23,9 @@ class TestsFlextInfraDepsDetectorDetect:
         self,
         tmp_path: Path,
     ) -> None:
-        detector = u.Infra.Tests.setup_detector_runtime(
+        detector = u.Tests.setup_detector_runtime(
             tmp_path,
-            u.Infra.Tests.create_detector_deps_stub([tmp_path / "proj-a"]),
+            u.Tests.create_detector_deps_stub([tmp_path / "proj-a"]),
             deptry_exists=False,
         ).model_copy(update={"no_pip_check": True})
         result = detector.execute()
@@ -35,9 +35,9 @@ class TestsFlextInfraDepsDetectorDetect:
         self,
         tmp_path: Path,
     ) -> None:
-        detector = u.Infra.Tests.setup_detector_runtime(
+        detector = u.Tests.setup_detector_runtime(
             tmp_path,
-            u.Infra.Tests.create_detector_deps_stub([tmp_path / "proj-a"]),
+            u.Tests.create_detector_deps_stub([tmp_path / "proj-a"]),
         ).model_copy(update={"no_pip_check": True})
         result = detector.execute()
         tm.that(tm.ok(result), eq=True)

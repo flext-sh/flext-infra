@@ -19,11 +19,8 @@ class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
 
     __test__ = False
 
-    class Infra(FlextInfraProtocols.Infra):
-        """Infra-specific protocol definitions."""
-
-        class Tests:
-            """Tests use inherited flext-tests and production protocols."""
+    class Tests(FlextTestsProtocols.Tests):
+        """Tests use inherited flext-tests and production protocols."""
 
 
 p = TestsFlextInfraProtocols

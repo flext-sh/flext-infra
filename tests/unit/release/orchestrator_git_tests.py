@@ -84,7 +84,7 @@ def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
 def test_run_release_creates_branches_for_root_and_selected_project(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         initialize_root_git=True,
@@ -105,7 +105,7 @@ def test_run_release_creates_branches_for_root_and_selected_project(
 
 
 def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         initialize_root_git=True,
     )
@@ -125,7 +125,7 @@ def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
 
 
 def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         initialize_root_git=True,
     )

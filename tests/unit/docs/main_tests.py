@@ -9,7 +9,7 @@ from tests import u
 
 
 def test_docs_cli_validate_fails_before_generation(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -30,7 +30,7 @@ def test_docs_cli_validate_fails_before_generation(tmp_path: Path) -> None:
 
 
 def test_docs_cli_validate_apply_passes_after_generate_apply(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )

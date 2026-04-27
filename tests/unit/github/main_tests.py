@@ -11,7 +11,7 @@ from tests import m, u
 def test_sync_github_workflows_reports_create_operations(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -33,7 +33,7 @@ def test_sync_github_workflows_reports_create_operations(
 def test_sync_github_workflows_apply_writes_ci_files_and_report(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         source_workflow=(
@@ -73,7 +73,7 @@ def test_sync_github_workflows_apply_writes_ci_files_and_report(
 def test_sync_github_workflows_prunes_noncanonical_files(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -98,7 +98,7 @@ def test_sync_github_workflows_prunes_noncanonical_files(
 def test_lint_github_workflows_writes_report(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -124,7 +124,7 @@ def test_lint_github_workflows_writes_report(
 def test_run_github_pull_request_fails_for_minimal_repo(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a",),
     )

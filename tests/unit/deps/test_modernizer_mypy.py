@@ -22,22 +22,18 @@ class TestsFlextInfraDepsModernizerMypy:
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
-                "mypy"
-            ],
+        mypy_mapping = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
         )
         assert mypy_mapping["python_version"] == "3.13"
         assert mypy_mapping["exclude"] == tool_config_document.tools.mypy.exclude
-        assert set(u.Infra.Tests.toml_strings(mypy_mapping["plugins"])) == set(
+        assert set(u.Tests.toml_strings(mypy_mapping["plugins"])) == set(
             tool_config_document.tools.mypy.plugins,
         )
-        assert set(
-            u.Infra.Tests.toml_strings(mypy_mapping["disable_error_code"])
-        ) == set(
+        assert set(u.Tests.toml_strings(mypy_mapping["disable_error_code"])) == set(
             tool_config_document.tools.mypy.disabled_error_codes,
         )
-        assert list(u.Infra.Tests.toml_list(mypy_mapping["overrides"])) == [
+        assert list(u.Tests.toml_list(mypy_mapping["overrides"])) == [
             {
                 "module": list(entry.modules),
                 "disable_error_code": list(entry.disable_error_codes),
@@ -55,12 +51,10 @@ class TestsFlextInfraDepsModernizerMypy:
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
-                "mypy"
-            ],
+        mypy_mapping = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
         )
-        assert "misc" in u.Infra.Tests.toml_strings(mypy_mapping["disable_error_code"])
+        assert "misc" in u.Tests.toml_strings(mypy_mapping["disable_error_code"])
 
     def test_mypy_phase_removes_legacy_test_overrides(
         self,
@@ -70,16 +64,12 @@ class TestsFlextInfraDepsModernizerMypy:
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
-                "mypy"
-            ],
+        mypy_mapping = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
         )
         override_modules = {
-            tuple(
-                u.Infra.Tests.toml_strings(u.Infra.Tests.toml_mapping(entry)["module"])
-            )
-            for entry in u.Infra.Tests.toml_list(mypy_mapping["overrides"])
+            tuple(u.Tests.toml_strings(u.Tests.toml_mapping(entry)["module"]))
+            for entry in u.Tests.toml_list(mypy_mapping["overrides"])
         }
         assert (
             "*.constants",
@@ -110,21 +100,17 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
-                "mypy"
-            ],
+        mypy_mapping = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
         )
         assert mypy_mapping["exclude"] == tool_config_document.tools.mypy.exclude
-        assert list(u.Infra.Tests.toml_strings(mypy_mapping["plugins"])) == list(
+        assert list(u.Tests.toml_strings(mypy_mapping["plugins"])) == list(
             tool_config_document.tools.mypy.plugins,
         )
-        assert list(
-            u.Infra.Tests.toml_strings(mypy_mapping["disable_error_code"])
-        ) == list(
+        assert list(u.Tests.toml_strings(mypy_mapping["disable_error_code"])) == list(
             tool_config_document.tools.mypy.disabled_error_codes,
         )
-        assert list(u.Infra.Tests.toml_list(mypy_mapping["overrides"])) == [
+        assert list(u.Tests.toml_list(mypy_mapping["overrides"])) == [
             {
                 "module": list(entry.modules),
                 "disable_error_code": list(entry.disable_error_codes),
@@ -152,8 +138,8 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
-        pydantic_mypy_mapping = u.Infra.Tests.toml_mapping(
-            u.Infra.Tests.toml_mapping(u.Infra.Tests.toml_doc_mapping(doc)["tool"])[
+        pydantic_mypy_mapping = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])[
                 "pydantic-mypy"
             ],
         )

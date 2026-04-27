@@ -11,7 +11,7 @@ from tests import u
 def test_workflows_subcommand_applies_templates(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -38,7 +38,7 @@ def test_workflows_subcommand_applies_templates(
 def test_lint_subcommand_writes_report(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -62,7 +62,7 @@ def test_lint_subcommand_writes_report(
 def test_pr_subcommand_returns_nonzero_for_minimal_repo(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a",),
     )

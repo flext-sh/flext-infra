@@ -279,7 +279,7 @@ class TestsFlextInfraRefactorMainCli:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -312,13 +312,13 @@ class TestsFlextInfraRefactorMainCli:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        workspace, package_root = u.Infra.Tests.create_lazy_init_workspace(
+        workspace, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
         )
         module_path = package_root / "models.py"
-        u.Infra.Tests.write_lazy_init_namespace_module(
+        u.Tests.write_lazy_init_namespace_module(
             module_path,
             class_name="FlextDemoModels",
             alias="m",

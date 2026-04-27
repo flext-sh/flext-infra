@@ -53,7 +53,7 @@ class TestRunProjectsPublicBehavior:
         self, tmp_path: Path, report_name: str
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_path = self._install_fake_ruff(
             tmp_path,
@@ -75,7 +75,7 @@ class TestRunProjectsPublicBehavior:
         self, tmp_path: Path
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_path = self._install_fake_ruff(
             tmp_path,
@@ -96,7 +96,7 @@ class TestRunProjectsPublicBehavior:
     def test_fail_fast_stops_after_first_failed_project(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         for name in ("p1", "p2", "p3"):
-            project_dir = u.Infra.Tests.mk_project(tmp_path, name, with_src=True)
+            project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
                 "value = 1\n", encoding="utf-8"
             )
@@ -124,7 +124,7 @@ class TestRunProjectsPublicBehavior:
     def test_run_projects_reports_mixed_project_errors(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         for name in ("p1", "p2"):
-            project_dir = u.Infra.Tests.mk_project(tmp_path, name, with_src=True)
+            project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
                 "value = 1\n", encoding="utf-8"
             )
@@ -156,7 +156,7 @@ class TestRunProjectsPublicBehavior:
 
     def test_run_project_returns_single_project_result(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_path = self._install_fake_ruff(
             tmp_path,

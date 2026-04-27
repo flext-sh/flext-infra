@@ -19,7 +19,7 @@ from tests import m, t, u
 def _project_info(
     project: Path, *, package_name: str = "test_proj"
 ) -> m.Infra.ProjectInfo:
-    return u.Infra.Tests.create_project_info(
+    return u.Tests.create_project_info(
         project,
         name=project.name,
         package_name=package_name,
@@ -38,7 +38,7 @@ def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
     (pkg / "typings.py").write_text("pass\n")
     (pkg / "constants.py").write_text("pass\n")
     (pkg / "base.py").write_text("import typing\nT = typing.TypeVar('T')\n")
-    u.Infra.Tests.create_codegen_project(
+    u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",
@@ -71,7 +71,7 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
 
 
 def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
-    project = u.Infra.Tests.create_codegen_project(
+    project = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",

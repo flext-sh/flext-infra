@@ -22,7 +22,7 @@ class TestsFlextInfraDepsDetectorInit:
         tm.that(detector.runner is not None, eq=True)
 
     def test_detect_command_normalizes_public_fields(self, tmp_path: Path) -> None:
-        params = u.Infra.Tests.detect_command(
+        params = u.Tests.detect_command(
             tmp_path,
             projects=["test"],
             no_pip_check=True,
@@ -49,16 +49,16 @@ class TestsFlextInfraDepsDetectorInit:
         self,
         tmp_path: Path,
     ) -> None:
-        params = u.Infra.Tests.detect_command(tmp_path, projects=["test-proj"])
+        params = u.Tests.detect_command(tmp_path, projects=["test-proj"])
         tm.that(params.project_names, eq=["test-proj"])
 
     def test_detect_command_project_names_split_csv(self, tmp_path: Path) -> None:
-        params = u.Infra.Tests.detect_command(
+        params = u.Tests.detect_command(
             tmp_path,
             projects=["proj-a,proj-b", "proj-c"],
         )
         tm.that(params.project_names, eq=["proj-a", "proj-b", "proj-c"])
 
     def test_detect_command_without_project_filter(self, tmp_path: Path) -> None:
-        params = u.Infra.Tests.detect_command(tmp_path)
+        params = u.Tests.detect_command(tmp_path)
         tm.that(params.project_names, eq=None)

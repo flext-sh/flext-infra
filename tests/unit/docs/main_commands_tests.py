@@ -15,7 +15,7 @@ from tests import u
 
 
 def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text(
         "# Docs\n\n[Broken](missing.md)\n",
         encoding="utf-8",
@@ -30,7 +30,7 @@ def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) ->
 
 
 def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         include_fixable_link=True,
     )
@@ -49,7 +49,7 @@ def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
 def test_generator_execute_writes_reports_for_root_and_selected_project(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -69,7 +69,7 @@ def test_generator_execute_writes_reports_for_root_and_selected_project(
 def test_validator_execute_fails_before_generation_and_succeeds_after(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -95,7 +95,7 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
 
 
 def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocBuilder(workspace=workspace).execute()
 
@@ -104,7 +104,7 @@ def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
 
 
 def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "mkdocs.yml").write_text("site_name: [", encoding="utf-8")
 
     result = FlextInfraDocBuilder(workspace=workspace).execute()

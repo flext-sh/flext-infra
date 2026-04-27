@@ -24,7 +24,7 @@ def test_validate_report_model_fields() -> None:
 
 
 def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -42,7 +42,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
 
 
 def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -68,7 +68,7 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
 
 
 def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a",),
     )

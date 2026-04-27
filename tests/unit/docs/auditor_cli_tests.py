@@ -13,7 +13,7 @@ def test_auditor_main_help_exits_zero() -> None:
 
 
 def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -35,7 +35,7 @@ def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> Non
 
 
 def test_auditor_main_strict_failure_returns_one(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(tmp_path)
+    workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text(
         "# Docs\n\n[Broken](missing.md)\n",
         encoding="utf-8",

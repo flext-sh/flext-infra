@@ -17,11 +17,9 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
     """Behavior contract for test_infra_workspace_migrator_dryrun."""
 
     def test_migrator_flext_core_project_skipped(self, tmp_path: Path) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(
-            tmp_path, name="flext-core"
-        )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root, name="flext-core"),
+        project_root = u.Tests.create_migrator_dir_layout(tmp_path, name="flext-core")
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root, name="flext-core"),
             "base.mk",
             workspace_root=tmp_path,
             dry_run=True,
@@ -34,11 +32,11 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
         )
 
     def test_migrator_makefile_not_found_dry_run(self, tmp_path: Path) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(
+        project_root = u.Tests.create_migrator_dir_layout(
             tmp_path, base_mk="base", makefile=None
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "base",
             workspace_root=tmp_path,
             dry_run=True,
@@ -54,11 +52,11 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
         )
 
     def test_migrator_pyproject_not_found_dry_run(self, tmp_path: Path) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(
+        project_root = u.Tests.create_migrator_dir_layout(
             tmp_path, base_mk="base", pyproject=None
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "base",
             workspace_root=tmp_path,
             dry_run=True,
@@ -74,11 +72,11 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
         )
 
     def test_migrator_flext_core_dry_run(self, tmp_path: Path) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(
+        project_root = u.Tests.create_migrator_dir_layout(
             tmp_path, name="flext-core", base_mk="base"
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root, name="flext-core"),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root, name="flext-core"),
             "base",
             workspace_root=tmp_path,
             dry_run=True,
@@ -96,13 +94,13 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
     def test_migrator_gitignore_already_normalized_dry_run(
         self, tmp_path: Path
     ) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(
+        project_root = u.Tests.create_migrator_dir_layout(
             tmp_path,
             base_mk="base",
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "base",
             workspace_root=tmp_path,
             dry_run=True,
@@ -118,9 +116,9 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
         )
 
     def test_migrator_makefile_read_failure(self, tmp_path: Path) -> None:
-        project_root = u.Infra.Tests.create_migrator_dir_layout(tmp_path)
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        project_root = u.Tests.create_migrator_dir_layout(tmp_path)
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "base.mk",
             workspace_root=tmp_path,
             dry_run=False,

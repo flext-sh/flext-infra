@@ -16,7 +16,7 @@ class TestWorkspaceCheckCLI:
     def _workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        _ = u.Infra.Tests.mk_project(
+        _ = u.Tests.mk_project(
             workspace,
             "p1",
             pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',

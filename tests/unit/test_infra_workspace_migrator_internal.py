@@ -24,9 +24,9 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
         Pinned defaults (``base_mk="base"`` and Makefile=``include base.mk\n``)
         match this module's migration scenarios; scaffold logic is centralized
-        in ``u.Infra.Tests.create_migrator_dir_layout`` (no duplication).
+        in ``u.Tests.create_migrator_dir_layout`` (no duplication).
         """
-        return u.Infra.Tests.create_migrator_dir_layout(
+        return u.Tests.create_migrator_dir_layout(
             tmp_path,
             name=name,
             base_mk="base",
@@ -41,8 +41,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
     def test_execute_reports_missing_makefile_in_dry_run(self, tmp_path: Path) -> None:
         project_root = self._write_project_files(tmp_path, makefile=None)
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
             workspace_root=tmp_path,
             dry_run=True,
@@ -63,8 +63,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
     ) -> None:
         project_root = self._write_project_files(tmp_path, makefile=None)
         (project_root / "Makefile").mkdir()
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
             workspace_root=tmp_path,
         )
@@ -83,8 +83,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             pyproject='[project]\ndependencies = ["flext-core"]\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
             "base",
             workspace_root=tmp_path,
             dry_run=False,
@@ -105,8 +105,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
         self._make_read_only(project_root / "pyproject.toml")
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root, "test-proj"),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
             workspace_root=tmp_path,
             dry_run=False,
@@ -126,8 +126,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             pyproject='[project]\nname = "flext-core"\nversion = "0.1.0"\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(project_root, "flext-core"),
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root, "flext-core"),
             "base",
             workspace_root=tmp_path,
             dry_run=False,

@@ -26,7 +26,7 @@ class TestRealGateRunners:
         )
 
     def test_ruff_lint_reports_real_issue(self, tmp_path: Path) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "lint-project", with_src=True)
+        project_dir = u.Tests.mk_project(tmp_path, "lint-project", with_src=True)
         (project_dir / "src" / "demo.py").write_text(
             "import os\n",
             encoding="utf-8",
@@ -41,7 +41,7 @@ class TestRealGateRunners:
         tm.that(len(result.issues), gte=1)
 
     def test_ruff_lint_honors_public_ruff_args(self, tmp_path: Path) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "lint-args", with_src=True)
+        project_dir = u.Tests.mk_project(tmp_path, "lint-args", with_src=True)
         (project_dir / "src" / "demo.py").write_text(
             'value = "' + ("x" * 120) + '"\n',
             encoding="utf-8",
@@ -60,9 +60,7 @@ class TestRealGateRunners:
         tm.that([issue.code for issue in result.issues], has=["E501"])
 
     def test_ruff_format_reports_real_reformat(self, tmp_path: Path) -> None:
-        project_dir = u.Infra.Tests.mk_project(
-            tmp_path, "format-project", with_src=True
-        )
+        project_dir = u.Tests.mk_project(tmp_path, "format-project", with_src=True)
         (project_dir / "src" / "demo.py").write_text(
             "value=[1,2,3]\n",
             encoding="utf-8",
@@ -76,9 +74,7 @@ class TestRealGateRunners:
         tm.that(not result.result.passed, eq=True)
 
     def test_pyright_reports_real_type_error(self, tmp_path: Path) -> None:
-        project_dir = u.Infra.Tests.mk_project(
-            tmp_path, "pyright-project", with_src=True
-        )
+        project_dir = u.Tests.mk_project(tmp_path, "pyright-project", with_src=True)
         (project_dir / "src" / "demo.py").write_text(
             "value: str = 1\n",
             encoding="utf-8",

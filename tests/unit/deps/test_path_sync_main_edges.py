@@ -30,7 +30,7 @@ class TestsFlextInfraDepsPathSyncMainEdges:
     def test_main_returns_error_for_invalid_root_pyproject(
         self, tmp_path: Path
     ) -> None:
-        workspace = u.Infra.Tests.create_path_sync_workspace(
+        workspace = u.Tests.create_path_sync_workspace(
             tmp_path,
             root_pyproject="invalid toml [[[",
         )
@@ -50,9 +50,9 @@ class TestsFlextInfraDepsPathSyncMainEdges:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_path_sync_workspace(
+        workspace = u.Tests.create_path_sync_workspace(
             tmp_path,
-            root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            root_pyproject=u.Tests.create_path_sync_pyproject(
                 name="flext-workspace",
                 dependency_path=".flext-deps/flext-core",
                 workspace_members=("flext-core",),

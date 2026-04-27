@@ -31,7 +31,7 @@ def make_config(
 
 def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
     notes_path = tmp_path / "release" / "RELEASE_NOTES.md"
-    project = u.Infra.Tests.create_project_info(
+    project = u.Tests.create_project_info(
         tmp_path / "flext-a",
         name="flext-a",
     )
@@ -103,7 +103,7 @@ def test_update_changelog_is_idempotent_for_existing_release_heading(
 def test_run_release_build_deduplicates_duplicate_project_selectors(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a",),
     )

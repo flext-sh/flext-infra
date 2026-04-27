@@ -18,7 +18,7 @@ from tests import m, t, u
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:
-    project: Path = u.Infra.Tests.create_scaffolder_test_project(
+    project: Path = u.Tests.create_scaffolder_test_project(
         tmp_path=tmp_path,
         with_all_modules=with_all_modules,
     )
@@ -28,7 +28,7 @@ def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Pa
 def _project_info(
     project: Path, *, package_name: str = "test_project"
 ) -> m.Infra.ProjectInfo:
-    project_info: m.Infra.ProjectInfo = u.Infra.Tests.create_project_info(
+    project_info: m.Infra.ProjectInfo = u.Tests.create_project_info(
         project,
         name=project.name,
         package_name=package_name,
@@ -53,7 +53,7 @@ class TestScaffoldProjectCreatesSrcModules:
         [result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(result.files_created), eq=5)
         pkg = project / "src" / "test_project"
-        for mod in u.Infra.Tests.src_module_files():
+        for mod in u.Tests.src_module_files():
             tm.that((pkg / mod).exists(), eq=True)
 
     def test_creates_only_missing_modules(self, tmp_path: Path) -> None:
@@ -83,7 +83,7 @@ class TestScaffoldProjectCreatesTestsModules:
         [result] = scaffolder.run(projects=[_project_info(project)])
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(len(tests_created), eq=5)
-        for mod in u.Infra.Tests.src_module_files():
+        for mod in u.Tests.src_module_files():
             tm.that((tests_dir / mod).exists(), eq=True)
 
     def test_skips_tests_modules_when_no_tests_dir(

@@ -12,7 +12,7 @@ from tests import p, t, u
 class TestsFlextInfraDepsDetectionPipCheck:
     @staticmethod
     def make_runner(result: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
-        return u.Infra.Tests.DeptryRunner(result)
+        return u.Tests.DeptryRunner(result)
 
     @pytest.mark.parametrize(
         ("create_pip", "runner", "expected_lines", "expected_exit_code", "failed"),
@@ -20,7 +20,7 @@ class TestsFlextInfraDepsDetectionPipCheck:
             (False, None, [], 0, False),
             (
                 True,
-                u.Infra.Tests.command_runner(
+                u.Tests.command_runner(
                     stdout="pkg1 has requirement\npkg2 conflict\n",
                     returncode=1,
                 ),
@@ -30,8 +30,8 @@ class TestsFlextInfraDepsDetectionPipCheck:
             ),
             (
                 True,
-                u.Infra.Tests.DeptryRunner(
-                    u.Infra.Tests.fail_result("pip failed"),
+                u.Tests.DeptryRunner(
+                    u.Tests.fail_result("pip failed"),
                 ),
                 [],
                 0,
@@ -39,7 +39,7 @@ class TestsFlextInfraDepsDetectionPipCheck:
             ),
             (
                 True,
-                u.Infra.Tests.command_runner(),
+                u.Tests.command_runner(),
                 [],
                 0,
                 False,

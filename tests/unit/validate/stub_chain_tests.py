@@ -26,9 +26,9 @@ class TestStubChain:
             workspace=workspace_root,
             selected_projects=projects,
             all_projects=all_projects,
-            runner=u.Infra.Tests.DeptryRunner(
-                u.Infra.Tests.ok_result(
-                    u.Infra.Tests.stub_run(stdout=stdout),
+            runner=u.Tests.DeptryRunner(
+                u.Tests.ok_result(
+                    u.Tests.stub_run(stdout=stdout),
                 ),
             ),
         )
@@ -80,7 +80,7 @@ class TestStubChain:
         stub_path: str | None,
         expected_unresolved: t.StrSequence,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(
+        project_dir = u.Tests.mk_project(
             tmp_path,
             "project",
             pyproject="[project]\nname = 'project'\n",
@@ -114,7 +114,7 @@ class TestStubChain:
         )
 
     def test_build_report_discovers_only_valid_projects(self, tmp_path: Path) -> None:
-        u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         hidden_dir = tmp_path / ".hidden"
         hidden_dir.mkdir()
         (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -122,7 +122,7 @@ class TestStubChain:
             encoding="utf-8",
         )
         (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
-        u.Infra.Tests.mk_project(tmp_path, "project-b", with_src=False)
+        u.Tests.mk_project(tmp_path, "project-b", with_src=False)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
@@ -131,8 +131,8 @@ class TestStubChain:
         tm.that(result.value.violations, empty=True)
 
     def test_build_report_uses_explicit_project_dirs(self, tmp_path: Path) -> None:
-        project_a = u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
-        _project_b = u.Infra.Tests.mk_project(tmp_path, "project-b", with_src=True)
+        project_a = u.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        _project_b = u.Tests.mk_project(tmp_path, "project-b", with_src=True)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(
             tmp_path,
@@ -158,8 +158,8 @@ class TestStubChain:
         )
         assert name_result.success
         assert name_result.value.exit_code == 0
-        tracked_project = u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
-        _untracked_project = u.Infra.Tests.mk_project(
+        tracked_project = u.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        _untracked_project = u.Tests.mk_project(
             tmp_path,
             "project-b",
             with_src=True,
@@ -184,7 +184,7 @@ class TestStubChain:
         tm.fail(result)
 
     def test_execute_fails_when_report_has_violations(self, tmp_path: Path) -> None:
-        u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         chain = self.make_chain(
             workspace_root=tmp_path,
             stdout=self._stub_output(
@@ -199,8 +199,8 @@ class TestStubChain:
         tm.that(result.error, has="stub chain: 1 projects, 1 issues")
 
     def test_execute_passes_for_selected_projects(self, tmp_path: Path) -> None:
-        u.Infra.Tests.mk_project(tmp_path, "project-a", with_src=True)
-        u.Infra.Tests.mk_project(tmp_path, "project-b", with_src=True)
+        u.Tests.mk_project(tmp_path, "project-a", with_src=True)
+        u.Tests.mk_project(tmp_path, "project-b", with_src=True)
         chain = self.make_chain(
             workspace_root=tmp_path,
             projects=["project-a"],

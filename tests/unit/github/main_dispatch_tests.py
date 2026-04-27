@@ -10,7 +10,7 @@ from tests import m, u
 def test_run_github_workspace_pull_requests_aggregates_results(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         pr_exit_codes={"flext-a": "0", "flext-b": "1"},
@@ -34,7 +34,7 @@ def test_run_github_workspace_pull_requests_aggregates_results(
 def test_run_github_workspace_pull_requests_respects_project_selection(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b", "flext-c"),
         pr_exit_codes={"flext-a": "0", "flext-b": "0", "flext-c": "1"},
@@ -61,7 +61,7 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
 def test_run_github_workspace_pull_requests_honors_fail_fast(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
         pr_exit_codes={"flext-a": "1", "flext-b": "0"},

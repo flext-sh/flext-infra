@@ -19,7 +19,7 @@ def run_release_main(workspace: Path, *extra: str) -> int:
 
 
 def test_main_validate_apply_succeeds(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = run_release_main(
         workspace,
@@ -36,7 +36,7 @@ def test_main_validate_apply_succeeds(tmp_path: Path) -> None:
 
 
 def test_main_version_apply_updates_root_and_selected_project(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )
@@ -65,7 +65,7 @@ def test_main_version_apply_updates_root_and_selected_project(tmp_path: Path) ->
 def test_main_build_with_bump_uses_resolved_version_in_report_dir(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = run_release_main(
         workspace,
@@ -87,7 +87,7 @@ def test_main_build_with_bump_uses_resolved_version_in_report_dir(
 
 
 def test_main_all_dry_run_writes_release_artifacts(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(
+    workspace = u.Tests.create_release_workspace(
         tmp_path,
         project_names=("flext-a",),
     )
@@ -111,7 +111,7 @@ def test_main_all_dry_run_writes_release_artifacts(tmp_path: Path) -> None:
 
 
 def test_main_invalid_version_returns_failure(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+    workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = run_release_main(
         workspace,

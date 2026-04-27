@@ -21,7 +21,7 @@ class TestTypeGates:
     def make_runner(
         *results: p.Result[m.Cli.CommandOutput],
     ) -> p.Cli.CommandRunner:
-        return u.Infra.Tests.SequenceRunner(list(results))
+        return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
         ("gate_class", "project_has_src", "runner_result", "passed", "issues_len"),
@@ -30,8 +30,8 @@ class TestTypeGates:
             (
                 FlextInfraMypyGate,
                 True,
-                u.Infra.Tests.ok_result(
-                    u.Infra.Tests.stub_run(
+                u.Tests.ok_result(
+                    u.Tests.stub_run(
                         stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}',
                         returncode=1,
                     ),
@@ -43,8 +43,8 @@ class TestTypeGates:
             (
                 FlextInfraPyrightGate,
                 True,
-                u.Infra.Tests.ok_result(
-                    u.Infra.Tests.stub_run(
+                u.Tests.ok_result(
+                    u.Tests.stub_run(
                         stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
                         returncode=1,
                     ),
@@ -55,8 +55,8 @@ class TestTypeGates:
             (
                 FlextInfraPyrightGate,
                 True,
-                u.Infra.Tests.ok_result(
-                    u.Infra.Tests.stub_run(stdout="invalid json", returncode=1),
+                u.Tests.ok_result(
+                    u.Tests.stub_run(stdout="invalid json", returncode=1),
                 ),
                 False,
                 0,
@@ -72,7 +72,7 @@ class TestTypeGates:
         passed: bool,
         issues_len: int,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(tmp_path, "type-project")
+        project_dir = u.Tests.mk_project(tmp_path, "type-project")
         if project_has_src:
             (project_dir / "src").mkdir()
             (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")

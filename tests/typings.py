@@ -19,11 +19,8 @@ class TestsFlextInfraTypes(FlextTestsTypes, t):
 
     __test__ = False
 
-    class Infra(t.Infra):
-        """Infra-specific type definitions namespace."""
-
-        class Tests:
-            """Tests use inherited flext-tests and production typing contracts."""
+    class Tests(FlextTestsTypes.Tests):
+        """Tests use inherited flext-tests and production typing contracts."""
 
 
 t = TestsFlextInfraTypes

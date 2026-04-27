@@ -46,18 +46,16 @@ class TestsFlextInfraDepsPathSyncMain:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_path_sync_workspace(
+        workspace = u.Tests.create_path_sync_workspace(
             tmp_path,
-            root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            root_pyproject=u.Tests.create_path_sync_pyproject(
                 name="flext-workspace",
                 dependency_path=".flext-deps/flext-core",
                 workspace_members=("flext-core", "flext-cli"),
             ),
             projects={
-                "flext-core": u.Infra.Tests.create_path_sync_pyproject(
-                    name="flext-core"
-                ),
-                "flext-cli": u.Infra.Tests.create_path_sync_pyproject(
+                "flext-core": u.Tests.create_path_sync_pyproject(name="flext-core"),
+                "flext-cli": u.Tests.create_path_sync_pyproject(
                     name="flext-cli",
                     dependency_path=".flext-deps/flext-core",
                 ),
@@ -156,18 +154,16 @@ class TestsFlextInfraDepsPathSyncMain:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_path_sync_workspace(
+        workspace = u.Tests.create_path_sync_workspace(
             tmp_path,
-            root_pyproject=u.Infra.Tests.create_path_sync_pyproject(
+            root_pyproject=u.Tests.create_path_sync_pyproject(
                 name="flext-workspace",
                 dependency_path="flext-core",
                 workspace_members=("flext-core", "flext-cli"),
             ),
             projects={
-                "flext-core": u.Infra.Tests.create_path_sync_pyproject(
-                    name="flext-core"
-                ),
-                "flext-cli": u.Infra.Tests.create_path_sync_pyproject(
+                "flext-core": u.Tests.create_path_sync_pyproject(name="flext-core"),
+                "flext-cli": u.Tests.create_path_sync_pyproject(
                     name="flext-cli",
                     dependency_path="../flext-core",
                 ),

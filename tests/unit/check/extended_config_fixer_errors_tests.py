@@ -41,7 +41,7 @@ class TestConfigFixerPublicBehavior:
     def test_run_returns_verbose_messages_for_selected_project(
         self, tmp_path: Path
     ) -> None:
-        u.Infra.Tests.mk_project(
+        u.Tests.mk_project(
             tmp_path,
             "project1",
             pyproject="[tool.pyrefly]\nsearch-path = []\n",
@@ -60,7 +60,7 @@ class TestConfigFixerPublicBehavior:
         self,
         tmp_path: Path,
     ) -> None:
-        project_dir = u.Infra.Tests.mk_project(
+        project_dir = u.Tests.mk_project(
             tmp_path,
             "project1",
             pyproject="[tool.pyrefly]\nsearch-path = []\n",

@@ -23,7 +23,7 @@ def test_main_returns_nonzero_on_unknown() -> None:
 def test_pr_workspace_accepts_repeated_project_options(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Infra.Tests.create_github_workspace(
+    workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b", "flext-c"),
         pr_exit_codes={"flext-a": "0", "flext-b": "0", "flext-c": "1"},

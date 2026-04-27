@@ -33,7 +33,7 @@ def test_update_toc_replaces_existing_block() -> None:
 
 
 def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
-    workspace = u.Infra.Tests.create_docs_workspace(
+    workspace = u.Tests.create_docs_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
     )

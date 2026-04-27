@@ -19,7 +19,7 @@ def _make_config(
         workspace_root=workspace_root,
         version="1.0.0",
         tag="v1.0.0",
-        phases=list(phases) if phases is not None else list(c.Infra.Tests.ALL_PHASES),
+        phases=list(phases) if phases is not None else list(c.Tests.ALL_PHASES),
         project_names=None,
         dry_run=dry_run,
         push=False,
@@ -37,7 +37,7 @@ class TestsFlextInfraReleaseDag:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_release_workspace(
+        workspace = u.Tests.create_release_workspace(
             tmp_path,
             project_names=("flext-a",),
         )
@@ -54,7 +54,7 @@ class TestsFlextInfraReleaseDag:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_release_workspace(tmp_path)
+        workspace = u.Tests.create_release_workspace(tmp_path)
         result = FlextInfraReleaseOrchestrator().run_release(
             _make_config(
                 workspace,
@@ -70,7 +70,7 @@ class TestsFlextInfraReleaseDag:
         self,
         tmp_path: Path,
     ) -> None:
-        workspace = u.Infra.Tests.create_release_workspace(
+        workspace = u.Tests.create_release_workspace(
             tmp_path,
             root_build_exit_code="1",
         )
