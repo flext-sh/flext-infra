@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
+    Callable,
     Sequence,
 )
 from pathlib import Path
@@ -200,24 +201,25 @@ class FlextInfraDocAuditor(
         checks: t.StrSequence,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect issues for the requested check set in canonical order."""
-        issues: list[m.Infra.AuditIssue] = []
-        if "links" in checks:
-            issues.extend(u.Infra.docs_broken_link_issues(scope))
-        if "forbidden-terms" in checks:
-            issues.extend(self.forbidden_term_issues(scope))
-        if "placeholders" in checks:
-            issues.extend(self.placeholder_issues(scope))
-        if "stale-symbols" in checks:
-            issues.extend(u.Infra.docs_stale_symbol_issues(scope))
-        if "scope-boundary" in checks:
-            issues.extend(u.Infra.docs_scope_boundary_issues(scope))
-        if "generated-ownership" in checks:
-            issues.extend(u.Infra.docs_generated_ownership_issues(scope))
-        if "docstrings" in checks:
-            issues.extend(u.Infra.docs_public_docstring_issues(scope))
-        if "python-codeblocks" in checks:
-            issues.extend(u.Infra.docs_python_codeblock_issues(scope))
-        return tuple(issues)
+        handlers: tuple[
+            tuple[str, Callable[[m.Infra.DocScope], Sequence[m.Infra.AuditIssue]]],
+            ...,
+        ] = (
+            ("links", u.Infra.docs_broken_link_issues),
+            ("forbidden-terms", self.forbidden_term_issues),
+            ("placeholders", self.placeholder_issues),
+            ("stale-symbols", u.Infra.docs_stale_symbol_issues),
+            ("scope-boundary", u.Infra.docs_scope_boundary_issues),
+            ("generated-ownership", u.Infra.docs_generated_ownership_issues),
+            ("docstrings", u.Infra.docs_public_docstring_issues),
+            ("python-codeblocks", u.Infra.docs_python_codeblock_issues),
+        )
+        return tuple(
+            issue
+            for check_name, handler in handlers
+            if check_name in checks
+            for issue in handler(scope)
+        )
 
 
 if __name__ == "__main__":
