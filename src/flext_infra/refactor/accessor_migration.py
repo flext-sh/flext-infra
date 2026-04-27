@@ -152,18 +152,9 @@ class FlextInfraAccessorMigrationOrchestrator(
         )
         for src, repl, reason in _AUTOMATED_RULE_ROWS
     )
-    _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset({
-        "get_beartype_conf",
-        "get_message_route",
-        "is_failure",
-        "is_success",
-        "is_success_result",
-        "is_failure_result",
-        "set_attribute",
-        "set_container_adapter",
-        "set_scalar_adapter",
-        "set_str_adapter",
-    })
+    _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset(
+        row[0] for row in _AUTOMATED_RULE_ROWS
+    )
 
     @property
     def gate_names(self) -> t.StrSequence:
