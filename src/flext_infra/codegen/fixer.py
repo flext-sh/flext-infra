@@ -224,9 +224,9 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         else:
             refactor_results = tuple(
                 engine.refactor_project(
-                project_path,
-                dry_run=False,
-                apply_safety=False,
+                    project_path,
+                    dry_run=False,
+                    apply_safety=False,
                 ),
             )
             ctx.files_modified = {

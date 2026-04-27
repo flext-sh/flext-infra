@@ -40,10 +40,7 @@ class FlextInfraUtilitiesLogParser:
         """
         if not log_path.exists():
             return (0, [])
-        try:
-            text = log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="replace")
-        except OSError:
-            return (0, [])
+        text = log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="replace")
         tail = text.splitlines()[-c.Infra.LOG_TAIL_LINES :]
         error_lines: MutableSequence[str] = []
         for line in tail:

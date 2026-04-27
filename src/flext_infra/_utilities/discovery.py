@@ -365,7 +365,9 @@ class FlextInfraUtilitiesDiscovery:
         except (OSError, SyntaxError):
             syntax_tree = ast.Module(body=[], type_ignores=[])
         declared_imports_ast: dict[str, str] = {
-            (imported_name.asname or imported_name.name): f"{node.module}.{imported_name.name}"
+            (
+                imported_name.asname or imported_name.name
+            ): f"{node.module}.{imported_name.name}"
             for node in syntax_tree.body
             if isinstance(node, ast.ImportFrom) and node.module
             for imported_name in node.names
@@ -419,9 +421,15 @@ class FlextInfraUtilitiesDiscovery:
                     continue
                 package_root = target_name.split(".", maxsplit=1)[0]
                 target = (
-                    package_root if return_module else target_name.rsplit(".", maxsplit=1)[-1]
+                    package_root
+                    if return_module
+                    else target_name.rsplit(".", maxsplit=1)[-1]
                 )
-                if not target or package_root == current_root or target in resolved_seen:
+                if (
+                    not target
+                    or package_root == current_root
+                    or target in resolved_seen
+                ):
                     continue
                 resolved_seen.add(target)
                 resolved.append(target)

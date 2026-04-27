@@ -418,7 +418,13 @@ class FlextInfraUtilitiesIteration:
     @staticmethod
     @cache
     def _git_tracked_scope_relative_paths(scope_root: str) -> tuple[str, ...] | None:
-        """Return tracked file paths relative to one scope or ``None`` outside Git."""
+        """Return tracked file paths relative to ``scope_root`` or ``None`` outside Git.
+
+        ``git ls-files <scope_prefix>`` emits paths relative to the **repo root**.
+        Callers join the result back onto ``scope_root``, so this function
+        strips ``scope_prefix`` from each line to keep the contract honest:
+        returned paths are scope-relative, never repo-relative.
+        """
         resolved_root = Path(scope_root)
         try:
             repo = Repo(resolved_root, search_parent_directories=True)
@@ -438,12 +444,18 @@ class FlextInfraUtilitiesIteration:
             )
         except GitCommandError:
             return None
-        normalized = frozenset(
-            path_text
-            for raw_line in tracked_output.splitlines()
-            if (path_text := Path(raw_line).as_posix())
-        )
-        return tuple(sorted(normalized))
+        prefix_parts = scope_prefix.parts
+        scope_paths: set[str] = set()
+        for raw_line in tracked_output.splitlines():
+            repo_relative = Path(raw_line)
+            if prefix_parts:
+                if repo_relative.parts[: len(prefix_parts)] != prefix_parts:
+                    continue
+                scope_relative = Path(*repo_relative.parts[len(prefix_parts) :])
+            else:
+                scope_relative = repo_relative
+            scope_paths.add(scope_relative.as_posix())
+        return tuple(sorted(scope_paths))
 
     @classmethod
     def _git_tracked_scope_paths(cls, scope_root: Path) -> Sequence[Path] | None:
@@ -549,11 +561,13 @@ class FlextInfraUtilitiesIteration:
 
         Algorithm:
           1. Check if workspace_root itself looks like a project
-          2. Scan immediate children for project-like directories
-          3. Return sorted list, or fallback to [workspace_root] if has src/
-
-        The fallback handles workspaces where all code is in workspace_root/src
-        rather than organized into subdirectory projects.
+          2. Enumerate ``.gitmodules``-tracked submodules of the workspace
+          3. Surface external sub-repos that opt-in via
+             ``[tool.flext.workspace] attached = true`` in their pyproject
+             (covers external git repos like ``algar-oud-mig`` /
+             ``gruponos-meltano-native`` that import flext-core but live
+             outside the workspace's submodule registry)
+          4. Return sorted list including the workspace root itself
 
         Args:
             workspace_root: Root directory to start search from.
@@ -561,9 +575,9 @@ class FlextInfraUtilitiesIteration:
                 Must be frozenset for use as constant. Defaults to standard project dirs.
 
         Returns:
-            List of project root paths sorted by name.
-            Includes workspace_root itself if it looks like a project.
-            At minimum returns [workspace_root] if workspace_root/src/ exists.
+            List of project root paths sorted by ``.gitmodules`` order, with
+            the workspace root prepended when it satisfies project shape, and
+            attached external repos appended in alphabetical order.
 
         """
         configured_members = FlextInfraUtilitiesIteration.workspace_member_names(
@@ -572,22 +586,24 @@ class FlextInfraUtilitiesIteration:
         candidates = FlextInfraUtilitiesIteration.discover_project_candidates(
             workspace_root,
             scan_dirs=scan_dirs,
+            include_attached=True,
         )
-        if configured_members:
-            configured_order = {
-                name: idx for idx, name in enumerate(configured_members)
-            }
-            non_root_candidates = [
-                candidate for candidate in candidates if candidate != workspace_root
-            ]
-            if non_root_candidates:
-                return sorted(
-                    non_root_candidates,
-                    key=lambda candidate: configured_order.get(
-                        candidate.name, len(configured_members)
-                    ),
-                )
-        return candidates
+        resolved_workspace_root = workspace_root.resolve()
+        if not configured_members:
+            return candidates
+        configured_order = {name: idx for idx, name in enumerate(configured_members)}
+        ordered: list[Path] = []
+        if resolved_workspace_root in candidates:
+            ordered.append(resolved_workspace_root)
+        non_root_candidates = sorted(
+            (c for c in candidates if c != resolved_workspace_root),
+            key=lambda candidate: (
+                configured_order.get(candidate.name, len(configured_members)),
+                candidate.name,
+            ),
+        )
+        ordered.extend(non_root_candidates)
+        return ordered
 
     @staticmethod
     def _looks_like_project(
@@ -621,30 +637,33 @@ class FlextInfraUtilitiesIteration:
             return True
         return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
 
-    @staticmethod
-    def _attached_top_level_dir_names(scope_root: Path) -> frozenset[str]:
-        """Return top-level dir names whose pyproject opts in via ``[tool.flext.workspace] attached = true``.
+    @classmethod
+    def _attached_top_level_dir_names(cls, scope_root: Path) -> frozenset[str]:
+        """Return top-level dir names that are external git repos importing flext-core.
 
-        Reads each candidate's ``pyproject.toml`` through the canonical
-        ``u.read_tool_flext_config`` helper from flext-core; the typed
-        ``ProjectToolFlextWorkspace`` model enforces the contract. Sub-repos
-        without a pyproject or whose ``[tool.flext.workspace]`` table is
-        absent / ``attached = false`` are not surfaced.
+        Structural rule (no opt-in flags): a directory is "attached" if it
+        lives at workspace top-level, has its own ``.git`` directory (so it
+        is a git repo) and is **not** registered as a submodule of the
+        workspace itself. The flext-core dependency check is delegated to
+        ``_looks_like_project`` downstream — this function only filters by
+        repo identity. Covers external sub-repos like ``algar-oud-mig``
+        and ``gruponos-meltano-native`` that consume flext-core but live
+        outside the workspace's submodule registry.
         """
+        workspace_submodule_names = (
+            cls._git_tracked_top_level_dir_names(scope_root) or frozenset()
+        )
         attached: list[str] = []
         for entry in sorted(scope_root.iterdir(), key=lambda item: item.name):
             if not entry.is_dir() or entry.name.startswith("."):
                 continue
+            if entry.name in workspace_submodule_names:
+                continue
+            if not (entry / ".git").exists():
+                continue
             if not (entry / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
-            try:
-                cfg = u.read_tool_flext_config(entry)
-            except (OSError, ValueError):
-                # OSError covers FileNotFoundError; ValueError covers
-                # tomllib.TOMLDecodeError and pydantic.ValidationError.
-                continue
-            if cfg.workspace.attached:
-                attached.append(entry.name)
+            attached.append(entry.name)
         return frozenset(attached)
 
     @staticmethod
@@ -656,10 +675,11 @@ class FlextInfraUtilitiesIteration:
     ) -> Sequence[Path]:
         """Return all canonical project candidates before any consumer-specific filtering.
 
-        When ``include_attached`` is True, sub-repos whose own ``pyproject.toml``
-        carries ``[tool.flext.workspace] attached = true`` are surfaced
-        alongside the git-tracked dirs of ``workspace_root``. Default (False)
-        preserves the previous workspace-only enumeration.
+        When ``include_attached`` is True, external sub-repos at workspace
+        top-level (git repos with their own ``pyproject.toml`` not registered
+        in the workspace submodule index — e.g. ``algar-oud-mig``) are
+        surfaced alongside the git-tracked dirs of ``workspace_root``.
+        Default (False) preserves workspace-submodule-only enumeration.
         """
         roots: MutableSequence[Path] = []
         effective_scan_dirs = scan_dirs or frozenset(c.Infra.MRO_SCAN_DIRECTORIES)

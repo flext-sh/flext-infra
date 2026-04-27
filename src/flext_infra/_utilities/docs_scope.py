@@ -261,7 +261,7 @@ class FlextInfraUtilitiesDocsScope:
         enabled = docs_meta.get("enabled", True)
         is_enabled = bool(enabled) if isinstance(enabled, bool) else True
         return (
-            project_name.startswith("flext-")
+            project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
             and project_name
             not in FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
             and is_enabled

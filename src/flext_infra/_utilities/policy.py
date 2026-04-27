@@ -85,10 +85,7 @@ class FlextInfraUtilitiesRefactorPolicy:
             return {}
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
         for raw in u.Cli.json_as_mapping_list(loaded.value.get("policy_matrix")):
-            try:
-                policy = m.Infra.ClassNestingPolicy.model_validate(raw)
-            except c.ValidationError:
-                continue
+            policy = m.Infra.ClassNestingPolicy.model_validate(raw)
             by_family[policy.family_name] = policy
         return by_family
 

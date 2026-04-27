@@ -29,6 +29,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".safety": ("FlextInfraRefactorSafetyManager",),
         ".scanner": ("FlextInfraRefactorLooseClassScanner",),
         ".violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
+        ".wrapper_root_namespace": ("FlextInfraWrapperRootNamespaceRefactor",),
     },
 )
 

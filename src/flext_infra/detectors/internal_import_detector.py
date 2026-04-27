@@ -45,7 +45,7 @@ class FlextInfraInternalImportDetector:
             or (
                 "._" in fqn
                 and (
-                    fqn.split(".", 1)[0].startswith("flext_")
+                    fqn.split(".", 1)[0].startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
                     or (current_root and fqn.split(".", 1)[0] == current_root)
                     or fqn.split(".", 1)[0]
                     in {

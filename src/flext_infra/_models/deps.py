@@ -138,9 +138,9 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
                 c.Infra.PathSyncMode.AUTO, description="Dependency path rewrite mode"
             ),
             m.BeforeValidator(
-                lambda v: c.Infra.PathSyncMode(v.strip().lower())
-                if isinstance(v, str)
-                else v,
+                lambda v: (
+                    c.Infra.PathSyncMode(v.strip().lower()) if isinstance(v, str) else v
+                ),
             ),
         ] = c.Infra.PathSyncMode.AUTO
 

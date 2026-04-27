@@ -325,7 +325,10 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert "FlextDemoHttpTransport" in init_content
 
-    def test_duplicate_public_export_returns_error(self, tmp_path: Path) -> None:
+    def test_duplicate_public_export_resolved_by_canonical_scorer(
+        self, tmp_path: Path
+    ) -> None:
+        """Duplicate public exports are resolved deterministically (warn + generate)."""
         workspace_root, package_root = self._workspace(tmp_path)
         (package_root / "alpha.py").write_text(
             "from __future__ import annotations\n\nclass Shared:\n    pass\n",
@@ -336,5 +339,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        assert u.Infra.Tests.run_lazy_init(workspace_root) == 1
-        assert not self._generated_init(package_root).startswith(c.Infra.AUTOGEN_HEADER)
+        assert u.Infra.Tests.run_lazy_init(workspace_root) == 0
+        init_content = self._generated_init(package_root)
+        assert init_content.startswith(c.Infra.AUTOGEN_HEADER)
+        assert "Shared" in init_content

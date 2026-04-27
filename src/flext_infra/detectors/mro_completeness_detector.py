@@ -52,7 +52,11 @@ class FlextInfraMROCompletenessDetector:
             )
         if facade is None:
             facade = next(
-                (name for name in module_classes if name.startswith("Flext")),
+                (
+                    name
+                    for name in module_classes
+                    if name.startswith(c.TIER_FACADE_PREFIX["src"])
+                ),
                 None,
             )
         if facade is None:

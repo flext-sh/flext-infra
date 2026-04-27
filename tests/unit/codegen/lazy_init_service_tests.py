@@ -118,8 +118,14 @@ class TestFlextInfraCodegenLazyInit:
         assert "My custom package docstring" not in content
         assert '"""Flext Test Project package."""' in content
 
-    def test_fails_when_public_exports_collide(self, tmp_path: Path) -> None:
-        """Conflicting exports must fail instead of generating a broken __init__.py."""
+    def test_resolves_public_export_collision_via_canonical_scorer(
+        self, tmp_path: Path
+    ) -> None:
+        """Conflicting exports are resolved deterministically.
+
+        The canonical scorer picks exactly one source; codegen succeeds and
+        the init imports the chosen source only.
+        """
         workspace_root, src_dir = u.Infra.Tests.create_lazy_init_workspace(tmp_path)
         (src_dir / "alpha.py").write_text(
             "from __future__ import annotations\n\n"
@@ -136,8 +142,16 @@ class TestFlextInfraCodegenLazyInit:
 
         result = u.Infra.Tests.run_lazy_init(workspace_root)
 
-        assert result == 1
-        assert (src_dir / "__init__.py").read_text(encoding="utf-8") == ""
+        assert result == 0
+        content = (src_dir / "__init__.py").read_text(encoding="utf-8")
+        # Exactly one of the two sources wins; the init imports Shared from a
+        # single canonical source (scorer is deterministic).
+        alpha_imports = content.count('".alpha"')
+        beta_imports = content.count('".beta"')
+        assert (alpha_imports == 1 and beta_imports == 0) or (
+            alpha_imports == 0 and beta_imports == 1
+        ), content
+        assert '"Shared"' in content
 
     def test_accepts_service_base_in_services_package(self, tmp_path: Path) -> None:
         """services/base.py must accept the canonical ServiceBase exception."""

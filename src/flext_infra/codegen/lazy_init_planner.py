@@ -64,9 +64,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,
             f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
-            export_options=m.Infra.ExportOptions.model_validate(
-                {"include_dunder": True}
-            ),
+            export_options=m.Infra.ExportOptions.model_validate({
+                "include_dunder": True
+            }),
         )
         child_lazy, child_tc = self._merge_children(
             context.pkg_dir, lazy_map, dir_exports
@@ -141,17 +141,14 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             targets = self._module_exports(
                 py_file,
                 convention.module_name,
-                export_options=m.Infra.ExportOptions.model_validate(
-                    {
-                        "allow_main": policy.allow_main_export,
-                        "allow_assignments": (
-                            policy.allow_type_alias
-                            or policy.expected_alias is not None
-                        ),
-                        "allow_functions": policy.is_fixture_module,
-                        "require_explicit_all": require_explicit_all,
-                    }
-                ),
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_main": policy.allow_main_export,
+                    "allow_assignments": (
+                        policy.allow_type_alias or policy.expected_alias is not None
+                    ),
+                    "allow_functions": policy.is_fixture_module,
+                    "require_explicit_all": require_explicit_all,
+                }),
             )
             if require_explicit_all and not targets:
                 msg = (
@@ -259,7 +256,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:
-        return pkg_dir.name == "_fixtures" or pkg_dir.name.endswith("_fixtures")
+        return pkg_dir.name == "_fixtures"
 
     @classmethod
     def _is_private_test_fixture_package(cls, pkg_dir: Path, surface: str) -> bool:
@@ -320,9 +317,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             if module_file.is_file() and alias_name in self._module_exports(
                 module_file,
                 module_name,
-                export_options=m.Infra.ExportOptions.model_validate(
-                    {"allow_assignments": True}
-                ),
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_assignments": True
+                }),
             ):
                 lazy_map[alias_name] = (module_name, alias_name)
                 continue
@@ -330,9 +327,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 package_exports = self._module_exports(
                     package_dir / c.Infra.INIT_PY,
                     module_name,
-                    export_options=m.Infra.ExportOptions.model_validate(
-                        {"allow_assignments": True}
-                    ),
+                    export_options=m.Infra.ExportOptions.model_validate({
+                        "allow_assignments": True
+                    }),
                 )
                 if alias_name in package_exports:
                     lazy_map[alias_name] = (module_name, alias_name)
@@ -430,9 +427,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return frozenset(
             self.rope_workspace.exports(
                 init_path,
-                export_options=m.Infra.ExportOptions.model_validate(
-                    {"allow_assignments": True}
-                ),
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_assignments": True
+                }),
             ),
         )
 
@@ -572,8 +569,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if existing is None or existing == target:
             index[name] = target
             return
-        msg = f"export collision for {name!r}: {existing} != {target}"
-        raise ValueError(msg)
+        winner = self._pick_preferred_target(name, existing, target)
+        u.Cli.warning(
+            f"export collision for {name!r}: {existing} vs {target}; "
+            f"resolved by canonical policy scorer to {winner}",
+        )
+        index[name] = winner
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlanner"]

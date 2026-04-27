@@ -484,7 +484,11 @@ class FlextInfraAccessorMigrationOrchestrator(
             if function_name.startswith("_") or function_name in self._AUTOMATED_NAMES:
                 continue
             matched_prefix = next(
-                (p for p in self._MANUAL_WARNING_PREFIXES if function_name.startswith(p)),
+                (
+                    p
+                    for p in self._MANUAL_WARNING_PREFIXES
+                    if function_name.startswith(p)
+                ),
                 None,
             )
             if matched_prefix is None:
@@ -494,7 +498,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                     file=str(py_file),
                     line=line_index,
                     original_name=function_name,
-                    replacement_name=function_name[len(matched_prefix):],
+                    replacement_name=function_name[len(matched_prefix) :],
                     automated=False,
                     reason=self._MANUAL_WARNING_REASON.format(
                         prefix=matched_prefix.rstrip("_"),

@@ -41,7 +41,9 @@ class FlextInfraModelsRope:
         ] = False
         require_explicit_all: Annotated[
             bool,
-            m.Field(description="Whether __all__ must exist for exports to be returned."),
+            m.Field(
+                description="Whether __all__ must exist for exports to be returned."
+            ),
         ] = False
 
     class ClassInfo(

@@ -5,38 +5,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesDependencyPathSync
-from tests import c, m, p, t
-
-
-def _rewrite_dep_paths(
-    pyproject_path: Path,
-    *,
-    mode: c.Infra.PathSyncMode,
-    internal_names: set[str],
-    workspace_members: t.StrSequence = (),
-    is_root: bool = False,
-    dry_run: bool = False,
-) -> p.Result[t.StrSequence]:
-    """Adapter that wraps the canonical ``rewrite_dep_paths`` API.
-
-    The centralized signature accepts a ``m.Infra.PathSyncCommand`` Pydantic
-    model instead of loose kwargs (per AGENTS.md §2.7 — typed contracts).
-    See ``test_path_sync_rewrite_deps.py`` for the same adapter.
-    """
-    workspace_path = (
-        pyproject_path.parent if is_root else pyproject_path.parent.parent
-    )
-    command = m.Infra.PathSyncCommand(
-        mode=mode,
-        workspace=str(workspace_path),
-        apply=not dry_run,
-    )
-    return FlextInfraUtilitiesDependencyPathSync().rewrite_dep_paths(
-        pyproject_path,
-        command=command,
-        internal_names=internal_names,
-        workspace_members=workspace_members,
-    )
+from tests import c, m
 
 
 class TestsFlextInfraDepsPathSyncInit:
@@ -86,10 +55,13 @@ class TestsFlextInfraDepsPathSyncInit:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[tool.poetry.dependencies]\npython = "^3.13"')
         tm.ok(
-            _rewrite_dep_paths(
+            FlextInfraUtilitiesDependencyPathSync().rewrite_dep_paths(
                 pyproject,
-                mode=c.Infra.PathSyncMode.STANDALONE,
+                command=m.Infra.PathSyncCommand(
+                    mode=c.Infra.PathSyncMode.STANDALONE,
+                    workspace=str(tmp_path.parent),
+                ),
                 internal_names=set(),
-                dry_run=True,
+                workspace_members=(),
             ),
         )

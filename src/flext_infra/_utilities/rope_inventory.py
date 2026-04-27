@@ -53,26 +53,24 @@ class FlextInfraUtilitiesRopeInventory:
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
             record = cls._record(
-                m.Infra.RopeInventoryRecordInput.model_validate(
-                    {
-                        "rope_project": rope_project,
-                        "resource": resource,
-                        "source": source,
-                        "name": name,
-                        "pyname": pyname,
-                        "module_name": module_entry.module_name
-                        if module_entry is not None
-                        else "",
-                        "project_name": convention.project_layout.project_name
-                        if convention.project_layout is not None
-                        else convention.file_path.parent.name,
-                        "convention": convention,
-                        "scope_chain": (),
-                        "class_chain": (),
-                        "child_scope": cls._child_scope_for(child_scopes, pyname),
-                        "rope_workspace": rope_workspace,
-                    }
-                ),
+                m.Infra.RopeInventoryRecordInput.model_validate({
+                    "rope_project": rope_project,
+                    "resource": resource,
+                    "source": source,
+                    "name": name,
+                    "pyname": pyname,
+                    "module_name": module_entry.module_name
+                    if module_entry is not None
+                    else "",
+                    "project_name": convention.project_layout.project_name
+                    if convention.project_layout is not None
+                    else convention.file_path.parent.name,
+                    "convention": convention,
+                    "scope_chain": (),
+                    "class_chain": (),
+                    "child_scope": cls._child_scope_for(child_scopes, pyname),
+                    "rope_workspace": rope_workspace,
+                }),
             )
             if record is None:
                 continue
@@ -120,22 +118,20 @@ class FlextInfraUtilitiesRopeInventory:
         for name, pyname in cls._sorted_scope_names(scope, resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
             record = cls._record(
-                m.Infra.RopeInventoryRecordInput.model_validate(
-                    {
-                        "rope_project": rope_project,
-                        "resource": resource,
-                        "source": source,
-                        "name": name,
-                        "pyname": pyname,
-                        "module_name": module_name,
-                        "project_name": project_name,
-                        "convention": convention,
-                        "scope_chain": scope_chain,
-                        "class_chain": class_chain,
-                        "child_scope": child_scope,
-                        "rope_workspace": rope_workspace,
-                    }
-                ),
+                m.Infra.RopeInventoryRecordInput.model_validate({
+                    "rope_project": rope_project,
+                    "resource": resource,
+                    "source": source,
+                    "name": name,
+                    "pyname": pyname,
+                    "module_name": module_name,
+                    "project_name": project_name,
+                    "convention": convention,
+                    "scope_chain": scope_chain,
+                    "class_chain": class_chain,
+                    "child_scope": child_scope,
+                    "rope_workspace": rope_workspace,
+                }),
             )
             if record is None:
                 continue

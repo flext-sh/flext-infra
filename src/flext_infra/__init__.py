@@ -114,6 +114,9 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.rope_analysis_introspection import (
         FlextInfraUtilitiesRopeAnalysisIntrospection,
     )
+    from flext_infra._utilities.rope_analysis_workspace import (
+        FlextInfraUtilitiesRopeAnalysisWorkspace,
+    )
     from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
     from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
     from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
@@ -289,6 +292,9 @@ if _t.TYPE_CHECKING:
     from flext_infra.refactor.violation_analyzer import (
         FlextInfraRefactorViolationAnalyzer,
     )
+    from flext_infra.refactor.wrapper_root_namespace import (
+        FlextInfraWrapperRootNamespaceRefactor,
+    )
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
     from flext_infra.release.orchestrator_phases import (
         FlextInfraReleaseOrchestratorPhases,
@@ -363,6 +369,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
     from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
+    from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
@@ -500,6 +507,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
             "._utilities.rope_analysis_introspection": (
                 "FlextInfraUtilitiesRopeAnalysisIntrospection",
+            ),
+            "._utilities.rope_analysis_workspace": (
+                "FlextInfraUtilitiesRopeAnalysisWorkspace",
             ),
             "._utilities.rope_core": ("FlextInfraUtilitiesRopeCore",),
             "._utilities.rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
@@ -657,6 +667,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".refactor.safety": ("FlextInfraRefactorSafetyManager",),
             ".refactor.scanner": ("FlextInfraRefactorLooseClassScanner",),
             ".refactor.violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
+            ".refactor.wrapper_root_namespace": (
+                "FlextInfraWrapperRootNamespaceRefactor",
+            ),
             ".release.orchestrator": ("FlextInfraReleaseOrchestrator",),
             ".release.orchestrator_phases": ("FlextInfraReleaseOrchestratorPhases",),
             ".settings": ("FlextInfraSettings",),
@@ -725,6 +738,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".validate.skill_validator": ("FlextInfraSkillValidator",),
             ".validate.stub_chain": ("FlextInfraStubSupplyChain",),
             ".validate.tier_whitelist": ("FlextInfraValidateTierWhitelist",),
+            ".workspace.base": ("FlextInfraWorkspaceGeneratorBase",),
             ".workspace.detector": ("FlextInfraWorkspaceDetector",),
             ".workspace.migrator": ("FlextInfraProjectMigrator",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
@@ -978,6 +992,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRopeAnalysis",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
+    "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeCore",
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
@@ -997,7 +1012,9 @@ __all__: list[str] = [
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceGeneratorBase",
     "FlextInfraWorkspaceMakefileGenerator",
+    "FlextInfraWrapperRootNamespaceRefactor",
     "__author__",
     "__author_email__",
     "__description__",

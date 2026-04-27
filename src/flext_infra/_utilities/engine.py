@@ -60,10 +60,7 @@ class FlextInfraUtilitiesRefactorEngine:
                 continue
             if f.suffix not in ext:
                 continue
-            try:
-                rel = str(f.relative_to(base_path))
-            except ValueError:
-                rel = str(f)
+            rel = str(f.relative_to(base_path))
             if any(fnmatch.fnmatch(rel, ip) for ip in ign):
                 continue
             yield f

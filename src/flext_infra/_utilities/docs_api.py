@@ -324,7 +324,11 @@ class FlextInfraUtilitiesDocsApi:
         ]
         if not public_symbols:
             public_symbols = symbol_exports
-        facades = [name for name in public_symbols if name.startswith("Flext")]
+        facades = [
+            name
+            for name in public_symbols
+            if name.startswith(c.TIER_FACADE_PREFIX["src"])
+        ]
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "package_name": package_name,
             "description": description,

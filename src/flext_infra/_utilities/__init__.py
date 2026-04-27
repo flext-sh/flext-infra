@@ -43,6 +43,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".rope_analysis_introspection": (
             "FlextInfraUtilitiesRopeAnalysisIntrospection",
         ),
+        ".rope_analysis_workspace": ("FlextInfraUtilitiesRopeAnalysisWorkspace",),
         ".rope_core": ("FlextInfraUtilitiesRopeCore",),
         ".rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
         ".rope_imports": ("FlextInfraUtilitiesRopeImports",),

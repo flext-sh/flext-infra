@@ -23,11 +23,11 @@ class FlextInfraNamespaceRules:
     """Implementation of namespace rules 0-3 for AST-based validation."""
 
     _DIRECT_FACADE_SUFFIX_RULES = (
-        ("Constants", c.Infra.CONSTANTS_PY, "_constants"),
-        ("Models", c.Infra.MODELS_PY, "_models"),
-        ("Protocols", c.Infra.PROTOCOLS_PY, "_protocols"),
-        ("Types", c.Infra.TYPINGS_PY, "_typings"),
-        ("Utilities", c.Infra.UTILITIES_PY, "_utilities"),
+        ("Constants", c.Infra.CONSTANTS_PY, c.Infra.FAMILY_DIRECTORIES["c"]),
+        ("Models", c.Infra.MODELS_PY, c.Infra.FAMILY_DIRECTORIES["m"]),
+        ("Protocols", c.Infra.PROTOCOLS_PY, c.Infra.FAMILY_DIRECTORIES["p"]),
+        ("Types", c.Infra.TYPINGS_PY, c.Infra.FAMILY_DIRECTORIES["t"]),
+        ("Utilities", c.Infra.UTILITIES_PY, c.Infra.FAMILY_DIRECTORIES["u"]),
     )
 
     @staticmethod
@@ -273,7 +273,7 @@ class FlextInfraNamespaceRules:
         if filepath.name == c.Infra.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
         # Files in _typings/ are proper types sub-modules — TypeAliases/TypeVars belong there.
-        if filepath.parent.name == "_typings":
+        if filepath.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]:
             return []
         return self._check_rule_2_non_canonical(tree, filepath)
 
@@ -491,7 +491,7 @@ class FlextInfraNamespaceRules:
             # TypeAlias allowed in typings.py and _typings/ sub-modules.
             return (
                 filepath.name == c.Infra.TYPINGS_PY
-                or filepath.parent.name == "_typings"
+                or filepath.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
             )
         return self._is_allowed_ann_assign(node, filepath)
 
@@ -521,7 +521,7 @@ class FlextInfraNamespaceRules:
                 # TypeVar allowed in typings.py and _typings/ sub-modules.
                 return (
                     filepath.name == c.Infra.TYPINGS_PY
-                    or filepath.parent.name == "_typings"
+                    or filepath.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
                 )
         return False
 
@@ -540,7 +540,7 @@ class FlextInfraNamespaceRules:
             # TypeAlias allowed in typings.py and _typings/ sub-modules.
             return (
                 filepath.name == c.Infra.TYPINGS_PY
-                or filepath.parent.name == "_typings"
+                or filepath.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
             )
         if (
             isinstance(node.target, ast.Name)

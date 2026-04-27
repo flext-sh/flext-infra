@@ -35,9 +35,9 @@ class TestsFlextInfraInfraRopeService:
             assert rope.package(package_root) is not None
             exports = rope.exports(
                 module_path,
-                export_options=m.Infra.ExportOptions.model_validate(
-                    {"allow_assignments": True}
-                ),
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_assignments": True
+                }),
             )
             assert "FlextTestsModels" in exports
             assert "m" in exports
@@ -89,9 +89,9 @@ class TestsFlextInfraInfraRopeService:
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             exports = rope.exports(
                 fixture_module,
-                export_options=m.Infra.ExportOptions.model_validate(
-                    {"allow_functions": True}
-                ),
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_functions": True
+                }),
             )
 
         assert "reset_settings" in exports

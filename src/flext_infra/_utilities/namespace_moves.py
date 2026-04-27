@@ -56,10 +56,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     )
                 ):
                     continue
-                try:
-                    source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                except OSError:
-                    continue
+                source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 if FlextInfraUtilitiesRopeSource.looks_like_facade_file(
                     file_path=file_path,
                     source=source,

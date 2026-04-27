@@ -179,19 +179,12 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
-    def policy(
+    def _resolve_family(
         cls,
         file_path: Path,
-        *,
-        rel_path: Path | None = None,
-        current_pkg: str = "",
-    ) -> m.Infra.NamespaceModulePolicy:
-        """Return the derived Pydantic policy for one governed module."""
-        settings = cls._lazy_init_config()
-        package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
-            file_path,
-        )
-        resolved_rel_path = rel_path or Path(file_path.name)
+        settings: m.Infra.LazyInitConfig,
+    ) -> tuple[str | None, str | None, str | None, tuple[str, ...]]:
+        """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
             (
                 alias
@@ -210,22 +203,40 @@ class FlextInfraUtilitiesCodegenNamespace:
             if family_alias is not None
             else settings.public_file_aliases.get(file_path.name)
         )
-        family_tokens = (
+        family_tokens: tuple[str, ...] = (
             tuple(settings.private_family_tokens.get(family_alias, ()))
             if family_alias is not None
             else (expected_family,)
             if expected_family
             else ()
         )
-        package_parts = tuple(part for part in package_name.split(".") if part)
+        return family_alias, expected_family, expected_alias, family_tokens
+
+    @classmethod
+    def _resolve_module_flags(
+        cls,
+        file_path: Path,
+        resolved_rel_path: Path,
+        package_parts: tuple[str, ...],
+        family_alias: str | None,
+        expected_alias: str | None,
+        expected_family: str | None,
+        settings: m.Infra.LazyInitConfig,
+    ) -> tuple[bool, bool, bool, bool, bool, bool, bool, bool, str | None]:
+        """Return all is_* booleans and resolved surface_name.
+
+        Returns: (is_fixture_module, is_family_module, is_family_package,
+                  is_services_module, is_services_package, is_namespace_file,
+                  is_root_namespace, is_governed_namespace, resolved expected_alias)
+        """
         package_depth = len(package_parts)
         is_fixture_module = file_path.parent.name == "_fixtures"
+        family_dir_values = set(c.Infra.FAMILY_DIRECTORIES.values())
         is_family_module = any(
-            part in c.Infra.FAMILY_DIRECTORIES.values()
-            for part in resolved_rel_path.parts
+            part in family_dir_values for part in resolved_rel_path.parts
         )
         is_family_package = family_alias is not None or any(
-            part in c.Infra.FAMILY_DIRECTORIES.values() for part in package_parts
+            part in family_dir_values for part in package_parts
         )
         is_services_module = "services" in resolved_rel_path.parts
         is_services_package = "services" in package_parts
@@ -238,16 +249,93 @@ class FlextInfraUtilitiesCodegenNamespace:
             and len(resolved_rel_path.parts) == 1
             and package_depth <= 1
         )
+        resolved_alias = expected_alias
         if (
-            expected_alias is None
+            resolved_alias is None
             and is_root_namespace
             and resolved_rel_path.name == c.Infra.API_PY
         ):
-            expected_alias = cls.package_alias(package_name=package_name)
+            resolved_alias = cls.package_alias(
+                package_name=".".join(package_parts) if package_parts else ""
+            )
+        return (
+            is_fixture_module,
+            is_family_module,
+            is_family_package,
+            is_services_module,
+            is_services_package,
+            is_namespace_file,
+            is_root_namespace,
+            is_governed_namespace,
+            resolved_alias,
+        )
+
+    @classmethod
+    def _resolve_project_prefix(
+        cls,
+        file_path: Path,
+        settings: m.Infra.LazyInitConfig,
+    ) -> str:
+        """Derive the class-stem prefix for one file inside a project."""
+        project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        if project_root is None:
+            return ""
+        layout = cls.layout(project_root)
+        if layout is None:
+            return ""
+        class_stem: str = layout.class_stem
+        try:
+            rel_parts = file_path.relative_to(project_root).parts
+        except ValueError:
+            return class_stem
+        surface_prefix = (
+            settings.surface_prefixes.get(rel_parts[0], "") if rel_parts else ""
+        )
+        return f"{surface_prefix}{class_stem}" if surface_prefix else class_stem
+
+    @classmethod
+    def policy(
+        cls,
+        file_path: Path,
+        *,
+        rel_path: Path | None = None,
+        current_pkg: str = "",
+    ) -> m.Infra.NamespaceModulePolicy:
+        """Return the derived Pydantic policy for one governed module."""
+        settings = cls._lazy_init_config()
+        package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
+            file_path
+        )
+        resolved_rel_path = rel_path or Path(file_path.name)
+        package_parts = tuple(part for part in package_name.split(".") if part)
+
+        family_alias, expected_family, expected_alias, family_tokens = (
+            cls._resolve_family(file_path, settings)
+        )
+        (
+            is_fixture_module,
+            is_family_module,
+            is_family_package,
+            is_services_module,
+            is_services_package,
+            is_namespace_file,
+            is_root_namespace,
+            is_governed_namespace,
+            expected_alias,
+        ) = cls._resolve_module_flags(
+            file_path,
+            resolved_rel_path,
+            package_parts,
+            family_alias,
+            expected_alias,
+            expected_family,
+            settings,
+        )
+
         surface_name = package_parts[0] if package_parts else ""
         if surface_name not in settings.surface_prefixes:
             surface_name = "src"
-        is_src_surface = surface_name == "src"
+
         enforce_contract = (
             is_fixture_module
             or is_family_module
@@ -256,7 +344,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             or is_root_namespace
         )
         export_symbols = (
-            is_src_surface
+            surface_name == "src"
             or is_fixture_module
             or is_family_module
             or is_family_package
@@ -277,33 +365,11 @@ class FlextInfraUtilitiesCodegenNamespace:
             ))
             if name.isidentifier()
         )
-        project_root = FlextInfraUtilitiesDiscovery.project_root(
-            file_path,
-        )
-        project_prefix = ""
-        if project_root is not None:
-            layout = cls.layout(project_root)
-            if layout is not None:
-                try:
-                    rel_parts = file_path.relative_to(project_root).parts
-                except ValueError:
-                    project_prefix = layout.class_stem
-                else:
-                    surface_prefix = (
-                        settings.surface_prefixes.get(rel_parts[0], "")
-                        if rel_parts
-                        else ""
-                    )
-                    project_prefix = (
-                        f"{surface_prefix}{layout.class_stem}"
-                        if surface_prefix
-                        else layout.class_stem
-                    )
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=enforce_contract,
             export_symbols=export_symbols,
             include_in_lazy_init=include_in_lazy_init,
-            project_prefix=project_prefix,
+            project_prefix=cls._resolve_project_prefix(file_path, settings),
             expected_alias=expected_alias,
             expected_family=expected_family,
             family_tokens=family_tokens,
@@ -311,7 +377,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             allow_main_export=file_path.name in settings.main_export_files,
             allow_type_alias=(
                 file_path.name == c.Infra.TYPINGS_PY
-                or file_path.parent.name == "_typings"
+                or file_path.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
             ),
             is_fixture_module=is_fixture_module,
             type_checking_imports=type_checking_imports,

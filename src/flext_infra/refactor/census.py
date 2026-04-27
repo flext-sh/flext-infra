@@ -802,7 +802,7 @@ class FlextInfraRefactorCensus(
         module_name = getattr(value, "__module__", None)
         if not isinstance(module_name, str):
             return False
-        return module_name.startswith("flext_")
+        return module_name.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
 
     @classmethod
     def _build_parent_inventory(

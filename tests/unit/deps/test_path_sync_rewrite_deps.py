@@ -6,45 +6,23 @@ from typing import TypeGuard
 import tomlkit
 from flext_tests import tm
 
-from tests import c, m, p, t, u
+from tests import c, m, u
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
     return isinstance(value, dict)
 
 
-def _rewrite_dep_paths(
-    pyproject_path: Path,
-    *,
-    mode: c.Infra.PathSyncMode,
-    internal_names: set[str],
-    workspace_members: t.StrSequence = (),
-    is_root: bool = False,
-    dry_run: bool = False,
-) -> p.Result[t.StrSequence]:
-    """Adapter that wraps the canonical ``u.Infra.rewrite_dep_paths`` API.
-
-    The centralized signature accepts a ``m.Infra.PathSyncCommand`` Pydantic
-    model rather than loose kwargs (per AGENTS.md §2.7 — typed contracts).
-    ``is_root`` is derived inside the centralized method by comparing
-    ``pyproject_path`` against ``command.workspace_path / pyproject.toml`` —
-    when the test signals ``is_root=True`` we point the workspace at the
-    file's parent so the comparison succeeds.
-    """
-    workspace_path = (
-        pyproject_path.parent if is_root else pyproject_path.parent.parent
-    )
-    command = m.Infra.PathSyncCommand(
-        mode=mode,
-        workspace=str(workspace_path),
-        apply=not dry_run,
-    )
-    return u.Infra().rewrite_dep_paths(
-        pyproject_path,
-        command=command,
-        internal_names=internal_names,
-        workspace_members=workspace_members,
-    )
+# Tests below call ``u.Infra().rewrite_dep_paths`` directly with the canonical
+# Pydantic 2 ``m.Infra.PathSyncCommand`` model — no local adapter, no manual
+# kwarg validation. ``is_root`` is implicitly conveyed by setting
+# ``workspace`` to ``pyproject.parent`` (the canonical method derives the
+# flag itself by comparing ``pyproject_path`` against
+# ``command.workspace_path / pyproject.toml``); non-root tests point
+# ``workspace`` at ``pyproject.parent.parent``. Pydantic validates every
+# ``PathSyncCommand`` field — including the ``mode`` enum — at construction
+# time, so the tests rely on the model's own validation rather than custom
+# per-test kwarg handling.
 
 
 class TestsFlextInfraDepsPathSyncRewriteDeps:
@@ -53,11 +31,15 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
         pyproject.write_text(
             '[project]\ndependencies = ["flext-core @ file://.flext-deps/flext-core"]\n',
         )
-        result = _rewrite_dep_paths(
+        result = u.Infra().rewrite_dep_paths(
             pyproject,
-            mode=c.Infra.PathSyncMode.WORKSPACE,
+            command=m.Infra.PathSyncCommand(
+                mode=c.Infra.PathSyncMode.WORKSPACE,
+                workspace=str(tmp_path),
+                apply=True,
+            ),
             internal_names={"flext-core"},
-            is_root=True,
+            workspace_members=(),
         )
         tm.ok(result)
         assert len(result.value) > 0
@@ -68,12 +50,15 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
             '[project]\ndependencies = ["flext-core @ file://.flext-deps/flext-core"]\n'
         )
         pyproject.write_text(original)
-        result = _rewrite_dep_paths(
+        result = u.Infra().rewrite_dep_paths(
             pyproject,
-            mode=c.Infra.PathSyncMode.WORKSPACE,
+            command=m.Infra.PathSyncCommand(
+                mode=c.Infra.PathSyncMode.WORKSPACE,
+                workspace=str(tmp_path),
+                apply=False,
+            ),
             internal_names={"flext-core"},
-            is_root=True,
-            dry_run=True,
+            workspace_members=(),
         )
         tm.ok(result)
         tm.that(pyproject.read_text(), eq=original)
@@ -81,20 +66,28 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
     def test_rewrite_dep_paths_no_changes(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[project]\ndependencies = ["requests>=2.0.0"]\n')
-        result = _rewrite_dep_paths(
+        result = u.Infra().rewrite_dep_paths(
             pyproject,
-            mode=c.Infra.PathSyncMode.WORKSPACE,
+            command=m.Infra.PathSyncCommand(
+                mode=c.Infra.PathSyncMode.WORKSPACE,
+                workspace=str(tmp_path),
+                apply=True,
+            ),
             internal_names={"flext-core"},
-            is_root=True,
+            workspace_members=(),
         )
         tm.that(tm.ok(result), empty=True)
 
     def test_rewrite_dep_paths_read_failure(self, tmp_path: Path) -> None:
-        result = _rewrite_dep_paths(
+        result = u.Infra().rewrite_dep_paths(
             tmp_path / "pyproject.toml",
-            mode=c.Infra.PathSyncMode.WORKSPACE,
+            command=m.Infra.PathSyncCommand(
+                mode=c.Infra.PathSyncMode.WORKSPACE,
+                workspace=str(tmp_path),
+                apply=True,
+            ),
             internal_names={"flext-core"},
-            is_root=True,
+            workspace_members=(),
         )
         tm.fail(result)
 
@@ -110,11 +103,15 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
         pyproject.chmod(0o400)
 
         tm.fail(
-            _rewrite_dep_paths(
+            u.Infra().rewrite_dep_paths(
                 pyproject,
-                mode=c.Infra.PathSyncMode.WORKSPACE,
+                command=m.Infra.PathSyncCommand(
+                    mode=c.Infra.PathSyncMode.WORKSPACE,
+                    workspace=str(tmp_path),
+                    apply=True,
+                ),
                 internal_names={"flext-core"},
-                is_root=True,
+                workspace_members=(),
             ),
             has="TOML write error",
         )
@@ -124,12 +121,15 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
         pyproject.write_text(
             '[project]\ndependencies = ["flext-core @ file:.flext-deps/flext-core"]\n',
         )
-        result = _rewrite_dep_paths(
+        result = u.Infra().rewrite_dep_paths(
             pyproject,
-            mode=c.Infra.PathSyncMode.WORKSPACE,
+            command=m.Infra.PathSyncCommand(
+                mode=c.Infra.PathSyncMode.WORKSPACE,
+                workspace=str(tmp_path.parent),
+                apply=True,
+            ),
             internal_names={"flext-core"},
-            is_root=False,
-            dry_run=False,
+            workspace_members=(),
         )
         tm.ok(result)
         assert len(result.value) > 0
@@ -139,24 +139,30 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
         original = '[project]\ndependencies = ["flext-core @ file:../flext-core"]\n'
         pyproject.write_text(original)
         tm.ok(
-            _rewrite_dep_paths(
+            u.Infra().rewrite_dep_paths(
                 pyproject,
-                mode=c.Infra.PathSyncMode.WORKSPACE,
+                command=m.Infra.PathSyncCommand(
+                    mode=c.Infra.PathSyncMode.WORKSPACE,
+                    workspace=str(tmp_path.parent),
+                    apply=False,
+                ),
                 internal_names={"flext-core"},
-                is_root=False,
-                dry_run=True,
+                workspace_members=(),
             ),
         )
         tm.that(pyproject.read_text(), eq=original)
 
     def test_rewrite_dep_paths_read_failure_non_root(self, tmp_path: Path) -> None:
         tm.fail(
-            _rewrite_dep_paths(
+            u.Infra().rewrite_dep_paths(
                 tmp_path / "pyproject.toml",
-                mode=c.Infra.PathSyncMode.WORKSPACE,
+                command=m.Infra.PathSyncCommand(
+                    mode=c.Infra.PathSyncMode.WORKSPACE,
+                    workspace=str(tmp_path.parent),
+                    apply=True,
+                ),
                 internal_names={"flext-core"},
-                is_root=False,
-                dry_run=False,
+                workspace_members=(),
             ),
         )
 
@@ -164,11 +170,15 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[tool.poetry.dependencies]\npython = "^3.13"')
         tm.ok(
-            _rewrite_dep_paths(
+            u.Infra().rewrite_dep_paths(
                 pyproject,
-                mode=c.Infra.PathSyncMode.STANDALONE,
+                command=m.Infra.PathSyncCommand(
+                    mode=c.Infra.PathSyncMode.STANDALONE,
+                    workspace=str(tmp_path.parent),
+                    apply=False,
+                ),
                 internal_names=set(),
-                dry_run=True,
+                workspace_members=(),
             ),
         )
 
@@ -186,12 +196,15 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
             encoding="utf-8",
         )
 
-        result = _rewrite_dep_paths(
+        result = u.Infra().rewrite_dep_paths(
             pyproject,
-            mode=c.Infra.PathSyncMode.WORKSPACE,
+            command=m.Infra.PathSyncCommand(
+                mode=c.Infra.PathSyncMode.WORKSPACE,
+                workspace=str(tmp_path),
+                apply=True,
+            ),
             internal_names={"flext-api", "flext-core", "flexcore"},
             workspace_members=("flext-api", "flext-core"),
-            is_root=True,
         )
 
         tm.ok(result)
