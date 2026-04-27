@@ -24,7 +24,9 @@ class FlextInfraTransformerTier0ImportFixer:
     class Analysis(m.Value):
         """Detection results for a single Python file's self-import patterns."""
 
-        model_config = m.ConfigDict(frozen=True, arbitrary_types_allowed=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, arbitrary_types_allowed=True
+        )
 
         package_name: Annotated[
             str,

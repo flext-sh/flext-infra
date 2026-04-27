@@ -9,7 +9,7 @@ from collections.abc import (
 )
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import (
@@ -151,7 +151,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         mutable state.
         """
 
-        model_config = m.ConfigDict(validate_default=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[
             Path,

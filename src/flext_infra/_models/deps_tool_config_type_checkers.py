@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import c, t
@@ -18,7 +18,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""
 
-            model_config = m.ConfigDict(populate_by_name=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
             root: Annotated[
                 str, m.Field(description="Execution environment root path.")

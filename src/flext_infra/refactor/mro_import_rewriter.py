@@ -8,6 +8,7 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import (
     FlextInfraRefactorMROSymbolPropagator,
@@ -24,7 +25,9 @@ class FlextInfraRefactorMROImportRewriter:
     class RewriteFilesInput(m.BaseModel):
         """Typed input envelope for workspace rewrite execution."""
 
-        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True
+        )
 
         workspace_root: Path
         file_moves: Mapping[Path, Mapping[str, t.Pair[str, t.StrMapping]]]

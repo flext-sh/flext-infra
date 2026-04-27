@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import FlextInfraModelsMixins as mm, c, t
@@ -25,7 +25,9 @@ class FlextInfraModelsWorkspace:
     ):
         """Discovered project metadata for workspace operations."""
 
-        model_config = m.ConfigDict(frozen=True, validate_default=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, validate_default=False
+        )
 
         path: Annotated[Path, m.Field(description="Absolute or relative project path")]
         stack: Annotated[
@@ -61,7 +63,9 @@ class FlextInfraModelsWorkspace:
         mutable state.
         """
 
-        model_config = m.ConfigDict(frozen=True, validate_default=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, validate_default=False
+        )
 
         project_root: Annotated[Path, m.Field(description="Project root path")]
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]

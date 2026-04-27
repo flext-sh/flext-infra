@@ -8,7 +8,7 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import Annotated, Self, override
+from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import FlextCliSettings
 from flext_core import FlextSettings, s
@@ -31,7 +31,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     apply/dry-run toggles, output formatting, and project filtering.
     """
 
-    model_config = m.ConfigDict(populate_by_name=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
     @property
     @override

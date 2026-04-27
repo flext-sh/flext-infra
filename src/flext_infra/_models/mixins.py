@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m, u
 from flext_infra import (
@@ -33,7 +33,7 @@ class FlextInfraModelsMixins:
         command.
         """
 
-        model_config = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         workspace: Annotated[
             str,

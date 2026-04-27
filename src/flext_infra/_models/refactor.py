@@ -8,7 +8,7 @@ from collections.abc import (
 )
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import (
@@ -165,7 +165,7 @@ class FlextInfraModelsRefactor(
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
 
-        model_config = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         line: Annotated[
@@ -179,7 +179,7 @@ class FlextInfraModelsRefactor(
     class LooseClassViolation(m.ArbitraryTypesModel):
         """A detected loose-class naming violation with confidence."""
 
-        model_config = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Source file path")]
         line: Annotated[t.PositiveInt, m.Field(description="Line number")]
@@ -198,7 +198,7 @@ class FlextInfraModelsRefactor(
     class FamilyMROResolution(m.ArbitraryTypesModel):
         """Resolution payload for one facade family MRO."""
 
-        model_config = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family: Annotated[t.NonEmptyStr, m.Field(description="Facade family letter")]
         expected_bases: Annotated[
@@ -217,7 +217,7 @@ class FlextInfraModelsRefactor(
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""
 
-        model_config = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_kind: Annotated[
             t.NonEmptyStr,
@@ -250,7 +250,7 @@ class FlextInfraModelsRefactor(
     class ParsedPythonModule(m.ArbitraryTypesModel):
         """Result of parsing a Python source file into AST."""
 
-        model_config = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[
