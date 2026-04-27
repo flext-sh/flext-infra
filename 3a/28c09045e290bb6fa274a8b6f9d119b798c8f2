@@ -1,0 +1,29 @@
+src/flext_infra/_utilities/docs_scope.py
+  c8a4efa99583d305 329-340,350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3a28c09045e290bb6fa274a8b6f9d119b798c8f2",
+  "prompts": {
+    "c8a4efa99583d305": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "064e59bc-4db0-43f3-84df-745838365e34",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 37,
+      "accepted_lines": 102,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/80ae6694cfc69842ca3fed5bf10e18cf14ef769a803c067be5bf1ef0f8a7188d"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
