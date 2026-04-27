@@ -85,9 +85,10 @@ class FlextInfraUtilitiesDocsScope:
         """Resolve project names into canonical project descriptors.
 
         ``include_attached`` is forwarded to
-        :meth:`FlextInfraUtilitiesDocsScope.discover_projects` so attached
-        sub-repos opted in via ``[tool.flext.workspace] attached = true`` are
-        surfaced when explicitly requested.
+        :meth:`FlextInfraUtilitiesDocsScope.discover_projects` so external
+        sub-repos at workspace top-level (git repos with their own
+        ``pyproject.toml`` not registered in the workspace submodule index —
+        e.g. ``algar-oud-mig``) are surfaced when explicitly requested.
         """
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
@@ -285,15 +286,24 @@ class FlextInfraUtilitiesDocsScope:
         project_name: str,
         docs_meta: t.Infra.ContainerDict,
     ) -> str:
-        """Classify a project using pre-loaded docs metadata (avoids re-parsing)."""
+        """Classify a project using pre-loaded docs metadata (avoids re-parsing).
+
+        Project-prefix heuristics derive from ``c.Infra.INTEGRATION_CLASS_PREFIXES``
+        (SSOT for integration project family) so adding a new family member
+        requires editing only the canonical class-prefix tuple.
+        """
         configured = docs_meta.get("project_class")
         if isinstance(configured, str) and configured.strip():
             return configured.strip()
-        if project_name.startswith(("flext-tap-", "flext-target-", "flext-dbt-")):
+        integration_prefixes = tuple(
+            f"{c.Infra.PKG_PREFIX_HYPHEN}{prefix.removeprefix('Flext').lower()}-"
+            for prefix in c.Infra.INTEGRATION_CLASS_PREFIXES
+        )
+        if project_name.startswith(integration_prefixes):
             return "integration"
-        if project_name == "flext-infra":
+        if project_name == f"{c.Infra.PKG_PREFIX_HYPHEN}infra":
             return "infra"
-        if project_name == "flext-tests":
+        if project_name == f"{c.Infra.PKG_PREFIX_HYPHEN}tests":
             return "test"
         return "domain"
 
