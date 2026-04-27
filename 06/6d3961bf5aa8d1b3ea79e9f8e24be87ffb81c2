@@ -1,0 +1,18 @@
+src/flext_infra/transformers/tier0_import_fixer.py
+  h_9db9d35f50cf33 27
+src/flext_infra/refactor/mro_import_rewriter.py
+  h_9db9d35f50cf33 11,28
+src/flext_infra/_models/workspace.py
+  h_9db9d35f50cf33 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "066d3961bf5aa8d1b3ea79e9f8e24be87ffb81c2",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
