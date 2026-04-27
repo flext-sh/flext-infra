@@ -1,0 +1,45 @@
+tests/unit/test_infra_workspace_migrator_errors.py
+  h_9db9d35f50cf33 7,19-26,28-32,34-35,38,46
+src/flext_infra/refactor/orchestrator.py
+  h_9db9d35f50cf33 125,128-129,133,137,140-145,147-170,177-178,189-191,195-197,199,201-202,204,206-207,209-210
+src/flext_infra/codegen/lazy_init_planner.py
+  22632355ef1e26ce 96,369-389,406,408-423,426-430,434-449
+src/flext_infra/_utilities/rope_inventory.py
+  h_9db9d35f50cf33 55,73,83-85,90,94-95,105-106,110,112-113,117,119,131-140
+tests/unit/release/test_release_dag.py
+  h_9db9d35f50cf33 5,11,16,22,29
+src/flext_infra/_utilities/docs_api.py
+  h_9db9d35f50cf33 364-367,369-371,373,387,390-396
+src/flext_infra/_utilities/deps_path_sync.py
+  h_9db9d35f50cf33 44-46,58-62,64-65,170-172
+src/flext_infra/refactor/violation_analyzer.py
+  h_9db9d35f50cf33 25,33,122,128-131,133,137-141,219-220,223-226,228-231
+src/flext_infra/_utilities/namespace.py
+  h_9db9d35f50cf33 493-494,496-510,513,520-524
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "39956e0a27e4eb78b1b891bafa32e7e3d39f1b35",
+  "prompts": {
+    "22632355ef1e26ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6ac7df6-1398-4096-87d8-e634aca30e02",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 59,
+      "total_deletions": 60,
+      "accepted_lines": 50,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/4567e6b537b4a7c4dd65cf70752faaf61921339fcb20b2692c7d184223f8915d"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
