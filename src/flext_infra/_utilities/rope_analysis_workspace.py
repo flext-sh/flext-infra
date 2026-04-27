@@ -67,13 +67,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return f"{package_name}.{file_path.stem}" if package_name else ""
 
     @classmethod
-    def index_rope_workspace(
+    def _collect_modules(
         cls,
         rope_project: t.Infra.RopeProject,
-        workspace_root: Path,
-    ) -> m.Infra.RopeWorkspaceIndex:
-        """Build a generic Rope workspace index for package-oriented planning."""
-        resolved_root = workspace_root.resolve()
+        resolved_root: Path,
+    ) -> tuple[
+        dict[str, m.Infra.RopeModuleIndexEntry],
+        dict[Path, list[m.Infra.RopeModuleIndexEntry]],
+        dict[str, Path],
+        dict[str, str],
+        set[Path],
+    ]:
         modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
         modules_by_dir: dict[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
         package_dir_by_name: dict[str, Path] = {}
@@ -131,6 +135,29 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     and package_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
                 ):
                     project_package_by_root[str(project_root)] = package_name
+        return (
+            modules_by_path,
+            modules_by_dir,
+            package_dir_by_name,
+            project_package_by_root,
+            package_dirs,
+        )
+
+    @classmethod
+    def index_rope_workspace(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        workspace_root: Path,
+    ) -> m.Infra.RopeWorkspaceIndex:
+        """Build a generic Rope workspace index for package-oriented planning."""
+        resolved_root = workspace_root.resolve()
+        (
+            modules_by_path,
+            modules_by_dir,
+            package_dir_by_name,
+            project_package_by_root,
+            package_dirs,
+        ) = cls._collect_modules(rope_project, resolved_root)
         sorted_package_dirs = tuple(sorted(package_dirs))
         package_dir_set = frozenset(sorted_package_dirs)
         direct_children_by_dir: dict[Path, list[Path]] = {
