@@ -326,22 +326,18 @@ class FlextInfraUtilitiesDocsScope:
         configured = docs_meta.get("package_name")
         if isinstance(configured, str) and configured.strip():
             return configured.strip()
-        tool = payload.get(c.Infra.TOOL)
-        if isinstance(tool, dict):
-            hatch = tool.get("hatch")
-            if isinstance(hatch, dict):
-                build = hatch.get("build")
-                if isinstance(build, dict):
-                    targets = build.get("targets")
-                    if isinstance(targets, dict):
-                        wheel = targets.get("wheel")
-                        if isinstance(wheel, dict):
-                            packages = wheel.get("packages")
-                            if isinstance(packages, list):
-                                for item in packages:
-                                    package_path = Path(str(item).strip())
-                                    if package_path.parts:
-                                        return package_path.parts[-1]
+        current: t.Infra.ContainerDict | None = payload
+        for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
+            if current is None:
+                break
+            candidate = current.get(key)
+            current = candidate if isinstance(candidate, dict) else None
+        packages = current.get("packages") if current is not None else None
+        if isinstance(packages, list):
+            for item in packages:
+                package_path = Path(str(item).strip())
+                if package_path.parts:
+                    return package_path.parts[-1]
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if src_dir.is_dir():
             for child in sorted(src_dir.iterdir()):
@@ -351,7 +347,7 @@ class FlextInfraUtilitiesDocsScope:
             project_root,
             payload,
         )
-        if project_name.startswith("flext-"):
+        if project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
             msg = (
                 f"{project_root}: cannot resolve package name — "
                 "no [tool.flext.docs].package_name, no hatch wheel packages, "
