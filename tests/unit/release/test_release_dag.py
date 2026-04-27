@@ -9,7 +9,6 @@ from flext_infra import FlextInfraReleaseOrchestrator
 from tests import c, m, u
 
 
-
 def _make_config(
     workspace_root: Path,
     *,
@@ -34,7 +33,7 @@ def _make_config(
 class TestsFlextInfraReleaseDag:
     """Behavior contract for test_release_dag."""
 
-    def test_releasec.Ldif.Tests.ALL_PHASES_succeed_in_dry_run_mode(
+    def test_release_succeed_in_dry_run_mode(
         self,
         tmp_path: Path,
     ) -> None:

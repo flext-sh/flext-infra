@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from typing import Final
+
 from flext_infra import c
+
 
 class TestsFlextInfraConstantsDomain:
     """Domain constants mixin for infra tests."""
@@ -107,4 +109,3 @@ class TestsFlextInfraConstantsDomain:
         INFRA_TESTS_DIR: Final[str] = "tests/infra"
         FIXTURES_DIR: Final[str] = "tests/fixtures"
         INTEGRATION_DIR: Final[str] = "tests/integration"
-
