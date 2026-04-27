@@ -155,6 +155,15 @@ class FlextInfraAccessorMigrationOrchestrator(
     _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset(
         row[0] for row in _AUTOMATED_RULE_ROWS
     )
+    _MANUAL_WARNING_PREFIXES: ClassVar[frozenset[str]] = frozenset({
+        "get_",
+        "set_",
+        "is_",
+    })
+    _MANUAL_WARNING_REASON: ClassVar[str] = (
+        "Public {prefix}-prefixed accessor: rename to canonical verb "
+        "(drop the prefix or use resolve_/fetch_/build_/etc.)"
+    )
 
     @property
     def gate_names(self) -> t.StrSequence:
@@ -474,42 +483,22 @@ class FlextInfraAccessorMigrationOrchestrator(
                 continue
             if function_name.startswith("_") or function_name in self._AUTOMATED_NAMES:
                 continue
-            signature = stripped.split(":", maxsplit=1)[0]
-            signature_args = (
-                signature.split("(", maxsplit=1)[1].rsplit(")", maxsplit=1)[0]
-                if "(" in signature and ")" in signature
-                else ""
+            matched_prefix = next(
+                (p for p in self._MANUAL_WARNING_PREFIXES if function_name.startswith(p)),
+                None,
             )
-            normalized_args = [
-                arg.strip().split(":", maxsplit=1)[0].split("=", maxsplit=1)[0]
-                for arg in signature_args.split(",")
-                if arg.strip()
-            ]
-            required = [name for name in normalized_args if name not in {"self", "cls"}]
-            has_varargs = any(name.startswith("*") for name in normalized_args)
-            if function_name.startswith("get_"):
-                reason = (
-                    f"Public getter without external input: migrate to field or @u.computed_field '{function_name[4:]}'"
-                    if not required and not has_varargs
-                    else f"Public getter with inputs: classify manually as resolve_{function_name[4:]}(...) or fetch_{function_name[4:]}(...)"
-                )
-                replacement = function_name[4:] if not required else ""
-            elif function_name.startswith("set_"):
-                reason = "Public setter: migrate to validated assignment, model_copy(update=...), or a domain verb"
-                replacement = ""
-            elif function_name.startswith("is_"):
-                reason = f"Public predicate: rename to boolean/status field '{function_name[3:]}' or a canonical status enum"
-                replacement = function_name[3:]
-            else:
+            if matched_prefix is None:
                 continue
             warnings.append(
                 m.Infra.AccessorMigrationChange(
                     file=str(py_file),
                     line=line_index,
                     original_name=function_name,
-                    replacement_name=replacement,
+                    replacement_name=function_name[len(matched_prefix):],
                     automated=False,
-                    reason=reason,
+                    reason=self._MANUAL_WARNING_REASON.format(
+                        prefix=matched_prefix.rstrip("_"),
+                    ),
                 )
             )
         return warnings
