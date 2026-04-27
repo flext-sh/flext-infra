@@ -29,5 +29,12 @@ class FlextInfraConstantsRope:
     )
     "Resources rope should ignore when scanning the project tree."
 
+    PROPERTY_DECORATORS: Final[frozenset[str]] = frozenset({
+        "property",
+        "cached_property",
+        "computed_field",
+    })
+    "Decorator names that mark Python descriptors / Pydantic computed fields."
+
 
 __all__: list[str] = ["FlextInfraConstantsRope"]

@@ -8,12 +8,6 @@ from pathlib import Path
 from flext_infra import FlextInfraReleaseOrchestrator
 from tests import c, m, u
 
-_ALL_PHASES: tuple[str, ...] = (
-    c.Infra.VERB_VALIDATE,
-    c.Infra.VERSION,
-    c.Infra.DIR_BUILD,
-    c.Infra.VERB_PUBLISH,
-)
 
 
 def _make_config(
@@ -26,7 +20,7 @@ def _make_config(
         workspace_root=workspace_root,
         version="1.0.0",
         tag="v1.0.0",
-        phases=list(phases) if phases is not None else list(_ALL_PHASES),
+        phases=list(phases) if phases is not None else list(c.Infra.Tests.ALL_PHASES),
         project_names=None,
         dry_run=dry_run,
         push=False,
@@ -40,7 +34,7 @@ def _make_config(
 class TestsFlextInfraReleaseDag:
     """Behavior contract for test_release_dag."""
 
-    def test_release_all_phases_succeed_in_dry_run_mode(
+    def test_releasec.Ldif.Tests.ALL_PHASES_succeed_in_dry_run_mode(
         self,
         tmp_path: Path,
     ) -> None:

@@ -280,9 +280,6 @@ class FlextInfraUtilitiesRopeHelpers:
         lines.insert(insert_idx, block.rstrip("\n") + "\n\n")
         return "".join(lines)
 
-    _PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset(
-        {"property", "cached_property", "computed_field"},
-    )
     _DECORATOR_TO_CATEGORY: ClassVar[Sequence[t.Infra.StrPair]] = [
         ("staticmethod", "static"),
         ("classmethod", "class"),
@@ -344,7 +341,7 @@ class FlextInfraUtilitiesRopeHelpers:
     @staticmethod
     def categorize_method(name: str, decorators: t.StrSequence) -> str:
         """Categorize a method by its decorators and name pattern."""
-        if FlextInfraUtilitiesRopeHelpers._PROPERTY_DECORATORS.intersection(decorators):
+        if c.Infra.PROPERTY_DECORATORS.intersection(decorators):
             property_cat: str = c.Infra.MethodCategory.PROPERTY
             return property_cat
         for (

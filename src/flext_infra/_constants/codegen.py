@@ -76,6 +76,24 @@ class FlextInfraConstantsCodegen:
         "__pycache__",
     })
     "Directories excluded from codegen file scanning."
+    LOCAL_INFERRED_SEGMENTS: Final[frozenset[str]] = frozenset({
+        "_constants",
+        "_exceptions",
+        "_models",
+        "_protocols",
+        "_typings",
+        "_utilities",
+        "constants",
+        "exceptions",
+        "models",
+        "protocols",
+        "typings",
+        "utilities",
+        "services",
+        "docs",
+        "tools",
+    })
+    "Module segments recognized as local inferred imports in lazy-load chain."
     INFRA_ONLY_EXPORTS: Final[frozenset[str]] = frozenset({
         "cleanup_submodule_namespace",
         "install_lazy_exports",

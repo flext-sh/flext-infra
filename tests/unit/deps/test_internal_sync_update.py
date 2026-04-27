@@ -7,11 +7,12 @@ from collections.abc import (
 )
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Final
 
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests import u
 
-_REPO_URL = "https://github.com/flext-sh/flext.git"
+_REPO_URL: Final[str] = "https://github.com/flext-sh/flext.git"
 
 
 @contextmanager

@@ -574,5 +574,12 @@ class FlextInfraConstantsRefactor:
     CENSUS_DEFAULT_FAMILY: Final[str] = "u"
     "Default census family."
 
+    ACCESSOR_WARNING_PREFIXES: Final[frozenset[str]] = frozenset({
+        "get_",
+        "set_",
+        "is_",
+    })
+    "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
+
 
 __all__: list[str] = ["FlextInfraConstantsRefactor"]

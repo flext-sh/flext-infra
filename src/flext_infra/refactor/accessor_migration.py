@@ -155,11 +155,6 @@ class FlextInfraAccessorMigrationOrchestrator(
     _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset(
         row[0] for row in _AUTOMATED_RULE_ROWS
     )
-    _MANUAL_WARNING_PREFIXES: ClassVar[frozenset[str]] = frozenset({
-        "get_",
-        "set_",
-        "is_",
-    })
     _MANUAL_WARNING_REASON: ClassVar[str] = (
         "Public {prefix}-prefixed accessor: rename to canonical verb "
         "(drop the prefix or use resolve_/fetch_/build_/etc.)"
@@ -486,7 +481,7 @@ class FlextInfraAccessorMigrationOrchestrator(
             matched_prefix = next(
                 (
                     p
-                    for p in self._MANUAL_WARNING_PREFIXES
+                    for p in c.Infra.ACCESSOR_WARNING_PREFIXES
                     if function_name.startswith(p)
                 ),
                 None,

@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Final
 
 import pytest
 from flext_tests import tf, tm
@@ -16,7 +17,7 @@ from flext_tests import tf, tm
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
 from tests import m, t, u
 
-_ROOT = "# root content"
+_ROOT: Final[str] = "# root content"
 
 
 def _generated_content() -> str:

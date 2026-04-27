@@ -7,10 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from typing import Final
-
+from flext_infra import c
 
 class TestsFlextInfraConstantsDomain:
     """Domain constants mixin for infra tests."""
+
+    ALL_PHASES: tuple[str, ...] = (
+        c.Infra.VERB_VALIDATE,
+        c.Infra.VERSION,
+        c.Infra.DIR_BUILD,
+        c.Infra.VERB_PUBLISH,
+    )
 
     class NamespaceSource:
         """Namespace-source detector constants for infra tests."""
@@ -100,3 +107,4 @@ class TestsFlextInfraConstantsDomain:
         INFRA_TESTS_DIR: Final[str] = "tests/infra"
         FIXTURES_DIR: Final[str] = "tests/fixtures"
         INTEGRATION_DIR: Final[str] = "tests/integration"
+

@@ -22,24 +22,6 @@ from flext_infra import (
     t,
 )
 
-_LOCAL_INFERRED_SEGMENTS: frozenset[str] = frozenset({
-    "_constants",
-    "_exceptions",
-    "_models",
-    "_protocols",
-    "_typings",
-    "_utilities",
-    "constants",
-    "exceptions",
-    "models",
-    "protocols",
-    "typings",
-    "utilities",
-    "services",
-    "docs",
-    "tools",
-})
-
 type _LazyEntryContext = tuple[str, frozenset[str], bool]
 
 
@@ -78,12 +60,14 @@ class FlextInfraCodegenGeneration:
         if first_segment == root_pkg:
             return mod
         internal_segments = frozenset(current_pkg.split(".")[1:])
+        if internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS:
+            return mod
         if first_segment in internal_segments:
             return f".{mod}"
         if (
             current_pkg == root_pkg
             and "." in mod
-            and first_segment in _LOCAL_INFERRED_SEGMENTS
+            and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
         ):
             return f".{mod}"
         return mod
@@ -107,7 +91,7 @@ class FlextInfraCodegenGeneration:
         if (
             local_package_root == root_pkg
             and "." in mod
-            and first_segment in _LOCAL_INFERRED_SEGMENTS
+            and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
         ):
             return f"{root_pkg}.{mod}"
         return mod
