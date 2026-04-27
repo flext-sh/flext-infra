@@ -1,0 +1,189 @@
+tests/unit/docs/auditor_cli_tests.py
+  h_9db9d35f50cf33 16,38
+tests/unit/deps/test_internal_sync_workspace.py
+  h_9db9d35f50cf33 37
+tests/unit/docs/validator_tests.py
+  h_9db9d35f50cf33 27,45,71
+tests/unit/deps/test_modernizer_mypy.py
+  h_9db9d35f50cf33 25-26,36,113
+tests/unit/refactor/test_infra_refactor_mro_import_rewriter.py
+  h_9db9d35f50cf33 19,22,47,52,70,72,74
+tests/unit/fixtures.py
+  h_9db9d35f50cf33 46,147,152
+tests/typings.py
+  h_9db9d35f50cf33 22
+tests/unit/github/main_cli_tests.py
+  h_9db9d35f50cf33 26
+tests/unit/deps/test_detection_typings_flow.py
+  h_9db9d35f50cf33 32,34,59,61,73,82-83,97-99,101-102,111,113-114,119-121
+tests/unit/docs/generator_internals_tests.py
+  h_9db9d35f50cf33 36
+tests/unit/release/main_tests.py
+  h_9db9d35f50cf33 50,72
+tests/unit/deps/test_detector_report_flags.py
+  h_9db9d35f50cf33 77
+tests/unit/docs/main_entry_tests.py
+  h_9db9d35f50cf33 14,92
+tests/unit/test_infra_workspace_migrator_internal.py
+  h_9db9d35f50cf33 27,29,44-45,66-67,86-87,108-109,129-130
+tests/unit/docs/main_tests.py
+  h_9db9d35f50cf33 12,33
+tests/unit/deps/test_modernizer_tooling.py
+  h_9db9d35f50cf33 28-31,42,88-89,105-106,138,202,281-282
+tests/unit/test_infra_workspace_migrator.py
+  h_9db9d35f50cf33 18-20,32-34,51,58-59,70,73-74,96
+tests/unit/check/tests_cli.py
+  h_9db9d35f50cf33 26
+tests/unit/codegen/lazy_init_helpers_tests.py
+  h_9db9d35f50cf33 15,52,59,73,91,118,125,195,207,221,261,293,323,342
+tests/unit/deps/test_detector_detect_failures.py
+  h_9db9d35f50cf33 15-16,26,29,43,46,61,64
+tests/unit/docs/fixer_internals_tests.py
+  h_9db9d35f50cf33 29
+tests/unit/test_infra_workspace_migrator_errors.py
+  h_9db9d35f50cf33 34,36-37,53,55-56,70,74-75,94,98-99,110
+tests/protocols.py
+  h_9db9d35f50cf33 22
+tests/unit/check/extended_gate_bandit_markdown_tests.py
+  h_9db9d35f50cf33 24-25,34-35,47-48,64,92-93,105-106,127,153,156
+tests/unit/check/extended_run_projects_tests.py
+  h_9db9d35f50cf33 56,78,99,127,159
+tests/unit/test_infra_workspace_migrator_dryrun.py
+  h_9db9d35f50cf33 20,121
+tests/unit/docs/main_commands_tests.py
+  h_9db9d35f50cf33 18,33,52,72,98,107
+tests/unit/validate/silent_failure_tests.py
+  h_9db9d35f50cf33 20
+tests/unit/check/extended_config_fixer_errors_tests.py
+  h_9db9d35f50cf33 44,63
+tests/unit/release/test_release_dag.py
+  h_9db9d35f50cf33 22,40,57,73
+tests/unit/codegen/autofix_workspace_tests.py
+  h_9db9d35f50cf33 22,41,74
+tests/unit/docs/fixer_tests.py
+  h_9db9d35f50cf33 12,29,42
+tests/unit/check/extended_gate_mypy_pyright_tests.py
+  h_9db9d35f50cf33 24,33-34,46-47,58-59,75
+tests/unit/deps/test_path_sync_main_edges.py
+  h_9db9d35f50cf33 33,53,55
+tests/unit/deps/test_internal_sync_resolve.py
+  h_9db9d35f50cf33 37
+tests/unit/check/extended_runners_tests.py
+  h_9db9d35f50cf33 82,92,104,117,130,140,152,165,179,193,214,225,240,242,248,259
+tests/unit/deps/test_detection_pip_check.py
+  h_9db9d35f50cf33 15,23,33-34,42
+tests/unit/docs/generator_tests.py
+  h_9db9d35f50cf33 12,30,50
+tests/unit/github/main_tests.py
+  h_9db9d35f50cf33 14,36,76,101,127
+tests/unit/validate/stub_chain_tests.py
+  h_9db9d35f50cf33 29-31,83,117,125,134-135,161-162,187,202-203
+tests/unit/check/extended_runners_extra_tests.py
+  h_9db9d35f50cf33 23,25,33,51,53,65
+tests/unit/release/flow_tests.py
+  h_9db9d35f50cf33 22,39,68,90,114
+tests/unit/codegen/lazy_init_transforms_tests.py
+  h_9db9d35f50cf33 14,32,43,55
+tests/unit/deps/test_detection_discover.py
+  h_9db9d35f50cf33 21-22,31-32,47-48
+tests/unit/release/orchestrator_tests.py
+  h_9db9d35f50cf33 36,48,59,71,90,112
+tests/unit/release/orchestrator_git_tests.py
+  h_9db9d35f50cf33 87,108,128
+tests/unit/check/extended_gate_go_cmd_tests.py
+  h_9db9d35f50cf33 25,35-36,41,51-53,64-65,67,76,93
+tests/unit/release/orchestrator_helpers_tests.py
+  h_9db9d35f50cf33 34,106
+tests/unit/docs/auditor_tests.py
+  h_9db9d35f50cf33 64
+tests/unit/deps/test_path_sync_main.py
+  h_9db9d35f50cf33 49,51,57,159
+tests/unit/deps/test_detector_detect.py
+  h_9db9d35f50cf33 15,17,26,28,38,40
+tests/unit/deps/test_detector_init.py
+  h_9db9d35f50cf33 25,52,56,63
+tests/unit/deps/test_detection_deptry.py
+  h_9db9d35f50cf33 12,20,28,35,40,63-64,75,87,102-103,123-124
+tests/unit/docs/validator_internals_tests.py
+  h_9db9d35f50cf33 32
+tests/unit/check/extended_runners_ruff_tests.py
+  h_9db9d35f50cf33 29,44,63
+tests/unit/docs/builder_scope_tests.py
+  h_9db9d35f50cf33 12,29,46
+tests/unit/test_infra_workspace_migrator_pyproject.py
+  h_9db9d35f50cf33 18-20,33,36-37,53,57-58,71,74-75,88,93-94,107,110-111,127,130-131,147,152-153,169-171
+tests/unit/check/extended_cli_entry_tests.py
+  h_9db9d35f50cf33 19
+tests/unit/deps/test_detector_report.py
+  h_9db9d35f50cf33 109,137,161
+tests/unit/check/extended_project_runners_tests.py
+  h_9db9d35f50cf33 23,50
+tests/unit/refactor/test_main_cli.py
+  h_9db9d35f50cf33 282,315,321
+tests/unit/check/extended_error_reporting_tests.py
+  h_9db9d35f50cf33 24,47,62,84,92,112
+tests/unit/release/orchestrator_phases_tests.py
+  h_9db9d35f50cf33 51,59,70,86,99,123
+tests/unit/check/silent_failure_gate_tests.py
+  h_9db9d35f50cf33 14,37
+tests/unit/codegen/lazy_init_service_tests.py
+  h_9db9d35f50cf33 15,21,25,29,35,42,50,53,60,69,74,80,87,100,107,114,129,143,158,168,175,184,196,206,217,227
+tests/unit/test_infra_workspace_migrator_deps.py
+  h_9db9d35f50cf33 28-29
+tests/constants.py
+  h_9db9d35f50cf33 36,43
+tests/unit/github/main_integration_tests.py
+  h_9db9d35f50cf33 14,41,65
+tests/unit/test_infra_rope_service.py
+  h_9db9d35f50cf33 16,49
+tests/unit/github/main_dispatch_tests.py
+  h_9db9d35f50cf33 13,37,64
+tests/unit/deps/test_detection_uncovered.py
+  h_9db9d35f50cf33 26-27,42-43,61-62
+tests/unit/codegen/scaffolder_tests.py
+  h_9db9d35f50cf33 21,31,56,86
+tests/unit/deps/test_path_sync_main_more.py
+  h_9db9d35f50cf33 51,53,59,94,105
+tests/unit/codegen/lazy_init_process_tests.py
+  h_9db9d35f50cf33 17,20,27,37,40,48,61,68,73,81,88,93,107,165,188,207,220,225,231,244,274,286,296,302,309,321,327,334,347,356,367,380,398,416,419,425,427,441,453,467,481,495,500,513,525,540
+tests/unit/codegen/scaffolder_naming_tests.py
+  h_9db9d35f50cf33 62,74,83,90,100,106,128,154
+tests/unit/codegen/consolidator_tests.py
+  h_9db9d35f50cf33 19,24,40,57,81,92,97
+tests/unit/deps/test_internal_sync_update.py
+  7f8dabdbc28465a6 91-92,101,111,125
+tests/unit/deps/test_modernizer_pyright.py
+  h_9db9d35f50cf33 88,98,101,151,208,214
+tests/utilities.py
+  h_9db9d35f50cf33 46,48-52,55-66,69,71-88,90-91,93-106,109-146,148-149,152,154-155,157-176,179-180,182-184,187,189-195,198-200,203,205,207,212-218,220,226-232,234,236-241,243-263,266-270,272-275,278-282,284-287,290-293,308,315,317-349,354,364-365,367,380-462,465-471,474-485,487,505,511,514,516,520-521,524,530-535,538,540,544-548,550-551,553-576,579-580,583-587,589,592-607,609,611,613,615-616,618-638,641-656,658-669,671,681-783,785-881,884,891,901,907,917,926-929,933,935,974,988-989,992,1004-1008,1018,1023-1063,1065-1086,1094,1102,1116-1120,1125,1140,1160,1178,1195,1211,1216-1220,1223-1227,1229,1231-1232,1234-1235,1237-1238,1240-1244,1246-1250,1252-1254,1257-1276,1279-1293,1295-1302,1305-1306
+tests/unit/docs/shared_tests.py
+  h_9db9d35f50cf33 36,52,65,82
+tests/unit/release/orchestrator_publish_tests.py
+  h_9db9d35f50cf33 31,49,69,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d2f29c58f5e3b80ec1b30627cdc903abaaf1e3f1",
+  "prompts": {
+    "7f8dabdbc28465a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6be116e4-c6d0-4712-993e-5282bb50c991",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 4,
+      "accepted_lines": 5,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/87914347d6a2dadfaac21b4f9198ddf802cbbddc7a21b32de948b7c630b98a23"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
