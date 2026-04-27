@@ -38,20 +38,17 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def _doc_scope(
         *,
-        name: str,
-        path: Path,
+        project: m.Infra.ProjectInfo,
         output_dir: Path | str,
-        project_class: str,
-        package_name: str,
     ) -> m.Infra.DocScope:
         """Build one canonical docs scope model."""
-        resolved = path.resolve()
+        resolved = project.path.resolve()
         return m.Infra.DocScope(
-            name=name,
+            name=project.name,
             path=resolved,
             report_dir=(resolved / output_dir).resolve(),
-            project_class=project_class,
-            package_name=package_name,
+            project_class=project.project_class,
+            package_name=project.package_name,
         )
 
     @staticmethod
@@ -71,10 +68,10 @@ class FlextInfraUtilitiesDocs:
                 docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
                 return r[Sequence[m.Infra.DocScope]].ok(
                     [
-                        FlextInfraUtilitiesDocs._doc_scope(
+                        m.Infra.DocScope(
                             name=resolved_root.name,
                             path=resolved_root,
-                            output_dir=output_dir,
+                            report_dir=(resolved_root / output_dir).resolve(),
                             project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                                 resolved_root.name,
                                 docs_meta,
@@ -88,10 +85,10 @@ class FlextInfraUtilitiesDocs:
                     ],
                 )
             scopes: MutableSequence[m.Infra.DocScope] = [
-                FlextInfraUtilitiesDocs._doc_scope(
+                m.Infra.DocScope(
                     name=c.Infra.RK_ROOT,
                     path=resolved_root,
-                    output_dir=output_dir,
+                    report_dir=(resolved_root / output_dir).resolve(),
                     project_class="root",
                     package_name="",
                 )
@@ -118,11 +115,8 @@ class FlextInfraUtilitiesDocs:
                     if selected is not None:
                         scopes.append(
                             FlextInfraUtilitiesDocs._doc_scope(
-                                name=selected.name,
-                                path=selected.path,
+                                project=selected,
                                 output_dir=output_dir,
-                                project_class=selected.project_class,
-                                package_name=selected.package_name,
                             )
                         )
                         continue
@@ -138,10 +132,10 @@ class FlextInfraUtilitiesDocs:
                         payload,
                     )
                     scopes.append(
-                        FlextInfraUtilitiesDocs._doc_scope(
+                        m.Infra.DocScope(
                             name=name,
                             path=project_root,
-                            output_dir=output_dir,
+                            report_dir=(project_root / output_dir).resolve(),
                             project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                                 name,
                                 docs_meta,
@@ -157,11 +151,8 @@ class FlextInfraUtilitiesDocs:
             for project in discovered:
                 scopes.append(
                     FlextInfraUtilitiesDocs._doc_scope(
-                        name=project.name,
-                        path=project.path,
+                        project=project,
                         output_dir=output_dir,
-                        project_class=project.project_class,
-                        package_name=project.package_name,
                     )
                 )
             return r[Sequence[m.Infra.DocScope]].ok(scopes)

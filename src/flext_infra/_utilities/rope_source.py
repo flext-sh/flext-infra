@@ -78,10 +78,23 @@ class FlextInfraUtilitiesRopeSource:
         past_existing: bool = True,
     ) -> int:
         """Find line index suitable for inserting new imports."""
-        return FlextInfraUtilitiesRopeSource._find_import_insert_position(
-            lines,
-            past_existing=past_existing,
-        )
+        idx = 0
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                idx = index + 1
+                continue
+            if stripped.startswith(('"""', "'''")):
+                idx = index + 1
+                continue
+            if stripped.startswith("from __future__"):
+                idx = index + 1
+                continue
+            if past_existing and c.Infra.IMPORT_LINE_RE.match(line):
+                idx = index + 1
+                continue
+            break
+        return idx
 
     @staticmethod
     def index_after_docstring_and_future_imports(lines: t.StrSequence) -> int:
@@ -112,30 +125,6 @@ class FlextInfraUtilitiesRopeSource:
                 break
             insert_idx = index + 1
         return insert_idx
-
-    @staticmethod
-    def _find_import_insert_position(
-        lines: t.StrSequence,
-        *,
-        past_existing: bool = True,
-    ) -> int:
-        idx = 0
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                idx = index + 1
-                continue
-            if stripped.startswith(('"""', "'''")):
-                idx = index + 1
-                continue
-            if stripped.startswith("from __future__"):
-                idx = index + 1
-                continue
-            if past_existing and c.Infra.IMPORT_LINE_RE.match(line):
-                idx = index + 1
-                continue
-            break
-        return idx
 
     @staticmethod
     def looks_like_facade_file(*, file_path: Path, source: str) -> bool:
@@ -492,11 +481,6 @@ class FlextInfraUtilitiesRopeSource:
             return match.group("legacy_inner") or match.group("result_inner")
         return None
 
-    @staticmethod
-    def _failure_label(name: str) -> str:
-        label = name.removesuffix("_result").replace("_", " ").strip()
-        return f"{label} failed" if label else "operation failed"
-
     @classmethod
     def collect_silent_failure_findings(
         cls,
@@ -543,12 +527,14 @@ class FlextInfraUtilitiesRopeSource:
                     lines, line_index=block_index
                 )
                 if result_inner is not None:
+                    lbl = result_name.removesuffix("_result").replace("_", " ").strip()
+                    failure_label = f"{lbl} failed" if lbl else "operation failed"
                     replacement = (
                         offsets[block_index],
                         offsets[block_index] + len(lines[block_index]),
                         (
                             f"{indent}return r[{result_inner}].fail("
-                            f"{result_name}.error or {cls._failure_label(result_name)!r})\n"
+                            f"{result_name}.error or {failure_label!r})\n"
                         ),
                     )
                 findings.append(

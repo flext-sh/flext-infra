@@ -114,27 +114,22 @@ class FlextInfraReleaseOrchestrator(
         if version_arg:
             requested = str(version_arg)
             parse_result = u.Infra.parse_semver(requested)
-            if parse_result.failure:
-                return r[str].fail(parse_result.error or "invalid version")
-            return r[str].ok(requested)
+            return (
+                r[str].ok(requested)
+                if parse_result.success
+                else r[str].fail(parse_result.error or "invalid version")
+            )
         current_result = u.Infra.current_workspace_version(root_path)
         if current_result.failure:
             return r[str].fail(current_result.error or "cannot read current version")
         current = str(current_result.value)
-        if bump_arg:
-            bump_result = u.Infra.bump_version(current, bump_arg)
-            if bump_result.failure:
-                return r[str].fail(bump_result.error or "bump failed")
-            return r[str].ok(str(bump_result.value))
-        if interactive != 1:
+
+        requested_bump = bump_arg
+        if (not requested_bump) and interactive == 1:
+            requested_bump = u.norm_str(input("bump> "), case="lower")
+        if not requested_bump:
             return r[str].ok(current)
-        bump = u.norm_str(input("bump> "), case="lower")
-        if bump not in {"major", "minor", "patch"}:
-            return r[str].fail("invalid bump type")
-        bump_result = u.Infra.bump_version(current, bump)
-        if bump_result.failure:
-            return r[str].fail(bump_result.error or "bump failed")
-        return r[str].ok(str(bump_result.value))
+        return u.Infra.bump_version(current, requested_bump)
 
     @staticmethod
     def _resolve_tag(tag_arg: str, version: str) -> p.Result[str]:
@@ -167,62 +162,78 @@ class FlextInfraReleaseOrchestrator(
             tag=tag,
             bump_type=next_bump,
         )
-        for phase in phases:
-            if phase not in c.Infra.VALID_PHASES:
-                return r[bool].fail(f"invalid phase: {phase}")
-        self.logger.info(
-            "release_run_started",
-            release_version=spec.version,
-            release_tag=spec.tag,
-            phases=str(phases),
-            projects=str(names),
+        final_result: p.Result[bool] = r[bool].ok(True)
+        invalid_phase = next(
+            (phase for phase in phases if phase not in c.Infra.VALID_PHASES),
+            None,
         )
-        if create_branches and (not dry_run):
-            branch_result = self._create_branches(workspace_root, version, names)
-            if branch_result.failure:
-                return branch_result
+        if invalid_phase is not None:
+            final_result = r[bool].fail(f"invalid phase: {invalid_phase}")
 
-        dispatch_cfg = m.Infra.ReleasePhaseDispatchConfig(
-            phase=c.Infra.VERB_VALIDATE,  # placeholder — overridden per stage
-            workspace_root=workspace_root,
-            version=spec.version,
-            tag=spec.tag,
-            project_names=names,
-            dry_run=dry_run,
-            push=push,
-            dev_suffix=dev_suffix,
-        )
+        if final_result.success:
+            self.logger.info(
+                "release_run_started",
+                release_version=spec.version,
+                release_tag=spec.tag,
+                phases=str(phases),
+                projects=str(names),
+            )
 
-        pipeline_ctx = m.Cli.PipelineStageContext(
-            workspace_root=workspace_root,
-            shared={},
-            settings={
-                "dry_run": dry_run,
-                "push": push,
-                "dev_suffix": dev_suffix,
-            },
-        )
+            if create_branches and (not dry_run):
+                final_result = self._create_branches(workspace_root, version, names)
 
-        active_stages = self._build_release_stages(phases, dispatch_cfg)
+        if final_result.success:
+            dispatch_cfg = m.Infra.ReleasePhaseDispatchConfig(
+                phase=c.Infra.VERB_VALIDATE,  # placeholder — overridden per stage
+                workspace_root=workspace_root,
+                version=spec.version,
+                tag=spec.tag,
+                project_names=names,
+                dry_run=dry_run,
+                push=push,
+                dev_suffix=dev_suffix,
+            )
 
-        pipeline_result = u.Cli.execute_pipeline(
-            active_stages,
-            pipeline_ctx,
-            fail_fast=True,
-        )
-        if pipeline_result.failure:
-            return r[bool].fail(pipeline_result.error or "pipeline execution failed")
+            pipeline_ctx = m.Cli.PipelineStageContext(
+                workspace_root=workspace_root,
+                shared={},
+                settings={
+                    "dry_run": dry_run,
+                    "push": push,
+                    "dev_suffix": dev_suffix,
+                },
+            )
 
-        result = pipeline_result.value
-        if not result.success:
-            failed = result.failed_stages
-            error_msg = failed[0].error if failed else "pipeline failed"
-            return r[bool].fail(error_msg or "pipeline failed")
-
-        if next_dev and (not dry_run):
-            return self._bump_next_dev(workspace_root, version, names, next_bump)
-        self.logger.info("release_run_completed", status=c.Infra.RK_OK)
-        return r[bool].ok(True)
+            active_stages = self._build_release_stages(phases, dispatch_cfg)
+            pipeline_result = u.Cli.execute_pipeline(
+                active_stages,
+                pipeline_ctx,
+                fail_fast=True,
+            )
+            pipeline_error = (
+                pipeline_result.error or "pipeline execution failed"
+                if pipeline_result.failure
+                else next(
+                    (
+                        failed_stage.error or "pipeline failed"
+                        for failed_stage in pipeline_result.value.failed_stages
+                    ),
+                    None,
+                )
+            )
+            if pipeline_error is not None:
+                final_result = r[bool].fail(pipeline_error)
+            elif next_dev and (not dry_run):
+                final_result = self._bump_next_dev(
+                    workspace_root,
+                    version,
+                    names,
+                    next_bump,
+                )
+            else:
+                self.logger.info("release_run_completed", status=c.Infra.RK_OK)
+                final_result = r[bool].ok(True)
+        return final_result
 
     def _build_release_stages(
         self,

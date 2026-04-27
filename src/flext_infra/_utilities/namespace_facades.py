@@ -22,6 +22,9 @@ from flext_infra import (
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
+from flext_infra._utilities.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
+)
 
 
 class FlextInfraUtilitiesRefactorNamespaceFacades:
@@ -189,7 +192,8 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
-        lines = target_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
+        source = target_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        lines = source.splitlines()
         base_class = FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(
             family=family,
             base_chains=base_chains,
@@ -201,70 +205,57 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             )
         )
         canonical_header = f"class {class_name}({base_class}):"
-        mutated = False
         if base_import not in lines:
-            insert_idx = 0
-            if c.Infra.FUTURE_ANNOTATIONS in lines:
-                insert_idx = lines.index(c.Infra.FUTURE_ANNOTATIONS) + 1
-                while insert_idx < len(lines) and not lines[insert_idx].strip():
-                    insert_idx += 1
-            lines.insert(insert_idx, "")
-            lines.insert(insert_idx, base_import)
-            mutated = True
+            lines = list(
+                FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
+                    lines=lines,
+                    imports=[base_import, ""],
+                )
+            )
         class_line_indices = [
             idx for idx, line in enumerate(lines) if re.match(r"^class\s+\w+", line)
         ]
-        current_names: t.Infra.StrSet = set()
-        for idx in class_line_indices:
-            match = re.match(r"^class\s+(?P<name>\w+)", lines[idx])
-            if match is not None:
-                current_names.add(match.group("name"))
-        if class_line_indices:
-            if class_name not in current_names and len(class_line_indices) == 1:
-                lines[class_line_indices[0]] = canonical_header
-                mutated = True
-            elif class_name in current_names:
-                for idx in class_line_indices:
-                    if re.match(rf"^class\s+{re.escape(class_name)}\b", lines[idx]):
-                        if lines[idx] != canonical_header:
-                            lines[idx] = canonical_header
-                            mutated = True
-                        break
-            else:
-                lines.extend(["", canonical_header, "    pass"])
-                mutated = True
-        else:
-            lines.extend(["", canonical_header, "    pass"])
-            mutated = True
-        alias_line = f"{family} = {class_name}"
-        alias_index = next(
+        existing_class_index = next(
             (
                 idx
-                for idx, line in enumerate(lines)
-                if re.match(rf"^{re.escape(family)}\s*=", line)
+                for idx in class_line_indices
+                if re.match(rf"^class\s+{re.escape(class_name)}\b", lines[idx])
             ),
             -1,
         )
-        if alias_index < 0:
-            lines.extend(["", alias_line])
-            mutated = True
-        elif lines[alias_index] != alias_line:
-            lines[alias_index] = alias_line
-            mutated = True
-        all_line = f'__all__: list[str] = ["{class_name}", "{family}"]'
-        all_index = next(
-            (idx for idx, line in enumerate(lines) if re.match(r"^__all__\s*:", line)),
-            -1,
+        if existing_class_index >= 0:
+            if lines[existing_class_index] != canonical_header:
+                lines[existing_class_index] = canonical_header
+        elif len(class_line_indices) == 1:
+            if lines[class_line_indices[0]] != canonical_header:
+                lines[class_line_indices[0]] = canonical_header
+        else:
+            lines.extend(["", canonical_header, "    pass"])
+        updated_source = "\n".join(lines).rstrip() + "\n"
+        updated_source = FlextInfraUtilitiesRopeModulePatch.ensure_runtime_alias(
+            updated_source,
+            alias=family,
+            target_name=class_name,
         )
-        if all_index < 0:
-            lines.extend(["", all_line])
-            mutated = True
-        elif lines[all_index] != all_line:
-            lines[all_index] = all_line
-            mutated = True
-        if mutated:
+        all_line = f'__all__: list[str] = ["{class_name}", "{family}"]'
+        if all_line not in updated_source:
+            updated_lines = updated_source.splitlines()
+            all_index = next(
+                (
+                    idx
+                    for idx, line in enumerate(updated_lines)
+                    if re.match(r"^__all__\s*:", line)
+                ),
+                -1,
+            )
+            if all_index < 0:
+                updated_lines.extend(["", all_line])
+            else:
+                updated_lines[all_index] = all_line
+            updated_source = "\n".join(updated_lines).rstrip() + "\n"
+        if updated_source != source:
             _ = target_path.write_text(
-                "\n".join(lines).rstrip() + "\n",
+                updated_source,
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
 
