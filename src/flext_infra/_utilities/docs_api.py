@@ -361,43 +361,39 @@ class FlextInfraUtilitiesDocsApi:
             contract.get("target_map", {})
         )
         issues: MutableSequence[m.Infra.AuditIssue] = []
+        module_docstring_checks = [
+            (module_name, f"public module `{module_name}` is missing a docstring")
+            for module_name in module_list
+        ]
         if package_name:
-            root_module = FlextInfraUtilitiesDocsApi._module_file(
-                project_root, package_name
+            module_docstring_checks.insert(
+                0,
+                (package_name, "package module is missing a docstring"),
             )
-            if root_module.exists():
-                source = root_module.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                if not FlextInfraUtilitiesDocsApi._has_module_docstring(source):
-                    issues.append(
-                        m.Infra.AuditIssue(
-                            file=root_module.relative_to(project_root).as_posix(),
-                            issue_type="missing_docstring",
-                            severity="medium",
-                            message="package module is missing a docstring",
-                        ),
-                    )
-        for module_name in module_list:
+        for module_name, message in module_docstring_checks:
             module_file = FlextInfraUtilitiesDocsApi._module_file(
                 project_root, module_name
             )
             if not module_file.exists():
                 continue
             source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            if not FlextInfraUtilitiesDocsApi._has_module_docstring(source):
-                issues.append(
-                    m.Infra.AuditIssue(
-                        file=module_file.relative_to(project_root).as_posix(),
-                        issue_type="missing_docstring",
-                        severity="medium",
-                        message=f"public module `{module_name}` is missing a docstring",
-                    ),
-                )
-        for export_name, module_name in target_map.items():
-            if (
-                export_name in FlextInfraUtilitiesDocsApi._ALIAS_EXPORTS
-                or export_name.startswith("__")
-            ):
+            if FlextInfraUtilitiesDocsApi._has_module_docstring(source):
                 continue
+            issues.append(
+                m.Infra.AuditIssue(
+                    file=module_file.relative_to(project_root).as_posix(),
+                    issue_type="missing_docstring",
+                    severity="medium",
+                    message=message,
+                ),
+            )
+        export_docstring_checks = [
+            (export_name, module_name)
+            for export_name, module_name in target_map.items()
+            if export_name not in FlextInfraUtilitiesDocsApi._ALIAS_EXPORTS
+            and not export_name.startswith("__")
+        ]
+        for export_name, module_name in export_docstring_checks:
             module_file = FlextInfraUtilitiesDocsApi._module_file(
                 project_root, module_name
             )

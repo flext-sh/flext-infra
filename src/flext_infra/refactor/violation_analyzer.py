@@ -22,6 +22,7 @@ from flext_infra import (
     c,
     m,
     t,
+    u,
 )
 
 
@@ -29,7 +30,7 @@ class FlextInfraRefactorViolationAnalyzer:
     """Analyzer for refactor violation metrics across source files."""
 
     _IMPORT_RE = re.compile(
-        r"^(?:from\s+([\w.]+)\s+import\s+(.+)|import\s+(.+))$",
+        r"^(?:from\s+([\w.]+)\s+import\s+(.+)|import\s+([\w.]+)(?:\s+as\s+(\w+))?)$",
         re.MULTILINE,
     )
     _FUNCTION_DEF_RE = re.compile(
@@ -118,11 +119,30 @@ class FlextInfraRefactorViolationAnalyzer:
         for match in cls._FUNCTION_DEF_RE.finditer(content):
             func_name = match.group(1)
             func_body = cls._extract_function_body(content, match.start())
-            classification = cls._classify_helper_function(
-                file_path=file_path,
-                func_name=func_name,
-                func_body=func_body,
-                local_to_import=local_to_import,
+            used_names = set(re.findall(r"\b([A-Za-z_]\w*)\b", func_body))
+            dependencies: t.Infra.StrSet = set()
+            for name in used_names:
+                imported = local_to_import.get(name)
+                if imported is not None:
+                    dependencies.add(imported)
+            has_decorators = bool(re.search(r"@\w+", func_body))
+            matched_categories = cls._match_categories(
+                dependencies=dependencies,
+                has_decorators=has_decorators,
+            )
+            classification_category, manual, reason = cls._resolve_category(
+                dependencies=dependencies,
+                matched_categories=matched_categories,
+            )
+            namespace_root = c.Infra.NAMESPACE_PREFIXES[classification_category]
+            classification = m.Infra.HelperClassification(
+                file=str(file_path),
+                function=func_name,
+                category=classification_category,
+                target_namespace=f"{namespace_root}.{func_name}",
+                dependencies=sorted(dependencies),
+                manual_review=manual,
+                review_reason=reason,
             )
             suggestions.append(classification)
             category = classification.category
@@ -133,41 +153,6 @@ class FlextInfraRefactorViolationAnalyzer:
             suggestions=tuple(suggestions),
             totals=dict(totals),
             manual_review=tuple(manual_review),
-        )
-
-    @classmethod
-    def _classify_helper_function(
-        cls,
-        *,
-        file_path: Path,
-        func_name: str,
-        func_body: str,
-        local_to_import: t.StrMapping,
-    ) -> m.Infra.HelperClassification:
-        used_names = set(re.findall(r"\b([A-Za-z_]\w*)\b", func_body))
-        dependencies: t.Infra.StrSet = set()
-        for name in used_names:
-            imported = local_to_import.get(name)
-            if imported is not None:
-                dependencies.add(imported)
-        has_decorators = bool(re.search(r"@\w+", func_body))
-        matched_categories = cls._match_categories(
-            dependencies=dependencies,
-            has_decorators=has_decorators,
-        )
-        category, manual, reason = cls._resolve_category(
-            dependencies=dependencies,
-            matched_categories=matched_categories,
-        )
-        namespace_root = c.Infra.NAMESPACE_PREFIXES[category]
-        return m.Infra.HelperClassification(
-            file=str(file_path),
-            function=func_name,
-            category=category,
-            target_namespace=f"{namespace_root}.{func_name}",
-            dependencies=sorted(dependencies),
-            manual_review=manual,
-            review_reason=reason,
         )
 
     @classmethod
@@ -231,31 +216,19 @@ class FlextInfraRefactorViolationAnalyzer:
             return False
         return True
 
-    @staticmethod
-    def _extract_local_to_import(content: str) -> t.StrMapping:
+    @classmethod
+    def _extract_local_to_import(cls, content: str) -> t.StrMapping:
         """Extract local-name -> fully-qualified-name mapping from imports."""
         result: t.MutableStrMapping = {}
-        import_re = re.compile(
-            r"^(?:from\s+([\w.]+)\s+import\s+(.+)|import\s+([\w.]+)(?:\s+as\s+(\w+))?)$",
-            re.MULTILINE,
-        )
-        for match in import_re.finditer(content):
-            if match.group(1) is not None:
-                module_name = match.group(1)
-                names_part = match.group(2).strip().rstrip("\\")
-                for name_entry in names_part.split(","):
-                    name_entry = name_entry.strip()
-                    if not name_entry or name_entry == "(":
-                        continue
-                    parts = re.split(r"\s+as\s+", name_entry, maxsplit=1)
-                    imported_name = parts[0].strip().rstrip(")")
-                    local = parts[1].strip() if len(parts) > 1 else imported_name
-                    if local and imported_name:
+        for match in cls._IMPORT_RE.finditer(content):
+            match match.groups():
+                case (str(module_name), str(names_part), _, _):
+                    for imported_name, local in u.Infra.parse_import_names(names_part):
                         result[local] = f"{module_name}.{imported_name}"
-            elif match.group(3) is not None:
-                imported = match.group(3)
-                local = match.group(4) or imported.split(".", maxsplit=1)[0]
-                result[local] = imported
+                case (_, _, str(imported), local_alias):
+                    result[local_alias or imported.split(".", maxsplit=1)[0]] = imported
+                case _:
+                    continue
         return result
 
     @staticmethod

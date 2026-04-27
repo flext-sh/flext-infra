@@ -122,77 +122,92 @@ class FlextInfraRefactorOrchestrator(
         dry_run: bool = False,
     ) -> m.Infra.Result:
         """Refactor one file using the loader's current rule selections."""
+        result: m.Infra.Result
         try:
             if file_path.suffix != c.Infra.EXT_PYTHON:
-                return self._skip_result(file_path)
-            workspace_root = u.Infra.project_root(file_path) or file_path.parent
-            original = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            current, all_changes = original, list[str]()
-            if self.loader.file_rules:
-                with u.Infra.open_project(workspace_root) as rope_project:
-                    resource = u.Infra.get_resource_from_path(rope_project, file_path)
-                    if resource is None:
-                        return self._error_result(
+                result = self._skip_result(file_path)
+            else:
+                workspace_root = u.Infra.project_root(file_path) or file_path.parent
+                original = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                current, all_changes = original, list[str]()
+                error_result: m.Infra.Result | None = None
+                if self.loader.file_rules:
+                    with u.Infra.open_project(workspace_root) as rope_project:
+                        resource = u.Infra.get_resource_from_path(
+                            rope_project,
                             file_path,
-                            f"Could not resolve rope resource for {file_path}",
                         )
-                    for kind, settings in self.loader.file_rules:
-                        result = self._apply_file_rule_selection(
+                        if resource is None:
+                            error_result = self._error_result(
+                                file_path,
+                                f"Could not resolve rope resource for {file_path}",
+                            )
+                        else:
+                            for kind, settings in self.loader.file_rules:
+                                file_rule_result = self._apply_file_rule_selection(
+                                    kind,
+                                    settings,
+                                    rope_project,
+                                    resource,
+                                    dry_run=True,
+                                )
+                                if not file_rule_result.success:
+                                    error_result = m.Infra.Result(
+                                        file_path=file_path,
+                                        success=False,
+                                        modified=False,
+                                        error=file_rule_result.error,
+                                        changes=file_rule_result.changes,
+                                        refactored_code=None,
+                                    )
+                                    break
+                                if (
+                                    file_rule_result.modified
+                                    and file_rule_result.refactored_code
+                                ):
+                                    current = file_rule_result.refactored_code
+                                all_changes.extend(file_rule_result.changes)
+                if error_result is None:
+                    for kind, settings in self.loader.rules:
+                        if not bool(settings.get(c.Infra.RK_ENABLED, True)):
+                            continue
+                        current, changes = self._apply_text_rule_selection(
                             kind,
                             settings,
-                            rope_project,
-                            resource,
-                            dry_run=True,
+                            current,
+                            file_path,
                         )
-                        if not result.success:
-                            return m.Infra.Result(
+                        all_changes.extend(changes)
+                    modified = current != original
+                    if not dry_run and modified:
+                        ok, report = u.Infra.protected_source_write(
+                            file_path,
+                            workspace=workspace_root,
+                            updated_source=current,
+                            keep_backup=True,
+                        )
+                        all_changes.extend(report)
+                        if not ok:
+                            error_result = m.Infra.Result(
                                 file_path=file_path,
                                 success=False,
                                 modified=False,
-                                error=result.error,
-                                changes=result.changes,
-                                refactored_code=None,
+                                error="Protected refactor validation failed",
+                                changes=all_changes,
+                                refactored_code=original,
                             )
-                        if result.modified and result.refactored_code:
-                            current = result.refactored_code
-                        all_changes.extend(result.changes)
-            for kind, settings in self.loader.rules:
-                if not bool(settings.get(c.Infra.RK_ENABLED, True)):
-                    continue
-                current, changes = self._apply_text_rule_selection(
-                    kind,
-                    settings,
-                    current,
-                    file_path,
-                )
-                all_changes.extend(changes)
-            modified = current != original
-            if not dry_run and modified:
-                ok, report = u.Infra.protected_source_write(
-                    file_path,
-                    workspace=workspace_root,
-                    updated_source=current,
-                    keep_backup=True,
-                )
-                all_changes.extend(report)
-                if not ok:
-                    return m.Infra.Result(
+                    result = error_result or m.Infra.Result(
                         file_path=file_path,
-                        success=False,
-                        modified=False,
-                        error="Protected refactor validation failed",
+                        success=True,
+                        modified=modified,
                         changes=all_changes,
-                        refactored_code=original,
+                        refactored_code=current,
                     )
-            return m.Infra.Result(
-                file_path=file_path,
-                success=True,
-                modified=modified,
-                changes=all_changes,
-                refactored_code=current,
-            )
+                else:
+                    result = error_result
         except Exception as exc:
-            return self._error_result(file_path, str(exc))
+            result = self._error_result(file_path, str(exc))
+        return result
 
     def refactor_files(
         self,

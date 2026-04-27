@@ -490,14 +490,38 @@ class FlextInfraUtilitiesCodegenNamespace:
             if resource is None:
                 return
             source = resource.read()
-            updated, class_name = cls._normalize_facade_base_source(
-                rope_project=rope_project,
-                resource=resource,
-                source=source,
-                base_import=base_import,
+            class_infos = sorted(
+                FlextInfraUtilitiesRopeAnalysis.get_class_info(
+                    rope_project,
+                    resource,
+                ),
+                key=lambda item: item.line,
+            )
+            if not class_infos:
+                return
+            class_info = class_infos[0]
+            class_name = class_info.name
+            lines = source.splitlines()
+            header_idx = class_info.line - 1
+            if header_idx < 0 or header_idx >= len(lines):
+                return
+            rewritten_header = cls._normalize_class_header(
+                line=lines[header_idx],
+                class_name=class_name,
                 base_name=base_name,
             )
-            if updated == source or not class_name:
+            if rewritten_header == lines[header_idx] and base_import in source:
+                return
+            lines[header_idx] = rewritten_header
+            updated = "\n".join(lines)
+            if source.endswith("\n"):
+                updated += "\n"
+            if base_import not in updated:
+                updated = cls._insert_import_line(
+                    source=updated,
+                    import_line=base_import,
+                )
+            if updated == source:
                 return
             resource.write(updated)
         ctx.files_modified.add(str(file_path))
@@ -507,42 +531,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             line=1,
             message=f"normalized {class_name} to inherit from {base_name}",
         )
-
-    @classmethod
-    def _normalize_facade_base_source(
-        cls,
-        *,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        source: str,
-        base_import: str,
-        base_name: str,
-    ) -> tuple[str, str]:
-        class_infos = sorted(
-            FlextInfraUtilitiesRopeAnalysis.get_class_info(rope_project, resource),
-            key=lambda item: item.line,
-        )
-        if not class_infos:
-            return source, ""
-        class_name = class_infos[0].name
-        lines = source.splitlines()
-        header_idx = class_infos[0].line - 1
-        if header_idx < 0 or header_idx >= len(lines):
-            return source, ""
-        rewritten_header = cls._normalize_class_header(
-            line=lines[header_idx],
-            class_name=class_name,
-            base_name=base_name,
-        )
-        if rewritten_header == lines[header_idx] and base_import in source:
-            return source, class_name
-        lines[header_idx] = rewritten_header
-        updated = "\n".join(lines)
-        if source.endswith("\n"):
-            updated += "\n"
-        if base_import not in updated:
-            updated = cls._insert_import_line(source=updated, import_line=base_import)
-        return updated, class_name
 
     @staticmethod
     def _normalize_class_header(*, line: str, class_name: str, base_name: str) -> str:

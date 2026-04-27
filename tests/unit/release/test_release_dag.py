@@ -2,30 +2,31 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraReleaseOrchestrator
 from tests import c, m, u
 
-_ALL_PHASES: list[str] = [
+_ALL_PHASES: tuple[str, ...] = (
     c.Infra.VERB_VALIDATE,
     c.Infra.VERSION,
     c.Infra.DIR_BUILD,
     c.Infra.VERB_PUBLISH,
-]
+)
 
 
 def _make_config(
     workspace_root: Path,
     *,
-    phases: list[str] | None = None,
+    phases: Sequence[str] | None = None,
     dry_run: bool = False,
 ) -> m.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
         version="1.0.0",
         tag="v1.0.0",
-        phases=phases or _ALL_PHASES,
+        phases=list(phases) if phases is not None else list(_ALL_PHASES),
         project_names=None,
         dry_run=dry_run,
         push=False,

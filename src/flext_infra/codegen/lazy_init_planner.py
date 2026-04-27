@@ -93,7 +93,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             ),
             lazy_map=dict(lazy_map),
             wildcard_runtime_modules=tuple(
-                sorted({module_name for module_name, _attr in version_map.values()}),
+                sorted({module_name for module_name, _ in version_map.values()}),
             ),
             child_packages_for_lazy=child_lazy,
             child_packages_for_tc=child_tc,
@@ -366,7 +366,27 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if self.rope_workspace.resource(constants_path) is None:
             self._parent_package_cache[cache_key] = ()
             return ()
-        state = self.rope_workspace.semantic(constants_path)
+        parents = self._parents_from_constants_module(constants_path, current_pkg)
+        self._parent_package_cache[cache_key] = parents
+        return parents
+
+    def _parents_from_constants_module(
+        self,
+        module_path: Path,
+        current_pkg: str,
+        visited: set[str] | None = None,
+    ) -> t.StrSequence:
+        """Extract upstream package parents from a constants module.
+
+        Single rule: collect external packages from (1) class bases,
+        (2) declared imports, and (3) recursive walks into same-package
+        imports. Both class-defining and thin-facade modules go through
+        the same path; the recursion handles ``constants.py`` →
+        ``_constants/base.py`` → … chains until external packages surface.
+        """
+        seen = visited if visited is not None else set()
+        seen.add(str(module_path.resolve()))
+        state = self.rope_workspace.semantic(module_path)
         base_packages = tuple(
             package_name
             for class_info in state.class_infos
@@ -383,16 +403,50 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             package_name
             for target in state.declared_imports.values()
             if (package_name := self._package_name_from_target(target))
+            and package_name != current_pkg
         )
-        parents = tuple(
+        same_package_parents = tuple(
+            parent
+            for target in state.declared_imports.values()
+            if target.startswith(f"{current_pkg}.")
+            and (
+                module_file := self._module_file(self._module_path_from_target(target))
+            )
+            is not None
+            and str(module_file.resolve()) not in seen
+            for parent in self._parents_from_constants_module(
+                module_file,
+                current_pkg,
+                seen,
+            )
+        )
+        return tuple(
             dict.fromkeys(
                 package_name
-                for package_name in (*base_packages, *declared_packages)
+                for package_name in (
+                    *base_packages,
+                    *declared_packages,
+                    *same_package_parents,
+                )
                 if package_name and package_name != current_pkg
             )
         )
-        self._parent_package_cache[cache_key] = parents
-        return parents
+
+    @staticmethod
+    def _module_path_from_target(target: str) -> str:
+        """Strip the trailing CapWords class name (if any) to yield a module path.
+
+        ``rope`` ``declared_imports`` values are fully-qualified dotted symbol
+        paths — for ``from pkg.sub import FooBar`` the value is
+        ``pkg.sub.FooBar``. Drop the last segment when it starts with an
+        uppercase letter (class convention).
+        """
+        if "." not in target:
+            return target
+        prefix, suffix = target.rsplit(".", maxsplit=1)
+        if suffix and suffix[0].isupper():
+            return prefix
+        return target
 
     def _resolve_inherited_alias_source(
         self,

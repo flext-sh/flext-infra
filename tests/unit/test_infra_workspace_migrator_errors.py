@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraProjectMigrator
@@ -15,12 +16,26 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
     def _make_read_only(path: Path) -> None:
         path.chmod(0o444)
 
-    def test_gitignore_write_failure(self, tmp_path: Path) -> None:
-        root = u.Infra.Tests.create_migrator_dir_layout(tmp_path, base_mk="base")
-        self._make_read_only(root / ".gitignore")
+    @pytest.mark.parametrize(
+        ("base_mk", "read_only_name", "new_base_mk", "expected_error"),
+        [
+            ("base", ".gitignore", "base", ".gitignore update failed"),
+            ("old", "base.mk", "new content", "base.mk update failed"),
+        ],
+    )
+    def test_write_failure(
+        self,
+        tmp_path: Path,
+        base_mk: str,
+        read_only_name: str,
+        new_base_mk: str,
+        expected_error: str,
+    ) -> None:
+        root = u.Infra.Tests.create_migrator_dir_layout(tmp_path, base_mk=base_mk)
+        self._make_read_only(root / read_only_name)
         migrator = u.Infra.Tests.build_project_migrator(
             u.Infra.Tests.create_migrator_project(root),
-            "base",
+            new_base_mk,
             workspace_root=tmp_path,
             dry_run=False,
         )
@@ -28,24 +43,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         result = migrator.execute()
         migration = tm.ok(result)
         tm.that(
-            any(".gitignore update failed" in err for err in migration[0].errors),
-            eq=True,
-        )
-
-    def test_basemk_write_failure(self, tmp_path: Path) -> None:
-        root = u.Infra.Tests.create_migrator_dir_layout(tmp_path, base_mk="old")
-        self._make_read_only(root / "base.mk")
-        migrator = u.Infra.Tests.build_project_migrator(
-            u.Infra.Tests.create_migrator_project(root),
-            "new content",
-            workspace_root=tmp_path,
-            dry_run=False,
-        )
-
-        result = migrator.execute()
-        migration = tm.ok(result)
-        tm.that(
-            any("base.mk update failed" in err for err in migration[0].errors),
+            any(expected_error in err for err in migration[0].errors),
             eq=True,
         )
 

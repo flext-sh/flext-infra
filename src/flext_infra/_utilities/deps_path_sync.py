@@ -41,9 +41,10 @@ class FlextInfraUtilitiesDependencyPathSync:
         )
         if not raw_deps:
             return ([], set())
-        if any(not isinstance(item, str) for item in raw_deps):
+        try:
+            deps = t.Infra.STR_SEQ_ADAPTER.validate_python(raw_deps, strict=True)
+        except c.ValidationError:
             return ([], set())
-        deps: t.StrSequence = [str(item) for item in raw_deps]
         changes: MutableSequence[str] = []
         updated_deps: MutableSequence[str] = []
         internal_deps: t.Infra.StrSet = set()
@@ -54,18 +55,14 @@ class FlextInfraUtilitiesDependencyPathSync:
                 updated_deps.append(item)
                 continue
             internal_deps.add(dep_name)
-            new_entry = (
-                f"{dep_name} ;{marker_part}"
-                if marker_part and " @ " in requirement_part
-                else dep_name
-                if " @ " in requirement_part
-                else item
-            )
-            if item == new_entry:
-                updated_deps.append(item)
-                continue
-            changes.append(f"  PEP621: {item} -> {new_entry}")
+            new_entry = item
+            if " @ " in requirement_part:
+                new_entry = dep_name
+                if marker_part:
+                    new_entry = f"{dep_name} ;{marker_part}"
             updated_deps.append(new_entry)
+            if item != new_entry:
+                changes.append(f"  PEP621: {item} -> {new_entry}")
         if changes:
             updated_dependencies: list[t.JsonValue] = list(updated_deps)
             u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)[
@@ -170,15 +167,9 @@ class FlextInfraUtilitiesDependencyPathSync:
             dep_name = FlextInfraUtilitiesIteration.dep_name(raw_path)
             if not dep_name:
                 continue
-            new_path = (
-                dep_name
-                if mode == c.Infra.PathSyncMode.WORKSPACE and is_root
-                else (
-                    f"../{dep_name}"
-                    if mode == c.Infra.PathSyncMode.WORKSPACE
-                    else f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
-                )
-            )
+            new_path = f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
+            if mode == c.Infra.PathSyncMode.WORKSPACE:
+                new_path = dep_name if is_root else f"../{dep_name}"
             if raw_path == new_path:
                 continue
             changes.append(

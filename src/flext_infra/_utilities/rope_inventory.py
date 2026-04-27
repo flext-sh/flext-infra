@@ -52,26 +52,25 @@ class FlextInfraUtilitiesRopeInventory:
             return ()
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
-            record = cls._record(
-                m.Infra.RopeInventoryRecordInput.model_validate({
-                    "rope_project": rope_project,
-                    "resource": resource,
-                    "source": source,
-                    "name": name,
-                    "pyname": pyname,
-                    "module_name": module_entry.module_name
-                    if module_entry is not None
-                    else "",
-                    "project_name": convention.project_layout.project_name
-                    if convention.project_layout is not None
-                    else convention.file_path.parent.name,
-                    "convention": convention,
-                    "scope_chain": (),
-                    "class_chain": (),
-                    "child_scope": cls._child_scope_for(child_scopes, pyname),
-                    "rope_workspace": rope_workspace,
-                }),
-            )
+            record_options = m.Infra.RopeInventoryRecordInput.model_validate({
+                "rope_project": rope_project,
+                "resource": resource,
+                "source": source,
+                "name": name,
+                "pyname": pyname,
+                "module_name": module_entry.module_name
+                if module_entry is not None
+                else "",
+                "project_name": convention.project_layout.project_name
+                if convention.project_layout is not None
+                else convention.file_path.parent.name,
+                "convention": convention,
+                "scope_chain": (),
+                "class_chain": (),
+                "child_scope": cls._child_scope_for(child_scopes, pyname),
+                "rope_workspace": rope_workspace,
+            })
+            record = cls._record(record_options)
             if record is None:
                 continue
             items.append(record)
@@ -80,20 +79,21 @@ class FlextInfraUtilitiesRopeInventory:
                 if child_scope is not None:
                     items.extend(
                         cls._scope_objects(
-                            rope_project=rope_project,
-                            resource=resource,
-                            source=source,
-                            module_name=record.module_name,
-                            project_name=record.project,
-                            convention=convention,
                             scope=child_scope,
-                            scope_chain=tuple(
-                                part for part in record.scope_path.split(".") if part
+                            parent_options=record_options.model_copy(
+                                update={
+                                    "scope_chain": tuple(
+                                        part
+                                        for part in record.scope_path.split(".")
+                                        if part
+                                    ),
+                                    "class_chain": tuple(
+                                        part
+                                        for part in record.class_path.split(".")
+                                        if part
+                                    ),
+                                }
                             ),
-                            class_chain=tuple(
-                                part for part in record.class_path.split(".") if part
-                            ),
-                            rope_workspace=rope_workspace,
                         )
                     )
         return tuple(items)
@@ -101,38 +101,22 @@ class FlextInfraUtilitiesRopeInventory:
     @classmethod
     def _scope_objects(
         cls,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        source: str,
-        *,
-        module_name: str,
-        project_name: str,
-        convention: m.Infra.RopeModuleConvention,
         scope: p.Infra.RopeScopeDsl,
-        scope_chain: tuple[str, ...],
-        class_chain: tuple[str, ...],
-        rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
+        *,
+        parent_options: m.Infra.RopeInventoryRecordInput,
     ) -> tuple[m.Infra.Census.Object, ...]:
         items: MutableSequence[m.Infra.Census.Object] = []
         child_scopes = tuple(scope.get_scopes())
-        for name, pyname in cls._sorted_scope_names(scope, resource):
+        for name, pyname in cls._sorted_scope_names(scope, parent_options.resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
-            record = cls._record(
-                m.Infra.RopeInventoryRecordInput.model_validate({
-                    "rope_project": rope_project,
-                    "resource": resource,
-                    "source": source,
+            record_options = parent_options.model_copy(
+                update={
                     "name": name,
                     "pyname": pyname,
-                    "module_name": module_name,
-                    "project_name": project_name,
-                    "convention": convention,
-                    "scope_chain": scope_chain,
-                    "class_chain": class_chain,
                     "child_scope": child_scope,
-                    "rope_workspace": rope_workspace,
-                }),
+                }
             )
+            record = cls._record(record_options)
             if record is None:
                 continue
             items.append(record)
@@ -141,21 +125,19 @@ class FlextInfraUtilitiesRopeInventory:
                 or child_scope is None
             ):
                 continue
-            next_class_chain = (
-                (*class_chain, record.name) if record.kind == "class" else class_chain
-            )
             items.extend(
                 cls._scope_objects(
-                    rope_project=rope_project,
-                    resource=resource,
-                    source=source,
-                    module_name=module_name,
-                    project_name=project_name,
-                    convention=convention,
                     scope=child_scope,
-                    scope_chain=(*scope_chain, record.name),
-                    class_chain=next_class_chain,
-                    rope_workspace=rope_workspace,
+                    parent_options=record_options.model_copy(
+                        update={
+                            "scope_chain": tuple(
+                                part for part in record.scope_path.split(".") if part
+                            ),
+                            "class_chain": tuple(
+                                part for part in record.class_path.split(".") if part
+                            ),
+                        }
+                    ),
                 )
             )
         return tuple(items)

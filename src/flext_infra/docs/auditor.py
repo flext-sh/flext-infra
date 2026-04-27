@@ -42,11 +42,12 @@ class FlextInfraDocAuditor(
         issue_type: str,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Return text-token issues for one scope using the named policy list."""
-        return u.Infra.docs_text_token_issues(
+        issues: Sequence[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
             scope,
             tokens=u.Infra.docs_policy_list(scope, section="audit", key=policy_key),
             issue_type=issue_type,
         )
+        return issues
 
     @staticmethod
     def forbidden_term_issues(
