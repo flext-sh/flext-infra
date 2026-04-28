@@ -1,0 +1,90 @@
+tests/unit/release/_stubs.py
+  h_9db9d35f50cf33 20-23
+tests/unit/deps/test_detection_typings_flow.py
+  h_9db9d35f50cf33 7,82
+tests/unit/deps/test_internal_sync_sync_edge.py
+  h_9db9d35f50cf33 13-15
+tests/unit/deps/test_detection_pip_check.py
+  h_9db9d35f50cf33 8-9,34
+tests/unit/release/orchestrator_publish_tests.py
+  h_9db9d35f50cf33 8-10
+tests/unit/deps/test_detector_main.py
+  h_9db9d35f50cf33 17,19-22
+tests/unit/release/test_release_dag.py
+  h_9db9d35f50cf33 9-11
+tests/unit/deps/test_internal_sync_discovery_edge.py
+  h_9db9d35f50cf33 12-14
+tests/unit/release/main_tests.py
+  h_9db9d35f50cf33 8-9
+tests/constants.py
+  h_9db9d35f50cf33 16-17
+tests/unit/release/orchestrator_phases_tests.py
+  h_9db9d35f50cf33 9-11
+tests/unit/release/orchestrator_tests.py
+  h_9db9d35f50cf33 8-10
+tests/unit/deps/test_internal_sync_discovery.py
+  h_9db9d35f50cf33 11-13
+src/flext_infra/_utilities/rope_core.py
+  h_9db9d35f50cf33 5,67-72
+src/flext_infra/_models/refactor_violations.py
+  h_9db9d35f50cf33 18-31
+tests/unit/release/orchestrator_helpers_tests.py
+  h_9db9d35f50cf33 9-11
+src/flext_infra/codegen/constants_quality_gate.py
+  h_9db9d35f50cf33 378
+src/flext_infra/release/orchestrator.py
+  h_9db9d35f50cf33 94
+tests/unit/deps/test_internal_sync_sync_edge_more.py
+  h_9db9d35f50cf33 11-13
+src/flext_infra/_utilities/rope_imports.py
+  h_9db9d35f50cf33 269
+tests/unit/deps/test_path_sync_main_project_obj.py
+  h_9db9d35f50cf33 11-13
+tests/unit/deps/test_detection_typings.py
+  h_9db9d35f50cf33 12-15
+tests/unit/codegen/consolidator_tests.py
+  h_9db9d35f50cf33 10,40,92
+tests/unit/test_infra_workspace_migrator_internal.py
+  h_9db9d35f50cf33 10
+tests/unit/check/extended_gate_mypy_pyright_tests.py
+  h_9db9d35f50cf33 8,10,14-18,41
+src/flext_infra/_utilities/rope_inventory.py
+  h_9db9d35f50cf33 6,79-83,111-114,119-137,140-147,151-156,163,172-180,187
+src/flext_infra/_utilities/docs_api.py
+  h_9db9d35f50cf33 80
+tests/unit/validate/basemk_validator_tests.py
+  h_9db9d35f50cf33 136
+tests/utilities.py
+  h_9db9d35f50cf33 30,33-36,63-64,66,265,271,277,283,294
+tests/unit/deps/test_detector_report.py
+  h_9db9d35f50cf33 12-16
+tests/unit/check/extended_gate_go_cmd_tests.py
+  h_9db9d35f50cf33 10-11
+tests/unit/deps/test_detector_report_flags.py
+  h_9db9d35f50cf33 13-16
+tests/unit/check/extended_gate_bandit_markdown_tests.py
+  h_9db9d35f50cf33 10-11
+src/flext_infra/_utilities/policy.py
+  h_9db9d35f50cf33 133,214
+tests/unit/deps/test_internal_sync_sync.py
+  h_9db9d35f50cf33 12-14
+tests/unit/release/orchestrator_git_tests.py
+  h_9db9d35f50cf33 9-11
+tests/unit/deps/test_detection_discover.py
+  h_9db9d35f50cf33 7,22,32,48
+tests/unit/release/flow_tests.py
+  h_9db9d35f50cf33 8
+tests/unit/validate/stub_chain_tests.py
+  h_9db9d35f50cf33 10,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "71b989f2803565ae4c10c3deadc98539062381e6",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
