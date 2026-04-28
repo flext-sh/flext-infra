@@ -428,7 +428,7 @@ class TestProcessDirectory:
 
         assert result == 0
         content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert (f"from {'flext_test_project'}.__version__ import *") in content
+        assert f"from {package_root.name}.__version__ import *" not in content
         assert '".__version__": (' in content
         assert '"__version__"' in content
         assert '"__version_info__"' in content

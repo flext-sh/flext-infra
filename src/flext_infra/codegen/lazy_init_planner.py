@@ -628,12 +628,29 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             index[name] = target
             return
         winner = self._pick_preferred_target(name, existing, target)
+        if self._is_intentional_reexport(existing, target):
+            index[name] = winner
+            return
         self._collision_count += 1
         u.Cli.warning(
             f"export collision for {name!r}: {existing} vs {target}; "
             f"resolved by canonical policy scorer to {winner}",
         )
         index[name] = winner
+
+    @staticmethod
+    def _is_intentional_reexport(
+        a: t.Infra.StrPair,
+        b: t.Infra.StrPair,
+    ) -> bool:
+        """Return whether one module is a root-namespace stub re-exporting from the other."""
+        for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
+            pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
+            if not u.Infra.matches_root_namespace_file(pub_file):
+                continue
+            if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
+                return True
+        return False
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlanner"]
