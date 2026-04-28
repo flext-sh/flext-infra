@@ -24,8 +24,8 @@ from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 
 
 class FlextInfraProjectMigrator(
-    FlextInfraWorkspaceGeneratorBase,
     s[Sequence[m.Infra.MigrationResult]],
+    FlextInfraWorkspaceGeneratorBase,
 ):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 

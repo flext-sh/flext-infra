@@ -6,7 +6,6 @@ warning usage in __init__, using regex analysis on source text.
 
 from __future__ import annotations
 
-import re
 from collections.abc import (
     MutableSequence,
 )
@@ -16,12 +15,6 @@ from flext_infra import c, t
 
 class FlextInfraRefactorDeprecatedRemover:
     """Remove classes marked as deprecated by name or warning usage."""
-
-    _CLASS_RE = re.compile(
-        r"^(class\s+(\w+)\b[^\n]*:\n(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
-        re.MULTILINE,
-    )
-    _DEPRECATION_WARN_RE = re.compile(r"\.warn\s*\(")
 
     def __init__(
         self,
@@ -35,7 +28,7 @@ class FlextInfraRefactorDeprecatedRemover:
     def apply_to_source(self, source: str) -> str:
         """Remove deprecated classes from source text."""
         result = source
-        for match in reversed(list(self._CLASS_RE.finditer(source))):
+        for match in reversed(list(c.Infra.CLASS_BLOCK_RE.finditer(source))):
             class_body = match.group(1)
             class_name = match.group(2)
             if self._is_deprecated(class_name, class_body):
@@ -48,7 +41,7 @@ class FlextInfraRefactorDeprecatedRemover:
         if "deprecated" in class_name.lower():
             return True
         return c.Infra.DUNDER_INIT in class_body and bool(
-            self._DEPRECATION_WARN_RE.search(class_body)
+            c.Infra.DEPRECATION_WARN_RE.search(class_body)
         )
 
     def _record_change(self, message: str) -> None:

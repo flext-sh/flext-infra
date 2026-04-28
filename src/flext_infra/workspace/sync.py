@@ -29,8 +29,8 @@ from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 
 
 class FlextInfraSyncService(
-    FlextInfraWorkspaceGeneratorBase,
     s[m.Infra.SyncResult],
+    FlextInfraWorkspaceGeneratorBase,
 ):
     """Infrastructure service for workspace base.mk synchronization.
 

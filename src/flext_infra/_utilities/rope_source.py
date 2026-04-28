@@ -28,22 +28,6 @@ class FlextInfraUtilitiesRopeSource:
     _DOCSTRING_QUOTES: ClassVar[tuple[str, str]] = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT: ClassVar[int] = 2
 
-    _SILENT_FAILURE_RETURN_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(?P<indent>\s*)return\s+(?P<sentinel>False|None|\[\]|\{\})\s*(?:#.*)?$",
-    )
-    _SILENT_FAILURE_UNWRAP_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(?P<indent>\s*)return\s+.+?\.unwrap_or\((?P<sentinel>False|None|\[\]|\{\})\)\s*(?:#.*)?$",
-    )
-    _SILENT_FAILURE_IF_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(?P<indent>\s*)if\s+(?:(?P<failure_name>[A-Za-z_]\w*)\.failure|not\s+(?P<success_name>[A-Za-z_]\w*)\.success)\s*:\s*(?P<inline>.*)$",
-    )
-    _SILENT_FAILURE_EXCEPT_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(?P<indent>\s*)except(?:\s+.+?)?(?:\s+as\s+(?P<exception_name>[A-Za-z_]\w*))?\s*:\s*(?P<inline>.*)$",
-    )
-    _FUNCTION_SIGNATURE_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"->\s*(?:r\[(?P<legacy_inner>.+)\]|p\.Result\[(?P<result_inner>.+)\])\s*:",
-    )
-
     @staticmethod
     def matches_module_toplevel(file_path: Path) -> bool:
         """Determine if a file is at the package root level."""
@@ -448,7 +432,7 @@ class FlextInfraUtilitiesRopeSource:
                 continue
             if cls._indent_width(line) <= block_indent:
                 return None
-            match = cls._SILENT_FAILURE_RETURN_RE.match(line)
+            match = c.Infra.SILENT_FAILURE_RETURN_RE.match(line)
             if match is not None:
                 return index, match.group("indent"), match.group("sentinel")
             return None
@@ -475,7 +459,7 @@ class FlextInfraUtilitiesRopeSource:
                 tail += 1
                 signature_lines.append(lines[tail].strip())
             signature = " ".join(signature_lines)
-            match = cls._FUNCTION_SIGNATURE_RE.search(signature)
+            match = c.Infra.FUNCTION_SIGNATURE_RE.search(signature)
             if match is None:
                 return None
             return match.group("legacy_inner") or match.group("result_inner")
@@ -494,7 +478,7 @@ class FlextInfraUtilitiesRopeSource:
             current_offset += len(line)
         findings: list[tuple[int, int, str, str, tuple[int, int, str] | None]] = []
         for index, line in enumerate(lines):
-            unwrap_match = cls._SILENT_FAILURE_UNWRAP_RE.match(line)
+            unwrap_match = c.Infra.SILENT_FAILURE_UNWRAP_RE.match(line)
             if unwrap_match is not None:
                 sentinel = unwrap_match.group("sentinel")
                 findings.append(
@@ -507,7 +491,7 @@ class FlextInfraUtilitiesRopeSource:
                     ),
                 )
                 continue
-            guard_match = cls._SILENT_FAILURE_IF_RE.match(line)
+            guard_match = c.Infra.SILENT_FAILURE_IF_RE.match(line)
             if guard_match is not None:
                 block = cls._silent_failure_block_return(
                     lines,
@@ -550,7 +534,7 @@ class FlextInfraUtilitiesRopeSource:
                     ),
                 )
                 continue
-            except_match = cls._SILENT_FAILURE_EXCEPT_RE.match(line)
+            except_match = c.Infra.SILENT_FAILURE_EXCEPT_RE.match(line)
             if except_match is None:
                 continue
             block = cls._silent_failure_block_return(

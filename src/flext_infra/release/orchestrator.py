@@ -31,8 +31,8 @@ from flext_infra import (
 
 
 class FlextInfraReleaseOrchestrator(
-    FlextInfraReleaseOrchestratorPhases,
     FlextInfraProjectSelectionServiceBase[bool],
+    FlextInfraReleaseOrchestratorPhases,
 ):
     """Service for release lifecycle orchestration."""
 

@@ -31,34 +31,22 @@ class FlextInfraUtilitiesPatterns:
     INTERNAL_PREFIXES: ClassVar[tuple[str, ...]] = ("flext_",)
     """Prefixes identifying internal FLEXT packages."""
 
-    MARKDOWN_LINK_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-        r"\[([^\]]+)\]\(([^)]+)\)"
-    )
+    MARKDOWN_LINK_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.MARKDOWN_LINK_RE
     """Match markdown links capturing text (group 1) and URL (group 2)."""
 
-    MARKDOWN_LINK_URL_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-        r"\[[^\]]+\]\(([^)]+)\)",
-    )
+    MARKDOWN_LINK_URL_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.MARKDOWN_LINK_URL_RE
     """Match markdown links capturing only the URL (group 1)."""
 
-    HEADING_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-        r"^#{1,6}\s+(.+?)\s*$",
-        re.MULTILINE,
-    )
+    HEADING_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.HEADING_RE
     """Match any markdown heading (h1-h6), capturing the text."""
 
-    HEADING_H2_H3_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-        r"^(##|###)\s+(.+?)\s*$",
-        re.MULTILINE,
-    )
+    HEADING_H2_H3_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.HEADING_H2_H3_RE
     """Match h2/h3 headings, capturing level (group 1) and text (group 2)."""
 
-    ANCHOR_LINK_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-        r"\[([^\]]+)\]\(#([^)]+)\)"
-    )
+    ANCHOR_LINK_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.ANCHOR_LINK_RE
     """Match internal anchor links, capturing text and anchor."""
 
-    INLINE_CODE_RE: ClassVar[t.Infra.RegexPattern] = re.compile(r"`[^`]*`")
+    INLINE_CODE_RE: ClassVar[t.Infra.RegexPattern] = c.Infra.INLINE_CODE_RE
     """Match inline code spans for stripping before analysis."""
 
     # ── Source code patterns (shared across rules/transformers/codegen) ──

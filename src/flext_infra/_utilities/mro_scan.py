@@ -24,9 +24,9 @@ from flext_infra import (
 
 class FlextInfraUtilitiesRefactorMroScan:
     _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.CONSTANT_NAME_RE
-    _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
-    _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = re.compile(
-        r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])",
+    _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = c.Infra.MRO_SCAN_TYPE_PATTERN
+    _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = (
+        c.Infra.MRO_SCAN_PROTOCOL_BASE_PATTERN
     )
 
     @staticmethod

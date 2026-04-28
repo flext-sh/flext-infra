@@ -581,5 +581,44 @@ class FlextInfraConstantsRefactor:
     })
     "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
 
+    # --- MRO scan patterns ---
+    MRO_SCAN_TYPE_PATTERN: Final[re.Pattern[str]] = re.compile(
+        r"^_?[A-Za-z][A-Za-z0-9_]*$"
+    )
+    "Regex: valid Python identifier (used for MRO type/class name validation)."
+    MRO_SCAN_PROTOCOL_BASE_PATTERN: Final[re.Pattern[str]] = re.compile(
+        r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])",
+    )
+    "Regex: Protocol base in class definition (with optional namespace prefix)."
+
+    # --- Symbol/identifier patterns ---
+    IDENTIFIER_PATTERN: Final[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
+    "Regex: Python identifier word boundary match."
+
+    # --- Import bypass pattern (for transformer matching) ---
+    IMPORT_BYPASS_RE: Final[re.Pattern[str]] = re.compile(
+        r"^try:\n"
+        r"(    from .+\n)"
+        r"except ImportError:\n"
+        r"    from .+\n",
+        re.MULTILINE,
+    )
+    "Regex: try/except ImportError import bypass block (strict form)."
+
+    # --- Deprecated class pattern ---
+    CLASS_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(class\s+(\w+)\b[^\n]*:\n(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
+        re.MULTILINE,
+    )
+    "Regex: full class block including body lines."
+    DEPRECATION_WARN_RE: Final[re.Pattern[str]] = re.compile(r"\.warn\s*\(")
+    "Regex: deprecation warning call site (.warn())."
+
+    # --- Lazy import fixer ---
+    DEF_ASYNC_CLASS_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?:def |async def |class )", re.MULTILINE
+    )
+    "Regex: top-level def/async def/class keyword (for lazy import detection)."
+
 
 __all__: list[str] = ["FlextInfraConstantsRefactor"]

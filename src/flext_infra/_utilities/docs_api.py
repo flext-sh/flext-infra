@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import re
 from collections.abc import (
     Mapping,
     MutableSequence,
@@ -37,7 +36,7 @@ class FlextInfraUtilitiesDocsApi:
         "u",
         "x",
     )
-    _STRING_RE: t.Infra.RegexPattern = re.compile(r"""["']([a-zA-Z0-9_\.]+)["']""")
+    _STRING_RE: t.Infra.RegexPattern = c.Infra.STRING_LITERAL_RE
 
     @staticmethod
     def _string_values(value: t.Infra.InfraValue | None) -> t.StrSequence:

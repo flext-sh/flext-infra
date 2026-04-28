@@ -19,19 +19,6 @@ class FlextInfraUtilitiesDiscovery:
 
     _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], tuple[str, ...]]] = {}
 
-    @staticmethod
-    def _ast_base_name(base_node: ast.expr) -> str:
-        """Return one comparable base-class token extracted from AST."""
-        match base_node:
-            case ast.Name(id=name):
-                return name
-            case ast.Attribute(attr=attr):
-                return attr
-            case ast.Subscript(value=value):
-                return FlextInfraUtilitiesDiscovery._ast_base_name(value)
-            case _:
-                return ""
-
     @classmethod
     def _ast_base_candidates(cls, base_node: ast.expr) -> tuple[str, ...]:
         """Return candidate base tokens that can match declared imports."""
@@ -50,6 +37,99 @@ class FlextInfraUtilitiesDiscovery:
                 return cls._ast_base_candidates(value)
             case _:
                 return ()
+
+    @staticmethod
+    def _declared_imports_ast(syntax_tree: ast.Module) -> dict[str, str]:
+        """Map imported names and aliases declared in one module AST."""
+        declared_imports_ast: dict[str, str] = {
+            (
+                imported_name.asname or imported_name.name
+            ): f"{node.module}.{imported_name.name}"
+            for node in syntax_tree.body
+            if isinstance(node, ast.ImportFrom) and node.module
+            for imported_name in node.names
+            if imported_name.name != "*"
+        }
+        declared_imports_ast.update({
+            (
+                imported_name.asname
+                or imported_name.name.split(
+                    ".",
+                    maxsplit=1,
+                )[0]
+            ): imported_name.name
+            for node in syntax_tree.body
+            if isinstance(node, ast.Import)
+            for imported_name in node.names
+        })
+        return declared_imports_ast
+
+    @staticmethod
+    def _resolve_imported_base_target(
+        base_candidates: tuple[str, ...],
+        declared_imports_ast: Mapping[str, str],
+    ) -> str:
+        """Return the imported target path matching one base candidate set."""
+        return next(
+            (
+                imported_path
+                for base_name in base_candidates
+                for imported_path in (
+                    declared_imports_ast.get(base_name, ""),
+                    declared_imports_ast.get(
+                        base_name.split(".", maxsplit=1)[0],
+                        "",
+                    ),
+                )
+                if imported_path
+            ),
+            "",
+        )
+
+    @staticmethod
+    def _resolved_parent_constants_targets(
+        discovered_classes: Sequence[ast.ClassDef],
+        declared_imports_ast: Mapping[str, str],
+        *,
+        current_root: str,
+        return_module: bool,
+    ) -> tuple[str, ...]:
+        """Resolve unique imported parent constant targets from discovered classes."""
+        resolved: list[str] = []
+        resolved_seen: set[str] = set()
+        for class_node in discovered_classes:
+            for base_candidates in (
+                candidates
+                for base_node in class_node.bases
+                if (
+                    candidates := FlextInfraUtilitiesDiscovery._ast_base_candidates(
+                        base_node,
+                    )
+                )
+            ):
+                target_name = (
+                    FlextInfraUtilitiesDiscovery._resolve_imported_base_target(
+                        base_candidates,
+                        declared_imports_ast,
+                    )
+                )
+                if not target_name:
+                    continue
+                package_root = target_name.split(".", maxsplit=1)[0]
+                target = (
+                    package_root
+                    if return_module
+                    else target_name.rsplit(".", maxsplit=1)[-1]
+                )
+                if (
+                    not target
+                    or package_root == current_root
+                    or target in resolved_seen
+                ):
+                    continue
+                resolved_seen.add(target)
+                resolved.append(target)
+        return tuple(resolved)
 
     @staticmethod
     @cache
@@ -72,6 +152,55 @@ class FlextInfraUtilitiesDiscovery:
         return str(wrapper_root) if wrapper_root is not None else ""
 
     @staticmethod
+    def _relative_path_parts(
+        resolved: Path,
+        project_root: Path | None,
+    ) -> tuple[str, ...]:
+        """Return path parts relative to project root when possible."""
+        if project_root is None:
+            return ()
+        try:
+            return resolved.relative_to(project_root).parts
+        except ValueError:
+            return ()
+
+    @staticmethod
+    def _normalized_python_parts(
+        resolved: Path,
+        path_parts: tuple[str, ...],
+    ) -> tuple[str, ...]:
+        """Normalize file-system parts into package/module parts."""
+        if path_parts and path_parts[-1] == c.Infra.INIT_PY:
+            return path_parts[:-1]
+        if resolved.suffix == c.Infra.EXT_PYTHON and path_parts:
+            return path_parts[:-1] + (resolved.stem,)
+        return path_parts
+
+    @staticmethod
+    def _package_name_from_wrapper_parts(path_parts: tuple[str, ...]) -> str:
+        """Return package name when path parts start with a known wrapper."""
+        if not path_parts:
+            return ""
+        root_name = path_parts[0]
+        if root_name not in c.Infra.ROOT_WRAPPER_SEGMENTS:
+            return ""
+        package_parts = (
+            path_parts[1:] if root_name == c.Infra.DEFAULT_SRC_DIR else path_parts
+        )
+        return ".".join(package_parts)
+
+    @staticmethod
+    def _package_name_from_src_dir(resolved: Path) -> str:
+        """Return the package name when the path is a project root with src/<pkg>."""
+        src_dir = resolved / c.Infra.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            return ""
+        for child in sorted(src_dir.iterdir()):
+            if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
+                return str(child.name)
+        return ""
+
+    @staticmethod
     def project_root(file_path: Path) -> Path | None:
         """Discover the enclosing project root for one file or directory path."""
         project_root = FlextInfraUtilitiesDiscovery._discover_project_root_from_path(
@@ -84,53 +213,37 @@ class FlextInfraUtilitiesDiscovery:
     def _discover_package_from_path(file_path: str) -> str:
         """Discover the package path cached by file path."""
         resolved = Path(file_path).resolve()
-        relative_parts: tuple[str, ...] = ()
         project_root_value = (
             FlextInfraUtilitiesDiscovery._discover_project_root_from_path(file_path)
         )
         project_root = Path(project_root_value) if project_root_value else None
-        if project_root is not None:
-            try:
-                relative_parts = resolved.relative_to(project_root).parts
-            except ValueError:
-                relative_parts = ()
-        normalized_parts = (
-            relative_parts[:-1]
-            if relative_parts and relative_parts[-1] == c.Infra.INIT_PY
-            else relative_parts[:-1] + (resolved.stem,)
-            if resolved.suffix == c.Infra.EXT_PYTHON and relative_parts
-            else relative_parts
+        normalized_parts = FlextInfraUtilitiesDiscovery._normalized_python_parts(
+            resolved,
+            FlextInfraUtilitiesDiscovery._relative_path_parts(
+                resolved,
+                project_root,
+            ),
         )
-        if normalized_parts:
-            root_name = normalized_parts[0]
-            if root_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
-                package_parts = (
-                    normalized_parts[1:]
-                    if root_name == c.Infra.DEFAULT_SRC_DIR
-                    else normalized_parts
-                )
-                return ".".join(package_parts)
-        src_dir = resolved / c.Infra.DEFAULT_SRC_DIR
-        if src_dir.is_dir():
-            for child in sorted(src_dir.iterdir()):
-                if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                    return str(child.name)
-        absolute_parts = (
-            resolved.parts[:-1]
-            if resolved.name == c.Infra.INIT_PY
-            else resolved.parts[:-1] + (resolved.stem,)
-            if resolved.suffix == c.Infra.EXT_PYTHON
-            else resolved.parts
+        package_name = FlextInfraUtilitiesDiscovery._package_name_from_wrapper_parts(
+            normalized_parts,
+        )
+        if package_name:
+            return package_name
+        package_name = FlextInfraUtilitiesDiscovery._package_name_from_src_dir(resolved)
+        if package_name:
+            return package_name
+        absolute_parts = FlextInfraUtilitiesDiscovery._normalized_python_parts(
+            resolved,
+            resolved.parts,
         )
         for index, part in enumerate(absolute_parts):
-            if part not in c.Infra.ROOT_WRAPPER_SEGMENTS:
-                continue
-            package_parts = (
-                absolute_parts[index + 1 :]
-                if part == c.Infra.DEFAULT_SRC_DIR
-                else absolute_parts[index:]
+            package_name = (
+                FlextInfraUtilitiesDiscovery._package_name_from_wrapper_parts(
+                    absolute_parts[index:],
+                )
             )
-            return ".".join(package_parts)
+            if package_name and part in c.Infra.ROOT_WRAPPER_SEGMENTS:
+                return package_name
         if resolved.name == c.Infra.INIT_PY:
             top_level_parts = tuple(
                 part for part in absolute_parts if part and part != resolved.anchor
@@ -364,27 +477,7 @@ class FlextInfraUtilitiesDiscovery:
             )
         except (OSError, SyntaxError):
             syntax_tree = ast.Module(body=[], type_ignores=[])
-        declared_imports_ast: dict[str, str] = {
-            (
-                imported_name.asname or imported_name.name
-            ): f"{node.module}.{imported_name.name}"
-            for node in syntax_tree.body
-            if isinstance(node, ast.ImportFrom) and node.module
-            for imported_name in node.names
-            if imported_name.name != "*"
-        }
-        declared_imports_ast.update({
-            (
-                imported_name.asname
-                or imported_name.name.split(
-                    ".",
-                    maxsplit=1,
-                )[0]
-            ): imported_name.name
-            for node in syntax_tree.body
-            if isinstance(node, ast.Import)
-            for imported_name in node.names
-        })
+        declared_imports_ast = cls._declared_imports_ast(syntax_tree)
         discovered_classes = [
             node
             for node in syntax_tree.body
@@ -393,47 +486,12 @@ class FlextInfraUtilitiesDiscovery:
         current_root = (
             current_module.split(".", maxsplit=1)[0] if current_module else ""
         )
-        resolved: list[str] = []
-        resolved_seen: set[str] = set()
-        for class_node in discovered_classes:
-            base_candidate_groups = [
-                candidates
-                for base_node in class_node.bases
-                if (candidates := cls._ast_base_candidates(base_node))
-            ]
-            for base_candidates in base_candidate_groups:
-                target_name = next(
-                    (
-                        imported_path
-                        for base_name in base_candidates
-                        for imported_path in (
-                            declared_imports_ast.get(base_name, ""),
-                            declared_imports_ast.get(
-                                base_name.split(".", maxsplit=1)[0],
-                                "",
-                            ),
-                        )
-                        if imported_path
-                    ),
-                    "",
-                )
-                if not target_name:
-                    continue
-                package_root = target_name.split(".", maxsplit=1)[0]
-                target = (
-                    package_root
-                    if return_module
-                    else target_name.rsplit(".", maxsplit=1)[-1]
-                )
-                if (
-                    not target
-                    or package_root == current_root
-                    or target in resolved_seen
-                ):
-                    continue
-                resolved_seen.add(target)
-                resolved.append(target)
-        result = tuple(resolved)
+        result = cls._resolved_parent_constants_targets(
+            discovered_classes,
+            declared_imports_ast,
+            current_root=current_root,
+            return_module=return_module,
+        )
         cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
         return result
 

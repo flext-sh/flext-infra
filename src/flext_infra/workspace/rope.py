@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     """Open one shared Rope workspace with cached public DSL methods."""
 
-    _IDENTIFIER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
+    _IDENTIFIER_PATTERN: ClassVar[re.Pattern[str]] = c.Infra.IDENTIFIER_PATTERN
 
     project_prefix: Annotated[
         str,

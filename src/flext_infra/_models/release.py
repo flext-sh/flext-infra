@@ -17,11 +17,12 @@ class FlextInfraModelsRelease:
     ):
         """Base model for build result data."""
 
-        path: t.NonEmptyStr = m.Field(description="Project absolute path")
-        exit_code: t.NonNegativeInt = m.Field(
-            description="Exit code returned by make build"
-        )
-        log: t.NonEmptyStr = m.Field(description="Build log file path")
+        path: Annotated[t.NonEmptyStr, m.Field(description="Project absolute path")]
+        exit_code: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Exit code returned by make build"),
+        ]
+        log: Annotated[t.NonEmptyStr, m.Field(description="Build log file path")]
 
     class ReleaseSpec(
         mm.VersionTagMixin,

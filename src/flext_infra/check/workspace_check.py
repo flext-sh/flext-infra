@@ -24,7 +24,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
+class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
     """Run workspace quality gates and generate reports."""
 
     def __init__(

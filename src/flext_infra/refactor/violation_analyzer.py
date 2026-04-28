@@ -29,15 +29,6 @@ from flext_infra import (
 class FlextInfraRefactorViolationAnalyzer:
     """Analyzer for refactor violation metrics across source files."""
 
-    _IMPORT_RE = re.compile(
-        r"^(?:from\s+([\w.]+)\s+import\s+(.+)|import\s+([\w.]+)(?:\s+as\s+(\w+))?)$",
-        re.MULTILINE,
-    )
-    _FUNCTION_DEF_RE = re.compile(
-        r"^def\s+(\w+)\s*\(",
-        re.MULTILINE,
-    )
-
     @classmethod
     def analyze_files(
         cls,
@@ -116,7 +107,7 @@ class FlextInfraRefactorViolationAnalyzer:
         totals: Counter[str] = Counter()
         manual_review: MutableSequence[m.Infra.HelperClassification] = []
         local_to_import = cls._extract_local_to_import(content)
-        for match in cls._FUNCTION_DEF_RE.finditer(content):
+        for match in c.Infra.FUNCTION_DEF_SIMPLE_RE.finditer(content):
             func_name = match.group(1)
             func_body = cls._extract_function_body(content, match.start())
             used_names = set(re.findall(r"\b([A-Za-z_]\w*)\b", func_body))
@@ -220,7 +211,7 @@ class FlextInfraRefactorViolationAnalyzer:
     def _extract_local_to_import(cls, content: str) -> t.StrMapping:
         """Extract local-name -> fully-qualified-name mapping from imports."""
         result: t.MutableStrMapping = {}
-        for match in cls._IMPORT_RE.finditer(content):
+        for match in c.Infra.COMBINED_IMPORT_RE.finditer(content):
             match match.groups():
                 case (str(module_name), str(names_part), _, _):
                     for imported_name, local in u.Infra.parse_import_names(names_part):

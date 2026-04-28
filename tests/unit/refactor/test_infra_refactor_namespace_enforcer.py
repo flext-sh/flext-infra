@@ -261,6 +261,53 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(violations, empty=True)
 
+    def test_loose_object_detector_skips_init_module_exception(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "__init__.py"
+        target.write_text(
+            "from __future__ import annotations\n\n_LAZY_IMPORTS = {}\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that(violations, empty=True)
+
+    def test_loose_object_detector_skips_canonical_class_alias_in_single_class_count(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "protocols.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "\n"
+            "class SampleProtocols:\n"
+            "    pass\n"
+            "\n"
+            "p = SampleProtocols\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that(violations, empty=True)
+
     def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
         self,
         tmp_path: Path,

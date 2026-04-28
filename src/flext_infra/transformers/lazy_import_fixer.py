@@ -6,16 +6,13 @@ existing imports.
 
 from __future__ import annotations
 
-import re
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, t, u
+from flext_infra import FlextInfraRopeTransformer, c, t, u
 
 
 class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
     """Hoist function-local imports to module top while preserving ordering."""
-
-    _DEF_RE = re.compile(r"^(?:def |async def |class )", re.MULTILINE)
 
     @override
     def apply_to_source(
@@ -97,7 +94,9 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
     @classmethod
     def starts_body_scope(cls, *, in_body: bool, stripped_line: str) -> bool:
         """Return whether the current line starts a def/class body scope."""
-        return (not in_body) and cls._DEF_RE.match(stripped_line) is not None
+        return (not in_body) and c.Infra.DEF_ASYNC_CLASS_RE.match(
+            stripped_line
+        ) is not None
 
     @staticmethod
     def indent_of(line: str) -> int:

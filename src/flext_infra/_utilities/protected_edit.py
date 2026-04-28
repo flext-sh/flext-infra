@@ -5,7 +5,6 @@ from __future__ import annotations
 import concurrent.futures
 import difflib
 import hashlib
-import re
 import shutil
 from collections.abc import (
     Callable,
@@ -24,26 +23,19 @@ class FlextInfraUtilitiesProtectedEdit:
     """Shared safety helpers for protected file edits in refactor workflows."""
 
     _NO_TESTS_EXIT_CODE = 5
-    _LINE_COL_RE = re.compile(r":\d+(?::\d+)?")
-    _CODE_FRAME_RE = re.compile(r"^\s*\d+\s+\|")
-    _CODE_FRAME_BODY_RE = re.compile(r"^\s*\|")
-    _UNUSED_IMPORT_RE = re.compile(r"`([^`]+)` imported but unused")
-    _SUMMARY_RE = re.compile(r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$")
 
     @staticmethod
     def _normalize_lint_line(line: str) -> str:
-        if FlextInfraUtilitiesProtectedEdit._CODE_FRAME_RE.match(
-            line
-        ) or FlextInfraUtilitiesProtectedEdit._CODE_FRAME_BODY_RE.match(line):
+        if c.Infra.CODE_FRAME_RE.match(line) or c.Infra.CODE_FRAME_BODY_RE.match(line):
             return ""
-        normalized = FlextInfraUtilitiesProtectedEdit._LINE_COL_RE.sub("", line)
-        normalized = FlextInfraUtilitiesProtectedEdit._UNUSED_IMPORT_RE.sub(
+        normalized = c.Infra.LINE_COL_RE.sub("", line)
+        normalized = c.Infra.UNUSED_IMPORT_RE.sub(
             lambda match: (
                 f"`{match.group(1).rsplit('.', maxsplit=1)[-1]}` imported but unused"
             ),
             normalized,
         )
-        if FlextInfraUtilitiesProtectedEdit._SUMMARY_RE.match(normalized):
+        if c.Infra.LINT_SUMMARY_RE.match(normalized):
             return ""
         return normalized.strip()
 

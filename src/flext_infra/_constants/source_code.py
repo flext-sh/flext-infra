@@ -232,6 +232,56 @@ class FlextInfraConstantsSourceCode:
     SINGLE_LINE_DOCSTRING_QUOTE_COUNT: Final[int] = 2
     "Minimum quote count to detect single-line docstring."
 
+    # --- Combined import detection (from + bare import) ---
+    COMBINED_IMPORT_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?:from\s+([\w.]+)\s+import\s+(.+)|import\s+([\w.]+)(?:\s+as\s+(\w+))?)$",
+        re.MULTILINE,
+    )
+    "Regex: matches both 'from X import Y' and 'import X [as Z]' forms."
+    FUNCTION_DEF_SIMPLE_RE: Final[re.Pattern[str]] = re.compile(
+        r"^def\s+(\w+)\s*\(",
+        re.MULTILINE,
+    )
+    "Regex: simple function definition (def name(), captures name only)."
+
+    # --- Lint output parsing patterns ---
+    LINE_COL_RE: Final[re.Pattern[str]] = re.compile(r":\d+(?::\d+)?")
+    "Regex: line:col or line:col:col reference in lint output."
+    CODE_FRAME_RE: Final[re.Pattern[str]] = re.compile(r"^\s*\d+\s+\|")
+    "Regex: code frame lines (e.g. '  5 | ...' from ruff output)."
+    CODE_FRAME_BODY_RE: Final[re.Pattern[str]] = re.compile(r"^\s*\|")
+    "Regex: code frame continuation lines."
+    UNUSED_IMPORT_RE: Final[re.Pattern[str]] = re.compile(
+        r"`([^`]+)` imported but unused"
+    )
+    "Regex: ruff F401 unused import message, capturing the import name."
+    LINT_SUMMARY_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$"
+    )
+    "Regex: ruff summary line (Found N errors / N fixable)."
+
+    # --- Result/r[T] signature patterns ---
+    SILENT_FAILURE_RETURN_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?P<indent>\s*)return\s+(?P<sentinel>False|None|\[\]|\{\})\s*(?:#.*)?$",
+    )
+    "Regex: silent-failure return sentinel (False/None/[]/{}})."
+    SILENT_FAILURE_UNWRAP_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?P<indent>\s*)return\s+.+?\.unwrap_or\((?P<sentinel>False|None|\[\]|\{\})\)\s*(?:#.*)?$",
+    )
+    "Regex: unwrap_or with sentinel value."
+    SILENT_FAILURE_IF_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?P<indent>\s*)if\s+(?:(?P<failure_name>[A-Za-z_]\w*)\.failure|not\s+(?P<success_name>[A-Za-z_]\w*)\.success)\s*:\s*(?P<inline>.*)$",
+    )
+    "Regex: failure/success guard pattern."
+    SILENT_FAILURE_EXCEPT_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?P<indent>\s*)except(?:\s+.+?)?(?:\s+as\s+(?P<exception_name>[A-Za-z_]\w*))?\s*:\s*(?P<inline>.*)$",
+    )
+    "Regex: except clause with optional exception name."
+    FUNCTION_SIGNATURE_RE: Final[re.Pattern[str]] = re.compile(
+        r"->\s*(?:r\[(?P<legacy_inner>.+)\]|p\.Result\[(?P<result_inner>.+)\])\s*:",
+    )
+    "Regex: r[T] or p.Result[T] return annotation."
+
     # --- Semantic versioning (was: class Versioning) ---
     SEMVER_PROJECT_SECTION: Final[str] = "[project]"
     "TOML section header for project metadata."

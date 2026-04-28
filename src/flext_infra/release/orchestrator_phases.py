@@ -91,7 +91,7 @@ class FlextInfraReleaseOrchestratorPhases:
         u.Cli.json_write(
             output_dir / "build-report.json",
             report.model_dump(mode="json"),
-            sort_keys=True,
+            m.Cli.JsonWriteOptions(sort_keys=True),
         )
         logger.info(
             "release_phase_build_report",

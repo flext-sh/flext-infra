@@ -81,19 +81,25 @@ class FlextInfraInventoryService(s[bool]):
             external_path = (
                 reports_dir / "scripts-infra--json--external-scripts-candidates.json"
             )
-            write_result = u.Cli.json_write(inventory_path, inventory, sort_keys=True)
+            write_result = u.Cli.json_write(
+                inventory_path, inventory, m.Cli.JsonWriteOptions(sort_keys=True)
+            )
             if write_result.failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(inventory_path))
-            write_result = u.Cli.json_write(wiring_path, wiring, sort_keys=True)
+            write_result = u.Cli.json_write(
+                wiring_path, wiring, m.Cli.JsonWriteOptions(sort_keys=True)
+            )
             if write_result.failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(wiring_path))
-            write_result = u.Cli.json_write(external_path, external, sort_keys=True)
+            write_result = u.Cli.json_write(
+                external_path, external, m.Cli.JsonWriteOptions(sort_keys=True)
+            )
             if write_result.failure:
                 return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",

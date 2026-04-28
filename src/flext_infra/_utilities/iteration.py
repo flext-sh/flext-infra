@@ -593,8 +593,6 @@ class FlextInfraUtilitiesIteration:
             return candidates
         configured_order = {name: idx for idx, name in enumerate(configured_members)}
         ordered: list[Path] = []
-        if resolved_workspace_root in candidates:
-            ordered.append(resolved_workspace_root)
         non_root_candidates = sorted(
             (c for c in candidates if c != resolved_workspace_root),
             key=lambda candidate: (
@@ -639,16 +637,13 @@ class FlextInfraUtilitiesIteration:
 
     @classmethod
     def _attached_top_level_dir_names(cls, scope_root: Path) -> frozenset[str]:
-        """Return top-level dir names that are external git repos importing flext-core.
+        """Return top-level dir names opted into workspace iteration as attached.
 
-        Structural rule (no opt-in flags): a directory is "attached" if it
-        lives at workspace top-level, has its own ``.git`` directory (so it
-        is a git repo) and is **not** registered as a submodule of the
-        workspace itself. The flext-core dependency check is delegated to
-        ``_looks_like_project`` downstream — this function only filters by
-        repo identity. Covers external sub-repos like ``algar-oud-mig``
-        and ``gruponos-meltano-native`` that consume flext-core but live
-        outside the workspace's submodule registry.
+        A directory is "attached" only when its ``pyproject.toml`` declares
+        ``[tool.flext.workspace] attached = true`` and it is not already
+        registered as a workspace submodule. Project-shape validation stays in
+        ``_looks_like_project`` downstream; this helper only surfaces the
+        explicit opt-in names.
         """
         workspace_submodule_names = (
             cls._git_tracked_top_level_dir_names(scope_root) or frozenset()
@@ -659,11 +654,13 @@ class FlextInfraUtilitiesIteration:
                 continue
             if entry.name in workspace_submodule_names:
                 continue
-            if not (entry / ".git").exists():
-                continue
             if not (entry / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
-            attached.append(entry.name)
+            try:
+                if u.read_tool_flext_config(entry).workspace.attached:
+                    attached.append(entry.name)
+            except (FileNotFoundError, ValueError):
+                continue
         return frozenset(attached)
 
     @staticmethod

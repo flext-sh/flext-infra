@@ -60,6 +60,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         return u.Infra.resolve_projects(
             self.root,
             self.project_names or (),
+            include_attached=True,
         )
 
     @staticmethod

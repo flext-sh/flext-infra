@@ -32,6 +32,7 @@ class FlextInfraLooseObjectDetector:
             skip_protected=True,
             skip_settings=True,
             skip_alias_modules=True,
+            skip_init_py=True,
         )
         if res is None:
             return []
@@ -56,9 +57,12 @@ class FlextInfraLooseObjectDetector:
 
         class_symbols: MutableSequence[m.Infra.SymbolInfo] = []
         for symbol in u.Infra.get_module_symbols(rope_project, res):
-            if symbol.kind == "class" or symbol.name in c.Infra.SCAN_ALLOWED_TOP_LEVEL:
-                if symbol.kind == "class":
-                    class_symbols.append(symbol)
+            if symbol.name in c.Infra.SCAN_ALLOWED_TOP_LEVEL:
+                continue
+            if symbol.kind == "class":
+                if symbol.name in c.Infra.DETECTION_CANONICAL_ALIASES:
+                    continue
+                class_symbols.append(symbol)
                 continue
             if symbol.kind == "function":
                 _add(symbol, "function", "Utilities")

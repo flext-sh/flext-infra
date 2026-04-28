@@ -24,8 +24,8 @@ from flext_infra import (
 
 
 class FlextInfraInternalDependencySyncService(
-    FlextInfraInternalSyncRepoMixin,
     FlextInfraServiceBase[bool],
+    FlextInfraInternalSyncRepoMixin,
 ):
     """Synchronize internal FLEXT dependencies via git clone or workspace symlinks."""
 

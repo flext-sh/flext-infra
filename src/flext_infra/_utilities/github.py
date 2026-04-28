@@ -43,7 +43,7 @@ class FlextInfraUtilitiesGithub:
                 _ = u.Cli.json_write(
                     request.report_path,
                     payload_skipped,
-                    sort_keys=True,
+                    m.Cli.JsonWriteOptions(sort_keys=True),
                 )
             return r[m.Infra.GithubWorkflowLintOutcome].ok(
                 payload_skipped,
@@ -64,7 +64,9 @@ class FlextInfraUtilitiesGithub:
                 detail=result.error or "",
             )
         if request.report_path is not None:
-            _ = u.Cli.json_write(request.report_path, payload, sort_keys=True)
+            _ = u.Cli.json_write(
+                request.report_path, payload, m.Cli.JsonWriteOptions(sort_keys=True)
+            )
         if payload.status == c.Infra.WorkflowLintStatus.FAIL.value and request.strict:
             return r[m.Infra.GithubWorkflowLintOutcome].fail(
                 result.error or "actionlint found issues",
@@ -117,7 +119,9 @@ class FlextInfraUtilitiesGithub:
             operations=all_operations,
         )
         if request.report_path is not None:
-            _ = u.Cli.json_write(request.report_path, report, sort_keys=True)
+            _ = u.Cli.json_write(
+                request.report_path, report, m.Cli.JsonWriteOptions(sort_keys=True)
+            )
         return r[m.Infra.GithubWorkflowSyncReport].ok(report)
 
     @classmethod
