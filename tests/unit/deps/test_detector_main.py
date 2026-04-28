@@ -30,6 +30,7 @@ class _DepsStub(
     def __init__(self, project: Path, to_add: t.StrSequence) -> None:
         self._project = project
         self._to_add = to_add
+        self.typings_calls = 0
 
     @override
     def discover_project_paths(
@@ -76,6 +77,7 @@ class _DepsStub(
         *,
         include_mypy: bool = True,
     ) -> p.Result[m.Infra.TypingsReport]:
+        self.typings_calls += 1
         del project_path, venv_bin, limits_path
         del include_mypy
         return r[m.Infra.TypingsReport].ok(
@@ -176,6 +178,40 @@ def _setup_typings_detector(
 
 
 class TestsFlextInfraDepsDetectorMain:
+    def test_run_without_typings_skips_typings_detection(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_path = tmp_path / "proj-a"
+        (project_path / "src").mkdir(parents=True)
+        deptry_path = tmp_path / ".venv" / "bin" / "deptry"
+        deptry_path.parent.mkdir(parents=True)
+        deptry_path.write_text("", encoding="utf-8")
+        deps = _DepsStub(project_path, ["types-requests"])
+        runtime = FlextInfraDependencyDetectorRuntime(
+            detector=_DetectorStub(
+                deps=deps,
+                runner=_RunnerStub(
+                    lambda cmd, *, cwd, timeout, env: r[m.Cli.CommandOutput].ok(
+                        m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+                    )
+                ),
+            ),
+            workspace_report_factory=m.Infra.WorkspaceDependencyReport,
+            dependency_limits_factory=m.Infra.DependencyLimitsInfo,
+            pip_check_factory=m.Infra.PipCheckReport,
+        )
+
+        tm.ok(
+            runtime.run(
+                FlextInfraModelsDeps.DetectCommand(
+                    workspace=str(tmp_path),
+                    no_pip_check=True,
+                )
+            )
+        )
+        tm.that(deps.typings_calls, eq=0)
+
     def test_run_with_apply_typings_success(
         self,
         tmp_path: Path,

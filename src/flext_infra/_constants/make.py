@@ -192,7 +192,7 @@ class FlextInfraConstantsMake:
         ),
         (
             "up",
-            "Upgrade deps + modernize + dependency report (.reports/dependencies/)",
+            "Refresh lock/install + modernize + dependency report (.reports/dependencies/)",
         ),
         ("mod", "Modernize pyproject.toml configs only (no lock/install)"),
         ("build", "Build/package all selected projects"),

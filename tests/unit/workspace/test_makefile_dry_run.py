@@ -129,9 +129,30 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "up", "PROJECT=demo-a")
+        output = process.stdout + process.stderr
 
         assert process.returncode == 0
-        assert 'make mod PROJECT="demo-a"' in (process.stdout + process.stderr)
+        assert 'make mod PROJECT="demo-a"' in output
+        assert "detect --quiet --no-fail" in output
+        assert (
+            f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
+            in output
+        )
+
+    def test_workspace_makefile_dry_run_types_writes_dependency_report(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "types")
+        output = process.stdout + process.stderr
+
+        assert process.returncode == 0
+        assert "detect --typings --quiet --no-fail" in output
+        assert (
+            f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
+            in output
+        )
 
     def test_workspace_makefile_dry_run_gen_forwards_selection(
         self,

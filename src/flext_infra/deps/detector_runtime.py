@@ -102,7 +102,8 @@ class FlextInfraDependencyDetectorRuntime:
             project_payload = deps_service.build_project_report(project_name, issues)
             projects_report[project_name] = dict(project_payload.model_dump())
             if (
-                typing_deps is not None
+                do_typings
+                and typing_deps is not None
                 and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir()
             ):
                 if not params.quiet:
@@ -170,26 +171,31 @@ class FlextInfraDependencyDetectorRuntime:
             report_model.pip_check = self._pip_check_factory(ok=pip_ok, lines=pip_lines)
         if params.output_format == c.Cli.OutputFormats.JSON:
             return r[bool].ok(True)
-        out_path: Path | None = None
-        if params.output_path is not None:
-            out_path = params.output_path
-        elif params.apply:
-            out_path = u.Cli.resolve_report_path(
+        out_path: Path = (
+            params.output_path
+            or u.Cli.resolve_report_path(
                 root,
                 c.Infra.PROJECT,
                 c.Infra.DEPENDENCIES,
                 "detect-runtime-dev-latest.json",
             )
-        if out_path is not None and not params.dry_run:
-            report_payload: dict[str, t.JsonValue] = {
+        )
+        report_payload: dict[str, t.JsonValue] = {
+            key: u.normalize_to_json_value(value)
+            for key, value in report_model.model_dump().items()
+        }
+        report_payload["projects"] = {
+            project_name: {
                 key: u.normalize_to_json_value(value)
-                for key, value in report_model.model_dump().items()
+                for key, value in project_payload.items()
             }
-            write_result = u.Cli.json_write(out_path, report_payload)
-            if write_result.failure:
-                return r[bool].fail(write_result.error or "failed to write report")
-            if not params.quiet:
-                detector.log.info("deps_report_written", path=str(out_path))
+            for project_name, project_payload in projects_report.items()
+        }
+        write_result = u.Cli.json_write(out_path, report_payload)
+        if write_result.failure:
+            return r[bool].fail(write_result.error or "failed to write report")
+        if not params.quiet:
+            detector.log.info("deps_report_written", path=str(out_path))
         total_issues = 0
         for payload in projects_report.values():
             deptry_payload = u.Cli.json_as_mapping(payload.get(c.Infra.DEPTRY))

@@ -431,7 +431,7 @@ boot: ## Install all projects into workspace .venv
 		echo "Skipping workspace validation (no managed workspace projects selected)."; \
 	fi
 
-up: ## Upgrade Python dependencies to latest via Poetry
+up: ## Refresh workspace lock/install + dependency report (uv workspace mode)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
@@ -473,8 +473,15 @@ up: ## Upgrade Python dependencies to latest via Poetry
 	rm -f "$$log_file"; \
 	echo "Upgrade summary: Upgraded=workspace Failed=0 Total=workspace"; \
 	if [ "$(DEPS_REPORT)" != "0" ]; then \
-		echo "Dependency report (deptry + pip check)..."; \
-		$(WORKSPACE_INFRA_DEPS) detect -q --no-fail; \
+		printf "Dependency report (deptry + pip check)... "; \
+		report_ts=$$(date +%s); \
+		if $(WORKSPACE_INFRA_DEPS) detect --quiet --no-fail --output "$(CURDIR)/.reports/dependencies/detect-runtime-dev-latest.json"; then \
+			report_elapsed=$$(( $$(date +%s) - report_ts )); \
+			echo "ok ($${report_elapsed}s)"; \
+		else \
+			echo "failed"; \
+			exit 1; \
+		fi; \
 	fi
 	$(Q)echo "Syncing GitHub workflow templates..."
 	$(Q)$(WORKSPACE_INFRA_GITHUB) workflows --workspace "$(CURDIR)" --apply --prune --report .reports/workflows/sync.json
@@ -696,7 +703,15 @@ types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency rep
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) stub-validate \
 		$(if $(SELECTED_PROJECT_FLAGS),$(SELECTED_PROJECT_FLAGS),--all)
 	$(Q)if [ "$(DEPS_REPORT)" != "0" ]; then \
-		$(WORKSPACE_INFRA_DEPS) detect --typings -q --no-fail; \
+		printf "Dependency report (deptry + pip check)... "; \
+		report_ts=$$(date +%s); \
+		if $(WORKSPACE_INFRA_DEPS) detect --typings --quiet --no-fail --output "$(CURDIR)/.reports/dependencies/detect-runtime-dev-latest.json"; then \
+			report_elapsed=$$(( $$(date +%s) - report_ts )); \
+			echo "ok ($${report_elapsed}s)"; \
+		else \
+			echo "failed"; \
+			exit 1; \
+		fi; \
 	fi
 
 pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefly + evidence

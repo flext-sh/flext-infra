@@ -97,6 +97,35 @@ def _setup(
 
 
 class TestsFlextInfraDepsDetectorReport:
+    def test_run_without_output_flag_writes_default_report(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        default_output = (
+            tmp_path
+            / ".reports"
+            / "dependencies"
+            / "detect-runtime-dev-latest.json"
+        )
+        runtime = _setup(
+            tmp_path,
+            _DepsStub(tmp_path / "proj-a", 0, 0),
+        )
+        tm.that(
+            tm.ok(
+                runtime.run(
+                    u.Tests.detect_command(
+                        tmp_path,
+                        no_pip_check=True,
+                    ),
+                ),
+            ),
+            eq=True,
+        )
+        tm.that(default_output.exists(), eq=True)
+        payload = tm.ok(u.Cli.json_read(default_output))
+        tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
+
     def test_run_with_output_flag(
         self,
         tmp_path: Path,
@@ -113,7 +142,6 @@ class TestsFlextInfraDepsDetectorReport:
                         tmp_path,
                         output=str(custom_output),
                         no_pip_check=True,
-                        apply=True,
                     ),
                 ),
             ),
@@ -121,7 +149,7 @@ class TestsFlextInfraDepsDetectorReport:
         )
         tm.that(custom_output.exists(), eq=True)
         payload = tm.ok(u.Cli.json_read(custom_output))
-        tm.that("projects" in payload, eq=True)
+        tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
 
     def test_run_with_output_to_blocked_path_fails(
         self,
@@ -141,7 +169,6 @@ class TestsFlextInfraDepsDetectorReport:
                     tmp_path,
                     output=str(blocked_output),
                     no_pip_check=True,
-                    apply=True,
                 ),
             ),
         )
@@ -165,7 +192,6 @@ class TestsFlextInfraDepsDetectorReport:
                     tmp_path,
                     output=str(blocked_output),
                     no_pip_check=True,
-                    apply=True,
                 ),
             ),
         )
