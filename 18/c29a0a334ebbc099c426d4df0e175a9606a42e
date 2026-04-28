@@ -1,0 +1,51 @@
+src/flext_infra/deps/internal_sync.py
+  h_9db9d35f50cf33 28
+src/flext_infra/release/orchestrator.py
+  h_9db9d35f50cf33 35
+src/flext_infra/_utilities/protected_edit.py
+  h_9db9d35f50cf33 29,31-32,38
+src/flext_infra/templates/base_verbs.mk.j2
+  h_9db9d35f50cf33 149,204
+src/flext_infra/workspace/sync.py
+  h_9db9d35f50cf33 33
+src/flext_infra/check/workspace_check.py
+  h_9db9d35f50cf33 27
+src/flext_infra/detectors/loose_object_detector.py
+  h_9db9d35f50cf33 35,60-64
+tests/unit/refactor/test_infra_refactor_namespace_enforcer.py
+  h_9db9d35f50cf33 264-310
+src/flext_infra/workspace/migrator.py
+  h_9db9d35f50cf33 28
+src/flext_infra/_utilities/iteration.py
+  h_9db9d35f50cf33 640,642-646,659-662
+src/flext_infra/_utilities/discovery.py
+  h_9db9d35f50cf33 41-43,65-73,87,89-97,101,105-106,109-112,130-131,154-201,220-223,225,228-233,235,241-242,489
+src/flext_infra/_models/release.py
+  h_9db9d35f50cf33 20-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "18c29a0a334ebbc099c426d4df0e175a9606a42e",
+  "prompts": {
+    "22632355ef1e26ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6ac7df6-1398-4096-87d8-e634aca30e02",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/543705b618f40fc217c3821a6d8d77decc4c183f42fed2e58f154f6490fa1910"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
