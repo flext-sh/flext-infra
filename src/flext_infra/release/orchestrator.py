@@ -81,7 +81,7 @@ class FlextInfraReleaseOrchestrator(
             )
             if version_result.failure:
                 return r[bool].fail(version_result.error or "version resolution failed")
-            resolved_version = str(version_result.value)
+            resolved_version = version_result.value
         else:
             resolved_version = self.version or "0.0.0"
         tag_result = self._resolve_tag(self.tag, resolved_version)
@@ -91,7 +91,7 @@ class FlextInfraReleaseOrchestrator(
             m.Infra.ReleaseOrchestratorConfig(
                 workspace_root=root,
                 version=resolved_version,
-                tag=str(tag_result.value),
+                tag=tag_result.value,
                 phases=phases,
                 project_names=project_names,
                 dry_run=self.effective_dry_run,
@@ -112,7 +112,7 @@ class FlextInfraReleaseOrchestrator(
     ) -> p.Result[str]:
         """Resolve the target release version from explicit or derived inputs."""
         if version_arg:
-            requested = str(version_arg)
+            requested = version_arg
             parse_result = u.Infra.parse_semver(requested)
             return (
                 r[str].ok(requested)
@@ -122,7 +122,7 @@ class FlextInfraReleaseOrchestrator(
         current_result = u.Infra.current_workspace_version(root_path)
         if current_result.failure:
             return r[str].fail(current_result.error or "cannot read current version")
-        current = str(current_result.value)
+        current = current_result.value
 
         requested_bump = bump_arg
         if (not requested_bump) and interactive == 1:
@@ -135,7 +135,7 @@ class FlextInfraReleaseOrchestrator(
     def _resolve_tag(tag_arg: str, version: str) -> p.Result[str]:
         """Resolve the git tag that should be created for the release."""
         if tag_arg:
-            requested = str(tag_arg)
+            requested = tag_arg
             if not requested.startswith("v"):
                 return r[str].fail("tag must start with v")
             return r[str].ok(requested)
@@ -434,9 +434,9 @@ class FlextInfraReleaseOrchestrator(
         workspace_root = ctx.workspace_root
         tag = ctx.tag
         previous_result = self._previous_tag(workspace_root, tag)
-        previous: str = str(previous_result.value) if previous_result.success else ""
+        previous: str = previous_result.value if previous_result.success else ""
         changes_result = self._collect_changes(workspace_root, previous, tag)
-        changes: str = str(changes_result.value) if changes_result.success else ""
+        changes: str = changes_result.value if changes_result.success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, ctx.project_names)
         project_list: Sequence[m.Infra.ProjectInfo] = (
             projects_result.unwrap() if projects_result.success else []

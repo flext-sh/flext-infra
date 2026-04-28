@@ -10,8 +10,9 @@ from typing import override
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService
-from tests import p, r, t
+from flext_infra import FlextInfraInternalDependencySyncService, r
+from tests.protocols import p
+from tests.typings import t
 
 
 def _set_toml_stub(

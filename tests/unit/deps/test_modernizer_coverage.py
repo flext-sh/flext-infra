@@ -21,7 +21,7 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
 
 def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-        u.Cli.normalize_json_value(doc.unwrap()),
+        u.normalize_to_json_value(doc.unwrap()),
     )
 
 

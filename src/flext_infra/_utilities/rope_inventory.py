@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
+    Mapping,
     MutableSequence,
     Sequence,
 )
@@ -74,28 +75,14 @@ class FlextInfraUtilitiesRopeInventory:
             if record is None:
                 continue
             items.append(record)
-            if include_local_scopes and record.kind in {"class", "function", "method"}:
-                child_scope = cls._child_scope_for(child_scopes, pyname)
-                if child_scope is not None:
-                    items.extend(
-                        cls._scope_objects(
-                            scope=child_scope,
-                            parent_options=record_options.model_copy(
-                                update={
-                                    "scope_chain": tuple(
-                                        part
-                                        for part in record.scope_path.split(".")
-                                        if part
-                                    ),
-                                    "class_chain": tuple(
-                                        part
-                                        for part in record.class_path.split(".")
-                                        if part
-                                    ),
-                                }
-                            ),
-                        )
-                    )
+            items.extend(
+                cls._child_scope_objects(
+                    record=record,
+                    child_scope=record_options.child_scope,
+                    record_options=record_options,
+                    include_local_scopes=include_local_scopes,
+                )
+            )
         return tuple(items)
 
     @classmethod
@@ -120,49 +107,62 @@ class FlextInfraUtilitiesRopeInventory:
             if record is None:
                 continue
             items.append(record)
-            if (
-                record.kind not in {"class", "function", "method"}
-                or child_scope is None
-            ):
-                continue
             items.extend(
-                cls._scope_objects(
-                    scope=child_scope,
-                    parent_options=record_options.model_copy(
-                        update={
-                            "scope_chain": tuple(
-                                part for part in record.scope_path.split(".") if part
-                            ),
-                            "class_chain": tuple(
-                                part for part in record.class_path.split(".") if part
-                            ),
-                        }
-                    ),
+                cls._child_scope_objects(
+                    record=record,
+                    child_scope=child_scope,
+                    record_options=record_options,
                 )
             )
         return tuple(items)
+
+    @classmethod
+    def _child_scope_objects(
+        cls,
+        *,
+        record: m.Infra.Census.Object,
+        child_scope: p.Infra.RopeScopeDsl | None,
+        record_options: m.Infra.RopeInventoryRecordInput,
+        include_local_scopes: bool = True,
+    ) -> tuple[m.Infra.Census.Object, ...]:
+        if (
+            not include_local_scopes
+            or record.kind not in {"class", "function", "method"}
+            or child_scope is None
+        ):
+            return ()
+        return cls._scope_objects(
+            scope=child_scope,
+            parent_options=cls._descend_options(
+                record_options,
+                record,
+            ),
+        )
+
+    @staticmethod
+    def _descend_options(
+        parent_options: m.Infra.RopeInventoryRecordInput,
+        record: m.Infra.Census.Object,
+    ) -> m.Infra.RopeInventoryRecordInput:
+        return parent_options.model_copy(
+            update={
+                "scope_chain": tuple(
+                    part for part in record.scope_path.split(".") if part
+                ),
+                "class_chain": tuple(
+                    part for part in record.class_path.split(".") if part
+                ),
+            }
+        )
 
     @staticmethod
     def _sorted_module_names(
         pymodule: PyModule,
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
-        return tuple(
-            sorted(
-                (
-                    (name, pyname)
-                    for name, pyname in pymodule.get_attributes().items()
-                    if FlextInfraUtilitiesRopeInventory._definition_line(
-                        pyname, resource
-                    )
-                    is not None
-                    and not isinstance(pyname, ImportedName)
-                ),
-                key=lambda item: (
-                    FlextInfraUtilitiesRopeInventory._definition_line(item[1], resource)
-                    or 0
-                ),
-            )
+        return FlextInfraUtilitiesRopeInventory._sorted_names(
+            pymodule.get_attributes(),
+            resource,
         )
 
     @staticmethod
@@ -170,11 +170,21 @@ class FlextInfraUtilitiesRopeInventory:
         scope: p.Infra.RopeScopeDsl,
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
+        return FlextInfraUtilitiesRopeInventory._sorted_names(
+            scope.get_names(),
+            resource,
+        )
+
+    @staticmethod
+    def _sorted_names(
+        names: Mapping[str, t.Infra.RopePyName],
+        resource: t.Infra.RopeResource,
+    ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
         return tuple(
             sorted(
                 (
                     (name, pyname)
-                    for name, pyname in scope.get_names().items()
+                    for name, pyname in names.items()
                     if FlextInfraUtilitiesRopeInventory._definition_line(
                         pyname, resource
                     )

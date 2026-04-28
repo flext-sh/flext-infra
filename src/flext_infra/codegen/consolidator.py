@@ -43,7 +43,7 @@ class FlextInfraCodegenConsolidator(s[str]):
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )
         found = applied = failed = 0
-        file_results = []
+        file_results: list[dict[str, list[str] | str]] = []
 
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             projects_result = self._selected_projects(rope)

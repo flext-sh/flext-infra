@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraProjectMigrator
-from tests import u
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorInternal:

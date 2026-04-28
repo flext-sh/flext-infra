@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import u as infra_u
+from flext_infra import r, u as infra_u
 from tests import m, p, t, u
 
 
@@ -37,7 +37,7 @@ def test_execute_uses_codegen_project_discovery_and_project_filter(
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
         nonlocal discover_called
         discover_called += 1
-        return u.Tests.ok_result((project_a, project_b))
+        return r.ok((project_a, project_b))
 
     def _unexpected_public_project_discovery(
         *args: t.Scalar,
@@ -89,7 +89,7 @@ def test_execute_scans_real_package_layout(
         *args: t.Scalar,
         **kwargs: t.Scalar,
     ) -> p.Result[tuple[m.Infra.ProjectInfo, ...]]:
-        return u.Tests.ok_result((project,))
+        return r.ok((project,))
 
     # Patch flext_infra.u (not tests.u) since consolidator imports from flext_infra
     monkeypatch.setattr(infra_u.Infra, "projects", staticmethod(_projects))

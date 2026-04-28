@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraReleaseOrchestrator, main
-from tests import c, u
+from tests.constants import c
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 def test_release_group_help_returns_zero() -> None:

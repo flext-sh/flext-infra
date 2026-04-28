@@ -17,7 +17,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests import m, p, r, t
+from flext_infra import r
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 
 
 @pytest.fixture

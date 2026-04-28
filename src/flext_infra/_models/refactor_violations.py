@@ -15,6 +15,20 @@ from flext_infra import FlextInfraModelsMixins as mm, t
 class FlextInfraModelsRefactorViolations:
     """Class-nesting violation, helper classification, and analysis report models."""
 
+    class ClassNestingViolationRequest(m.ContractModel):
+        """Validated input for class-nesting policy violation checks."""
+
+        symbol: Annotated[t.NonEmptyStr, m.Field(description="Source symbol name")]
+        family: Annotated[t.NonEmptyStr, m.Field(description="Module family key")]
+        target_namespace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Destination namespace for the symbol"),
+        ]
+        operation: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Policy operation being validated"),
+        ]
+
     class ClassNestingMapping(m.ArbitraryTypesModel):
         """Unified mapping contract for class-nesting rewrite planning."""
 

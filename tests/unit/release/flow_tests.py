@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import main as infra_main
-from tests import u
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 def run_release_main(workspace: Path, *extra: str) -> int:

@@ -23,6 +23,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra._models.census import FlextInfraModelsCensus
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     RecursionError,
@@ -617,7 +618,7 @@ class FlextInfraRefactorCensus(
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]
             groups[item.kind, item.name, owner].append(item)
-        duplicates = []
+        duplicates: list[FlextInfraModelsCensus.Census.DuplicateGroup] = []
         for key in sorted(groups):
             definitions = groups[key]
             if len(definitions) < FlextInfraRefactorCensus._MIN_DUPLICATE_DEFINITIONS:

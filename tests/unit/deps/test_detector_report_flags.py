@@ -10,7 +10,10 @@ from typing import override
 from flext_tests import tm
 
 import flext_infra as detector_module
-from tests import p, r, t, u
+from flext_infra import r
+from tests.protocols import p
+from tests.typings import t
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class _ReportStub:

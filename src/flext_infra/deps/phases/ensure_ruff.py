@@ -78,10 +78,10 @@ class FlextInfraEnsureRuffConfigPhase:
             },
         )
         lint_nested_values: Sequence[tuple[str, t.JsonValue]] = (
-            ("select", u.Cli.normalize_json_value(sorted(ruff_cfg.lint.select))),
+            ("select", u.normalize_to_json_value(sorted(ruff_cfg.lint.select))),
             (
                 c.Infra.IGNORE,
-                u.Cli.normalize_json_value(sorted(ruff_cfg.lint.ignore)),
+                u.normalize_to_json_value(sorted(ruff_cfg.lint.ignore)),
             ),
         )
         isort_values: list[tuple[str, t.JsonValue]] = [
@@ -93,7 +93,7 @@ class FlextInfraEnsureRuffConfigPhase:
             isort_values.append(
                 (
                     c.Infra.KNOWN_FIRST_PARTY_HYPHEN,
-                    u.Cli.normalize_json_value(detected_packages),
+                    u.normalize_to_json_value(detected_packages),
                 ),
             )
         phase = (
@@ -128,7 +128,7 @@ class FlextInfraEnsureRuffConfigPhase:
                 c.Infra.LINT_SECTION,
                 "per-file-ignores",
                 values=tuple(
-                    (pattern, u.Cli.normalize_json_value(sorted(rules)))
+                    (pattern, u.normalize_to_json_value(sorted(rules)))
                     for pattern, rules in ruff_cfg.lint.per_file_ignores.items()
                 ),
                 deprecated_keys=stale_patterns,

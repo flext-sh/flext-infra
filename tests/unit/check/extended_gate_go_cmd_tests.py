@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraGoGate, m
-from tests import p, r, t, u
+from flext_infra import FlextInfraGoGate, m, p, r, t
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class TestGoGate:
@@ -32,13 +32,13 @@ class TestGoGate:
                 True,
                 False,
                 (
-                    u.Tests.ok_result(
+                    r.ok(
                         u.Tests.stub_run(
                             stdout="main.go:10:5: error message",
                             returncode=1,
-                        ),
+                        )
                     ),
-                    u.Tests.ok_result(u.Tests.stub_run()),
+                    r.ok(u.Tests.stub_run()),
                 ),
                 False,
                 1,
@@ -48,10 +48,8 @@ class TestGoGate:
                 True,
                 True,
                 (
-                    u.Tests.ok_result(u.Tests.stub_run()),
-                    u.Tests.ok_result(
-                        u.Tests.stub_run(stdout="main.go", returncode=1),
-                    ),
+                    r.ok(u.Tests.stub_run()),
+                    r.ok(u.Tests.stub_run(stdout="main.go", returncode=1)),
                 ),
                 False,
                 1,
@@ -61,10 +59,8 @@ class TestGoGate:
                 True,
                 False,
                 (
-                    u.Tests.ok_result(
-                        u.Tests.stub_run(stderr="go vet failed", returncode=1),
-                    ),
-                    u.Tests.ok_result(u.Tests.stub_run()),
+                    r.ok(u.Tests.stub_run(stderr="go vet failed", returncode=1)),
+                    r.ok(u.Tests.stub_run()),
                 ),
                 False,
                 0,
@@ -73,7 +69,7 @@ class TestGoGate:
             (
                 True,
                 False,
-                (u.Tests.fail_result("execution failed"),),
+                (r.fail("execution failed"),),
                 False,
                 0,
                 "execution failed",

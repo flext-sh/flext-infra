@@ -13,10 +13,8 @@ from __future__ import annotations
 from flext_tests import FlextTestsConstants
 
 from flext_infra import c
-from tests import (
-    TestsFlextInfraConstantsDomain,
-    TestsFlextInfraConstantsFixtures,
-)
+from tests._constants.domain import TestsFlextInfraConstantsDomain
+from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
 
 
 class TestsFlextInfraConstants(

@@ -112,8 +112,9 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 check_only=check_only,
                 planner=planner,
             )
+        warnings = planner.collision_count
         u.Cli.info(
-            f"Lazy-init summary: {ok} generated, {errors} errors"
+            f"Lazy-init summary: {ok} generated, {errors} errors, {warnings} warnings"
             f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)",
         )
         return errors

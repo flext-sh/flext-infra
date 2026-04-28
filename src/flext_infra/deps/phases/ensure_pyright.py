@@ -387,7 +387,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [
-                u.Cli.normalize_json_value(
+                u.normalize_to_json_value(
                     expected_env.model_dump(mode="json", by_alias=True),
                 )
                 for expected_env in expected_envs

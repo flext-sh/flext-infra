@@ -11,11 +11,6 @@ import pytest
 
 from tests import t, u
 
-pytest_plugins = [
-    "flext_tests.conftest_plugin",
-    "tests.unit.fixtures",
-]
-
 
 def _is_collectable_test_module(collection_path: Path) -> bool:
     tests_root = Path(__file__).parent

@@ -182,7 +182,7 @@ class FlextInfraDependencyDetectorRuntime:
             )
         if out_path is not None and not params.dry_run:
             report_payload: dict[str, t.JsonValue] = {
-                key: u.Cli.normalize_json_value(value)
+                key: u.normalize_to_json_value(value)
                 for key, value in report_model.model_dump().items()
             }
             write_result = u.Cli.json_write(out_path, report_payload)

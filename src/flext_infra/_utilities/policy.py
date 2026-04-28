@@ -13,7 +13,6 @@ from collections.abc import (
     Mapping,
 )
 from pathlib import Path
-from typing import Annotated
 
 from flext_cli import u
 from flext_infra import (
@@ -27,20 +26,6 @@ from flext_infra import (
 
 class FlextInfraUtilitiesRefactorPolicy:
     """Policy document loading and class-nesting policy enforcement."""
-
-    class ClassNestingViolationRequest(m.ContractModel):
-        """Validated input for class-nesting policy violation checks."""
-
-        symbol: Annotated[t.NonEmptyStr, m.Field(description="Source symbol name")]
-        family: Annotated[t.NonEmptyStr, m.Field(description="Module family key")]
-        target_namespace: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Destination namespace for the symbol"),
-        ]
-        operation: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Policy operation being validated"),
-        ]
 
     _MODULE_FAMILY_KEYS: t.StrSequence = (
         "models",
@@ -145,7 +130,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     @staticmethod
     def _class_nesting_violation(
         *,
-        request: ClassNestingViolationRequest,
+        request: m.Infra.ClassNestingViolationRequest,
         policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy],
     ) -> t.StrMapping | None:
         """Build a policy violation payload when class nesting is forbidden."""
@@ -226,7 +211,7 @@ class FlextInfraUtilitiesRefactorPolicy:
             if bool(entry.get("helper_name", ""))
             else c.Infra.RK_CLASS_NESTING
         )
-        request = FlextInfraUtilitiesRefactorPolicy.ClassNestingViolationRequest(
+        request = m.Infra.ClassNestingViolationRequest(
             symbol=symbol,
             family=family,
             target_namespace=target_namespace,

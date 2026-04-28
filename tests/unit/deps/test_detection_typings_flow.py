@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService
+from flext_infra import FlextInfraDependencyDetectionService, r
 from tests import u
 
 
@@ -79,7 +79,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
                         },
                     },
                 ),
-                u.Tests.fail_result("not found"),
+                r.fail("not found"),
                 u.Tests.infra_mapping_result({}),
             ],
         )

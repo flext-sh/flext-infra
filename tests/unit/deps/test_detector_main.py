@@ -14,8 +14,12 @@ from flext_infra import (
     FlextInfraDependencyDetectorRuntime,
     FlextInfraModelsDeps,
     main,
+    r,
 )
-from tests import m, p, r, t, u
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class _DepsStub(

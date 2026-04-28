@@ -24,8 +24,8 @@ class FlextInfraEnsureMypyConfigPhase:
         configured = self._tool_config.tools.mypy.overrides
         expected_overrides: Sequence[dict[str, t.JsonValue]] = [
             {
-                "module": u.Cli.normalize_json_value(list(entry.modules)),
-                "disable_error_code": u.Cli.normalize_json_value(
+                "module": u.normalize_to_json_value(list(entry.modules)),
+                "disable_error_code": u.normalize_to_json_value(
                     list(entry.disable_error_codes),
                 ),
             }

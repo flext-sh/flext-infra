@@ -10,10 +10,19 @@ from flext_core.lazy import (
     install_lazy_exports,
     merge_lazy_imports,
 )
-from flext_infra.__version__ import *
 
 if _t.TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
+    from flext_infra.__version__ import (
+        __author__,
+        __author_email__,
+        __description__,
+        __license__,
+        __title__,
+        __url__,
+        __version__,
+        __version_info__,
+    )
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.basemk import FlextInfraConstantsBasemk
     from flext_infra._constants.census import FlextInfraConstantsCensus

@@ -266,7 +266,7 @@ class FlextInfraUtilitiesRopeImports:
             return None
         if apply:
             resource.write(updated_source)
-        return str(updated_source)
+        return updated_source
 
     @staticmethod
     def _uses_parenthesized_from_import(*, source: str, module_name: str) -> bool:

@@ -9,8 +9,10 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService
-from tests import m, p, r as tr, t
+from flext_infra import FlextInfraDependencyDetectionService, r as tr
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 
 
 class _StubToml:

@@ -44,6 +44,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
+    _collision_count: int = u.PrivateAttr(default_factory=int)
+
+    @property
+    def collision_count(self) -> int:
+        """Return the number of export collisions resolved so far."""
+        return self._collision_count
 
     def build_plan(
         self,
@@ -92,9 +98,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 export_names=tuple(sorted(lazy_map)),
             ),
             lazy_map=dict(lazy_map),
-            wildcard_runtime_modules=tuple(
-                sorted({module_name for module_name, _ in version_map.values()}),
-            ),
+            wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
             child_packages_for_tc=child_tc,
         )
@@ -624,6 +628,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             index[name] = target
             return
         winner = self._pick_preferred_target(name, existing, target)
+        self._collision_count += 1
         u.Cli.warning(
             f"export collision for {name!r}: {existing} vs {target}; "
             f"resolved by canonical policy scorer to {winner}",

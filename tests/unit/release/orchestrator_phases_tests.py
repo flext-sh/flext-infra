@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 
 from flext_infra import FlextInfraReleaseOrchestrator
-from tests import c, m, u
+from tests.constants import c
+from tests.models import m
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 def version_ctx(

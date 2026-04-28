@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraBanditGate, FlextInfraMarkdownGate, m
-from tests import p, r, t, u
+from flext_infra import FlextInfraBanditGate, FlextInfraMarkdownGate, m, p, r, t
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class TestBanditAndMarkdownGates:
@@ -31,11 +31,11 @@ class TestBanditAndMarkdownGates:
             (
                 True,
                 (
-                    u.Tests.ok_result(
+                    r.ok(
                         u.Tests.stub_run(
                             stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
                             returncode=1,
-                        ),
+                        )
                     ),
                 ),
                 False,
@@ -43,11 +43,7 @@ class TestBanditAndMarkdownGates:
             ),
             (
                 True,
-                (
-                    u.Tests.ok_result(
-                        u.Tests.stub_run(stdout="invalid json", returncode=1),
-                    ),
-                ),
+                (r.ok(u.Tests.stub_run(stdout="invalid json", returncode=1)),),
                 False,
                 0,
             ),
@@ -89,11 +85,11 @@ class TestBanditAndMarkdownGates:
             (
                 "# Test\n",
                 None,
-                u.Tests.ok_result(
+                r.ok(
                     u.Tests.stub_run(
                         stdout="README.md:1:1 error MD001 Heading level",
                         returncode=1,
-                    ),
+                    )
                 ),
                 False,
                 1,
@@ -102,11 +98,11 @@ class TestBanditAndMarkdownGates:
             (
                 "# Test\n",
                 None,
-                u.Tests.ok_result(
+                r.ok(
                     u.Tests.stub_run(
                         stderr="markdownlint failed",
                         returncode=1,
-                    ),
+                    )
                 ),
                 False,
                 0,
@@ -153,7 +149,7 @@ class TestBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")
-        runner = self.make_runner(u.Tests.ok_result(u.Tests.stub_run()))
+        runner = self.make_runner(r.ok(u.Tests.stub_run()))
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
         _ = gate.check(project_dir, self.make_ctx(tmp_path))

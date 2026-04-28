@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService
+from flext_infra import FlextInfraDependencyDetectionService, r
 from tests import m, u
 
 
@@ -19,7 +19,7 @@ class TestsFlextInfraDepsDetectionDiscover:
         proj.path.mkdir()
         (proj.path / "pyproject.toml").write_text("")
         service.selector = u.Tests.DeptrySelector(
-            u.Tests.ok_result([proj]),
+            r.ok([proj]),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.success, eq=True)
@@ -29,7 +29,7 @@ class TestsFlextInfraDepsDetectionDiscover:
     def test_failure(self, tmp_path: Path) -> None:
         service = FlextInfraDependencyDetectionService()
         service.selector = u.Tests.DeptrySelector(
-            u.Tests.fail_result("failed"),
+            r.fail("failed"),
         )
         tm.fail(service.discover_project_paths(tmp_path))
 
@@ -45,7 +45,7 @@ class TestsFlextInfraDepsDetectionDiscover:
         )
         proj.path.mkdir()
         service.selector = u.Tests.DeptrySelector(
-            u.Tests.ok_result([proj]),
+            r.ok([proj]),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.success, eq=True)

@@ -27,9 +27,13 @@ from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRuntimeDevDependencyDetector,
     FlextInfraWorkspaceChecker,
+    r,
     u,
 )
-from tests import c, m, p, r, t
+from tests.constants import c
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):
@@ -56,8 +60,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def resolve_projects(
                 workspace_root: Path,
                 names: t.StrSequence,
+                *,
+                include_attached: bool = False,
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
-                del workspace_root, names
+                del workspace_root, names, include_attached
                 result = TestsFlextInfraUtilities.Tests.DeptrySelector._result
                 if result is None:
                     return r[Sequence[m.Infra.ProjectInfo]].fail(
@@ -234,19 +240,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return result
 
         @staticmethod
-        def ok_result[ValueT](value: ValueT) -> p.Result[ValueT]:
-            return r[ValueT].ok(value)
-
-        @staticmethod
-        def fail_result[ValueT](
-            message: str,
-            *,
-            expected_type: type[ValueT] | None = None,
-        ) -> p.Result[ValueT]:
-            del expected_type
-            return r[ValueT].fail(message)
-
-        @staticmethod
         def infra_mapping(
             value: t.Infra.InfraMapping,
         ) -> t.Infra.ContainerDict:
@@ -269,25 +262,25 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
             return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                u.Cli.normalize_json_value(doc.unwrap()),
+                u.normalize_to_json_value(doc.unwrap()),
             )
 
         @staticmethod
         def toml_mapping(value: t.JsonPayload | None) -> t.JsonMapping:
             return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                u.Cli.normalize_json_value(value),
+                u.normalize_to_json_value(value),
             )
 
         @staticmethod
         def toml_list(value: t.JsonPayload | None) -> t.JsonList:
             return t.Cli.JSON_LIST_ADAPTER.validate_python(
-                u.Cli.normalize_json_value(value),
+                u.normalize_to_json_value(value),
             )
 
         @staticmethod
         def toml_strings(value: t.JsonPayload | None) -> t.StrSequence:
             return t.Infra.STR_SEQ_ADAPTER.validate_python(
-                u.Cli.normalize_json_value(value),
+                u.normalize_to_json_value(value),
             )
 
         @staticmethod
@@ -298,7 +291,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             returncode: int = 0,
         ) -> p.Cli.CommandRunner:
             return TestsFlextInfraUtilities.Tests.DeptryRunner(
-                TestsFlextInfraUtilities.Tests.ok_result(
+                r.ok(
                     TestsFlextInfraUtilities.Tests.stub_run(
                         stdout=stdout,
                         stderr=stderr,
@@ -474,7 +467,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir = project / "src" / name.replace("-", "_")
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
-                exit_code = str(exit_codes.get(name, "0"))
+                exit_code = exit_codes.get(name, "0")
                 (project / "Makefile").write_text(
                     f"pr:\n\t@exit {exit_code}\n",
                     encoding="utf-8",

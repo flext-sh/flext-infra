@@ -5,9 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
-from flext_infra import FlextInfraGate, FlextInfraMypyGate, FlextInfraPyrightGate, m
-from tests import p, tm, u
+from flext_infra import (
+    FlextInfraGate,
+    FlextInfraMypyGate,
+    FlextInfraPyrightGate,
+    m,
+    p,
+    r,
+)
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class TestTypeGates:
@@ -30,11 +38,11 @@ class TestTypeGates:
             (
                 FlextInfraMypyGate,
                 True,
-                u.Tests.ok_result(
+                r.ok(
                     u.Tests.stub_run(
                         stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}',
                         returncode=1,
-                    ),
+                    )
                 ),
                 False,
                 1,
@@ -43,11 +51,11 @@ class TestTypeGates:
             (
                 FlextInfraPyrightGate,
                 True,
-                u.Tests.ok_result(
+                r.ok(
                     u.Tests.stub_run(
                         stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
                         returncode=1,
-                    ),
+                    )
                 ),
                 False,
                 1,
@@ -55,9 +63,7 @@ class TestTypeGates:
             (
                 FlextInfraPyrightGate,
                 True,
-                u.Tests.ok_result(
-                    u.Tests.stub_run(stdout="invalid json", returncode=1),
-                ),
+                r.ok(u.Tests.stub_run(stdout="invalid json", returncode=1)),
                 False,
                 0,
             ),

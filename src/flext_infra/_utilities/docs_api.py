@@ -36,7 +36,6 @@ class FlextInfraUtilitiesDocsApi:
         "u",
         "x",
     )
-    _STRING_RE: t.Infra.RegexPattern = c.Infra.STRING_LITERAL_RE
 
     @staticmethod
     def _string_values(value: t.Infra.InfraValue | None) -> t.StrSequence:
@@ -78,7 +77,7 @@ class FlextInfraUtilitiesDocsApi:
             value,
         ) in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(source):
             if assignment_name == name:
-                return cls._STRING_RE.findall(value)
+                return c.Infra.STRING_LITERAL_RE.findall(value)
         return []
 
     @staticmethod
@@ -305,14 +304,12 @@ class FlextInfraUtilitiesDocsApi:
         )
         if include_modules:
             modules = sorted({
-                str(item).strip()
+                item.strip()
                 for item in include_modules
-                if str(item).strip().startswith(package_name)
+                if item.strip().startswith(package_name)
             })
         if exclude_modules:
-            excluded = {
-                str(item).strip() for item in exclude_modules if str(item).strip()
-            }
+            excluded = {item.strip() for item in exclude_modules if item.strip()}
             modules = [module for module in modules if module not in excluded]
         public_symbols = [
             name

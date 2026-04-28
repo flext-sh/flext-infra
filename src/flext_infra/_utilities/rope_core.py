@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import (
     Generator,
     Sequence,
@@ -63,13 +64,19 @@ class FlextInfraUtilitiesRopeCore:
             for dir_name in c.Infra.MRO_SCAN_DIRECTORIES
             if (scan_path := project_root / dir_name).is_dir()
         })
-        return Project(
-            str(resolved_root),
-            ropefolder="",
-            save_objectdb=False,
-            ignored_resources=list(ignored_resources),
-            source_folders=source_folders,
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Delete once deprecated functions are gone",
+                category=DeprecationWarning,
+            )
+            return Project(
+                str(resolved_root),
+                ropefolder="",
+                save_objectdb=False,
+                ignored_resources=list(ignored_resources),
+                source_folders=source_folders,
+            )
 
     @staticmethod
     @contextmanager

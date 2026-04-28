@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService, m
-from tests import p, t, u
+from flext_infra import FlextInfraDependencyDetectionService, m, p, r, t
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class TestsFlextInfraDepsDetectionPipCheck:
@@ -31,7 +31,7 @@ class TestsFlextInfraDepsDetectionPipCheck:
             (
                 True,
                 u.Tests.DeptryRunner(
-                    u.Tests.fail_result("pip failed"),
+                    r.fail("pip failed"),
                 ),
                 [],
                 0,

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraStubSupplyChain
+from flext_infra import FlextInfraStubSupplyChain, r
 from tests import c, m, t, u
 
 
@@ -27,9 +27,7 @@ class TestStubChain:
             selected_projects=projects,
             all_projects=all_projects,
             runner=u.Tests.DeptryRunner(
-                u.Tests.ok_result(
-                    u.Tests.stub_run(stdout=stdout),
-                ),
+                r.ok(u.Tests.stub_run(stdout=stdout)),
             ),
         )
 

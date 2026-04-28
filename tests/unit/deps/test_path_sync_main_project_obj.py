@@ -8,8 +8,9 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesDependencyPathSync
-from tests import m, p, r
+from flext_infra import FlextInfraUtilitiesDependencyPathSync, r
+from tests.models import m
+from tests.protocols import p
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:

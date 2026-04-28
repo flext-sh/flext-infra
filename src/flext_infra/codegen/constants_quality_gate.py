@@ -292,8 +292,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def constants_file_path(workspace_root: Path, project: str) -> Path:
         """Build the canonical constants.py path for a project."""
-        src_dir = str(c.Infra.DEFAULT_SRC_DIR)
-        constants_py = str(c.Infra.CONSTANTS_PY)
+        src_dir = c.Infra.DEFAULT_SRC_DIR
+        constants_py = c.Infra.CONSTANTS_PY
         return Path(
             workspace_root
             / project
@@ -375,7 +375,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             for report in census_reports:
                 constants_file = FlextInfraCodegenQualityGate.constants_file_path(
                     workspace_root,
-                    str(report.project),
+                    report.project,
                 )
                 resource = u.Infra.get_resource_from_path(rope_project, constants_file)
                 if resource is None:
@@ -384,7 +384,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                     FlextInfraCodegenQualityGate.parse_constant_definitions(
                         source=resource.read(),
                         constants_file=constants_file,
-                        project=str(report.project),
+                        project=report.project,
                     )
                 )
         return FlextInfraCodegenQualityGate.build_duplicate_groups(definitions)
@@ -401,8 +401,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
                     m.Infra.QualityGateProjectFinding(
                         project=report.project,
                         violations_total=len(tuple(report.violations)),
-                        fixable_violations=int(report.fixable),
-                        validator_passed=int(report.total) == 0,
+                        fixable_violations=report.fixable,
+                        validator_passed=report.total == 0,
                         mro_failures=0,
                         layer_violations=0,
                         cross_project_reference_violations=0,
