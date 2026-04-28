@@ -1,0 +1,24 @@
+tests/unit/workspace/test_makefile_dry_run.py
+  h_9db9d35f50cf33 132,135-154
+tests/unit/deps/test_detector_report.py
+  h_9db9d35f50cf33 100-128,152
+src/flext_infra/templates/workspace_makefile.mk.j2
+  h_9db9d35f50cf33 434,476-484,706-714
+tests/unit/deps/test_detector_main.py
+  h_9db9d35f50cf33 33,80,181-214
+src/flext_infra/_constants/make.py
+  h_9db9d35f50cf33 195
+src/flext_infra/deps/detector_runtime.py
+  h_9db9d35f50cf33 105-106,174,176,182,187-188,190,192-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "78ccdadb39852262bd48f3a3adf64214670f648d",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
