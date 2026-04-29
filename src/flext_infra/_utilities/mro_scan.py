@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import logging
 import re
 from collections.abc import (
     Sequence,
@@ -19,6 +18,7 @@ from flext_infra import (
     c,
     m,
     t,
+    u,
 )
 
 
@@ -146,7 +146,7 @@ class FlextInfraUtilitiesRefactorMroScan:
                 if cand:
                     candidates.append(cand)
         except Exception as exc:
-            logging.getLogger(__name__).info(
+            u.fetch_logger(__name__).info(
                 "MRO scan skipped for %s: %s",
                 resource.real_path,
                 exc,
@@ -328,7 +328,7 @@ class FlextInfraUtilitiesRefactorMroScan:
                 if any("Protocol" in str(b.get_name()) for b in bases):
                     return True
             except Exception as exc:
-                logging.getLogger(__name__).info(
+                u.fetch_logger(__name__).info(
                     "Protocol base scan skipped for %s: %s",
                     name,
                     exc,
