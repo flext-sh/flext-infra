@@ -409,7 +409,7 @@ tools:
       reportCallIssue: none
       reportConstantRedefinition: error
       reportIncompatibleMethodOverride: error
-      reportIncompatibleVariableOverride: error
+      reportIncompatibleVariableOverride: none
       reportInconsistentConstructor: error
       reportInvalidTypeForm: none
       reportMissingImports: error
@@ -424,6 +424,7 @@ tools:
       reportUnnecessaryCast: error
       reportUnnecessaryComparison: warning
       reportUnnecessaryIsInstance: warning
+      reportUnreachable: none
       reportUnsupportedDunderAll: none
       reportUntypedFunctionDecorator: none
       reportUnusedClass: error

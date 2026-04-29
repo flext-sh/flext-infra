@@ -355,17 +355,17 @@ class TestGenerateFile:
     def test_subpackage_omits_type_checking_for_internal_exports(self) -> None:
         """Subpackage __init__.py does not emit static imports for internals."""
         content = FlextInfraCodegenGeneration.generate_file(
-            ["ExamplesFlextCoreModelsEx00"],
+            ["ExamplesFlextModelsEx00"],
             {
-                "ExamplesFlextCoreModelsEx00": (
+                "ExamplesFlextModelsEx00": (
                     "examples.models.ex00",
-                    "ExamplesFlextCoreModelsEx00",
+                    "ExamplesFlextModelsEx00",
                 ),
             },
             {},
             "examples.models",
         )
-        tm.that(content, contains='".ex00": ("ExamplesFlextCoreModelsEx00",)')
+        tm.that(content, contains='".ex00": ("ExamplesFlextModelsEx00",)')
         tm.that(content, lacks="if _t.TYPE_CHECKING:")
         tm.that(content, lacks="from models")
         tm.that(content, lacks="from examples.models.ex00 import")

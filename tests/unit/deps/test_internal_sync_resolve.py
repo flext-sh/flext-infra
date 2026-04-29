@@ -8,7 +8,7 @@ from collections.abc import (
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import FlextInfraInternalDependencySyncService
+from flext_infra import FlextInfraInternalDependencySyncService, FlextInfraSettings
 from tests import u
 
 
@@ -57,6 +57,7 @@ class TestsFlextInfraDepsInternalSyncResolve:
             GITHUB_HEAD_REF="feature/test",
             GITHUB_REF_NAME="main",
         ):
+            FlextInfraSettings._reset_instance()
             result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
 
         assert result == "feature/test"

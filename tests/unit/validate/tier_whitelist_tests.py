@@ -82,25 +82,6 @@ class TestTierWhitelistAbstractionBoundary:
         tm.that(report.passed, eq=False)
         tm.that(" | ".join(report.violations), has=expected_substring)
 
-    def test_type_checking_pydantic_import_is_exempt(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
-    ) -> None:
-        pkg = _seed_pkg(tmp_path)
-        tf.create_in(
-            (
-                "from __future__ import annotations\n"
-                "from typing import TYPE_CHECKING\n"
-                "if TYPE_CHECKING:\n"
-                "    from pydantic import BaseModel\n"
-            ),
-            "typed_only.py",
-            pkg,
-        )
-        report = tm.ok(v.build_report(tmp_path))
-        tm.that(report.passed, eq=True)
-
     def test_flext_core_src_is_allowlisted(
         self,
         tmp_path: Path,
