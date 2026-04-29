@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocsScope:
         if (
             not isinstance(project_section, dict)
             or not isinstance(project_section.get("name"), str)
-            or not str(project_section["name"]).strip()
+            or not project_section["name"].strip()
         ):
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
@@ -259,7 +259,7 @@ class FlextInfraUtilitiesDocsScope:
         project_root = workspace_root / project_name
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
         enabled = docs_meta.get("enabled", True)
-        is_enabled = bool(enabled) if isinstance(enabled, bool) else True
+        is_enabled = enabled if isinstance(enabled, bool) else True
         return (
             project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
             and project_name
@@ -342,7 +342,7 @@ class FlextInfraUtilitiesDocsScope:
         if src_dir.is_dir():
             for child in sorted(src_dir.iterdir()):
                 if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                    return str(child.name)
+                    return child.name
         project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
             project_root,
             payload,

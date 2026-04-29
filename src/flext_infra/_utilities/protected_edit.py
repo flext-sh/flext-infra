@@ -385,7 +385,7 @@ class FlextInfraUtilitiesProtectedEdit:
         ):
             return None
         if result.value.exit_code != 0:
-            return str(output)
+            return output
         return None
 
     @staticmethod

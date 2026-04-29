@@ -459,7 +459,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     ) -> str:
         for package_name in reversed(tuple(name for name in package_names if name)):
             if alias_name in self._export_names_for_package(package_name):
-                return str(package_name)
+                return package_name
         return ""
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:

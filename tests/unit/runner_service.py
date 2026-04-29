@@ -20,7 +20,7 @@ class RealSubprocessRunner:
         return r[bool].ok(True)
 
     def _failure_message[T](self, result: p.Result[T]) -> str:
-        return str(result.error) if result.error else "failed"
+        return result.error or "failed"
 
     def run_safe(self, cmd: t.StrSequence) -> p.Result[str]:
         v = self._validate_safe_command(cmd)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 from flext_tests import tm
 
@@ -91,9 +92,6 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         tm.that(service.get_current_typings_from_pyproject(path), empty=True)
 
     def test_get_required_typings_paths(self, tmp_path: Path) -> None:
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        _ = (venv_bin / "mypy").write_text("", encoding="utf-8")
         command_output = u.Tests.create_command_output()
         service = u.Tests.create_deptry_service(command_output=command_output)
         service.toml = u.Tests.TomlReaderSequence(
@@ -106,7 +104,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
                 ),
             ],
         )
-        tm.ok(service.get_required_typings(tmp_path, venv_bin))
+        tm.ok(service.get_required_typings(tmp_path))
 
         service.toml = u.Tests.TomlReaderSequence(
             [
@@ -114,10 +112,11 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
                 u.Tests.infra_mapping_result({}),
             ],
         )
-        tm.ok(service.get_required_typings(tmp_path, venv_bin, include_mypy=False))
+        tm.ok(service.get_required_typings(tmp_path, include_mypy=False))
 
-        failing_service = u.Tests.create_deptry_service(run_error="mypy crash")
+        failing_service = u.Tests.create_deptry_service()
         failing_service.toml = u.Tests.TomlReaderSequence(
             [u.Tests.infra_mapping_result({})],
         )
-        tm.fail(failing_service.get_required_typings(tmp_path, venv_bin))
+        with patch("mypy.api.run", side_effect=RuntimeError("mypy crash")):
+            tm.fail(failing_service.get_required_typings(tmp_path))

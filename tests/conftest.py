@@ -54,6 +54,48 @@ def pytest_collection_modifyitems(
         items[:] = kept_items
 
 
+def _modernizer_pyproject(name: str) -> str:
+    return f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
+
+
+def _modernizer_workspace_pyproject(*members: str) -> str:
+    base = _modernizer_pyproject("workspace")
+    if not members:
+        return base
+    members_text = ", ".join(f'"{member}"' for member in members)
+    return f"{base}\n[tool.uv.workspace]\nmembers = [{members_text}]\n"
+
+
+@pytest.fixture
+def modernizer_workspace(tmp_path: Path) -> Path:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "pyproject.toml").write_text(
+        _modernizer_workspace_pyproject(),
+        encoding="utf-8",
+    )
+    return workspace
+
+
+@pytest.fixture
+def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
+    (modernizer_workspace / "pyproject.toml").write_text(
+        _modernizer_workspace_pyproject("selected", "ignored"),
+        encoding="utf-8",
+    )
+    _ = u.Tests.mk_project(
+        modernizer_workspace,
+        "selected",
+        pyproject=_modernizer_pyproject("selected"),
+    )
+    _ = u.Tests.mk_project(
+        modernizer_workspace,
+        "ignored",
+        pyproject=_modernizer_pyproject("ignored"),
+    )
+    return modernizer_workspace
+
+
 @pytest.fixture
 def infra_test_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import (
     Mapping,
     MutableMapping,
@@ -9,6 +10,8 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
+
+from mypy import api as mypy_api
 
 from flext_infra import c, m, p, r, t, u
 
@@ -46,12 +49,12 @@ class FlextInfraDependencyDetectionAnalysis:
         normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, value in payload.items():
             if value is None:
-                normalized[str(key)] = None
+                normalized[key] = None
                 continue
             converted = FlextInfraDependencyDetectionAnalysis.to_infra_value(value)
             if converted is None:
                 continue
-            normalized[str(key)] = converted
+            normalized[key] = converted
         return normalized
 
     @staticmethod
@@ -90,14 +93,14 @@ class FlextInfraDependencyDetectionAnalysis:
         converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, map_item in mapping_value.items():
             if map_item is None:
-                converted_map[str(key)] = None
+                converted_map[key] = None
                 continue
             converted_item = FlextInfraDependencyDetectionAnalysis.to_infra_value(
                 map_item,
             )
             if converted_item is None or not isinstance(converted_item, scalar_types):
                 return None
-            converted_map[str(key)] = converted_item
+            converted_map[key] = converted_item
         return dict(t.Cli.JSON_MAPPING_ADAPTER.validate_python(converted_map))
 
     @staticmethod
@@ -123,7 +126,7 @@ class FlextInfraDependencyDetectionAnalysis:
         group = self._mapping_from_value(poetry.get(c.Infra.GROUP))
         typings_group = self._mapping_from_value(group.get(c.Infra.TYPINGS))
         deps = self._mapping_from_value(typings_group.get(c.Infra.DEPENDENCIES))
-        names.update(str(key) for key in deps)
+        names.update(key for key in deps)
         project = self._mapping_from_value(data.get(c.Infra.PROJECT))
         optional = self._mapping_from_value(
             project.get(c.Infra.OPTIONAL_DEPENDENCIES),
@@ -140,13 +143,12 @@ class FlextInfraDependencyDetectionAnalysis:
                     .strip(),
                 )
         elif isinstance(typings, Mapping):
-            names.update(str(key) for key in typings)
+            names.update(key for key in typings)
         return sorted(names)
 
     def get_required_typings(
         self,
         project_path: Path,
-        venv_bin: Path,
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
@@ -162,7 +164,7 @@ class FlextInfraDependencyDetectionAnalysis:
         hinted: t.StrSequence = []
         missing_modules: t.StrSequence = []
         if include_mypy:
-            hints_result = self.run_mypy_stub_hints(project_path, venv_bin)
+            hints_result = self.run_mypy_stub_hints(project_path)
             if hints_result.failure:
                 return r[m.Infra.TypingsReport].fail(
                     hints_result.error or "typing hint detection failed",
@@ -221,9 +223,9 @@ class FlextInfraDependencyDetectionAnalysis:
             if isinstance(module_to_package, Mapping) and root in module_to_package:
                 value = module_to_package.get(root)
                 return str(value) if value is not None else None
-        default_package = c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root)
+        default_package: str | None = c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root)
         if default_package is not None:
-            return str(default_package)
+            return default_package
         return f"types-{root.lower()}"
 
     def run_deptry(
@@ -298,29 +300,22 @@ class FlextInfraDependencyDetectionAnalysis:
     def run_mypy_stub_hints(
         self,
         project_path: Path,
-        venv_bin: Path,
-        *,
-        timeout: int = c.Infra.TIMEOUT_DEFAULT,
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
-        """Run mypy to detect missing type stubs and hinted packages."""
-        mypy_bin = venv_bin / c.Infra.MYPY
-        if not mypy_bin.exists():
-            return r[t.Pair[t.StrSequence, t.StrSequence]].ok(([], []))
+        """Run mypy via the Python API to detect missing stubs and hint packages."""
         cmd: t.StrSequence = [
-            str(mypy_bin),
             c.Infra.DEFAULT_SRC_DIR,
             "--config-file",
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
         ]
-        env = {"VIRTUAL_ENV": str(venv_bin.parent)}
-        result = self._run_raw(cmd, cwd=project_path, timeout=timeout, env=env)
-        if result.failure:
+        try:
+            with contextlib.chdir(project_path):
+                stdout, stderr, _exit_code = mypy_api.run(list(cmd))
+        except Exception as exc:
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
-                result.error or "mypy execution failed",
+                f"mypy execution failed: {exc}",
             )
-        cmd_result: m.Cli.CommandOutput = result.value
-        output = f"{cmd_result.stdout}\n{cmd_result.stderr}"
+        output = f"{stdout}\n{stderr}"
         hinted = {
             match.group(1).strip()
             for match in u.Infra.MYPY_HINT_RE.finditer(output)

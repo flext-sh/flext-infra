@@ -86,7 +86,7 @@ class TestsFlextInfraWorkspaceFactory:
         deps: t.StrSequence,
     ) -> Path:
         """Create a project structure with package and tests directories."""
-        project_name = str(name)
+        project_name = name
         project_root: Path = tmp_path / project_name
         package_dir: Path = project_root / "src" / project_name.replace("-", "_")
         tests_dir: Path = project_root / "tests"
@@ -109,11 +109,11 @@ class TestsFlextInfraWorkspaceFactory:
 
     def _project_pyproject(self, name: t.NonEmptyStr, deps: t.StrSequence) -> str:
         """Generate pyproject.toml content using infra constants."""
-        project_name = str(name)
-        default_python = str(self.default_python)
-        default_version = str(self.default_version)
-        poetry_tool = str(c.Infra.POETRY)
-        dependency_group = str(c.Infra.DEPENDENCIES)
+        project_name: str = name
+        default_python: str = self.default_python
+        default_version: str = self.default_version
+        poetry_tool: str = c.Infra.POETRY
+        dependency_group: str = c.Infra.DEPENDENCIES
         dependency_lines = [f'python = "^{default_python.removeprefix("^")}"']
         dependency_lines.extend(f'{dep} = "*"' for dep in deps)
         dependencies = "\n".join(dependency_lines)

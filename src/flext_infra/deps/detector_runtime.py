@@ -51,8 +51,8 @@ class FlextInfraDependencyDetectorRuntime:
                 path=str(venv_bin / c.Infra.DEPTRY),
             )
             return r[bool].fail("deptry executable not found")
-        apply_typings = bool(params.apply_typings)
-        do_typings = bool(params.typings) or apply_typings
+        apply_typings = params.apply_typings
+        do_typings = params.typings or apply_typings
         limits_path = params.limits_path or limits_default
         projects_report: MutableMapping[
             str,
@@ -113,7 +113,6 @@ class FlextInfraDependencyDetectorRuntime:
                     )
                 typings_result = typing_deps.get_required_typings(
                     project_path,
-                    venv_bin,
                     limits_path=limits_path,
                 )
                 if typings_result.failure:
@@ -171,14 +170,11 @@ class FlextInfraDependencyDetectorRuntime:
             report_model.pip_check = self._pip_check_factory(ok=pip_ok, lines=pip_lines)
         if params.output_format == c.Cli.OutputFormats.JSON:
             return r[bool].ok(True)
-        out_path: Path = (
-            params.output_path
-            or u.Cli.resolve_report_path(
-                root,
-                c.Infra.PROJECT,
-                c.Infra.DEPENDENCIES,
-                "detect-runtime-dev-latest.json",
-            )
+        out_path: Path = params.output_path or u.Cli.resolve_report_path(
+            root,
+            c.Infra.PROJECT,
+            c.Infra.DEPENDENCIES,
+            "detect-runtime-dev-latest.json",
         )
         report_payload: dict[str, t.JsonValue] = {
             key: u.normalize_to_json_value(value)

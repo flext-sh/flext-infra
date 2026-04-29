@@ -288,6 +288,13 @@ class FlextInfraConstantsBase(
         AUTO = "auto"
 
     @unique
+    class DependencyConstraintPolicy(StrEnum):
+        """SSOT dependency constraint rewrite policies."""
+
+        FLOOR = "floor"
+        COMPATIBLE = "compatible"
+
+    @unique
     class TomlOperationKind(StrEnum):
         """SSOT TOML phase operation kinds."""
 

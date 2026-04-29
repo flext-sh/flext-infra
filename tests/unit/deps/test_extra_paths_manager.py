@@ -224,3 +224,39 @@ class TestsFlextInfraExtraPathsManager:
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
         tm.that(result, eq=[".", "flext-core/src", "flext-tests/src", "src"])
+
+    def test_pyrefly_search_paths_exclude_dependency_venv_dirs_at_root(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "src").mkdir()
+        (tmp_path / "pyproject.toml").write_text(
+            (
+                "[project]\n"
+                "name = 'flext'\n"
+                "dependencies = ['flext-core']\n"
+                "[tool.uv.workspace]\n"
+                "members = ['flext-core']\n"
+            ),
+            encoding="utf-8",
+        )
+        dep_root = tmp_path / "flext-core"
+        dep_root.mkdir()
+        (dep_root / ".git").mkdir()
+        (dep_root / "Makefile").write_text("", encoding="utf-8")
+        (dep_root / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-core'\n",
+            encoding="utf-8",
+        )
+        dep_src = dep_root / "src" / "flext_core"
+        dep_src.mkdir(parents=True)
+        (dep_src / "__init__.py").write_text("", encoding="utf-8")
+        dep_venv = dep_root / "venv" / "bin"
+        dep_venv.mkdir(parents=True)
+        (dep_venv / "python").write_text("", encoding="utf-8")
+
+        manager = FlextInfraExtraPathsManager(workspace=tmp_path)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+
+        tm.that(result, eq=["flext-core/src", "src"])

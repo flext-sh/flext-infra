@@ -147,7 +147,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     @property
     def effective_dry_run(self) -> bool:
         """Return the normalized write-mode decision for CLI services."""
-        return bool(self.dry_run or self.check_only or (not self.apply_changes))
+        return self.dry_run or self.check_only or (not self.apply_changes)
 
     def command_payload(self) -> t.JsonMapping:
         """Return the normalized shared command payload once."""
@@ -167,6 +167,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
             payload["output_dir"] = str(self.output_dir)
         return payload
 
+    @override
     @abstractmethod
     def execute(self) -> p.Result[TDomainResult]:
         """Execute the service contract and return a typed result."""

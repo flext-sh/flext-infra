@@ -430,10 +430,10 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         key: str,
     ) -> t.StrMapping:
         mapping_value = u.Cli.json_as_mapping(settings.get(key, {}))
-        return {
-            str(item_key): str(item_value)
-            for item_key, item_value in mapping_value.items()
+        normalized_mapping: dict[str, str] = {
+            item_key: str(item_value) for item_key, item_value in mapping_value.items()
         }
+        return normalized_mapping
 
 
 __all__: list[str] = ["FlextInfraRefactorTextExecutor"]

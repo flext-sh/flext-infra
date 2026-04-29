@@ -293,7 +293,7 @@ class FlextInfraUtilitiesRefactorCensus:
             post_write=_post_write,
         )
         rope.reload()
-        return bool(result[0])
+        return result[0]
 
     @staticmethod
     def apply_simple_removal_candidate(
@@ -347,7 +347,7 @@ class FlextInfraUtilitiesRefactorCensus:
             skip_pytest=True,
         )
         rope.reload()
-        return bool(result[0])
+        return result[0]
 
     @staticmethod
     def apply_line_ranges(

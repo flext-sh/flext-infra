@@ -84,9 +84,11 @@ class FlextInfraCli(FlextCli):
         "--skip-check",
         "--skip-comments",
         "--audit",
+        "--rewrite-constraints",
         "--rollback",
     })
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset({
+        "--constraint-policy",
         "--workspace",
         "--projects",
         "--project",

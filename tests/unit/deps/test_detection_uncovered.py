@@ -62,7 +62,7 @@ class TestsFlextInfraDepsDetectionUncovered:
             command_output=u.Tests.create_command_output(),
         )
         report = tm.ok(
-            service.get_required_typings(tmp_path, venv_bin, limits_path=limits_path),
+            service.get_required_typings(tmp_path, limits_path=limits_path),
         )
         tm.that(report.limits_applied, eq=True)
         tm.that(report.python_version, eq="3.13")

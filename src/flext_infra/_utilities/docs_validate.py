@@ -67,7 +67,7 @@ class FlextInfraUtilitiesDocsValidate:
             return r[t.StrSequence].fail(
                 f"invalid required_skills configuration: {e!s}"
             )
-        return r[t.StrSequence].ok([str(item) for item in values if item])
+        return r[t.StrSequence].ok([item for item in values if item])
 
     @staticmethod
     def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:

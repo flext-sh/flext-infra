@@ -91,7 +91,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         tool_section = u.Cli.toml_mapping_ensure_table(payload, c.Infra.TOOL)
         uv_section = u.Cli.toml_mapping_ensure_table(tool_section, "uv")
         sources = u.Cli.toml_mapping_ensure_table(uv_section, "sources")
-        for source_key in [str(key) for key in sources]:
+        for source_key in list(sources):
             if source_key in internal_names and source_key not in expected_names:
                 del sources[source_key]
                 changes.append(f"  uv.sources: removed stale source {source_key}")

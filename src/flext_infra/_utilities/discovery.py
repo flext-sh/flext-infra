@@ -197,7 +197,7 @@ class FlextInfraUtilitiesDiscovery:
             return ""
         for child in sorted(src_dir.iterdir()):
             if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                return str(child.name)
+                return child.name
         return ""
 
     @staticmethod

@@ -37,7 +37,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         migration: m.Infra.SignatureMigration,
     ) -> str:
         """Apply a single migration to source text."""
-        migration_id = str(migration.id)
+        migration_id = migration.id
         keyword_renames = dict(migration.keyword_renames)
         remove_keywords = set(migration.remove_keywords)
         add_keywords = dict(migration.add_keywords)

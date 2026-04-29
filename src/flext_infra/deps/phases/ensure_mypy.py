@@ -35,6 +35,7 @@ class FlextInfraEnsureMypyConfigPhase:
             m.Infra.TomlPhaseConfig
             .Builder("mypy")
             .table(c.Infra.MYPY)
+            .deprecated("strict_concatenate")
             .value(c.Infra.PYTHON_VERSION_UNDERSCORE, "3.13")
             .list(
                 c.Infra.PLUGINS,

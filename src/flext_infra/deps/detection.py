@@ -62,13 +62,13 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             "dep004": [],
         })
         for item in issues:
-            normalized_item: t.MutableStrMapping = {}
+            normalized_item: dict[str, t.Primitives | None] = {}
             for key, raw_value in item.items():
                 if raw_value is None:
-                    normalized_item[str(key)] = ""
+                    normalized_item[key] = ""
                     continue
                 if isinstance(raw_value, (str, int, float, bool)):
-                    normalized_item[str(key)] = str(raw_value)
+                    normalized_item[key] = raw_value
             error_obj = item.get(c.Infra.ERROR)
             if not isinstance(error_obj, Mapping):
                 continue

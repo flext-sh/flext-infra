@@ -121,6 +121,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         severity=u.Cli.json_pick_str(err, "severity", c.Infra.ERROR),
                     )
                     for err in error_items
+                    if "/.venv/" not in u.Cli.json_pick_str(err, "path", "")
+                    and "/site-packages/" not in u.Cli.json_pick_str(err, "path", "")
                 )
             except (TypeError, c.ValidationError) as err:
                 issues.append(

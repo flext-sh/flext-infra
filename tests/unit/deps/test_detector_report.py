@@ -102,10 +102,7 @@ class TestsFlextInfraDepsDetectorReport:
         tmp_path: Path,
     ) -> None:
         default_output = (
-            tmp_path
-            / ".reports"
-            / "dependencies"
-            / "detect-runtime-dev-latest.json"
+            tmp_path / ".reports" / "dependencies" / "detect-runtime-dev-latest.json"
         )
         runtime = _setup(
             tmp_path,

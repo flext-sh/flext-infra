@@ -100,6 +100,7 @@ class TestsFlextInfraInfraConstantsCore:
         assert "__pycache__" in excluded
         assert "dist" in excluded
         assert "build" in excluded
+        assert "venv" in excluded
 
     def test_doc_excluded_dirs_includes_common(self) -> None:
         doc_excluded = c.Infra.DOC_EXCLUDED_DIRS

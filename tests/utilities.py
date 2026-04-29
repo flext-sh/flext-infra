@@ -1282,12 +1282,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def get_required_typings(
                 self,
                 project_path: Path,
-                venv_bin: Path,
                 limits_path: Path | None = None,
                 *,
                 include_mypy: bool = True,
             ) -> p.Result[m.Infra.TypingsReport]:
-                del project_path, venv_bin, limits_path
+                del project_path, limits_path
                 del include_mypy
                 if self.typings_failure is not None:
                     return r[m.Infra.TypingsReport].fail(self.typings_failure)

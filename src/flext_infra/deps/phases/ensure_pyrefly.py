@@ -49,7 +49,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
         error_values: Sequence[tuple[str, t.JsonValue]] = (
             *(
-                (error_rule, True)
+                (error_rule, "error")
                 for error_rule in self._tool_config.tools.pyrefly.strict_errors
             ),
             *(

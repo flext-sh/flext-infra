@@ -245,7 +245,6 @@ class FlextInfraProtocolsBase(Protocol):
         def get_required_typings(
             self,
             project_path: Path,
-            venv_bin: Path,
             limits_path: Path | None = None,
             *,
             include_mypy: bool = True,

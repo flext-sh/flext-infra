@@ -14,8 +14,8 @@ from tests import m, u
 
 def _render_base_mk() -> str:
     result = FlextInfraBaseMkGenerator().generate_basemk()
-    tm.ok(result)
-    return str(result.value)
+    rendered: str = tm.ok(result)
+    return rendered
 
 
 def _write_executable(path: Path, body: str) -> None:
@@ -263,7 +263,7 @@ class TestsFlextInfraBasemkMakeContract:
             log_path.read_text(encoding="utf-8"),
             has=(
                 f"PYTHONPATH={expected_src} MYPYPATH=unset "
-                "python -m flext_infra check run --gates mypy"
+                f"python -m flext_infra check run --workspace {tmp_path} --gates mypy"
             ),
         )
 
@@ -291,7 +291,9 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, eq=0)
         tm.that(
             log_path.read_text(encoding="utf-8"),
-            has=("python -m flext_infra check run --gates lint,pyright --reports-dir "),
+            has=(
+                f"python -m flext_infra check run --workspace {tmp_path} --gates lint,pyright --reports-dir "
+            ),
         )
         tm.that(
             log_path.read_text(encoding="utf-8"),

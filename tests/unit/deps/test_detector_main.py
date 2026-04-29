@@ -72,13 +72,12 @@ class _DepsStub(
     def get_required_typings(
         self,
         project_path: Path,
-        venv_bin: Path,
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
     ) -> p.Result[m.Infra.TypingsReport]:
         self.typings_calls += 1
-        del project_path, venv_bin, limits_path
+        del project_path, limits_path
         del include_mypy
         return r[m.Infra.TypingsReport].ok(
             m.Infra.TypingsReport(to_add=list(self._to_add)),

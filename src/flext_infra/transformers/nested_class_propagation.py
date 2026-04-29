@@ -208,11 +208,11 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         if policy is None:
             return True
         if policy_key == "propagate_imports":
-            return bool(policy.propagate_imports)
+            return policy.propagate_imports
         if policy_key == "propagate_name_references":
-            return bool(policy.propagate_name_references)
+            return policy.propagate_name_references
         if policy_key == "propagate_attribute_references":
-            return bool(policy.propagate_attribute_references)
+            return policy.propagate_attribute_references
         return False
 
     def _blocked_by_prefix(self, symbol_name: str) -> bool:

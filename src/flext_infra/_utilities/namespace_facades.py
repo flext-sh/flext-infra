@@ -66,9 +66,9 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         payload = u.Cli.toml_mapping_from_text(raw)
         if payload is None:
             return {}
-        dep_names = FlextInfraUtilitiesIteration.local_dependency_names_from_payload({
-            str(key): value for key, value in payload.items()
-        })
+        dep_names = FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
+            dict(payload.items())
+        )
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:
             if dep_name == c.Infra.PKG_CORE or not dep_name.startswith(

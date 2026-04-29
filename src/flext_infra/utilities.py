@@ -33,8 +33,10 @@ from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_analysis import (
-    FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRefactorNamespaceMro,
+)
+from flext_infra._utilities.namespace_common import (
+    FlextInfraUtilitiesRefactorNamespaceCommon,
 )
 from flext_infra._utilities.namespace_facades import (
     FlextInfraUtilitiesRefactorNamespaceFacades,

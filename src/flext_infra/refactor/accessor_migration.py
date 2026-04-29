@@ -11,7 +11,7 @@ from collections.abc import (
 from operator import itemgetter
 from pathlib import Path
 from tokenize import NAME, generate_tokens
-from typing import Annotated, ClassVar, Self, override
+from typing import Annotated, ClassVar, override
 
 from flext_cli import cli
 from flext_infra import (
@@ -255,10 +255,19 @@ class FlextInfraAccessorMigrationOrchestrator(
     @override
     def execute_command(
         cls,
-        params: Self,
+        params: m.Infra.AccessorMigrationInput,
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
-        result = params.execute()
+        result = cls.model_validate({
+            "workspace_root": params.workspace_path,
+            "selected_projects": params.project_names,
+            "apply_changes": params.apply,
+            "fail_fast": params.fail_fast,
+            "target_module": params.module,
+            "target_namespace": params.namespace,
+            "preview_limit": params.preview_limit,
+            "gates": ",".join(params.gates),
+        }).execute()
         if result.failure:
             return r[m.Infra.AccessorMigrationReport].fail(
                 result.error or "accessor migration execution failed",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
+    Mapping,
     MutableMapping,
     MutableSequence,
     Sequence,
@@ -53,6 +54,27 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         bool,
         m.Field(alias="skip-comments", description="Skip managed comment updates"),
     ] = False
+    rewrite_constraints: Annotated[
+        bool,
+        m.Field(
+            alias="rewrite-constraints",
+            description="Rewrite dependency constraints from uv.lock",
+        ),
+    ] = False
+    constraint_policy: Annotated[
+        c.Infra.DependencyConstraintPolicy,
+        m.Field(
+            alias="constraint-policy",
+            description="Policy used when rewriting dependency constraints",
+        ),
+        m.BeforeValidator(
+            lambda v: (
+                c.Infra.DependencyConstraintPolicy(v.strip().lower())
+                if isinstance(v, str)
+                else v
+            )
+        ),
+    ] = c.Infra.DependencyConstraintPolicy.FLOOR
     _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()
     _paths_manager: FlextInfraExtraPathsManager | None = u.PrivateAttr(
         default_factory=lambda: None,
@@ -105,16 +127,20 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         if payload_source is None:
             return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
         try:
-            payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_source)
+            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+                payload_source,
+            )
         except c.ValidationError as exc:
             return r[m.Infra.PyprojectDocumentState].fail(
                 f"TOML payload validation failed: {exc}",
             )
         return r[m.Infra.PyprojectDocumentState].ok(
-            m.Infra.PyprojectDocumentState(
-                pyproject_path=path,
-                original_rendered=original_rendered,
-                payload={str(key): value for key, value in payload.items()},
+            m.Infra.PyprojectDocumentState.model_validate(
+                {
+                    "pyproject_path": path,
+                    "original_rendered": original_rendered,
+                    "payload": payload,
+                },
             ),
         )
 
@@ -125,6 +151,10 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        rewrite_constraints: bool = False,
+        locked_versions: Mapping[str, str] | None = None,
+        internal_names: t.StrSequence = (),
+        constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
@@ -139,6 +169,15 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         changes: MutableSequence[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
+        if rewrite_constraints:
+            changes.extend(
+                self._rewrite_dependency_constraints_payload(
+                    payload,
+                    locked_versions=locked_versions or {},
+                    internal_names=internal_names,
+                    policy=constraint_policy,
+                )
+            )
         changes.extend(
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
         )
@@ -212,6 +251,171 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         if not dry_run:
             u.write_file(path, rendered, encoding=c.Cli.ENCODING_DEFAULT)
         return changes
+
+    @staticmethod
+    def _rewrite_requirement_group(
+        raw_requirements: t.Infra.InfraValue,
+        *,
+        locked_versions: Mapping[str, str],
+        internal_names: t.StrSequence,
+        policy: c.Infra.DependencyConstraintPolicy,
+        location: str,
+    ) -> tuple[list[t.JsonValue] | None, t.StrSequence]:
+        """Rewrite one sequence of PEP 621 requirement strings in place."""
+        if not isinstance(raw_requirements, list):
+            return (None, [])
+        updated_requirements: MutableSequence[t.JsonValue] = []
+        changes: MutableSequence[str] = []
+        for raw_requirement in raw_requirements:
+            requirement = str(raw_requirement)
+            rewritten = u.Infra.rewrite_requirement_constraint(
+                requirement,
+                locked_versions=locked_versions,
+                internal_names=internal_names,
+                policy=policy,
+            )
+            updated_requirements.append(rewritten or requirement)
+            if rewritten is not None and rewritten != requirement:
+                changes.append(f"{location}: {requirement} -> {rewritten}")
+        if not changes:
+            return (None, [])
+        return (list(updated_requirements), tuple(changes))
+
+    @staticmethod
+    def _rewrite_poetry_dependency_table(
+        dependencies: MutableMapping[str, t.JsonValue],
+        *,
+        locked_versions: Mapping[str, str],
+        internal_names: t.StrSequence,
+        policy: c.Infra.DependencyConstraintPolicy,
+        location: str,
+    ) -> t.StrSequence:
+        """Rewrite one Poetry dependency table using the locked version policy."""
+        changes: MutableSequence[str] = []
+        for dependency_name in list(dependencies):
+            current_value = dependencies.get(dependency_name)
+            rewritten_value = u.Infra.rewrite_poetry_constraint(
+                dependency_name,
+                current_value,
+                locked_versions=locked_versions,
+                internal_names=internal_names,
+                policy=policy,
+            )
+            if rewritten_value is None:
+                continue
+            dependencies[dependency_name] = rewritten_value
+            changes.append(
+                f"{location}.{dependency_name}: {current_value!r} -> {rewritten_value!r}"
+            )
+        return tuple(changes)
+
+    def _rewrite_dependency_constraints_payload(
+        self,
+        payload: MutableMapping[str, t.JsonValue],
+        *,
+        locked_versions: Mapping[str, str],
+        internal_names: t.StrSequence,
+        policy: c.Infra.DependencyConstraintPolicy,
+    ) -> t.StrSequence:
+        """Rewrite supported dependency tables from the current ``uv.lock`` state."""
+        changes: MutableSequence[str] = []
+        project_view = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
+        if project_view is not None:
+            project = u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)
+            project_deps, project_changes = self._rewrite_requirement_group(
+                project.get(c.Infra.DEPENDENCIES),
+                locked_versions=locked_versions,
+                internal_names=internal_names,
+                policy=policy,
+                location="project.dependencies",
+            )
+            if project_deps is not None:
+                project[c.Infra.DEPENDENCIES] = project_deps
+                changes.extend(project_changes)
+            optional_dependencies = u.Cli.toml_mapping_child(
+                project,
+                c.Infra.OPTIONAL_DEPENDENCIES,
+            )
+            if optional_dependencies is not None:
+                optional_dependencies = u.Cli.toml_mapping_ensure_table(
+                    project,
+                    c.Infra.OPTIONAL_DEPENDENCIES,
+                )
+                for group_name in list(optional_dependencies):
+                    group_deps, group_changes = self._rewrite_requirement_group(
+                        optional_dependencies.get(group_name),
+                        locked_versions=locked_versions,
+                        internal_names=internal_names,
+                        policy=policy,
+                        location=f"project.optional-dependencies.{group_name}",
+                    )
+                    if group_deps is None:
+                        continue
+                    optional_dependencies[group_name] = group_deps
+                    changes.extend(group_changes)
+        dependency_groups_view = u.Cli.toml_mapping_child(
+            payload,
+            c.Infra.DEPENDENCY_GROUPS,
+        )
+        if dependency_groups_view is not None:
+            dependency_groups = u.Cli.toml_mapping_ensure_table(
+                payload,
+                c.Infra.DEPENDENCY_GROUPS,
+            )
+            for group_name in list(dependency_groups):
+                group_deps, group_changes = self._rewrite_requirement_group(
+                    dependency_groups.get(group_name),
+                    locked_versions=locked_versions,
+                    internal_names=internal_names,
+                    policy=policy,
+                    location=f"dependency-groups.{group_name}",
+                )
+                if group_deps is None:
+                    continue
+                dependency_groups[group_name] = group_deps
+                changes.extend(group_changes)
+        poetry_dependencies = u.Cli.toml_mapping_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES),
+        )
+        if poetry_dependencies is not None:
+            changes.extend(
+                self._rewrite_poetry_dependency_table(
+                    poetry_dependencies,
+                    locked_versions=locked_versions,
+                    internal_names=internal_names,
+                    policy=policy,
+                    location="tool.poetry.dependencies",
+                )
+            )
+        poetry_groups = u.Cli.toml_mapping_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
+        )
+        if poetry_groups is not None:
+            for group_name in list(poetry_groups):
+                group_dependencies = u.Cli.toml_mapping_path(
+                    payload,
+                    (
+                        c.Infra.TOOL,
+                        c.Infra.POETRY,
+                        c.Infra.GROUP,
+                        group_name,
+                        c.Infra.DEPENDENCIES,
+                    ),
+                )
+                if group_dependencies is None:
+                    continue
+                changes.extend(
+                    self._rewrite_poetry_dependency_table(
+                        group_dependencies,
+                        locked_versions=locked_versions,
+                        internal_names=internal_names,
+                        policy=policy,
+                        location=(f"tool.poetry.group.{group_name}.dependencies"),
+                    )
+                )
+        return tuple(changes)
 
     def _ensure_build_system_payload(
         self,
@@ -306,6 +510,8 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             case AoT():
                 for entry in item.body:
                     cls._reorder_table_inplace(entry, table_key=table_key)
+            case _:
+                return
 
     @classmethod
     def _reorder_table_inplace(
@@ -376,12 +582,13 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             canonical_dev=canonical_dev,
             dry_run=dry_run,
             skip_comments=skip_comments,
+            rewrite_constraints=False,
         )
 
     def run(self) -> int:
         """Run pyproject modernization for the workspace."""
-        check_mode = bool(self.audit or self.check_only)
-        dry_run = bool(check_mode or self.effective_dry_run)
+        check_mode = self.audit or self.check_only
+        dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
         project_paths: Sequence[Path] | None = None
         if project_names:
@@ -409,6 +616,27 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
             u.Infra.canonical_dev_dependencies_from_payload(root_state.payload),
         )
+        locked_versions: Mapping[str, str] = {}
+        internal_names: t.StrSequence = ()
+        if self.rewrite_constraints:
+            lock_path = self.root / "uv.lock"
+            locked_versions = u.Infra.locked_dependency_versions(lock_path)
+            if not locked_versions:
+                u.Cli.error(f"missing or invalid uv.lock at {lock_path}")
+                return 2
+            try:
+                root_project_name = u.Infra.project_name_from_payload(
+                    root_state.pyproject_path,
+                    root_state.payload,
+                )
+            except (TypeError, ValueError) as exc:
+                u.Cli.error(str(exc))
+                return 2
+            internal_names = tuple(
+                sorted(
+                    set(u.Infra.workspace_member_names(self.root)) | {root_project_name}
+                )
+            )
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: MutableSequence[m.Infra.PyprojectDocumentState] = []
         invalid_paths: MutableSequence[Path] = []
@@ -430,6 +658,10 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
                     canonical_dev=canonical_dev,
                     dry_run=dry_run,
                     skip_comments=self.skip_comments,
+                    rewrite_constraints=self.rewrite_constraints,
+                    locked_versions=locked_versions,
+                    internal_names=internal_names,
+                    constraint_policy=self.constraint_policy,
                 )
             if not changes:
                 continue

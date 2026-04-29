@@ -118,6 +118,27 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
             for entry in tool_config_document.tools.mypy.overrides
         ]
 
+    def test_mypy_phase_removes_deprecated_strict_concatenate(self) -> None:
+        tool_config_document = u.Tests.tool_config_document()
+        doc = tomlkit.parse(
+            """
+[tool.mypy]
+strict_concatenate = true
+warn_return_any = false
+""",
+        )
+
+        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
+
+        mypy_mapping = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
+        )
+        assert "strict_concatenate" not in mypy_mapping
+        assert (
+            mypy_mapping["warn_return_any"]
+            == tool_config_document.tools.mypy.boolean_settings["warn_return_any"]
+        )
+
     def test_mypy_phase_is_idempotent(
         self,
         tool_config_document: m.Infra.ToolConfigDocument,

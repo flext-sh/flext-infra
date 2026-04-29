@@ -53,7 +53,10 @@ class FlextInfraUtilitiesDocsApi:
             items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         except c.ValidationError:
             return {}
-        return {str(key): str(entry) for key, entry in items.items()}
+        normalized_items: dict[str, str] = {
+            key: str(entry) for key, entry in items.items()
+        }
+        return normalized_items
 
     @staticmethod
     def _module_file(project_root: Path, module_name: str) -> Path:
@@ -169,7 +172,7 @@ class FlextInfraUtilitiesDocsApi:
             for entry in FlextInfraUtilitiesDocsApi._string_values(
                 project_meta.get("keywords", [])
             )
-            if (text := str(entry).strip())
+            if (text := entry.strip())
         ]
 
     @staticmethod

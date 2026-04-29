@@ -195,6 +195,10 @@ class FlextInfraConstantsMake:
             "Refresh lock/install + modernize + dependency report (.reports/dependencies/)",
         ),
         ("mod", "Modernize pyproject.toml configs only (no lock/install)"),
+        (
+            "constraints",
+            "Rewrite pyproject dependency constraints from uv.lock (policy=floor)",
+        ),
         ("build", "Build/package all selected projects"),
         ("check", "Run the lint gates in all projects"),
         ("scan", "Run all security checks in all projects"),

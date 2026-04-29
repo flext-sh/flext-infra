@@ -123,7 +123,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         assert "find \"$md_root\" -type f -name '*.md'" in output
         assert '_fmt_target="."' not in output
 
-    def test_workspace_makefile_dry_run_up_forwards_selection_to_mod(
+    def test_workspace_makefile_dry_run_up_forwards_selection_to_mod_and_constraints(
         self,
         tmp_path: Path,
     ) -> None:
@@ -133,6 +133,14 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
 
         assert process.returncode == 0
         assert 'make mod PROJECT="demo-a"' in output
+        assert (
+            "modernize --apply --rewrite-constraints --constraint-policy floor"
+            in output
+        )
+        assert (
+            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
+            in output
+        )
         assert "detect --quiet --no-fail" in output
         assert (
             f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
@@ -151,6 +159,30 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         assert "detect --typings --quiet --no-fail" in output
         assert (
             f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
+            in output
+        )
+
+    def test_workspace_makefile_dry_run_constraints_rewrites_dependency_floors(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(
+            workspace_root,
+            "constraints",
+            "PROJECT=demo-a",
+        )
+        output = process.stdout + process.stderr
+
+        assert process.returncode == 0
+        assert (
+            "modernize --apply --rewrite-constraints --constraint-policy floor"
+            in output
+        )
+        assert "--projects demo-a" in output
+        assert "path-sync --mode auto --apply" not in output
+        assert (
+            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
             in output
         )
 

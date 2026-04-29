@@ -200,7 +200,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 if parsed.rule in by_rule:
                     by_rule[parsed.rule] += 1
         total = len(census_reports)
-        passed = u.count(census_reports, lambda report: int(report.total) == 0)
+        passed = u.count(census_reports, lambda report: report.total == 0)
         modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
         violations_by_rule: dict[str, t.Infra.InfraValue] = dict(by_rule)
         summary: dict[str, t.Infra.InfraValue] = {

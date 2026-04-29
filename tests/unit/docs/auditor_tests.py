@@ -26,7 +26,8 @@ def auditor() -> FlextInfraDocAuditor:
 @pytest.fixture
 def normalize_link() -> Callable[[str], str]:
     def _normalize(value: str) -> str:
-        return str(u.Infra.docs_normalize_link(value))
+        normalized: str = u.Infra.docs_normalize_link(value)
+        return normalized
 
     return _normalize
 
@@ -34,7 +35,8 @@ def normalize_link() -> Callable[[str], str]:
 @pytest.fixture
 def should_skip_target() -> Callable[[str, str], bool]:
     def _should_skip(link: str, target: str) -> bool:
-        return bool(u.Infra.docs_should_skip_target(link, target))
+        should_skip: bool = u.Infra.docs_should_skip_target(link, target)
+        return should_skip
 
     return _should_skip
 
@@ -42,7 +44,8 @@ def should_skip_target() -> Callable[[str, str], bool]:
 @pytest.fixture
 def is_external() -> Callable[[str], bool]:
     def _is_external(value: str) -> bool:
-        return bool(u.Infra.docs_is_external(value))
+        external: bool = u.Infra.docs_is_external(value)
+        return external
 
     return _is_external
 

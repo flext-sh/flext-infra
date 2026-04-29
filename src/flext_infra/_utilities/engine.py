@@ -98,8 +98,8 @@ class FlextInfraUtilitiesRefactorEngine:
                 ir.value,
                 base_path=project,
                 pattern=pattern,
-                ignore_patterns={str(i) for i in ign},
-                allowed_extensions={str(i) for i in ext},
+                ignore_patterns=set(ign),
+                allowed_extensions=set(ext),
             )
         )
 
@@ -122,8 +122,8 @@ class FlextInfraUtilitiesRefactorEngine:
         )
         ign = engine_config.ignore_patterns
         ext = engine_config.file_extensions
-        ignore_patterns = {str(i) for i in ign}
-        allowed_extensions = {str(i) for i in ext}
+        ignore_patterns = set(ign)
+        allowed_extensions = set(ext)
         all_files: MutableSequence[Path] = []
         for proj in projects:
             ir = FlextInfraUtilitiesIteration.iter_python_files(

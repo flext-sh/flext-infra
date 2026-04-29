@@ -108,9 +108,7 @@ class FlextInfraConfigFixer(s[bool]):
             except c.ValidationError as err:
                 return r[t.StrSequence].fail_op("validate-search-path", err)
             current_search = [
-                str(path_item)
-                for path_item in current_paths
-                if isinstance(path_item, str)
+                path_item for path_item in current_paths if isinstance(path_item, str)
             ]
             expected_search = FlextInfraExtraPathsManager(
                 workspace=self._workspace_root
@@ -172,7 +170,7 @@ class FlextInfraConfigFixer(s[bool]):
             doc_data[c.Infra.TOOL] = typed_tool_data
             new_doc = u.Cli.toml_document()
             for key, value in doc_data.items():
-                new_doc[str(key)] = value
+                new_doc[key] = value
             write_result = u.Cli.toml_write_document(path, new_doc)
             if write_result.failure:
                 return r[t.StrSequence].fail(

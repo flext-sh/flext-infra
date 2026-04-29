@@ -9,6 +9,7 @@ from __future__ import annotations
 import fnmatch
 from collections.abc import (
     Mapping,
+    MutableMapping,
     MutableSequence,
     Sequence,
 )
@@ -50,6 +51,127 @@ class FlextInfraUtilitiesIteration:
         return normalized or None
 
     @staticmethod
+    def constraint_specifier(
+        version: str,
+        *,
+        policy: c.Infra.DependencyConstraintPolicy,
+    ) -> str:
+        """Return the canonical dependency specifier for one locked version."""
+        normalized_version = version.strip()
+        if not normalized_version:
+            return ""
+        if policy == c.Infra.DependencyConstraintPolicy.COMPATIBLE:
+            return f"~={normalized_version}"
+        return f">={normalized_version}"
+
+    @classmethod
+    def locked_dependency_versions(
+        cls,
+        lock_path: Path,
+    ) -> Mapping[str, str]:
+        """Return normalized registry package versions from one ``uv.lock`` file."""
+        if not lock_path.is_file():
+            return {}
+        try:
+            raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        except OSError:
+            return {}
+        payload_source = u.Cli.toml_mapping_from_text(raw_text)
+        if payload_source is None:
+            return {}
+        try:
+            payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload_source)
+        except c.ValidationError:
+            return {}
+        raw_packages = payload.get("package")
+        if not isinstance(raw_packages, list):
+            return {}
+        versions: MutableMapping[str, str] = {}
+        for raw_package in raw_packages:
+            if not isinstance(raw_package, Mapping):
+                continue
+            raw_source = raw_package.get("source")
+            if not isinstance(raw_source, Mapping) or "registry" not in raw_source:
+                continue
+            raw_name = raw_package.get("name")
+            raw_version = raw_package.get(c.Infra.VERSION)
+            if not isinstance(raw_name, str) or not isinstance(raw_version, str):
+                continue
+            dependency_name = cls.dep_name(raw_name)
+            if dependency_name is None:
+                continue
+            versions[dependency_name] = raw_version.strip()
+        return dict(versions)
+
+    @classmethod
+    def rewrite_requirement_constraint(
+        cls,
+        requirement: str,
+        *,
+        locked_versions: Mapping[str, str],
+        internal_names: t.StrSequence = (),
+        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
+    ) -> str | None:
+        """Rewrite one PEP 621 requirement string using the locked version policy."""
+        raw_text = requirement.strip()
+        if not raw_text:
+            return None
+        requirement_part, marker_separator, marker_part = raw_text.partition(";")
+        if " @ " in requirement_part:
+            return None
+        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
+        if head_match is None:
+            return None
+        head = head_match.group("head").strip()
+        dependency_name = cls.dep_name(head)
+        internal_set = set(internal_names)
+        if dependency_name is None or dependency_name in internal_set:
+            return None
+        locked_version = locked_versions.get(dependency_name)
+        if locked_version is None:
+            return None
+        rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy)}"
+        marker_text = marker_part.strip()
+        if marker_separator and marker_text:
+            rewritten = f"{rewritten}; {marker_text}"
+        return rewritten if rewritten != raw_text else None
+
+    @classmethod
+    def rewrite_poetry_constraint(
+        cls,
+        dependency_name: str,
+        raw_value: t.Infra.InfraValue,
+        *,
+        locked_versions: Mapping[str, str],
+        internal_names: t.StrSequence = (),
+        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
+    ) -> t.Infra.InfraValue | None:
+        """Rewrite one Poetry dependency value using the locked version policy."""
+        normalized_name = cls.dep_name(dependency_name)
+        internal_set = set(internal_names)
+        if (
+            normalized_name is None
+            or normalized_name == "python"
+            or normalized_name in internal_set
+        ):
+            return None
+        locked_version = locked_versions.get(normalized_name)
+        if locked_version is None:
+            return None
+        rewritten_specifier = cls.constraint_specifier(locked_version, policy=policy)
+        if isinstance(raw_value, str):
+            return rewritten_specifier if raw_value != rewritten_specifier else None
+        if not isinstance(raw_value, Mapping):
+            return None
+        if any(key in raw_value for key in (c.Infra.PATH, "git", "url")):
+            return None
+        updated: MutableMapping[str, t.JsonValue] = dict(raw_value)
+        if updated.get(c.Infra.VERSION) == rewritten_specifier:
+            return None
+        updated[c.Infra.VERSION] = rewritten_specifier
+        return dict(updated)
+
+    @staticmethod
     def _normalized_toml_payload(document: TOMLDocument) -> t.Infra.ContainerDict:
         """Return one TOML document normalized through the infra adapter."""
         payload = u.Cli.toml_as_mapping(document)
@@ -65,7 +187,7 @@ class FlextInfraUtilitiesIteration:
         """Return deterministic unique dependency specs keyed by normalized name."""
         selected_by_name: dict[str, str] = {}
         for raw in specs:
-            item = str(raw).strip()
+            item = raw.strip()
             if not item:
                 continue
             dependency_name = FlextInfraUtilitiesIteration.dep_name(item)
@@ -186,7 +308,7 @@ class FlextInfraUtilitiesIteration:
         if not isinstance(raw_mapping, Mapping):
             return
         for raw_name in raw_mapping:
-            dependency_name = cls.dep_name(str(raw_name))
+            dependency_name = cls.dep_name(raw_name)
             if dependency_name is None or dependency_name == "python":
                 continue
             names.add(dependency_name)
@@ -202,7 +324,7 @@ class FlextInfraUtilitiesIteration:
         declared = set(cls.declared_dependency_names_from_payload(payload))
         if not workspace_project_names:
             return ()
-        workspace_names = {str(name) for name in workspace_project_names}
+        workspace_names = set(workspace_project_names)
         return tuple(sorted(name for name in declared if name in workspace_names))
 
     @staticmethod

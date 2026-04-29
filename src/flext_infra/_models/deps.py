@@ -125,6 +125,27 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
                 description="Skip modernization of explanatory comments",
             ),
         ] = False
+        rewrite_constraints: Annotated[
+            bool,
+            m.Field(
+                alias="rewrite-constraints",
+                description="Rewrite dependency constraints from uv.lock",
+            ),
+        ] = False
+        constraint_policy: Annotated[
+            c.Infra.DependencyConstraintPolicy,
+            m.Field(
+                alias="constraint-policy",
+                description="Policy used when rewriting dependency constraints",
+            ),
+            m.BeforeValidator(
+                lambda v: (
+                    c.Infra.DependencyConstraintPolicy(v.strip().lower())
+                    if isinstance(v, str)
+                    else v
+                )
+            ),
+        ] = c.Infra.DependencyConstraintPolicy.FLOOR
 
     class PathSyncCommand(
         mm.WriteMixin,

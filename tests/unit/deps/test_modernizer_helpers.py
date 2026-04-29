@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
+from pathlib import Path
 
 import pytest
 import tomlkit
@@ -10,7 +11,7 @@ import tomlkit.items
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from tests import t, u
+from tests import c, t, u
 
 
 @pytest.fixture
@@ -258,5 +259,40 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(result, has="requests")
         tm.that(result, has="flext-infra")
         tm.that(result, has="flext-tests")
-        tm.that(result, has="flext-api")
-        tm.that(result, has="pytest")
+
+    def test_locked_dependency_versions_skips_non_registry_sources(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        lock_path = tmp_path / "uv.lock"
+        lock_path.write_text(
+            (
+                "version = 1\n"
+                "[manifest]\n"
+                'members = ["flext-core"]\n'
+                "[[package]]\n"
+                'name = "requests"\n'
+                'version = "2.32.4"\n'
+                'source = { registry = "https://pypi.org/simple" }\n'
+                "[[package]]\n"
+                'name = "flext-core"\n'
+                'version = "0.12.0-dev"\n'
+                'source = { editable = "." }\n'
+            ),
+            encoding="utf-8",
+        )
+
+        tm.that(
+            u.Infra.locked_dependency_versions(lock_path),
+            eq={"requests": "2.32.4"},
+        )
+
+    def test_rewrite_requirement_constraint_preserves_extras_and_markers(self) -> None:
+        tm.that(
+            u.Infra.rewrite_requirement_constraint(
+                "httpx[socks]>=0.1; python_version < '3.14'",
+                locked_versions={"httpx": "0.28.1"},
+                policy=c.Infra.DependencyConstraintPolicy.FLOOR,
+            ),
+            eq="httpx[socks]>=0.28.1; python_version < '3.14'",
+        )

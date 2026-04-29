@@ -27,6 +27,7 @@ class FlextInfraConstantsSourceCode:
         ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
+        "venv",
     })
     "Common directories to exclude from analysis across all scripts."
     DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"site"}

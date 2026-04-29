@@ -362,7 +362,7 @@ class FlextInfraUtilitiesRopeImports:
             return None
         if apply:
             resource.write(updated_source)
-        return str(updated_source)
+        return updated_source
 
     @staticmethod
     def add_import(
@@ -390,7 +390,7 @@ class FlextInfraUtilitiesRopeImports:
             return None
         if apply:
             resource.write(updated)
-        return str(updated)
+        return updated
 
     @staticmethod
     def remove_import_names(
@@ -441,7 +441,7 @@ class FlextInfraUtilitiesRopeImports:
             return None
         if apply:
             resource.write(updated)
-        return str(updated)
+        return updated
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeImports"]
