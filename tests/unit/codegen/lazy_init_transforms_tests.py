@@ -58,6 +58,9 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         assert result == 0
-        assert "from flext_demo.__version__ import *" in content
+        assert (
+            "from flext_demo.__version__ import __version__, __version_info__"
+            in content
+        )
         assert '"__version__"' in content
         assert '"__version_info__"' in content

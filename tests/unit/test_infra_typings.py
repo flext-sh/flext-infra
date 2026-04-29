@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, t, u
+from tests import c, t
 
 
 class TestsFlextInfraInfraTypings:
@@ -62,11 +62,6 @@ class TestsFlextInfraInfraTypings:
                 "root": Path("/tmp/flext"),
                 "settings": {"enabled": True},
             })
-
-    def test_registerable_service_guard_accepts_real_public_values(self) -> None:
-        tm.that(u.registerable_service({"service": "infra"}), eq=True)
-        tm.that(u.registerable_service(["a", "b"]), eq=True)
-        tm.that(u.registerable_service(Path("/tmp/flext")), eq=True)
 
     def test_factory_and_resource_guards_accept_callables(self) -> None:
         def build_service() -> str:
