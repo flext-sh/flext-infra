@@ -1,0 +1,82 @@
+src/flext_infra/cli.py
+  h_9db9d35f50cf33 87,91
+tests/unit/basemk/test_make_contract.py
+  h_9db9d35f50cf33 17-18,266,295
+src/flext_infra/_constants/deps.py
+  h_9db9d35f50cf33 56-58
+tests/conftest.py
+  h_9db9d35f50cf33 57-96
+src/flext_infra/_utilities/docs_api.py
+  h_9db9d35f50cf33 56-59
+tests/unit/workspace_factory.py
+  h_9db9d35f50cf33 89,112-116
+src/flext_infra/deps/detection_analysis.py
+  h_9db9d35f50cf33 5,14-15,226,228,304,311-314,316,318
+tests/unit/workspace/test_makefile_dry_run.py
+  h_9db9d35f50cf33 126,136-143,165-188
+src/flext_infra/_constants/source_code.py
+  h_9db9d35f50cf33 30
+src/flext_infra/refactor/accessor_migration.py
+  h_9db9d35f50cf33 14,258,261-270
+tests/unit/test_infra_constants_core.py
+  h_9db9d35f50cf33 103
+src/flext_infra/base.py
+  h_9db9d35f50cf33 150,170
+src/flext_infra/deps/phases/ensure_mypy.py
+  h_9db9d35f50cf33 38
+src/flext_infra/docs/auditor_mixin.py
+  h_9db9d35f50cf33 114-115
+tests/unit/deps/test_modernizer_helpers.py
+  h_9db9d35f50cf33 6,14,262-298
+src/flext_infra/_utilities/iteration.py
+  h_9db9d35f50cf33 12,53-172,327
+src/flext_infra/deps/modernizer.py
+  h_9db9d35f50cf33 6,57-77,130-131,138-143,154-157,172-180,255-418,513-514,585,619-639,661-664
+tests/unit/deps/test_detection_typings.py
+  h_9db9d35f50cf33 3,5,60,67-78
+tests/utilities.py
+  h_9db9d35f50cf33 1289
+tests/unit/deps/test_detection_uncovered.py
+  h_9db9d35f50cf33 65
+src/flext_infra/templates/workspace_makefile.mk.j2
+  h_9db9d35f50cf33 248,434,475-480,514-526
+tests/unit/deps/test_detection_typings_flow.py
+  h_9db9d35f50cf33 4,117,121
+src/flext_infra/_models/deps.py
+  h_9db9d35f50cf33 128-148
+src/flext_infra/_utilities/discovery.py
+  h_9db9d35f50cf33 200
+tests/unit/deps/test_detector_main.py
+  h_9db9d35f50cf33 80
+tests/unit/deps/test_modernizer_main_extra.py
+  h_9db9d35f50cf33 74-200
+src/flext_infra/deps/detector_runtime.py
+  h_9db9d35f50cf33 173,177
+src/flext_infra/_constants/base.py
+  h_9db9d35f50cf33 291-296
+src/flext_infra/deps/detection.py
+  h_9db9d35f50cf33 65,68,71
+tests/unit/deps/test_extra_paths_manager.py
+  h_9db9d35f50cf33 227-262
+tests/unit/deps/test_modernizer_mypy.py
+  h_9db9d35f50cf33 121-141
+tests/unit/docs/auditor_tests.py
+  h_9db9d35f50cf33 29-30,38-39,47-48
+src/flext_infra/refactor/engine_text.py
+  h_9db9d35f50cf33 433-434
+pyproject.toml
+  h_9db9d35f50cf33 335
+src/flext_infra/_constants/make.py
+  h_9db9d35f50cf33 198-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7953db4b3e16b6c1e0812eabb0504589fada8f8e",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
