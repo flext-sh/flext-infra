@@ -1,0 +1,26 @@
+tests/constants.py
+  h_9db9d35f50cf33 13-18,35-83,85-97,99,101-103
+tests/unit/codegen/test_codegen_version_file.py
+  h_9db9d35f50cf33 1-191
+tests/unit/codegen/test_codegen_py_typed.py
+  h_9db9d35f50cf33 1-147
+src/flext_infra/detectors/loose_object_detector.py
+  h_9db9d35f50cf33 43
+src/flext_infra/_utilities/namespace.py
+  h_9db9d35f50cf33 174
+src/flext_infra/_utilities/namespace_facades.py
+  h_9db9d35f50cf33 78
+tests/unit/_utilities/test_log_parser.py
+  h_9db9d35f50cf33 1-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f265d623094b25f860bdb40867daca82627e4b43",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
