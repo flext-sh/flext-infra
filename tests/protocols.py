@@ -17,8 +17,6 @@ from flext_infra import FlextInfraProtocols
 class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
     """Protocol definitions for FLEXT infra tests."""
 
-    __test__ = False
-
     class Tests(FlextTestsProtocols.Tests):
         """Tests use inherited flext-tests and production protocols."""
 

@@ -17,8 +17,6 @@ from flext_infra import t
 class TestsFlextInfraTypes(FlextTestsTypes, t):
     """Type system for FLEXT infra tests."""
 
-    __test__ = False
-
     class Tests(FlextTestsTypes.Tests):
         """Tests use inherited flext-tests and production typing contracts."""
 

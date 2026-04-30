@@ -17,8 +17,6 @@ from flext_infra import m
 class TestsFlextInfraModels(m, FlextTestsModels):
     """Infra test models extending flext-tests and production models."""
 
-    __test__ = False
-
     class Tests(FlextTestsModels.Tests):
         """Tests use inherited flext-tests and production infra models."""
 

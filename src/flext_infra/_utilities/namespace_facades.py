@@ -75,7 +75,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
                 c.Infra.PKG_PREFIX_HYPHEN
             ):
                 continue
-            stem = u.derive_class_stem(dep_name)
+            stem = m.derive_class_stem(dep_name)
             for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
                 chains[family].append(f"{stem}{suffix}")
         return chains

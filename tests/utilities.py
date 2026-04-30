@@ -39,8 +39,6 @@ from tests.typings import t
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):
     """Typed test utilities for flext-infra."""
 
-    __test__ = False
-
     class Tests(FlextTestsUtilities.Tests):
         """Canonical test helper namespace."""
 

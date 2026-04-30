@@ -645,6 +645,19 @@ tools:
     standard-addopts:
       - --strict-markers
       - --markdown-docs
+      - --cov=.
+      - --cov-report=term-missing:skip-covered
+      - --durations=10
+      - --ignore-glob=*/tests/constants.py
+      - --ignore-glob=*/tests/models.py
+      - --ignore-glob=*/tests/protocols.py
+      - --ignore-glob=*/tests/typings.py
+      - --ignore-glob=*/tests/utilities.py
+      - --ignore-glob=*/tests/_constants/*
+      - --ignore-glob=*/tests/_models/*
+      - --ignore-glob=*/tests/_protocols/*
+      - --ignore-glob=*/tests/_typings/*
+      - --ignore-glob=*/tests/_utilities/*
   tomlsort:
     all: true
     in_place: true

@@ -45,6 +45,14 @@ class FlextInfraEnsurePytestConfigPhase:
                 self._tool_config.tools.pytest.standard_markers,
                 strategy=c.Infra.TomlMergeMode.MERGE,
             )
+            .list(
+                "filterwarnings",
+                (
+                    "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning",
+                    "ignore:.*TestsFlextBad.*:flext_core.FlextMroViolation",
+                ),
+                strategy=c.Infra.TomlMergeMode.MERGE,
+            )
             .build()
         )
 
