@@ -72,7 +72,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         import_rewrite_candidates = 0
         per_project_changes: dict[str, int] = defaultdict(int)
         per_project_replacements: dict[str, int] = defaultdict(int)
-        wrapper_submodules = c.FACADE_MODULE_NAMES
+        wrapper_submodules = u.read_project_constants("flext-infra").FACADE_MODULE_NAMES
 
         for file_path in iter_result.value:
             try:
@@ -82,7 +82,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             project_name = rel.parts[0] if rel.parts else "."
             runtime_aliases = project_runtime_aliases.get(
                 project_name,
-                frozenset(c.RUNTIME_ALIAS_NAMES),
+                frozenset(u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES),
             )
             if not any(
                 part in c.Infra.ROOT_WRAPPER_SEGMENTS

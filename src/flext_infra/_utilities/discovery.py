@@ -11,6 +11,7 @@ from functools import cache
 from pathlib import Path
 from typing import ClassVar
 
+from flext_cli import u
 from flext_infra import FlextInfraUtilitiesDocsScope, c, p, r, t
 
 
@@ -377,7 +378,8 @@ class FlextInfraUtilitiesDiscovery:
             if child.is_dir()
             and not child.name.startswith(".")
             and any(
-                (child / dir_name).is_dir() for dir_name in c.Infra.MRO_SCAN_DIRECTORIES
+                (child / dir_name).is_dir()
+                for dir_name in u.read_project_constants("flext-infra").SCAN_DIRECTORIES
             )
             and (
                 (child / c.Infra.PYPROJECT_FILENAME).is_file()
@@ -391,7 +393,7 @@ class FlextInfraUtilitiesDiscovery:
         resolved_root = workspace_root.resolve()
         has_local_scan_dirs = any(
             (resolved_root / dir_name).is_dir()
-            for dir_name in c.Infra.MRO_SCAN_DIRECTORIES
+            for dir_name in u.read_project_constants("flext-infra").SCAN_DIRECTORIES
         )
         has_project_marker = any(
             candidate.is_file()

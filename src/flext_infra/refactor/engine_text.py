@@ -169,7 +169,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 FlextInfraRefactorLazyImportFixer(),
                 source,
             )
-        runtime_aliases = set(c.RUNTIME_ALIAS_NAMES)
+        runtime_aliases = set(
+            u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
+        )
         blocked = set(u.Infra.collect_blocked_aliases(source, runtime_aliases))
         blocked.update(u.Infra.collect_shadowed_aliases(source, runtime_aliases))
         forbidden = settings.get(c.Infra.RK_FORBIDDEN_IMPORTS)
@@ -335,7 +337,11 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
             core_aliases=self._tuple_setting(
                 settings,
                 c.Infra.RK_CORE_ALIASES,
-                tuple(c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES),
+                tuple(
+                    u.read_project_constants(
+                        "flext-infra"
+                    ).UNIVERSAL_ALIAS_PARENT_SOURCES
+                ),
             ),
         )
         analysis = analyzer.build_analysis()

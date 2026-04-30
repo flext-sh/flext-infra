@@ -13,7 +13,7 @@ from collections.abc import (
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import m, t, u
 
 
 class FlextInfraCyclicImportDetector:
@@ -30,7 +30,7 @@ class FlextInfraCyclicImportDetector:
         del _parse_failures
         scan_dirs = [
             (project_root / d).resolve()
-            for d in c.Infra.MRO_SCAN_DIRECTORIES
+            for d in u.read_project_constants("flext-infra").SCAN_DIRECTORIES
             if (project_root / d).is_dir()
         ]
         if not scan_dirs:

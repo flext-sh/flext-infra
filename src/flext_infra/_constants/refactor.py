@@ -11,7 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Final
 
-from flext_core import c, t
+from flext_core import t
 from flext_infra import (
     FlextInfraConstantsBase as cb,
 )
@@ -55,10 +55,6 @@ class FlextInfraConstantsRefactor:
         RK_FILE_EXTENSIONS,
     )
     """Allowed keys under the ``refactor_engine`` config scope."""
-
-    NAMESPACE_SOURCE_UNIVERSAL_ALIASES: Final[frozenset[str]] = frozenset(
-        c.UNIVERSAL_ALIAS_PARENT_SOURCES
-    )
 
     LEGACY_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
         "remove",
@@ -259,8 +255,6 @@ class FlextInfraConstantsRefactor:
         "all",
     })
     "Accepted target arguments for MRO migration runs."
-    MRO_SCAN_DIRECTORIES: Final[tuple[str, ...]] = c.SCAN_DIRECTORIES
-    "Directories scanned for constants modules in each project."
     MRO_CONSTANTS_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "constants.py",
         "_constants.py",

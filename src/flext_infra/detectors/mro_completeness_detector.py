@@ -55,7 +55,11 @@ class FlextInfraMROCompletenessDetector:
                 (
                     name
                     for name in module_classes
-                    if name.startswith(c.TIER_FACADE_PREFIX["src"])
+                    if name.startswith(
+                        u.read_project_constants("flext-infra").TIER_FACADE_PREFIX[
+                            "src"
+                        ]
+                    )
                 ),
                 None,
             )
