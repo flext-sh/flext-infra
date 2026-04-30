@@ -21,14 +21,6 @@ class FlextInfraRuntimeDevDependencyDetector(
 ):
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
-    log: Annotated[
-        p.Logger,
-        m.Field(
-            default_factory=lambda: u.fetch_logger(__name__),
-            exclude=True,
-            description="Dependency detector logger",
-        ),
-    ]
     output_format: Annotated[
         str,
         m.Field(alias="format", description="Output format for dependency report"),

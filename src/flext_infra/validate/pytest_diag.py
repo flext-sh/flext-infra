@@ -48,7 +48,10 @@ class FlextInfraPytestDiagExtractor(s[bool]):
     """
 
     junit: Annotated[Path, m.Field(description="JUnit XML path")]
-    log: Annotated[Path, m.Field(description="Pytest log path")]
+    log_path: Annotated[
+        Path,
+        m.Field(alias="log", description="Pytest log path"),
+    ]
     failed: Annotated[
         Path | None, m.Field(description="Path to write failed cases")
     ] = None
@@ -257,7 +260,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the pytest diagnostics CLI flow."""
-        result = self.extract(self.junit, self.log)
+        result = self.extract(self.junit, self.log_path)
         if result.failure:
             return r[bool].fail(result.error or "extraction failed")
         for output_path, attr_name, separator in [

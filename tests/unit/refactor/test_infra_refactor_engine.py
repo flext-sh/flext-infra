@@ -133,9 +133,16 @@ class TestsFlextInfraRefactorInfraRefactorEngine:
         loaded = engine.load_rules()
         assert loaded.success
         results = engine.refactor_project(project_root)
-        assert len(results) == 2
-        assert all(result.success for result in results)
-        assert all(result.modified for result in results)
+        file_results = [
+            result for result in results if result.file_path != project_root
+        ]
+        assert len(file_results) == 2
+        assert {result.file_path.name for result in file_results} == {
+            "task.py",
+            "test_sample.py",
+        }
+        assert all(result.success for result in file_results)
+        assert all(result.modified for result in file_results)
 
     def test_refactor_files_skips_non_python_inputs(self, tmp_path: Path) -> None:
         rules_dir = tmp_path / "rules"

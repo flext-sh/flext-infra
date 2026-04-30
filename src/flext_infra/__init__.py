@@ -789,17 +789,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
 
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
 
-from flext_infra.__version__ import (
-    __author__,
-    __author_email__,
-    __description__,
-    __license__,
-    __title__,
-    __url__,
-    __version__,
-    __version_info__,
-)
-
 __all__: list[str] = [
     "FlextInfra",
     "FlextInfraAccessorMigrationOrchestrator",

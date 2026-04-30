@@ -258,13 +258,33 @@ class FlextInfraAccessorMigrationOrchestrator(
         params: m.Infra.AccessorMigrationInput,
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
+        workspace_root = getattr(params, "workspace_root", None)
+        if workspace_root is None:
+            workspace_root = getattr(params, "workspace", None)
+
+        selected_projects = getattr(params, "selected_projects", None)
+        if selected_projects is None:
+            selected_projects = getattr(params, "projects", None)
+
+        apply_changes = getattr(params, "apply_changes", None)
+        if apply_changes is None:
+            apply_changes = getattr(params, "apply", False)
+
+        target_module = getattr(params, "module", None)
+        if target_module is None:
+            target_module = getattr(params, "target_module", None)
+
+        target_namespace = getattr(params, "namespace", None)
+        if target_namespace is None:
+            target_namespace = getattr(params, "target_namespace", None)
+
         result = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "selected_projects": params.project_names,
-            "apply_changes": params.apply,
+            "workspace_root": workspace_root,
+            "selected_projects": selected_projects,
+            "apply_changes": apply_changes,
             "fail_fast": params.fail_fast,
-            "target_module": params.module,
-            "target_namespace": params.namespace,
+            "target_module": target_module,
+            "target_namespace": target_namespace,
             "preview_limit": params.preview_limit,
             "gates": ",".join(params.gates),
         }).execute()

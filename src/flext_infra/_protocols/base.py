@@ -283,7 +283,9 @@ class FlextInfraProtocolsBase(Protocol):
 
         deps: FlextInfraProtocolsBase.DepsService
         runner: FlextInfraProtocolsBase.RunnerService
-        log: FlextProtocols.Logger
+
+        @property
+        def log(self) -> FlextProtocols.Logger: ...
 
     @runtime_checkable
     class TemplateRenderer(Protocol):

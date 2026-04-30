@@ -10,6 +10,33 @@ from pathlib import Path
 import pytest
 
 from tests import t, u
+from tests.unit.fixtures import (
+    deptry_report_payload,
+    models_resource,
+    real_docs_project,
+    real_makefile_project,
+    real_python_package,
+    real_toml_project,
+    real_workspace,
+    rope_workspace,
+    services_resource,
+    tool_config_document,
+)
+from tests.unit.fixtures_git import real_git_repo
+
+__all__ = [
+    "deptry_report_payload",
+    "models_resource",
+    "real_docs_project",
+    "real_git_repo",
+    "real_makefile_project",
+    "real_python_package",
+    "real_toml_project",
+    "real_workspace",
+    "rope_workspace",
+    "services_resource",
+    "tool_config_document",
+]
 
 
 def _is_collectable_test_module(collection_path: Path) -> bool:

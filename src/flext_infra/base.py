@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections.abc import (
     Callable,
     Sequence,
@@ -23,7 +22,6 @@ from flext_infra import (
 
 class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     s[TDomainResult],
-    ABC,
 ):
     """Domain command context shared by all flext-infra CLI services.
 
@@ -33,11 +31,45 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
 
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
+    settings_type: Annotated[
+        type | None,
+        m.Field(
+            exclude=True,
+            description="Internal settings type for runtime bootstrap",
+        ),
+    ] = None
+    runtime_settings: Annotated[
+        p.Settings | None,
+        m.Field(
+            exclude=True,
+            description="Internal runtime settings instance for service execution",
+        ),
+    ] = None
+    settings_overrides: Annotated[
+        t.JsonMapping | None,
+        m.Field(
+            exclude=True,
+            description="Internal settings override mapping for service bootstrap",
+        ),
+    ] = None
+    initial_context: Annotated[
+        p.Context | None,
+        m.Field(
+            exclude=True,
+            description="Internal execution context overrides for service bootstrap",
+        ),
+    ] = None
+
     @property
     @override
     def settings(self) -> FlextCliSettings:
         """Return the typed CLI settings namespace."""
         return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
+
+    @property
+    def log(self) -> p.Logger:
+        """Compatibility alias for the composed structured logger."""
+        return self.logger
 
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
@@ -168,7 +200,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         return payload
 
     @override
-    @abstractmethod
     def execute(self) -> p.Result[TDomainResult]:
         """Execute the service contract and return a typed result."""
         raise NotImplementedError
@@ -185,7 +216,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
 
 class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
     FlextInfraServiceBase[TDomainResult],
-    ABC,
 ):
     """Shared service foundation for commands that target workspace projects."""
 
