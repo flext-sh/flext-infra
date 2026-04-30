@@ -52,8 +52,7 @@ class FlextInfraImportAliasDetector:
             alias_names = sorted(
                 name
                 for name, alias in from_import.names_and_aliases
-                if alias is None
-                and name in u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
+                if alias is None and name in c.RUNTIME_ALIAS_NAMES
             )
             if not alias_names:
                 continue

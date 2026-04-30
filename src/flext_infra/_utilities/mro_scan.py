@@ -45,7 +45,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
         project_name_set: set[str] = set(project_names or ())
-        scan_dirs = frozenset(u.read_project_constants("flext-infra").SCAN_DIRECTORIES)
+        scan_dirs = frozenset(c.SCAN_DIRECTORIES)
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root,
         ):

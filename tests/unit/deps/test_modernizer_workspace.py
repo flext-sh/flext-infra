@@ -48,7 +48,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         deep_path = tmp_path / "a" / "b" / "c" / "d" / "e"
         deep_path.mkdir(parents=True, exist_ok=True)
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
-        tm.that(str(result), ne="")
+        assert str(result) != ""
 
     def test_main_applies_only_selected_projects(
         self,

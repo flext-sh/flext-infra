@@ -102,8 +102,10 @@ class FlextInfraUtilitiesSafety:
 
     @staticmethod
     def restore_files(bak_paths: Sequence[Path]) -> None:
-        """Move .bak files back to originals. Fail fast."""
+        """Move .bak files back to originals. Fail fast whenever possible."""
         for bak in bak_paths:
+            if not bak.exists():
+                continue
             original = Path(str(bak).removesuffix(c.Infra.SAFE_EXECUTION_BAK_SUFFIX))
             shutil.move(str(bak), str(original))
 

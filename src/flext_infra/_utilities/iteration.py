@@ -527,7 +527,7 @@ class FlextInfraUtilitiesIteration:
             )
             if normalized:
                 return normalized
-        return frozenset(u.read_project_constants("flext-infra").SCAN_DIRECTORIES)
+        return frozenset(c.SCAN_DIRECTORIES)
 
     @staticmethod
     def namespace_include_dynamic_dirs(project_root: Path) -> bool:
@@ -801,9 +801,7 @@ class FlextInfraUtilitiesIteration:
         Default (False) preserves workspace-submodule-only enumeration.
         """
         roots: MutableSequence[Path] = []
-        effective_scan_dirs = scan_dirs or frozenset(
-            u.read_project_constants("flext-infra").SCAN_DIRECTORIES
-        )
+        effective_scan_dirs = scan_dirs or frozenset(c.SCAN_DIRECTORIES)
         configured_members = FlextInfraUtilitiesIteration.workspace_member_names(
             workspace_root,
         )
@@ -1041,9 +1039,7 @@ class FlextInfraUtilitiesIteration:
             if not subdir.is_dir():
                 continue
             dir_name = subdir.name
-            if dir_name in frozenset(
-                u.read_project_constants("flext-infra").SCAN_DIRECTORIES
-            ):
+            if dir_name in frozenset(c.SCAN_DIRECTORIES):
                 continue
             if dir_name.startswith("."):
                 continue

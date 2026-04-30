@@ -17,9 +17,9 @@ from rope.refactor.importutils.importinfo import (
     NormalImport,
 )
 
-from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
+    c,
     t,
 )
 
@@ -306,9 +306,7 @@ class FlextInfraUtilitiesRopeImports:
         apply: bool,
     ) -> str | None:
         """Hoist ``from package.sub import alias`` into ``from package import alias``."""
-        effective_aliases = aliases or tuple(
-            u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
-        )
+        effective_aliases = aliases or tuple(c.RUNTIME_ALIAS_NAMES)
         requested_aliases = frozenset(
             alias for alias in effective_aliases if len(alias) == 1 and alias.islower()
         )

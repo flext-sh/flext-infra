@@ -17,7 +17,6 @@ from flext_infra import (
     c,
     m,
     t,
-    u,
 )
 
 
@@ -327,9 +326,7 @@ class FlextInfraUtilitiesDocsApi:
         facades = [
             name
             for name in public_symbols
-            if name.startswith(
-                u.read_project_constants("flext-infra").TIER_FACADE_PREFIX["src"]
-            )
+            if name.startswith(c.TIER_FACADE_PREFIX["src"])
         ]
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "package_name": package_name,

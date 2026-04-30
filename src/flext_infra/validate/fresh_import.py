@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import (
     MutableSequence,
 )
@@ -67,7 +68,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         violations: MutableSequence[str] = []
         for package in packages:
             smoke_result = u.Cli.run_raw([
-                "python",
+                sys.executable,
                 "-c",
                 f"import {package}",
             ])

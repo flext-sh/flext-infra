@@ -815,7 +815,7 @@ class FlextInfraRefactorCensus(
         Discovers governed projects via ``u.Infra.projects(workspace_root)``
         (canonical workspace project discovery — SSOT). For each project
         whose hyphenated name converts to a Python package, imports the
-        package and walks ``u.read_project_constants("flext-infra").FACADE_ALIAS_NAMES`` aliases at depth 1
+        package and walks ``c.FACADE_ALIAS_NAMES`` aliases at depth 1
         (top-level facade attributes — e.g. ``flext_core.c.Result``).
 
         Returns ``{symbol_name: (parent_path, ...)}`` so a consumer-defined
@@ -843,9 +843,7 @@ class FlextInfraRefactorCensus(
                 module = __import__(pkg_name)
             except ImportError:
                 continue
-            for alias_name in u.read_project_constants(
-                "flext-infra"
-            ).FACADE_ALIAS_NAMES:
+            for alias_name in c.FACADE_ALIAS_NAMES:
                 alias = getattr(module, alias_name, None)
                 if alias is None:
                     continue
@@ -872,7 +870,7 @@ class FlextInfraRefactorCensus(
         Returns ``(object, parent_paths)`` pairs where the consumer's
         public symbol name appears on at least one governed parent
         package's facade alias (``c/m/p/t/u`` per
-        ``u.read_project_constants("flext-infra").FACADE_ALIAS_NAMES``). Sorted descending by the number of
+        ``c.FACADE_ALIAS_NAMES``). Sorted descending by the number of
         matching parent paths (broadest collision surface first).
 
         Self-references are filtered: an object in project ``flext-core``

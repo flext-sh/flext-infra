@@ -70,10 +70,7 @@ class FlextInfraNamespaceSourceDetector:
                 if (
                     alias is None
                     and name in local_aliases
-                    and name
-                    not in u.read_project_constants(
-                        "flext-infra"
-                    ).UNIVERSAL_ALIAS_PARENT_SOURCES
+                    and name not in c.UNIVERSAL_ALIAS_PARENT_SOURCES
                     and current_source not in contextual_sources.get(name, frozenset())
                 )
             )

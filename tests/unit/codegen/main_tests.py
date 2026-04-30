@@ -95,12 +95,12 @@ class TestMainCommandDispatch:
     def test_unknown_command(self) -> None:
         """main() with unknown command returns non-zero exit code."""
         result = infra_main(["codegen", "unknown-command"])
-        tm.that(result, ne=0)
+        assert result != 0
 
     def test_no_command(self) -> None:
         """main() with no command returns non-zero exit code."""
         result = infra_main(["codegen"])
-        tm.that(result, ne=0)
+        assert result != 0
 
     def test_init_with_custom_root(self, tmp_path: Path) -> None:
         """main() init with custom root directory."""

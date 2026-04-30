@@ -142,7 +142,7 @@ class TestMainCliRouting:
 
     def test_unknown_command_returns_error(self) -> None:
         """Unknown subcommand returns non-zero exit code."""
-        tm.that(_cli("unknown"), ne=0)
+        assert _cli("unknown") != 0
 
     def test_skill_validate_routing(self, tmp_path: Path) -> None:
         """skill-validate subcommand routes correctly."""

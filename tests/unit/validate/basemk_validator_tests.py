@@ -149,7 +149,7 @@ class TestBaseMkValidatorSha256:
     def test_different_content_different_hash(self, tmp_path: Path) -> None:
         f1 = tf.create_in("content1", "f1.txt", tmp_path)
         f2 = tf.create_in("content2", "f2.txt", tmp_path)
-        tm.that(self._sha(f1), ne=self._sha(f2))
+        assert self._sha(f1) != self._sha(f2)
 
 
 __all__: t.StrSequence = []
