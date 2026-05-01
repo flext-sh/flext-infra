@@ -13,7 +13,6 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, override
 
-import pytest
 from flext_tests import FlextTestsUtilities
 from tomlkit import TOMLDocument
 
@@ -1002,25 +1001,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 apply=apply,
             )
             return result
-
-        @staticmethod
-        def patch_mro_import_rewriter_write_failure(
-            monkeypatch: pytest.MonkeyPatch,
-        ) -> None:
-            def _fail_write(
-                *,
-                workspace_root: Path,
-                file_path: Path,
-                updated_source: str,
-            ) -> t.Infra.EditResult:
-                del workspace_root, file_path, updated_source
-                return (False, ("  REVERTED src/demo_pkg/constants.py:",))
-
-            monkeypatch.setattr(
-                FlextInfraRefactorMROImportRewriter,
-                "_protected_source_write",
-                staticmethod(_fail_write),
-            )
 
         @staticmethod
         def create_migrator_discovery(

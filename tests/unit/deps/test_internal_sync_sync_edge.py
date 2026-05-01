@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import os
 from collections.abc import (
     Callable,
+    Generator,
     Sequence,
 )
+from contextlib import contextmanager
 from pathlib import Path
 from typing import override
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraInternalDependencySyncService, r
@@ -36,6 +38,21 @@ def _set_toml_stub(
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_read)
+
+
+@contextmanager
+def _temporary_env(overrides: dict[str, str]) -> Generator[None]:
+    original = {key: os.environ.get(key) for key in overrides}
+    try:
+        for key, value in overrides.items():
+            os.environ[key] = value
+        yield
+    finally:
+        for key, previous in original.items():
+            if previous is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = previous
 
 
 class TestsFlextInfraDepsInternalSyncSyncEdge:
@@ -72,7 +89,6 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
     def test_sync_with_workspace_mode_and_gitmodules(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -110,8 +126,8 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
                 }),
             ],
         )
-        monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))
-        tm.that(service.sync(project).success, eq=True)
+        with _temporary_env({"FLEXT_WORKSPACE_ROOT": str(workspace)}):
+            tm.that(service.sync(project).success, eq=True)
 
     def test_sync_with_synthesized_repo_map(
         self,
@@ -156,7 +172,6 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
     def test_sync_missing_repo_mapping(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
             '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
@@ -181,7 +196,6 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
     def test_sync_symlink_failure(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -215,5 +229,5 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
                 }),
             ],
         )
-        monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))
-        tm.fail(service.sync(project))
+        with _temporary_env({"FLEXT_WORKSPACE_ROOT": str(workspace)}):
+            tm.fail(service.sync(project))

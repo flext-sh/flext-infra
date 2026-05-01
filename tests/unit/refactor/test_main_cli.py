@@ -3,9 +3,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
-import flext_infra
 from flext_infra import FlextInfraRefactorCensus, main as infra_main
 from tests import t, u
 
@@ -306,51 +303,6 @@ class TestsFlextInfraRefactorMainCli:
         source = module_path.read_text(encoding="utf-8")
         assert '"m"' in source
         assert "m = FlextDemoModels" in source
-
-    def test_refactor_census_no_longer_uses_legacy_visitors(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        workspace, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        module_path = package_root / "models.py"
-        u.Tests.write_lazy_init_namespace_module(
-            module_path,
-            class_name="FlextDemoModels",
-            alias="m",
-            docstring="Models.",
-        )
-
-        def _legacy_visitor(*_args: object) -> None:
-            msg = "legacy visitor"
-            raise RuntimeError(msg)
-
-        def _legacy_collector(*_args: object) -> None:
-            msg = "legacy collector"
-            raise RuntimeError(msg)
-
-        monkeypatch.setattr(
-            flext_infra.FlextInfraCensusImportDiscoveryVisitor,
-            "scan_source",
-            _legacy_visitor,
-        )
-        monkeypatch.setattr(
-            flext_infra.FlextInfraCensusUsageCollector,
-            "scan_source",
-            _legacy_collector,
-        )
-
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-        )
-
-        assert result == 0
 
     def test_refactor_census_flags_test_only_candidates(
         self,

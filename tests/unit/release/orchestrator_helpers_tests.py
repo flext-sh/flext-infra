@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraReleaseOrchestrator
-from flext_infra._utilities import release as release_u
 from tests.constants import c
 from tests.models import m
 from tests.utilities import TestsFlextInfraUtilities as u
@@ -76,25 +75,9 @@ def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
         assert verification_line in notes
 
 
-def test_generate_notes_failure_returns_result_error(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
     notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
-
-    def _write_file(
-        path: Path,
-        content: str,
-        *,
-        encoding: str,
-    ) -> None:
-        del path
-        del content
-        del encoding
-        message = "write failed"
-        raise OSError(message)
-
-    monkeypatch.setattr(release_u.u, "write_file", _write_file)
+    notes_path.mkdir(parents=True, exist_ok=True)
 
     result = u.Infra.generate_notes(
         c.Tests.RELEASE_VERSION_TARGET,

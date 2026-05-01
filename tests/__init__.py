@@ -270,9 +270,6 @@ if _t.TYPE_CHECKING:
     from tests.unit.io.test_infra_terminal_detection import (
         TestsFlextInfraIoInfraTerminalDetection,
     )
-    from tests.unit.refactor.test_accessor_migration import (
-        TestsFlextInfraRefactorAccessorMigration,
-    )
     from tests.unit.refactor.test_infra_refactor_class_and_propagation import (
         TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
     )
@@ -674,9 +671,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.io.test_infra_terminal_detection": (
                 "TestsFlextInfraIoInfraTerminalDetection",
             ),
-            ".unit.refactor.test_accessor_migration": (
-                "TestsFlextInfraRefactorAccessorMigration",
-            ),
             ".unit.refactor.test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
             ),
@@ -987,7 +981,6 @@ __all__: list[str] = [
     "TestsFlextInfraModels",
     "TestsFlextInfraModernizerPyrefly",
     "TestsFlextInfraProtocols",
-    "TestsFlextInfraRefactorAccessorMigration",
     "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
     "TestsFlextInfraRefactorInfraRefactorClassPlacement",
     "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",

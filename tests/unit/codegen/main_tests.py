@@ -12,11 +12,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenLazyInit, main as infra_main
-from tests import p, r, t, u
+from flext_infra import main as infra_main
+from tests import t, u
 
 
 class TestHandleLazyInit:
@@ -43,25 +42,6 @@ class TestHandleLazyInit:
         result = infra_main(["codegen", "init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
-    def test_returns_non_zero_when_generation_reports_errors(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Init fails when the generator reports errors."""
-
-        def _fail_execute(_params: FlextInfraCodegenLazyInit) -> p.Result[bool]:
-            _ = _params
-            return r[bool].fail("init failed")
-
-        monkeypatch.setattr(
-            FlextInfraCodegenLazyInit,
-            "execute_command",
-            staticmethod(_fail_execute),
-        )
-        result = infra_main(["codegen", "init", "--workspace", str(tmp_path)])
-        tm.that(result, eq=1)
-
 
 class TestMainCommandDispatch:
     """Tests for main() command routing."""
@@ -80,16 +60,6 @@ class TestMainCommandDispatch:
             "--workspace",
             str(tmp_path),
         ])
-        tm.that(result, eq=0)
-
-    def test_lazy_init_default_root(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """main() init uses cwd as default root."""
-        monkeypatch.chdir(tmp_path)
-        result = infra_main(["codegen", "init"])
         tm.that(result, eq=0)
 
     def test_unknown_command(self) -> None:

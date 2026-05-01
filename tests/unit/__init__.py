@@ -230,9 +230,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".io.test_infra_terminal_detection": (
                 "TestsFlextInfraIoInfraTerminalDetection",
             ),
-            ".refactor.test_accessor_migration": (
-                "TestsFlextInfraRefactorAccessorMigration",
-            ),
             ".refactor.test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
             ),

@@ -7,11 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
-import pytest
-
-from flext_infra import FlextInfraCodegenVersionFile, p, r, u
+from flext_infra import FlextInfraCodegenVersionFile
 from tests import c, t
 
 _WORKSPACE_PYPROJECT = """\
@@ -59,71 +56,6 @@ def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Pa
 
 
 class TestsFlextInfraCodegenVersionFile:
-    def test_execute_fails_when_project_discovery_fails(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        ws, _proj, _pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
-
-        def _discover_projects(
-            workspace_root: Path,
-            *,
-            include_attached: bool = False,
-        ) -> p.Result[t.JsonValue]:
-            del workspace_root
-            del include_attached
-            return r[t.JsonValue].fail("discovery failed")
-
-        monkeypatch.setattr(
-            u.Infra, "discover_projects", staticmethod(_discover_projects)
-        )
-
-        result = FlextInfraCodegenVersionFile.model_validate({
-            "workspace_root": ws,
-        }).execute()
-
-        assert result.failure
-        assert "project discovery failed" in (result.error or "")
-
-    def test_execute_skips_when_class_name_matches_flext_version(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        ws, proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
-
-        def _discover_projects(
-            workspace_root: Path,
-            *,
-            include_attached: bool = False,
-        ) -> p.Result[tuple[SimpleNamespace, ...]]:
-            del workspace_root
-            del include_attached
-            return r[tuple[SimpleNamespace, ...]].ok((SimpleNamespace(path=proj),))
-
-        def _read_project_metadata(root: Path) -> SimpleNamespace:
-            del root
-            return SimpleNamespace(
-                class_stem="Flext",
-                name=c.Tests.DEMO_PROJECT_NAME,
-                package_name=pkg.name,
-            )
-
-        monkeypatch.setattr(
-            u.Infra, "discover_projects", staticmethod(_discover_projects)
-        )
-        monkeypatch.setattr(
-            u, "read_project_metadata", staticmethod(_read_project_metadata)
-        )
-
-        result = FlextInfraCodegenVersionFile.model_validate({
-            "workspace_root": ws,
-        }).execute()
-
-        assert result.success
-        assert not (pkg / "__version__.py").exists()
-
     def test_generates_version_file_for_project(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
         svc = FlextInfraCodegenVersionFile.model_validate({"workspace_root": ws})

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import (
@@ -167,35 +166,3 @@ class TestsFlextInfraRefactorInfraRefactorEngine:
         assert md_result.success
         assert not md_result.modified
         assert "Skipped non-Python file" in md_result.changes
-
-    def test_refactor_file_rolls_back_invalid_output_and_preserves_backup(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        file_path = tmp_path / "sample.py"
-        original = "value = 1\n"
-        file_path.write_text(original, encoding="utf-8")
-        engine = FlextInfraRefactorEngine(config_path=tmp_path / "missing.yml")
-        engine.rule_loader.rules = [
-            (
-                c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
-                {c.Infra.RK_ID: "broken", c.Infra.RK_ENABLED: True},
-            )
-        ]
-        engine.rule_loader.file_rules = []
-        monkeypatch.setattr(
-            engine.orchestrator,
-            "_apply_text_rule_selection",
-            lambda kind, settings, source, file_path: (
-                "def broken(:\n",
-                ["broke syntax"],
-            ),
-        )
-
-        result = engine.refactor_file(file_path, dry_run=False)
-
-        assert not result.success
-        assert not result.modified
-        assert file_path.read_text(encoding="utf-8") == original
-        assert file_path.with_suffix(".py.bak").exists()

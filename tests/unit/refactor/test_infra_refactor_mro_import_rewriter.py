@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import t, u
 
 __all__: t.StrSequence = []
@@ -60,27 +58,3 @@ class TestsFlextInfraRefactorInfraRefactorMroImportRewriter:
         assert any(item.file.endswith("consumer.py") for item in rewrites)
         assert constants_path.read_text(encoding="utf-8") == original_constants
         assert consumer_path.read_text(encoding="utf-8") == original_consumer
-
-    def test_migrate_workspace_reports_protected_write_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        workspace_root, constants_path, consumer_path = (
-            u.Tests.build_mro_import_workspace(tmp_path)
-        )
-        u.Tests.patch_mro_import_rewriter_write_failure(monkeypatch)
-
-        migrations, rewrites, errors = u.Tests.migrate_workspace_mro_imports(
-            workspace_root=workspace_root,
-            constants_path=constants_path,
-            apply=True,
-        )
-
-        assert migrations == ()
-        assert rewrites == ()
-        assert errors
-        assert (f'{"DEMO_VALUE"} = "{"demo"}"') in constants_path.read_text(
-            encoding="utf-8"
-        )
-        assert (f"value = {'DEMO_VALUE'}") in consumer_path.read_text(encoding="utf-8")

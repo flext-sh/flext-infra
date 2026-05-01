@@ -11,7 +11,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".main_tests": ("main_tests",),
         ".orchestrator_git_tests": ("orchestrator_git_tests",),
         ".orchestrator_helpers_tests": ("orchestrator_helpers_tests",),
-        ".orchestrator_phases_tests": ("orchestrator_phases_tests",),
         ".orchestrator_publish_tests": ("orchestrator_publish_tests",),
         ".orchestrator_tests": ("orchestrator_tests",),
         ".test_release_dag": ("TestsFlextInfraReleaseDag",),

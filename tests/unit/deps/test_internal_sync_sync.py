@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import os
 from collections.abc import (
     Callable,
+    Generator,
     Sequence,
 )
+from contextlib import contextmanager
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraInternalDependencySyncService, r
@@ -37,6 +39,21 @@ def _set_toml_stub(
     service.toml = _TomlReaderStub(_read)
 
 
+@contextmanager
+def _temporary_env(overrides: dict[str, str]) -> Generator[None]:
+    original = {key: os.environ.get(key) for key in overrides}
+    try:
+        for key, value in overrides.items():
+            os.environ[key] = value
+        yield
+    finally:
+        for key, previous in original.items():
+            if previous is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = previous
+
+
 class TestsFlextInfraDepsInternalSyncSync:
     def test_sync_no_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -56,7 +73,6 @@ class TestsFlextInfraDepsInternalSyncSync:
     def test_sync_workspace_mode_symlink(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -83,14 +99,12 @@ class TestsFlextInfraDepsInternalSyncSync:
                 }),
             ],
         )
-        monkeypatch.setenv("FLEXT_STANDALONE", "")
-        monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
-        tm.ok(service.sync(project))
+        with _temporary_env({"FLEXT_STANDALONE": "", "FLEXT_WORKSPACE_ROOT": ""}):
+            tm.ok(service.sync(project))
 
     def test_sync_missing_repo_mapping(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project = tmp_path / "project"
         project.mkdir()
@@ -113,7 +127,6 @@ class TestsFlextInfraDepsInternalSyncSync:
                 r[t.Infra.ContainerDict].ok({"repo": {}}),
             ],
         )
-        monkeypatch.setenv("FLEXT_STANDALONE", "")
-        monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
-        error = tm.fail(service.sync(project))
+        with _temporary_env({"FLEXT_STANDALONE": "", "FLEXT_WORKSPACE_ROOT": ""}):
+            error = tm.fail(service.sync(project))
         tm.that(error, contains="missing repo mapping")
