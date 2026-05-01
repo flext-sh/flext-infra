@@ -147,6 +147,7 @@ ignore-words-list = "crate,nd"
 
 # [MANAGED] coverage
 [tool.coverage.report]
+exclude_also = [ "if TYPE_CHECKING:", "if _t.TYPE_CHECKING:", "if typing.TYPE_CHECKING:" ]
 fail_under = 25
 precision = 2
 show_missing = true

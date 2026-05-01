@@ -41,6 +41,7 @@ class FlextInfraEnsureCoverageConfigPhase:
             .value("show_missing", True)
             .value("skip_covered", False)
             .value("precision", cov_config.precision)
+            .list("exclude_also", sorted(set(cov_config.exclude_also)))
             .build()
         )
         run_phase = (

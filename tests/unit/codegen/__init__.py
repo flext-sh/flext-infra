@@ -36,6 +36,8 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".scaffolder_tests": ("scaffolder_tests",),
         ".test_codegen_pipeline_dag": ("test_codegen_pipeline_dag",),
+        ".test_codegen_py_typed": ("test_codegen_py_typed",),
+        ".test_codegen_version_file": ("test_codegen_version_file",),
         ".test_violation_key": ("test_violation_key",),
     },
 )

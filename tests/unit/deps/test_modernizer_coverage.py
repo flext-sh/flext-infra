@@ -53,6 +53,9 @@ class TestsFlextInfraDepsModernizerCoverage:
         assert report["show_missing"] is True
         assert report["skip_covered"] is False
         assert report["precision"] == tool_config.tools.coverage.precision
+        assert list(_strings(report["exclude_also"])) == sorted(
+            set(tool_config.tools.coverage.exclude_also)
+        )
         assert list(_strings(run["omit"])) == sorted(
             set(tool_config.tools.coverage.omit)
         )

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import FlextInfraCodegenPyTyped
 from tests import c, t
 
@@ -57,36 +59,19 @@ class TestsFlextInfraCodegenPyTyped:
         assert count == 1
         assert (pkg / c.Infra.PY_TYPED).exists()
 
-    def test_skips_hidden_directories(self, tmp_path: Path) -> None:
-        hidden_pkg = tmp_path / "src" / ".hidden" / "mypkg"
-        hidden_pkg.mkdir(parents=True)
-        (hidden_pkg / "__init__.py").write_text("", encoding="utf-8")
+    @pytest.mark.parametrize("skip_dir", tuple(c.Tests.CODEGEN_SKIPPED_DIRS))
+    def test_skips_known_excluded_directories(
+        self, tmp_path: Path, skip_dir: str
+    ) -> None:
+        skipped_pkg = tmp_path / "src" / skip_dir / "mypkg"
+        skipped_pkg.mkdir(parents=True)
+        (skipped_pkg / "__init__.py").write_text("", encoding="utf-8")
         svc = FlextInfraCodegenPyTyped.model_validate({"workspace_root": tmp_path})
 
         count = svc.run()
 
         assert count == 0
-        assert not (hidden_pkg / c.Infra.PY_TYPED).exists()
-
-    def test_skips_vendor_directories(self, tmp_path: Path) -> None:
-        vendor_pkg = tmp_path / "src" / "vendor" / "mypkg"
-        vendor_pkg.mkdir(parents=True)
-        (vendor_pkg / "__init__.py").write_text("", encoding="utf-8")
-        svc = FlextInfraCodegenPyTyped.model_validate({"workspace_root": tmp_path})
-
-        count = svc.run()
-
-        assert count == 0
-
-    def test_skips_node_modules(self, tmp_path: Path) -> None:
-        node_pkg = tmp_path / "src" / "node_modules" / "mypkg"
-        node_pkg.mkdir(parents=True)
-        (node_pkg / "__init__.py").write_text("", encoding="utf-8")
-        svc = FlextInfraCodegenPyTyped.model_validate({"workspace_root": tmp_path})
-
-        count = svc.run()
-
-        assert count == 0
+        assert not (skipped_pkg / c.Infra.PY_TYPED).exists()
 
     def test_no_change_when_marker_already_exists(self, tmp_path: Path) -> None:
         pkg = tmp_path / "src" / "mypkg"
@@ -120,8 +105,8 @@ class TestsFlextInfraCodegenPyTyped:
         assert count == 1
         assert (test_pkg / c.Infra.PY_TYPED).exists()
 
-    def test_skips_venv_directories(self, tmp_path: Path) -> None:
-        venv_pkg = tmp_path / "src" / ".venv" / "mypkg"
+    def test_skips_nested_hidden_virtualenv_directories(self, tmp_path: Path) -> None:
+        venv_pkg = tmp_path / "src" / ".cache" / ".venv" / "mypkg"
         venv_pkg.mkdir(parents=True)
         (venv_pkg / "__init__.py").write_text("", encoding="utf-8")
         svc = FlextInfraCodegenPyTyped.model_validate({"workspace_root": tmp_path})
@@ -129,6 +114,22 @@ class TestsFlextInfraCodegenPyTyped:
         count = svc.run()
 
         assert count == 0
+
+    def test_only_expected_namespace_marker_is_created(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "src" / "mypkg"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        svc = FlextInfraCodegenPyTyped.model_validate({"workspace_root": tmp_path})
+
+        count = svc.run()
+
+        assert count == 1
+        assert (pkg / c.Infra.PY_TYPED).exists()
+        for namespace_file in c.Tests.CODEGEN_NAMESPACE_FILES - {
+            c.Infra.PY_TYPED,
+            c.Infra.INIT_PY,
+        }:
+            assert not (pkg / namespace_file).exists()
 
     def test_multiple_packages_all_get_markers(self, tmp_path: Path) -> None:
         for name in ("pkga", "pkgb", "pkgc"):

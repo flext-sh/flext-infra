@@ -29,7 +29,7 @@ def test_release_orchestrator_defaults_are_public_and_typed() -> None:
 def test_release_orchestrator_normalizes_phase_and_projects() -> None:
     params = FlextInfraReleaseOrchestrator.model_validate(
         {
-            "phase": "validate build",
+            "phase": f"{c.Tests.ReleasePhase.VALIDATE} {c.Tests.ReleasePhase.BUILD}",
             "projects": ["flext-core", "flext-api"],
             "interactive": 0,
             "create_branches": 0,
@@ -57,7 +57,7 @@ def test_release_run_validate_dry_run_succeeds(
             "--workspace",
             str(workspace),
             "--phase",
-            "validate",
+            c.Tests.ReleasePhase.VALIDATE,
             "--interactive",
             "0",
             "--dry-run",
@@ -82,7 +82,7 @@ def test_release_run_validate_apply_propagates_make_failure(
             "--workspace",
             str(workspace),
             "--phase",
-            "validate",
+            c.Tests.ReleasePhase.VALIDATE,
             "--interactive",
             "0",
             "--apply",

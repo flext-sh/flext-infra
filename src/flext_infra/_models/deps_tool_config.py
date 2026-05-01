@@ -109,6 +109,14 @@ class FlextInfraModelsDepsToolSettings(
         precision: Annotated[
             int, m.Field(description="Decimal precision for coverage percentages.")
         ] = 2
+        exclude_also: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="exclude-also",
+                default_factory=tuple,
+                description="Coverage report line patterns excluded from runtime coverage.",
+            ),
+        ]
         omit: Annotated[
             t.StrSequence,
             m.Field(

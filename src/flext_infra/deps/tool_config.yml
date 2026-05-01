@@ -507,6 +507,10 @@ tools:
     show-missing: true
     skip-covered: false
     precision: 2
+    exclude-also:
+      - "if _t.TYPE_CHECKING:"
+      - "if TYPE_CHECKING:"
+      - "if typing.TYPE_CHECKING:"
     omit:
       - "*/dependency_injector/providers.pyx"
   pyrefly:

@@ -15,8 +15,6 @@ if _t.TYPE_CHECKING:
     from flext_tests import td, tf, tk, tm, tv
 
     from flext_infra import d, e, h, r, s, x
-    from tests._constants.domain import TestsFlextInfraConstantsDomain
-    from tests._constants.fixtures import TestsFlextInfraConstantsFixtures
     from tests.conftest import (
         deptry_report_payload,
         models_resource,
@@ -403,15 +401,12 @@ if _t.TYPE_CHECKING:
     from tests.utilities import TestsFlextInfraUtilities, u
 _LAZY_IMPORTS = merge_lazy_imports(
     (
-        "._constants",
         ".integration",
         ".refactor",
         ".unit",
     ),
     build_lazy_import_map(
         {
-            "._constants.domain": ("TestsFlextInfraConstantsDomain",),
-            "._constants.fixtures": ("TestsFlextInfraConstantsFixtures",),
             ".conftest": (
                 "deptry_report_payload",
                 "models_resource",
@@ -908,8 +903,6 @@ __all__: list[str] = [
     "TestsFlextInfraBasemkMain",
     "TestsFlextInfraBasemkMakeContract",
     "TestsFlextInfraConstants",
-    "TestsFlextInfraConstantsDomain",
-    "TestsFlextInfraConstantsFixtures",
     "TestsFlextInfraContainerInfraContainer",
     "TestsFlextInfraDepsDetectionClassify",
     "TestsFlextInfraDepsDetectionDeptry",

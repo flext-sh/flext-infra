@@ -30,7 +30,7 @@ def make_config(
         dev_suffix=False,
         create_branches=create_branches,
         next_dev=next_dev,
-        next_bump="minor",
+        next_bump=c.Tests.RELEASE_BUMP_MINOR,
     )
 
 
@@ -39,7 +39,7 @@ def test_execute_validate_dry_run_succeeds(tmp_path: Path) -> None:
 
     result = FlextInfraReleaseOrchestrator.model_validate({
         "workspace_root": workspace,
-        "phase": "validate",
+        "phase": c.Tests.ReleasePhase.VALIDATE,
         "interactive": 0,
     }).execute()
 
@@ -103,9 +103,18 @@ def test_run_release_project_filter_updates_only_selected_project(
     )
 
     assert result.success
-    assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
-    assert 'version = "1.0.0"' in (workspace / "flext-a" / "pyproject.toml").read_text()
-    assert 'version = "0.1.0"' in (workspace / "flext-b" / "pyproject.toml").read_text()
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
+        in (workspace / "pyproject.toml").read_text()
+    )
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
+        in (workspace / "flext-a" / "pyproject.toml").read_text()
+    )
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_BASE}"'
+        in (workspace / "flext-b" / "pyproject.toml").read_text()
+    )
 
 
 def test_run_release_next_dev_updates_workspace_to_next_dev_version(
@@ -122,4 +131,7 @@ def test_run_release_next_dev_updates_workspace_to_next_dev_version(
     )
 
     assert result.success
-    assert 'version = "1.1.0-dev"' in (workspace / "pyproject.toml").read_text()
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_NEXT_DEV}"'
+        in (workspace / "pyproject.toml").read_text()
+    )

@@ -74,20 +74,19 @@ class TestsFlextInfraConstants(
         LOG_ERROR_PREFIX_RE: ClassVar[re.Pattern[str]] = re.compile(
             r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)",
         )
+        LOG_MIXED_SCENARIO_LINES: Final[tuple[str, ...]] = (
+            "make[1]: running",
+            "ERROR: build failed",
+            "INFO: post-build",
+            "FAIL: test broken",
+            "Total: 2 failed",
+        )
 
         WORKSPACE_PROJECT_NAME: Final[str] = "workspace"
         DEMO_PROJECT_NAME: Final[str] = "demo-project"
         PROJECT_A_NAME: Final[str] = "proj-a"
         PROJECT_B_NAME: Final[str] = "proj-b"
         PROJECT_NO_SRC_NAME: Final[str] = "no-src"
-        PROJECT_VERSION: Final[str] = "0.1.0"
-
-        PROJECT_MEMBERS_DEFAULT: Final[tuple[str, ...]] = (
-            DEMO_PROJECT_NAME,
-            PROJECT_A_NAME,
-            PROJECT_B_NAME,
-            PROJECT_NO_SRC_NAME,
-        )
         PROJECT_MEMBERS_BY_SCENARIO: ClassVar[Mapping[str, tuple[str, ...]]] = (
             MappingProxyType({
                 "single": (DEMO_PROJECT_NAME,),
@@ -101,6 +100,22 @@ class TestsFlextInfraConstants(
             "__version__.py",
             "py.typed",
         })
+        CODEGEN_SKIPPED_DIRS: Final[frozenset[str]] = frozenset({
+            ".hidden",
+            "vendor",
+            "node_modules",
+            ".venv",
+        })
+
+        RELEASE_VERSION_BASE: Final[str] = "0.1.0"
+        RELEASE_VERSION_SELECTED: Final[str] = "1.2.0"
+        RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
+        RELEASE_VERSION_NEXT_DEV: Final[str] = "1.1.0-dev"
+        RELEASE_BUMP_MINOR: Final[str] = "minor"
+        RELEASE_PROJECTS: Final[tuple[str, str]] = (
+            "flext-a",
+            "flext-b",
+        )
 
 
 c = TestsFlextInfraConstants

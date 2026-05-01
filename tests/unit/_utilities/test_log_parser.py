@@ -101,13 +101,7 @@ class TestsFlextInfraUtilitiesLogParser:
         assert count == 1
 
     def test_mixed_errors_and_noise(self, tmp_path: Path) -> None:
-        content = (
-            "make[1]: running\n"
-            "ERROR: build failed\n"
-            "INFO: post-build\n"
-            "FAIL: test broken\n"
-            "Total: 2 failed\n"
-        )
+        content = "\n".join(c.Tests.LOG_MIXED_SCENARIO_LINES) + "\n"
         log_file = tmp_path / "mixed.log"
         log_file.write_text(content, encoding="utf-8")
 
@@ -128,6 +122,10 @@ class TestsFlextInfraUtilitiesLogParser:
         count, _ = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
         assert count == expected_count
+
+    @pytest.mark.parametrize("line", c.Tests.LOG_ERROR_LINES)
+    def test_error_lines_follow_prefix_rule(self, line: str) -> None:
+        assert c.Tests.LOG_ERROR_PREFIX_RE.match(line)
 
 
 __all__: t.StrSequence = []

@@ -7,8 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
-from flext_infra import FlextInfraCodegenVersionFile
+import pytest
+
+from flext_infra import FlextInfraCodegenVersionFile, p, r, u
 from tests import c, t
 
 _WORKSPACE_PYPROJECT = """\
@@ -34,7 +37,7 @@ def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Pa
     (ws / "pyproject.toml").write_text(
         _WORKSPACE_PYPROJECT.format(
             workspace_name=c.Tests.WORKSPACE_PROJECT_NAME,
-            project_version=c.Tests.PROJECT_VERSION,
+            project_version=c.Tests.RELEASE_VERSION_BASE,
             members=f'"{project_name}"',
         ),
         encoding="utf-8",
@@ -44,7 +47,7 @@ def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Pa
     (proj / "pyproject.toml").write_text(
         _PROJECT_PYPROJECT.format(
             project_name=project_name,
-            project_version=c.Tests.PROJECT_VERSION,
+            project_version=c.Tests.RELEASE_VERSION_BASE,
         ),
         encoding="utf-8",
     )
@@ -56,6 +59,71 @@ def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Pa
 
 
 class TestsFlextInfraCodegenVersionFile:
+    def test_execute_fails_when_project_discovery_fails(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        ws, _proj, _pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
+
+        def _discover_projects(
+            workspace_root: Path,
+            *,
+            include_attached: bool = False,
+        ) -> p.Result[t.JsonValue]:
+            del workspace_root
+            del include_attached
+            return r[t.JsonValue].fail("discovery failed")
+
+        monkeypatch.setattr(
+            u.Infra, "discover_projects", staticmethod(_discover_projects)
+        )
+
+        result = FlextInfraCodegenVersionFile.model_validate({
+            "workspace_root": ws,
+        }).execute()
+
+        assert result.failure
+        assert "project discovery failed" in (result.error or "")
+
+    def test_execute_skips_when_class_name_matches_flext_version(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        ws, proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
+
+        def _discover_projects(
+            workspace_root: Path,
+            *,
+            include_attached: bool = False,
+        ) -> p.Result[tuple[SimpleNamespace, ...]]:
+            del workspace_root
+            del include_attached
+            return r[tuple[SimpleNamespace, ...]].ok((SimpleNamespace(path=proj),))
+
+        def _read_project_metadata(root: Path) -> SimpleNamespace:
+            del root
+            return SimpleNamespace(
+                class_stem="Flext",
+                name=c.Tests.DEMO_PROJECT_NAME,
+                package_name=pkg.name,
+            )
+
+        monkeypatch.setattr(
+            u.Infra, "discover_projects", staticmethod(_discover_projects)
+        )
+        monkeypatch.setattr(
+            u, "read_project_metadata", staticmethod(_read_project_metadata)
+        )
+
+        result = FlextInfraCodegenVersionFile.model_validate({
+            "workspace_root": ws,
+        }).execute()
+
+        assert result.success
+        assert not (pkg / "__version__.py").exists()
+
     def test_generates_version_file_for_project(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
         svc = FlextInfraCodegenVersionFile.model_validate({"workspace_root": ws})
@@ -127,18 +195,21 @@ class TestsFlextInfraCodegenVersionFile:
         (ws / "pyproject.toml").write_text(
             _WORKSPACE_PYPROJECT.format(
                 workspace_name=c.Tests.WORKSPACE_PROJECT_NAME,
-                project_version=c.Tests.PROJECT_VERSION,
-                members='"proj-a", "proj-b"',
+                project_version=c.Tests.RELEASE_VERSION_BASE,
+                members=", ".join(
+                    f'"{project_name}"'
+                    for project_name in c.Tests.PROJECT_MEMBERS_BY_SCENARIO["filtered"]
+                ),
             ),
             encoding="utf-8",
         )
-        for name in (c.Tests.PROJECT_A_NAME, c.Tests.PROJECT_B_NAME):
+        for name in c.Tests.PROJECT_MEMBERS_BY_SCENARIO["filtered"]:
             proj = ws / name
             proj.mkdir()
             (proj / "pyproject.toml").write_text(
                 _PROJECT_PYPROJECT.format(
                     project_name=name,
-                    project_version=c.Tests.PROJECT_VERSION,
+                    project_version=c.Tests.RELEASE_VERSION_BASE,
                 ),
                 encoding="utf-8",
             )
@@ -173,8 +244,13 @@ class TestsFlextInfraCodegenVersionFile:
         (ws / "pyproject.toml").write_text(
             _WORKSPACE_PYPROJECT.format(
                 workspace_name=c.Tests.WORKSPACE_PROJECT_NAME,
-                project_version=c.Tests.PROJECT_VERSION,
-                members='"no-src"',
+                project_version=c.Tests.RELEASE_VERSION_BASE,
+                members=", ".join(
+                    f'"{project_name}"'
+                    for project_name in c.Tests.PROJECT_MEMBERS_BY_SCENARIO[
+                        "missing_src"
+                    ]
+                ),
             ),
             encoding="utf-8",
         )
@@ -183,7 +259,7 @@ class TestsFlextInfraCodegenVersionFile:
         (no_src / "pyproject.toml").write_text(
             _PROJECT_PYPROJECT.format(
                 project_name=c.Tests.PROJECT_NO_SRC_NAME,
-                project_version=c.Tests.PROJECT_VERSION,
+                project_version=c.Tests.RELEASE_VERSION_BASE,
             ),
             encoding="utf-8",
         )
