@@ -150,7 +150,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".deps.test_internal_sync_workspace": (
                 "TestsFlextInfraDepsInternalSyncWorkspace",
             ),
-            ".deps.test_main": ("TestsFlextInfraDepsMain",),
             ".deps.test_main_dispatch": ("TestsFlextInfraDepsMainDispatch",),
             ".deps.test_modernizer_comments": (
                 "TestsFlextInfraDepsModernizerComments",
@@ -289,7 +288,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".runner_service": ("RealSubprocessRunner",),
             ".test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
             ".test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
-            ".test_infra_init_lazy_core": ("TestsFlextInfraInfraInitLazyCore",),
             ".test_infra_main": ("TestsFlextInfraInfraMain",),
             ".test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
             ".test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
@@ -316,7 +314,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".test_infra_workspace_detector": (
                 "TestsFlextInfraInfraWorkspaceDetector",
             ),
-            ".test_infra_workspace_init": ("TestsFlextInfraInfraWorkspaceInit",),
             ".test_infra_workspace_migrator": (
                 "TestsFlextInfraInfraWorkspaceMigrator",
             ),

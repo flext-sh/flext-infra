@@ -46,7 +46,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestsFlextInfraDepsInternalSyncValidation",
         ),
         ".test_internal_sync_workspace": ("TestsFlextInfraDepsInternalSyncWorkspace",),
-        ".test_main": ("TestsFlextInfraDepsMain",),
         ".test_main_dispatch": ("TestsFlextInfraDepsMainDispatch",),
         ".test_modernizer_comments": ("TestsFlextInfraDepsModernizerComments",),
         ".test_modernizer_consolidate": ("TestsFlextInfraDepsModernizerConsolidate",),

@@ -194,7 +194,6 @@ if _t.TYPE_CHECKING:
     from tests.unit.deps.test_internal_sync_workspace import (
         TestsFlextInfraDepsInternalSyncWorkspace,
     )
-    from tests.unit.deps.test_main import TestsFlextInfraDepsMain
     from tests.unit.deps.test_main_dispatch import TestsFlextInfraDepsMainDispatch
     from tests.unit.deps.test_modernizer_comments import (
         TestsFlextInfraDepsModernizerComments,
@@ -329,7 +328,6 @@ if _t.TYPE_CHECKING:
     from tests.unit.runner_service import RealSubprocessRunner
     from tests.unit.test_infra_constants_core import TestsFlextInfraInfraConstantsCore
     from tests.unit.test_infra_constants_extra import TestsFlextInfraInfraConstantsExtra
-    from tests.unit.test_infra_init_lazy_core import TestsFlextInfraInfraInitLazyCore
     from tests.unit.test_infra_main import TestsFlextInfraInfraMain
     from tests.unit.test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli
     from tests.unit.test_infra_maintenance_init import (
@@ -360,7 +358,6 @@ if _t.TYPE_CHECKING:
     from tests.unit.test_infra_workspace_detector import (
         TestsFlextInfraInfraWorkspaceDetector,
     )
-    from tests.unit.test_infra_workspace_init import TestsFlextInfraInfraWorkspaceInit
     from tests.unit.test_infra_workspace_migrator import (
         TestsFlextInfraInfraWorkspaceMigrator,
     )
@@ -598,7 +595,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.deps.test_internal_sync_workspace": (
                 "TestsFlextInfraDepsInternalSyncWorkspace",
             ),
-            ".unit.deps.test_main": ("TestsFlextInfraDepsMain",),
             ".unit.deps.test_main_dispatch": ("TestsFlextInfraDepsMainDispatch",),
             ".unit.deps.test_modernizer_comments": (
                 "TestsFlextInfraDepsModernizerComments",
@@ -736,7 +732,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.runner_service": ("RealSubprocessRunner",),
             ".unit.test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
             ".unit.test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
-            ".unit.test_infra_init_lazy_core": ("TestsFlextInfraInfraInitLazyCore",),
             ".unit.test_infra_main": ("TestsFlextInfraInfraMain",),
             ".unit.test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
             ".unit.test_infra_maintenance_init": (
@@ -767,7 +762,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.test_infra_workspace_detector": (
                 "TestsFlextInfraInfraWorkspaceDetector",
             ),
-            ".unit.test_infra_workspace_init": ("TestsFlextInfraInfraWorkspaceInit",),
             ".unit.test_infra_workspace_migrator": (
                 "TestsFlextInfraInfraWorkspaceMigrator",
             ),
@@ -931,7 +925,6 @@ __all__: list[str] = [
     "TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge",
     "TestsFlextInfraDepsInternalSyncValidation",
     "TestsFlextInfraDepsInternalSyncWorkspace",
-    "TestsFlextInfraDepsMain",
     "TestsFlextInfraDepsMainDispatch",
     "TestsFlextInfraDepsModernizerComments",
     "TestsFlextInfraDepsModernizerConsolidate",
@@ -956,7 +949,6 @@ __all__: list[str] = [
     "TestsFlextInfraExtraPathsManager",
     "TestsFlextInfraInfraConstantsCore",
     "TestsFlextInfraInfraConstantsExtra",
-    "TestsFlextInfraInfraInitLazyCore",
     "TestsFlextInfraInfraMain",
     "TestsFlextInfraInfraMaintenanceCli",
     "TestsFlextInfraInfraMaintenanceInit",
@@ -977,7 +969,6 @@ __all__: list[str] = [
     "TestsFlextInfraInfraVersionExtra",
     "TestsFlextInfraInfraVersioning",
     "TestsFlextInfraInfraWorkspaceDetector",
-    "TestsFlextInfraInfraWorkspaceInit",
     "TestsFlextInfraInfraWorkspaceMigrator",
     "TestsFlextInfraInfraWorkspaceMigratorDeps",
     "TestsFlextInfraInfraWorkspaceMigratorDryrun",
