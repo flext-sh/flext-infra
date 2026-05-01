@@ -15,19 +15,6 @@ if _t.TYPE_CHECKING:
     from flext_tests import td, tf, tk, tm, tv
 
     from flext_infra import d, e, h, r, s, x
-    from tests.conftest import (
-        deptry_report_payload,
-        models_resource,
-        real_docs_project,
-        real_git_repo,
-        real_makefile_project,
-        real_python_package,
-        real_toml_project,
-        real_workspace,
-        rope_workspace,
-        services_resource,
-        tool_config_document,
-    )
     from tests.constants import TestsFlextInfraConstants, c
     from tests.integration.test_infra_integration import (
         TestsFlextInfraIntegrationInfraIntegration,
@@ -264,9 +251,20 @@ if _t.TYPE_CHECKING:
         TestSelectedProjectNames,
     )
     from tests.unit.fixtures import (
+        deptry_report_payload,
+        models_resource,
         modernizer_workspace,
         modernizer_workspace_with_projects,
+        real_docs_project,
+        real_makefile_project,
+        real_python_package,
+        real_toml_project,
+        real_workspace,
+        rope_workspace,
+        services_resource,
+        tool_config_document,
     )
+    from tests.unit.fixtures_git import real_git_repo
     from tests.unit.io.test_infra_terminal_detection import (
         TestsFlextInfraIoInfraTerminalDetection,
     )
@@ -401,19 +399,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     build_lazy_import_map(
         {
-            ".conftest": (
-                "deptry_report_payload",
-                "models_resource",
-                "real_docs_project",
-                "real_git_repo",
-                "real_makefile_project",
-                "real_python_package",
-                "real_toml_project",
-                "real_workspace",
-                "rope_workspace",
-                "services_resource",
-                "tool_config_document",
-            ),
             ".constants": (
                 "TestsFlextInfraConstants",
                 "c",
@@ -665,9 +650,20 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestSelectedProjectNames",
             ),
             ".unit.fixtures": (
+                "deptry_report_payload",
+                "models_resource",
                 "modernizer_workspace",
                 "modernizer_workspace_with_projects",
+                "real_docs_project",
+                "real_makefile_project",
+                "real_python_package",
+                "real_toml_project",
+                "real_workspace",
+                "rope_workspace",
+                "services_resource",
+                "tool_config_document",
             ),
+            ".unit.fixtures_git": ("real_git_repo",),
             ".unit.io.test_infra_terminal_detection": (
                 "TestsFlextInfraIoInfraTerminalDetection",
             ),
