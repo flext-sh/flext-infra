@@ -9,8 +9,7 @@ from typing import override
 from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesDependencyPathSync, r
-from tests.models import m
-from tests.protocols import p
+from tests import m, p, t
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:
@@ -24,7 +23,7 @@ def _project(path: Path) -> m.Infra.ProjectInfo:
 
 
 def _service(
-    projects: Sequence[m.Infra.ProjectInfo],
+    projects: t.SequenceOf[m.Infra.ProjectInfo],
 ) -> FlextInfraUtilitiesDependencyPathSync:
     class _TestPathSync(FlextInfraUtilitiesDependencyPathSync):
         @staticmethod

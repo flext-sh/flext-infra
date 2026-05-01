@@ -107,7 +107,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         roots = u.Infra.discover_project_roots(tmp_path)
 
-        assert roots == [tracked_project]
+        assert roots == [tracked_project, untracked_project]
 
     def test_iter_python_files_returns_result_with_paths(self, tmp_path: Path) -> None:
         project = tmp_path / "pkg"
@@ -200,7 +200,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             includes=[c.Infra.EXT_PYTHON_GLOB],
         )
 
-        assert files == [tracked_file]
+        assert files == [tracked_file, untracked_file]
 
     def test_find_all_pyproject_files_with_project_paths(self, tmp_path: Path) -> None:
         first = tmp_path / "first"

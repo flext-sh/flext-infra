@@ -8,9 +8,7 @@ import hashlib
 import shutil
 from collections.abc import (
     Callable,
-    Mapping,
     MutableMapping,
-    MutableSequence,
 )
 from pathlib import Path
 from typing import ClassVar
@@ -276,7 +274,7 @@ class FlextInfraUtilitiesProtectedEdit:
     @classmethod
     def preview_source_writes(
         cls,
-        updates: Mapping[Path, str],
+        updates: t.MappingKV[Path, str],
         *,
         workspace: Path,
         gates: t.StrSequence | None = None,
@@ -323,7 +321,7 @@ class FlextInfraUtilitiesProtectedEdit:
             if post_write is not None:
                 post_write()
 
-            reports: MutableSequence[str] = []
+            reports: t.MutableSequenceOf[str] = []
             failed = False
             for path in normalized_updates:
                 new_errors = cls.lint_new_errors(
@@ -456,7 +454,7 @@ class FlextInfraUtilitiesProtectedEdit:
             )
         )
         _restore()
-        report: MutableSequence[str] = [f"  REVERTED {rel}:"]
+        report: t.MutableSequenceOf[str] = [f"  REVERTED {rel}:"]
         report.extend(f"    {line.rstrip()}" for line in diff[:30])
         for tool, messages in new_errors.items():
             report.extend((
@@ -509,7 +507,7 @@ class FlextInfraUtilitiesProtectedEdit:
     @classmethod
     def protected_source_writes(
         cls,
-        updates: Mapping[Path, str],
+        updates: t.MappingKV[Path, str],
         *,
         workspace: Path,
         keep_backup: bool = False,
@@ -576,7 +574,7 @@ class FlextInfraUtilitiesProtectedEdit:
             if not write_completed:
                 _restore()
 
-        reports: MutableSequence[str] = []
+        reports: t.MutableSequenceOf[str] = []
         failed = False
         for path in normalized_updates:
             new_errors = cls.lint_new_errors(

@@ -7,10 +7,6 @@ and regex-based attribute access detection for usage collection.
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-)
 from pathlib import Path
 
 from flext_infra import c, m, t
@@ -76,8 +72,8 @@ class FlextInfraCensusUsageCollector:
     def __init__(
         self,
         *,
-        method_index: Mapping[str, t.Infra.StrSet],
-        flat_aliases: Mapping[str, t.Infra.StrPair],
+        method_index: t.MappingKV[str, t.Infra.StrSet],
+        flat_aliases: t.MappingKV[str, t.Infra.StrPair],
         inner_class_map: t.StrMapping,
         alias_locals: t.Infra.StrSet,
         direct_imports: t.StrMapping,
@@ -92,7 +88,7 @@ class FlextInfraCensusUsageCollector:
         self.direct_imports = direct_imports
         self.file_path = file_path
         self.project_name = project_name
-        self.records: MutableSequence[m.Infra.CensusUsageRecord] = []
+        self.records: t.MutableSequenceOf[m.Infra.CensusUsageRecord] = []
 
     def scan_source(self, source: str) -> None:
         """Scan source text for attribute access patterns."""

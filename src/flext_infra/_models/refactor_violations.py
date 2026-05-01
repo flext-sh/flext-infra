@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
@@ -257,7 +254,7 @@ class FlextInfraModelsRefactorViolations:
             default_factory=lambda: MappingProxyType({}),
             description="Aggregate counts by pattern",
         )
-        files: Mapping[str, t.IntMapping] = m.Field(
+        files: t.MappingKV[str, t.IntMapping] = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Per-file per-pattern counts",
         )

@@ -55,7 +55,7 @@ class _DepsStub(
     def build_project_report(
         self,
         project_name: str,
-        deptry_issues: Sequence[t.Infra.ContainerDict],
+        deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
     ) -> m.Infra.ProjectRuntimeReport:
         del project_name, deptry_issues
         return m.Infra.ProjectRuntimeReport(
@@ -143,7 +143,7 @@ def _setup_typings_detector(
     run_raw_result: p.Result[m.Cli.CommandOutput],
 ) -> tuple[
     FlextInfraDependencyDetectorRuntime,
-    Sequence[t.StrSequence],
+    t.SequenceOf[t.StrSequence],
 ]:
     project_path = tmp_path / "proj-a"
     (project_path / "src").mkdir(parents=True)

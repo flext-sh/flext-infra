@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 from typing import override
 
@@ -24,7 +21,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
     def validate_workspace(
         self,
         request: m.Infra.DocsGenerateRequest,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
         return self.run_scoped_docs(
             request.workspace_root,

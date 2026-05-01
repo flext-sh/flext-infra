@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from time import perf_counter
@@ -194,7 +192,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         path: Path,
         *,
         dry_run: bool,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Execute MRO migration as a rope post-hook (implements p.Infra.RopePostHook)."""
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
@@ -213,9 +211,9 @@ class FlextInfraRefactorMigrateToClassMRO:
         *,
         report: m.Infra.MROMigrationReport,
         dry_run: bool,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Convert MRO migration report into rope-compatible Result sequence."""
-        per_file_changes: MutableMapping[Path, MutableSequence[str]] = {}
+        per_file_changes: MutableMapping[Path, t.MutableSequenceOf[str]] = {}
         for migration in report.migrations:
             file_path = Path(migration.file)
             changes = per_file_changes.setdefault(file_path, [])

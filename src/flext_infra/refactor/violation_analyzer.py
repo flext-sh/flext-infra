@@ -10,8 +10,6 @@ import sys
 from collections import Counter
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from operator import itemgetter
 from pathlib import Path
@@ -32,14 +30,14 @@ class FlextInfraRefactorViolationAnalyzer:
     @classmethod
     def analyze_files(
         cls,
-        files: Sequence[Path],
+        files: t.SequenceOf[Path],
     ) -> m.Infra.ViolationAnalysisReport:
         """Analyze files and return aggregated violation and helper metrics."""
         totals: Counter[str] = Counter()
         per_file: MutableMapping[str, t.MutableIntMapping] = {}
-        helper_suggestions: MutableSequence[m.Infra.HelperClassification] = []
+        helper_suggestions: t.MutableSequenceOf[m.Infra.HelperClassification] = []
         helper_totals: Counter[str] = Counter()
-        helper_manual_review: MutableSequence[m.Infra.HelperClassification] = []
+        helper_manual_review: t.MutableSequenceOf[m.Infra.HelperClassification] = []
         for file_path in files:
             try:
                 content = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -69,7 +67,7 @@ class FlextInfraRefactorViolationAnalyzer:
         for raw_file, raw_count in class_nesting.per_file_counts.items():
             counts = per_file.setdefault(raw_file, {})
             counts[c.Infra.RK_CLASS_NESTING] = raw_count
-        ranked_files: Sequence[t.Triple[str, int, t.IntMapping]] = [
+        ranked_files: t.SequenceOf[t.Triple[str, int, t.IntMapping]] = [
             (file_name, sum(counts.values()), counts)
             for file_name, counts in per_file.items()
         ]
@@ -103,9 +101,9 @@ class FlextInfraRefactorViolationAnalyzer:
         file_path: Path,
         content: str,
     ) -> m.Infra.HelperFileAnalysis:
-        suggestions: MutableSequence[m.Infra.HelperClassification] = []
+        suggestions: t.MutableSequenceOf[m.Infra.HelperClassification] = []
         totals: Counter[str] = Counter()
-        manual_review: MutableSequence[m.Infra.HelperClassification] = []
+        manual_review: t.MutableSequenceOf[m.Infra.HelperClassification] = []
         local_to_import = cls._extract_local_to_import(content)
         for match in c.Infra.FUNCTION_DEF_SIMPLE_RE.finditer(content):
             func_name = match.group(1)
@@ -228,7 +226,7 @@ class FlextInfraRefactorViolationAnalyzer:
         lines = content[start:].splitlines()
         if not lines:
             return ""
-        body_lines: MutableSequence[str] = [lines[0]]
+        body_lines: t.MutableSequenceOf[str] = [lines[0]]
         for line in lines[1:]:
             if not line.strip():
                 body_lines.append(line)

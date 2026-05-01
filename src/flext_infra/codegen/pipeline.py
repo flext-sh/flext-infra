@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    Mapping,
-    MutableSequence,
-    Sequence,
 )
 from typing import override
 
@@ -70,9 +67,9 @@ class FlextInfraCodegenPipeline(s[str]):
     # Stage builder
     # ------------------------------------------------------------------
 
-    def _build_codegen_stages(self) -> Sequence[m.Cli.PipelineStageSpec]:
+    def _build_codegen_stages(self) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
         """Build DAG stage specs with linear dependency chain."""
-        handlers: Mapping[
+        handlers: t.MappingKV[
             str,
             Callable[[m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]],
         ] = {
@@ -84,7 +81,7 @@ class FlextInfraCodegenPipeline(s[str]):
             c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }
-        stage_list: MutableSequence[m.Cli.PipelineStageSpec] = []
+        stage_list: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
         prev: str | None = None
         for stage_id in c.Infra.PIPELINE_STAGE_ORDER:
             handler = handlers[stage_id]

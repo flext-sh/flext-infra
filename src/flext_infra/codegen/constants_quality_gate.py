@@ -5,11 +5,6 @@ from __future__ import annotations
 import shutil
 import sys
 from collections import defaultdict
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
@@ -102,7 +97,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def modified_python_files(workspace_root: Path) -> t.StrSequence:
         """Return modified Python files detected by git porcelain status."""
-        modified: MutableSequence[str] = []
+        modified: t.MutableSequenceOf[str] = []
         git_bin = shutil.which(c.Infra.GIT)
         if git_bin is None:
             return []
@@ -131,7 +126,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         workspace_root: Path,
         modified_files: t.StrSequence,
         tool: str,
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Run a targeted static tool on modified files and normalize result."""
         if not modified_files:
             return {
@@ -185,10 +180,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def after_metrics(
         *,
-        census_reports: Sequence[m.Infra.CensusReport],
+        census_reports: t.SequenceOf[m.Infra.CensusReport],
         duplicate_groups: int,
         modified_files: t.StrSequence,
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Build post-run metrics summary used by quality checks."""
         by_rule: t.MutableIntMapping = dict.fromkeys(c.Infra.QG_RULE_KEYS, 0)
         total_violations = 0
@@ -220,10 +215,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def build_checks(
         *,
-        after_metrics: Mapping[str, t.Infra.InfraValue],
-        pyrefly_check: Mapping[str, t.Infra.InfraValue],
-        ruff_check: Mapping[str, t.Infra.InfraValue],
-    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        after_metrics: t.MappingKV[str, t.Infra.InfraValue],
+        pyrefly_check: t.MappingKV[str, t.Infra.InfraValue],
+        ruff_check: t.MappingKV[str, t.Infra.InfraValue],
+    ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
         """Build quality gate check entries from metrics and tool results."""
         # Metric-driven checks share the shape ``(name, value==0, "label=value")``.
         # Each row maps to a single ``QualityGateCheck`` via Pydantic v2 batch
@@ -277,11 +272,13 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 critical=True,
             ),
         )
-        checks: Sequence[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
+        checks: t.SequenceOf[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
         return [check.model_dump() for check in checks]
 
     @staticmethod
-    def compute_verdict(checks: Sequence[Mapping[str, t.Infra.InfraValue]]) -> str:
+    def compute_verdict(
+        checks: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]],
+    ) -> str:
         """Return PASS only when all checks passed."""
         return (
             "PASS"
@@ -308,7 +305,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         source: str,
         constants_file: Path,
         project: str,
-    ) -> Sequence[m.Infra.ConstantDefinition]:
+    ) -> t.SequenceOf[m.Infra.ConstantDefinition]:
         """Parse constant declarations from a constants.py source blob."""
         return [
             m.Infra.ConstantDefinition(
@@ -327,8 +324,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def build_duplicate_groups(
-        definitions: Sequence[m.Infra.ConstantDefinition],
-    ) -> Sequence[m.Infra.DuplicateConstantGroup]:
+        definitions: t.SequenceOf[m.Infra.ConstantDefinition],
+    ) -> t.SequenceOf[m.Infra.DuplicateConstantGroup]:
         """Build duplicate groups keyed by constant name and by raw value."""
         by_name: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
         by_value: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
@@ -336,7 +333,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             by_name[definition.name].append(definition)
             by_value[definition.value_repr].append(definition)
 
-        duplicates: MutableSequence[m.Infra.DuplicateConstantGroup] = []
+        duplicates: t.MutableSequenceOf[m.Infra.DuplicateConstantGroup] = []
         duplicates.extend(
             m.Infra.DuplicateConstantGroup(
                 constant_name=name,
@@ -367,10 +364,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def detect_duplicate_constant_groups(
         workspace_root: Path,
-        census_reports: Sequence[m.Infra.CensusReport],
-    ) -> Sequence[m.Infra.DuplicateConstantGroup]:
+        census_reports: t.SequenceOf[m.Infra.CensusReport],
+    ) -> t.SequenceOf[m.Infra.DuplicateConstantGroup]:
         """Collect duplicate constants across projects using Rope resource reads."""
-        definitions: MutableSequence[m.Infra.ConstantDefinition] = []
+        definitions: t.MutableSequenceOf[m.Infra.ConstantDefinition] = []
         with u.Infra.open_project(workspace_root) as rope_project:
             for report in census_reports:
                 constants_file = FlextInfraCodegenQualityGate.constants_file_path(
@@ -391,8 +388,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def project_findings(
-        census_reports: Sequence[m.Infra.CensusReport],
-    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        census_reports: t.SequenceOf[m.Infra.CensusReport],
+    ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
         """Convert census reports into sorted per-project findings."""
         return [
             item.model_dump()
@@ -441,7 +438,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         duplicate_groups = u.Cli.json_deep_mapping_list(
             report, "duplicate_constant_groups"
         )
-        lines: MutableSequence[str] = [
+        lines: t.MutableSequenceOf[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
             "",

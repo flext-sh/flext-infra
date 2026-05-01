@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    Sequence,
 )
 from itertools import chain
 from typing import Annotated, Self
@@ -41,13 +40,13 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             t.StrSequence, m.Field(description="Primary table path")
         ] = ()
         operations: Annotated[
-            Sequence[FlextInfraModelsEngine.TomlOperation],
+            t.SequenceOf[FlextInfraModelsEngine.TomlOperation],
             m.Field(
                 description="Declarative TOML operations",
             ),
         ] = ()
         nested_tables: Annotated[
-            Sequence[FlextInfraModelsEngine.TomlPhaseConfig],
+            t.SequenceOf[FlextInfraModelsEngine.TomlPhaseConfig],
             m.Field(description="Nested TOML phase configs"),
         ] = ()
         custom_handler: Annotated[
@@ -70,8 +69,8 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             def _nested_operations(
                 cls,
                 *,
-                values: Sequence[tuple[str, t.JsonValue]] = (),
-                lists: Sequence[tuple[str, t.StrSequence]] = (),
+                values: t.SequenceOf[tuple[str, t.JsonValue]] = (),
+                lists: t.SequenceOf[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> tuple[FlextInfraModelsEngine.TomlOperation, ...]:
                 return tuple(
@@ -103,7 +102,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 self,
                 operation_type: type[m.ContractModel],
                 /,
-                **data: t.JsonValue | t.JsonPayload | Sequence[t.JsonPayload],
+                **data: t.JsonValue | t.JsonPayload | t.SequenceOf[t.JsonPayload],
             ) -> Self:
                 operation_item = operation_type.model_validate(data)
                 replaced: Self = self._replace(
@@ -154,8 +153,8 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             def nested(
                 self,
                 *path: str,
-                values: Sequence[tuple[str, t.JsonValue]] = (),
-                lists: Sequence[tuple[str, t.StrSequence]] = (),
+                values: t.SequenceOf[tuple[str, t.JsonValue]] = (),
+                lists: t.SequenceOf[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> Self:
                 nested_table = FlextInfraModelsEngine.TomlPhaseConfig(

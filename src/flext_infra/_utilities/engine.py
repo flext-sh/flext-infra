@@ -12,9 +12,6 @@ from __future__ import annotations
 import fnmatch
 from collections.abc import (
     Iterator,
-    Mapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -32,7 +29,7 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def _resolve_engine_config(
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
     ) -> m.Infra.EngineConfig:
         """Resolve the typed refactor engine config through the shared CLI DSL."""
         return m.Infra.EngineConfig.model_validate(
@@ -45,7 +42,7 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def filter_engine_files(
-        files: Sequence[Path],
+        files: t.SequenceOf[Path],
         *,
         base_path: Path,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -67,11 +64,11 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_project_files(
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         project: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
-    ) -> MutableSequence[Path] | None:
+    ) -> t.MutableSequenceOf[Path] | None:
         """Iterate and filter Python files under a project.
 
         Returns None on error.
@@ -105,11 +102,11 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def collect_engine_workspace_files(
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         workspace_root: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Collect all candidate files under workspace projects."""
         root = workspace_root.resolve()
         engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(
@@ -124,7 +121,7 @@ class FlextInfraUtilitiesRefactorEngine:
         ext = engine_config.file_extensions
         ignore_patterns = set(ign)
         allowed_extensions = set(ext)
-        all_files: MutableSequence[Path] = []
+        all_files: t.MutableSequenceOf[Path] = []
         for proj in projects:
             ir = FlextInfraUtilitiesIteration.iter_python_files(
                 workspace_root=root,
@@ -150,9 +147,9 @@ class FlextInfraUtilitiesRefactorEngine:
 
     @staticmethod
     def discover_engine_projects(
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         workspace_root: Path,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Discover workspace projects using the typed engine config."""
         root = workspace_root.resolve()
         engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(

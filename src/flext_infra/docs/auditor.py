@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    Sequence,
 )
 from pathlib import Path
 from typing import Annotated, override
@@ -40,9 +39,9 @@ class FlextInfraDocAuditor(
         *,
         policy_key: str,
         issue_type: str,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Return text-token issues for one scope using the named policy list."""
-        issues: Sequence[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
+        issues: t.SequenceOf[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
             scope,
             tokens=u.Infra.docs_policy_list(scope, section="audit", key=policy_key),
             issue_type=issue_type,
@@ -52,7 +51,7 @@ class FlextInfraDocAuditor(
     @staticmethod
     def forbidden_term_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Return forbidden-term issues configured for one scope."""
         return FlextInfraDocAuditor._policy_token_issues(
             scope,
@@ -63,7 +62,7 @@ class FlextInfraDocAuditor(
     @staticmethod
     def placeholder_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Return placeholder-text issues for one scope."""
         return FlextInfraDocAuditor._policy_token_issues(
             scope,
@@ -78,7 +77,7 @@ class FlextInfraDocAuditor(
         projects: t.StrSequence | None = None,
         output_dir: Path | str | None = None,
         params: m.Infra.AuditScopeParams | None = None,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
         resolved_params = self._audit_params(workspace_root, params)
         return self.run_scoped_docs(
@@ -200,10 +199,10 @@ class FlextInfraDocAuditor(
         self,
         scope: m.Infra.DocScope,
         checks: t.StrSequence,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect issues for the requested check set in canonical order."""
         handlers: tuple[
-            tuple[str, Callable[[m.Infra.DocScope], Sequence[m.Infra.AuditIssue]]],
+            tuple[str, Callable[[m.Infra.DocScope], t.SequenceOf[m.Infra.AuditIssue]]],
             ...,
         ] = (
             ("links", u.Infra.docs_broken_link_issues),

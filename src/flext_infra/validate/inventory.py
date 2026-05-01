@@ -9,9 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, override
@@ -75,7 +72,7 @@ class FlextInfraInventoryService(s[bool]):
                 "candidates": list[t.JsonValue](),
             }
             reports_dir = output_dir or root / c.Infra.REPORTS_DIR_NAME
-            written: MutableSequence[str] = []
+            written: t.MutableSequenceOf[str] = []
             inventory_path = reports_dir / "scripts-infra--json--scripts-inventory.json"
             wiring_path = reports_dir / "scripts-infra--json--scripts-wiring.json"
             external_path = (

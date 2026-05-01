@@ -5,7 +5,6 @@ from __future__ import annotations
 import warnings
 from collections.abc import (
     Generator,
-    Sequence,
 )
 from contextlib import contextmanager
 from pathlib import Path
@@ -148,7 +147,7 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def python_resources(
         rope_project: t.Infra.RopeProject,
-    ) -> Sequence[t.Infra.RopeResource]:
+    ) -> t.SequenceOf[t.Infra.RopeResource]:
         """Return stable Python file resources for one Rope project."""
         return tuple(
             resource
@@ -165,7 +164,7 @@ class FlextInfraUtilitiesRopeCore:
     @staticmethod
     def python_file_paths(
         rope_project: t.Infra.RopeProject,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Return stable Python file paths for one Rope project."""
         root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
         if not isinstance(root_real_path, str):

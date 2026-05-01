@@ -125,7 +125,7 @@ class TestStubChain:
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
+        tm.that(result.value.summary, eq="stub chain: 2 projects, 0 issues")
         tm.that(result.value.violations, empty=True)
 
     def test_build_report_uses_explicit_project_dirs(self, tmp_path: Path) -> None:

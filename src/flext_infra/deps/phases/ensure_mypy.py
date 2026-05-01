@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    Sequence,
 )
 
 from tomlkit.toml_document import TOMLDocument
@@ -22,7 +21,7 @@ class FlextInfraEnsureMypyConfigPhase:
     def _phase(self) -> m.Infra.TomlPhaseConfig:
         """Build the canonical mypy phase definition."""
         configured = self._tool_config.tools.mypy.overrides
-        expected_overrides: Sequence[dict[str, t.JsonValue]] = [
+        expected_overrides: t.SequenceOf[dict[str, t.JsonValue]] = [
             {
                 "module": u.normalize_to_json_value(list(entry.modules)),
                 "disable_error_code": u.normalize_to_json_value(

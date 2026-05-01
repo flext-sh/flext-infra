@@ -5,8 +5,6 @@ from __future__ import annotations
 import ast
 from collections.abc import (
     Mapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -164,7 +162,7 @@ class FlextInfraUtilitiesDocsApi:
 
     @staticmethod
     def _project_keywords(
-        project_meta: Mapping[str, t.Infra.InfraValue],
+        project_meta: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         """Return normalized project keywords from ``pyproject.toml`` metadata."""
         return [
@@ -182,7 +180,7 @@ class FlextInfraUtilitiesDocsApi:
     ) -> t.StrSequence:
         """Use Rope to verify which exported symbols resolve in real modules."""
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
-            symbols: MutableSequence[str] = []
+            symbols: t.MutableSequenceOf[str] = []
             for export_name, module_name in target_map.items():
                 module_file = FlextInfraUtilitiesDocsApi._module_file(
                     project_root, module_name
@@ -350,7 +348,7 @@ class FlextInfraUtilitiesDocsApi:
     def docstring_issues(
         project_root: Path,
         contract: t.Infra.ContainerDict,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings."""
         package_name = str(contract.get("package_name", ""))
         module_list = FlextInfraUtilitiesDocsApi._string_values(
@@ -359,7 +357,7 @@ class FlextInfraUtilitiesDocsApi:
         target_map = FlextInfraUtilitiesDocsApi._string_mapping(
             contract.get("target_map", {})
         )
-        issues: MutableSequence[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         module_docstring_checks = [
             (module_name, f"public module `{module_name}` is missing a docstring")
             for module_name in module_list

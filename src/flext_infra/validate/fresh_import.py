@@ -16,9 +16,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import (
-    MutableSequence,
-)
 from typing import Annotated, override
 
 from flext_infra import (
@@ -65,7 +62,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             r with ValidationReport listing packages that failed to import.
 
         """
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         for package in packages:
             smoke_result = u.Cli.run_raw([
                 sys.executable,

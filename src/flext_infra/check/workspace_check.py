@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import shlex
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
@@ -61,7 +57,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
         """Resolve and validate requested gate names."""
-        resolved: MutableSequence[str] = []
+        resolved: t.MutableSequenceOf[str] = []
         for gate in gates:
             name = gate.strip()
             if not name:
@@ -75,7 +71,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
 
     @staticmethod
     def _generate_markdown(
-        results: Sequence[m.Infra.ProjectResult],
+        results: t.SequenceOf[m.Infra.ProjectResult],
         gates: t.StrSequence,
         timestamp: str,
     ) -> str:
@@ -111,7 +107,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
 
     @staticmethod
     def _generate_sarif(
-        results: Sequence[m.Infra.ProjectResult],
+        results: t.SequenceOf[m.Infra.ProjectResult],
         gates: t.StrSequence,
     ) -> t.JsonMapping:
         """Render SARIF 2.1.0 payload from workspace gate results."""
@@ -217,7 +213,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
         self,
         project: str,
         gates: t.StrSequence,
-    ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates))
 
@@ -226,7 +222,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
         resolved_gates: t.StrSequence,
         report_base: Path,
         outcome: p.Infra.WorkspaceLoopOutcome,
-    ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -240,7 +236,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
             ),
         )
         if md_write_result.failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 md_write_result.error or "failed to write markdown report",
             )
         sarif_path = report_base / "check-report.sarif"
@@ -250,7 +246,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
         )
         json_write_result = u.Cli.json_write(sarif_path, sarif_payload)
         if json_write_result.failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 json_write_result.error or "failed to write sarif report",
             )
         total_errors = sum(project.total_errors for project in results)
@@ -284,7 +280,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
                 u.Cli.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
                 )
-        return r[Sequence[m.Infra.ProjectResult]].ok(results)
+        return r[t.SequenceOf[m.Infra.ProjectResult]].ok(results)
 
     def run_projects(
         self,
@@ -294,21 +290,21 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
         reports_dir: Path | None = None,
         fail_fast: bool = False,
         ctx: m.Infra.GateContext | None = None,
-    ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Run selected gates for multiple projects.
 
         Pass ``ctx`` to supply a pre-built GateContext.
         """
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates",
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)
         if dir_ensure.failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 dir_ensure.error or "failed to create report directory",
             )
         effective_ctx = ctx or m.Infra.GateContext(

@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from collections.abc import (
     Callable,
-    Mapping,
 )
 from typing import override
 
@@ -26,7 +25,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
     def __init__(
         self,
         *,
-        module_moves: Mapping[str, t.Pair[str, t.StrMapping]],
+        module_moves: t.MappingKV[str, t.Pair[str, t.StrMapping]],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with module move configuration."""

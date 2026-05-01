@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import Annotated, override
@@ -239,7 +237,7 @@ class FlextInfraReleaseOrchestrator(
         self,
         phases: t.StrSequence,
         dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> Sequence[m.Cli.PipelineStageSpec]:
+    ) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
         """Build DAG stage specs from the requested release phases.
 
         Dependencies chain only between active phases, preserving their
@@ -252,7 +250,7 @@ class FlextInfraReleaseOrchestrator(
             c.Infra.DIR_BUILD,
             c.Infra.VERB_PUBLISH,
         ]
-        stage_list: MutableSequence[m.Cli.PipelineStageSpec] = []
+        stage_list: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
         prev: str | None = None
         for phase_name in phase_order:
             if phase_name not in active:
@@ -315,9 +313,9 @@ class FlextInfraReleaseOrchestrator(
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[t.Pair[str, Path]]:
+    ) -> t.SequenceOf[t.Pair[str, Path]]:
         """Resolve unique build targets from project names."""
-        targets: MutableSequence[t.Pair[str, Path]] = [
+        targets: t.MutableSequenceOf[t.Pair[str, Path]] = [
             (c.Infra.RK_ROOT, workspace_root),
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
@@ -325,7 +323,7 @@ class FlextInfraReleaseOrchestrator(
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: t.Infra.StrSet = set()
         seen_paths: set[Path] = set()
-        unique: MutableSequence[t.Pair[str, Path]] = []
+        unique: t.MutableSequenceOf[t.Pair[str, Path]] = []
         for name, path in targets:
             resolved_path = path.resolve()
             if name in seen or resolved_path in seen_paths or not path.exists():
@@ -438,7 +436,7 @@ class FlextInfraReleaseOrchestrator(
         changes_result = self._collect_changes(workspace_root, previous, tag)
         changes: str = changes_result.value if changes_result.success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, ctx.project_names)
-        project_list: Sequence[m.Infra.ProjectInfo] = (
+        project_list: t.SequenceOf[m.Infra.ProjectInfo] = (
             projects_result.unwrap() if projects_result.success else []
         )
         return u.Infra.generate_notes(
@@ -469,14 +467,14 @@ class FlextInfraReleaseOrchestrator(
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Discover pyproject.toml files that need version updates."""
-        files: MutableSequence[Path] = [
+        files: t.MutableSequenceOf[Path] = [
             workspace_root / c.Infra.PYPROJECT_FILENAME,
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.success:
-            projects: Sequence[m.Infra.ProjectInfo] = projects_result.value
+            projects: t.SequenceOf[m.Infra.ProjectInfo] = projects_result.value
             for project in projects:
                 pyproject = project.path / c.Infra.PYPROJECT_FILENAME
                 if pyproject.exists():

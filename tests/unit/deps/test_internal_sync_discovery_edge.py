@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import (
     Callable,
     Mapping,
-    Sequence,
 )
 from pathlib import Path
 
@@ -16,7 +15,7 @@ from tests.typings import t
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 

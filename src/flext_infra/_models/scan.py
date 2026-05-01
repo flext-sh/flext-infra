@@ -8,9 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 from typing import Annotated
 
@@ -36,7 +33,9 @@ class FlextInfraModelsScan:
         )
         parse_failures: Annotated[
             (
-                MutableSequence[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation]
+                t.MutableSequenceOf[
+                    FlextInfraModelsNamespaceEnforcer.ParseFailureViolation
+                ]
                 | None
             ),
             m.Field(

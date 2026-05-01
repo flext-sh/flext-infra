@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
@@ -81,7 +78,7 @@ class FlextInfraUtilitiesDocsScope:
         names: t.StrSequence,
         *,
         include_attached: bool = False,
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Resolve project names into canonical project descriptors.
 
         ``include_attached`` is forwarded to
@@ -95,12 +92,12 @@ class FlextInfraUtilitiesDocsScope:
             include_attached=include_attached,
         )
         if discover_result.failure:
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
                 discover_result.error or "discovery failed",
             )
         projects = discover_result.value
         if not names:
-            return r[Sequence[m.Infra.ProjectInfo]].ok(
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(
                 sorted(projects, key=lambda proj: proj.name),
             )
         by_name: dict[str, m.Infra.ProjectInfo] = {}
@@ -110,10 +107,10 @@ class FlextInfraUtilitiesDocsScope:
         missing = [name for name in names if name not in by_name]
         if missing:
             missing_text = ", ".join(sorted(missing))
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
                 f"unknown projects: {missing_text}",
             )
-        return r[Sequence[m.Infra.ProjectInfo]].ok(
+        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(
             sorted((by_name[name] for name in names), key=lambda proj: proj.name),
         )
 
@@ -369,7 +366,7 @@ class FlextInfraUtilitiesDocsScope:
         workspace_root: Path,
         *,
         include_attached: bool = False,
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Discover workspace projects that participate in the docs scope.
 
         ``include_attached`` is forwarded to
@@ -378,7 +375,7 @@ class FlextInfraUtilitiesDocsScope:
         are surfaced alongside the workspace's git-tracked projects.
         """
         if not workspace_root.exists() or not workspace_root.is_dir():
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
                 f"discovery failed: invalid workspace root {workspace_root}",
             )
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
@@ -410,8 +407,8 @@ class FlextInfraUtilitiesDocsScope:
                 continue
             projects.append(project_info)
         if not projects and root_project is not None:
-            return r[Sequence[m.Infra.ProjectInfo]].ok([root_project])
-        return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
+            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([root_project])
+        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(projects)
 
     @staticmethod
     def required_project_files() -> t.StrSequence:

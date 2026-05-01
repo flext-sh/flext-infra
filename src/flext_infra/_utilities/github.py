@@ -7,10 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -20,6 +16,7 @@ from flext_infra import (
     m,
     p,
     r,
+    t,
 )
 
 
@@ -101,7 +98,7 @@ class FlextInfraUtilitiesGithub:
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 projects_result.error or "project discovery failed",
             )
-        all_operations: MutableSequence[m.Infra.GithubWorkflowSyncOperation] = []
+        all_operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
         for project in projects_result.value:
             ctx = m.Infra.GithubWorkflowSyncContext(
                 project_name=project.name,
@@ -169,17 +166,17 @@ class FlextInfraUtilitiesGithub:
     def _github_sync_project(
         cls,
         ctx: m.Infra.GithubWorkflowSyncContext,
-    ) -> p.Result[Sequence[m.Infra.GithubWorkflowSyncOperation]]:
-        operations: MutableSequence[m.Infra.GithubWorkflowSyncOperation] = []
+    ) -> p.Result[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]]:
+        operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
         try:
             cls._github_sync_ci_yml(ctx, operations)
             if ctx.prune and ctx.workflows_dir.exists():
                 cls._github_prune_workflows(ctx, operations)
         except OSError as exc:
-            return r[Sequence[m.Infra.GithubWorkflowSyncOperation]].fail(
+            return r[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]].fail(
                 f"sync error: {exc}",
             )
-        return r[Sequence[m.Infra.GithubWorkflowSyncOperation]].ok(
+        return r[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]].ok(
             operations,
         )
 
@@ -187,7 +184,7 @@ class FlextInfraUtilitiesGithub:
     def _github_sync_ci_yml(
         cls,
         ctx: m.Infra.GithubWorkflowSyncContext,
-        operations: MutableSequence[m.Infra.GithubWorkflowSyncOperation],
+        operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation],
     ) -> None:
         """Sync a single ci.yml file for a project."""
         destination = ctx.ci_destination
@@ -244,7 +241,7 @@ class FlextInfraUtilitiesGithub:
     @staticmethod
     def _github_prune_workflows(
         ctx: m.Infra.GithubWorkflowSyncContext,
-        operations: MutableSequence[m.Infra.GithubWorkflowSyncOperation],
+        operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation],
     ) -> None:
         """Remove non-canonical workflow files from a project."""
         candidates = sorted(ctx.workflows_dir.glob("*.yml")) + sorted(

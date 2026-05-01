@@ -5,9 +5,6 @@ from __future__ import annotations
 import ast
 import copy
 import re
-from collections.abc import (
-    Mapping,
-)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -22,7 +19,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
     def __init__(
         self,
         *,
-        canonical_map: Mapping[frozenset[str], str],
+        canonical_map: t.MappingKV[frozenset[str], str],
         file_path: Path | None = None,
     ) -> None:
         """Initialize with canonical union map and optional file path for skip logic."""
@@ -142,7 +139,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
     class _AnnotationRewriter(ast.NodeTransformer):
         PAIR_ARITY: ClassVar[int] = 2
-        _TUPLE_NAMES: ClassVar[Mapping[int, str]] = {
+        _TUPLE_NAMES: ClassVar[t.MappingKV[int, str]] = {
             2: "Pair",
             3: "Triple",
             4: "Quad",

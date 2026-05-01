@@ -10,10 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -55,7 +51,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         """Return normalized make arguments."""
         return u.Infra.normalize_make_args(self.make_arg)
 
-    def _resolved_projects(self) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    def _resolved_projects(self) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Resolve the selected project names through canonical discovery."""
         return u.Infra.resolve_projects(
             self.root,
@@ -74,7 +70,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
 
     def _prepare_projects(
         self,
-        projects: Sequence[m.Infra.ProjectInfo],
+        projects: t.SequenceOf[m.Infra.ProjectInfo],
         *,
         workspace_root: Path,
     ) -> p.Result[bool]:
@@ -103,7 +99,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
     @staticmethod
     def _failure_summary(
         verb: str,
-        failures: Sequence[t.Triple[str, int, Path]],
+        failures: t.SequenceOf[t.Triple[str, int, Path]],
     ) -> None:
         """Print compact failure summary for workspace orchestration."""
         if not failures:
@@ -173,10 +169,10 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
     @staticmethod
     def _collect_failures(
         projects: t.StrSequence,
-        results: Sequence[m.Cli.CommandOutput],
-    ) -> Sequence[t.Triple[str, int, Path]]:
+        results: t.SequenceOf[m.Cli.CommandOutput],
+    ) -> t.SequenceOf[t.Triple[str, int, Path]]:
         """Collect failure details for projects with non-zero exit codes."""
-        failures: MutableSequence[t.Triple[str, int, Path]] = []
+        failures: t.MutableSequenceOf[t.Triple[str, int, Path]] = []
         for proj_name, cmd_result in zip(projects, results, strict=False):
             if cmd_result.exit_code != 0:
                 log_file = (
@@ -195,7 +191,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         *,
         fail_fast: bool = False,
         make_args: t.StrSequence = (),
-    ) -> p.Result[Sequence[m.Cli.CommandOutput]]:
+    ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
         """Execute make verb across projects with per-project logging.
 
         Args:
@@ -213,10 +209,10 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
             allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
             if verb not in allowed_verbs:
                 allowed = ", ".join(allowed_verbs)
-                return r[Sequence[m.Cli.CommandOutput]].fail(
+                return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
                     f"unsupported orchestrate verb '{verb}' (allowed: {allowed})",
                 )
-            results: MutableSequence[m.Cli.CommandOutput] = []
+            results: t.MutableSequenceOf[m.Cli.CommandOutput] = []
             total = len(projects)
             success = 0
             failed = 0
@@ -261,9 +257,9 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
             if failed > 0:
                 failures = self._collect_failures(projects, results)
                 self._failure_summary(verb, failures)
-            return r[Sequence[m.Cli.CommandOutput]].ok(results)
+            return r[t.SequenceOf[m.Cli.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            return r[Sequence[m.Cli.CommandOutput]].fail(
+            return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
                 f"Orchestration failed: {exc}",
             )
 
@@ -343,7 +339,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
     ) -> t.StrSequence:
         if (verb != c.Infra.VERB_CHECK) or (not self._is_go_project(project)):
             return make_args
-        normalized_args: MutableSequence[str] = []
+        normalized_args: t.MutableSequenceOf[str] = []
         for make_arg in make_args:
             if make_arg.startswith("CHECK_GATES="):
                 _, _, gates_value = make_arg.partition("=")
@@ -361,7 +357,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]
         if not raw_gates:
             return gates_value
-        normalized_gates: MutableSequence[str] = []
+        normalized_gates: t.MutableSequenceOf[str] = []
         go_supported = {
             c.Infra.LINT,
             c.Infra.FORMAT,

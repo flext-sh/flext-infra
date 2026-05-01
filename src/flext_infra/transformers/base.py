@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import (
-    MutableSequence,
-)
 
 from flext_infra import t
 
@@ -25,7 +22,7 @@ class FlextInfraChangeTrackingTransformer:
     ) -> None:
         """Initialize change tracking with an optional callback."""
         self._on_change = on_change
-        self.changes: MutableSequence[str] = []
+        self.changes: t.MutableSequenceOf[str] = []
 
     def _record_change(self, message: str) -> None:
         self.changes.append(message)

@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -26,7 +23,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     """Detect class nesting violations and report MRO hierarchy issues."""
 
     @classmethod
-    def analyze_files(cls, files: Sequence[Path]) -> m.Infra.ClassNestingReport:
+    def analyze_files(cls, files: t.SequenceOf[Path]) -> m.Infra.ClassNestingReport:
         """Analyze files and return aggregated class-nesting violations."""
         if not files:
             return m.Infra.ClassNestingReport(
@@ -45,12 +42,12 @@ class FlextInfraRefactorClassNestingAnalyzer:
             )
         scanner = FlextInfraRefactorLooseClassScanner()
         mapping_result = cls._load_mapping_index()
-        mapping_index: Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping] = (
+        mapping_index: t.MappingKV[t.Infra.StrPair, m.Infra.ClassNestingMapping] = (
             mapping_result.unwrap() if mapping_result.success else {}
         )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
-        violations: MutableSequence[m.Infra.ClassNestingViolation] = []
+        violations: t.MutableSequenceOf[m.Infra.ClassNestingViolation] = []
         for project_root, target_files in grouped_targets.items():
             scan_result = scanner.scan(project_root)
             if scan_result.failure:
@@ -59,7 +56,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                     scan_result.value.get(c.Infra.RK_VIOLATIONS, []),
                 )
-                parsed_violations: Sequence[m.Infra.LooseClassViolation] = [
+                parsed_violations: t.SequenceOf[m.Infra.LooseClassViolation] = [
                     m.Infra.LooseClassViolation.model_validate(item)
                     for item in typed_items
                 ]
@@ -107,8 +104,8 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _group_targets_by_project_root(
         cls,
-        files: Sequence[Path],
-    ) -> Mapping[Path, t.Infra.StrSet]:
+        files: t.SequenceOf[Path],
+    ) -> t.MappingKV[Path, t.Infra.StrSet]:
         grouped: MutableMapping[Path, t.Infra.StrSet] = {}
         for file_path in files:
             project_root = u.Infra.resolve_project_root(file_path)
@@ -133,26 +130,26 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _load_mapping_index(
         cls,
-    ) -> p.Result[Mapping[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
+    ) -> p.Result[t.MappingKV[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
             typed_doc = u.Cli.yaml_load_mapping(mapping_path)
         except (OSError, TypeError) as exc:
-            return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
+            return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
         raw_nesting = typed_doc.get(c.Infra.RK_CLASS_NESTING)
         if not isinstance(raw_nesting, list):
-            return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].ok({})
+            return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].ok({})
         try:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 raw_nesting,
             )
-            entries: Sequence[m.Infra.ClassNestingMapping] = [
+            entries: t.SequenceOf[m.Infra.ClassNestingMapping] = [
                 m.Infra.ClassNestingMapping.model_validate(item) for item in typed_items
             ]
         except c.ValidationError as exc:
-            return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
+            return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
         index: MutableMapping[t.Infra.StrPair, m.Infra.ClassNestingMapping] = {}
@@ -168,7 +165,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 target_name=entry.target_name,
                 reason=entry.reason,
             )
-        return r[Mapping[t.Pair[str, str], m.Infra.ClassNestingMapping]].ok(index)
+        return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].ok(index)
 
     @classmethod
     def _normalize_rewrite_scope(cls, raw_scope: str | None) -> str:

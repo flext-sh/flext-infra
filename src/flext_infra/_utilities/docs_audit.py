@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -67,9 +63,9 @@ class FlextInfraUtilitiesDocsAudit:
     @staticmethod
     def docs_broken_link_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect broken internal link issues in one docs scope."""
-        issues: MutableSequence[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
@@ -114,9 +110,9 @@ class FlextInfraUtilitiesDocsAudit:
         *,
         tokens: t.StrSequence,
         issue_type: str,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect simple token-presence issues from markdown files."""
-        issues: MutableSequence[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         if not tokens:
             return issues
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
@@ -139,11 +135,11 @@ class FlextInfraUtilitiesDocsAudit:
     @staticmethod
     def docs_scope_boundary_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect mentions of excluded non-FLEXT roots in root docs."""
         if scope.name != c.Infra.RK_ROOT:
             return []
-        issues: MutableSequence[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         excluded = sorted(FlextInfraUtilitiesDocsScope.excluded_roots(scope.path))
         for md_file in [
             scope.path / "README.md",
@@ -169,10 +165,10 @@ class FlextInfraUtilitiesDocsAudit:
     @staticmethod
     def docs_generated_ownership_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect manual API pages that duplicate generated ownership."""
-        issues: MutableSequence[m.Infra.AuditIssue] = []
-        candidates: MutableSequence[Path] = [scope.path / "docs/api-reference.md"]
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        candidates: t.MutableSequenceOf[Path] = [scope.path / "docs/api-reference.md"]
         for parent in (scope.path / "docs/api-reference", scope.path / "docs/api"):
             if parent.exists():
                 candidates.extend(sorted(parent.rglob("*.md")))
@@ -204,7 +200,7 @@ class FlextInfraUtilitiesDocsAudit:
     @staticmethod
     def docs_public_docstring_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect missing docstring issues for public exports and modules."""
         if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
@@ -216,7 +212,7 @@ class FlextInfraUtilitiesDocsAudit:
     @staticmethod
     def docs_stale_symbol_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect stale-symbol issues outside the explicit migration docs."""
         tokens = FlextInfraUtilitiesDocsAudit.docs_policy_list(
             scope,
@@ -230,7 +226,7 @@ class FlextInfraUtilitiesDocsAudit:
                 key="stale_symbol_exempt_paths",
             ),
         )
-        issues: MutableSequence[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         if not tokens:
             return issues
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
@@ -257,7 +253,7 @@ class FlextInfraUtilitiesDocsAudit:
     @staticmethod
     def docs_python_codeblock_issues(
         scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Lint embedded ``python`` fenced blocks under one docs scope.
 
         Captures every ``python`` fenced block via ``c.Infra.PYTHON_FENCE_RE``
@@ -265,7 +261,7 @@ class FlextInfraUtilitiesDocsAudit:
         body bytes — no temp files). Failures land as ``m.Infra.AuditIssue``
         records flowing through the standard audit report pipeline.
         """
-        issues: MutableSequence[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
@@ -304,7 +300,7 @@ class FlextInfraUtilitiesDocsAudit:
     @staticmethod
     def docs_audit_markdown(
         scope: m.Infra.DocScope,
-        issues: Sequence[m.Infra.AuditIssue],
+        issues: t.SequenceOf[m.Infra.AuditIssue],
     ) -> t.StrSequence:
         """Render the standard markdown audit report."""
         return [

@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraManualProtocolDetector:
@@ -19,7 +15,7 @@ class FlextInfraManualProtocolDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.ManualProtocolViolation]:
+    ) -> t.SequenceOf[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""
         if (
             ctx.file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES

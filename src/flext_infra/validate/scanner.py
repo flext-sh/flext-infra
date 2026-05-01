@@ -10,9 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -49,7 +46,7 @@ class FlextInfraTextPatternScanner(s[bool]):
     ] = c.Infra.MatchMode.PRESENT
 
     @staticmethod
-    def _count_matches(files: Sequence[Path], regex: t.Infra.RegexPattern) -> int:
+    def _count_matches(files: t.SequenceOf[Path], regex: t.Infra.RegexPattern) -> int:
         """Count regex matches across files."""
         total = 0
         for file_path in files:

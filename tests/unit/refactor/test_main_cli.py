@@ -156,7 +156,7 @@ class TestsFlextInfraRefactorMainCli:
             service_file,
             "from __future__ import annotations\n"
             "from collections.abc import Sequence\n\n"
-            "def only_for_tests(values: Sequence[int]) -> int:\n"
+            "def only_for_tests(values: t.SequenceOf[int]) -> int:\n"
             "    return len(values)\n",
         )
         TestsFlextInfraRefactorMainCli._write(
@@ -232,7 +232,7 @@ class TestsFlextInfraRefactorMainCli:
             service_file,
             "from __future__ import annotations\n"
             "from collections.abc import Sequence\n\n"
-            "def only_for_cleanup(values: Sequence[int]) -> int:\n"
+            "def only_for_cleanup(values: t.SequenceOf[int]) -> int:\n"
             "    return len(values)\n",
         )
         return workspace, service_file

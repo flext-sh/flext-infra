@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraClassPlacementDetector:
@@ -19,7 +15,7 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.ClassPlacementViolation]:
+    ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
         """Detect misplaced Pydantic model classes."""
         if (
             ctx.file_path.name in c.Infra.PLACEMENT_CANONICAL_MODEL_FILES

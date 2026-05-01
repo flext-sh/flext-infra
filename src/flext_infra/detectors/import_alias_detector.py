@@ -6,13 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
 from flext_infra import (
     c,
     m,
+    t,
     u,
 )
 
@@ -23,7 +20,7 @@ class FlextInfraImportAliasDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.ImportAliasViolation]:
+    ) -> t.SequenceOf[m.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
         resource = u.Infra.fetch_python_resource(
             ctx.rope_project, ctx.file_path, skip_init_py=True

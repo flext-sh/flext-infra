@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import override
@@ -70,7 +68,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         self,
         *,
         project_names: t.StrSequence | None = None,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Discover and optionally filter project roots."""
         project_roots = u.Infra.discover_project_roots(
             workspace_root=self._workspace_root,
@@ -89,23 +87,23 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
     def _detect_and_apply[V](
         self,
         *,
-        py_files: Sequence[Path],
-        detect_fn: Callable[[Path], Sequence[V]],
-        rewrite_fn: Callable[[MutableSequence[V]], None] | None,
+        py_files: t.SequenceOf[Path],
+        detect_fn: Callable[[Path], t.SequenceOf[V]],
+        rewrite_fn: Callable[[t.MutableSequenceOf[V]], None] | None,
         apply: bool,
-    ) -> MutableSequence[V]:
+    ) -> t.MutableSequenceOf[V]:
         """Run detect -> optional apply -> re-detect cycle for a violation type.
 
         Re-detection only runs when apply=True AND a real rewrite_fn is provided.
         """
-        violations: MutableSequence[V] = []
+        violations: t.MutableSequenceOf[V] = []
         for py_file in py_files:
             violations.extend(detect_fn(py_file))
         if not (apply and violations and rewrite_fn is not None):
             return violations
         rewrite_fn(violations)
         self._reload_rope_project()
-        post_violations: MutableSequence[V] = []
+        post_violations: t.MutableSequenceOf[V] = []
         for py_file in py_files:
             post_violations.extend(detect_fn(py_file))
         return post_violations

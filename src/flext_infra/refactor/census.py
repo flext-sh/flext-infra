@@ -809,7 +809,7 @@ class FlextInfraRefactorCensus(
     def _build_parent_inventory(
         cls,
         workspace_root: Path,
-    ) -> Mapping[str, t.StrSequence]:
+    ) -> t.MappingKV[str, t.StrSequence]:
         """Inventory governed-package alias top-level facade names.
 
         Discovers governed projects via ``u.Infra.projects(workspace_root)``

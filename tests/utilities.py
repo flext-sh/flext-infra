@@ -159,7 +159,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             def __init__(
                 self,
-                values: Sequence[p.Result[t.Infra.ContainerDict]],
+                values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
             ) -> None:
                 self._values = list(values)
                 self._index = 0
@@ -184,7 +184,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             def __init__(
                 self,
-                results: Sequence[p.Result[m.Cli.CommandOutput]],
+                results: t.SequenceOf[p.Result[m.Cli.CommandOutput]],
             ) -> None:
                 self._results = list(results)
                 self._index = 0
@@ -302,7 +302,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             def __init__(
                 self,
-                projects: Sequence[m.Infra.ProjectInfo] | None = None,
+                projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
                 *,
                 error: str = "",
             ) -> None:
@@ -612,7 +612,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def initialize_git_repo(repo_root: Path) -> None:
-            commands: Sequence[t.StrSequence] = (
+            commands: t.SequenceOf[t.StrSequence] = (
                 (c.Infra.GIT, "init", "-b", "main"),
                 (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
@@ -798,7 +798,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def create_deptry_service(
             *,
-            projects: Sequence[m.Infra.ProjectInfo] | None = None,
+            projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
             selection_error: str | None = None,
             command_output: m.Cli.CommandOutput | None = None,
             run_error: str | None = None,
@@ -983,13 +983,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             constants_path: Path,
             apply: bool,
         ) -> tuple[
-            Sequence[m.Infra.MROFileMigration],
-            Sequence[m.Infra.MRORewriteResult],
+            t.SequenceOf[m.Infra.MROFileMigration],
+            t.SequenceOf[m.Infra.MRORewriteResult],
             t.StrSequence,
         ]:
             result: tuple[
-                Sequence[m.Infra.MROFileMigration],
-                Sequence[m.Infra.MRORewriteResult],
+                t.SequenceOf[m.Infra.MROFileMigration],
+                t.SequenceOf[m.Infra.MRORewriteResult],
                 t.StrSequence,
             ] = FlextInfraRefactorMROImportRewriter.migrate_workspace(
                 workspace_root=workspace_root,
@@ -1004,7 +1004,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_migrator_discovery(
-            projects: Sequence[m.Infra.ProjectInfo] | None = None,
+            projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
             *,
             error: str = "",
         ) -> p.Infra.Discovery:
@@ -1057,7 +1057,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_detector_deps_stub(
-            project_paths: Sequence[Path],
+            project_paths: t.SequenceOf[Path],
         ) -> TestsFlextInfraUtilities.Tests.DetectorDepsStub:
             return TestsFlextInfraUtilities.Tests.DetectorDepsStub(project_paths)
 
@@ -1105,7 +1105,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project: str = "p",
             *,
             passed: bool = True,
-            issues: Sequence[m.Infra.Issue] | None = None,
+            issues: t.SequenceOf[m.Infra.Issue] | None = None,
         ) -> m.Infra.GateExecution:
             return m.Infra.GateExecution(
                 result=m.Infra.GateResult(
@@ -1214,7 +1214,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ):
             """Typed dependency service stub for detector tests."""
 
-            def __init__(self, project_paths: Sequence[Path]) -> None:
+            def __init__(self, project_paths: t.SequenceOf[Path]) -> None:
                 self.project_paths = project_paths
                 self.discovery_failure: str | None = None
                 self.deptry_failure: str | None = None
@@ -1251,7 +1251,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def build_project_report(
                 self,
                 project_name: str,
-                deptry_issues: Sequence[t.Infra.ContainerDict],
+                deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
             ) -> TestsFlextInfraUtilities.Tests.DetectorReportStub:
                 del project_name, deptry_issues
                 return TestsFlextInfraUtilities.Tests.DetectorReportStub(0)

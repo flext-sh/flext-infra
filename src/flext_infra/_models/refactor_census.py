@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from typing import Annotated, ClassVar
 
 from flext_cli import m
@@ -139,9 +136,9 @@ class FlextInfraModelsRefactorCensus:
         """Usage breakdown for one project."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-        usages: Sequence[FlextInfraModelsRefactorCensus.CensusProjectMethodUsage] = (
-            m.Field(default_factory=tuple, description="Per-method usages")
-        )
+        usages: t.SequenceOf[
+            FlextInfraModelsRefactorCensus.CensusProjectMethodUsage
+        ] = m.Field(default_factory=tuple, description="Per-method usages")
         total: Annotated[
             t.NonNegativeInt, m.Field(description="Total usages in project")
         ]

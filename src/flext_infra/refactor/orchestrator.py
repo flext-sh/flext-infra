@@ -3,11 +3,6 @@
 from __future__ import annotations
 
 import difflib
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import (
@@ -46,7 +41,7 @@ class FlextInfraRefactorOrchestrator(
         self.safety_manager = safety_manager or FlextInfraRefactorSafetyManager()
         self._class_nesting_config: t.Infra.ContainerDict | None = None
         self._class_nesting_policy_by_family: (
-            Mapping[str, m.Infra.ClassNestingPolicy] | None
+            t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
         ) = None
         self._class_nesting_gate: FlextInfraClassNestingPostCheckGate | None = None
 
@@ -105,7 +100,7 @@ class FlextInfraRefactorOrchestrator(
             u.Cli.info(line)
 
     @staticmethod
-    def _print_summary(results: Sequence[m.Infra.Result], *, dry_run: bool) -> None:
+    def _print_summary(results: t.SequenceOf[m.Infra.Result], *, dry_run: bool) -> None:
         """Print refactor execution summary."""
         total = len(results)
         success = sum(1 for item in results if item.success)
@@ -211,12 +206,12 @@ class FlextInfraRefactorOrchestrator(
 
     def refactor_files(
         self,
-        file_paths: Sequence[Path],
+        file_paths: t.SequenceOf[Path],
         *,
         dry_run: bool = False,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor many files and collect individual results."""
-        results: MutableSequence[m.Infra.Result] = []
+        results: t.MutableSequenceOf[m.Infra.Result] = []
         for file_path in file_paths:
             result = self.refactor_file(file_path, dry_run=dry_run)
             results.append(result)
@@ -253,7 +248,7 @@ class FlextInfraRefactorOrchestrator(
 
     def _collect_files(
         self, args: t.Infra.CliNamespace
-    ) -> MutableSequence[Path] | None:
+    ) -> t.MutableSequenceOf[Path] | None:
         if args.project:
             collected = u.Infra.collect_engine_project_files(
                 self.loader.settings,
@@ -331,7 +326,7 @@ class FlextInfraRefactorOrchestrator(
         *,
         apply_safety: bool,
         dry_run: bool,
-    ) -> t.Pair[str, Sequence[m.Infra.Result] | None]:
+    ) -> t.Pair[str, t.SequenceOf[m.Infra.Result] | None]:
         if not apply_safety or dry_run:
             return "", None
         stash = self.safety_manager.create_pre_transformation_stash(target)
@@ -347,7 +342,7 @@ class FlextInfraRefactorOrchestrator(
         target: Path,
         stash_ref: str,
         processed_targets: t.StrSequence,
-        results: MutableSequence[m.Infra.Result],
+        results: t.MutableSequenceOf[m.Infra.Result],
     ) -> None:
         checkpoint = self.safety_manager.save_checkpoint_state(
             target,
@@ -391,7 +386,7 @@ class FlextInfraRefactorOrchestrator(
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor files under configured project directories."""
         stash_ref, error_results = self._try_safety_stash(
             project_path,
@@ -399,7 +394,7 @@ class FlextInfraRefactorOrchestrator(
             dry_run=dry_run,
         )
         if error_results is not None:
-            results_out: Sequence[m.Infra.Result] = error_results
+            results_out: t.SequenceOf[m.Infra.Result] = error_results
             return results_out
         collected = u.Infra.collect_engine_project_files(
             self.loader.settings,
@@ -414,7 +409,7 @@ class FlextInfraRefactorOrchestrator(
                 )
             ]
         u.Cli.info(f"Found {len(collected)} files to process")
-        results: MutableSequence[m.Infra.Result] = []
+        results: t.MutableSequenceOf[m.Infra.Result] = []
         results.extend(self.refactor_files(collected, dry_run=dry_run))
         results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and not dry_run:
@@ -433,7 +428,7 @@ class FlextInfraRefactorOrchestrator(
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor all discoverable workspace projects."""
         root = workspace_root.resolve()
         if not root.exists() or not root.is_dir():
@@ -453,10 +448,10 @@ class FlextInfraRefactorOrchestrator(
             dry_run=dry_run,
         )
         if error_results is not None:
-            results_out: Sequence[m.Infra.Result] = error_results
+            results_out: t.SequenceOf[m.Infra.Result] = error_results
             return results_out
-        results: MutableSequence[m.Infra.Result] = []
-        processed: MutableSequence[str] = []
+        results: t.MutableSequenceOf[m.Infra.Result] = []
+        processed: t.MutableSequenceOf[str] = []
         for project in projects:
             if apply_safety and self.safety_manager.emergency_stop_requested:
                 break

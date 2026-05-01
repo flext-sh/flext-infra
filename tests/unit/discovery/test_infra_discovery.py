@@ -5,9 +5,6 @@ Tests cover project discovery, pyproject file discovery, and error handling.
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 
 import pytest
@@ -156,7 +153,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
-        projects: Sequence[m.Infra.ProjectInfo] = result.value
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
         for item in projects:
             assert isinstance(item, m.Infra.ProjectInfo)
 

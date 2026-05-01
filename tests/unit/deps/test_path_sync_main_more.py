@@ -10,11 +10,9 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import (
-    FlextInfraModelsDeps,
-    FlextInfraUtilitiesDependencyPathSync,
     main,
 )
-from tests import u
+from tests import m, t, u
 
 
 def _nested_value(pyproject_path: Path, *keys: str) -> object:
@@ -38,7 +36,7 @@ def _string_list_value(pyproject_path: Path, *keys: str) -> list[str]:
     return list(value)
 
 
-def _mapping_value(pyproject_path: Path, *keys: str) -> Mapping[str, object]:
+def _mapping_value(pyproject_path: Path, *keys: str) -> t.MappingKV[str, object]:
     value = _nested_value(pyproject_path, *keys)
     assert isinstance(value, Mapping)
     return value
@@ -112,8 +110,8 @@ class TestsFlextInfraDepsPathSyncMainMore:
         before_api = (workspace / "flext-api" / "pyproject.toml").read_text(
             encoding="utf-8",
         )
-        exit_code = FlextInfraUtilitiesDependencyPathSync().execute(
-            FlextInfraModelsDeps.PathSyncCommand(
+        exit_code = u.Infra().execute(
+            m.Infra.PathSyncCommand(
                 workspace=str(workspace),
                 apply=True,
                 projects=["flext-cli"],

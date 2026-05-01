@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 
 import pytest
@@ -52,7 +49,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         expect_fail: bool,
         expect_has: str | None,
     ) -> None:
-        project_dirs_arg: Sequence[Path] | None = None
+        project_dirs_arg: t.SequenceOf[Path] | None = None
         if mode == "project":
             project = tmp_path / "proj"
             project.mkdir()

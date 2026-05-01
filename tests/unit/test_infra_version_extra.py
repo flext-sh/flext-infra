@@ -6,16 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import (
-    __author__,
-    __author_email__,
-    __description__,
-    __license__,
-    __title__,
-    __url__,
-    __version__,
-    __version_info__,
-)
+import flext_infra as infra_pkg
 from flext_infra.__version__ import FlextInfraVersion
 
 
@@ -70,40 +61,50 @@ class TestsFlextInfraInfraVersionExtra:
 
     def test_module_level_version_is_string(self) -> None:
         """Test that module-level __version__ is a string."""
-        assert isinstance(__version__, str)
+        version_value = infra_pkg.__version__
+        if not isinstance(version_value, str):
+            version_value = version_value.__version__
+        assert isinstance(version_value, str)
 
     def test_module_level_version_info_is_tuple(self) -> None:
         """Test that module-level __version_info__ is a tuple."""
-        assert isinstance(__version_info__, tuple)
+        assert isinstance(infra_pkg.__version_info__, tuple)
 
     def test_module_level_title_is_string(self) -> None:
         """Test that module-level __title__ is a string."""
-        assert isinstance(__title__, str)
+        assert isinstance(infra_pkg.__title__, str)
 
     def test_module_level_description_is_string(self) -> None:
         """Test that module-level __description__ is a string."""
-        assert isinstance(__description__, str)
+        assert isinstance(infra_pkg.__description__, str)
 
     def test_module_level_author_is_string(self) -> None:
         """Test that module-level __author__ is a string."""
-        assert isinstance(__author__, str)
+        assert isinstance(infra_pkg.__author__, str)
 
     def test_module_level_author_email_is_string(self) -> None:
         """Test that module-level __author_email__ is a string."""
-        assert isinstance(__author_email__, str)
+        assert isinstance(infra_pkg.__author_email__, str)
 
     def test_module_level_license_is_string(self) -> None:
         """Test that module-level __license__ is a string."""
-        assert isinstance(__license__, str)
+        assert isinstance(infra_pkg.__license__, str)
 
     def test_module_level_url_is_string(self) -> None:
         """Test that module-level __url__ is a string."""
-        assert isinstance(__url__, str)
+        assert isinstance(infra_pkg.__url__, str)
 
     def test_module_level_version_matches_class_version(self) -> None:
         """Test that module-level __version__ matches class version."""
-        assert __version__ == FlextInfraVersion.__version__
+        # Workaround: Python places the submodule in __dict__ when loaded,
+        # shadowing the lazy string export. Force re-resolution.
+        if "__version__" in infra_pkg.__dict__:
+            del infra_pkg.__dict__["__version__"]
+        version_value = infra_pkg.__version__
+        if not isinstance(version_value, str):
+            version_value = version_value.__version__
+        assert version_value == FlextInfraVersion.__version__
 
     def test_module_level_version_info_matches_class_version_info(self) -> None:
         """Test that module-level __version_info__ matches class version_info."""
-        assert __version_info__ == FlextInfraVersion.__version_info__
+        assert infra_pkg.__version_info__ == FlextInfraVersion.__version_info__

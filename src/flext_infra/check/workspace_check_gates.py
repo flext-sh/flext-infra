@@ -5,9 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import (
     Callable,
-    Mapping,
     MutableMapping,
-    MutableSequence,
 )
 from pathlib import Path
 from typing import ClassVar
@@ -49,7 +47,7 @@ class FlextInfraGateRegistry:
 
     def __init__(self) -> None:
         """Build the gate-id to gate-class mapping used by check execution."""
-        self._gates: Mapping[str, type[FlextInfraGate]] = {
+        self._gates: t.MappingKV[str, type[FlextInfraGate]] = {
             g.gate_id: g for g in self.GATE_CLASSES
         }
 
@@ -150,7 +148,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         fail_fast: bool,
     ) -> _LoopOutcome:
         """Execute gate checks across projects, collecting results and timing."""
-        results: MutableSequence[m.Infra.ProjectResult] = []
+        results: t.MutableSequenceOf[m.Infra.ProjectResult] = []
         total = len(projects)
         failed = 0
         skipped = 0
@@ -220,7 +218,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_name = project_dir.name
         result = m.Infra.ProjectResult(project=project_name)
 
-        stages: MutableSequence[m.Cli.PipelineStageSpec] = []
+        stages: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._workspace_root)
             if gate_instance is None:

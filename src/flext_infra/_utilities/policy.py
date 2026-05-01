@@ -9,9 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -43,20 +40,20 @@ class FlextInfraUtilitiesRefactorPolicy:
     @staticmethod
     def load_validated_policy_document(
         policy_path: Path,
-    ) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
+    ) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
         """Load and validate a YAML policy document."""
         raw = u.Cli.yaml_load_mapping(policy_path)
         if not raw:
-            return r[Mapping[str, t.Infra.InfraValue]].fail(
+            return r[t.MappingKV[str, t.Infra.InfraValue]].fail(
                 f"Failed to load policy {policy_path}",
             )
         validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
-        return r[Mapping[str, t.Infra.InfraValue]].ok(validated)
+        return r[t.MappingKV[str, t.Infra.InfraValue]].ok(validated)
 
     @staticmethod
     def class_nesting_policy_by_family(
         policy_path: Path | None = None,
-    ) -> Mapping[str, m.Infra.ClassNestingPolicy]:
+    ) -> t.MappingKV[str, m.Infra.ClassNestingPolicy]:
         """Load the class-nesting policy matrix keyed by module family."""
         resolved_path = (
             policy_path
@@ -131,7 +128,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     def _class_nesting_violation(
         *,
         request: m.Infra.ClassNestingViolationRequest,
-        policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy],
+        policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy],
     ) -> t.StrMapping | None:
         """Build a policy violation payload when class nesting is forbidden."""
         policy = policy_by_family.get(request.family)
@@ -184,7 +181,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     def validate_class_nesting_entry(
         entry: t.StrMapping,
         *,
-        policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy] | None = None,
+        policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy] | None = None,
         policy_path: Path | None = None,
     ) -> t.Pair[bool, t.StrMapping | None]:
         """Validate one class/helper nesting entry against the family policy."""

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Mapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar, override
@@ -57,16 +55,16 @@ class FlextInfraBanditGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         _ = project_dir, ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         try:
             parsed_result = u.Cli.json_parse(result.stdout or "{}")
-            empty_mapping: Mapping[str, t.Infra.InfraValue] = {}
+            empty_mapping: t.MappingKV[str, t.Infra.InfraValue] = {}
             raw_payload = (
                 parsed_result.unwrap() if parsed_result.success else empty_mapping
             )
-            bandit_data: Mapping[str, t.Infra.InfraValue] = (
+            bandit_data: t.MappingKV[str, t.Infra.InfraValue] = (
                 u.Cli.json_as_mapping(raw_payload)
                 if isinstance(raw_payload, Mapping)
                 else empty_mapping

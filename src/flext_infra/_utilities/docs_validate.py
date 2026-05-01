@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Mapping,
-    MutableSequence,
 )
 from pathlib import Path
 
@@ -34,7 +33,7 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_extract_required_skills(
-        payload: t.JsonPayload | Mapping[str, t.Infra.InfraValue],
+        payload: t.JsonPayload | t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.Infra.InfraSequence | None:
         """Extract the configured required skills list from architecture settings."""
         if not isinstance(payload, Mapping):
@@ -87,7 +86,7 @@ class FlextInfraUtilitiesDocsValidate:
             ]
         else:
             required = list(FlextInfraUtilitiesDocsScope.required_project_files())
-        missing: MutableSequence[str] = []
+        missing: t.MutableSequenceOf[str] = []
         for rel_path in sorted(set(required)):
             if not (scope.path / rel_path).exists():
                 missing.append(rel_path)
@@ -98,7 +97,7 @@ class FlextInfraUtilitiesDocsValidate:
         """Return public API contract problems for one governed project scope."""
         if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
-        messages: MutableSequence[str] = []
+        messages: t.MutableSequenceOf[str] = []
         init_path = (
             scope.path / c.Infra.DEFAULT_SRC_DIR / scope.package_name / c.Infra.INIT_PY
         )

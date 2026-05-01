@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ast as _ast
 import importlib.util as _importlib_util
-from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from rope.base.pynames import (
@@ -145,7 +144,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         cached = FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE.get(cache_key)
         if cached is not None:
             return cached
-        class_infos: MutableSequence[m.Infra.ClassInfo] = []
+        class_infos: t.MutableSequenceOf[m.Infra.ClassInfo] = []
         semantic_imports: dict[str, str] = {}
         declared_imports: dict[str, str] = {}
         try:
@@ -366,7 +365,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             if resolved_export_options.require_explicit_all:
                 FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()
                 return ()
-            names: MutableSequence[str] = []
+            names: t.MutableSequenceOf[str] = []
             for name, pyname in attributes.items():
                 if name == c.Infra.DUNDER_ALL or not (
                     FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource)
@@ -415,7 +414,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         pyname: t.Infra.RopeAssignedName,
     ) -> t.StrSequence | None:
         """Return literal string names assigned to ``__all__`` via Rope metadata."""
-        names: MutableSequence[str] = []
+        names: t.MutableSequenceOf[str] = []
         for assignment in pyname.assignments:
             node = assignment.ast_node
             if not isinstance(node, _ast.List | _ast.Tuple):
@@ -445,9 +444,9 @@ class FlextInfraUtilitiesRopeAnalysis:
     def get_class_info(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> t.SequenceOf[m.Infra.ClassInfo]:
         """Return ClassInfo (name, line, bases) for all classes in a module."""
-        class_infos: Sequence[m.Infra.ClassInfo] = (
+        class_infos: t.SequenceOf[m.Infra.ClassInfo] = (
             FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
                 rope_project,
                 resource,

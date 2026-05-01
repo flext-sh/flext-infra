@@ -6,12 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
-
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraManualTypingAliasDetector:
@@ -20,7 +15,7 @@ class FlextInfraManualTypingAliasDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
+    ) -> t.SequenceOf[m.Infra.ManualTypingAliasViolation]:
         """Detect typing declaration placement violations in a single file."""
         if (
             ctx.file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
@@ -33,7 +28,7 @@ class FlextInfraManualTypingAliasDetector:
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         lines = resource.read().splitlines()
-        violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
+        violations: t.MutableSequenceOf[m.Infra.ManualTypingAliasViolation] = []
         for symbol in u.Infra.get_module_symbols(rope_project, resource):
             if symbol.kind != "assignment" or not 0 < symbol.line <= len(lines):
                 continue

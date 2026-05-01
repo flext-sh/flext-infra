@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from typing import override
 
 from flext_infra import (
     m,
     p,
+    t,
     u,
 )
 from flext_infra.docs.base import FlextInfraDocServiceBase
@@ -21,7 +19,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
     def generate(
         self,
         request: m.Infra.DocsGenerateRequest,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Generate docs across the workspace root and governed FLEXT projects."""
         return self.run_scoped_docs(
             request.workspace_root,

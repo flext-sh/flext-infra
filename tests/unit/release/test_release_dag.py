@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraReleaseOrchestrator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import c, m, t, u
 
 
 def _make_config(
     workspace_root: Path,
     *,
-    phases: Sequence[str] | None = None,
+    phases: t.SequenceOf[str] | None = None,
     dry_run: bool = False,
 ) -> m.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -47,7 +46,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         else:
             expected_search = [c.Infra.DEFAULT_SRC_DIR]
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
-        error_values: Sequence[tuple[str, t.JsonValue]] = (
+        error_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
             *(
                 (error_rule, "error")
                 for error_rule in self._tool_config.tools.pyrefly.strict_errors

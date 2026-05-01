@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -58,9 +54,9 @@ class FlextInfraGoGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         _ = ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         passed = result.exit_code == 0
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.GO_VET_RE.match(line.strip())

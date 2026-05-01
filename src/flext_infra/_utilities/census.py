@@ -8,8 +8,6 @@ import shutil
 from collections import defaultdict
 from collections.abc import (
     Callable as _CensusCallable,
-    Mapping,
-    Sequence,
 )
 from pathlib import Path
 
@@ -25,7 +23,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def identify_project_by_roots(
         file_path: Path,
-        project_roots: Sequence[Path],
+        project_roots: t.SequenceOf[Path],
     ) -> str:
         """Identify project name for a file path (most-specific root wins)."""
         matching_roots = [
@@ -69,7 +67,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def plan_simple_removal_edits(
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> Mapping[Path, tuple[t.IntPair, ...]] | None:
+    ) -> t.MappingKV[Path, tuple[t.IntPair, ...]] | None:
         """Plan safe line-range removals for simple top-level removal candidates."""
         if candidate.scope_path != candidate.object_name:
             return None
@@ -104,7 +102,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def build_simple_removal_sources(
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> Mapping[Path, str] | None:
+    ) -> t.MappingKV[Path, str] | None:
         """Build updated sources for a simple removal candidate without writing."""
         edit_plan = FlextInfraUtilitiesRefactorCensus.plan_simple_removal_edits(
             rope,
@@ -140,7 +138,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def build_facade_base_cascade_updates(
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> Mapping[Path, str] | None:
+    ) -> t.MappingKV[Path, str] | None:
         """Drop ``candidate`` from class-base lists in facade modules.
 
         Returns an empty mapping when no facade references the candidate, a
@@ -352,7 +350,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def apply_line_ranges(
         source: str,
-        ranges: Sequence[t.IntPair],
+        ranges: t.SequenceOf[t.IntPair],
     ) -> str:
         """Remove one or more 1-based inclusive line ranges from Python source."""
         merged_ranges = FlextInfraUtilitiesRefactorCensus.merge_line_ranges(ranges)
@@ -395,7 +393,7 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def merge_line_ranges(
-        ranges: Sequence[t.IntPair],
+        ranges: t.SequenceOf[t.IntPair],
     ) -> tuple[t.IntPair, ...]:
         """Merge overlapping or adjacent 1-based inclusive line ranges."""
         if not ranges:
@@ -472,7 +470,7 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def _top_level_statement_start(
-        lines: Sequence[str],
+        lines: t.SequenceOf[str],
         *,
         line_index: int,
     ) -> int | None:
@@ -504,7 +502,7 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def _top_level_statement_end(
-        lines: Sequence[str],
+        lines: t.SequenceOf[str],
         *,
         start_index: int,
     ) -> int | None:

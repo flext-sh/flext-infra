@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Iterator,
-    Mapping,
-    Sequence,
 )
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
@@ -47,11 +45,11 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             **kwargs: (
                 t.JsonPayload
-                | Sequence[t.JsonValue]
-                | Sequence[tuple[str, str]]
-                | Sequence[tuple[str, t.StrSequence]]
-                | Sequence[tuple[str, Sequence[tuple[str, str]]]]
-                | Mapping[str, t.JsonValue]
+                | t.SequenceOf[t.JsonValue]
+                | t.SequenceOf[tuple[str, str]]
+                | t.SequenceOf[tuple[str, t.StrSequence]]
+                | t.SequenceOf[tuple[str, t.SequenceOf[tuple[str, str]]]]
+                | t.MappingKV[str, t.JsonValue]
                 | type
             ),
         ) -> str:
@@ -93,7 +91,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project: str,
             gates: t.StrSequence,
-        ) -> p.Result[Sequence[m.Infra.ProjectResult]]:
+        ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
             """Run quality gates for one project."""
             ...
 
@@ -120,7 +118,7 @@ class FlextInfraProtocolsBase(Protocol):
         def generate(
             self,
             request: m.Infra.DocsGenerateRequest,
-        ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
 
@@ -131,7 +129,7 @@ class FlextInfraProtocolsBase(Protocol):
         def discover_projects(
             self,
             workspace_root: Path,
-        ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+        ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...
 
@@ -179,7 +177,7 @@ class FlextInfraProtocolsBase(Protocol):
         pip_check: m.Infra.PipCheckReport | None
         dependency_limits: m.Infra.DependencyLimitsInfo | None
 
-        def model_dump(self) -> Mapping[str, t.Infra.InfraValue]:
+        def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Serialize report model payload."""
             ...
 
@@ -190,7 +188,7 @@ class FlextInfraProtocolsBase(Protocol):
         def write_json(
             self,
             path: Path,
-            payload: Mapping[str, t.Infra.InfraValue],
+            payload: t.MappingKV[str, t.Infra.InfraValue],
         ) -> p.Result[bool]:
             """Write payload to JSON file."""
             ...
@@ -198,7 +196,7 @@ class FlextInfraProtocolsBase(Protocol):
     class ProjectReportLike(Protocol):
         """Protocol for project-level dependency report contracts."""
 
-        def model_dump(self) -> Mapping[str, t.Infra.InfraValue]:
+        def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Serialize project report payload."""
             ...
 
@@ -211,7 +209,7 @@ class FlextInfraProtocolsBase(Protocol):
             workspace_root: Path,
             *,
             projects_filter: t.StrSequence | None = None,
-        ) -> p.Result[Sequence[Path]]:
+        ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
 
@@ -219,14 +217,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_path: Path,
             venv_bin: Path,
-        ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
+        ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
             """Run deptry on a project and return issues."""
             ...
 
         def build_project_report(
             self,
             project_name: str,
-            deptry_issues: Sequence[t.Infra.ContainerDict],
+            deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
         ) -> FlextInfraProtocolsBase.ProjectReportLike:
             """Build project report from deptry issues."""
             ...
@@ -238,7 +236,7 @@ class FlextInfraProtocolsBase(Protocol):
         def load_dependency_limits(
             self,
             limits_path: Path | None = None,
-        ) -> Mapping[str, t.Infra.InfraValue]:
+        ) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Load dependency limits from TOML file."""
             ...
 
@@ -317,7 +315,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             fail_fast: bool = False,
             make_args: t.StrSequence = (),
-        ) -> p.Result[Sequence[m.Cli.CommandOutput]]:
+        ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...
 
@@ -337,8 +335,8 @@ class FlextInfraProtocolsBase(Protocol):
             workspace_root: Path | None = None,
             *,
             output_format: str = "json",
-            projects: Sequence[FlextInfraProtocolsBase.ProjectInfo] | None = None,
-        ) -> Sequence[m.Infra.CensusReport]:
+            projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
+        ) -> t.SequenceOf[m.Infra.CensusReport]:
             """Run census and return typed reports."""
             ...
 
@@ -374,7 +372,7 @@ class FlextInfraProtocolsBase(Protocol):
     class SafeTransformer(Protocol):
         """Contract for transformers that run with copy-on-write protection."""
 
-        def transform(self, files: Sequence[Path]) -> p.Result[Sequence[Path]]:
+        def transform(self, files: t.SequenceOf[Path]) -> p.Result[t.SequenceOf[Path]]:
             """Apply transformation to files, return paths of modified files."""
             ...
 
@@ -384,7 +382,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def validate(
             self,
-            files: Sequence[Path],
+            files: t.SequenceOf[Path],
             project_dir: Path,
         ) -> p.Result[m.Infra.GateResult]:
             """Validate files pass quality gates after transformation."""

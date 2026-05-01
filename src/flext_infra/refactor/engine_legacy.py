@@ -4,10 +4,6 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-)
 
 from flext_infra import c, t, u
 
@@ -17,10 +13,10 @@ class FlextInfraRefactorLegacyTextOps:
 
     def _apply_legacy_removal(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         rule_id = str(settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN))
         fix_action = u.Cli.json_get_str_key(
             settings,
@@ -44,7 +40,7 @@ class FlextInfraRefactorLegacyTextOps:
 
     @staticmethod
     def _remove_aliases(
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
         allow_aliases = set(
@@ -54,8 +50,8 @@ class FlextInfraRefactorLegacyTextOps:
             u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_TARGET_SUFFIXES, []))
         )
         alias_pattern = re.compile(r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$")
-        changes: MutableSequence[str] = []
-        kept: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
+        kept: t.MutableSequenceOf[str] = []
         for line in source.splitlines(keepends=True):
             if line != line.lstrip():
                 kept.append(line)
@@ -98,8 +94,8 @@ class FlextInfraRefactorLegacyTextOps:
         except SyntaxError:
             return (source, list[str]())
         lines = source.splitlines(keepends=True)
-        changes: MutableSequence[str] = []
-        replacements: MutableSequence[tuple[int, int, str]] = []
+        changes: t.MutableSequenceOf[str] = []
+        replacements: t.MutableSequenceOf[tuple[int, int, str]] = []
         for node in module.body:
             if not isinstance(node, ast.FunctionDef):
                 continue

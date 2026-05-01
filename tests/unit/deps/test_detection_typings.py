@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,7 +10,7 @@ from tests.typings import t
 
 
 class _StubToml:
-    def __init__(self, values: Sequence[tr[t.Infra.ContainerDict]]) -> None:
+    def __init__(self, values: t.SequenceOf[tr[t.Infra.ContainerDict]]) -> None:
         self._values = values
         self._idx = 0
 

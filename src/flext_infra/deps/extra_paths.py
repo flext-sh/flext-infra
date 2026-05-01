@@ -8,8 +8,6 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import override
@@ -102,7 +100,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
         current_project_name = (
             project_table.get(c.NAME) if isinstance(project_table, Mapping) else None
         )
-        resolved: MutableSequence[str] = []
+        resolved: t.MutableSequenceOf[str] = []
         for name in self._resolve_transitive_deps(
             u.Infra.local_dependency_names_from_payload(
                 payload,
@@ -162,7 +160,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
         if pyright_table is None:
             return list[str]()
         mypy_table = u.Cli.toml_table_child(tool_table, c.Infra.MYPY)
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         pyright_extra_paths = u.Cli.toml_item_child(pyright_table, "extraPaths")
         current_pyright = u.Cli.toml_as_string_list(
             pyright_extra_paths if pyright_extra_paths is not None else []
@@ -203,7 +201,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
         if pyright_table is None:
             return list[str]()
         mypy_table = u.Cli.toml_mapping_child(tool_table, c.Infra.MYPY)
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         if u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT)),
             "extraPaths",
@@ -322,7 +320,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
         self,
         *,
         dry_run: bool = False,
-        project_dirs: Sequence[Path] | None = None,
+        project_dirs: t.SequenceOf[Path] | None = None,
     ) -> p.Result[int]:
         """Synchronize extraPaths and mypy_path across projects."""
         if project_dirs:

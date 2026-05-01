@@ -6,9 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import (
@@ -28,7 +25,7 @@ class FlextInfraScanner:
         *,
         project_root: Path,
         rope_project: t.Infra.RopeProject,
-    ) -> Sequence[m.Infra.FacadeStatus]:
+    ) -> t.SequenceOf[m.Infra.FacadeStatus]:
         """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
         layout = u.Infra.layout(project_root)
         if layout is None or not layout.src_dir.is_dir():

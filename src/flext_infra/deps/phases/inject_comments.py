@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
-
 from flext_infra import c, t
 
 
@@ -38,9 +34,9 @@ class FlextInfraInjectCommentsPhase:
         cls,
         lines: t.StrSequence,
     ) -> t.Pair[t.StrSequence, t.StrSequence]:
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         managed_lines = cls._managed_marker_lines()
-        cleaned: MutableSequence[str] = []
+        cleaned: t.MutableSequenceOf[str] = []
         skip_broken_group_section = False
         broken_removed = False
         for line in lines:
@@ -68,8 +64,8 @@ class FlextInfraInjectCommentsPhase:
 
     @staticmethod
     def _inject_dev_markers(
-        out: MutableSequence[str],
-        changes: MutableSequence[str],
+        out: t.MutableSequenceOf[str],
+        changes: t.MutableSequenceOf[str],
         emitted_markers: t.Infra.StrSet,
     ) -> None:
         managed_marker = c.Infra.DEV_OPTIONAL_DEPS_MARKER
@@ -81,7 +77,7 @@ class FlextInfraInjectCommentsPhase:
     @staticmethod
     def _collapse_blank_lines(lines: t.StrSequence) -> t.StrSequence:
         """Collapse repeated blank lines into a single canonical separator."""
-        normalized: MutableSequence[str] = []
+        normalized: t.MutableSequenceOf[str] = []
         previous_blank = False
         for line in lines:
             is_blank = not line.strip()
@@ -93,12 +89,12 @@ class FlextInfraInjectCommentsPhase:
 
     def apply(self, rendered: str) -> t.Pair[str, t.StrSequence]:
         """Inject managed banner/markers and return updated TOML plus change messages."""
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         lines = rendered.splitlines()
         cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
         changes.extend(cleanup_changes)
         banner_lines = c.Infra.BANNER.splitlines()
-        out: MutableSequence[str] = [*banner_lines]
+        out: t.MutableSequenceOf[str] = [*banner_lines]
         if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
         emitted_markers: set[str] = set()

@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraRuntimeAliasDetector:
@@ -19,7 +15,7 @@ class FlextInfraRuntimeAliasDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.RuntimeAliasViolation]:
+    ) -> t.SequenceOf[m.Infra.RuntimeAliasViolation]:
         """Detect missing/duplicate runtime alias assignments in a facade file."""
         file_path = ctx.file_path
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)

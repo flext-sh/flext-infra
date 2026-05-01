@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar, Final
@@ -388,15 +386,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         workspace_root: Path,
         *,
-        projects: Sequence[m.Infra.ProjectInfo] | None = None,
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+        projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 workspace_root,
             )
             if not projects_result.success:
-                return r[Sequence[m.Infra.ProjectInfo]].fail(
+                return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
                     projects_result.error or "project discovery failed",
                 )
             discovered = projects_result.unwrap()
@@ -408,7 +406,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if project.name not in c.Infra.EXCLUDED_PROJECTS
             and not (project.path / c.Infra.GO_MOD).exists()
         )
-        return r[Sequence[m.Infra.ProjectInfo]].ok(selected)
+        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(selected)
 
     @classmethod
     def parse_namespace_validation(
@@ -552,7 +550,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         before = lines[:insert_at]
         after = lines[insert_at:]
-        inserted: MutableSequence[str] = list(before)
+        inserted: t.MutableSequenceOf[str] = list(before)
         if inserted and inserted[-1]:
             inserted.append("")
         inserted.append(import_line)
@@ -566,8 +564,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         *,
         project_path: Path,
-        initial_violations: Sequence[m.Infra.CensusViolation],
-        remaining_violations: Sequence[m.Infra.CensusViolation],
+        initial_violations: t.SequenceOf[m.Infra.CensusViolation],
+        remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
     ) -> tuple[
         tuple[m.Infra.CensusViolation, ...],
         tuple[m.Infra.CensusViolation, ...],
@@ -584,8 +582,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             for violation in remaining_violations
         )
-        fixed: MutableSequence[m.Infra.CensusViolation] = []
-        skipped: MutableSequence[m.Infra.CensusViolation] = []
+        fixed: t.MutableSequenceOf[m.Infra.CensusViolation] = []
+        skipped: t.MutableSequenceOf[m.Infra.CensusViolation] = []
         for violation in initial_violations:
             key = cls._build_violation_key(
                 violation=violation,

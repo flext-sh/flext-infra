@@ -6,7 +6,6 @@ import re
 from collections.abc import (
     Mapping,
     MutableMapping,
-    MutableSequence,
 )
 from pathlib import Path
 
@@ -68,7 +67,7 @@ class FlextInfraProjectClassifier:
     ) -> t.Infra.TransformResult:
         raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
-        dependencies: MutableSequence[str] = []
+        dependencies: t.MutableSequenceOf[str] = []
         self._append_project_dependencies(
             raw_project=raw_project,
             dependencies=dependencies,
@@ -86,9 +85,9 @@ class FlextInfraProjectClassifier:
     def _as_mapping(
         self,
         raw_value: t.Infra.InfraValue | None,
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.Infra.InfraValue]:
         if isinstance(raw_value, Mapping):
-            validated: Mapping[str, t.Infra.InfraValue] = (
+            validated: t.MappingKV[str, t.Infra.InfraValue] = (
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
             )
             return validated
@@ -96,7 +95,7 @@ class FlextInfraProjectClassifier:
 
     def _normalized_name_from_mapping(
         self,
-        raw_mapping: Mapping[str, t.Infra.InfraValue],
+        raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> str:
         raw_name = raw_mapping.get(c.Infra.NAME)
         if isinstance(raw_name, str):
@@ -106,8 +105,8 @@ class FlextInfraProjectClassifier:
     def _append_project_dependencies(
         self,
         *,
-        raw_project: Mapping[str, t.Infra.InfraValue],
-        dependencies: MutableSequence[str],
+        raw_project: t.MappingKV[str, t.Infra.InfraValue],
+        dependencies: t.MutableSequenceOf[str],
     ) -> None:
         raw_dependencies = raw_project.get(c.Infra.DEPENDENCIES)
         if not isinstance(raw_dependencies, list):
@@ -124,8 +123,8 @@ class FlextInfraProjectClassifier:
     def _append_poetry_dependencies(
         self,
         *,
-        raw_poetry: Mapping[str, t.Infra.InfraValue],
-        dependencies: MutableSequence[str],
+        raw_poetry: t.MappingKV[str, t.Infra.InfraValue],
+        dependencies: t.MutableSequenceOf[str],
     ) -> None:
         self._append_poetry_dependency_mapping(
             raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.DEPENDENCIES)),
@@ -141,8 +140,8 @@ class FlextInfraProjectClassifier:
     def _append_poetry_dependency_mapping(
         self,
         *,
-        raw_mapping: Mapping[str, t.Infra.InfraValue],
-        dependencies: MutableSequence[str],
+        raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
+        dependencies: t.MutableSequenceOf[str],
     ) -> None:
         dependency_keys = self._ordered_mapping_keys(raw_mapping)
         for dependency_key in dependency_keys:
@@ -156,7 +155,7 @@ class FlextInfraProjectClassifier:
 
     def _ordered_mapping_keys(
         self,
-        raw_mapping: Mapping[str, t.Infra.InfraValue],
+        raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         keys = list(raw_mapping.keys())
         if self._mapping_order_is_trusted(raw_mapping):
@@ -165,7 +164,7 @@ class FlextInfraProjectClassifier:
 
     def _mapping_order_is_trusted(
         self,
-        raw_mapping: Mapping[str, t.Infra.InfraValue],
+        raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> bool:
         return isinstance(raw_mapping, dict)
 
@@ -173,7 +172,7 @@ class FlextInfraProjectClassifier:
         self,
         *,
         dependency_name: str,
-        dependencies: MutableSequence[str],
+        dependencies: t.MutableSequenceOf[str],
     ) -> None:
         if (not dependency_name) or (dependency_name in dependencies):
             return
@@ -211,8 +210,8 @@ class FlextInfraProjectClassifier:
 
     def _discover_facade_inheritance(
         self,
-    ) -> t.Pair[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]:
-        family_bases: Mapping[str, t.Infra.StrSet] = {
+    ) -> t.Pair[t.MappingKV[str, t.Infra.StrSet], t.Infra.StrSet]:
+        family_bases: t.MappingKV[str, t.Infra.StrSet] = {
             family: set() for family in c.Infra.FAMILY_SUFFIXES
         }
         local_facade_classes: t.Infra.StrSet = set()
@@ -260,8 +259,8 @@ class FlextInfraProjectClassifier:
         self,
         *,
         internal_dependencies: t.StrSequence,
-        family_bases: Mapping[str, t.Infra.StrSet],
-    ) -> Mapping[str, t.StrSequence]:
+        family_bases: t.MappingKV[str, t.Infra.StrSet],
+    ) -> t.MappingKV[str, t.StrSequence]:
         family_chains: MutableMapping[str, t.StrSequence] = {}
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_parents = self._expected_parents_for_family(
@@ -284,7 +283,7 @@ class FlextInfraProjectClassifier:
         family_suffix: str,
         internal_dependencies: t.StrSequence,
     ) -> t.StrSequence:
-        expected: MutableSequence[str] = []
+        expected: t.MutableSequenceOf[str] = []
         for dependency in internal_dependencies:
             stem = self._dependency_to_class_stem(dependency)
             if not stem:

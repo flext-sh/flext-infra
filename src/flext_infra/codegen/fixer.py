@@ -12,10 +12,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -30,6 +26,7 @@ from flext_infra import (
     m,
     p,
     r,
+    t,
     u,
 )
 
@@ -56,7 +53,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             return r[str].fail(f"auto-fix failed: {exc}", exception=exc)
         total_fixed = sum(len(result.violations_fixed) for result in results)
         total_skipped = sum(len(result.violations_skipped) for result in results)
-        lines: MutableSequence[str] = []
+        lines: t.MutableSequenceOf[str] = []
         if dry_run:
             lines.append("Dry-run mode: no files will be modified")
         lines.extend(
@@ -335,8 +332,8 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
     def fix_workspace(
         self,
         *,
-        projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> Sequence[m.Infra.AutoFixResult]:
+        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+    ) -> t.SequenceOf[m.Infra.AutoFixResult]:
         """Run auto-fix on selected projects (defaults to ``--projects`` scope or full workspace).
 
         Args:

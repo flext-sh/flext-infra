@@ -19,9 +19,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 
 from jinja2 import (
@@ -85,7 +82,7 @@ class FlextInfraWorkspaceMakefileGenerator:
     def _build_template_lines(content: str) -> str:
         """Transform raw Makefile content into a Jinja2 template string."""
         lines = content.splitlines(keepends=True)
-        out: MutableSequence[str] = []
+        out: t.MutableSequenceOf[str] = []
         header_done = False
         for line in lines:
             if not header_done and line.startswith("#"):

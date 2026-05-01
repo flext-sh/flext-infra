@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -143,7 +142,7 @@ class FlextInfraModelsMixins:
         @classmethod
         def _parse_gates(
             cls,
-            value: str | Sequence[str] | None,
+            value: str | t.SequenceOf[str] | None,
         ) -> t.StrSequence:
             """Accept CSV string, sequence, or None; normalize to StrSequence."""
             if value is None:

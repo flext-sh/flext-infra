@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import override
@@ -95,7 +93,7 @@ class FlextInfraConfigFixer(s[bool]):
             )
         except c.ValidationError:
             return r[t.StrSequence].ok([])
-        all_fixes: MutableSequence[str] = []
+        all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
@@ -122,8 +120,8 @@ class FlextInfraConfigFixer(s[bool]):
         removed_ignore = False
         sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if isinstance(sub_configs, list):
-            new_configs: MutableSequence[t.Infra.InfraValue] = []
-            configs: Sequence[t.Infra.InfraValue] = []
+            new_configs: t.MutableSequenceOf[t.Infra.InfraValue] = []
+            configs: t.SequenceOf[t.Infra.InfraValue] = []
             try:
                 configs = t.Infra.INFRA_SEQ_ADAPTER.validate_python(sub_configs)
             except c.ValidationError as err:
@@ -203,9 +201,9 @@ class FlextInfraConfigFixer(s[bool]):
             return r[t.StrSequence].fail(
                 files_result.error or "failed to find pyproject files",
             )
-        messages: MutableSequence[str] = []
+        messages: t.MutableSequenceOf[str] = []
         total_fixes = 0
-        pyproject_files: Sequence[Path] = files_result.value
+        pyproject_files: t.SequenceOf[Path] = files_result.value
         for path in pyproject_files:
             fixes_result = self.process_file(path, dry_run=dry_run)
             if fixes_result.failure:

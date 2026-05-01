@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -27,12 +26,12 @@ class FlextInfraUtilitiesRefactor:
     """
 
     @staticmethod
-    def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:
+    def entry_list(value: t.Infra.InfraValue | None) -> t.SequenceOf[t.StrMapping]:
         """Normalize class-nesting settings entries to a strict list."""
         if value is None:
             return []
         try:
-            entries: Sequence[t.StrMapping] = (
+            entries: t.SequenceOf[t.StrMapping] = (
                 t.Infra.STR_MAPPING_SEQ_ADAPTER.validate_python(value)
             )
             return entries
@@ -69,7 +68,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def write_impact_map(
-        results: Sequence[m.Infra.Result],
+        results: t.SequenceOf[m.Infra.Result],
         output_path: Path,
     ) -> p.Result[bool]:
         """Write refactor impact map JSON to disk."""

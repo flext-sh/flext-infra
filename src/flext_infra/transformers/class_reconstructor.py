@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from operator import itemgetter
 from typing import TypeIs, override
 
@@ -20,7 +16,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
 
     def __init__(
         self,
-        order_config: Sequence[t.Infra.ContainerDict],
+        order_config: t.SequenceOf[t.Infra.ContainerDict],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with rule order settings and optional change callback."""
@@ -29,7 +25,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 order_config,
             )
-            self._order_config: Sequence[m.Infra.MethodOrderRule] = [
+            self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
                 m.Infra.MethodOrderRule.model_validate(item) for item in typed_items
             ]
         except c.ValidationError:
@@ -46,7 +42,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         except SyntaxError:
             return source, list[str]()
         line_offsets = self._line_offsets(source)
-        edits: MutableSequence[tuple[int, int, str]] = []
+        edits: t.MutableSequenceOf[tuple[int, int, str]] = []
         for statement in module.body:
             if not isinstance(statement, ast.ClassDef):
                 continue
@@ -73,9 +69,9 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         source: str,
         class_node: t.Infra.AstClassDef,
         *,
-        line_offsets: Sequence[int],
-    ) -> Sequence[tuple[int, int, str]]:
-        edits: MutableSequence[tuple[int, int, str]] = []
+        line_offsets: t.SequenceOf[int],
+    ) -> t.SequenceOf[tuple[int, int, str]]:
+        edits: t.MutableSequenceOf[tuple[int, int, str]] = []
         body = class_node.body
         index = 0
         while index < len(body):
@@ -105,9 +101,11 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         source: str,
         *,
         class_name: str,
-        method_nodes: Sequence[t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef],
+        method_nodes: t.SequenceOf[
+            t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef
+        ],
         next_sibling: t.Infra.AstStmt | None,
-        line_offsets: Sequence[int],
+        line_offsets: t.SequenceOf[int],
     ) -> tuple[int, int, str] | None:
         start = self._node_start_offset(method_nodes[0], line_offsets)
         end = (
@@ -150,7 +148,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         *,
         node: t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef,
         next_node: t.Infra.AstStmt | None,
-        line_offsets: Sequence[int],
+        line_offsets: t.SequenceOf[int],
     ) -> tuple[m.Infra.MethodInfo, str]:
         start = self._node_start_offset(node, line_offsets)
         end = (
@@ -188,14 +186,16 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         return ""
 
     @staticmethod
-    def _line_offsets(source: str) -> Sequence[int]:
+    def _line_offsets(source: str) -> t.SequenceOf[int]:
         offsets = [0]
         for line in source.splitlines(keepends=True):
             offsets.append(offsets[-1] + len(line))
         return offsets
 
     @staticmethod
-    def _node_start_offset(node: t.Infra.AstStmt, line_offsets: Sequence[int]) -> int:
+    def _node_start_offset(
+        node: t.Infra.AstStmt, line_offsets: t.SequenceOf[int]
+    ) -> int:
         start_line = min(
             (
                 decorator.lineno
@@ -216,7 +216,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         return start_offset
 
     @staticmethod
-    def _node_end_offset(node: t.Infra.AstStmt, line_offsets: Sequence[int]) -> int:
+    def _node_end_offset(node: t.Infra.AstStmt, line_offsets: t.SequenceOf[int]) -> int:
         end_line = node.end_lineno or node.lineno
         end_col = node.end_col_offset or 0
         end_offset: int = line_offsets[end_line - 1] + end_col

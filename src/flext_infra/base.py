@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    Sequence,
 )
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
@@ -232,7 +231,7 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
 
     @u.computed_field()
     @property
-    def project_dirs(self) -> Sequence[Path] | None:
+    def project_dirs(self) -> t.SequenceOf[Path] | None:
         """Resolve selected project directories relative to the workspace root."""
         names = u.Infra.normalize_sequence_values(self.selected_projects)
         if names is None:
@@ -249,7 +248,7 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
             m.Infra.DocsPhaseReport,
         ],
         projects: t.StrSequence | None = None,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Run one docs phase across the resolved governed scopes."""
         return u.Infra.run_scoped(
             workspace_root,

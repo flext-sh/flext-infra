@@ -4,11 +4,6 @@ from __future__ import annotations
 
 import ast
 from collections import defaultdict
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -33,7 +28,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def rewrite_import_violations(
         cls,
         *,
-        py_files: Sequence[Path],
+        py_files: t.SequenceOf[Path],
         project_package: str,
     ) -> None:
         if not py_files:
@@ -90,7 +85,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def rewrite_runtime_alias_violations(
         cls,
         *,
-        py_files: Sequence[Path],
+        py_files: t.SequenceOf[Path],
     ) -> None:
         if not py_files:
             return
@@ -151,13 +146,15 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def rewrite_manual_protocol_violations(
         *,
         project_root: Path,
-        py_files: Sequence[Path],
-        violations: Sequence[m.Infra.ManualProtocolViolation],
+        py_files: t.SequenceOf[Path],
+        violations: t.SequenceOf[m.Infra.ManualProtocolViolation],
     ) -> None:
-        grouped: Mapping[Path, t.Infra.StrSet] = defaultdict(set)
+        grouped: t.MappingKV[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
             grouped[Path(violation.file)].add(violation.name)
-        protocol_moves: MutableSequence[t.Triple[Path, Path, t.VariadicTuple[str]]] = []
+        protocol_moves: t.MutableSequenceOf[
+            t.Triple[Path, Path, t.VariadicTuple[str]]
+        ] = []
         for source_file, protocol_names in grouped.items():
             move = FlextInfraUtilitiesRefactorNamespaceMoves._move_named_blocks(
                 project_root=project_root,
@@ -179,11 +176,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def rewrite_manual_typing_alias_violations(
         *,
         project_root: Path,
-        violations: Sequence[m.Infra.ManualTypingAliasViolation],
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[m.Infra.ManualTypingAliasViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
         _ = parse_failures
-        grouped: Mapping[Path, t.Infra.StrSet] = defaultdict(set)
+        grouped: t.MappingKV[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
             grouped[Path(violation.file)].add(violation.name)
         for source_file, alias_names in grouped.items():
@@ -196,11 +193,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @staticmethod
     def rewrite_compatibility_alias_violations(
         *,
-        violations: Sequence[m.Infra.CompatibilityAliasViolation],
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
         _ = parse_failures
-        grouped: Mapping[Path, t.MutableStrMapping] = defaultdict(dict)
+        grouped: t.MappingKV[Path, t.MutableStrMapping] = defaultdict(dict)
         for violation in violations:
             grouped[Path(violation.file)][violation.alias_name] = violation.target_name
         for file_path, alias_map in grouped.items():
@@ -248,9 +245,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> t.Triple[Path, Path, t.VariadicTuple[str]] | None:
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
-        blocks: MutableSequence[str] = []
-        ranges: MutableSequence[t.IntPair] = []
-        moved: MutableSequence[str] = []
+        blocks: t.MutableSequenceOf[str] = []
+        ranges: t.MutableSequenceOf[t.IntPair] = []
+        moved: t.MutableSequenceOf[str] = []
         for name in sorted(names):
             found = FlextInfraUtilitiesRefactorNamespaceCommon.find_top_level_block(
                 lines=lines,
@@ -334,7 +331,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 for alias in node.names:
                     bound_name = alias.asname or alias.name
                     import_map[bound_name] = import_line
-        required_imports: MutableSequence[str] = []
+        required_imports: t.MutableSequenceOf[str] = []
         seen_imports: t.Infra.StrSet = set()
         for block in blocks:
             block_ast = ast.parse(block)
@@ -357,9 +354,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> None:
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
-        moved_lines: MutableSequence[str] = []
-        moved_line_numbers: MutableSequence[int] = []
-        kept_lines: MutableSequence[str] = []
+        moved_lines: t.MutableSequenceOf[str] = []
+        moved_line_numbers: t.MutableSequenceOf[int] = []
+        kept_lines: t.MutableSequenceOf[str] = []
         for line_number, line in enumerate(lines, start=1):
             stripped = line.strip()
             typing_match = c.Infra.TYPING_FACTORY_ASSIGN_RE.match(stripped)
@@ -488,7 +485,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for node in ast.walk(ast.parse(kept_source))
             if isinstance(node, ast.Name)
         }
-        import_lines: MutableSequence[str] = []
+        import_lines: t.MutableSequenceOf[str] = []
         for node in source_ast.body:
             if not isinstance(node, (ast.Import, ast.ImportFrom)):
                 continue
@@ -509,11 +506,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def _rewrite_moved_imports(
         *,
         project_root: Path,
-        py_files: Sequence[Path],
-        moves: Sequence[t.Triple[Path, Path, t.VariadicTuple[str]]],
+        py_files: t.SequenceOf[Path],
+        moves: t.SequenceOf[t.Triple[Path, Path, t.VariadicTuple[str]]],
     ) -> None:
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
-            mappings: MutableSequence[t.Triple[str, str, t.VariadicTuple[str]]] = []
+            mappings: t.MutableSequenceOf[t.Triple[str, str, t.VariadicTuple[str]]] = []
             for source, target, names in moves:
                 source_resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, source

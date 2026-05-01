@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Mapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import override
@@ -52,7 +50,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     @staticmethod
     def classify_issues(
-        issues: Sequence[t.Infra.ContainerDict],
+        issues: t.SequenceOf[t.Infra.ContainerDict],
     ) -> m.Infra.DeptryIssueGroups:
         """Classify deptry issues by error code (DEP001-DEP004)."""
         groups = m.Infra.DeptryIssueGroups.model_validate({
@@ -89,14 +87,14 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
     def build_project_report(
         self,
         project_name: str,
-        deptry_issues: Sequence[t.Infra.ContainerDict],
+        deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
     ) -> m.Infra.ProjectDependencyReport:
         """Build a project dependency report from classified deptry issues."""
         classified = self.classify_issues(deptry_issues)
 
         def _module_names(
-            items: Sequence[Mapping[str, t.JsonValue | None]],
-        ) -> MutableSequence[str]:
+            items: t.SequenceOf[t.MappingKV[str, t.JsonValue | None]],
+        ) -> t.MutableSequenceOf[str]:
             return [
                 str(val)
                 for item in items
@@ -118,7 +116,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self,
         workspace_root: Path,
         projects_filter: t.StrSequence | None = None,
-    ) -> p.Result[Sequence[Path]]:
+    ) -> p.Result[t.SequenceOf[Path]]:
         """Discover project paths with pyproject.toml in workspace.
 
         Returns only the Path objects, filtered to those with pyproject.toml.
@@ -131,14 +129,16 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             else u.Infra.resolve_projects(workspace_root, names)
         )
         if result.failure:
-            return r[Sequence[Path]].fail(result.error or "project resolution failed")
-        projects_info: Sequence[m.Infra.ProjectInfo] = result.value
+            return r[t.SequenceOf[Path]].fail(
+                result.error or "project resolution failed"
+            )
+        projects_info: t.SequenceOf[m.Infra.ProjectInfo] = result.value
         projects = [
             project.path
             for project in projects_info
             if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
         ]
-        return r[Sequence[Path]].ok(sorted(projects))
+        return r[t.SequenceOf[Path]].ok(sorted(projects))
 
 
 __all__: list[str] = [

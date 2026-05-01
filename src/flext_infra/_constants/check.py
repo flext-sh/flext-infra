@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    Mapping,
-)
 from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
@@ -36,7 +33,7 @@ class FlextInfraConstantsCheck:
         "markdown",
         "go",
     })
-    SARIF_TOOL_INFO: Final[Mapping[str, t.Infra.StrPair]] = MappingProxyType({
+    SARIF_TOOL_INFO: Final[t.MappingKV[str, t.Infra.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
         "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),

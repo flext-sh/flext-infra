@@ -10,8 +10,6 @@ import fnmatch
 from collections.abc import (
     Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from functools import cache
 from pathlib import Path
@@ -68,7 +66,7 @@ class FlextInfraUtilitiesIteration:
     def locked_dependency_versions(
         cls,
         lock_path: Path,
-    ) -> Mapping[str, str]:
+    ) -> t.MappingKV[str, str]:
         """Return normalized registry package versions from one ``uv.lock`` file."""
         if not lock_path.is_file():
             return {}
@@ -108,7 +106,7 @@ class FlextInfraUtilitiesIteration:
         cls,
         requirement: str,
         *,
-        locked_versions: Mapping[str, str],
+        locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
         policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> str | None:
@@ -142,7 +140,7 @@ class FlextInfraUtilitiesIteration:
         dependency_name: str,
         raw_value: t.Infra.InfraValue,
         *,
-        locked_versions: Mapping[str, str],
+        locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
         policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> t.Infra.InfraValue | None:
@@ -330,7 +328,7 @@ class FlextInfraUtilitiesIteration:
     @staticmethod
     def project_dev_groups_from_payload(
         payload: t.Infra.ContainerDict,
-    ) -> Mapping[str, t.StrSequence]:
+    ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one normalized payload."""
         project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
         optional = u.Cli.json_as_mapping(
@@ -348,7 +346,7 @@ class FlextInfraUtilitiesIteration:
     def project_dev_groups(
         cls,
         document: TOMLDocument,
-    ) -> Mapping[str, t.StrSequence]:
+    ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one TOML document."""
         normalized = cls._normalized_toml_payload(document)
         if not normalized:
@@ -393,7 +391,7 @@ class FlextInfraUtilitiesIteration:
     @classmethod
     def workspace_dep_namespaces_from_payload(
         cls,
-        payload: Mapping[str, t.Infra.InfraValue],
+        payload: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         """Extract workspace-local dependency namespaces from one normalized payload."""
         try:
@@ -577,10 +575,34 @@ class FlextInfraUtilitiesIteration:
             else:
                 scope_relative = repo_relative
             scope_paths.add(scope_relative.as_posix())
+        # Include dirty and untracked files so uncommitted changes are targets.
+        try:
+            status_output = repo.git.status(
+                "--porcelain",
+                "--untracked-files=all",
+                *((scope_prefix_text,) if scope_prefix_text else ()),
+            )
+        except GitCommandError:
+            status_output = ""
+        for raw_line in status_output.splitlines():
+            if not raw_line:
+                continue
+            # porcelain format: "XY path" or "XY orig_path -> path"
+            file_path = raw_line[3:]
+            if " -> " in file_path:
+                file_path = file_path.split(" -> ", 1)[1]
+            repo_relative = Path(file_path)
+            if prefix_parts:
+                if repo_relative.parts[: len(prefix_parts)] != prefix_parts:
+                    continue
+                scope_relative = Path(*repo_relative.parts[len(prefix_parts) :])
+            else:
+                scope_relative = repo_relative
+            scope_paths.add(scope_relative.as_posix())
         return tuple(sorted(scope_paths))
 
     @classmethod
-    def _git_tracked_scope_paths(cls, scope_root: Path) -> Sequence[Path] | None:
+    def _git_tracked_scope_paths(cls, scope_root: Path) -> t.SequenceOf[Path] | None:
         """Return tracked files under one scope as absolute paths when Git is active."""
         resolved_root = scope_root.resolve()
         relative_paths = cls._git_tracked_scope_relative_paths(str(resolved_root))
@@ -644,7 +666,7 @@ class FlextInfraUtilitiesIteration:
         *,
         includes: t.StrSequence,
         excludes: t.StrSequence = (),
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Return files in one scope through the canonical git-aware selection path."""
         if not root.is_dir():
             return []
@@ -678,7 +700,7 @@ class FlextInfraUtilitiesIteration:
         workspace_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Discover all project directories under workspace root.
 
         Algorithm:
@@ -791,7 +813,7 @@ class FlextInfraUtilitiesIteration:
         *,
         scan_dirs: frozenset[str] | None = None,
         include_attached: bool = False,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Return all canonical project candidates before any consumer-specific filtering.
 
         When ``include_attached`` is True, external sub-repos at workspace
@@ -800,7 +822,7 @@ class FlextInfraUtilitiesIteration:
         surfaced alongside the git-tracked dirs of ``workspace_root``.
         Default (False) preserves workspace-submodule-only enumeration.
         """
-        roots: MutableSequence[Path] = []
+        roots: t.MutableSequenceOf[Path] = []
         effective_scan_dirs = scan_dirs or frozenset(c.SCAN_DIRECTORIES)
         configured_members = FlextInfraUtilitiesIteration.workspace_member_names(
             workspace_root,
@@ -830,7 +852,7 @@ class FlextInfraUtilitiesIteration:
         ):
             roots.append(resolved_workspace_root)
         if tracked_child_dirs is None and not attached_child_dirs:
-            candidate_entries: Sequence[Path] = sorted(
+            candidate_entries: t.SequenceOf[Path] = sorted(
                 workspace_root.iterdir(),
                 key=lambda item: item.name,
             )
@@ -871,7 +893,7 @@ class FlextInfraUtilitiesIteration:
         *,
         pattern: str | None = None,
         skip_pycache: bool = True,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Iterate Python files in a single directory tree.
 
         Scoped to one directory (project src, subdirectory, etc.) — unlike
@@ -946,13 +968,13 @@ class FlextInfraUtilitiesIteration:
         cls,
         workspace_root: Path,
         *,
-        project_roots: Sequence[Path] | None = None,
+        project_roots: t.SequenceOf[Path] | None = None,
         include_tests: bool = True,
         include_examples: bool = True,
         include_scripts: bool = True,
         include_dynamic_dirs: bool = True,
         src_dirs: frozenset[str] | None = None,
-    ) -> p.Result[Sequence[Path]]:
+    ) -> p.Result[t.SequenceOf[Path]]:
         """Discover and iterate all Python files across workspace projects.
 
         Args:
@@ -966,7 +988,7 @@ class FlextInfraUtilitiesIteration:
                 src/ is always included regardless of include_* flags.
 
         Returns:
-            Result[Sequence[Path]] - Success contains sorted unique file paths.
+            Result[t.SequenceOf[Path]] - Success contains sorted unique file paths.
             Failure if: workspace inaccessible, discovery fails, or OSError.
 
         """
@@ -988,7 +1010,7 @@ class FlextInfraUtilitiesIteration:
                 c.Infra.DIR_EXAMPLES: include_examples,
                 c.Infra.DIR_SCRIPTS: include_scripts,
             }
-            files: MutableSequence[Path] = []
+            files: t.MutableSequenceOf[Path] = []
             for project_root in roots:
                 cls._iter_known_dirs(
                     project_root,
@@ -1001,16 +1023,16 @@ class FlextInfraUtilitiesIteration:
                         project_root,
                         files,
                     )
-            return r[Sequence[Path]].ok(sorted(set(files)))
+            return r[t.SequenceOf[Path]].ok(sorted(set(files)))
         except OSError as exc:
-            return r[Sequence[Path]].fail(f"python file iteration failed: {exc}")
+            return r[t.SequenceOf[Path]].fail(f"python file iteration failed: {exc}")
 
     @staticmethod
     def _iter_known_dirs(
         project_root: Path,
         include_flags: t.BoolMapping,
         selected_dirs: frozenset[str],
-        files: MutableSequence[Path],
+        files: t.MutableSequenceOf[Path],
     ) -> None:
         """Collect Python files from known project directories (src, tests, etc.)."""
         for dir_name, enabled in include_flags.items():
@@ -1027,7 +1049,7 @@ class FlextInfraUtilitiesIteration:
     @staticmethod
     def _iter_dynamic_dirs(
         project_root: Path,
-        files: MutableSequence[Path],
+        files: t.MutableSequenceOf[Path],
     ) -> None:
         """Discover additional directories with Python files (docs/, tools/, etc.)."""
         tracked_dir_names = (
@@ -1057,7 +1079,7 @@ class FlextInfraUtilitiesIteration:
         *,
         exclude_packages: frozenset[str] | None = None,
         include_tests: bool = True,
-    ) -> p.Result[Sequence[t.Pair[Path, Path]]]:
+    ) -> p.Result[t.SequenceOf[t.Pair[Path, Path]]]:
         """Discover all Python modules across workspace projects.
 
         Returns tuples of (project_root, file_path) for every Python file
@@ -1078,7 +1100,7 @@ class FlextInfraUtilitiesIteration:
                 workspace_root=workspace_root,
             )
             effective_exclude = exclude_packages or frozenset()
-            result: MutableSequence[t.Pair[Path, Path]] = []
+            result: t.MutableSequenceOf[t.Pair[Path, Path]] = []
             for project_root in roots:
                 if project_root.name in effective_exclude:
                     continue
@@ -1092,9 +1114,9 @@ class FlextInfraUtilitiesIteration:
                 result.extend(
                     (project_root, file_path) for file_path in files_result.value
                 )
-            return r[Sequence[t.Pair[Path, Path]]].ok(result)
+            return r[t.SequenceOf[t.Pair[Path, Path]]].ok(result)
         except OSError as exc:
-            return r[Sequence[t.Pair[Path, Path]]].fail(
+            return r[t.SequenceOf[t.Pair[Path, Path]]].fail(
                 f"workspace python module iteration failed: {exc}",
             )
 

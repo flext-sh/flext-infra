@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from pathlib import Path
 
 import pytest
@@ -40,7 +37,9 @@ def _toml_table_item() -> tomlkit.items.Item:
     return tbl
 
 
-def _doc_with_optional_deps(optional_deps: Mapping[str, t.StrSequence]) -> TOMLDocument:
+def _doc_with_optional_deps(
+    optional_deps: t.MappingKV[str, t.StrSequence],
+) -> TOMLDocument:
     doc = tomlkit.document()
     doc["project"] = {"optional-dependencies": optional_deps}
     return doc
@@ -189,7 +188,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     )
     def test_project_dev_groups(
         self,
-        optional_deps: Mapping[str, t.StrSequence],
+        optional_deps: t.MappingKV[str, t.StrSequence],
         expected_dev: t.StrSequence,
         expected_docs: t.StrSequence,
     ) -> None:
@@ -222,7 +221,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     )
     def test_canonical_dev_dependencies(
         self,
-        optional_deps: Mapping[str, t.StrSequence],
+        optional_deps: t.MappingKV[str, t.StrSequence],
         expected_length: int,
         expect_pytest: bool,
     ) -> None:

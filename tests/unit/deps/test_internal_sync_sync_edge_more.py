@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 
 from flext_tests import tm
@@ -15,7 +12,7 @@ from tests.typings import t
 class _TomlStub:
     """Typed stub implementing TomlReader protocol for testing."""
 
-    def __init__(self, values: Sequence[p.Result[t.Infra.ContainerDict]]) -> None:
+    def __init__(self, values: t.SequenceOf[p.Result[t.Infra.ContainerDict]]) -> None:
         self._values = values
         self._index = 0
 
@@ -29,7 +26,7 @@ class _TomlStub:
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     service.toml = _TomlStub(values)
 

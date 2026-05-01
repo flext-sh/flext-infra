@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from typing import Annotated, override
 
@@ -31,7 +29,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
         m.Field(exclude=True, description="Target TOML document"),
     ]
     phases: Annotated[
-        Sequence[m.Infra.TomlPhaseConfig],
+        t.SequenceOf[m.Infra.TomlPhaseConfig],
         m.Field(
             default_factory=tuple,
             description="Ordered TOML transformation phases to apply.",
@@ -99,7 +97,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
         if phase.custom_handler is not None:
             msg = f"payload phases do not support custom handlers: {phase.name}"
             raise ValueError(msg)
-        out: MutableSequence[str] = []
+        out: t.MutableSequenceOf[str] = []
         phase_path = (*parent_path, *phase.root_path, *phase.table_path)
         table = u.Cli.toml_mapping_ensure_path(payload, phase_path)
         prefix = u.Cli.toml_dot_path(*phase_path)
@@ -131,7 +129,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
         parent_path: tuple[str, ...],
     ) -> t.StrSequence:
         """Apply one phase recursively using cached path resolution."""
-        out: MutableSequence[str] = []
+        out: t.MutableSequenceOf[str] = []
 
         if (
             not phase.operations
@@ -163,7 +161,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     def _apply_operation(
         tbl: Table,
         operation: m.Infra.TomlOperation,
-        out: MutableSequence[str],
+        out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to the target table."""
@@ -195,7 +193,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     def _apply_payload_operation(
         tbl: MutableMapping[str, t.JsonValue],
         operation: m.Infra.TomlOperation,
-        out: MutableSequence[str],
+        out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to one plain mapping table."""
@@ -233,7 +231,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     def _remove_operation(
         tbl: Table,
         operation: m.Infra.TomlRemoveOp,
-        out: MutableSequence[str],
+        out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
         """Apply one remove operation, optionally under a relative nested table."""
@@ -254,7 +252,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     def _remove_payload_operation(
         tbl: MutableMapping[str, t.JsonValue],
         operation: m.Infra.TomlRemoveOp,
-        out: MutableSequence[str],
+        out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
         """Apply one remove operation to one plain mapping payload."""

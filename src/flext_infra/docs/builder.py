@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 from typing import override
 
@@ -29,7 +26,7 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
         *,
         projects: t.StrSequence | None = None,
         output_dir: Path | str | None = None,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes."""
         return self.run_scoped_docs(
             workspace_root,

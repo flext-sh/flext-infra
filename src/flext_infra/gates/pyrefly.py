@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from collections.abc import (
     Mapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar, override
@@ -69,15 +67,15 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if json_file.exists():
             try:
                 raw_text = json_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 parsed_result = u.Cli.json_parse(raw_text)
                 parsed_value = parsed_result.unwrap() if parsed_result.success else None
-                error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
+                error_items: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]] = []
                 if isinstance(parsed_value, Mapping):
                     try:
                         error_items = u.Cli.json_deep_mapping_list(

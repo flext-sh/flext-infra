@@ -9,10 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -36,14 +32,14 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
 
     @override
     @property
-    def project_dirs(self) -> Sequence[Path] | None:
+    def project_dirs(self) -> t.SequenceOf[Path] | None:
         """Return resolved project directories for targeted validation."""
         names = self.project_names
         if self.all_projects or names is None:
             return None
         return [self.workspace_root / name for name in names]
 
-    def _discover_stub_projects(self, workspace_root: Path) -> Sequence[Path]:
+    def _discover_stub_projects(self, workspace_root: Path) -> t.SequenceOf[Path]:
         """Discover projects that should participate in stub checks."""
         _ = self
         return [
@@ -118,7 +114,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     def build_report(
         self,
         workspace_root: Path,
-        project_dirs: Sequence[Path] | None = None,
+        project_dirs: t.SequenceOf[Path] | None = None,
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate stub supply chain across projects.
 
@@ -133,7 +129,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         try:
             root = workspace_root.resolve()
             projects = project_dirs or self._discover_stub_projects(root)
-            violations: MutableSequence[str] = []
+            violations: t.MutableSequenceOf[str] = []
             for proj in projects:
                 result = self.analyze(proj, root)
                 if result.failure:
@@ -221,7 +217,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             cmd_output: m.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         seen: t.Infra.StrSet = set()
-        ordered: MutableSequence[str] = []
+        ordered: t.MutableSequenceOf[str] = []
         for match in c.Infra.MISSING_IMPORT_RE.finditer(output):
             name = match.group(1).strip()
             if name and name not in seen:

@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar
@@ -30,8 +28,8 @@ class FlextInfraRefactorMROImportRewriter:
         )
 
         workspace_root: Path
-        file_moves: Mapping[Path, Mapping[str, t.Pair[str, t.StrMapping]]]
-        pending_sources: Mapping[Path, str]
+        file_moves: t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]]
+        pending_sources: t.MappingKV[Path, str]
         apply: bool
 
     @classmethod
@@ -39,12 +37,12 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        scan_results: Sequence[m.Infra.MROScanReport],
+        scan_results: t.SequenceOf[m.Infra.MROScanReport],
         apply: bool,
         project_names: t.StrSequence | None = None,
     ) -> t.Triple[
-        Sequence[m.Infra.MROFileMigration],
-        Sequence[m.Infra.MRORewriteResult],
+        t.SequenceOf[m.Infra.MROFileMigration],
+        t.SequenceOf[m.Infra.MRORewriteResult],
         t.StrSequence,
     ]:
         """Transform migrated files and propagate consumer rewrites across the workspace."""
@@ -104,12 +102,12 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        module_moves: Mapping[str, t.Pair[str, t.StrMapping]],
-        pending_sources: Mapping[Path, str],
+        module_moves: t.MappingKV[str, t.Pair[str, t.StrMapping]],
+        pending_sources: t.MappingKV[Path, str],
         apply: bool,
         project_names: t.StrSequence | None = None,
     ) -> tuple[
-        Sequence[m.Infra.MRORewriteResult],
+        t.SequenceOf[m.Infra.MRORewriteResult],
         t.StrSequence,
     ]:
         """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
@@ -134,11 +132,11 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        module_moves: Mapping[str, t.Pair[str, t.StrMapping]],
+        module_moves: t.MappingKV[str, t.Pair[str, t.StrMapping]],
         project_names: t.StrSequence | None = None,
-    ) -> Mapping[
+    ) -> t.MappingKV[
         Path,
-        Mapping[str, t.Pair[str, t.StrMapping]],
+        t.MappingKV[str, t.Pair[str, t.StrMapping]],
     ]:
         rope_project = u.Infra.init_rope_project(workspace_root)
         module_file_moves: MutableMapping[
@@ -207,13 +205,13 @@ class FlextInfraRefactorMROImportRewriter:
 
     @staticmethod
     def _merge_file_moves(
-        file_moves: Mapping[
+        file_moves: t.MappingKV[
             Path,
             MutableMapping[str, t.Pair[str, t.StrMapping]],
         ],
-    ) -> Mapping[
+    ) -> t.MappingKV[
         Path,
-        Mapping[str, t.Pair[str, t.StrMapping]],
+        t.MappingKV[str, t.Pair[str, t.StrMapping]],
     ]:
         return {
             file_path: {
@@ -228,19 +226,19 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        file_moves: Mapping[
+        file_moves: t.MappingKV[
             Path,
-            Mapping[str, t.Pair[str, t.StrMapping]],
+            t.MappingKV[str, t.Pair[str, t.StrMapping]],
         ],
-        module_moves: Mapping[str, t.Pair[str, t.StrMapping]],
+        module_moves: t.MappingKV[str, t.Pair[str, t.StrMapping]],
         project_names: t.StrSequence | None = None,
-    ) -> Mapping[
+    ) -> t.MappingKV[
         Path,
-        Mapping[str, t.Pair[str, t.StrMapping]],
+        t.MappingKV[str, t.Pair[str, t.StrMapping]],
     ]:
         expanded: MutableMapping[
             Path,
-            Mapping[str, t.Pair[str, t.StrMapping]],
+            t.MappingKV[str, t.Pair[str, t.StrMapping]],
         ] = dict(file_moves)
         for file_path in cls._iter_workspace_python_files(
             workspace_root=workspace_root,
@@ -254,7 +252,7 @@ class FlextInfraRefactorMROImportRewriter:
         *,
         workspace_root: Path,
         project_names: t.StrSequence | None = None,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         paths: list[Path] = []
         project_name_set: set[str] = set(project_names or ())
         for project_root in u.Infra.discover_project_roots(
@@ -278,7 +276,7 @@ class FlextInfraRefactorMROImportRewriter:
         *,
         request: RewriteFilesInput,
     ) -> tuple[
-        Sequence[m.Infra.MRORewriteResult],
+        t.SequenceOf[m.Infra.MRORewriteResult],
         t.StrSequence,
     ]:
         rewrites: list[m.Infra.MRORewriteResult] = []
@@ -334,8 +332,8 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        pending_sources: Mapping[Path, str],
-    ) -> tuple[t.StrSequence, Sequence[Path]]:
+        pending_sources: t.MappingKV[Path, str],
+    ) -> tuple[t.StrSequence, t.SequenceOf[Path]]:
         errors: list[str] = []
         failed_paths: list[Path] = []
         for file_path, source in pending_sources.items():

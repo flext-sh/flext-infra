@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -31,12 +27,12 @@ class FlextInfraUtilitiesRelease:
     def generate_notes(
         version: str,
         tag: str,
-        project_list: Sequence[m.Infra.ProjectInfo],
+        project_list: t.SequenceOf[m.Infra.ProjectInfo],
         changes: str,
         output_path: Path,
     ) -> p.Result[bool]:
         """Generate release notes markdown from release context."""
-        lines: MutableSequence[str] = [
+        lines: t.MutableSequenceOf[str] = [
             f"# Release {tag}",
             "",
             "## Status",

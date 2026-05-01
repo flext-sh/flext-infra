@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -39,7 +35,7 @@ class FlextInfraCodegenConsolidator(s[str]):
     @override
     def execute(self) -> p.Result[str]:
         """Execute constants consolidation with normalized command context."""
-        output_lines: MutableSequence[str] = (
+        output_lines: t.MutableSequenceOf[str] = (
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )
         found = applied = failed = 0
@@ -123,11 +119,11 @@ class FlextInfraCodegenConsolidator(s[str]):
     def _selected_projects(
         self,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         _ = rope_workspace
         discovered = u.Infra.projects(self.workspace_root)
         if discovered.failure:
-            return r[Sequence[p.Infra.ProjectInfo]].fail(
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
                 discovered.error or "project discovery failed",
             )
         selected = tuple(
@@ -135,7 +131,7 @@ class FlextInfraCodegenConsolidator(s[str]):
             for project in discovered.unwrap()
             if self.project_name is None or project.name == self.project_name
         )
-        return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
+        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(selected)
 
     def _scan_file(
         self,
@@ -146,7 +142,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         tuple[
             t.Infra.RopeResource,
             str,
-            Sequence[tuple[m.Infra.SymbolInfo, str, str]],
+            t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
         ]
         | None
     ):
@@ -169,11 +165,11 @@ class FlextInfraCodegenConsolidator(s[str]):
 
     @staticmethod
     def _match_assignments(
-        symbols: Sequence[m.Infra.SymbolInfo],
+        symbols: t.SequenceOf[m.Infra.SymbolInfo],
         source_lines: t.StrSequence,
         value_to_ref: t.StrMapping,
-    ) -> Sequence[tuple[m.Infra.SymbolInfo, str, str]]:
-        matches: MutableSequence[tuple[m.Infra.SymbolInfo, str, str]] = []
+    ) -> t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]:
+        matches: t.MutableSequenceOf[tuple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
             line_number = symbol.line
             if line_number < 1 or line_number > len(source_lines):
@@ -203,12 +199,12 @@ class FlextInfraCodegenConsolidator(s[str]):
         workspace: Path,
         pkg_name: str,
         backup: str,
-        matches: Sequence[tuple[m.Infra.SymbolInfo, str, str]],
+        matches: t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
     ) -> t.Infra.EditResultWithDescs:
         src_lines = backup.splitlines(keepends=True)
         rel = py_file.relative_to(workspace)
-        edits: MutableSequence[tuple[int, int, str]] = []
-        descs: MutableSequence[str] = []
+        edits: t.MutableSequenceOf[tuple[int, int, str]] = []
+        descs: t.MutableSequenceOf[str] = []
         for symbol, ref, value in matches:
             line_number = symbol.line
             if line_number < 1 or line_number > len(src_lines):

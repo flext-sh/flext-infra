@@ -10,11 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from types import TracebackType
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
@@ -30,7 +25,7 @@ class FlextInfraProtocolsRope(Protocol):
     class ChangeTracker(Protocol):
         """Transformer contract for in-memory source rewrites with change tracking."""
 
-        changes: MutableSequence[str]
+        changes: t.MutableSequenceOf[str]
 
         def apply_to_source(self, source: str) -> t.Infra.TransformResult: ...
 
@@ -38,9 +33,9 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeScopeDsl(Protocol):
         """Public scope contract for Rope semantic traversal."""
 
-        def get_scopes(self) -> Sequence[FlextInfraProtocolsRope.RopeScopeDsl]: ...
+        def get_scopes(self) -> t.SequenceOf[FlextInfraProtocolsRope.RopeScopeDsl]: ...
 
-        def get_names(self) -> Mapping[str, t.Infra.RopePyName]: ...
+        def get_names(self) -> t.MappingKV[str, t.Infra.RopePyName]: ...
 
         def get_start(self) -> int: ...
 
@@ -166,7 +161,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         def _child_nodes(
             self,
-            nodes: Sequence[ast.AST],
+            nodes: t.SequenceOf[ast.AST],
             separator: str,
         ) -> list[object]: ...
 

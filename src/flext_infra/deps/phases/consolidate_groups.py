@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
 )
 
 from tomlkit.items import Table
@@ -22,7 +21,7 @@ class FlextInfraConsolidateGroupsPhase:
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         """Merge all legacy optional groups into canonical ``project.optional-dependencies.dev``."""
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         project = u.Cli.toml_ensure_table(doc, c.Infra.PROJECT)
         optional = u.Cli.toml_ensure_table(project, c.Infra.OPTIONAL_DEPENDENCIES)
         existing = u.Infra.project_dev_groups(doc)
@@ -93,7 +92,7 @@ class FlextInfraConsolidateGroupsPhase:
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         """Merge legacy groups into one canonical dev group in one plain payload."""
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         project = u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)
         optional = u.Cli.toml_mapping_ensure_table(
             project,

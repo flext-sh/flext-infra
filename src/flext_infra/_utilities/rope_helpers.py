@@ -5,9 +5,6 @@ from __future__ import annotations
 import io
 import re
 import tokenize
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 from typing import ClassVar
 
@@ -37,7 +34,7 @@ class FlextInfraUtilitiesRopeHelpers:
         path: Path,
         *,
         dry_run: bool,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Run workspace-scale semantic passes after local refactors."""
         cls._ensure_default_post_hooks_registered()
         results: list[m.Infra.Result] = []
@@ -57,7 +54,7 @@ class FlextInfraUtilitiesRopeHelpers:
     @staticmethod
     def get_module_level_assignments(
         source: str,
-    ) -> Sequence[t.Infra.StrPair]:
+    ) -> t.SequenceOf[t.Infra.StrPair]:
         """Return (name, value_str) for module-level simple assignments."""
         assignment_pattern = re.compile(
             r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$",
@@ -280,7 +277,7 @@ class FlextInfraUtilitiesRopeHelpers:
         lines.insert(insert_idx, block.rstrip("\n") + "\n\n")
         return "".join(lines)
 
-    _DECORATOR_TO_CATEGORY: ClassVar[Sequence[t.Infra.StrPair]] = [
+    _DECORATOR_TO_CATEGORY: ClassVar[t.SequenceOf[t.Infra.StrPair]] = [
         ("staticmethod", "static"),
         ("classmethod", "class"),
     ]
@@ -321,7 +318,7 @@ class FlextInfraUtilitiesRopeHelpers:
     @staticmethod
     def build_method_sort_key(
         method: m.Infra.MethodInfo,
-        order_config: Sequence[m.Infra.MethodOrderRule],
+        order_config: t.SequenceOf[m.Infra.MethodOrderRule],
     ) -> tuple[int, int, str]:
         """Build a sort key tuple for method ordering."""
         for index, rule in enumerate(order_config):

@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    Mapping,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import (
@@ -36,7 +32,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     def _apply_text_rule_selection(
         self,
         kind: c.Infra.RefactorRuleKind,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -157,7 +153,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_import_modernizer(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
@@ -203,7 +199,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_pattern_corrections(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -246,7 +242,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_typing_annotation_fix(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -308,7 +304,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         source, alias_count = alias_pattern.subn("t.JsonMapping", source)
         total += alias_count
         generic_pattern = re.compile(r"\b(?:dict|Dict)\[")
-        source, generic_count = generic_pattern.subn("Mapping[", source)
+        source, generic_count = generic_pattern.subn("t.MappingKV[", source)
         total += generic_count
         if total > 0 and source != resource.read():
             resource.write(source)
@@ -321,7 +317,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_tier0_import_fix(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -356,7 +352,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_symbol_propagation(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
         transformer = FlextInfraRefactorSymbolPropagator(
@@ -372,7 +368,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_signature_propagation(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
         try:
@@ -384,7 +380,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         parsed = [
             m.Infra.SignatureMigration.model_validate(item) for item in typed_items
         ]
-        migrations: Sequence[m.Infra.SignatureMigration] = [
+        migrations: t.SequenceOf[m.Infra.SignatureMigration] = [
             item for item in parsed if item.enabled
         ]
         if not migrations:
@@ -394,7 +390,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_class_reconstructor(
         self,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
         try:
@@ -413,7 +409,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     @staticmethod
     def _tuple_setting(
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         key: str,
         default: t.StrSequence,
     ) -> tuple[str, ...]:
@@ -426,7 +422,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     @staticmethod
     def _mapping_setting(
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         key: str,
     ) -> t.StrMapping:
         mapping_value = u.Cli.json_as_mapping(settings.get(key, {}))

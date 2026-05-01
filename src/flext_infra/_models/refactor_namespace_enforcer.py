@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from typing import Annotated, Self
 
 from flext_cli import m, u
@@ -138,98 +135,98 @@ class FlextInfraModelsNamespaceEnforcer:
     ):
         project_root: Annotated[str, m.Field(description="Project root path")]
         facade_statuses: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.FacadeStatus],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.FacadeStatus],
             m.Field(
                 default_factory=tuple,
                 description="Facade status entries collected for the project.",
             ),
         ]
         loose_objects: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.LooseObjectViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.LooseObjectViolation],
             m.Field(
                 default_factory=tuple,
                 description="Loose object violations collected for the project.",
             ),
         ]
         import_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.ImportAliasViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ImportAliasViolation],
             m.Field(
                 default_factory=tuple,
                 description="Import alias violations collected for the project.",
             ),
         ]
         namespace_source_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.NamespaceSourceViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.NamespaceSourceViolation],
             m.Field(
                 default_factory=tuple,
                 description="Namespace source violations collected for the project.",
             ),
         ]
         internal_import_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.InternalImportViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.InternalImportViolation],
             m.Field(
                 default_factory=tuple,
                 description="Internal import violations collected for the project.",
             ),
         ]
         manual_protocol_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.ManualProtocolViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ManualProtocolViolation],
             m.Field(
                 default_factory=tuple,
                 description="Manual protocol violations collected for the project.",
             ),
         ]
         cyclic_imports: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.CyclicImportViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.CyclicImportViolation],
             m.Field(
                 default_factory=tuple,
                 description="Cyclic import violations collected for the project.",
             ),
         ]
         runtime_alias_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.RuntimeAliasViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.RuntimeAliasViolation],
             m.Field(
                 default_factory=tuple,
                 description="Runtime alias violations collected for the project.",
             ),
         ]
         future_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.FutureAnnotationsViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.FutureAnnotationsViolation],
             m.Field(
                 default_factory=tuple,
                 description="Future-annotations violations collected for the project.",
             ),
         ]
         manual_typing_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.ManualTypingAliasViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ManualTypingAliasViolation],
             m.Field(
                 default_factory=tuple,
                 description="Manual typing alias violations collected for the project.",
             ),
         ]
         compatibility_alias_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.CompatibilityAliasViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.CompatibilityAliasViolation],
             m.Field(
                 default_factory=tuple,
                 description="Compatibility alias violations collected for the project.",
             ),
         ]
         class_placement_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.ClassPlacementViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ClassPlacementViolation],
             m.Field(
                 default_factory=tuple,
                 description="Class placement violations collected for the project.",
             ),
         ]
         mro_completeness_violations: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.MROCompletenessViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.MROCompletenessViolation],
             m.Field(
                 default_factory=tuple,
                 description="MRO completeness violations collected for the project.",
             ),
         ]
         parse_failures: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation],
             m.Field(
                 default_factory=tuple,
                 description="Parse failures collected for the project.",
@@ -264,7 +261,7 @@ class FlextInfraModelsNamespaceEnforcer:
     class WorkspaceEnforcementReport(m.ArbitraryTypesModel):
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
         projects: Annotated[
-            Sequence[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],
             m.Field(
                 default_factory=tuple,
                 description="Per-project enforcement reports for the workspace.",
@@ -322,7 +319,7 @@ class FlextInfraModelsNamespaceEnforcer:
             cls,
             *,
             workspace: str,
-            projects: Sequence[
+            projects: t.SequenceOf[
                 FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport
             ],
         ) -> Self:

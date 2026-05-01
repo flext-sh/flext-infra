@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from collections.abc import (
     Callable,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -56,7 +54,7 @@ class FlextInfraUtilitiesDocs:
         workspace_root: Path,
         projects: t.StrSequence | None,
         output_dir: Path | str,
-    ) -> p.Result[Sequence[m.Infra.DocScope]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
         try:
             resolved_root = workspace_root.resolve()
@@ -66,7 +64,7 @@ class FlextInfraUtilitiesDocs:
             ):
                 payload = FlextInfraUtilitiesDocsScope.project_payload(resolved_root)
                 docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-                return r[Sequence[m.Infra.DocScope]].ok(
+                return r[t.SequenceOf[m.Infra.DocScope]].ok(
                     [
                         m.Infra.DocScope(
                             name=resolved_root.name,
@@ -84,7 +82,7 @@ class FlextInfraUtilitiesDocs:
                         )
                     ],
                 )
-            scopes: MutableSequence[m.Infra.DocScope] = [
+            scopes: t.MutableSequenceOf[m.Infra.DocScope] = [
                 m.Infra.DocScope(
                     name=c.Infra.RK_ROOT,
                     path=resolved_root,
@@ -97,7 +95,7 @@ class FlextInfraUtilitiesDocs:
                 resolved_root,
             )
             if discovered_result.failure:
-                return r[Sequence[m.Infra.DocScope]].fail(
+                return r[t.SequenceOf[m.Infra.DocScope]].fail(
                     discovered_result.error or "project discovery failed",
                 )
             discovered = discovered_result.value
@@ -147,7 +145,7 @@ class FlextInfraUtilitiesDocs:
                             ),
                         )
                     )
-                return r[Sequence[m.Infra.DocScope]].ok(scopes)
+                return r[t.SequenceOf[m.Infra.DocScope]].ok(scopes)
             for project in discovered:
                 scopes.append(
                     FlextInfraUtilitiesDocs._doc_scope(
@@ -155,14 +153,14 @@ class FlextInfraUtilitiesDocs:
                         output_dir=output_dir,
                     )
                 )
-            return r[Sequence[m.Infra.DocScope]].ok(scopes)
+            return r[t.SequenceOf[m.Infra.DocScope]].ok(scopes)
         except (OSError, TypeError, ValueError) as exc:
-            return r[Sequence[m.Infra.DocScope]].fail(
+            return r[t.SequenceOf[m.Infra.DocScope]].fail(
                 f"scope resolution failed: {exc}",
             )
 
     @staticmethod
-    def iter_markdown_files(workspace_root: Path) -> Sequence[Path]:
+    def iter_markdown_files(workspace_root: Path) -> t.SequenceOf[Path]:
         """Recursively collect markdown files under the docs scope."""
         docs_root = workspace_root / c.Infra.DIR_DOCS
         search_root = docs_root if docs_root.is_dir() else workspace_root
@@ -178,7 +176,7 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def iter_scope_markdown_files(
         scope: m.Infra.DocScope,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         """Collect markdown files governed by one docs scope."""
         scope_root = scope.path
         files = FlextInfraUtilitiesDocs.iter_markdown_files(scope_root)
@@ -231,7 +229,7 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def build_toc(content: str) -> str:
         """Generate a TOC block from ## and ### headings in content."""
-        items: MutableSequence[str] = []
+        items: t.MutableSequenceOf[str] = []
         for level, title in FlextInfraUtilitiesPatterns.HEADING_H2_H3_RE.findall(
             content
         ):
@@ -278,7 +276,7 @@ class FlextInfraUtilitiesDocs:
             [m.Infra.DocScope],
             m.Infra.DocsPhaseReport,
         ],
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root=workspace_root,
@@ -286,10 +284,10 @@ class FlextInfraUtilitiesDocs:
             output_dir=output_dir,
         )
         if scopes_result.failure:
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
+            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok(
+        return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok(
             [handler(scope) for scope in scopes_result.value],
         )
 

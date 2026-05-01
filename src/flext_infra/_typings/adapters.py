@@ -11,9 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar
@@ -37,7 +35,7 @@ class FlextInfraTypesAdapters:
     INFRA_MAPPING_ADAPTER: ClassVar[
         m.TypeAdapter[FlextInfraTypesBase.ContainerDict]
     ] = t.Cli.JSON_MAPPING_ADAPTER
-    "Validates Mapping[str, InfraValue] — the most common infra adapter."
+    "Validates t.MappingKV[str, InfraValue] — the most common infra adapter."
 
     MUTABLE_INFRA_MAPPING_ADAPTER: ClassVar[
         m.TypeAdapter[MutableMapping[str, FlextInfraTypesBase.InfraValue]]
@@ -50,27 +48,27 @@ class FlextInfraTypesAdapters:
     "Validates t.StrMapping."
 
     CONTAINER_MAPPING_ADAPTER: ClassVar[
-        m.TypeAdapter[Mapping[str, t.Scalar | Path]]
-    ] = m.TypeAdapter(Mapping[str, t.Scalar | Path])
+        m.TypeAdapter[t.MappingKV[str, t.Scalar | Path]]
+    ] = m.TypeAdapter(t.MappingKV[str, t.Scalar | Path])
     "Validates flat scalar/path mappings (no nested containers)."
 
     # ── Sequence adapters ────────────────────────────────────────────
     INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[FlextInfraTypesBase.InfraSequence]] = (
         t.Cli.JSON_LIST_ADAPTER
     )
-    "Validates Sequence[InfraValue]."
+    "Validates t.SequenceOf[InfraValue]."
 
     CONTAINER_DICT_SEQ_ADAPTER: ClassVar[
-        m.TypeAdapter[Sequence[FlextInfraTypesBase.ContainerDict]]
-    ] = m.TypeAdapter(Sequence[FlextInfraTypesBase.ContainerDict])
-    "Validates Sequence[ContainerDict]."
+        m.TypeAdapter[t.SequenceOf[FlextInfraTypesBase.ContainerDict]]
+    ] = m.TypeAdapter(t.SequenceOf[FlextInfraTypesBase.ContainerDict])
+    "Validates t.SequenceOf[ContainerDict]."
 
     STR_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(
         t.StrSequence,
     )
     "Validates t.StrSequence."
 
-    STR_MAPPING_SEQ_ADAPTER: ClassVar[m.TypeAdapter[Sequence[t.StrMapping]]] = (
-        m.TypeAdapter(Sequence[t.StrMapping])
+    STR_MAPPING_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.SequenceOf[t.StrMapping]]] = (
+        m.TypeAdapter(t.SequenceOf[t.StrMapping])
     )
-    "Validates Sequence[StrMapping]."
+    "Validates t.SequenceOf[StrMapping]."

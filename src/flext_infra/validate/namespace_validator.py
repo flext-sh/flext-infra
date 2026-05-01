@@ -10,9 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 
 from flext_infra import (
@@ -21,6 +18,7 @@ from flext_infra import (
     m,
     p,
     r,
+    t,
     u,
 )
 
@@ -66,7 +64,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 if layout is not None
                 else project_root.name.replace("-", "_")
             )
-            violations: MutableSequence[str] = []
+            violations: t.MutableSequenceOf[str] = []
             for filepath in files:
                 tree = self._parse_file(filepath)
                 if tree is None:

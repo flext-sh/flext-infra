@@ -6,10 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
@@ -24,8 +20,8 @@ class FlextInfraCyclicImportDetector:
         *,
         project_root: Path,
         rope_project: t.Infra.RopeProject,
-        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
-    ) -> Sequence[m.Infra.CyclicImportViolation]:
+        _parse_failures: t.SequenceOf[m.Infra.ParseFailureViolation] | None = None,
+    ) -> t.SequenceOf[m.Infra.CyclicImportViolation]:
         """Build import graph via rope and detect cycles with topological sort."""
         del _parse_failures
         scan_dirs = [
@@ -63,7 +59,7 @@ class FlextInfraCyclicImportDetector:
                 if target_module in file_map:
                     graph[module_name].add(target_module)
 
-        violations: MutableSequence[m.Infra.CyclicImportViolation] = []
+        violations: t.MutableSequenceOf[m.Infra.CyclicImportViolation] = []
         try:
             list(TopologicalSorter(graph).static_order())
         except CycleError as exc:

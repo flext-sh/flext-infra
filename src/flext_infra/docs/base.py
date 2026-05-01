@@ -9,11 +9,11 @@ the same five-line ``execute()`` skeleton.
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
-from flext_infra import c, e, m, p, r
+from flext_infra import c, e, m, p, r, t
 from flext_infra.base import FlextInfraProjectSelectionServiceBase
 
 
@@ -28,7 +28,7 @@ class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC)
     @staticmethod
     def _propagate_phase_outcome(
         label: str,
-        result: p.Result[Sequence[m.Infra.DocsPhaseReport]],
+        result: p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]],
         *,
         failure_predicate: Callable[[m.Infra.DocsPhaseReport], bool] | None = None,
     ) -> p.Result[bool]:

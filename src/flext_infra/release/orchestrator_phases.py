@@ -6,10 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
@@ -56,7 +52,7 @@ class FlextInfraReleaseOrchestratorPhases:
         except OSError as exc:
             return r[bool].fail(f"report dir creation failed: {exc}")
         targets = self._build_targets(workspace_root, project_names)
-        records: MutableSequence[m.Infra.BuildRecord] = []
+        records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
         failures = 0
         for name, path in targets:
             make_result = self._run_make(path, c.Infra.DIR_BUILD)
@@ -186,7 +182,7 @@ class FlextInfraReleaseOrchestratorPhases:
 
     def _version_update_files(
         self,
-        files: Sequence[Path],
+        files: t.SequenceOf[Path],
         target: str,
         *,
         dry_run: bool,
@@ -216,7 +212,7 @@ class FlextInfraReleaseOrchestratorPhases:
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[t.Pair[str, Path]]:
+    ) -> t.SequenceOf[t.Pair[str, Path]]:
         raise NotImplementedError
 
     def _generate_notes(
@@ -236,7 +232,7 @@ class FlextInfraReleaseOrchestratorPhases:
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         raise NotImplementedError
 
 

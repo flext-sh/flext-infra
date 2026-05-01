@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import time
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -122,7 +119,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         _ = result, project_dir, ctx
         return True, ()
 

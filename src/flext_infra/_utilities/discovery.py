@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import (
-    Mapping,
-    Sequence,
-)
 from functools import cache
 from pathlib import Path
 from typing import ClassVar
@@ -67,7 +63,7 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def _resolve_imported_base_target(
         base_candidates: tuple[str, ...],
-        declared_imports_ast: Mapping[str, str],
+        declared_imports_ast: t.MappingKV[str, str],
     ) -> str:
         """Return the imported target path matching one base candidate set."""
         return next(
@@ -88,8 +84,8 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def _resolved_parent_constants_targets(
-        discovered_classes: Sequence[ast.ClassDef],
-        declared_imports_ast: Mapping[str, str],
+        discovered_classes: t.SequenceOf[ast.ClassDef],
+        declared_imports_ast: t.MappingKV[str, str],
         *,
         current_root: str,
         return_module: bool,
@@ -414,11 +410,11 @@ class FlextInfraUtilitiesDiscovery:
         workspace_root: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
-        project_paths: Sequence[Path] | None = None,
-    ) -> p.Result[Sequence[Path]]:
+        project_paths: t.SequenceOf[Path] | None = None,
+    ) -> p.Result[t.SequenceOf[Path]]:
         """Find all ``pyproject.toml`` files under one workspace root."""
         if not workspace_root.exists():
-            return r[Sequence[Path]].ok([])
+            return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
         try:
             all_files = [
@@ -430,7 +426,7 @@ class FlextInfraUtilitiesDiscovery:
                 )
             ]
         except OSError as exc:
-            return r[Sequence[Path]].fail(f"pyproject file scan failed: {exc}")
+            return r[t.SequenceOf[Path]].fail(f"pyproject file scan failed: {exc}")
         if project_paths is not None:
             all_files = [
                 path
@@ -439,7 +435,7 @@ class FlextInfraUtilitiesDiscovery:
                     path.is_relative_to(project_path) for project_path in project_paths
                 )
             ]
-        return r[Sequence[Path]].ok(all_files)
+        return r[t.SequenceOf[Path]].ok(all_files)
 
     @classmethod
     def resolve_parent_constants_mro(
@@ -531,7 +527,7 @@ class FlextInfraUtilitiesDiscovery:
         *,
         project_root: Path,
         file_path: Path,
-    ) -> Mapping[str, frozenset[str]]:
+    ) -> t.MappingKV[str, frozenset[str]]:
         """Return allowed foreign-package runtime alias sources for one file."""
         package_name = FlextInfraUtilitiesDocsScope.project_package_name(project_root)
         if not package_name:

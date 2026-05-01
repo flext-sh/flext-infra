@@ -4,10 +4,6 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import ClassVar
 
@@ -69,7 +65,7 @@ class FlextInfraGate(ABC):
 
     def check_files(
         self,
-        files: Sequence[Path],
+        files: t.SequenceOf[Path],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
@@ -133,7 +129,7 @@ class FlextInfraGate(ABC):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tool output into (passed, issues)."""
         ...
 
@@ -245,7 +241,7 @@ class FlextInfraGate(ABC):
         self,
         *,
         result: m.Infra.GateResult,
-        issues: Sequence[m.Infra.Issue],
+        issues: t.SequenceOf[m.Infra.Issue],
         raw_output: str = "",
     ) -> m.Infra.GateExecution:
         return m.Infra.GateExecution(
@@ -265,7 +261,7 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:
-        out: MutableSequence[str] = []
+        out: t.MutableSequenceOf[str] = []
         for directory in dirs:
             path = project_dir / directory
             if not path.is_dir():

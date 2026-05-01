@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -43,7 +40,7 @@ class FlextInfraClassNestingPostCheckGate:
         if not result.modified:
             return (True, list[str]())
         file_path = result.file_path
-        errors: MutableSequence[str] = []
+        errors: t.MutableSequenceOf[str] = []
         post_checks = u.Infra.string_list(expected.get(c.Infra.RK_POST_CHECKS))
         quality_gates = u.Infra.string_list(expected.get(c.Infra.RK_QUALITY_GATES))
         source_symbol = str(expected.get(c.Infra.RK_SOURCE_SYMBOL, ""))
@@ -101,13 +98,13 @@ class FlextInfraRefactorFileExecutor:
     """Execute declarative Rope-backed file rules directly from kind + settings."""
 
     _class_nesting_config: t.Infra.ContainerDict | None
-    _class_nesting_policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy] | None
+    _class_nesting_policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
     _class_nesting_gate: FlextInfraClassNestingPostCheckGate | None
 
     def _apply_file_rule_selection(
         self,
         kind: c.Infra.RefactorFileRuleKind,
-        settings: Mapping[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.Infra.InfraValue],
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
@@ -166,7 +163,7 @@ class FlextInfraRefactorFileExecutor:
                     changes=violations,
                     refactored_code=None,
                 )
-            changes: MutableSequence[str] = []
+            changes: t.MutableSequenceOf[str] = []
             updated = self._apply_class_nesting_transforms(
                 source, class_map, helper_map, changes
             )
@@ -240,7 +237,7 @@ class FlextInfraRefactorFileExecutor:
         self._class_nesting_config = settings
         return settings
 
-    def _class_nesting_policy(self) -> Mapping[str, m.Infra.ClassNestingPolicy]:
+    def _class_nesting_policy(self) -> t.MappingKV[str, m.Infra.ClassNestingPolicy]:
         if self._class_nesting_policy_by_family is None:
             rules_dir = Path(__file__).resolve().parent.parent / c.Infra.RK_RULES
             self._class_nesting_policy_by_family = (
@@ -255,8 +252,8 @@ class FlextInfraRefactorFileExecutor:
         config: t.Infra.ContainerDict,
         file_path: Path,
         threshold: str,
-    ) -> MutableSequence[str]:
-        entries: MutableSequence[t.StrMapping] = []
+    ) -> t.MutableSequenceOf[str]:
+        entries: t.MutableSequenceOf[t.StrMapping] = []
         for key in c.Infra.NESTING_SECTION_KEYS:
             entries.extend(
                 self._filter_class_nesting_entries(
@@ -265,7 +262,7 @@ class FlextInfraRefactorFileExecutor:
                     threshold,
                 )
             )
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         for entry in entries:
             ok, violation = u.Infra.validate_class_nesting_entry(
                 entry, policy_by_family=self._class_nesting_policy()
@@ -303,12 +300,12 @@ class FlextInfraRefactorFileExecutor:
 
     def _filter_class_nesting_entries(
         self,
-        raw: Sequence[t.StrMapping],
+        raw: t.SequenceOf[t.StrMapping],
         file_path: Path,
         threshold: str,
-    ) -> Sequence[t.StrMapping]:
+    ) -> t.SequenceOf[t.StrMapping]:
         module_path = u.Infra.normalize_module_path(file_path)
-        result: MutableSequence[t.StrMapping] = []
+        result: t.MutableSequenceOf[t.StrMapping] = []
         for entry in raw:
             current_file = entry.get(c.Infra.RK_CURRENT_FILE)
             if not isinstance(current_file, str):
@@ -331,7 +328,7 @@ class FlextInfraRefactorFileExecutor:
         source: str,
         class_map: t.MutableStrMapping,
         helper_map: t.MutableStrMapping,
-        changes: MutableSequence[str],
+        changes: t.MutableSequenceOf[str],
     ) -> str:
         updated = source
         if class_map:
@@ -351,9 +348,9 @@ class FlextInfraRefactorFileExecutor:
 
     @staticmethod
     def _coerce_class_nesting_entries(
-        entries: Sequence[Mapping[str, t.Infra.InfraValue]],
-    ) -> Sequence[t.StrMapping]:
-        result: MutableSequence[t.StrMapping] = []
+        entries: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]],
+    ) -> t.SequenceOf[t.StrMapping]:
+        result: t.MutableSequenceOf[t.StrMapping] = []
         for typed in entries:
             current_file = typed.get(c.Infra.RK_CURRENT_FILE)
             if not isinstance(current_file, str):

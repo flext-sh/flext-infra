@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     Sequence,
 )
 from pathlib import Path
@@ -20,7 +19,7 @@ class _ReportStub:
     def __init__(self, raw_count: int) -> None:
         self._raw_count = raw_count
 
-    def model_dump(self) -> Mapping[str, t.IntMapping]:
+    def model_dump(self) -> t.MappingKV[str, t.IntMapping]:
         return {"deptry": {"raw_count": self._raw_count}}
 
 
@@ -55,7 +54,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
     def build_project_report(
         self,
         project_name: str,
-        deptry_issues: Sequence[t.Infra.ContainerDict],
+        deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
     ) -> _ReportStub:
         _ = project_name
         _ = deptry_issues

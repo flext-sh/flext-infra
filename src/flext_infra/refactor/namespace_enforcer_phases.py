@@ -6,8 +6,6 @@ import difflib
 from collections.abc import (
     Callable,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -42,18 +40,18 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         self,
         *,
         project_names: t.StrSequence | None = None,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
         msg = "_resolve_project_roots must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
 
     def _detect_and_apply[V](
         self,
         *,
-        py_files: Sequence[Path],
-        detect_fn: Callable[[Path], Sequence[V]],
-        rewrite_fn: Callable[[MutableSequence[V]], None] | None,
+        py_files: t.SequenceOf[Path],
+        detect_fn: Callable[[Path], t.SequenceOf[V]],
+        rewrite_fn: Callable[[t.MutableSequenceOf[V]], None] | None,
         apply: bool,
-    ) -> MutableSequence[V]:
+    ) -> t.MutableSequenceOf[V]:
         _ = self, py_files, detect_fn, rewrite_fn, apply
         msg = "_detect_and_apply must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
@@ -76,7 +74,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         project_name: str,
         apply: bool,
     ) -> m.Infra.ProjectEnforcementReport:
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] = []
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation] = []
         facade_statuses = self._scan_facades(
             project=(project_root, project_name),
             rope_project=self._rope_project,
@@ -233,7 +231,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         rope_project: t.Infra.RopeProject,
         apply: bool,
         workspace_root: Path,
-    ) -> Sequence[m.Infra.FacadeStatus]:
+    ) -> t.SequenceOf[m.Infra.FacadeStatus]:
         """Scan facades and optionally create missing ones."""
         project_root, project_name = project
         facade_statuses = FlextInfraScanner.scan_project(
@@ -254,7 +252,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
 
     @staticmethod
-    def _collect_py_files(*, project_root: Path) -> Sequence[Path]:
+    def _collect_py_files(*, project_root: Path) -> t.SequenceOf[Path]:
         """Collect Python files for scanning."""
         py_files_result = u.Infra.iter_python_files(
             workspace_root=project_root,
@@ -264,7 +262,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         )
         if py_files_result.failure:
             return []
-        files: Sequence[Path] = py_files_result.value
+        files: t.SequenceOf[Path] = py_files_result.value
         return files
 
     def diff(
@@ -279,7 +277,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
 
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
-        all_py_files: MutableSequence[Path] = []
+        all_py_files: t.MutableSequenceOf[Path] = []
         for project_root in project_roots:
             all_py_files.extend(self._collect_py_files(project_root=project_root))
         snapshots: MutableMapping[Path, str] = {}
@@ -291,7 +289,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         try:
             self.enforce(apply=True, project_names=project_names)
         finally:
-            diff_lines: MutableSequence[str] = []
+            diff_lines: t.MutableSequenceOf[str] = []
             for py_file, original in snapshots.items():
                 if not py_file.is_file():
                     continue

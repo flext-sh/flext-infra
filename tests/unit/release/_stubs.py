@@ -46,7 +46,7 @@ class FakeUtilsNamespace:
         _git_run_checked_result: p.Result[bool] = r[bool].ok(True)
         _git_tag_exists_result: p.Result[bool] = r[bool].ok(False)
         _git_create_tag_result: p.Result[bool] = r[bool].ok(True)
-        _git_checkout_side_effects: Sequence[r[bool]] | None = None
+        _git_checkout_side_effects: t.SequenceOf[r[bool]] | None = None
         _call_count: int = 0
 
         @classmethod
@@ -86,7 +86,7 @@ class FakeUtilsNamespace:
             cls,
             version: str,
             tag: str,
-            projects: Sequence[SimpleNamespace],
+            projects: t.SequenceOf[SimpleNamespace],
             changes: str,
             output_path: Path,
         ) -> p.Result[bool]:
@@ -156,7 +156,7 @@ class FakeSelection:
     """Fake for FlextInfraUtilitiesSelection."""
 
     _resolve_result: p.Result[Sequence[m.Infra.ProjectInfo]] = r[
-        Sequence[m.Infra.ProjectInfo]
+        t.SequenceOf[m.Infra.ProjectInfo]
     ].ok([])
 
     def resolve_projects(

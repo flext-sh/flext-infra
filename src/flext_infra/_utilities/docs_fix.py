@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -71,7 +68,7 @@ class FlextInfraUtilitiesDocsFix:
     def docs_write_fix_reports(
         scope: m.Infra.DocScope,
         *,
-        items: Sequence[m.Infra.DocsPhaseItemModel],
+        items: t.SequenceOf[m.Infra.DocsPhaseItemModel],
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""

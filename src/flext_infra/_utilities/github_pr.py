@@ -7,9 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -19,6 +16,7 @@ from flext_infra import (
     m,
     p,
     r,
+    t,
 )
 
 
@@ -43,7 +41,7 @@ class FlextInfraUtilitiesGithubPr:
         repos = [project.path for project in projects_result.value]
         if request.include_root:
             repos.append(workspace_root)
-        outcomes: MutableSequence[m.Infra.GithubPullRequestOutcome] = []
+        outcomes: t.MutableSequenceOf[m.Infra.GithubPullRequestOutcome] = []
         context = m.Infra.GithubPullRequestWorkspaceContext(
             workspace_root=workspace_root,
             request=request,

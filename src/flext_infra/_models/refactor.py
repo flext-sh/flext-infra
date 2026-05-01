@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableSet,
 )
 from datetime import UTC, datetime
@@ -226,7 +225,7 @@ class FlextInfraModelsRefactor(
             ),
         ]
         family_chains: Annotated[
-            Mapping[str, t.StrSequence],
+            t.MappingKV[str, t.StrSequence],
             m.Field(description="Family letter to MRO chain mapping"),
         ]
 

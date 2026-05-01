@@ -21,8 +21,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar, override
@@ -63,7 +61,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         cycles = tuple(
             scc for scc in self._tarjan(graph) if len(scc) >= self._MIN_CYCLE_SIZE
         )
-        violations: MutableSequence[str] = [
+        violations: t.MutableSequenceOf[str] = [
             "cycle: " + " -> ".join(sorted(scc)) for scc in cycles
         ]
         passed = not violations
@@ -140,7 +138,7 @@ class FlextInfraValidateImportCycles(s[bool]):
     def _tarjan(
         self,
         graph: MutableMapping[str, set[str]],
-    ) -> Sequence[t.StrSequence]:
+    ) -> t.SequenceOf[t.StrSequence]:
         """Tarjan's SCC over ``graph``; returns each SCC as a list of module names."""
         index_counter = [0]
         stack: list[str] = []

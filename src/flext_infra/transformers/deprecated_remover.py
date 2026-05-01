@@ -6,10 +6,6 @@ warning usage in __init__, using regex analysis on source text.
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
-
 from flext_infra import c, t
 
 
@@ -18,11 +14,11 @@ class FlextInfraRefactorDeprecatedRemover:
 
     def __init__(
         self,
-        changes: MutableSequence[str] | None = None,
+        changes: t.MutableSequenceOf[str] | None = None,
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize change sinks used by the transformer."""
-        self.changes: MutableSequence[str] = changes if changes is not None else []
+        self.changes: t.MutableSequenceOf[str] = changes if changes is not None else []
         self._on_change = on_change
 
     def apply_to_source(self, source: str) -> str:

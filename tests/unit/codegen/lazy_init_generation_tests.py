@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 
@@ -27,14 +25,14 @@ class TestGenerateTypeChecking:
 
     def test_with_empty_groups(self) -> None:
         """Test with no imports returns header + FlextTypes only."""
-        groups: Mapping[str, Sequence[tuple[str, str]]] = {}
+        groups: t.MappingKV[str, t.SequenceOf[tuple[str, str]]] = {}
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
         tm.that(lines, contains="if _t.TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
         """Test with no imports and no FlextTypes returns empty list."""
-        groups: Mapping[str, Sequence[tuple[str, str]]] = {}
+        groups: t.MappingKV[str, t.SequenceOf[tuple[str, str]]] = {}
         lines = FlextInfraCodegenGeneration.generate_type_checking(
             groups,
             include_flext_types=False,
@@ -58,7 +56,7 @@ class TestGenerateTypeChecking:
 
     def test_with_long_import_line(self) -> None:
         """Test wraps long import lines."""
-        groups: MutableMapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
+        groups: MutableMapping[str, t.SequenceOf[tuple[str, str]]] = defaultdict(list)
         groups["module"] = [
             ("VeryLongClassName1", "VeryLongClassName1"),
             ("VeryLongClassName2", "VeryLongClassName2"),
@@ -69,7 +67,7 @@ class TestGenerateTypeChecking:
 
     def test_with_multiple_modules(self) -> None:
         """Test multiple type-checking imports are emitted."""
-        groups: MutableMapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
+        groups: MutableMapping[str, t.SequenceOf[tuple[str, str]]] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)

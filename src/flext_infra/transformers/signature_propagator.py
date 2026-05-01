@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import (
-    Sequence,
-)
 from operator import itemgetter
 
 from flext_infra import FlextInfraChangeTrackingTransformer, m, t, u
@@ -17,7 +14,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
     def __init__(
         self,
         *,
-        migrations: Sequence[m.Infra.SignatureMigration],
+        migrations: t.SequenceOf[m.Infra.SignatureMigration],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize transformer state for declarative signature migrations."""
@@ -168,14 +165,14 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return parsed.body
 
     @staticmethod
-    def _line_offsets(source: str) -> Sequence[int]:
+    def _line_offsets(source: str) -> t.SequenceOf[int]:
         offsets = [0]
         for line in source.splitlines(keepends=True):
             offsets.append(offsets[-1] + len(line))
         return offsets
 
     @staticmethod
-    def _offset(line_offsets: Sequence[int], line: int, column: int) -> int:
+    def _offset(line_offsets: t.SequenceOf[int], line: int, column: int) -> int:
         return line_offsets[line - 1] + column
 
 

@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraInternalImportDetector:
@@ -19,7 +15,7 @@ class FlextInfraInternalImportDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.InternalImportViolation]:
+    ) -> t.SequenceOf[m.Infra.InternalImportViolation]:
         """Detect private module/symbol imports in a single file."""
         res = u.Infra.fetch_python_resource(
             ctx.rope_project, ctx.file_path, skip_init_py=True

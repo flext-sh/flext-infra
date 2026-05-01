@@ -3,11 +3,6 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -82,15 +77,15 @@ class FlextInfraMypyGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         _ = project_dir, ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for raw_line in (result.stdout or "").splitlines():
             stripped = raw_line.strip()
             if not stripped:
                 continue
             try:
-                line_data: Mapping[str, t.Infra.InfraValue] = (
+                line_data: t.MappingKV[str, t.Infra.InfraValue] = (
                     t.Infra.INFRA_MAPPING_ADAPTER.validate_json(stripped)
                 )
             except c.ValidationError:

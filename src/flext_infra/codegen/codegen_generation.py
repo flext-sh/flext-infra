@@ -7,11 +7,6 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
@@ -195,7 +190,7 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def _group_imports(
         import_map: t.Infra.LazyImportMap,
-    ) -> Mapping[str, MutableSequence[t.Infra.StrPair]]:
+    ) -> t.MappingKV[str, t.MutableSequenceOf[t.Infra.StrPair]]:
         groups: dict[str, list[t.Infra.StrPair]] = defaultdict(list)
         for export_name in sorted(import_map):
             mod, attr = import_map[export_name]
@@ -204,9 +199,9 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _collapse_to_children(
-        groups: Mapping[str, t.Infra.StrPairSequence],
+        groups: t.MappingKV[str, t.Infra.StrPairSequence],
         child_packages: t.StrSequence | None,
-    ) -> Mapping[str, MutableSequence[t.Infra.StrPair]]:
+    ) -> t.MappingKV[str, t.MutableSequenceOf[t.Infra.StrPair]]:
         sorted_children: list[str] = sorted(
             set(child_packages or []),
             key=len,
@@ -224,7 +219,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _has_flext_types(
-        collapsed: Mapping[str, t.Infra.StrPairSequence],
+        collapsed: t.MappingKV[str, t.Infra.StrPairSequence],
     ) -> bool:
         return any(
             export_name == "FlextTypes"
@@ -266,10 +261,10 @@ class FlextInfraCodegenGeneration:
         mod: str,
         items: t.Infra.StrPairSequence,
         root_name: str,
-        lines: MutableSequence[str],
+        lines: t.MutableSequenceOf[str],
     ) -> None:
-        alias_exports: MutableSequence[str] = []
-        parts: MutableSequence[str] = []
+        alias_exports: t.MutableSequenceOf[str] = []
+        parts: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
         for export_name, attr_name in sorted(
             items,
@@ -320,9 +315,9 @@ class FlextInfraCodegenGeneration:
         exports: t.StrSequence,
         lazy_filtered: t.Infra.LazyImportMap,
         context: _LazyEntryContext,
-    ) -> Sequence[tuple[str, str, str]]:
+    ) -> t.SequenceOf[tuple[str, str, str]]:
         current_pkg, child_aliases, include_module_exports = context
-        entries: MutableSequence[tuple[str, str, str]] = []
+        entries: t.MutableSequenceOf[tuple[str, str, str]] = []
         for exp in exports:
             if exp not in lazy_filtered:
                 continue
@@ -345,10 +340,10 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _group_lazy_entries(
-        lazy_entries: Sequence[tuple[str, str, str]],
+        lazy_entries: t.SequenceOf[tuple[str, str, str]],
     ) -> tuple[
-        Sequence[tuple[str, t.StrSequence]],
-        Sequence[tuple[str, t.Infra.StrPairSequence]],
+        t.SequenceOf[tuple[str, t.StrSequence]],
+        t.SequenceOf[tuple[str, t.Infra.StrPairSequence]],
     ]:
         module_groups: dict[str, list[str]] = defaultdict(list)
         alias_groups: dict[str, list[t.Infra.StrPair]] = defaultdict(list)
@@ -387,7 +382,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _collapse_blank_runs(lines: t.StrSequence) -> t.StrSequence:
-        normalized: MutableSequence[str] = []
+        normalized: t.MutableSequenceOf[str] = []
         previous_blank = False
         for line in lines:
             current_blank = not line
@@ -423,7 +418,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _generate_import_lines(
-        groups: Mapping[str, t.Infra.StrPairSequence],
+        groups: t.MappingKV[str, t.Infra.StrPairSequence],
         *,
         indent: str = "",
     ) -> t.StrSequence:
@@ -431,7 +426,7 @@ class FlextInfraCodegenGeneration:
         if not groups:
             return ()
 
-        lines: MutableSequence[str] = []
+        lines: t.MutableSequenceOf[str] = []
 
         def _emit_module(mod: str) -> None:
             items = groups[mod]
@@ -471,7 +466,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def generate_type_checking(
-        groups: Mapping[str, t.Infra.StrPairSequence],
+        groups: t.MappingKV[str, t.Infra.StrPairSequence],
         *,
         include_flext_types: bool = True,
         child_packages: t.StrSequence | None = None,
@@ -514,7 +509,7 @@ class FlextInfraCodegenGeneration:
         )
         root_name = "" if not local_package_root else local_package_root.split(".")[0]
 
-        lines: MutableSequence[str] = ["if _t.TYPE_CHECKING:"]
+        lines: t.MutableSequenceOf[str] = ["if _t.TYPE_CHECKING:"]
         if include_flext_types and not FlextInfraCodegenGeneration._has_flext_types(
             collapsed
         ):
@@ -607,7 +602,7 @@ class FlextInfraCodegenGeneration:
         runtime_import_lines = FlextInfraCodegenGeneration._generate_import_lines(
             runtime_groups,
         )
-        runtime_import_block: MutableSequence[str] = [
+        runtime_import_block: t.MutableSequenceOf[str] = [
             f"from {module} import *"
             for module in sorted(set(wildcard_runtime_modules or ()))
         ]
@@ -640,7 +635,7 @@ class FlextInfraCodegenGeneration:
             else ()
         )
 
-        out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
+        out: t.MutableSequenceOf[str] = [c.Infra.AUTOGEN_HEADER]
         docstring_pkg = (
             current_pkg if publish_all else current_pkg.rsplit(".", maxsplit=1)[-1]
         )

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
@@ -352,15 +349,15 @@ class FlextInfraModelsRefactorGrep:
             str, m.Field(description="Unified diff preview for the file")
         ] = ""
         lint_before: Annotated[
-            Mapping[str, t.StrSequence],
+            t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint output before the proposed rewrite"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         lint_after: Annotated[
-            Mapping[str, t.StrSequence],
+            t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint output after the proposed rewrite"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         new_lint_errors: Annotated[
-            Mapping[str, t.StrSequence],
+            t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint errors introduced by the proposed rewrite"),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
 

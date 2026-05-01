@@ -7,9 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import (
@@ -35,7 +32,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         workspace_root: Path,
         target: str,
         project_names: t.StrSequence | None = None,
-    ) -> tuple[Sequence[m.Infra.MROScanReport], int]:
+    ) -> tuple[t.SequenceOf[m.Infra.MROScanReport], int]:
         """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
             empty_list: list[m.Infra.MROScanReport] = []

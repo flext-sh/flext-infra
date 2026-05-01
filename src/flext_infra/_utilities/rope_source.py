@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from collections.abc import (
     Iterable,
-    MutableSequence,
-    Sequence,
 )
 from operator import itemgetter
 from pathlib import Path
@@ -130,9 +128,9 @@ class FlextInfraUtilitiesRopeSource:
         return 1
 
     @staticmethod
-    def parse_import_names(names_str: str) -> Sequence[t.Infra.StrPair]:
+    def parse_import_names(names_str: str) -> t.SequenceOf[t.Infra.StrPair]:
         """Parse ``A, B as C`` into ``[(name, bound), ...]``."""
-        result: MutableSequence[t.Infra.StrPair] = []
+        result: t.MutableSequenceOf[t.Infra.StrPair] = []
         for part in names_str.split(","):
             candidate = part.strip().rstrip("\\").strip()
             if not candidate or candidate.startswith(("(", ")")):
@@ -188,12 +186,12 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def parse_forbidden_rules(
         value: t.JsonPayload,
-    ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
+    ) -> t.SequenceOf[m.Infra.ImportModernizerRuleConfig]:
         """Parse and validate forbidden import rule configs."""
         raw_items = u.Cli.json_as_mapping_list(value)
         if not raw_items:
             return []
-        normalized: Sequence[t.Infra.ContainerDict] = [
+        normalized: t.SequenceOf[t.Infra.ContainerDict] = [
             {
                 "module": item.get("module", ""),
                 "symbol_mapping": item.get("symbol_mapping", {}),
@@ -258,9 +256,9 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def find_final_candidates(
         source: str,
-    ) -> Sequence[m.Infra.MROSymbolCandidate]:
+    ) -> t.SequenceOf[m.Infra.MROSymbolCandidate]:
         """Find module-level ``Final``-annotated constants via regex."""
-        candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
+        candidates: t.MutableSequenceOf[m.Infra.MROSymbolCandidate] = []
         for line_number, line in enumerate(source.splitlines(), start=1):
             stripped = line.lstrip()
             if line != stripped and stripped:
@@ -394,7 +392,7 @@ class FlextInfraUtilitiesRopeSource:
     def rewrite_source_at_offsets(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        changes: Sequence[tuple[int, int, str]],
+        changes: t.SequenceOf[tuple[int, int, str]],
         *,
         apply: bool = True,
     ) -> str:
@@ -469,7 +467,7 @@ class FlextInfraUtilitiesRopeSource:
     def collect_silent_failure_findings(
         cls,
         source: str,
-    ) -> Sequence[tuple[int, int, str, str, tuple[int, int, str] | None]]:
+    ) -> t.SequenceOf[tuple[int, int, str, str, tuple[int, int, str] | None]]:
         lines = source.splitlines(keepends=True)
         offsets: list[int] = []
         current_offset = 0

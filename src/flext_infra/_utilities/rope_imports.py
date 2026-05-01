@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    Sequence,
-)
 
 import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
@@ -30,7 +27,7 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def import_statements(
         module_imports: t.Infra.RopeModuleImports,
-    ) -> Sequence[t.Infra.RopeImportStatement]:
+    ) -> t.SequenceOf[t.Infra.RopeImportStatement]:
         """Return validated Rope import statements from one module import collection."""
         import_statements = module_imports.imports
         if not isinstance(import_statements, list):
@@ -55,7 +52,7 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def import_statement_names_and_aliases(
         import_statement: t.Infra.RopeImportStatement,
-    ) -> Sequence[tuple[str, str | None]]:
+    ) -> t.SequenceOf[tuple[str, str | None]]:
         """Return validated imported-name pairs from one Rope import statement."""
         import_info = import_statement.import_info
         if not isinstance(import_info, FromImport | NormalImport):
@@ -88,7 +85,7 @@ class FlextInfraUtilitiesRopeImports:
         offset: int,
         *,
         in_hierarchy: bool = False,
-    ) -> Sequence[t.Infra.RopeLocation]:
+    ) -> t.SequenceOf[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
         try:
             return list(
@@ -139,7 +136,7 @@ class FlextInfraUtilitiesRopeImports:
     def get_absolute_from_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> Sequence[t.Infra.RopeFromImport]:
+    ) -> t.SequenceOf[t.Infra.RopeFromImport]:
         """Return all absolute ``from x import ...`` descriptors in a module."""
         module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
             rope_project,
@@ -180,7 +177,7 @@ class FlextInfraUtilitiesRopeImports:
             return None
         moved_aliases: t.Infra.StrSet = set()
         target_import_stmt: t.Infra.RopeImportStatement | None = None
-        merged_target_pairs: Sequence[tuple[str, str | None]] = ()
+        merged_target_pairs: t.SequenceOf[tuple[str, str | None]] = ()
         import_statements = module_imports.imports
         if not isinstance(import_statements, list):
             return None
@@ -278,7 +275,7 @@ class FlextInfraUtilitiesRopeImports:
         *,
         source: str,
         module_name: str,
-        names_and_aliases: Sequence[tuple[str, str | None]],
+        names_and_aliases: t.SequenceOf[tuple[str, str | None]],
     ) -> str:
         entries = [
             (f"{name} as {alias}" if alias else name)

@@ -11,9 +11,7 @@ import ast as _ast
 import re as _re
 from collections.abc import (
     Callable,
-    Mapping,
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path as _Path
 from typing import Literal
@@ -70,7 +68,7 @@ class FlextInfraTypesBase:
     "Facade family identifier for MRO chain resolution."
     type ExpectedBase = type | str
     "Expected MRO base: a class or its qualified name."
-    type PolicyContext = Mapping[str, ContainerDict]
+    type PolicyContext = t.MappingKV[str, ContainerDict]
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
@@ -82,9 +80,9 @@ class FlextInfraTypesBase:
     "Ordered pair of (str, int)."
     type IntPair = tuple[int, int]
     "Ordered pair of (int, int)."
-    type StrPairSequence = Sequence[StrPair]
+    type StrPairSequence = t.SequenceOf[StrPair]
     "Read-only sequence of string pairs."
-    type LazyImportMap = Mapping[str, StrPair]
+    type LazyImportMap = t.MappingKV[str, StrPair]
     "Lazy import table: export -> (module, attr)."
     type MutableLazyImportMap = MutableMapping[str, StrPair]
     "Mutable lazy import table."
@@ -113,13 +111,13 @@ class FlextInfraTypesBase:
     type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
     type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
-        Sequence[tuple[RuleKindT, t.JsonMapping]],
-        Sequence[tuple[FileRuleKindT, t.JsonMapping]],
+        t.SequenceOf[tuple[RuleKindT, t.JsonMapping]],
+        t.SequenceOf[tuple[FileRuleKindT, t.JsonMapping]],
     ]
     "Loaded text-rule + file-rule selections from one declarative rules directory."
     type DomainResult = m.BaseModel | InfraValue
     "Typed service result payload: model or validated JSON value."
-    type DomainResultSequence = Sequence[DomainResult]
+    type DomainResultSequence = t.SequenceOf[DomainResult]
     "Read-only sequence of typed service result payloads."
 
     # ── Transformer / edit result types ──────────────────────────────
@@ -130,7 +128,7 @@ class FlextInfraTypesBase:
     "Validated edit outcome: (success, report_lines)."
     type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]
     "(success, descriptions, report_lines) — includes what was attempted."
-    type LintSnapshot = Mapping[str, t.StrSequence]
+    type LintSnapshot = t.MappingKV[str, t.StrSequence]
     "Lint errors per tool: {tool_name: [error_lines]}."
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]

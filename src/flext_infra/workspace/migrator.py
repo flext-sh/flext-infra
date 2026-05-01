@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import Annotated, override
 
@@ -18,13 +14,14 @@ from flext_infra import (
     p,
     r,
     s,
+    t,
     u,
 )
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 
 
 class FlextInfraProjectMigrator(
-    s[Sequence[m.Infra.MigrationResult]],
+    s[t.SequenceOf[m.Infra.MigrationResult]],
     FlextInfraWorkspaceGeneratorBase,
 ):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
@@ -48,8 +45,8 @@ class FlextInfraProjectMigrator(
     @staticmethod
     def _append_result(
         result: p.Result[str],
-        changes: MutableSequence[str],
-        errors: MutableSequence[str],
+        changes: t.MutableSequenceOf[str],
+        errors: t.MutableSequenceOf[str],
     ) -> None:
         if result.failure:
             errors.append(result.error or "migration action failed")
@@ -77,7 +74,7 @@ class FlextInfraProjectMigrator(
         )
 
     @override
-    def execute(self) -> p.Result[Sequence[m.Infra.MigrationResult]]:
+    def execute(self) -> p.Result[t.SequenceOf[m.Infra.MigrationResult]]:
         """Execute the workspace migration flow."""
         dry_run = self.dry_run or not self.apply_changes
         result = self.migrate(
@@ -86,7 +83,7 @@ class FlextInfraProjectMigrator(
         )
         if result.failure:
             return result
-        migrations: Sequence[m.Infra.MigrationResult] = result.value
+        migrations: t.SequenceOf[m.Infra.MigrationResult] = result.value
         failed_projects = 0
         for migration in migrations:
             u.Cli.info(f"{migration.project}:")
@@ -110,11 +107,11 @@ class FlextInfraProjectMigrator(
         *,
         workspace_root: Path,
         dry_run: bool,
-    ) -> p.Result[Sequence[m.Infra.MigrationResult]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.MigrationResult]]:
         """Build migration results for all discovered projects in a workspace."""
         resolved_root = workspace_root.resolve()
         if not resolved_root.exists():
-            return r[Sequence[m.Infra.MigrationResult]].fail(
+            return r[t.SequenceOf[m.Infra.MigrationResult]].fail(
                 f"workspace root does not exist: {resolved_root}",
             )
         discovery = self.discovery
@@ -124,7 +121,7 @@ class FlextInfraProjectMigrator(
             else u.Infra.discover_projects(resolved_root)
         )
         if projects_result.failure:
-            return r[Sequence[m.Infra.MigrationResult]].fail(
+            return r[t.SequenceOf[m.Infra.MigrationResult]].fail(
                 projects_result.error or "workspace discovery failed",
             )
         projects_by_path: dict[Path, m.Infra.ProjectInfo] = {
@@ -145,7 +142,7 @@ class FlextInfraProjectMigrator(
             )
             for project in projects
         ]
-        return r[Sequence[m.Infra.MigrationResult]].ok(migrations)
+        return r[t.SequenceOf[m.Infra.MigrationResult]].ok(migrations)
 
     def _migrate_basemk(
         self,
@@ -275,8 +272,8 @@ class FlextInfraProjectMigrator(
         workspace_root: Path,
     ) -> m.Infra.MigrationResult:
         is_root = project.path.resolve() == workspace_root.resolve()
-        changes: MutableSequence[str] = []
-        errors: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
+        errors: t.MutableSequenceOf[str] = []
         for step_result in (
             self._migrate_basemk(
                 project.path,

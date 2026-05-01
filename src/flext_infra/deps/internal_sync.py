@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import shutil
 from collections.abc import (
-    Mapping,
     MutableMapping,
 )
 from pathlib import Path
@@ -85,7 +84,7 @@ class FlextInfraInternalDependencySyncService(
             return r[int].ok(0)
         workspace_mode, workspace_root = self.is_workspace_mode(project_root)
         map_file = project_root / "flext-repo-map.toml"
-        repo_map: Mapping[str, m.Infra.RepoUrls]
+        repo_map: t.MappingKV[str, m.Infra.RepoUrls]
         if (
             workspace_mode
             and workspace_root
@@ -146,14 +145,16 @@ class FlextInfraInternalDependencySyncService(
         """Ensure a workspace dependency path points at the sibling checkout."""
         return u.Cli.ensure_symlink(dep_path, sibling)
 
-    def collect_internal_deps(self, project_root: Path) -> p.Result[Mapping[str, Path]]:
+    def collect_internal_deps(
+        self, project_root: Path
+    ) -> p.Result[t.MappingKV[str, Path]]:
         """Collect internal path dependencies from pyproject metadata."""
         pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
-            return r[Mapping[str, Path]].ok({})
+            return r[t.MappingKV[str, Path]].ok({})
         data_result = self._read_plain(pyproject)
         if data_result.failure:
-            return r[Mapping[str, Path]].fail(
+            return r[t.MappingKV[str, Path]].fail(
                 data_result.error or f"failed to read {pyproject}",
             )
         data = data_result.value
@@ -214,7 +215,7 @@ class FlextInfraInternalDependencySyncService(
                         repo_name,
                         project_root / ".flext-deps" / repo_name,
                     )
-        return r[Mapping[str, Path]].ok(result)
+        return r[t.MappingKV[str, Path]].ok(result)
 
     def ensure_checkout(
         self, dep_path: Path, repo_url: str, ref_name: str

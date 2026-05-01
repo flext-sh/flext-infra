@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -21,7 +17,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
-    def _collect_markdown_files(self, project_dir: Path) -> Sequence[Path]:
+    def _collect_markdown_files(self, project_dir: Path) -> t.SequenceOf[Path]:
         return [
             path
             for path in project_dir.rglob("*.md")
@@ -71,9 +67,9 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         _ = project_dir, ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:

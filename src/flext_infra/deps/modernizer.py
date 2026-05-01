@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import Annotated, override
@@ -152,7 +149,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         dry_run: bool,
         skip_comments: bool,
         rewrite_constraints: bool = False,
-        locked_versions: Mapping[str, str] | None = None,
+        locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> t.StrSequence:
@@ -166,7 +163,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
                 project_kind = kind_result.value
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
         if rewrite_constraints:
@@ -256,7 +253,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
     def _rewrite_requirement_group(
         raw_requirements: t.Infra.InfraValue,
         *,
-        locked_versions: Mapping[str, str],
+        locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
         policy: c.Infra.DependencyConstraintPolicy,
         location: str,
@@ -264,8 +261,8 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         """Rewrite one sequence of PEP 621 requirement strings in place."""
         if not isinstance(raw_requirements, list):
             return (None, [])
-        updated_requirements: MutableSequence[t.JsonValue] = []
-        changes: MutableSequence[str] = []
+        updated_requirements: t.MutableSequenceOf[t.JsonValue] = []
+        changes: t.MutableSequenceOf[str] = []
         for raw_requirement in raw_requirements:
             requirement = str(raw_requirement)
             rewritten = u.Infra.rewrite_requirement_constraint(
@@ -285,13 +282,13 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
     def _rewrite_poetry_dependency_table(
         dependencies: MutableMapping[str, t.JsonValue],
         *,
-        locked_versions: Mapping[str, str],
+        locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
         policy: c.Infra.DependencyConstraintPolicy,
         location: str,
     ) -> t.StrSequence:
         """Rewrite one Poetry dependency table using the locked version policy."""
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         for dependency_name in list(dependencies):
             current_value = dependencies.get(dependency_name)
             rewritten_value = u.Infra.rewrite_poetry_constraint(
@@ -313,12 +310,12 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         self,
         payload: MutableMapping[str, t.JsonValue],
         *,
-        locked_versions: Mapping[str, str],
+        locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
         policy: c.Infra.DependencyConstraintPolicy,
     ) -> t.StrSequence:
         """Rewrite supported dependency tables from the current ``uv.lock`` state."""
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         project_view = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
         if project_view is not None:
             project = u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)
@@ -422,7 +419,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         payload: MutableMapping[str, t.JsonValue],
     ) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements in one plain payload."""
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         build_system_existing = payload.get("build-system", None)
         build_system = u.Cli.toml_mapping_ensure_table(payload, "build-system")
         if not isinstance(build_system_existing, dict):
@@ -462,7 +459,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         )
         if poetry_groups is None:
             return []
-        empty_groups: MutableSequence[str] = []
+        empty_groups: t.MutableSequenceOf[str] = []
         for name, group_value in poetry_groups.items():
             group_table = (
                 group_value
@@ -474,7 +471,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             deps_item = u.Cli.toml_mapping_child(group_table, c.Infra.DEPENDENCIES)
             if deps_item is not None and not deps_item:
                 empty_groups.append(name)
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         for name in empty_groups:
             del poetry_groups[name]
             changes.append(f"removed empty poetry group '{name}'")
@@ -496,7 +493,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         """Return keys with optional preferred-first order then alphabetical."""
         preferred = list(preferred_first or [])
         key_set = set(keys)
-        ordered: MutableSequence[str] = [key for key in preferred if key in key_set]
+        ordered: t.MutableSequenceOf[str] = [key for key in preferred if key in key_set]
         remaining = sorted(key for key in keys if key not in set(ordered))
         ordered.extend(remaining)
         return ordered
@@ -590,7 +587,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
-        project_paths: Sequence[Path] | None = None
+        project_paths: t.SequenceOf[Path] | None = None
         if project_names:
             selected_projects = u.Infra.resolve_projects(self.root, project_names)
             if selected_projects.failure:
@@ -604,7 +601,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             skip_dirs=c.Infra.SKIP_DIRS,
             project_paths=project_paths,
         )
-        files: Sequence[Path] = (
+        files: t.SequenceOf[Path] = (
             [] if files_result.failure else sorted(files_result.unwrap())
         )
         root_state_result = self._read_document_state(
@@ -616,7 +613,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
             u.Infra.canonical_dev_dependencies_from_payload(root_state.payload),
         )
-        locked_versions: Mapping[str, str] = {}
+        locked_versions: t.MappingKV[str, str] = {}
         internal_names: t.StrSequence = ()
         if self.rewrite_constraints:
             lock_path = self.root / "uv.lock"
@@ -638,8 +635,8 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
                 )
             )
         violations: MutableMapping[str, t.StrSequence] = {}
-        document_states: MutableSequence[m.Infra.PyprojectDocumentState] = []
-        invalid_paths: MutableSequence[Path] = []
+        document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
+        invalid_paths: t.MutableSequenceOf[Path] = []
         total = 0
         for file_path in files:
             document_state_result = (
@@ -697,9 +694,9 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
 
     def _run_build_check(
         self,
-        document_states: Sequence[m.Infra.PyprojectDocumentState],
+        document_states: t.SequenceOf[m.Infra.PyprojectDocumentState],
         *,
-        invalid_paths: Sequence[Path] = (),
+        invalid_paths: t.SequenceOf[Path] = (),
     ) -> int:
         """Validate pyproject.toml files have hatchling build backend."""
         has_warning = False

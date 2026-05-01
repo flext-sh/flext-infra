@@ -6,9 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated
@@ -192,21 +189,21 @@ class FlextInfraModelsRope:
             ),
         ] = ()
         packages_by_dir: Annotated[
-            Mapping[str, FlextInfraModelsRope.RopePackageIndexEntry],
+            t.MappingKV[str, FlextInfraModelsRope.RopePackageIndexEntry],
             m.Field(
                 default_factory=lambda: MappingProxyType({}),
                 description="Package entries keyed by absolute directory path",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         modules_by_path: Annotated[
-            Mapping[str, FlextInfraModelsRope.RopeModuleIndexEntry],
+            t.MappingKV[str, FlextInfraModelsRope.RopeModuleIndexEntry],
             m.Field(
                 default_factory=lambda: MappingProxyType({}),
                 description="Module entries keyed by absolute file path",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         package_dir_by_name: Annotated[
-            Mapping[str, Path],
+            t.MappingKV[str, Path],
             m.Field(
                 default_factory=lambda: MappingProxyType({}),
                 description="Importable package directory keyed by package name",

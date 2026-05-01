@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from rope.base.exceptions import RopeError
@@ -47,7 +42,7 @@ class FlextInfraUtilitiesRopeInventory:
         except (RecursionError, SyntaxError, ValueError, RopeError):
             return ()
         source = resource.read()
-        items: MutableSequence[m.Infra.Census.Object] = []
+        items: t.MutableSequenceOf[m.Infra.Census.Object] = []
         module_scope = pymodule.get_scope()
         if not isinstance(module_scope, p.Infra.RopeScopeDsl):
             return ()
@@ -92,7 +87,7 @@ class FlextInfraUtilitiesRopeInventory:
         *,
         parent_options: m.Infra.RopeInventoryRecordInput,
     ) -> tuple[m.Infra.Census.Object, ...]:
-        items: MutableSequence[m.Infra.Census.Object] = []
+        items: t.MutableSequenceOf[m.Infra.Census.Object] = []
         child_scopes = tuple(scope.get_scopes())
         for name, pyname in cls._sorted_scope_names(scope, parent_options.resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
@@ -177,7 +172,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _sorted_names(
-        names: Mapping[str, t.Infra.RopePyName],
+        names: t.MappingKV[str, t.Infra.RopePyName],
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
         return tuple(
@@ -292,7 +287,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _child_scope_for(
-        scopes: Sequence[p.Infra.RopeScopeDsl], pyname: t.Infra.RopePyName
+        scopes: t.SequenceOf[p.Infra.RopeScopeDsl], pyname: t.Infra.RopePyName
     ) -> p.Infra.RopeScopeDsl | None:
         location = pyname.get_definition_location()
         if location is None:

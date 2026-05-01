@@ -9,10 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import override
 
@@ -29,7 +25,7 @@ class FlextInfraCodegenScaffolder(s[str]):
         results = self.run(dry_run=dry_run)
         total_created = sum(len(result.files_created) for result in results)
         total_skipped = sum(len(result.files_skipped) for result in results)
-        lines: MutableSequence[str] = []
+        lines: t.MutableSequenceOf[str] = []
         if dry_run:
             lines.append("Dry-run mode: no files will be created")
         lines.extend(
@@ -49,8 +45,8 @@ class FlextInfraCodegenScaffolder(s[str]):
         self,
         *,
         dry_run: bool = False,
-        projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> Sequence[m.Infra.ScaffoldResult]:
+        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+    ) -> t.SequenceOf[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
 
         Args:
@@ -96,8 +92,8 @@ class FlextInfraCodegenScaffolder(s[str]):
                 files_created=[],
                 files_skipped=[],
             )
-        files_created: MutableSequence[str] = []
-        files_skipped: MutableSequence[str] = []
+        files_created: t.MutableSequenceOf[str] = []
+        files_skipped: t.MutableSequenceOf[str] = []
         if project_layout.init_path.is_file():
             self._scaffold_dir(
                 target_dir=project_layout.package_dir,
@@ -160,8 +156,8 @@ class FlextInfraCodegenScaffolder(s[str]):
         test_prefix: str,
         inherit_project_facade: bool,
         dry_run: bool,
-        files_created: MutableSequence[str],
-        files_skipped: MutableSequence[str],
+        files_created: t.MutableSequenceOf[str],
+        files_skipped: t.MutableSequenceOf[str],
     ) -> None:
         """Generate missing modules in a directory."""
         for filename, suffix, base_class, doc_suffix in modules:

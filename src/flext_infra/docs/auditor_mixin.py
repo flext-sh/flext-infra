@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections.abc import (
     Callable,
     Mapping,
-    Sequence,
 )
 from pathlib import Path
 
@@ -32,12 +31,12 @@ class FlextInfraDocAuditorMixin:
 
     @staticmethod
     def parse_audit_gate(
-        audit_gate: Mapping[str, t.Infra.InfraValue],
+        audit_gate: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.Pair[int | None, t.IntMapping]:
         """Extract default budget and per-scope budgets from an audit_gate mapping."""
         default_budget = audit_gate.get("max_issues_default")
         by_scope_raw_value = audit_gate.get("max_issues_by_scope")
-        by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
+        by_scope_raw: t.MappingKV[str, t.Infra.InfraValue] = {}
         if isinstance(by_scope_raw_value, Mapping):
             try:
                 by_scope_raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
@@ -102,12 +101,12 @@ class FlextInfraDocAuditorMixin:
     @staticmethod
     def write_audit_reports(
         scope: m.Infra.DocScope,
-        issues: Sequence[m.Infra.AuditIssue],
+        issues: t.SequenceOf[m.Infra.AuditIssue],
         checks: t.Infra.StrSet,
         *,
         strict: bool,
         to_markdown_fn: Callable[
-            [m.Infra.DocScope, Sequence[m.Infra.AuditIssue]], t.StrSequence
+            [m.Infra.DocScope, t.SequenceOf[m.Infra.AuditIssue]], t.StrSequence
         ],
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""

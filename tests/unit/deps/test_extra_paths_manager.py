@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from pathlib import Path
 
 import pytest
@@ -66,7 +63,7 @@ class TestsFlextInfraExtraPathsManager:
     def test_sync_one_success_cases(
         self,
         tmp_path: Path,
-        tool_doc: Mapping[str, t.Infra.InfraValue],
+        tool_doc: t.MappingKV[str, t.Infra.InfraValue],
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         doc = tomlkit.document()

@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from collections.abc import (
     Mapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar, override
@@ -56,10 +54,10 @@ class FlextInfraPyrightGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         _ = project_dir, ctx
-        issues: MutableSequence[m.Infra.Issue] = []
-        empty: Mapping[str, t.Infra.InfraValue] = {}
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        empty: t.MappingKV[str, t.Infra.InfraValue] = {}
         parsed_result = u.Cli.json_parse(result.stdout or "{}")
         parsed = parsed_result.unwrap() if parsed_result.success else empty
         data = u.Cli.json_as_mapping(parsed) if isinstance(parsed, Mapping) else empty

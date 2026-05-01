@@ -12,7 +12,6 @@ from __future__ import annotations
 import sys
 from collections.abc import (
     Mapping,
-    MutableSequence,
 )
 from pathlib import Path
 from typing import Annotated, override
@@ -46,14 +45,14 @@ class FlextInfraSkillValidator(s[bool]):
 
     def _evaluate_single_rule(
         self,
-        rule_obj: Mapping[str, t.Infra.InfraValue],
+        rule_obj: t.MappingKV[str, t.Infra.InfraValue],
         skill_dir: Path,
         root: Path,
         mode: c.Infra.OperationMode,
         include_globs: t.StrSequence,
         exclude_globs: t.StrSequence,
         counts: t.MutableIntMapping,
-        violations: MutableSequence[str],
+        violations: t.MutableSequenceOf[str],
     ) -> None:
         """Evaluate one rule entry and accumulate counts/violations."""
         rule_id = u.Cli.json_get_str_key(rule_obj, c.Infra.RK_ID)
@@ -82,7 +81,7 @@ class FlextInfraSkillValidator(s[bool]):
 
     def _apply_baseline_comparison(
         self,
-        rules: Mapping[str, t.Infra.InfraValue],
+        rules: t.MappingKV[str, t.Infra.InfraValue],
         root: Path,
         skill_name: str,
         counts: t.IntMapping,
@@ -171,7 +170,7 @@ class FlextInfraSkillValidator(s[bool]):
                 rules_list_obj,
             )
             counts: t.MutableIntMapping = {}
-            violations: MutableSequence[str] = []
+            violations: t.MutableSequenceOf[str] = []
             skill_dir = skills_dir / skill_name
             for rule_obj_raw in rules_list:
                 rule_obj = u.Cli.json_as_mapping(rule_obj_raw)
@@ -227,7 +226,7 @@ class FlextInfraSkillValidator(s[bool]):
 
     def _run_ast_grep_count(
         self,
-        rule: Mapping[str, t.Infra.InfraValue],
+        rule: t.MappingKV[str, t.Infra.InfraValue],
         skill_dir: Path,
         project_path: Path,
         include_globs: t.StrSequence,
@@ -290,7 +289,7 @@ class FlextInfraSkillValidator(s[bool]):
 
     def _run_custom_count(
         self,
-        rule: Mapping[str, t.Infra.InfraValue],
+        rule: t.MappingKV[str, t.Infra.InfraValue],
         skill_dir: Path,
         project_path: Path,
         mode: c.Infra.OperationMode,
@@ -304,7 +303,7 @@ class FlextInfraSkillValidator(s[bool]):
             script = (skill_dir / script_raw).resolve()
         if not script.exists():
             return 0
-        cmd: MutableSequence[str] = (
+        cmd: t.MutableSequenceOf[str] = (
             [sys.executable, str(script)]
             if script.suffix == c.Infra.EXT_PYTHON
             else [str(script)]

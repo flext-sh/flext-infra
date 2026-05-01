@@ -6,7 +6,6 @@ import re
 from collections import defaultdict
 from collections.abc import (
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar
@@ -134,7 +133,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         *,
         project_root: Path,
         project_name: str,
-        facade_statuses: Sequence[m.Infra.FacadeStatus],
+        facade_statuses: t.SequenceOf[m.Infra.FacadeStatus],
         workspace_root: Path | None = None,
     ) -> None:
         del project_name

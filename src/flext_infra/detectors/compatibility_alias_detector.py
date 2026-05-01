@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraCompatibilityAliasDetector:
@@ -19,7 +15,7 @@ class FlextInfraCompatibilityAliasDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
+    ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:

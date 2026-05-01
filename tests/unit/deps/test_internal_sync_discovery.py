@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    Sequence,
 )
 from pathlib import Path
 
@@ -39,7 +38,7 @@ def _set_toml_stub(
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 

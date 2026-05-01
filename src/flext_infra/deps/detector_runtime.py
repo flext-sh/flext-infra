@@ -6,7 +6,6 @@ from collections.abc import (
     Callable,
     Mapping,
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 
@@ -41,7 +40,7 @@ class FlextInfraDependencyDetectorRuntime:
         )
         if projects_result.failure:
             return r[bool].fail(projects_result.error or "project discovery failed")
-        projects: Sequence[Path] = projects_result.value
+        projects: t.SequenceOf[Path] = projects_result.value
         if not projects:
             detector.log.error("deps_no_projects_found")
             return r[bool].fail("no projects found")

@@ -9,10 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 from typing import override
 
@@ -51,7 +47,7 @@ class FlextInfraCodegenCensus(s[str]):
                 "total_fixable": total_fixable,
             }
             return r[str].ok(t.Infra.INFRA_MAPPING_ADAPTER.dump_json(payload).decode())
-        lines: MutableSequence[str] = [
+        lines: t.MutableSequenceOf[str] = [
             (
                 f"  {report.project}: {report.total} violations"
                 f" ({report.fixable} fixable)"
@@ -72,8 +68,8 @@ class FlextInfraCodegenCensus(s[str]):
         workspace_root: Path | None = None,
         *,
         output_format: str = c.Cli.OutputFormats.JSON,
-        projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> Sequence[m.Infra.CensusReport]:
+        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+    ) -> t.SequenceOf[m.Infra.CensusReport]:
         """Run census on all projects in workspace.
 
         Args:
@@ -93,8 +89,8 @@ class FlextInfraCodegenCensus(s[str]):
         self,
         workspace: Path,
         *,
-        projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> Sequence[m.Infra.CensusReport]:
+        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+    ) -> t.SequenceOf[m.Infra.CensusReport]:
         """Standard path: census all projects in workspace."""
         if projects is not None:
             selected_projects = tuple(projects)

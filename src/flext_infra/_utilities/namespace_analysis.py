@@ -3,11 +3,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -29,13 +24,13 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
     @staticmethod
     def rewrite_mro_completeness_violations(
         *,
-        violations: Sequence[m.Infra.MROCompletenessViolation],
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[m.Infra.MROCompletenessViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
         _ = parse_failures
-        violations_by_file: Mapping[
+        violations_by_file: t.MappingKV[
             Path,
-            MutableSequence[m.Infra.MROCompletenessViolation],
+            t.MutableSequenceOf[m.Infra.MROCompletenessViolation],
         ] = defaultdict(list)
         for violation in violations:
             violations_by_file[Path(violation.file)].append(violation)
@@ -45,7 +40,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         for file_path, grouped in violations_by_file.items():
             source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             lines = source.splitlines()
-            missing_by_facade: Mapping[str, t.Infra.StrSet] = defaultdict(set)
+            missing_by_facade: t.MappingKV[str, t.Infra.StrSet] = defaultdict(set)
             for violation in grouped:
                 missing_by_facade[violation.facade_class].add(violation.missing_base)
             new_bases: t.Infra.StrSet = set()
@@ -99,7 +94,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         if not stripped.startswith(prefix):
             return (line, set())
         if stripped.endswith(":") and "(" not in stripped:
-            current_bases: MutableSequence[str] = []
+            current_bases: t.MutableSequenceOf[str] = []
             indent = line[: len(line) - len(line.lstrip())]
             suffix = ":"
         else:
@@ -150,7 +145,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
     @staticmethod
     def rewrite_missing_future_annotations(
         *,
-        py_files: Sequence[Path],
+        py_files: t.SequenceOf[Path],
     ) -> None:
         for file_path in py_files:
             if file_path.name == c.Infra.PY_TYPED:

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from pathlib import Path
 from typing import Annotated
 
@@ -55,7 +52,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         pkg_dir: Path,
         *,
-        dir_exports: Mapping[str, t.Infra.LazyImportMap],
+        dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
@@ -225,7 +222,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         pkg_dir: Path,
         lazy_map: t.Infra.MutableLazyImportMap,
-        dir_exports: Mapping[str, t.Infra.LazyImportMap],
+        dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
     ) -> tuple[t.StrSequence, t.StrSequence]:
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None:

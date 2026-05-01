@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import c, p, r, t, u
@@ -26,7 +23,7 @@ class FlextInfraRefactorSafetyManager:
             "-q",
         ]
         self._emergency_stop_reason = ""
-        self._bak_paths: Sequence[Path] = []
+        self._bak_paths: t.SequenceOf[Path] = []
 
     def request_emergency_stop(self, reason: str) -> None:
         """Record an emergency stop reason for later inspection."""
@@ -105,7 +102,7 @@ class FlextInfraRefactorSafetyManager:
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)
 
-    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> p.Result[bool]:
+    def clear_checkpoint(self, *, keep: t.SequenceOf[Path] = ()) -> p.Result[bool]:
         """Clean up transient backups while preserving requested .bak files."""
         keep_paths = {
             path.with_suffix(path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX)

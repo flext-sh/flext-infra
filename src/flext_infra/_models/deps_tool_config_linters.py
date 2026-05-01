@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from types import MappingProxyType
 from typing import Annotated
 
@@ -105,7 +102,7 @@ class FlextInfraModelsDepsToolConfigLinters:
             description="Ruff isort configuration"
         )
         per_file_ignores: Annotated[
-            Mapping[str, t.StrSequence],
+            t.MappingKV[str, t.StrSequence],
             m.Field(
                 alias="per-file-ignores",
                 description="Per-file ignore mapping from glob pattern to ruff rule IDs.",

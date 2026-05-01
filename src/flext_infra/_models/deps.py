@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    MutableSequence,
 )
 from pathlib import Path
 from types import MappingProxyType
@@ -209,21 +207,29 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
         dep001: Annotated[
-            MutableSequence[Mapping[str, t.Primitives | None]],
+            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP001 issues"),
-        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+        ] = m.Field(
+            default_factory=lambda: list[t.MappingKV[str, t.Primitives | None]]()
+        )
         dep002: Annotated[
-            MutableSequence[Mapping[str, t.Primitives | None]],
+            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP002 issues"),
-        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+        ] = m.Field(
+            default_factory=lambda: list[t.MappingKV[str, t.Primitives | None]]()
+        )
         dep003: Annotated[
-            MutableSequence[Mapping[str, t.Primitives | None]],
+            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP003 issues"),
-        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+        ] = m.Field(
+            default_factory=lambda: list[t.MappingKV[str, t.Primitives | None]]()
+        )
         dep004: Annotated[
-            MutableSequence[Mapping[str, t.Primitives | None]],
+            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP004 issues"),
-        ] = m.Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
+        ] = m.Field(
+            default_factory=lambda: list[t.MappingKV[str, t.Primitives | None]]()
+        )
 
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""
@@ -298,7 +304,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
         """
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
-        projects: Mapping[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
+        projects: t.MappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Per-project reports",
         )

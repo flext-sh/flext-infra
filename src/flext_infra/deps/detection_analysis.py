@@ -6,8 +6,6 @@ import contextlib
 from collections.abc import (
     Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 
@@ -44,7 +42,7 @@ class FlextInfraDependencyDetectionAnalysis:
 
     @staticmethod
     def _to_toml_config(
-        payload: Mapping[str, t.Infra.InfraValue],
+        payload: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.Infra.ContainerDict:
         normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, value in payload.items():
@@ -72,7 +70,7 @@ class FlextInfraDependencyDetectionAnalysis:
                 sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
             except c.ValidationError:
                 return None
-            converted: MutableSequence[t.Infra.InfraValue] = []
+            converted: t.MutableSequenceOf[t.Infra.InfraValue] = []
             for item in sequence:
                 if item is None:
                     converted.append(None)
@@ -199,19 +197,21 @@ class FlextInfraDependencyDetectionAnalysis:
     def load_dependency_limits(
         self,
         limits_path: Path | None = None,
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Load dependency limits configuration from TOML file."""
         path = limits_path or Path(__file__).resolve().parent / "dependency_limits.toml"
         result = self._read_plain(path)
         if result.failure:
             return {}
-        config: Mapping[str, t.Infra.InfraValue] = self._to_toml_config(result.value)
+        config: t.MappingKV[str, t.Infra.InfraValue] = self._to_toml_config(
+            result.value
+        )
         return config
 
     def module_to_types_package(
         self,
         module_name: str,
-        limits: Mapping[str, t.Infra.InfraValue],
+        limits: t.MappingKV[str, t.Infra.InfraValue],
     ) -> str | None:
         """Map a module name to its corresponding types-* package."""
         root = module_name.split(".", 1)[0]
@@ -236,13 +236,13 @@ class FlextInfraDependencyDetectionAnalysis:
         config_path: Path | None = None,
         json_output_path: Path | None = None,
         extend_exclude: t.StrSequence | None = None,
-    ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
         """Run deptry analysis on a project and parse JSON output."""
         settings = config_path or project_path / c.Infra.PYPROJECT_FILENAME
         if not settings.exists():
-            return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
+            return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
-        cmd: MutableSequence[str] = [
+        cmd: t.MutableSequenceOf[str] = [
             str(venv_bin / c.Infra.DEPTRY),
             ".",
             "--config",
@@ -260,10 +260,10 @@ class FlextInfraDependencyDetectionAnalysis:
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if result.failure:
-            return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
+            return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
                 result.error or "deptry execution failed",
             )
-        issues: Sequence[t.Infra.ContainerDict] = []
+        issues: t.SequenceOf[t.Infra.ContainerDict] = []
         if out_file.exists():
             raw = out_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             loaded_result = u.Cli.json_parse(raw) if raw.strip() else None
@@ -272,7 +272,7 @@ class FlextInfraDependencyDetectionAnalysis:
                 and loaded_result.success
                 and isinstance(loaded_result.value, list)
             ):
-                normalized_issues: MutableSequence[t.Infra.ContainerDict] = []
+                normalized_issues: t.MutableSequenceOf[t.Infra.ContainerDict] = []
                 for item in loaded_result.value:
                     if not isinstance(item, Mapping):
                         continue
@@ -288,11 +288,11 @@ class FlextInfraDependencyDetectionAnalysis:
                 try:
                     out_file.unlink()
                 except OSError as exc:
-                    return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
+                    return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
                         f"failed to cleanup deptry temp output: {exc}",
                     )
         cmd_result: m.Cli.CommandOutput = result.value
-        return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok((
+        return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok((
             issues,
             cmd_result.exit_code,
         ))

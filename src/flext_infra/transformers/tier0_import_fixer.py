@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
 )
 from pathlib import Path
 from types import MappingProxyType
@@ -203,7 +202,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 if sub:
                     self._direct_pending.setdefault(sub, set()).add(a)
             self._missing_classes: t.Infra.StrSet = set()
-            self._changes: MutableSequence[str] = []
+            self._changes: t.MutableSequenceOf[str] = []
 
         @property
         def changes(self) -> t.StrSequence:

@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import (
@@ -32,7 +28,7 @@ class FlextInfraRefactorEngine:
             safety_manager=FlextInfraRefactorSafetyManager(),
         )
 
-    def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
+    def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
         """Delegate config loading to the dedicated refactor loader."""
         return self.rule_loader.load_config()
 
@@ -51,12 +47,12 @@ class FlextInfraRefactorEngine:
         """Delegate rule-filter normalization to the dedicated loader."""
         self.rule_loader.set_rule_filters(filters)
 
-    def list_rules(self) -> Sequence[t.FeatureFlagMapping]:
+    def list_rules(self) -> t.SequenceOf[t.FeatureFlagMapping]:
         """Delegate rules listing to the dedicated loader."""
         return self.rule_loader.list_rules()
 
     @staticmethod
-    def print_rules_table(rows: Sequence[t.FeatureFlagMapping]) -> None:
+    def print_rules_table(rows: t.SequenceOf[t.FeatureFlagMapping]) -> None:
         """Delegate table rendering to the dedicated loader."""
         FlextInfraRefactorRuleLoader.print_rules_table(rows)
 
@@ -76,10 +72,10 @@ class FlextInfraRefactorEngine:
 
     def refactor_files(
         self,
-        file_paths: Sequence[Path],
+        file_paths: t.SequenceOf[Path],
         *,
         dry_run: bool = False,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate multi-file refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_files(file_paths, dry_run=dry_run)
 
@@ -90,7 +86,7 @@ class FlextInfraRefactorEngine:
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate project refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_project(
             project_path,
@@ -106,7 +102,7 @@ class FlextInfraRefactorEngine:
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> Sequence[m.Infra.Result]:
+    ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate workspace refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_workspace(
             workspace_root,

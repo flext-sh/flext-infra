@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_cli import cli
@@ -19,16 +14,16 @@ class FlextInfraRefactorRuleLoader:
     def __init__(self, config_path: Path) -> None:
         """Initialize loader state with one config path."""
         self.config_path = config_path
-        self.settings: Mapping[str, t.Infra.InfraValue] = {}
-        self.rules: MutableSequence[
+        self.settings: t.MappingKV[str, t.Infra.InfraValue] = {}
+        self.rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorRuleKind]
         ] = []
-        self.file_rules: MutableSequence[
+        self.file_rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorFileRuleKind]
         ] = []
-        self.rule_filters: MutableSequence[str] = []
+        self.rule_filters: t.MutableSequenceOf[str] = []
 
-    def load_config(self) -> p.Result[Mapping[str, t.Infra.InfraValue]]:
+    def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
         """Load YAML configuration for this refactor session."""
         result = cli.rules_load_scoped_config(
             self.config_path,
@@ -81,7 +76,7 @@ class FlextInfraRefactorRuleLoader:
         """Normalize and store active rule filters."""
         self.rule_filters = [item.lower() for item in filters]
 
-    def list_rules(self) -> Sequence[t.FeatureFlagMapping]:
+    def list_rules(self) -> t.SequenceOf[t.FeatureFlagMapping]:
         """Return loaded rules metadata for listing and diagnostics."""
         return [
             {
@@ -104,7 +99,7 @@ class FlextInfraRefactorRuleLoader:
         ]
 
     @staticmethod
-    def print_rules_table(rows: Sequence[t.FeatureFlagMapping]) -> None:
+    def print_rules_table(rows: t.SequenceOf[t.FeatureFlagMapping]) -> None:
         """Render and print one rules table using the shared CLI table helpers."""
         data_result = u.Cli.tables_normalize_data(rows)
         if data_result.failure:

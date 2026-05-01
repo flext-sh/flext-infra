@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import configparser
 from collections.abc import (
-    Mapping,
     MutableMapping,
 )
 from pathlib import Path
@@ -82,7 +81,7 @@ class FlextInfraInternalSyncRepoMixin:
             return (True, heuristic_workspace_root)
         return (False, None)
 
-    def parse_gitmodules(self, path: Path) -> Mapping[str, m.Infra.RepoUrls]:
+    def parse_gitmodules(self, path: Path) -> t.MappingKV[str, m.Infra.RepoUrls]:
         """Parse .gitmodules file into repo URL mapping."""
         parser = configparser.RawConfigParser()
         _ = parser.read(path)
@@ -100,17 +99,19 @@ class FlextInfraInternalSyncRepoMixin:
             )
         return mapping
 
-    def parse_repo_map(self, path: Path) -> p.Result[Mapping[str, m.Infra.RepoUrls]]:
+    def parse_repo_map(
+        self, path: Path
+    ) -> p.Result[t.MappingKV[str, m.Infra.RepoUrls]]:
         """Parse flext-repo-map TOML into repository URL entries."""
         data_result = self._read_plain(path)
         if data_result.failure:
-            return r[Mapping[str, m.Infra.RepoUrls]].fail(
+            return r[t.MappingKV[str, m.Infra.RepoUrls]].fail(
                 data_result.error or "failed to read repository map",
             )
         data = data_result.value
         repos_obj = u.Cli.json_deep_mapping(data, "repo")
         if not repos_obj:
-            return r[Mapping[str, m.Infra.RepoUrls]].ok({})
+            return r[t.MappingKV[str, m.Infra.RepoUrls]].ok({})
         result: MutableMapping[str, m.Infra.RepoUrls] = {}
         for repo_name, values in repos_obj.items():
             values_map = u.Cli.json_as_mapping(values)
@@ -123,7 +124,7 @@ class FlextInfraInternalSyncRepoMixin:
                     ssh_url=ssh_url,
                     https_url=https_url,
                 )
-        return r[Mapping[str, m.Infra.RepoUrls]].ok(result)
+        return r[t.MappingKV[str, m.Infra.RepoUrls]].ok(result)
 
     def resolve_ref(self, project_root: Path) -> str:
         """Resolve dependency sync git reference for current environment."""
@@ -154,7 +155,7 @@ class FlextInfraInternalSyncRepoMixin:
         self,
         owner: str,
         repo_names: t.Infra.StrSet,
-    ) -> Mapping[str, m.Infra.RepoUrls]:
+    ) -> t.MappingKV[str, m.Infra.RepoUrls]:
         """Build default repository URL mapping from owner and repo set."""
         result: MutableMapping[str, m.Infra.RepoUrls] = {}
         for repo_name in sorted(repo_names):

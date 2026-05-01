@@ -6,14 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
-
 from flext_infra import (
     c,
     m,
+    t,
     u,
 )
 
@@ -24,7 +20,7 @@ class FlextInfraLooseObjectDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.LooseObjectViolation]:
+    ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
         res = u.Infra.fetch_python_resource(
             ctx.rope_project,
@@ -42,7 +38,7 @@ class FlextInfraLooseObjectDetector:
         lines = res.read().splitlines()
         class_stem = m.derive_class_stem(project_name)
         file_str = str(file_path)
-        violations: MutableSequence[m.Infra.LooseObjectViolation] = []
+        violations: t.MutableSequenceOf[m.Infra.LooseObjectViolation] = []
 
         def _add(symbol: m.Infra.SymbolInfo, kind: str, suffix: str) -> None:
             violations.append(
@@ -55,7 +51,7 @@ class FlextInfraLooseObjectDetector:
                 )
             )
 
-        class_symbols: MutableSequence[m.Infra.SymbolInfo] = []
+        class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
         for symbol in u.Infra.get_module_symbols(rope_project, res):
             if symbol.name in c.Infra.SCAN_ALLOWED_TOP_LEVEL:
                 continue

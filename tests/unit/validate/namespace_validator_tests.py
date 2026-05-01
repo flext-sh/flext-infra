@@ -85,9 +85,7 @@ class TestFlextInfraNamespaceValidator:
         tracked_module = package_dir / "models.py"
         tracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
         untracked_module = package_dir / "constants.py"
-        untracked_module.write_text(
-            _read_fixture("rule0_multiple_classes.py"), encoding="utf-8"
-        )
+        untracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
         init_result = u.Cli.run_raw(["git", "init"], cwd=project_root)
         assert init_result.success
         assert init_result.value.exit_code == 0

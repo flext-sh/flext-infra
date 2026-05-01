@@ -4,7 +4,6 @@ import os
 from collections.abc import (
     Callable,
     Generator,
-    Sequence,
 )
 from contextlib import contextmanager
 from pathlib import Path
@@ -19,7 +18,7 @@ from tests.typings import t
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 

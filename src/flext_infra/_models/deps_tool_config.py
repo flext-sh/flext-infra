@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
 from types import MappingProxyType
 from typing import Annotated
 
@@ -211,7 +208,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         private_family_tokens: Annotated[
-            Mapping[str, t.StrSequence],
+            t.MappingKV[str, t.StrSequence],
             m.Field(
                 alias="private-family-tokens",
                 description="Accepted family markers for private namespace packages.",
@@ -225,7 +222,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         inherited_exports: Annotated[
-            Mapping[str, t.StrSequence],
+            t.MappingKV[str, t.StrSequence],
             m.Field(
                 alias="inherited-exports",
                 description="Allowed inherited exports from parent package by root surface.",

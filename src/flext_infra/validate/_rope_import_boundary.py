@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -59,7 +58,7 @@ class _RopeImportBoundaryBase(s[bool]):
 
     def _collect_violations(self, workspace_root: Path) -> t.StrSequence:
         """Traverse the rope project and accumulate boundary violations."""
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         with u.Infra.open_project(workspace_root) as project:
             for resource in u.Infra.python_resources(project):
                 file_path = u.Infra.resource_file_path(project, resource)
@@ -91,7 +90,7 @@ class _RopeImportBoundaryBase(s[bool]):
         module_imports: t.Infra.RopeModuleImports,
     ) -> t.StrSequence:
         """Return banned-import violation strings for one module."""
-        out: MutableSequence[str] = []
+        out: t.MutableSequenceOf[str] = []
         for stmt in u.Infra.import_statements(module_imports):
             module_name = u.Infra.import_statement_module_name(stmt)
             if module_name is not None:

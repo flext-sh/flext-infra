@@ -3,11 +3,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
@@ -42,8 +37,8 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         *,
         project_root: Path,
-    ) -> tuple[Sequence[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:
-        violations: MutableSequence[m.Infra.LooseClassViolation] = []
+    ) -> tuple[t.SequenceOf[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:
+        violations: t.MutableSequenceOf[m.Infra.LooseClassViolation] = []
         targets_found: dict[str, bool] = dict.fromkeys(
             c.Infra.REQUIRED_CLASS_TARGETS,
             False,
@@ -85,16 +80,18 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         *,
         files_scanned: int,
-        violations: Sequence[m.Infra.LooseClassViolation],
+        violations: t.SequenceOf[m.Infra.LooseClassViolation],
         targets_found: t.BoolMapping,
         classes_scanned: int,
     ) -> t.Infra.ContainerDict:
         counters = Counter(v.confidence for v in violations)
-        violations_infra: Sequence[t.Infra.InfraValue] = [
+        violations_infra: t.SequenceOf[t.Infra.InfraValue] = [
             v.model_dump() for v in violations
         ]
-        confidence_counts: Mapping[str, t.Infra.InfraValue] = dict(counters)
-        required_targets_infra: Mapping[str, t.Infra.InfraValue] = dict(targets_found)
+        confidence_counts: t.MappingKV[str, t.Infra.InfraValue] = dict(counters)
+        required_targets_infra: t.MappingKV[str, t.Infra.InfraValue] = dict(
+            targets_found
+        )
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "rule": c.Infra.RK_CLASS_NESTING,
             "files_scanned": files_scanned,

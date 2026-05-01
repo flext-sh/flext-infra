@@ -10,9 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -33,11 +30,11 @@ class _DiagResult:
     )
 
     def __init__(self) -> None:
-        self.failed_cases: MutableSequence[str] = []
-        self.error_traces: MutableSequence[str] = []
-        self.skip_cases: MutableSequence[str] = []
-        self.warning_lines: MutableSequence[str] = []
-        self.slow_entries: MutableSequence[str] = []
+        self.failed_cases: t.MutableSequenceOf[str] = []
+        self.error_traces: t.MutableSequenceOf[str] = []
+        self.skip_cases: t.MutableSequenceOf[str] = []
+        self.warning_lines: t.MutableSequenceOf[str] = []
+        self.slow_entries: t.MutableSequenceOf[str] = []
 
 
 class FlextInfraPytestDiagExtractor(s[bool]):
@@ -112,7 +109,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             line for line in lines if re.search(r"(^SKIPPED |::.* SKIPPED( |$))", line)
         ]
         capture = False
-        block: MutableSequence[str] = []
+        block: t.MutableSequenceOf[str] = []
         for line in lines:
             if re.match(r"^=+ (FAILURES|ERRORS) =+", line):
                 capture = True
@@ -139,7 +136,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         """Build an error/failure trace chunk from a JUnit XML element."""
         msg = (element.attrib.get(c.Infra.RK_MESSAGE) or "").strip()
         trace = (element.text or "").strip()
-        chunk: MutableSequence[str] = [f"=== {heading}: {label} ==="]
+        chunk: t.MutableSequenceOf[str] = [f"=== {heading}: {label} ==="]
         if msg:
             chunk.append(msg)
         if trace:
@@ -194,7 +191,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         root = FlextInfraPytestDiagExtractor._as_xml_element(root_raw)
         if root is None:
             return False
-        slow_rows: MutableSequence[t.Pair[float, str]] = []
+        slow_rows: t.MutableSequenceOf[t.Pair[float, str]] = []
         for case_raw in root.iter("testcase"):
             if case_raw is None:
                 continue

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 
@@ -77,7 +76,7 @@ class FlextInfraEnsureRuffConfigPhase:
                 *self._workspace_project_namespaces(path.parent),
             },
         )
-        lint_nested_values: Sequence[tuple[str, t.JsonValue]] = (
+        lint_nested_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
             ("select", u.normalize_to_json_value(sorted(ruff_cfg.lint.select))),
             (
                 c.Infra.IGNORE,

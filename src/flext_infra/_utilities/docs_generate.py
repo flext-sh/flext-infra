@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -38,15 +34,15 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def _prune_generated_tree(
         root: Path,
-        expected: Sequence[Path],
+        expected: t.SequenceOf[Path],
         *,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Prune stale files from one tool-owned generated tree."""
         if not root.exists():
             return []
         expected_paths = {path.resolve() for path in expected}
-        removed: MutableSequence[m.Infra.GeneratedFile] = []
+        removed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
         for path in sorted(root.rglob("*.md")):
             if path.resolve() in expected_paths:
                 continue
@@ -65,18 +61,18 @@ class FlextInfraUtilitiesDocsGenerate:
         scope: m.Infra.DocScope,
         *,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Generate the managed docs artifacts for one FLEXT project."""
         contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
-        expected_generated: MutableSequence[Path] = [
+        expected_generated: t.MutableSequenceOf[Path] = [
             scope.path / "docs/api-reference/generated/overview.md",
             scope.path / "docs/api-reference/generated/public-api.md",
             scope.path / "docs/api-reference/generated/modules/index.md",
         ]
-        files: MutableSequence[m.Infra.GeneratedFile] = [
+        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 scope.path / "README.md",
                 FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract),
@@ -162,7 +158,7 @@ class FlextInfraUtilitiesDocsGenerate:
         *,
         workspace_root: Path,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Return project guide files managed by generation.
 
         Guide propagation is intentionally disabled; curated guides stay local.
@@ -177,7 +173,7 @@ class FlextInfraUtilitiesDocsGenerate:
         scope: m.Infra.DocScope,
         *,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Return the managed mkdocs settings file when it does not exist yet."""
         path = scope.path / "mkdocs.yml"
         if path.exists():
@@ -205,7 +201,7 @@ class FlextInfraUtilitiesDocsGenerate:
         *,
         apply: bool,
         projects: t.StrSequence | None = None,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Generate root workspace docs artifacts from discovered FLEXT projects."""
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             workspace_root
@@ -220,7 +216,7 @@ class FlextInfraUtilitiesDocsGenerate:
             if scopes_result.success
             else []
         )
-        catalog_entries: MutableSequence[dict[str, str]] = []
+        catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
         class_counts: dict[str, int] = {}
         for scope in scopes:
             class_counts[scope.project_class] = (
@@ -236,13 +232,13 @@ class FlextInfraUtilitiesDocsGenerate:
                 "description": str(project_contract.get("description", "")).strip(),
                 "api_page": f"../../api-reference/generated/{scope.name}.md",
             })
-        expected_api_generated: MutableSequence[Path] = [
+        expected_api_generated: t.MutableSequenceOf[Path] = [
             workspace_root / "docs/api-reference/generated/overview.md",
         ]
-        expected_project_generated: MutableSequence[Path] = [
+        expected_project_generated: t.MutableSequenceOf[Path] = [
             workspace_root / "docs/projects/generated/catalog.md",
         ]
-        files: MutableSequence[m.Infra.GeneratedFile] = [
+        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 workspace_root / "mkdocs.yml",
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(workspace_contract),

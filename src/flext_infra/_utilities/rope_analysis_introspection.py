@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import ClassVar
@@ -61,9 +58,9 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     def get_module_symbols(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> Sequence[m.Infra.SymbolInfo]:
+    ) -> t.SequenceOf[m.Infra.SymbolInfo]:
         """Return top-level symbols defined in one module through Rope metadata."""
-        result: MutableSequence[m.Infra.SymbolInfo] = []
+        result: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             resource_path = resource.path
@@ -87,9 +84,9 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     def extract_public_methods_from_dir(
         cls: type[p.Infra.RopeAnalysisMethods],
         package_dir: Path,
-    ) -> Mapping[str, Sequence[t.Triple[str, str, str]]]:
+    ) -> t.MappingKV[str, t.SequenceOf[t.Triple[str, str, str]]]:
         """Extract public methods from all Python files in a package directory."""
-        result: MutableMapping[str, MutableSequence[t.Triple[str, str, str]]] = {}
+        result: MutableMapping[str, t.MutableSequenceOf[t.Triple[str, str, str]]] = {}
         project_root = FlextInfraUtilitiesDiscovery.project_root(
             package_dir / "foo.py",
         )

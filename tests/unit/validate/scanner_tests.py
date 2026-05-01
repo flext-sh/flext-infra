@@ -205,7 +205,7 @@ class TestScannerHelpers:
 
         files = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
 
-        tm.that(files, eq=[tracked_file])
+        tm.that(files, eq=[tracked_file, untracked_file])
 
     def test_count_matches(self, tmp_path: Path) -> None:
         """_count_matches counts regex matches and handles edge cases."""

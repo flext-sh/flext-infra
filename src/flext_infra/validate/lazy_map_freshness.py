@@ -19,9 +19,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 from typing import override
 
@@ -58,7 +55,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
                 f"lazy-map freshness scan errored in {errors} package(s)",
             )
         modified = tuple(generator.modified_files)
-        violations: MutableSequence[str] = [
+        violations: t.MutableSequenceOf[str] = [
             f"stale lazy map: {path}" for path in modified
         ]
         passed = not violations

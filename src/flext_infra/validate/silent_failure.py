@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from typing import Annotated, override
 
 from flext_infra import (
@@ -14,6 +10,7 @@ from flext_infra import (
     p,
     r,
     s,
+    t,
     u,
 )
 
@@ -31,8 +28,8 @@ class FlextInfraSilentFailureValidator(s[bool]):
 
     def _selected_projects(
         self,
-        projects: Sequence[p.Infra.ProjectInfo],
-    ) -> Sequence[p.Infra.ProjectInfo]:
+        projects: t.SequenceOf[p.Infra.ProjectInfo],
+    ) -> t.SequenceOf[p.Infra.ProjectInfo]:
         if self.project_filter is None:
             return projects
         selected = {
@@ -42,7 +39,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
 
     def build_report(self) -> p.Result[m.Infra.ValidationReport]:
         """Build one validation report for the selected workspace projects."""
-        issues: MutableSequence[str] = []
+        issues: t.MutableSequenceOf[str] = []
         projects_result = u.Infra.projects(self.workspace_root)
         projects = self._selected_projects(
             tuple(projects_result.unwrap()) if projects_result.success else ()

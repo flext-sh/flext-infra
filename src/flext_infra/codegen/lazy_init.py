@@ -11,9 +11,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    Sequence,
 )
 from pathlib import Path
 from time import perf_counter
@@ -122,7 +120,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
     @staticmethod
     def _detect_duplicate_class_names(
         rope: FlextInfraRopeWorkspace,
-    ) -> Mapping[str, tuple[str, ...]]:
+    ) -> t.MappingKV[str, tuple[str, ...]]:
         """Return class-name collisions.
 
         Scope rules:
@@ -159,7 +157,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
 
     def _generate_all_inits(
         self,
-        pkg_dirs: Sequence[Path],
+        pkg_dirs: t.SequenceOf[Path],
         *,
         check_only: bool,
         planner: FlextInfraCodegenLazyInitPlanner,
@@ -199,7 +197,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
         pkg_dir: Path,
         *,
         check_only: bool,
-        dir_exports: Mapping[str, t.Infra.LazyImportMap],
+        dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
         planner: FlextInfraCodegenLazyInitPlanner,
     ) -> t.Infra.LazyInitProcessResult:
         try:

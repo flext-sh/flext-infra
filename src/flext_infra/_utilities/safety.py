@@ -9,12 +9,11 @@ from __future__ import annotations
 import shutil
 from collections.abc import (
     Callable,
-    Sequence,
 )
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, p, r
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesSafety:
@@ -87,7 +86,7 @@ class FlextInfraUtilitiesSafety:
         return r[bool].ok(True)
 
     @staticmethod
-    def backup_files(files: Sequence[Path]) -> Sequence[Path]:
+    def backup_files(files: t.SequenceOf[Path]) -> t.SequenceOf[Path]:
         """Copy each file to .bak. Fail fast on any error."""
         bak_paths: list[Path] = []
         for file_path in files:
@@ -101,7 +100,7 @@ class FlextInfraUtilitiesSafety:
         return bak_paths
 
     @staticmethod
-    def restore_files(bak_paths: Sequence[Path]) -> None:
+    def restore_files(bak_paths: t.SequenceOf[Path]) -> None:
         """Move .bak files back to originals. Fail fast whenever possible."""
         for bak in bak_paths:
             if not bak.exists():
@@ -110,7 +109,7 @@ class FlextInfraUtilitiesSafety:
             shutil.move(str(bak), str(original))
 
     @staticmethod
-    def cleanup_backups(bak_paths: Sequence[Path]) -> None:
+    def cleanup_backups(bak_paths: t.SequenceOf[Path]) -> None:
         """Remove .bak files after successful validation."""
         for bak in bak_paths:
             if bak.exists():
@@ -118,9 +117,9 @@ class FlextInfraUtilitiesSafety:
 
     @staticmethod
     def execute_safely(
-        files: Sequence[Path],
-        transform: Callable[[Sequence[Path]], r[Sequence[Path]]],
-        validate: Callable[[Sequence[Path]], r[bool]],
+        files: t.SequenceOf[Path],
+        transform: Callable[[t.SequenceOf[Path]], r[t.SequenceOf[Path]]],
+        validate: Callable[[t.SequenceOf[Path]], r[bool]],
         *,
         mode: c.Infra.ExecutionMode = c.Infra.ExecutionMode.APPLY_SAFE,
     ) -> m.Infra.SafeExecutionResult:

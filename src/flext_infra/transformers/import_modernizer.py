@@ -7,9 +7,6 @@ and adds missing runtime alias imports to the module header.
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    MutableSequence,
-)
 from typing import override
 
 from flext_infra import (
@@ -83,7 +80,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
     def _rewrite_forbidden_imports(self, source: str) -> str:
         """Remove or trim forbidden import lines via regex."""
         lines = source.splitlines(keepends=True)
-        result: MutableSequence[str] = []
+        result: t.MutableSequenceOf[str] = []
         i = 0
         while i < len(lines):
             line = lines[i]
@@ -163,8 +160,8 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
             import_text.split("import", 1)[1] if "import" in import_text else ""
         )
         names_part = names_part.strip().strip("()")
-        mapped: MutableSequence[str] = []
-        unmapped: MutableSequence[str] = []
+        mapped: t.MutableSequenceOf[str] = []
+        unmapped: t.MutableSequenceOf[str] = []
         for bare_name, bound in u.Infra.parse_import_names(names_part):
             if bare_name not in self._symbols_to_replace:
                 unmapped.append(

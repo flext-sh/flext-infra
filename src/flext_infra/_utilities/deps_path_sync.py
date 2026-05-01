@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableMapping,
-    MutableSequence,
 )
 from pathlib import Path
 
@@ -45,8 +44,8 @@ class FlextInfraUtilitiesDependencyPathSync:
             deps = t.Infra.STR_SEQ_ADAPTER.validate_python(raw_deps, strict=True)
         except c.ValidationError:
             return ([], set())
-        changes: MutableSequence[str] = []
-        updated_deps: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
+        updated_deps: t.MutableSequenceOf[str] = []
         internal_deps: t.Infra.StrSet = set()
         for item in deps:
             requirement_part, _, marker_part = item.partition(";")
@@ -87,7 +86,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         )
         if not expected_names:
             return []
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         tool_section = u.Cli.toml_mapping_ensure_table(payload, c.Infra.TOOL)
         uv_section = u.Cli.toml_mapping_ensure_table(tool_section, "uv")
         sources = u.Cli.toml_mapping_ensure_table(uv_section, "sources")
@@ -122,7 +121,7 @@ class FlextInfraUtilitiesDependencyPathSync:
     ) -> t.StrSequence:
         if not is_root:
             return []
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         tool_section = u.Cli.toml_mapping_ensure_table(payload, c.Infra.TOOL)
         uv_section = u.Cli.toml_mapping_ensure_table(tool_section, "uv")
         workspace_section = u.Cli.toml_mapping_ensure_table(uv_section, "workspace")
@@ -156,7 +155,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             payload,
             (c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES),
         )
-        changes: MutableSequence[str] = []
+        changes: t.MutableSequenceOf[str] = []
         for dep_key_raw in list(deps_view):
             value = u.Cli.toml_mapping_child(deps, dep_key_raw)
             if value is None:
@@ -224,7 +223,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             payload,
             internal_names=internal_names,
         )
-        changes: MutableSequence[str] = list(pep_changes)
+        changes: t.MutableSequenceOf[str] = list(pep_changes)
         changes += list(
             self._rewrite_uv_sources(
                 payload,

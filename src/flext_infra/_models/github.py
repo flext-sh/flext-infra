@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 from typing import Annotated
 
@@ -166,7 +163,7 @@ class FlextInfraModelsGithub:
             cls,
             *,
             apply: bool,
-            operations: MutableSequence[
+            operations: t.MutableSequenceOf[
                 FlextInfraModelsGithub.GithubWorkflowSyncOperation
             ],
         ) -> FlextInfraModelsGithub.GithubWorkflowSyncReport:
@@ -225,7 +222,7 @@ class FlextInfraModelsGithub:
             m.Field(description="Original workspace pull-request request"),
         ]
         outcomes: Annotated[
-            MutableSequence[FlextInfraModelsGithub.GithubPullRequestOutcome],
+            t.MutableSequenceOf[FlextInfraModelsGithub.GithubPullRequestOutcome],
             m.Field(description="Accumulated pull-request outcomes"),
         ] = m.Field(description="Accumulated pull-request outcomes")
 

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import Final
@@ -15,6 +14,7 @@ from flext_infra import (
     FlextInfraConstantsMake,
     FlextInfraConstantsSharedInfra,
     FlextInfraConstantsSourceCode,
+    t,
 )
 
 
@@ -46,7 +46,7 @@ class FlextInfraConstantsBase(
         FILES = "files"
         WORKSPACE = "workspace"
 
-    NAMESPACE_TO_CANONICAL_FILENAME: Final[Mapping[str, str]] = MappingProxyType({
+    NAMESPACE_TO_CANONICAL_FILENAME: Final[t.MappingKV[str, str]] = MappingProxyType({
         "c": "constants.py",
         "m": "models.py",
         "p": "protocols.py",

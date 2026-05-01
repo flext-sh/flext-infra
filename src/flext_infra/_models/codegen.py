@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
-    MutableSequence,
     MutableSet,
-    Sequence,
 )
 from pathlib import Path
 from types import MappingProxyType
@@ -397,14 +395,14 @@ class FlextInfraModelsCodegen:
             return []
 
         violations_fixed: Annotated[
-            MutableSequence[FlextInfraModelsCodegen.CensusViolation],
+            t.MutableSequenceOf[FlextInfraModelsCodegen.CensusViolation],
             m.Field(
                 default_factory=_violations_default,
                 description="List of violations that were fixed",
             ),
         ]
         violations_skipped: Annotated[
-            MutableSequence[FlextInfraModelsCodegen.CensusViolation],
+            t.MutableSequenceOf[FlextInfraModelsCodegen.CensusViolation],
             m.Field(
                 default_factory=_violations_default,
                 description="List of violations that were skipped",
@@ -480,7 +478,7 @@ class FlextInfraModelsCodegen:
         )
 
         discovered_projects: Annotated[
-            Sequence[p.Infra.ProjectInfo],
+            t.SequenceOf[p.Infra.ProjectInfo],
             m.Field(
                 default_factory=tuple,
                 description="Projects discovered at pipeline start",
@@ -493,25 +491,25 @@ class FlextInfraModelsCodegen:
             ),
         ] = None
         reports_before: Annotated[
-            Sequence[FlextInfraModelsCodegen.CensusReport],
+            t.SequenceOf[FlextInfraModelsCodegen.CensusReport],
             m.Field(
                 default_factory=tuple,
                 description="Census reports collected before fixes",
             ),
         ]
         reports_after: Annotated[
-            Sequence[FlextInfraModelsCodegen.CensusReport],
+            t.SequenceOf[FlextInfraModelsCodegen.CensusReport],
             m.Field(
                 default_factory=tuple,
                 description="Census reports collected after fixes",
             ),
         ]
         scaffold_results: Annotated[
-            Sequence[FlextInfraModelsCodegen.ScaffoldResult],
+            t.SequenceOf[FlextInfraModelsCodegen.ScaffoldResult],
             m.Field(default_factory=tuple, description="Scaffolding stage results"),
         ]
         fix_results: Annotated[
-            Sequence[FlextInfraModelsCodegen.AutoFixResult],
+            t.SequenceOf[FlextInfraModelsCodegen.AutoFixResult],
             m.Field(default_factory=tuple, description="Auto-fix stage results"),
         ]
 

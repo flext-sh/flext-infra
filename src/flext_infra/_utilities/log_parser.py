@@ -9,9 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 
 from flext_infra import c, t
@@ -42,7 +39,7 @@ class FlextInfraUtilitiesLogParser:
             return (0, [])
         text = log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="replace")
         tail = text.splitlines()[-c.Infra.LOG_TAIL_LINES :]
-        error_lines: MutableSequence[str] = []
+        error_lines: t.MutableSequenceOf[str] = []
         for line in tail:
             stripped = line.strip()
             if not stripped:

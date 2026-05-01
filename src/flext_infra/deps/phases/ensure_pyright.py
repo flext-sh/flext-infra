@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Mapping,
     MutableMapping,
-    MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -81,7 +78,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         source_path: str,
         project_root: str,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         return [
             self._env_entry(
                 env_dir=env_dir,
@@ -115,11 +112,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         is_root: bool,
         workspace_root: Path | None,
         project_dir: Path | None = None,
-    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         if not is_root or workspace_root is None:
             return self._expected_envs_for_project(project_dir)
         rules = self._tool_config.tools.pyright.path_rules
-        expected_envs: MutableSequence[m.Infra.PyrightConfig.ExecutionEnvironment] = []
+        expected_envs: t.MutableSequenceOf[
+            m.Infra.PyrightConfig.ExecutionEnvironment
+        ] = []
         root_source_path = self._project_source_path(workspace_root)
         for env_dir in u.Infra.discover_python_dirs(workspace_root):
             if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
@@ -179,7 +178,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     def _expected_envs_for_project(
         self,
         project_dir: Path | None,
-    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Build executionEnvironments from auto-discovered top-level Python dirs."""
         rules = self._tool_config.tools.pyright.path_rules
         env_dirs = (
@@ -204,7 +203,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> m.Infra.ProjectTypeOverrideConfig | None:
         """Return the project-type override settings for the given kind."""
         overrides = self._tool_config.project_type_overrides
-        kind_map: Mapping[str, m.Infra.ProjectTypeOverrideConfig] = {
+        kind_map: t.MappingKV[str, m.Infra.ProjectTypeOverrideConfig] = {
             "core": overrides.core,
             "domain": overrides.domain,
             "platform": overrides.platform,
@@ -261,7 +260,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.StrSequence:
         """Ignore typings and stub diagnostics."""
         rules = self._tool_config.tools.pyright.path_rules
-        ignores: MutableSequence[str] = []
+        ignores: t.MutableSequenceOf[str] = []
         if is_root:
             root_dir = workspace_root or project_dir
             ignores.extend(self._existing_paths(root_dir, rules.root_typings_paths))
@@ -289,7 +288,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             return list(u.Infra.discover_python_dirs(project_dir))
         if workspace_root is None:
             return list(rules.env_dirs)
-        includes: MutableSequence[str] = [
+        includes: t.MutableSequenceOf[str] = [
             env_dir
             for env_dir in u.Infra.discover_python_dirs(workspace_root)
             if not (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file()

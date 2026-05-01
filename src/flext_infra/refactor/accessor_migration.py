@@ -4,10 +4,6 @@ from __future__ import annotations
 
 import difflib
 import io
-from collections.abc import (
-    MutableSequence,
-    Sequence,
-)
 from operator import itemgetter
 from pathlib import Path
 from tokenize import NAME, generate_tokens
@@ -190,7 +186,7 @@ class FlextInfraAccessorMigrationOrchestrator(
             return r[m.Infra.AccessorMigrationReport].fail(
                 iter_result.error or "python file iteration failed",
             )
-        previews: MutableSequence[m.Infra.AccessorMigrationFile] = []
+        previews: t.MutableSequenceOf[m.Infra.AccessorMigrationFile] = []
         files_with_changes = 0
         automated_change_count = 0
         warning_count = 0
@@ -309,8 +305,8 @@ class FlextInfraAccessorMigrationOrchestrator(
         *,
         source: str,
         updated_source: str,
-        automated_changes: Sequence[m.Infra.AccessorMigrationChange],
-        warnings: MutableSequence[m.Infra.AccessorMigrationChange],
+        automated_changes: t.SequenceOf[m.Infra.AccessorMigrationChange],
+        warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange],
         include_preview: bool,
     ) -> m.Infra.AccessorMigrationFile:
         lint_before: dict[str, tuple[str, ...]] = {}
@@ -391,12 +387,12 @@ class FlextInfraAccessorMigrationOrchestrator(
         rope_project: t.Infra.RopeProject,
         py_file: Path,
         source: str,
-    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
+    ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
         resource = u.Infra.get_resource_from_path(rope_project, py_file)
         if resource is None:
             return source, ()
         updated_source = source
-        changes: MutableSequence[m.Infra.AccessorMigrationChange] = []
+        changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         for rule in self._AUTOMATED_RULES:
             updated_source, rule_changes = self._rename_symbol_tokens(
                 rope_project,
@@ -420,9 +416,9 @@ class FlextInfraAccessorMigrationOrchestrator(
         replacement_name: str,
         reason: str,
         file_path: Path,
-    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
-        token_lines: MutableSequence[m.Infra.AccessorMigrationChange] = []
-        rewrite_ranges: MutableSequence[tuple[int, int, str]] = []
+    ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+        token_lines: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
+        rewrite_ranges: t.MutableSequenceOf[tuple[int, int, str]] = []
         for token in generate_tokens(io.StringIO(source).readline):
             if token.type != NAME or token.string != source_name:
                 continue
@@ -467,10 +463,10 @@ class FlextInfraAccessorMigrationOrchestrator(
         self,
         py_file: Path,
         source: str,
-    ) -> Sequence[m.Infra.AccessorMigrationChange]:
+    ) -> t.SequenceOf[m.Infra.AccessorMigrationChange]:
         lines = source.splitlines()
-        warnings: MutableSequence[m.Infra.AccessorMigrationChange] = []
-        scope_stack: MutableSequence[tuple[str, int]] = []
+        warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
+        scope_stack: t.MutableSequenceOf[tuple[str, int]] = []
         for line_index, line_text in enumerate(lines, start=1):
             stripped = line_text.lstrip()
             if not stripped or stripped.startswith("#"):
@@ -551,7 +547,7 @@ class FlextInfraAccessorMigrationOrchestrator(
     @staticmethod
     def render_text(report: m.Infra.AccessorMigrationReport) -> str:
         """Render an accessor migration report as CLI text."""
-        lines: MutableSequence[str] = [
+        lines: t.MutableSequenceOf[str] = [
             "Accessor Migration",
             f"workspace: {report.workspace}",
             f"mode: {'dry-run' if report.dry_run else 'apply'}",

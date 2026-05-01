@@ -7,11 +7,6 @@ import re
 import token
 import tokenize
 from collections import defaultdict
-from collections.abc import (
-    Mapping,
-    MutableSequence,
-    Sequence,
-)
 from io import StringIO
 from pathlib import Path
 
@@ -27,7 +22,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     """Shared text and path helpers for namespace refactor utilities."""
 
     @staticmethod
-    def shared_workspace_root(*, py_files: Sequence[Path]) -> Path:
+    def shared_workspace_root(*, py_files: t.SequenceOf[Path]) -> Path:
         existing_files = [path.resolve() for path in py_files if path.exists()]
         if not existing_files:
             return Path.cwd()
@@ -131,9 +126,9 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         alias_map: t.StrMapping,
     ) -> str:
         line_buffer = source.splitlines(keepends=True)
-        replacements_by_line: Mapping[
+        replacements_by_line: t.MappingKV[
             int,
-            MutableSequence[t.Triple[int, int, str]],
+            t.MutableSequenceOf[t.Triple[int, int, str]],
         ] = defaultdict(list)
         token_generator = tokenize.generate_tokens(StringIO(source).readline)
         for tok in token_generator:

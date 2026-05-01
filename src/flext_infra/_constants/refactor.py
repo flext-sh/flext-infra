@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import (
-    Mapping,
-)
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
@@ -118,7 +115,7 @@ class FlextInfraConstantsRefactor:
         "protocols.py",
         "_protocols",
     })
-    TYPING_INLINE_UNION_CANONICAL_MAP: Final[Mapping[frozenset[str], str]] = (
+    TYPING_INLINE_UNION_CANONICAL_MAP: Final[t.MappingKV[frozenset[str], str]] = (
         MappingProxyType({
             frozenset({"str", "int", "float", "bool"}): "t.Primitives",
             frozenset({"int", "float"}): "t.Numeric",
@@ -159,7 +156,7 @@ class FlextInfraConstantsRefactor:
         CLASS_NESTING = "class_nesting"
 
     RULE_MATCHERS_BY_KIND: Final[
-        Mapping[
+        t.MappingKV[
             RefactorRuleKind,
             tuple[
                 tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]],
@@ -227,7 +224,7 @@ class FlextInfraConstantsRefactor:
         ),
     })
     FILE_RULE_MATCHERS_BY_KIND: Final[
-        Mapping[
+        t.MappingKV[
             RefactorFileRuleKind,
             tuple[
                 tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]],
@@ -361,7 +358,7 @@ class FlextInfraConstantsRefactor:
         "FlextDbt",
     )
     "Class name prefixes that identify integration projects."
-    CONFIDENCE_TO_SCORE: Final[Mapping[str, float]] = MappingProxyType({
+    CONFIDENCE_TO_SCORE: Final[t.MappingKV[str, float]] = MappingProxyType({
         "high": 0.95,
         "medium": 0.75,
         "low": 0.55,
@@ -506,7 +503,7 @@ class FlextInfraConstantsRefactor:
     NAMESPACE_FILE_TO_FAMILY: Final[t.StrMapping] = MappingProxyType({
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     })
-    NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[Mapping[str, tuple[str, str]]] = (
+    NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[t.MappingKV[str, tuple[str, str]]] = (
         MappingProxyType({
             f"{suffix.lower()}.py": (alias, suffix)
             for alias, suffix in FAMILY_SUFFIXES.items()

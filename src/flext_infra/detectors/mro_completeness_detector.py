@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraMROCompletenessDetector:
@@ -19,7 +15,7 @@ class FlextInfraMROCompletenessDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.MROCompletenessViolation]:
+    ) -> t.SequenceOf[m.Infra.MROCompletenessViolation]:
         """Detect missing MRO bases: expected - declared = violations."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project

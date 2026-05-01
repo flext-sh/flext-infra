@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
@@ -220,7 +219,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def name_index(
         self,
-    ) -> Mapping[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
+    ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
         """Return a cached ``{name: ((path, surface, lines), ...)}`` workspace index.
 
         Built once per workspace session via a single regex scan of every

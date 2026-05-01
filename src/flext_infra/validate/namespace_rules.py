@@ -7,9 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -113,7 +110,7 @@ class FlextInfraNamespaceRules:
         prefix: str,
     ) -> t.StrSequence:
         """Rule 0 -- One namespace class per module."""
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         class_count = len(outer_classes)
@@ -156,7 +153,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         for cls in outer_classes:
@@ -182,7 +179,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         seq = 0
         for node in tree.body:
             seq, violations = self._check_loose_final(node, filepath, seq, violations)
@@ -206,8 +203,8 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
         seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
+        violations: t.MutableSequenceOf[str],
+    ) -> tuple[int, t.MutableSequenceOf[str]]:
         if not (
             isinstance(node, ast.AnnAssign)
             and self._annotation_contains(node.annotation, "Final")
@@ -226,8 +223,8 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
         seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
+        violations: t.MutableSequenceOf[str],
+    ) -> tuple[int, t.MutableSequenceOf[str]]:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return seq, violations
         func_name = self._get_call_name(node.value.func)
@@ -250,8 +247,8 @@ class FlextInfraNamespaceRules:
         cls: ast.ClassDef,
         filepath: Path,
         seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
+        violations: t.MutableSequenceOf[str],
+    ) -> tuple[int, t.MutableSequenceOf[str]]:
         for inner in cls.body:
             if isinstance(inner, ast.ClassDef) and any(
                 self._base_contains(b, base)
@@ -282,7 +279,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         for cls in outer_classes:
@@ -321,7 +318,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         seq = 0
         for node in tree.body:
             seq, violations = self._check_loose_typevar(
@@ -349,8 +346,8 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
         seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
+        violations: t.MutableSequenceOf[str],
+    ) -> tuple[int, t.MutableSequenceOf[str]]:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return seq, violations
         func_name = self._get_call_name(node.value.func)
@@ -368,8 +365,8 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
         seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
+        violations: t.MutableSequenceOf[str],
+    ) -> tuple[int, t.MutableSequenceOf[str]]:
         if not (
             isinstance(node, ast.AnnAssign)
             and self._annotation_contains(node.annotation, "TypeAlias")
@@ -387,8 +384,8 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
         seq: int,
-        violations: MutableSequence[str],
-    ) -> tuple[int, MutableSequence[str]]:
+        violations: t.MutableSequenceOf[str],
+    ) -> tuple[int, t.MutableSequenceOf[str]]:
         if not isinstance(node, ast.TypeAlias):
             return seq, violations
         name = getattr(node, c.Infra.DUNDER_NAME, None)
@@ -411,7 +408,7 @@ class FlextInfraNamespaceRules:
         # Private implementation directories may import sibling classes directly per AGENTS.md §4.
         if self._is_private_dir_file(filepath):
             return []
-        violations: MutableSequence[str] = []
+        violations: t.MutableSequenceOf[str] = []
         seq = 0
         owner_rules = self._owner_direct_facade_rules(class_stem)
         for node in ast.walk(tree):

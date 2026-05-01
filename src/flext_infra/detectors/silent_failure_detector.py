@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
-
-from flext_infra import m, u
+from flext_infra import m, t, u
 
 
 class FlextInfraSilentFailureDetector:
@@ -15,7 +11,7 @@ class FlextInfraSilentFailureDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.Issue]:
+    ) -> t.SequenceOf[m.Infra.Issue]:
         """Detect silent-failure findings in one Python file."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:

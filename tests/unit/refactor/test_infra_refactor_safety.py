@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import (
     MutableSequence,
-    Sequence,
 )
 from pathlib import Path
 from typing import overload, override
@@ -20,7 +19,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         """Initialize call capture state for assertions."""
         super().__init__()
         self.calls: MutableSequence[str] = []
-        self.kept_paths: Sequence[Path] = []
+        self.kept_paths: t.SequenceOf[Path] = []
 
     @override
     def create_pre_transformation_stash(
@@ -57,7 +56,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         return r[bool].ok(True)
 
     @override
-    def clear_checkpoint(self, *, keep: Sequence[Path] = ()) -> p.Result[bool]:
+    def clear_checkpoint(self, *, keep: t.SequenceOf[Path] = ()) -> p.Result[bool]:
         self.kept_paths = list(keep)
         self.calls.append("clear")
         return r[bool].ok(True)
@@ -166,4 +165,4 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
 
         assert created.success
         assert tracked_file.with_suffix(".py.bak").exists()
-        assert not untracked_file.with_suffix(".py.bak").exists()
+        assert untracked_file.with_suffix(".py.bak").exists()
