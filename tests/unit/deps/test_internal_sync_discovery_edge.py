@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Callable,
-    Mapping,
 )
 from pathlib import Path
 
@@ -42,7 +41,7 @@ class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
 
         def _collect(
             value: p.Result[t.Infra.ContainerDict],
-        ) -> p.Result[Mapping[str, Path]]:
+        ) -> p.Result[t.MappingKV[str, Path]]:
             service = FlextInfraInternalDependencySyncService()
             _set_toml_sequence(service, [value])
             result = service.collect_internal_deps(tmp_path)

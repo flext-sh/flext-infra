@@ -11,13 +11,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
 from types import MappingProxyType
 from typing import ClassVar, Final
 
 from flext_tests import FlextTestsConstants
 
-from flext_infra import c
+from flext_infra import c, t
 
 
 class TestsFlextInfraConstants(
@@ -84,7 +83,7 @@ class TestsFlextInfraConstants(
         PROJECT_A_NAME: Final[str] = "proj-a"
         PROJECT_B_NAME: Final[str] = "proj-b"
         PROJECT_NO_SRC_NAME: Final[str] = "no-src"
-        PROJECT_MEMBERS_BY_SCENARIO: ClassVar[Mapping[str, tuple[str, ...]]] = (
+        PROJECT_MEMBERS_BY_SCENARIO: ClassVar[t.MappingKV[str, tuple[str, ...]]] = (
             MappingProxyType({
                 "single": (DEMO_PROJECT_NAME,),
                 "filtered": (PROJECT_A_NAME, PROJECT_B_NAME),

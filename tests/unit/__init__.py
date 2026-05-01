@@ -333,6 +333,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraInfraWorkspaceOrchestrator",
             ),
             ".test_mro_service_base_alias": ("test_mro_service_base_alias",),
+            ".test_version_diag": ("test_version_diag",),
+            ".test_version_diag2": ("test_version_diag2",),
             ".transformers.test_infra_transformer_class_nesting": (
                 "TestsFlextInfraTransformersInfraTransformerClassNesting",
             ),
