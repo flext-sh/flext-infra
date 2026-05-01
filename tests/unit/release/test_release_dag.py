@@ -19,8 +19,8 @@ def _make_config(
 ) -> m.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         phases=list(phases) if phases is not None else list(c.Tests.ALL_PHASES),
         project_names=None,
         dry_run=dry_run,
@@ -28,7 +28,7 @@ def _make_config(
         dev_suffix=False,
         create_branches=False,
         next_dev=False,
-        next_bump="minor",
+        next_bump=c.Tests.RELEASE_BUMP_MINOR,
     )
 
 
@@ -48,9 +48,9 @@ class TestsFlextInfraReleaseDag:
         )
 
         assert result.success
-        report_dir = workspace / ".reports/release/v1.0.0"
+        report_dir = workspace / ".reports" / "release" / c.Tests.RELEASE_TAG_TARGET
         assert (report_dir / "build-report.json").is_file()
-        assert (report_dir / "RELEASE_NOTES.md").is_file()
+        assert (report_dir / c.Tests.RELEASE_NOTES_FILENAME).is_file()
 
     def test_release_selected_validate_phase_skips_release_artifacts(
         self,

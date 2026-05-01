@@ -8,6 +8,9 @@ from __future__ import annotations
 import pytest
 
 from flext_infra import workspace as workspace_module
+from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+from flext_infra.workspace.sync import FlextInfraSyncService
 
 
 class TestsFlextInfraInfraWorkspaceInit:
@@ -20,27 +23,18 @@ class TestsFlextInfraInfraWorkspaceInit:
 
     def test_lazy_import_orchestrator_service(self) -> None:
         """Test lazy import of FlextInfraOrchestratorService."""
-        orchestrator_cls = getattr(
-            workspace_module,
-            "FlextInfraOrchestratorService",
+        assert (
+            workspace_module.FlextInfraOrchestratorService
+            is FlextInfraOrchestratorService
         )
-
-        assert orchestrator_cls is not None
 
     def test_lazy_import_sync_service(self) -> None:
         """Test lazy import of FlextInfraSyncService."""
-        sync_service_cls = getattr(workspace_module, "FlextInfraSyncService")
-
-        assert sync_service_cls is not None
+        assert workspace_module.FlextInfraSyncService is FlextInfraSyncService
 
     def test_lazy_import_migrator(self) -> None:
         """Test lazy import of FlextInfraProjectMigrator."""
-        migrator_cls = getattr(
-            workspace_module,
-            "FlextInfraProjectMigrator",
-        )
-
-        assert migrator_cls is not None
+        assert workspace_module.FlextInfraProjectMigrator is FlextInfraProjectMigrator
 
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""

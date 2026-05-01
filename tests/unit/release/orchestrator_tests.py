@@ -21,8 +21,8 @@ def make_config(
 ) -> m.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         phases=phases or [c.Infra.VERB_VALIDATE],
         project_names=project_names,
         dry_run=dry_run,
@@ -39,7 +39,7 @@ def test_execute_validate_dry_run_succeeds(tmp_path: Path) -> None:
 
     result = FlextInfraReleaseOrchestrator.model_validate({
         "workspace_root": workspace,
-        "phase": c.Tests.ReleasePhase.VALIDATE,
+        "phase": c.Tests.RELEASE_PHASE_VALIDATE,
         "interactive": 0,
     }).execute()
 

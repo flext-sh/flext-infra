@@ -15,7 +15,7 @@ from tests import c, m, p, r, t, u
 def version_ctx(
     workspace_root: Path,
     *,
-    version: str = "1.0.0",
+    version: str = c.Tests.RELEASE_VERSION_TARGET,
     project_names: list[str] | None = None,
     dry_run: bool = False,
     dev_suffix: bool = False,
@@ -35,7 +35,7 @@ def version_ctx(
 def build_ctx(
     workspace_root: Path,
     *,
-    version: str = "1.0.0",
+    version: str = c.Tests.RELEASE_VERSION_TARGET,
     project_names: list[str] | None = None,
 ) -> m.Infra.ReleasePhaseDispatchConfig:
     return m.Infra.ReleasePhaseDispatchConfig(
@@ -80,9 +80,18 @@ def test_phase_version_updates_root_and_selected_project(tmp_path: Path) -> None
     )
 
     assert result.success
-    assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
-    assert 'version = "1.0.0"' in (workspace / "flext-a" / "pyproject.toml").read_text()
-    assert 'version = "0.1.0"' in (workspace / "flext-b" / "pyproject.toml").read_text()
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
+        in (workspace / "pyproject.toml").read_text()
+    )
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
+        in (workspace / "flext-a" / "pyproject.toml").read_text()
+    )
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_BASE}"'
+        in (workspace / "flext-b" / "pyproject.toml").read_text()
+    )
 
 
 def test_phase_version_dry_run_leaves_files_unchanged(tmp_path: Path) -> None:
@@ -93,7 +102,10 @@ def test_phase_version_dry_run_leaves_files_unchanged(tmp_path: Path) -> None:
     )
 
     assert result.success
-    assert 'version = "0.1.0"' in (workspace / "pyproject.toml").read_text()
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_BASE}"'
+        in (workspace / "pyproject.toml").read_text()
+    )
 
 
 def test_phase_build_writes_report_and_logs_for_root_and_project(
@@ -109,16 +121,36 @@ def test_phase_build_writes_report_and_logs_for_root_and_project(
     )
 
     assert result.success
-    report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
+    report_path = (
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / "build-report.json"
+    )
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["total"] == 2
     assert report["failures"] == 0
-    assert (workspace / ".reports" / "release" / "v1.0.0" / "build-root.log").is_file()
     assert (
-        workspace / ".reports" / "release" / "v1.0.0" / "build-flext-a.log"
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / "build-root.log"
+    ).is_file()
+    assert (
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / "build-flext-a.log"
     ).is_file()
     assert not (
-        workspace / ".reports" / "release" / "v1.0.0" / "build-flext-b.log"
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / "build-flext-b.log"
     ).exists()
 
 
@@ -131,10 +163,22 @@ def test_phase_build_failure_still_writes_report(tmp_path: Path) -> None:
     result = FlextInfraReleaseOrchestrator().phase_build(build_ctx(workspace))
 
     assert result.failure
-    report_path = workspace / ".reports" / "release" / "v1.0.0" / "build-report.json"
+    report_path = (
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / "build-report.json"
+    )
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["failures"] == 1
-    assert (workspace / ".reports" / "release" / "v1.0.0" / "build-root.log").is_file()
+    assert (
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / "build-root.log"
+    ).is_file()
 
 
 def test_run_make_propagates_command_failure(
@@ -236,8 +280,8 @@ def test_phase_publish_fails_when_report_dir_creation_raises(
         m.Infra.ReleasePhaseDispatchConfig(
             phase=c.Infra.VERB_PUBLISH,
             workspace_root=workspace,
-            version="1.0.0",
-            tag="v1.0.0",
+            version=c.Tests.RELEASE_VERSION_TARGET,
+            tag=c.Tests.RELEASE_TAG_TARGET,
             project_names=[],
             dry_run=True,
             push=False,
@@ -275,8 +319,8 @@ def test_phase_publish_propagates_generate_notes_failure(
         m.Infra.ReleasePhaseDispatchConfig(
             phase=c.Infra.VERB_PUBLISH,
             workspace_root=workspace,
-            version="1.0.0",
-            tag="v1.0.0",
+            version=c.Tests.RELEASE_VERSION_TARGET,
+            tag=c.Tests.RELEASE_TAG_TARGET,
             project_names=[],
             dry_run=False,
             push=False,
@@ -314,8 +358,8 @@ def test_phase_publish_fails_when_notes_file_missing(
         m.Infra.ReleasePhaseDispatchConfig(
             phase=c.Infra.VERB_PUBLISH,
             workspace_root=workspace,
-            version="1.0.0",
-            tag="v1.0.0",
+            version=c.Tests.RELEASE_VERSION_TARGET,
+            tag=c.Tests.RELEASE_TAG_TARGET,
             project_names=[],
             dry_run=False,
             push=False,
@@ -349,8 +393,8 @@ def test_publish_apply_propagates_changelog_failure(
 
     result = FlextInfraReleaseOrchestrator()._publish_apply(
         workspace_root=workspace,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         notes_path=workspace / "notes.md",
         push=False,
     )
@@ -381,8 +425,8 @@ def test_publish_apply_propagates_tag_creation_failure(
 
     result = FlextInfraReleaseOrchestrator()._publish_apply(
         workspace_root=workspace,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         notes_path=notes_path,
         push=False,
     )
@@ -401,8 +445,8 @@ def test_phase_publish_apply_success_path(tmp_path: Path) -> None:
         m.Infra.ReleasePhaseDispatchConfig(
             phase=c.Infra.VERB_PUBLISH,
             workspace_root=workspace,
-            version="1.0.0",
-            tag="v1.0.0",
+            version=c.Tests.RELEASE_VERSION_TARGET,
+            tag=c.Tests.RELEASE_TAG_TARGET,
             project_names=[],
             dry_run=False,
             push=False,
@@ -446,8 +490,8 @@ def test_phase_publish_propagates_apply_failure(
         m.Infra.ReleasePhaseDispatchConfig(
             phase=c.Infra.VERB_PUBLISH,
             workspace_root=workspace,
-            version="1.0.0",
-            tag="v1.0.0",
+            version=c.Tests.RELEASE_VERSION_TARGET,
+            tag=c.Tests.RELEASE_TAG_TARGET,
             project_names=[],
             dry_run=False,
             push=False,
@@ -488,8 +532,8 @@ def test_publish_apply_push_failure_is_propagated(
 
     result = FlextInfraReleaseOrchestrator()._publish_apply(
         workspace_root=workspace,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         notes_path=notes_path,
         push=True,
     )
@@ -522,7 +566,7 @@ def test_version_update_files_skips_missing_file(tmp_path: Path) -> None:
     orchestrator = FlextInfraReleaseOrchestrator()
     changed = orchestrator._version_update_files(
         files=[tmp_path / "missing" / "pyproject.toml"],
-        target="1.0.0",
+        target=c.Tests.RELEASE_VERSION_TARGET,
         dry_run=False,
     )
 
@@ -535,13 +579,13 @@ def test_version_update_files_skips_when_target_already_matches(
     orchestrator = FlextInfraReleaseOrchestrator()
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
-        '[project]\nname = "demo"\nversion = "1.0.0"\n',
+        f'[project]\nname = "demo"\nversion = "{c.Tests.RELEASE_VERSION_TARGET}"\n',
         encoding=c.Cli.ENCODING_DEFAULT,
     )
 
     changed = orchestrator._version_update_files(
         files=[pyproject],
-        target="1.0.0",
+        target=c.Tests.RELEASE_VERSION_TARGET,
         dry_run=False,
     )
 
@@ -558,18 +602,18 @@ def test_orchestrator_phases_abstract_methods_raise() -> None:
             m.Infra.ReleasePhaseDispatchConfig(
                 phase=c.Infra.VERB_PUBLISH,
                 workspace_root=Path(),
-                version="1.0.0",
-                tag="v1.0.0",
+                version=c.Tests.RELEASE_VERSION_TARGET,
+                tag=c.Tests.RELEASE_TAG_TARGET,
                 project_names=[],
                 dry_run=False,
                 push=False,
                 dev_suffix=False,
             ),
-            Path("RELEASE_NOTES.md"),
+            Path(c.Tests.RELEASE_NOTES_FILENAME),
         )
     with pytest.raises(NotImplementedError):
-        phases._create_tag(Path(), "v1.0.0")
+        phases._create_tag(Path(), c.Tests.RELEASE_TAG_TARGET)
     with pytest.raises(NotImplementedError):
-        phases._push_release(Path(), "v1.0.0")
+        phases._push_release(Path(), c.Tests.RELEASE_TAG_TARGET)
     with pytest.raises(NotImplementedError):
         phases._version_files(Path(), [])

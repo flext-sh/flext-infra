@@ -23,13 +23,15 @@ def test_release_orchestrator_defaults_are_public_and_typed() -> None:
     assert list(params.phase_names) == list(c.Infra.ReleasePhase)
     assert params.project_names is None
     assert params.push is False
-    assert params.next_bump == "minor"
+    assert params.next_bump == c.Tests.RELEASE_BUMP_MINOR
 
 
 def test_release_orchestrator_normalizes_phase_and_projects() -> None:
     params = FlextInfraReleaseOrchestrator.model_validate(
         {
-            "phase": f"{c.Tests.ReleasePhase.VALIDATE} {c.Tests.ReleasePhase.BUILD}",
+            "phase": (
+                f"{c.Tests.RELEASE_PHASE_VALIDATE} {c.Tests.RELEASE_PHASE_BUILD}"
+            ),
             "projects": ["flext-core", "flext-api"],
             "interactive": 0,
             "create_branches": 0,
@@ -57,7 +59,7 @@ def test_release_run_validate_dry_run_succeeds(
             "--workspace",
             str(workspace),
             "--phase",
-            c.Tests.ReleasePhase.VALIDATE,
+            c.Tests.RELEASE_PHASE_VALIDATE,
             "--interactive",
             "0",
             "--dry-run",
@@ -82,7 +84,7 @@ def test_release_run_validate_apply_propagates_make_failure(
             "--workspace",
             str(workspace),
             "--phase",
-            c.Tests.ReleasePhase.VALIDATE,
+            c.Tests.RELEASE_PHASE_VALIDATE,
             "--interactive",
             "0",
             "--apply",

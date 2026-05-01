@@ -18,6 +18,7 @@ from types import SimpleNamespace
 import pytest
 
 from flext_infra import r
+from tests.constants import c
 from tests.models import m
 from tests.protocols import p
 from tests.typings import t
@@ -107,7 +108,7 @@ class FakeUtilsNamespace:
 class FakeVersioning:
     """Fake for FlextInfraUtilitiesVersioning."""
 
-    _parse_result: p.Result[str] = r[str].ok("1.0.0")
+    _parse_result: p.Result[str] = r[str].ok(c.Tests.RELEASE_VERSION_TARGET)
     _bump_result: p.Result[str] = r[str].ok("1.1.0")
     _replace_called: bool = False
 

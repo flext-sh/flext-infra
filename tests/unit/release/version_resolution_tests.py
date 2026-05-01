@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraReleaseOrchestrator
+from tests.constants import c
 
 
 def make_command(
@@ -13,7 +14,7 @@ def make_command(
 ) -> FlextInfraReleaseOrchestrator:
     return FlextInfraReleaseOrchestrator.model_validate({
         "workspace_root": workspace_root,
-        "phase": "version",
+        "phase": c.Tests.RELEASE_PHASE_VERSION,
         "interactive": 0,
         "create_branches": 0,
         "apply_changes": True,
@@ -31,11 +32,14 @@ def test_execute_with_explicit_version_updates_workspace_file(tmp_path: Path) ->
 
     result = make_command(
         workspace,
-        version="1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
     ).execute()
 
     assert result.success
-    assert 'version = "1.0.0"' in (workspace / "pyproject.toml").read_text()
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
+        in (workspace / "pyproject.toml").read_text()
+    )
 
 
 def test_execute_with_dev_suffix_appends_dev_version(tmp_path: Path) -> None:
@@ -48,12 +52,15 @@ def test_execute_with_dev_suffix_appends_dev_version(tmp_path: Path) -> None:
 
     result = make_command(
         workspace,
-        version="1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
         dev_suffix=True,
     ).execute()
 
     assert result.success
-    assert 'version = "1.0.0-dev"' in (workspace / "pyproject.toml").read_text()
+    assert (
+        f'version = "{c.Tests.RELEASE_VERSION_TARGET}-dev"'
+        in (workspace / "pyproject.toml").read_text()
+    )
 
 
 def test_execute_with_bump_uses_current_workspace_version(tmp_path: Path) -> None:
@@ -72,8 +79,8 @@ def test_execute_with_bump_uses_current_workspace_version(tmp_path: Path) -> Non
 
     result = make_command(
         workspace,
-        phase="build",
-        bump="minor",
+        phase=c.Tests.RELEASE_PHASE_BUILD,
+        bump=c.Tests.RELEASE_BUMP_MINOR,
     ).execute()
 
     assert result.success
@@ -108,8 +115,8 @@ def test_execute_with_invalid_tag_prefix_fails(tmp_path: Path) -> None:
 
     result = make_command(
         workspace,
-        version="1.0.0",
-        tag="1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_VERSION_TARGET,
     ).execute()
 
     assert result.failure

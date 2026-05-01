@@ -62,9 +62,6 @@ class TestsFlextInfraInfraConstantsExtra:
     def test_c_alias_is_string(self) -> None:
         tm.that(c, is_=type)
 
-    def test_c_alias_provides_access_to_namespaces(self) -> None:
-        pass
-
     def test_c_alias_access_to_constants(self) -> None:
         tm.that(c.Infra.VENV_BIN_REL, eq=".venv/bin")
         tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
@@ -72,11 +69,11 @@ class TestsFlextInfraInfraConstantsExtra:
 
     def test_excluded_dirs_are_immutable(self) -> None:
         excluded = c.Infra.COMMON_EXCLUDED_DIRS
-        tm.that(not hasattr(excluded, "add"), eq=True)
+        tm.that(excluded, is_=frozenset)
 
     def test_check_dirs_are_immutable(self) -> None:
         dirs = c.Infra.DEFAULT_CHECK_DIRS
-        tm.that(not hasattr(dirs, "append"), eq=True)
+        tm.that(dirs, is_=tuple)
 
     def test_all_status_values_are_uppercase(self) -> None:
         tm.that(c.Infra.ResultStatus.PASSED.isupper(), eq=True)

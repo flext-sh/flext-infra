@@ -25,7 +25,7 @@ def test_main_validate_apply_succeeds(tmp_path: Path) -> None:
     result = run_release_main(
         workspace,
         "--phase",
-        c.Tests.ReleasePhase.VALIDATE,
+        c.Tests.RELEASE_PHASE_VALIDATE,
         "--interactive",
         "0",
         "--create-branches",
@@ -45,7 +45,7 @@ def test_main_version_apply_updates_root_and_selected_project(tmp_path: Path) ->
     result = run_release_main(
         workspace,
         "--phase",
-        c.Tests.ReleasePhase.VERSION,
+        c.Tests.RELEASE_PHASE_VERSION,
         "--version",
         c.Tests.RELEASE_VERSION_SELECTED,
         "--projects",
@@ -80,7 +80,7 @@ def test_main_build_with_bump_uses_resolved_version_in_report_dir(
     result = run_release_main(
         workspace,
         "--phase",
-        c.Tests.ReleasePhase.BUILD,
+        c.Tests.RELEASE_PHASE_BUILD,
         "--bump",
         c.Tests.RELEASE_BUMP_MINOR,
         "--interactive",
@@ -113,10 +113,18 @@ def test_main_all_dry_run_writes_release_artifacts(tmp_path: Path) -> None:
 
     assert result == 0
     assert (
-        workspace / ".reports" / "release" / "v0.1.0" / "build-report.json"
+        workspace
+        / ".reports"
+        / "release"
+        / f"v{c.Tests.RELEASE_VERSION_BASE}"
+        / "build-report.json"
     ).is_file()
     assert (
-        workspace / ".reports" / "release" / "v0.1.0" / "RELEASE_NOTES.md"
+        workspace
+        / ".reports"
+        / "release"
+        / f"v{c.Tests.RELEASE_VERSION_BASE}"
+        / c.Tests.RELEASE_NOTES_FILENAME
     ).is_file()
 
 
@@ -126,7 +134,7 @@ def test_main_invalid_version_returns_failure(tmp_path: Path) -> None:
     result = run_release_main(
         workspace,
         "--phase",
-        c.Tests.ReleasePhase.VERSION,
+        c.Tests.RELEASE_PHASE_VERSION,
         "--version",
         "invalid",
         "--interactive",

@@ -20,8 +20,8 @@ def make_config(
 ) -> m.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         phases=[phase],
         project_names=project_names,
         dry_run=False,
@@ -29,7 +29,7 @@ def make_config(
         dev_suffix=False,
         create_branches=True,
         next_dev=False,
-        next_bump="minor",
+        next_bump=c.Tests.RELEASE_BUMP_MINOR,
     )
 
 
@@ -41,8 +41,8 @@ def publish_ctx(
     return m.Infra.ReleasePhaseDispatchConfig(
         phase=c.Infra.VERB_PUBLISH,
         workspace_root=workspace_root,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         project_names=[],
         dry_run=False,
         push=push,
@@ -101,9 +101,17 @@ def test_run_release_creates_branches_for_root_and_selected_project(
     )
 
     assert result.success
-    assert git_ref_exists(workspace, "refs/heads/release/1.0.0")
-    assert git_ref_exists(workspace / "flext-a", "refs/heads/release/1.0.0")
-    assert not git_ref_exists(workspace / "flext-b", "refs/heads/release/1.0.0")
+    assert git_ref_exists(
+        workspace, f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}"
+    )
+    assert git_ref_exists(
+        workspace / "flext-a",
+        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
+    )
+    assert not git_ref_exists(
+        workspace / "flext-b",
+        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
+    )
 
 
 def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
@@ -112,7 +120,14 @@ def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
         initialize_root_git=True,
     )
     assert u.Cli.run_checked(
-        ["git", "tag", "-a", "v1.0.0", "-m", "release: v1.0.0"],
+        [
+            "git",
+            "tag",
+            "-a",
+            c.Tests.RELEASE_TAG_TARGET,
+            "-m",
+            f"release: {c.Tests.RELEASE_TAG_TARGET}",
+        ],
         cwd=workspace,
     ).success
 
@@ -121,8 +136,10 @@ def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
     assert result.success
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (
-        u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap()
-        == "v1.0.0"
+        u.Cli.capture(
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+        ).unwrap()
+        == c.Tests.RELEASE_TAG_TARGET
     )
 
 
@@ -139,6 +156,8 @@ def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
 
     assert result.success
     assert (
-        u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap()
-        == "v1.0.0"
+        u.Cli.capture(
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+        ).unwrap()
+        == c.Tests.RELEASE_TAG_TARGET
     )

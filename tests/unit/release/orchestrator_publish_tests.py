@@ -20,8 +20,8 @@ def publish_ctx(
     return m.Infra.ReleasePhaseDispatchConfig(
         phase=c.Infra.VERB_PUBLISH,
         workspace_root=workspace_root,
-        version="1.0.0",
-        tag="v1.0.0",
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
         project_names=project_names or [],
         dry_run=dry_run,
         push=push,
@@ -41,10 +41,19 @@ def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
 
     assert result.success
     assert (
-        workspace / ".reports" / "release" / "v1.0.0" / "RELEASE_NOTES.md"
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / c.Tests.RELEASE_NOTES_FILENAME
     ).is_file()
     assert not (workspace / "docs" / "CHANGELOG.md").exists()
-    assert u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap() == ""
+    assert (
+        u.Cli.capture(
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+        ).unwrap()
+        == ""
+    )
 
 
 def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> None:
@@ -58,10 +67,14 @@ def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> Non
     assert result.success
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (workspace / "docs" / "releases" / "latest.md").is_file()
-    assert (workspace / "docs" / "releases" / "v1.0.0.md").is_file()
     assert (
-        u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap()
-        == "v1.0.0"
+        workspace / "docs" / "releases" / f"{c.Tests.RELEASE_TAG_TARGET}.md"
+    ).is_file()
+    assert (
+        u.Cli.capture(
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+        ).unwrap()
+        == c.Tests.RELEASE_TAG_TARGET
     )
 
 
@@ -80,8 +93,10 @@ def test_phase_publish_push_without_origin_fails_after_local_tagging(
     assert result.failure
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (
-        u.Cli.capture(["git", "tag", "-l", "v1.0.0"], cwd=workspace).unwrap()
-        == "v1.0.0"
+        u.Cli.capture(
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+        ).unwrap()
+        == c.Tests.RELEASE_TAG_TARGET
     )
 
 
@@ -100,7 +115,13 @@ def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> N
         ),
     )
 
-    notes_path = workspace / ".reports" / "release" / "v1.0.0" / "RELEASE_NOTES.md"
+    notes_path = (
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / c.Tests.RELEASE_NOTES_FILENAME
+    )
     notes = notes_path.read_text(encoding="utf-8")
 
     assert result.success

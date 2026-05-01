@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import ClassVar, Final
 
@@ -35,18 +34,16 @@ class TestsFlextInfraConstants(
     class Tests(FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
-        @unique
-        class ReleasePhase(StrEnum):
-            VALIDATE = c.Infra.VERB_VALIDATE
-            VERSION = c.Infra.VERSION
-            BUILD = c.Infra.DIR_BUILD
-            PUBLISH = c.Infra.VERB_PUBLISH
+        RELEASE_PHASE_VALIDATE: Final[str] = c.Infra.VERB_VALIDATE
+        RELEASE_PHASE_VERSION: Final[str] = c.Infra.VERSION
+        RELEASE_PHASE_BUILD: Final[str] = c.Infra.DIR_BUILD
+        RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.VERB_PUBLISH
 
         ALL_PHASES: Final[tuple[str, ...]] = (
-            ReleasePhase.VALIDATE,
-            ReleasePhase.VERSION,
-            ReleasePhase.BUILD,
-            ReleasePhase.PUBLISH,
+            RELEASE_PHASE_VALIDATE,
+            RELEASE_PHASE_VERSION,
+            RELEASE_PHASE_BUILD,
+            RELEASE_PHASE_PUBLISH,
         )
 
         LOG_NOISE_LINES: Final[tuple[str, ...]] = (
@@ -115,6 +112,17 @@ class TestsFlextInfraConstants(
         RELEASE_PROJECTS: Final[tuple[str, str]] = (
             "flext-a",
             "flext-b",
+        )
+        RELEASE_TAG_TARGET: Final[str] = "v1.0.0"
+        RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
+        RELEASE_NOTES_HEADING: Final[str] = "# Release v1.0.0"
+        RELEASE_NOTES_CHANGE_LINE: Final[str] = "- abc123 fix release flow"
+        RELEASE_INITIAL_CHANGE_LINE: Final[str] = "- Initial tagged release"
+        RELEASE_CHANGELOG_HEADER: Final[str] = "# Changelog\n\n"
+        RELEASE_VERIFICATION_LINES: Final[tuple[str, ...]] = (
+            "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all",
+            "- make val VALIDATE_SCOPE=workspace",
+            "- make build",
         )
 
 
