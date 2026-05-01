@@ -1,0 +1,36 @@
+tests/unit/release/orchestrator_phases_tests.py
+  h_9db9d35f50cf33 8-9,11-12,138-575
+src/flext_infra/deps/phases/ensure_coverage.py
+  h_9db9d35f50cf33 44
+tests/unit/codegen/test_codegen_py_typed.py
+  h_9db9d35f50cf33 11-12,62-64,66-68,74,108-109,118-132
+tests/unit/_utilities/test_log_parser.py
+  h_9db9d35f50cf33 104,126-128
+tests/unit/release/flow_tests.py
+  h_9db9d35f50cf33 8,28,42,48,50,52,61,64-65,67-68
+tests/unit/release/main_tests.py
+  h_9db9d35f50cf33 32,60,85
+src/flext_infra/_models/deps_tool_config.py
+  h_9db9d35f50cf33 112-119
+tests/unit/codegen/test_codegen_version_file.py
+  h_9db9d35f50cf33 10,12,14,40,50,62-120,200,206,247
+tests/unit/release/orchestrator_tests.py
+  h_9db9d35f50cf33 33,42,106,109,112
+src/flext_infra/deps/tool_config.yml
+  h_9db9d35f50cf33 510-513
+tests/constants.py
+  h_9db9d35f50cf33 77-83,103-107,109-118
+tests/unit/deps/test_modernizer_coverage.py
+  h_9db9d35f50cf33 56-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e35d2342436f9e036e3d3b6a9e85f1fb5d9c97c6",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
