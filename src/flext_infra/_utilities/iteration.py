@@ -18,7 +18,6 @@ from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Rep
 from tomlkit import TOMLDocument
 
 from flext_cli import u
-from flext_core import u as core_u
 from flext_infra import c, p, r, t
 
 
@@ -516,7 +515,13 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     def namespace_scan_dirs(project_root: Path) -> frozenset[str]:
-        """Return configured scan dirs for namespace enforcement."""
+        """Return configured scan dirs for namespace enforcement.
+
+        Priority:
+        1. Explicit ``[tool.flext.namespace] scan_dirs`` in pyproject.toml.
+        2. Git-tracked top-level directories that exist on disk (dynamic).
+        3. Fixed candidate list filtered by ``is_dir()`` (fallback).
+        """
         configured = FlextInfraUtilitiesIteration.namespace_meta(project_root).get(
             "scan_dirs",
         )
@@ -526,7 +531,22 @@ class FlextInfraUtilitiesIteration:
             )
             if normalized:
                 return normalized
-        return frozenset(core_u.read_project_constants("flext-infra").SCAN_DIRECTORIES)
+        tracked = FlextInfraUtilitiesIteration._git_tracked_top_level_dir_names(
+            project_root,
+        )
+        if tracked is not None:
+            excluded = c.Infra.COMMON_EXCLUDED_DIRS | {
+                name for name in tracked if name.startswith(".")
+            }
+            dynamic = frozenset(
+                name
+                for name in tracked
+                if name not in excluded and (project_root / name).is_dir()
+            )
+            if dynamic:
+                return dynamic
+        candidates = ("docs", "examples", "scripts", "src", "tests")
+        return frozenset(name for name in candidates if (project_root / name).is_dir())
 
     @staticmethod
     def namespace_include_dynamic_dirs(project_root: Path) -> bool:
@@ -763,7 +783,15 @@ class FlextInfraUtilitiesIteration:
         if not pyproject_path.exists() and not go_mod_path.exists():
             return False
         if go_mod_path.exists():
-            return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
+            if effective_scan_dirs:
+                return any(
+                    (path / dir_name).is_dir() for dir_name in effective_scan_dirs
+                )
+            return any(
+                child.is_dir() and any(child.rglob("*.go"))
+                for child in path.iterdir()
+                if not child.name.startswith(".")
+            )
         if path.name in configured_member_set:
             return True
         if (path / c.Infra.MAKEFILE_FILENAME).exists():
@@ -778,7 +806,9 @@ class FlextInfraUtilitiesIteration:
         )
         if c.Infra.PKG_CORE in dependency_names:
             return True
-        return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
+        if effective_scan_dirs:
+            return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
+        return True
 
     @classmethod
     def _attached_top_level_dir_names(cls, scope_root: Path) -> frozenset[str]:
@@ -824,9 +854,7 @@ class FlextInfraUtilitiesIteration:
         Default (False) preserves workspace-submodule-only enumeration.
         """
         roots: t.MutableSequenceOf[Path] = []
-        effective_scan_dirs = scan_dirs or frozenset(
-            core_u.read_project_constants("flext-infra").SCAN_DIRECTORIES
-        )
+        effective_scan_dirs = scan_dirs or frozenset()
         configured_members = FlextInfraUtilitiesIteration.workspace_member_names(
             workspace_root,
         )
@@ -1064,8 +1092,8 @@ class FlextInfraUtilitiesIteration:
             if not subdir.is_dir():
                 continue
             dir_name = subdir.name
-            if dir_name in frozenset(
-                core_u.read_project_constants("flext-infra").SCAN_DIRECTORIES
+            if dir_name in FlextInfraUtilitiesIteration.namespace_scan_dirs(
+                project_root,
             ):
                 continue
             if dir_name.startswith("."):

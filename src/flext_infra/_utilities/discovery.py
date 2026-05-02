@@ -7,7 +7,14 @@ from functools import cache
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import FlextInfraUtilitiesDocsScope, c, p, r, t, u
+from flext_infra import (
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesIteration,
+    c,
+    p,
+    r,
+    t,
+)
 
 
 class FlextInfraUtilitiesDiscovery:
@@ -372,10 +379,6 @@ class FlextInfraUtilitiesDiscovery:
             for child in workspace_root.iterdir()
             if child.is_dir()
             and not child.name.startswith(".")
-            and any(
-                (child / dir_name).is_dir()
-                for dir_name in u.read_project_constants("flext-infra").SCAN_DIRECTORIES
-            )
             and (
                 (child / c.Infra.PYPROJECT_FILENAME).is_file()
                 or (child / c.Infra.GO_MOD).is_file()
@@ -386,10 +389,6 @@ class FlextInfraUtilitiesDiscovery:
     def rope_workspace_root(workspace_root: Path) -> Path:
         """Return the canonical root for a shared Rope project."""
         resolved_root = workspace_root.resolve()
-        scan_dirs = u.read_project_constants("flext-infra").SCAN_DIRECTORIES
-        has_local_scan_dirs = any(
-            (resolved_root / dir_name).is_dir() for dir_name in scan_dirs
-        )
         has_project_marker = any(
             candidate.is_file()
             for candidate in (
@@ -398,7 +397,9 @@ class FlextInfraUtilitiesDiscovery:
                 resolved_root / c.Infra.MAKEFILE_FILENAME,
             )
         )
-        if has_local_scan_dirs and not has_project_marker:
+        if not has_project_marker and FlextInfraUtilitiesIteration.namespace_scan_dirs(
+            resolved_root
+        ):
             return resolved_root
         if FlextInfraUtilitiesDiscovery._child_project_roots(resolved_root):
             return resolved_root

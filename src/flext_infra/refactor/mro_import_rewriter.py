@@ -263,9 +263,7 @@ class FlextInfraRefactorMROImportRewriter:
             iter_result = u.Infra.iter_python_files(
                 workspace_root=workspace_root,
                 project_roots=[project_root],
-                src_dirs=frozenset(
-                    u.read_project_constants("flext-infra").SCAN_DIRECTORIES
-                ),
+                src_dirs=u.Infra.namespace_scan_dirs(project_root),
             )
             if iter_result.failure:
                 continue

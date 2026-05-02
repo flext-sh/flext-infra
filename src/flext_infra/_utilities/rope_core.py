@@ -21,7 +21,7 @@ from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction, PyModule
 from rope.base.resources import File
 
-from flext_infra import FlextInfraUtilitiesIteration, c, t, u
+from flext_infra import FlextInfraUtilitiesIteration, c, t
 from flext_infra._utilities.rope_pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
@@ -54,14 +54,15 @@ class FlextInfraUtilitiesRopeCore:
         _ = (project_prefix, src_dir)
         FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
-        scan_dirs = u.read_project_constants("flext-infra").SCAN_DIRECTORIES
+        project_roots = FlextInfraUtilitiesIteration.discover_project_roots(
+            resolved_root,
+        )
         source_folders = sorted({
             str(scan_path.relative_to(resolved_root))
-            for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
-                resolved_root,
-                scan_dirs=frozenset(scan_dirs),
+            for project_root in project_roots
+            for dir_name in FlextInfraUtilitiesIteration.namespace_scan_dirs(
+                project_root,
             )
-            for dir_name in scan_dirs
             if (scan_path := project_root / dir_name).is_dir()
         })
         with warnings.catch_warnings():

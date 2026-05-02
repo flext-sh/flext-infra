@@ -42,12 +42,12 @@ class FlextInfraUtilitiesRefactorMroScan:
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
         project_name_set: set[str] = set(project_names or ())
-        scan_dirs = frozenset(u.read_project_constants("flext-infra").SCAN_DIRECTORIES)
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root,
         ):
             if project_name_set and project_root.name not in project_name_set:
                 continue
+            scan_dirs = FlextInfraUtilitiesIteration.namespace_scan_dirs(project_root)
             iter_result = FlextInfraUtilitiesIteration.iter_python_files(
                 workspace_root=project_root,
                 project_roots=[project_root],

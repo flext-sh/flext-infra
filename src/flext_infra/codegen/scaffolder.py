@@ -118,29 +118,31 @@ class FlextInfraCodegenScaffolder(s[str]):
                 files_skipped=files_skipped,
             )
         examples_dir = project_path / c.Infra.DIR_EXAMPLES
-        if examples_dir.is_dir():
-            self._scaffold_dir(
-                target_dir=examples_dir,
-                prefix=project_layout.class_stem,
-                modules=c.Infra.SRC_MODULES,
-                test_prefix="Examples",
-                inherit_project_facade=True,
-                dry_run=dry_run,
-                files_created=files_created,
-                files_skipped=files_skipped,
-            )
+        if not dry_run:
+            examples_dir.mkdir(parents=True, exist_ok=True)
+        self._scaffold_dir(
+            target_dir=examples_dir,
+            prefix=project_layout.class_stem,
+            modules=c.Infra.SRC_MODULES,
+            test_prefix="Examples",
+            inherit_project_facade=True,
+            dry_run=dry_run,
+            files_created=files_created,
+            files_skipped=files_skipped,
+        )
         scripts_dir = project_path / c.Infra.DIR_SCRIPTS
-        if scripts_dir.is_dir():
-            self._scaffold_dir(
-                target_dir=scripts_dir,
-                prefix=project_layout.class_stem,
-                modules=c.Infra.SRC_MODULES,
-                test_prefix="Scripts",
-                inherit_project_facade=True,
-                dry_run=dry_run,
-                files_created=files_created,
-                files_skipped=files_skipped,
-            )
+        if not dry_run:
+            scripts_dir.mkdir(parents=True, exist_ok=True)
+        self._scaffold_dir(
+            target_dir=scripts_dir,
+            prefix=project_layout.class_stem,
+            modules=c.Infra.SRC_MODULES,
+            test_prefix="Scripts",
+            inherit_project_facade=True,
+            dry_run=dry_run,
+            files_created=files_created,
+            files_skipped=files_skipped,
+        )
         return m.Infra.ScaffoldResult(
             project=project_path.name,
             files_created=files_created,

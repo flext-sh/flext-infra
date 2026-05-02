@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesRopeCore, c, m, t, u
+from flext_infra import FlextInfraUtilitiesRopeCore, c, m, t
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -15,13 +15,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         workspace_root: Path,
         file_path: Path,
     ) -> Path | None:
-        scan_dirs = frozenset(u.read_project_constants("flext-infra").SCAN_DIRECTORIES)
         for parent in file_path.parents:
-            if (
-                parent.name in scan_dirs
-                and (parent.parent / "pyproject.toml").is_file()
-            ):
-                return parent.parent.resolve()
+            if (parent / "pyproject.toml").is_file():
+                return parent.resolve()
             if parent == workspace_root:
                 return workspace_root
         return None
