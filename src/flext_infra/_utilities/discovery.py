@@ -316,7 +316,7 @@ class FlextInfraUtilitiesDiscovery:
             return frozenset()
         try:
             module = ast.parse(init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
-        except (OSError, SyntaxError):
+        except c.EXC_OS_SYNTAX:
             return frozenset()
         for node in module.body:
             if not isinstance(node, ast.Assign):
@@ -474,7 +474,7 @@ class FlextInfraUtilitiesDiscovery:
             syntax_tree = ast.parse(
                 constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
             )
-        except (OSError, SyntaxError):
+        except c.EXC_OS_SYNTAX:
             syntax_tree = ast.Module(body=[], type_ignores=[])
         declared_imports_ast = cls._declared_imports_ast(syntax_tree)
         discovered_classes = [

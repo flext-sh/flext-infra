@@ -109,7 +109,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         """Parse a Python file into an AST, returning None on failure."""
         try:
             return ast.parse(path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
-        except (OSError, SyntaxError):
+        except c.EXC_OS_SYNTAX:
             return None
 
     def _is_namespace_governed_file(self, rel_path: Path) -> bool:
