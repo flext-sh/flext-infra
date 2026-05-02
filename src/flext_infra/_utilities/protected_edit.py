@@ -163,45 +163,35 @@ class FlextInfraUtilitiesProtectedEdit:
             ruff_tool, ruff_lines = _run_gate("ruff", ruff_template)
             if ruff_lines:
                 errors[ruff_tool] = ruff_lines
-                if cache_key is not None:
-                    cls._snapshot_cache[cache_key] = dict(errors)
-                return errors
-            if cache_key is not None:
-                cls._snapshot_cache[cache_key] = dict(errors)
-            return errors
 
         remaining_tools = tuple(
             (tool, tmpl) for tool, tmpl in selected_tools if tool != "ruff"
         )
-        if not remaining_tools:
-            if cache_key is not None:
-                cls._snapshot_cache[cache_key] = dict(errors)
-            return errors
-
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(remaining_tools)),
-        ) as pool:
-            futures_by_tool = {
-                pool.submit(_run_gate, tool, tmpl): tool
-                for tool, tmpl in remaining_tools
-            }
-            timeout_budget = max(1, gate_timeout + 10)
-            try:
-                for future in concurrent.futures.as_completed(
-                    tuple(futures_by_tool),
-                    timeout=timeout_budget,
-                ):
-                    tool_name, lines = future.result()
-                    if lines:
-                        errors[tool_name] = lines
-            except concurrent.futures.TimeoutError:
-                for future, tool_name in futures_by_tool.items():
-                    if future.done():
-                        continue
-                    _ = future.cancel()
-                    errors[tool_name] = [
-                        f"timeout {timeout_budget}s: lint gate '{tool_name}' did not finish"
-                    ]
+        if remaining_tools:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=max(1, len(remaining_tools)),
+            ) as pool:
+                futures_by_tool = {
+                    pool.submit(_run_gate, tool, tmpl): tool
+                    for tool, tmpl in remaining_tools
+                }
+                timeout_budget = max(1, gate_timeout + 10)
+                try:
+                    for future in concurrent.futures.as_completed(
+                        tuple(futures_by_tool),
+                        timeout=timeout_budget,
+                    ):
+                        tool_name, lines = future.result()
+                        if lines:
+                            errors[tool_name] = lines
+                except concurrent.futures.TimeoutError:
+                    for future, tool_name in futures_by_tool.items():
+                        if future.done():
+                            continue
+                        _ = future.cancel()
+                        errors[tool_name] = [
+                            f"timeout {timeout_budget}s: lint gate '{tool_name}' did not finish"
+                        ]
         if cache_key is not None:
             cls._snapshot_cache[cache_key] = dict(errors)
         return errors
@@ -367,24 +357,28 @@ class FlextInfraUtilitiesProtectedEdit:
             env=FlextInfraUtilitiesProtectedEdit._command_env(),
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
+        failure_msg: str | None = None
         if result.failure:
             error = (result.error or "pytest execution failed")[:300]
-            if "no tests collected" in error.lower() or "no tests ran" in error.lower():
-                return None
-            return error
-        output = (result.value.stdout + result.value.stderr)[:300]
-        if (
-            result.value.exit_code
-            == FlextInfraUtilitiesProtectedEdit._NO_TESTS_EXIT_CODE
-            and (
-                "no tests collected" in output.lower()
-                or "no tests ran" in output.lower()
-            )
-        ):
-            return None
-        if result.value.exit_code != 0:
-            return output
-        return None
+            if (
+                "no tests collected" not in error.lower()
+                and "no tests ran" not in error.lower()
+            ):
+                failure_msg = error
+        else:
+            output = (result.value.stdout + result.value.stderr)[:300]
+            if (
+                result.value.exit_code
+                == FlextInfraUtilitiesProtectedEdit._NO_TESTS_EXIT_CODE
+                and (
+                    "no tests collected" in output.lower()
+                    or "no tests ran" in output.lower()
+                )
+            ):
+                pass
+            elif result.value.exit_code != 0:
+                failure_msg = output
+        return failure_msg
 
     @staticmethod
     def _preserve_backup(py_file: Path) -> Path | None:

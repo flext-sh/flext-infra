@@ -27,7 +27,7 @@ _CLEAN_UTILITIES = (
     "from __future__ import annotations\n\n"
     "from flext_core import r\n\n"
     "def run(validation_result: p.Result[bool]) -> p.Result[bool]:\n"
-    "    return validation_result.flat_map(lambda value: r[bool].ok(value))\n"
+    "    return validation_result.flat_map(lambda  value:  r[bool].ok(value))\n"
 )
 
 

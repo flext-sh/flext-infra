@@ -109,8 +109,8 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
     def _generate_sarif(
         results: t.SequenceOf[m.Infra.ProjectResult],
         gates: t.StrSequence,
-    ) -> t.JsonMapping:
-        """Render SARIF 2.1.0 payload from workspace gate results."""
+    ) -> m.Infra.SarifReport:
+        """Build the SARIF 2.1.0 report model from workspace gate results."""
         rules_by_id: dict[str, m.Infra.SarifRule] = {}
         sarif_results: list[m.Infra.SarifResult] = []
         for project in results:
@@ -144,7 +144,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
                             ],
                         )
                     )
-        report = m.Infra.SarifReport(
+        return m.Infra.SarifReport(
             runs=(
                 m.Infra.SarifRun(
                     tool_name="flext-infra-check",
@@ -154,7 +154,6 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
                 ),
             ),
         )
-        return report.model_dump(mode="json")
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -240,14 +239,15 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
                 md_write_result.error or "failed to write markdown report",
             )
         sarif_path = report_base / "check-report.sarif"
-        sarif_payload = FlextInfraWorkspaceChecker._generate_sarif(
+        sarif_report = FlextInfraWorkspaceChecker._generate_sarif(
             results,
             resolved_gates,
         )
-        json_write_result = u.Cli.json_write(sarif_path, sarif_payload)
-        if json_write_result.failure:
+        try:
+            u.Infra.export_pydantic_json(sarif_report, sarif_path)
+        except OSError as exc:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                json_write_result.error or "failed to write sarif report",
+                f"failed to write sarif report: {exc}"
             )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed

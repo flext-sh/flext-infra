@@ -281,7 +281,7 @@ class FlextInfraConstantsSourceCode:
     FUNCTION_SIGNATURE_RE: Final[re.Pattern[str]] = re.compile(
         r"->\s*(?:r\[(?P<legacy_inner>.+)\]|p\.Result\[(?P<result_inner>.+)\])\s*:",
     )
-    "Regex: r[T] or p.Result[T] return annotation."
+    "Regex: p.Result[T] or p.Result[T] return annotation."
 
     # --- Semantic versioning (was: class Versioning) ---
     SEMVER_PROJECT_SECTION: Final[str] = "[project]"
