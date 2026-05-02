@@ -374,9 +374,7 @@ class FlextInfraUtilitiesDiscovery:
             and not child.name.startswith(".")
             and any(
                 (child / dir_name).is_dir()
-                for dir_name in u.read_project_constants(
-                    "flext-infra"
-                ).SCAN_DIRECTORIES
+                for dir_name in u.read_project_constants("flext-infra").SCAN_DIRECTORIES
             )
             and (
                 (child / c.Infra.PYPROJECT_FILENAME).is_file()

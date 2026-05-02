@@ -332,7 +332,11 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
             core_aliases=self._tuple_setting(
                 settings,
                 c.Infra.RK_CORE_ALIASES,
-                tuple(u.read_project_constants("flext-infra").UNIVERSAL_ALIAS_PARENT_SOURCES),
+                tuple(
+                    u.read_project_constants(
+                        "flext-infra"
+                    ).UNIVERSAL_ALIAS_PARENT_SOURCES
+                ),
             ),
         )
         analysis = analyzer.build_analysis()
