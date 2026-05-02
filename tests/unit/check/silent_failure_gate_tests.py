@@ -14,7 +14,6 @@ from flext_tests import tm
 from flext_infra import FlextInfraSilentFailureGate
 from tests import t, u
 
-
 _DIRTY_UTILITIES = (
     "from __future__ import annotations\n\n"
     "from collections.abc import Mapping, Sequence\n\n"
@@ -32,9 +31,7 @@ _CLEAN_UTILITIES = (
 )
 
 
-def _create_gate_project(
-    tmp_path: Path, *, name: str, utilities_src: str
-) -> Path:
+def _create_gate_project(tmp_path: Path, *, name: str, utilities_src: str) -> Path:
     return u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
