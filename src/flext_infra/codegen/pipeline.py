@@ -115,7 +115,7 @@ class FlextInfraCodegenPipeline(s[str]):
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )
         except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail(f"discover failed: {exc}")
+            return r[m.Cli.PipelineStageResult].fail_op("discover", exc)
         self._state.discovered_projects = discovered
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
@@ -135,7 +135,7 @@ class FlextInfraCodegenPipeline(s[str]):
                 "workspace_root": ctx.workspace_root,
             }).run()
         except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail(f"py_typed failed: {exc}")
+            return r[m.Cli.PipelineStageResult].fail_op("py_typed", exc)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.PY_TYPED,
@@ -156,7 +156,7 @@ class FlextInfraCodegenPipeline(s[str]):
             projects = self._state.discovered_projects or None
             reports = census.run(projects=projects)
         except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail(f"census_before failed: {exc}")
+            return r[m.Cli.PipelineStageResult].fail_op("census_before", exc)
         self._state.census_service = census
         self._state.reports_before = reports
         total = sum(report.total for report in reports)
@@ -181,7 +181,7 @@ class FlextInfraCodegenPipeline(s[str]):
                 "workspace_root": ctx.workspace_root,
             }).run(dry_run=dry_run, projects=projects)
         except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail(f"scaffold failed: {exc}")
+            return r[m.Cli.PipelineStageResult].fail_op("scaffold", exc)
         self._state.scaffold_results = results
         created = sum(len(result.files_created) for result in results)
         skipped = sum(len(result.files_skipped) for result in results)
@@ -206,7 +206,7 @@ class FlextInfraCodegenPipeline(s[str]):
                 "dry_run": dry_run,
             }).fix_workspace(projects=projects)
         except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail(f"auto_fix failed: {exc}")
+            return r[m.Cli.PipelineStageResult].fail_op("auto_fix", exc)
         self._state.fix_results = results
         fixed = sum(len(result.violations_fixed) for result in results)
         skipped = sum(len(result.violations_skipped) for result in results)
@@ -229,7 +229,7 @@ class FlextInfraCodegenPipeline(s[str]):
                 "workspace_root": ctx.workspace_root,
             }).generate_inits(check_only=dry_run)
         except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail(f"lazy_init failed: {exc}")
+            return r[m.Cli.PipelineStageResult].fail_op("lazy_init", exc)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=c.Infra.PipelineStage.LAZY_INIT,
@@ -252,7 +252,7 @@ class FlextInfraCodegenPipeline(s[str]):
             projects = self._state.discovered_projects or None
             reports = census.run(projects=projects)
         except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail(f"census_after failed: {exc}")
+            return r[m.Cli.PipelineStageResult].fail_op("census_after", exc)
         self._state.reports_after = reports
         total = sum(report.total for report in reports)
         fixable = sum(report.fixable for report in reports)
