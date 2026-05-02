@@ -250,7 +250,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
                 slow_entries=diag.slow_entries,
             )
             return r[m.Infra.PytestDiagnostics].ok(result)
-        except (OSError, TypeError, ValueError) as exc:
+        except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.PytestDiagnostics].fail_op(
                 "pytest diagnostics extraction", exc
             )

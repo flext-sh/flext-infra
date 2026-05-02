@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesRopeCore, c, m, t
+from flext_infra import FlextInfraUtilitiesRopeCore, c, m, t, u
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -15,7 +15,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         workspace_root: Path,
         file_path: Path,
     ) -> Path | None:
-        scan_dirs = frozenset(c.SCAN_DIRECTORIES)
+        scan_dirs = frozenset(u.read_project_constants("flext-infra").SCAN_DIRECTORIES)
         for parent in file_path.parents:
             if (
                 parent.name in scan_dirs

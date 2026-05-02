@@ -47,11 +47,12 @@ class FlextInfraMROCompletenessDetector:
                 None,
             )
         if facade is None:
+            metadata = u.read_project_constants("flext-infra")
             facade = next(
                 (
                     name
                     for name in module_classes
-                    if name.startswith(c.TIER_FACADE_PREFIX["src"])
+                    if name.startswith(metadata.TIER_FACADE_PREFIX["src"])
                 ),
                 None,
             )

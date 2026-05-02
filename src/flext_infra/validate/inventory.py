@@ -107,7 +107,7 @@ class FlextInfraInventoryService(s[bool]):
                 reports_written=written,
             )
             return r[m.Infra.InventoryReport].ok(result)
-        except (OSError, TypeError, ValueError) as exc:
+        except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.InventoryReport].fail_op("inventory generation", exc)
 
     @override

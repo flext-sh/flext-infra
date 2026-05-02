@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocs:
                     )
                 )
             return r[t.SequenceOf[m.Infra.DocScope]].ok(scopes)
-        except (OSError, TypeError, ValueError) as exc:
+        except c.EXC_OS_TYPE_VALUE as exc:
             return r[t.SequenceOf[m.Infra.DocScope]].fail_op("scope resolution", exc)
 
     @staticmethod

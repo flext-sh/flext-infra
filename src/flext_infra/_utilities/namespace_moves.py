@@ -18,6 +18,7 @@ from flext_infra import (
     c,
     m,
     t,
+    u,
 )
 
 
@@ -68,7 +69,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         rope_project,
                         resource,
                         package_name=project_package,
-                        aliases=tuple(sorted(c.RUNTIME_ALIAS_NAMES)),
+                        aliases=tuple(
+                            sorted(
+                                u.read_project_constants(
+                                    "flext-infra"
+                                ).RUNTIME_ALIAS_NAMES
+                            )
+                        ),
                         apply=True,
                     )
                 )
@@ -445,7 +452,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         moved_aliases = {
             node.id
             for node in ast.walk(ast.parse(moved_source))
-            if isinstance(node, ast.Name) and node.id in c.RUNTIME_ALIAS_NAMES
+            if isinstance(node, ast.Name)
+            and node.id
+            in u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
         }
         if not moved_aliases:
             return []

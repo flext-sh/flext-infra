@@ -303,7 +303,9 @@ class FlextInfraUtilitiesRopeImports:
         apply: bool,
     ) -> str | None:
         """Hoist ``from package.sub import alias`` into ``from package import alias``."""
-        effective_aliases = aliases or tuple(c.RUNTIME_ALIAS_NAMES)
+        effective_aliases = aliases or tuple(
+            u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
+        )
         requested_aliases = frozenset(
             alias for alias in effective_aliases if len(alias) == 1 and alias.islower()
         )

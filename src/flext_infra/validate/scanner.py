@@ -109,7 +109,7 @@ class FlextInfraTextPatternScanner(s[bool]):
             return r[t.ScalarMapping].ok(result)
         except re.error as exc:
             return r[t.ScalarMapping].fail(f"invalid regex pattern: {exc}")
-        except (OSError, ValueError, TypeError) as exc:
+        except c.EXC_OS_TYPE_VALUE as exc:
             return r[t.ScalarMapping].fail_op("text pattern scan", exc)
 
     @override

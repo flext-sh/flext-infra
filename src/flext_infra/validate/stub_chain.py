@@ -106,7 +106,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
                 total_missing=len(missing_imports),
             )
             return r[m.Infra.StubAnalysisReport].ok(result)
-        except (OSError, TypeError, ValueError) as exc:
+        except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.StubAnalysisReport].fail(
                 f"stub analysis failed for {project_dir.name}: {exc}",
             )
@@ -155,7 +155,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
                     summary=summary,
                 ),
             )
-        except (OSError, TypeError, ValueError) as exc:
+        except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.ValidationReport].fail_op("stub validation", exc)
 
     @override
