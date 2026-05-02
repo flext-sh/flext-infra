@@ -56,6 +56,7 @@ class FlextInfraNamespaceRules:
         return name in (ast.unparse(annotation) if annotation else "")
 
     def target_name(self, target: ast.expr | None) -> str:
+        """Return the bare-identifier name when ``target`` is ``ast.Name``."""
         match target:
             case ast.Name(id=name):
                 return name
@@ -63,6 +64,7 @@ class FlextInfraNamespaceRules:
                 return ""
 
     def call_name(self, func: ast.expr | None) -> str:
+        """Return the trailing attribute/identifier of a call's callable."""
         unparsed = ast.unparse(func) if func else ""
         return unparsed.rsplit(".", maxsplit=1)[-1]
 
