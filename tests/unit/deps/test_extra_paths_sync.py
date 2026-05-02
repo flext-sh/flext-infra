@@ -14,7 +14,7 @@ def pyright_content() -> str:
 
 
 def _create_pyproject(directory: Path, content: str) -> Path:
-    return tf.create_in(content=content, name="pyproject.toml", directory=directory)
+    return tf(base_dir=directory).create(content=content, name="pyproject.toml")
 
 
 _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent

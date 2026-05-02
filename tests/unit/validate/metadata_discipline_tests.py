@@ -57,7 +57,7 @@ class TestMetadataDiscipline:
         v: FlextInfraValidateMetadataDiscipline,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in("import json\n", "ok.py", pkg)
+        tf(base_dir=pkg).create("import json\n", "ok.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
@@ -67,7 +67,7 @@ class TestMetadataDiscipline:
         v: FlextInfraValidateMetadataDiscipline,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in("import tomllib\n", "bad.py", pkg)
+        tf(base_dir=pkg).create("import tomllib\n", "bad.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         tm.that(" | ".join(report.violations), has="tomllib")

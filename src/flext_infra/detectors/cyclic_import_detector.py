@@ -24,10 +24,9 @@ class FlextInfraCyclicImportDetector:
     ) -> t.SequenceOf[m.Infra.CyclicImportViolation]:
         """Build import graph via rope and detect cycles with topological sort."""
         del _parse_failures
-        metadata = u.read_project_constants("flext-infra")
         scan_dirs = [
             (project_root / d).resolve()
-            for d in metadata.SCAN_DIRECTORIES
+            for d in u.Infra.namespace_scan_dirs(project_root)
             if (project_root / d).is_dir()
         ]
         if not scan_dirs:

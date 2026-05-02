@@ -52,10 +52,8 @@ class TestTierWhitelistAbstractionBoundary:
         v: FlextInfraValidateTierWhitelist,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in(
-            "from flext_core import m, c\nX = m.BaseModel\n",
-            "good.py",
-            pkg,
+        tf(base_dir=pkg).create(
+            "from flext_core import m, c\nX = m.BaseModel\n", "good.py"
         )
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
@@ -77,7 +75,7 @@ class TestTierWhitelistAbstractionBoundary:
         expected_substring: str,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in(source, filename, pkg)
+        tf(base_dir=pkg).create(source, filename)
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         tm.that(" | ".join(report.violations), has=expected_substring)
@@ -91,10 +89,8 @@ class TestTierWhitelistAbstractionBoundary:
         src = tmp_path / "flext-core" / "src" / "flext_core"
         src.mkdir(parents=True, exist_ok=True)
         (src / "__init__.py").write_text("", encoding="utf-8")
-        tf.create_in(
-            "from pydantic import BaseModel\nX = BaseModel\n",
-            "abstractions.py",
-            src,
+        tf(base_dir=src).create(
+            "from pydantic import BaseModel\nX = BaseModel\n", "abstractions.py"
         )
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
@@ -109,8 +105,8 @@ class TestTierWhitelistSummary:
         v: FlextInfraValidateTierWhitelist,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in("from pydantic import BaseModel\n", "a.py", pkg)
-        tf.create_in("import structlog\n", "b.py", pkg)
+        tf(base_dir=pkg).create("from pydantic import BaseModel\n", "a.py")
+        tf(base_dir=pkg).create("import structlog\n", "b.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="2")
 

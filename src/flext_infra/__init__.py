@@ -385,9 +385,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-    from flext_infra.workspace.sandbox_orchestrator import (
-        FlextInfraSandboxOrchestrator,
-    )
+    from flext_infra.workspace.sandbox_orchestrator import FlextInfraSandboxOrchestrator
     from flext_infra.workspace.sync import FlextInfraSyncService
     from flext_infra.workspace.workspace_makefile import (
         FlextInfraWorkspaceMakefileGenerator,

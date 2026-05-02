@@ -51,8 +51,8 @@ class TestImportCyclesValidatorCore:
         v: FlextInfraValidateImportCycles,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in("X = 1\n", "a.py", pkg)
-        tf.create_in("from pkg.a import X\n", "b.py", pkg)
+        tf(base_dir=pkg).create("X = 1\n", "a.py")
+        tf(base_dir=pkg).create("from pkg.a import X\n", "b.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
@@ -62,8 +62,8 @@ class TestImportCyclesValidatorCore:
         v: FlextInfraValidateImportCycles,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in("from pkg import b\n", "a.py", pkg)
-        tf.create_in("from pkg import a\n", "b.py", pkg)
+        tf(base_dir=pkg).create("from pkg import b\n", "a.py")
+        tf(base_dir=pkg).create("from pkg import a\n", "b.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
@@ -76,9 +76,9 @@ class TestImportCyclesValidatorCore:
         v: FlextInfraValidateImportCycles,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in("from pkg import b\n", "a.py", pkg)
-        tf.create_in("from pkg import c\n", "b.py", pkg)
-        tf.create_in("from pkg import a\n", "c.py", pkg)
+        tf(base_dir=pkg).create("from pkg import b\n", "a.py")
+        tf(base_dir=pkg).create("from pkg import c\n", "b.py")
+        tf(base_dir=pkg).create("from pkg import a\n", "c.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
@@ -92,7 +92,7 @@ class TestImportCyclesValidatorCore:
         v: FlextInfraValidateImportCycles,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in(
+        tf(base_dir=pkg).create(
             (
                 "from __future__ import annotations\n"
                 "from typing import TYPE_CHECKING\n"
@@ -100,13 +100,8 @@ class TestImportCyclesValidatorCore:
                 "    from pkg import b\n"
             ),
             "a.py",
-            pkg,
         )
-        tf.create_in(
-            "from pkg import a\n",
-            "b.py",
-            pkg,
-        )
+        tf(base_dir=pkg).create("from pkg import a\n", "b.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
@@ -120,8 +115,8 @@ class TestImportCyclesValidatorSummary:
         v: FlextInfraValidateImportCycles,
     ) -> None:
         pkg = _seed_pkg(tmp_path)
-        tf.create_in("from pkg import b\n", "a.py", pkg)
-        tf.create_in("from pkg import a\n", "b.py", pkg)
+        tf(base_dir=pkg).create("from pkg import b\n", "a.py")
+        tf(base_dir=pkg).create("from pkg import a\n", "b.py")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="1")
         tm.that(report.summary, has="cycle")

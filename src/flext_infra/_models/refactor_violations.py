@@ -66,6 +66,14 @@ class FlextInfraModelsRefactorViolations:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_name: Annotated[t.NonEmptyStr, m.Field(description="Module family name")]
+        module_patterns: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Glob patterns matching module paths.",
+        )
+        facade_family: Annotated[
+            str,
+            m.Field(description="Facade family alias"),
+        ] = ""
         allowed_operations: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Rewrite operations explicitly allowed by the policy.",
@@ -77,6 +85,10 @@ class FlextInfraModelsRefactorViolations:
         forbidden_targets: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Namespace targets blocked by the policy.",
+        )
+        validation_requirements: t.MappingKV[str, t.StrSequence] = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Validation requirements by stage.",
         )
         enable_class_nesting: Annotated[
             bool,

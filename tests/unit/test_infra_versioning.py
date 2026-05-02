@@ -126,7 +126,7 @@ class TestsFlextInfraInfraVersioning:
         error: str,
     ) -> None:
         if content is not None:
-            tf.create_in(content, "pyproject.toml", tmp_path)
+            tf(base_dir=tmp_path).create(content, "pyproject.toml")
         result = service.current_workspace_version(tmp_path)
         if expected:
             tm.ok(result, eq=expected)
@@ -154,7 +154,7 @@ class TestsFlextInfraInfraVersioning:
         error: str,
     ) -> None:
         if content is not None:
-            tf.create_in(content, "pyproject.toml", tmp_path)
+            tf(base_dir=tmp_path).create(content, "pyproject.toml")
         result = service.replace_project_version(tmp_path, "2.0.0")
         if error:
             tm.fail(result, has=error)

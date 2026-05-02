@@ -64,7 +64,7 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# stale content", "base.mk", tmp_path)
+        tf(base_dir=tmp_path).create("# stale content", "base.mk")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="out of sync")
@@ -99,7 +99,7 @@ class TestBaseMkValidatorEdgeCases:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# different", "base.mk", tmp_path)
+        tf(base_dir=tmp_path).create("# different", "base.mk")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations[0], has="stale")
@@ -109,7 +109,7 @@ class TestBaseMkValidatorEdgeCases:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# mismatch", "base.mk", tmp_path)
+        tf(base_dir=tmp_path).create("# mismatch", "base.mk")
         report = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations, length=1)
@@ -119,7 +119,7 @@ class TestBaseMkValidatorEdgeCases:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        basemk = tf.create_in("# content", "base.mk", tmp_path)
+        basemk = tf(base_dir=tmp_path).create("# content", "base.mk")
         basemk.chmod(0)
         try:
             result = v.build_report(tmp_path)
@@ -136,19 +136,19 @@ class TestBaseMkValidatorSha256:
         return u.Cli.sha256_file(path)
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
-        f = tf.create_in("content", "test.txt", tmp_path)
+        f = tf(base_dir=tmp_path).create("content", "test.txt")
         h = self._sha(f)
         assert isinstance(h, str)
         tm.that(h, length=64)
 
     def test_same_content_same_hash(self, tmp_path: Path) -> None:
-        f1 = tf.create_in("same", "f1.txt", tmp_path)
-        f2 = tf.create_in("same", "f2.txt", tmp_path)
+        f1 = tf(base_dir=tmp_path).create("same", "f1.txt")
+        f2 = tf(base_dir=tmp_path).create("same", "f2.txt")
         tm.that(self._sha(f1), eq=self._sha(f2))
 
     def test_different_content_different_hash(self, tmp_path: Path) -> None:
-        f1 = tf.create_in("content1", "f1.txt", tmp_path)
-        f2 = tf.create_in("content2", "f2.txt", tmp_path)
+        f1 = tf(base_dir=tmp_path).create("content1", "f1.txt")
+        f2 = tf(base_dir=tmp_path).create("content2", "f2.txt")
         assert self._sha(f1) != self._sha(f2)
 
 

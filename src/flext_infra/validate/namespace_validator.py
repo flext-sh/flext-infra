@@ -122,9 +122,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         if resource is None:
             return None
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project, resource
-            )
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
         except c.EXC_OS_SYNTAX:
             return None
         return pymodule.get_ast() if pymodule is not None else None

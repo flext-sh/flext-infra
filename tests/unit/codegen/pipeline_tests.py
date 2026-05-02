@@ -69,14 +69,21 @@ def _make_project(
     *,
     with_all_modules: bool,
     with_tests_dir: bool,
+    go_only: bool = False,
 ) -> Path:
     project = tmp_path / name
     project.mkdir()
     (project / "Makefile").touch()
-    _ = (project / "pyproject.toml").write_text(
-        f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n",
-        encoding="utf-8",
-    )
+    if go_only:
+        _ = (project / "go.mod").write_text(
+            f"module {name}\ngo 1.22\n",
+            encoding="utf-8",
+        )
+    else:
+        _ = (project / "pyproject.toml").write_text(
+            f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n",
+            encoding="utf-8",
+        )
     (project / ".git").mkdir()
     package_name = name.replace("-", "_")
     pkg_dir = project / "src" / package_name
@@ -119,6 +126,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         "flexcore",
         with_all_modules=False,
         with_tests_dir=True,
+        go_only=True,
     )
     package_b = project_b / "src" / "project_b"
     (package_b / "models.py").unlink()

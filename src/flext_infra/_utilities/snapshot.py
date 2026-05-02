@@ -31,13 +31,9 @@ class FlextInfraUtilitiesSnapshot:
         """
         rsync_bin = shutil.which("rsync")
         if rsync_bin is None:
-            return e.fail_not_found(
-                "rsync executable", "PATH", result_type=r[Path]
-            )
+            return e.fail_not_found("rsync executable", "PATH", result_type=r[Path])
         if not src.is_dir():
-            return e.fail_not_found(
-                "snapshot source", str(src), result_type=r[Path]
-            )
+            return e.fail_not_found("snapshot source", str(src), result_type=r[Path])
         dst.mkdir(parents=True, exist_ok=True)
         completed = subprocess.run(
             [rsync_bin, "-a", "--delete", f"{src.resolve()}/", str(dst.resolve())],

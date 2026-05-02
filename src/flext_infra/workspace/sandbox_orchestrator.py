@@ -37,9 +37,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
 
     sandbox_root: Annotated[
         Path,
-        m.Field(
-            description="Disposable sandbox workspace root (default: <root>-base)"
-        ),
+        m.Field(description="Disposable sandbox workspace root (default: <root>-base)"),
     ]
 
     @property
@@ -60,9 +58,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
             try:
                 Repo(project_root).git.checkout("--", ".")
             except (GitCommandError, FileNotFoundError) as exc:
-                return r[bool].fail_op(
-                    f"sandbox rollback ({project_root.name})", exc
-                )
+                return r[bool].fail_op(f"sandbox rollback ({project_root.name})", exc)
         return r[bool].ok(True)
 
     @override
@@ -70,9 +66,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
         """Snapshot → run-in-sandbox → propagate-to-live or rollback."""
         snapshot_result = self._snapshot()
         if snapshot_result.failure:
-            return r[bool].fail(
-                snapshot_result.error or "sandbox snapshot failed"
-            )
+            return r[bool].fail(snapshot_result.error or "sandbox snapshot failed")
         sandbox_result = self._orchestrate_in(self._sandbox_path)
         if sandbox_result.failure:
             rollback = self._rollback_sandbox()
