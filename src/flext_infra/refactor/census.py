@@ -793,7 +793,7 @@ class FlextInfraRefactorCensus(
         )
 
     @staticmethod
-    def _is_flext_owned(value: object) -> bool:
+    def _is_flext_owned(value: p.AttributeProbe) -> bool:
         """Return True iff `value`'s defining module is in the flext package tree.
 
         Used to filter the parent inventory so that builtin attributes

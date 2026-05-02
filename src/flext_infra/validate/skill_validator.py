@@ -206,7 +206,7 @@ class FlextInfraSkillValidator(s[bool]):
                     summary=summary,
                 ),
             )
-        except (OSError, TypeError, ValueError, RuntimeError) as exc:
+        except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[m.Infra.ValidationReport].fail_op("skill validation", exc)
 
     @override

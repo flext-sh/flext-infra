@@ -285,7 +285,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
                     return (-1, dict(lazy_map))
                 self._modified_files.add(str(init_path))
                 u.Infra.run_ruff_fix(init_path, quiet=True)
-        except (OSError, ValueError) as exc:
+        except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating {init_path}: {exc}")
             return (-1, dict(lazy_map))
         rel_path = (

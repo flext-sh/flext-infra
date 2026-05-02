@@ -84,7 +84,7 @@ class FlextInfraUtilitiesDocsBuild:
             )
         try:
             FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
-        except (OSError, ValueError) as exc:
+        except c.EXC_OS_VALUE as exc:
             return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,

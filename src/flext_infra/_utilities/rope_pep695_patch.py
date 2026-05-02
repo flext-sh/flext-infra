@@ -49,11 +49,11 @@ class FlextInfraUtilitiesRopePep695Patch:
         original_function_def = getattr(walker, "_handle_function_def_node")
         original_class_def = getattr(walker, "_ClassDef")
 
-        def _type_params_children(node: ast.AST) -> list[object]:
+        def _type_params_children(node: ast.AST) -> list[p.AttributeProbe]:
             type_params = getattr(node, "type_params", None) or ()
             if not type_params:
                 return []
-            children: list[object] = ["["]
+            children: list[p.AttributeProbe] = ["["]
             for index, tp in enumerate(type_params):
                 if index > 0:
                     children.append(",")
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             if not getattr(node, "type_params", None):
                 original_function_def(self, node, is_async=is_async)
                 return
-            children: list[object] = []
+            children: list[p.AttributeProbe] = []
             for decorator in node.decorator_list:
                 children.extend(("@", decorator))
             children.extend(["async", "def"] if is_async else ["def"])
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             if not getattr(node, "type_params", None):
                 original_class_def(self, node)
                 return
-            children: list[object] = []
+            children: list[p.AttributeProbe] = []
             for decorator in node.decorator_list:
                 children.extend(("@", decorator))
             children.extend(["class", node.name])
@@ -105,7 +105,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             self: p.Infra.PatchingASTWalker,
             node: ast.TypeAlias,
         ) -> None:
-            children: list[object] = ["type", node.name]
+            children: list[p.AttributeProbe] = ["type", node.name]
             children.extend(_type_params_children(node))
             children.extend(["=", node.value])
             self._handle(node, children)
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             self: p.Infra.PatchingASTWalker,
             node: ast.TypeVar,
         ) -> None:
-            children: list[object] = [node.name]
+            children: list[p.AttributeProbe] = [node.name]
             if getattr(node, "bound", None) is not None:
                 children.extend([":", node.bound])
             self._handle(node, children)

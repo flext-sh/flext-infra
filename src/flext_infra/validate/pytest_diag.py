@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -279,6 +280,12 @@ class FlextInfraPytestDiagExtractor(s[bool]):
                 separator.join(items) + "\n",
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
+        sys.stdout.write(
+            f"failed_count={result.value.failed_count}\n"
+            f"error_count={result.value.error_count}\n"
+            f"warning_count={result.value.warning_count}\n"
+            f"skipped_count={result.value.skipped_count}\n",
+        )
         return r[bool].ok(True)
 
 

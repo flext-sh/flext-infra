@@ -157,13 +157,13 @@ class FlextInfraProtocolsRope(Protocol):
         type-parameter handlers without depending on rope's private class.
         """
 
-        def _handle(self, node: ast.AST, children: list[object]) -> None: ...
+        def _handle(self, node: ast.AST, children: list[p.AttributeProbe]) -> None: ...
 
         def _child_nodes(
             self,
             nodes: t.SequenceOf[ast.AST],
             separator: str,
-        ) -> list[object]: ...
+        ) -> list[p.AttributeProbe]: ...
 
     class RopeAnalysisMethods(Protocol):
         """Class contract shared by the Rope analysis mixins."""

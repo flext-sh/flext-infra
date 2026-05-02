@@ -78,7 +78,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
     )
 
     @override
-    def model_post_init(self, __context: object, /) -> None:
+    def model_post_init(self, __context: dict[str, p.AttributeProbe], /) -> None:
         """Initialize pyproject modernization collaborators after validation."""
         tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.failure:

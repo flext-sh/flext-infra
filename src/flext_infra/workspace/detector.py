@@ -83,7 +83,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             if mode == c.Infra.WorkspaceMode.STANDALONE:
                 u.Cli.info(f"Running in standalone mode (parent repo: {repo_name})")
             return r[c.Infra.WorkspaceMode].ok(mode)
-        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        except c.EXC_OS_RUNTIME_TYPE as exc:
             u.Cli.info(f"Running in standalone mode (detection error: {exc})")
             return r[c.Infra.WorkspaceMode].fail_op("Detection", exc)
 

@@ -49,7 +49,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         dry_run = self.dry_run or not self.apply_changes
         try:
             results = self.fix_workspace()
-        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[str].fail_op("auto-fix", exc)
         total_fixed = sum(len(result.violations_fixed) for result in results)
         total_skipped = sum(len(result.violations_skipped) for result in results)

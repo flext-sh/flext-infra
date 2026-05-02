@@ -258,7 +258,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
                 failures = self._collect_failures(projects, results)
                 self._failure_summary(verb, failures)
             return r[t.SequenceOf[m.Cli.CommandOutput]].ok(results)
-        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[t.SequenceOf[m.Cli.CommandOutput]].fail_op("Orchestration", exc)
 
     def _run_project(

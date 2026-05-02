@@ -337,7 +337,7 @@ class FlextInfraUtilitiesRopeInventory:
         source: str,
         name: str,
         line: int,
-        rope_workspace: object | None = None,
+        rope_workspace: p.AttributeProbe | None = None,
     ) -> tuple[
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
@@ -448,7 +448,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _fast_reference_sites_from_index(
-        rope_workspace: object,
+        rope_workspace: p.AttributeProbe,
         *,
         name: str,
         definition_path: Path,

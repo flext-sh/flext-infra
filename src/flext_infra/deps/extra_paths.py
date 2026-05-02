@@ -32,7 +32,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
     @override
-    def model_post_init(self, __context: object, /) -> None:
+    def model_post_init(self, __context: dict[str, p.AttributeProbe], /) -> None:
         """Initialize tool configuration and workspace metadata after validation."""
         tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.failure:
