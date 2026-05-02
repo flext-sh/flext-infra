@@ -1,0 +1,29 @@
+src/flext_infra/workspace/sandbox_orchestrator.py
+  81bd344b75a4c5f1 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "641a899b37072185893ff2ed3b3d72957325a0b7",
+  "prompts": {
+    "81bd344b75a4c5f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "288f9aad-a0e4-4b23-a3ad-bc9b7b265cbd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 257,
+      "total_deletions": 343,
+      "accepted_lines": 260,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/6315df721a1c75094cce8f4bf5a3298c8166ad7b0c90119a9865006b4c4a574a"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
