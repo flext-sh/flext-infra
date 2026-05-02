@@ -208,20 +208,15 @@ class FlextInfraReleaseOrchestrator(
                 pipeline_ctx,
                 fail_fast=True,
             )
-            pipeline_error = (
-                pipeline_result.error or "pipeline execution failed"
-                if pipeline_result.failure
-                else next(
-                    (
-                        failed_stage.error or "pipeline failed"
-                        for failed_stage in pipeline_result.value.failed_stages
-                    ),
-                    None,
+            if pipeline_result.failure:
+                final_result = r[bool].fail(
+                    pipeline_result.error or "pipeline execution failed"
                 )
-            )
-            if pipeline_error is not None:
-                final_result = r[bool].fail(pipeline_error)
-            elif next_dev and (not dry_run):
+            elif failed := next(
+                (s for s in pipeline_result.value.failed_stages if s.error), None
+            ):
+                final_result = r[bool].fail(failed.error)
+            elif next_dev and not dry_run:
                 final_result = self._bump_next_dev(
                     workspace_root,
                     version,
@@ -322,14 +317,11 @@ class FlextInfraReleaseOrchestrator(
         if projects_result.success:
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: t.Infra.StrSet = set()
-        seen_paths: set[Path] = set()
         unique: t.MutableSequenceOf[t.Pair[str, Path]] = []
         for name, path in targets:
-            resolved_path = path.resolve()
-            if name in seen or resolved_path in seen_paths or not path.exists():
+            if name in seen or not path.exists():
                 continue
             seen.add(name)
-            seen_paths.add(resolved_path)
             unique.append((name, path))
         return unique
 
@@ -411,16 +403,17 @@ class FlextInfraReleaseOrchestrator(
         ctx: m.Infra.ReleasePhaseDispatchConfig,
     ) -> p.Result[bool]:
         """Route to the correct phase method."""
-        phase = ctx.phase
-        if phase == c.Infra.VERB_VALIDATE:
-            return self.phase_validate(ctx.workspace_root, dry_run=ctx.dry_run)
-        if phase == c.Infra.ReleasePhase.VERSION:
-            return self.phase_version(ctx)
-        if phase == c.Infra.DIR_BUILD:
-            return self.phase_build(ctx)
-        if phase == c.Infra.VERB_PUBLISH:
-            return self.phase_publish(ctx)
-        return r[bool].fail(f"unknown phase: {phase}")
+        match ctx.phase:
+            case c.Infra.VERB_VALIDATE:
+                return self.phase_validate(ctx.workspace_root, dry_run=ctx.dry_run)
+            case c.Infra.ReleasePhase.VERSION:
+                return self.phase_version(ctx)
+            case c.Infra.DIR_BUILD:
+                return self.phase_build(ctx)
+            case c.Infra.VERB_PUBLISH:
+                return self.phase_publish(ctx)
+            case phase:
+                return r[bool].fail(f"unknown phase: {phase}")
 
     @override
     def _generate_notes(
