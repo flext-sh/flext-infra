@@ -141,6 +141,7 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+    from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import (
@@ -384,6 +385,9 @@ if _t.TYPE_CHECKING:
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+    from flext_infra.workspace.sandbox_orchestrator import (
+        FlextInfraSandboxOrchestrator,
+    )
     from flext_infra.workspace.sync import FlextInfraSyncService
     from flext_infra.workspace.workspace_makefile import (
         FlextInfraWorkspaceMakefileGenerator,
@@ -529,6 +533,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
             "._utilities.safety": ("FlextInfraUtilitiesSafety",),
+            "._utilities.snapshot": ("FlextInfraUtilitiesSnapshot",),
             "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
             ".api": (
                 "FlextInfra",
@@ -753,6 +758,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.project_makefile": ("FlextInfraProjectMakefileUpdater",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
+            ".workspace.sandbox_orchestrator": ("FlextInfraSandboxOrchestrator",),
             ".workspace.sync": ("FlextInfraSyncService",),
             ".workspace.workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
             "flext_cli": (
@@ -952,6 +958,7 @@ __all__: list[str] = [
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeAliasDetector",
     "FlextInfraRuntimeDevDependencyDetector",
+    "FlextInfraSandboxOrchestrator",
     "FlextInfraScanner",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
@@ -1011,6 +1018,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesSafety",
+    "FlextInfraUtilitiesSnapshot",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
