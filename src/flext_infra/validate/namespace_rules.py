@@ -1,4 +1,9 @@
-"""Namespace validation rules (rules 0-2) for flext projects.
+"""Namespace validation rules (rules 0-3) for flext projects.
+
+AST-helper layer used by ``FlextInfraNamespaceValidator``. The validator
+sources AST modules via rope (``pymodule.get_ast()``) per the flext-infra
+detector mandate; this module operates on the resulting ``ast.Module``
+trees without performing its own source reads.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

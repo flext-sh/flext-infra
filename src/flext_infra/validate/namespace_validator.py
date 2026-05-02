@@ -1,7 +1,9 @@
 """Namespace validation service.
 
-AST-based validator enforcing namespace rules 0-3 for flext projects.
-Detection-only -- does not auto-fix any files.
+Rope-backed validator enforcing namespace rules 0-3 for flext projects.
+Detection-only — does not auto-fix any files. AST nodes are obtained via
+``rope.get_pymodule(...).get_ast()`` per the flext-infra detector mandate
+(no raw ``ast.parse`` source reads).
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,6 +16,7 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraNamespaceRules,
+    FlextInfraUtilitiesRopeCore,
     c,
     m,
     p,
@@ -24,7 +27,7 @@ from flext_infra import (
 
 
 class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
-    """AST-based namespace validator for flext projects (Rules 0-3).
+    """Rope-backed namespace validator for flext projects (Rules 0-3).
 
     Validates that each module follows the one-namespace-class-per-file
     convention, constants are centralized in ``constants.py``, and type
@@ -65,23 +68,24 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 else project_root.name.replace("-", "_")
             )
             violations: t.MutableSequenceOf[str] = []
-            for filepath in files:
-                tree = self._parse_file(filepath)
-                if tree is None:
-                    continue
-                rel = filepath.relative_to(project_root)
-                if self._is_namespace_governed_file(rel):
-                    violations.extend(self.check_rule_0(tree, rel, prefix))
-                    violations.extend(self.check_rule_1(tree, rel))
-                    violations.extend(self.check_rule_2(tree, rel))
-                violations.extend(
-                    self.check_rule_3(
-                        tree,
-                        rel,
-                        class_stem=prefix,
-                        package_name=package_name,
+            with u.Infra.open_project(project_root) as rope_project:
+                for filepath in files:
+                    tree = self._parse_file(rope_project, filepath)
+                    if tree is None:
+                        continue
+                    rel = filepath.relative_to(project_root)
+                    if self._is_namespace_governed_file(rel):
+                        violations.extend(self.check_rule_0(tree, rel, prefix))
+                        violations.extend(self.check_rule_1(tree, rel))
+                        violations.extend(self.check_rule_2(tree, rel))
+                    violations.extend(
+                        self.check_rule_3(
+                            tree,
+                            rel,
+                            class_stem=prefix,
+                            package_name=package_name,
+                        )
                     )
-                )
             passed = not violations
             summary = (
                 f"namespace validation passed ({len(files)} files checked)"
@@ -105,12 +109,25 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
             return True
         return any(name.startswith(prefix) for prefix in c.Infra.EXEMPT_PREFIXES)
 
-    def _parse_file(self, path: Path) -> ast.Module | None:
-        """Parse a Python file into an AST, returning None on failure."""
+    def _parse_file(
+        self,
+        rope_project: t.Infra.RopeProject,
+        path: Path,
+    ) -> ast.Module | None:
+        """Return the AST module for ``path`` via rope, ``None`` on failure."""
         try:
-            return ast.parse(path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+            resource = u.Infra.fetch_python_resource(rope_project, path)
         except c.EXC_OS_SYNTAX:
             return None
+        if resource is None:
+            return None
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project, resource
+            )
+        except c.EXC_OS_SYNTAX:
+            return None
+        return pymodule.get_ast() if pymodule is not None else None
 
     def _is_namespace_governed_file(self, rel_path: Path) -> bool:
         """Return whether NS-000/001/002 structural rules apply to this file."""
