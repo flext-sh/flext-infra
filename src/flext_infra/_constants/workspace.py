@@ -25,19 +25,6 @@ class FlextInfraConstantsWorkspace:
         WORKSPACE_MEMBER = "member"
         ATTACHED = "attached"
 
-    WORKSPACE_MODE_WORKSPACE: Final[str] = WorkspaceMode.WORKSPACE.value
-    WORKSPACE_MODE_STANDALONE: Final[str] = WorkspaceMode.STANDALONE.value
-    WORKSPACE_ROLE_MEMBER: Final[str] = WorkspaceProjectRole.WORKSPACE_MEMBER.value
-    WORKSPACE_ROLE_ATTACHED: Final[str] = WorkspaceProjectRole.ATTACHED.value
-    WORKSPACE_MODES: Final[frozenset[str]] = frozenset({
-        WORKSPACE_MODE_WORKSPACE,
-        WORKSPACE_MODE_STANDALONE,
-    })
-    WORKSPACE_ROLES: Final[frozenset[str]] = frozenset({
-        WORKSPACE_ROLE_MEMBER,
-        WORKSPACE_ROLE_ATTACHED,
-    })
-
     MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.Infra.StrPair]] = (
         (
             'python3 "$(BASE_MK_DIR)/scripts/mode.py"',
