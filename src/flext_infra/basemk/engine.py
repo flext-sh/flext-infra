@@ -86,7 +86,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
                 dict(settings),
             )
             return r[m.Infra.BaseMkConfig].ok(normalized)
-        except (TypeError, ValueError) as exc:
+        except c.EXC_TYPE_VALIDATION as exc:
             return r[m.Infra.BaseMkConfig].fail_op(
                 "base.mk configuration validation", exc
             )

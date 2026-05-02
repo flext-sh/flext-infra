@@ -626,7 +626,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
                     root_state.pyproject_path,
                     root_state.payload,
                 )
-            except (TypeError, ValueError) as exc:
+            except c.EXC_TYPE_VALIDATION as exc:
                 u.Cli.error(str(exc))
                 return 2
             internal_names = tuple(

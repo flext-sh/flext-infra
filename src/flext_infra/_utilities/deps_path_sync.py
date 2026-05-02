@@ -328,7 +328,7 @@ class FlextInfraUtilitiesDependencyPathSync:
                 root_payload = FlextInfraUtilitiesDocsScope.project_payload(
                     workspace_root,
                 )
-            except (TypeError, ValueError):
+            except c.EXC_TYPE_VALIDATION:
                 root_payload = {}
             project_section = root_payload.get(c.Infra.PROJECT)
             if isinstance(project_section, dict):
