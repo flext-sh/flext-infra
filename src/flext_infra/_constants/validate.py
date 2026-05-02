@@ -71,25 +71,6 @@ class FlextInfraConstantsSharedInfra:
         "flext-infra/src/flext_infra/",
     )
 
-    BANNED_RUNTIME_LIBS: Final[frozenset[str]] = frozenset({
-        "pydantic",
-        "pydantic_settings",
-        "pydantic_core",
-        "structlog",
-        "returns",
-        "orjson",
-        "yaml",
-        "pyyaml",
-        "dependency_injector",
-    })
-    """Libraries forbidden from direct import outside canonical wrapper modules.
-
-    AGENTS.md §2.7 abstraction-boundary law: every consumer accesses these
-    libs via flext-core / flext-cli facades (``c/m/p/t/u``) — never via a
-    bare top-level import. Canonical wrappers are listed in
-    ``TIER_WHITELIST_ALLOWLIST_MARKERS``.
-    """
-
     TIER_WHITELIST_ALLOWLIST_MARKERS: Final[tuple[str, ...]] = (
         "flext-core/src/flext_core",
         "flext-core/src/flext_tests",

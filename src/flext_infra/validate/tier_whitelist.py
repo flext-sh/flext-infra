@@ -1,9 +1,9 @@
 """Guard 5 — tier / abstraction-boundary enforcer.
 
-Enforces AGENTS.md §2.7 and §4 abstraction-boundary rules: flext-core is
-the sole owner of pydantic, structlog, returns, orjson, pyyaml, and
-dependency_injector. Any runtime import of these outside
-``flext-core/src/`` is a violation.
+Enforces AGENTS.md §2.7 abstraction-boundary rules: each external library
+listed in ``c.ENFORCEMENT_LIBRARY_OWNERS`` (flext-core SSOT) has exactly
+one owning FLEXT project. Bare runtime imports of those libs outside the
+canonical wrapper sites are violations.
 
 Uses rope's semantic import resolution so ``if TYPE_CHECKING:`` imports
 are automatically exempt (they live in conditional blocks that rope
@@ -27,15 +27,14 @@ from flext_infra.validate._rope_import_boundary import _RopeImportBoundaryBase
 
 
 class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
-    """Enforces the flext-core abstraction boundary at runtime-import level.
+    """Enforce the §2.7 abstraction boundary at runtime-import level.
 
-    Banned-lib set and canonical-wrapper allowlist are sourced from
-    ``c.Infra.BANNED_RUNTIME_LIBS`` and
-    ``c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS`` (SSOT) — no parallel lists
-    inside the validator.
+    Banned-lib set is derived from ``c.ENFORCEMENT_LIBRARY_OWNERS`` keys
+    (flext-core SSOT). Canonical wrapper paths come from
+    ``c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS``. No parallel lists.
     """
 
-    _BANNED: ClassVar[frozenset[str]] = c.Infra.BANNED_RUNTIME_LIBS
+    _BANNED: ClassVar[frozenset[str]] = frozenset(c.ENFORCEMENT_LIBRARY_OWNERS)
     _OK_SUMMARY: ClassVar[str] = (
         "abstraction boundary respected (flext-core-only libs not imported elsewhere)"
     )
