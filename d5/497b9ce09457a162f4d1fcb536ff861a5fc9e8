@@ -1,0 +1,24 @@
+tests/unit/check/silent_failure_gate_tests.py
+  81bd344b75a4c5f1 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d5497b9ce09457a162f4d1fcb536ff861a5fc9e8",
+  "prompts": {
+    "81bd344b75a4c5f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "288f9aad-a0e4-4b23-a3ad-bc9b7b265cbd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 4,
+      "accepted_lines": 1,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/bb4b77468e7c3d8a583f3911262665b40e8f64a6821038cebb05d6f66ed04b17"
+    }
+  }
+}
