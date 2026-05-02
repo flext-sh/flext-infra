@@ -14,9 +14,9 @@ from rope.refactor.importutils.importinfo import (
     NormalImport,
 )
 
+from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
-    c,
     t,
 )
 

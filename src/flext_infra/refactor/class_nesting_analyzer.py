@@ -134,7 +134,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
             typed_doc = u.Cli.yaml_load_mapping(mapping_path)
-        except (OSError, TypeError) as exc:
+        except c.EXC_OS_TYPE as exc:
             return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )

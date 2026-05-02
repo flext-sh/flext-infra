@@ -78,7 +78,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 )
                 for diag in diagnostics
             )
-        except (TypeError, c.ValidationError) as err:
+        except c.EXC_VALIDATION_TYPE as err:
             issues.append(
                 m.Infra.Issue(
                     file="<pyright-output>",

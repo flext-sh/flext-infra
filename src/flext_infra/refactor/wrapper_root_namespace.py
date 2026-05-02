@@ -72,7 +72,8 @@ class FlextInfraWrapperRootNamespaceRefactor(
         import_rewrite_candidates = 0
         per_project_changes: dict[str, int] = defaultdict(int)
         per_project_replacements: dict[str, int] = defaultdict(int)
-        wrapper_submodules = c.FACADE_MODULE_NAMES
+        metadata = u.read_project_constants("flext-infra")
+        wrapper_submodules = metadata.FACADE_MODULE_NAMES
 
         for file_path in iter_result.value:
             try:
@@ -82,7 +83,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             project_name = rel.parts[0] if rel.parts else "."
             runtime_aliases = project_runtime_aliases.get(
                 project_name,
-                frozenset(c.RUNTIME_ALIAS_NAMES),
+                metadata.RUNTIME_ALIAS_NAMES,
             )
             if not any(
                 part in c.Infra.ROOT_WRAPPER_SEGMENTS
@@ -175,15 +176,13 @@ class FlextInfraWrapperRootNamespaceRefactor(
                     project_package=wrapper,
                 )
 
-        per_project_changes_payload: dict[str, t.JsonValue] = {  # noqa: C416
-            project: count for project, count in per_project_changes.items()
-        }
-        per_project_replacements_payload: dict[str, t.JsonValue] = {  # noqa: C416
-            project: count for project, count in per_project_replacements.items()
-        }
-        changed_files_preview: list[t.JsonValue] = [  # noqa: C416
-            entry for entry in changed_files[:200]
-        ]
+        per_project_changes_payload: dict[str, t.JsonValue] = dict(
+            per_project_changes.items()
+        )
+        per_project_replacements_payload: dict[str, t.JsonValue] = dict(
+            per_project_replacements.items()
+        )
+        changed_files_preview: list[t.JsonValue] = list(changed_files[:200])
         mode_value = (
             "check"
             if self.check_only

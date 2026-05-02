@@ -51,7 +51,7 @@ class FlextInfraRefactorCensus(
     ] = None
     kinds: Annotated[
         t.StrSequence | None,
-        m.Field(description="Optional object-kind filters; repeat --kinds NAME"),
+        m.Field(description="Optional symbol-kind filters; repeat --kinds NAME"),
     ] = None
     rules: Annotated[
         t.StrSequence | None,
@@ -84,7 +84,7 @@ class FlextInfraRefactorCensus(
 
     @property
     def kind_names(self) -> t.StrSequence | None:
-        """Return normalized object-kind filters."""
+        """Return normalized symbol-kind filters."""
         return u.Infra.normalize_sequence_values(self.kinds)
 
     @property
@@ -793,16 +793,14 @@ class FlextInfraRefactorCensus(
         )
 
     @staticmethod
-    def _is_flext_owned(value: p.AttributeProbe) -> bool:
+    def _is_flext_owned(value: p.ModuleOwned) -> bool:
         """Return True iff `value`'s defining module is in the flext package tree.
 
         Used to filter the parent inventory so that builtin attributes
         inherited by str/int/dict/list constants do not pollute collision
         candidates with names like `count`, `index`, `replace`, etc.
         """
-        module_name = getattr(value, "__module__", None)
-        if not isinstance(module_name, str):
-            return False
+        module_name = value.__module__
         return module_name.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
 
     @classmethod
@@ -815,8 +813,8 @@ class FlextInfraRefactorCensus(
         Discovers governed projects via ``u.Infra.projects(workspace_root)``
         (canonical workspace project discovery — SSOT). For each project
         whose hyphenated name converts to a Python package, imports the
-        package and walks ``c.FACADE_ALIAS_NAMES`` aliases at depth 1
-        (top-level facade attributes — e.g. ``flext_core.c.Result``).
+        package and walks dynamic facade aliases at depth 1
+        (top-level facade attributes such as ``flext_core.c.Result``).
 
         Returns ``{symbol_name: (parent_path, ...)}`` so a consumer-defined
         symbol with the same name can be cross-referenced against every
@@ -843,7 +841,7 @@ class FlextInfraRefactorCensus(
                 module = __import__(pkg_name)
             except ImportError:
                 continue
-            for alias_name in c.FACADE_ALIAS_NAMES:
+            for alias_name in u.read_project_constants(pkg_name).FACADE_ALIAS_NAMES:
                 alias = getattr(module, alias_name, None)
                 if alias is None:
                     continue
@@ -851,7 +849,11 @@ class FlextInfraRefactorCensus(
                     if attr.startswith("_"):
                         continue
                     nested = getattr(alias, attr, None)
-                    if nested is None or not cls._is_flext_owned(nested):
+                    if (
+                        nested is None
+                        or not isinstance(nested, p.ModuleOwned)
+                        or not cls._is_flext_owned(nested)
+                    ):
                         continue
                     if not isinstance(nested, type):
                         continue
@@ -867,13 +869,12 @@ class FlextInfraRefactorCensus(
     ) -> tuple[tuple[m.Infra.Census.Object, t.StrSequence], ...]:
         """Cross-reference workspace objects against upstream parent inventory.
 
-        Returns ``(object, parent_paths)`` pairs where the consumer's
+        Returns ``(symbol, parent_paths)`` pairs where the consumer's
         public symbol name appears on at least one governed parent
-        package's facade alias (``c/m/p/t/u`` per
-        ``c.FACADE_ALIAS_NAMES``). Sorted descending by the number of
+        package's dynamically derived facade aliases. Sorted descending by the number of
         matching parent paths (broadest collision surface first).
 
-        Self-references are filtered: an object in project ``flext-core``
+        Self-references are filtered: a symbol in project ``flext-core``
         whose name matches a symbol on ``flext_core.<alias>.<name>`` is
         the canonical owner, not a duplicate.
 
@@ -886,7 +887,7 @@ class FlextInfraRefactorCensus(
                 projects (parent packages).
 
         Returns:
-            Tuple of ``(object, parent_paths)`` pairs. Empty tuple if
+            Tuple of ``(symbol, parent_paths)`` pairs. Empty tuple if
             no collisions are found.
 
         """

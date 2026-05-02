@@ -26,7 +26,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
     Projects whose derived version class name equals ``FlextVersion``
     (the base class defined in flext-core) are skipped — that file is
     the SSOT base and is never generated.  Detection is 100% SSOT-derived
-    via ``u.derive_class_stem`` + ``c.SPECIAL_NAME_OVERRIDES``.
+    via ``u.derive_class_stem`` from installed generated lazy exports.
 
     Project discovery uses ``u.Infra.discover_projects`` — the canonical
     workspace member list.  No manual directory iteration.

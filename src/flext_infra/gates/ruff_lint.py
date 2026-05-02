@@ -75,7 +75,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                                 message=u.Cli.json_pick_str(entry, "message"),
                             ),
                         )
-        except (TypeError, c.ValidationError) as err:
+        except c.EXC_VALIDATION_TYPE as err:
             issues.append(
                 m.Infra.Issue(
                     file="<ruff-output>",

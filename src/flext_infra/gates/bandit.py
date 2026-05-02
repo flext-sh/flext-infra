@@ -86,7 +86,7 @@ class FlextInfraBanditGate(FlextInfraGate):
                     bandit_data.get(c.Infra.BANDIT_RESULTS_KEY, []),
                 )
             )
-        except (TypeError, c.ValidationError) as err:
+        except c.EXC_VALIDATION_TYPE as err:
             issues.append(
                 m.Infra.Issue(
                     file="<bandit-output>",

@@ -18,6 +18,7 @@ from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Rep
 from tomlkit import TOMLDocument
 
 from flext_cli import u
+from flext_core import u as core_u
 from flext_infra import c, p, r, t
 
 
@@ -525,7 +526,7 @@ class FlextInfraUtilitiesIteration:
             )
             if normalized:
                 return normalized
-        return frozenset(c.SCAN_DIRECTORIES)
+        return frozenset(core_u.read_project_constants("flext-infra").SCAN_DIRECTORIES)
 
     @staticmethod
     def namespace_include_dynamic_dirs(project_root: Path) -> bool:
@@ -823,7 +824,9 @@ class FlextInfraUtilitiesIteration:
         Default (False) preserves workspace-submodule-only enumeration.
         """
         roots: t.MutableSequenceOf[Path] = []
-        effective_scan_dirs = scan_dirs or frozenset(c.SCAN_DIRECTORIES)
+        effective_scan_dirs = scan_dirs or frozenset(
+            core_u.read_project_constants("flext-infra").SCAN_DIRECTORIES
+        )
         configured_members = FlextInfraUtilitiesIteration.workspace_member_names(
             workspace_root,
         )
@@ -1061,7 +1064,9 @@ class FlextInfraUtilitiesIteration:
             if not subdir.is_dir():
                 continue
             dir_name = subdir.name
-            if dir_name in frozenset(c.SCAN_DIRECTORIES):
+            if dir_name in frozenset(
+                core_u.read_project_constants("flext-infra").SCAN_DIRECTORIES
+            ):
                 continue
             if dir_name.startswith("."):
                 continue

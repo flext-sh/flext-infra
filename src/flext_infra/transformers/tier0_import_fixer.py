@@ -102,7 +102,10 @@ class FlextInfraTransformerTier0ImportFixer:
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
             alias_map: dict[str, str] = {
-                alias_name: alias_name for alias_name in c.RUNTIME_ALIAS_NAMES
+                alias_name: alias_name
+                for alias_name in u.read_project_constants(
+                    "flext-infra"
+                ).RUNTIME_ALIAS_NAMES
             }
             if u.Infra.matches_module_toplevel(self._file_path):
                 return FlextInfraTransformerTier0ImportFixer.Analysis(

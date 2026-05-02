@@ -25,7 +25,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import m, p, r, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 
 
 class FlextInfraValidateImportCycles(s[bool]):
@@ -112,7 +112,7 @@ class FlextInfraValidateImportCycles(s[bool]):
             return None
         try:
             name = pymodule.get_name()
-        except (AttributeError, TypeError):
+        except c.EXC_ATTR_TYPE:
             name = None
         if isinstance(name, str) and name:
             return name

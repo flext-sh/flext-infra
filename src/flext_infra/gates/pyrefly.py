@@ -82,7 +82,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                             u.Cli.json_as_mapping(parsed_value),
                             c.Infra.PYREFLY_ERRORS_KEY,
                         )
-                    except (TypeError, c.ValidationError) as err:
+                    except c.EXC_VALIDATION_TYPE as err:
                         issues.append(
                             m.Infra.Issue(
                                 file="<pyrefly-output>",
@@ -97,7 +97,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 elif isinstance(parsed_value, list):
                     try:
                         error_items = u.Cli.json_as_mapping_list(parsed_value)
-                    except (TypeError, c.ValidationError) as err:
+                    except c.EXC_VALIDATION_TYPE as err:
                         issues.append(
                             m.Infra.Issue(
                                 file="<pyrefly-output>",
@@ -122,7 +122,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     if "/.venv/" not in u.Cli.json_pick_str(err, "path", "")
                     and "/site-packages/" not in u.Cli.json_pick_str(err, "path", "")
                 )
-            except (TypeError, c.ValidationError) as err:
+            except c.EXC_VALIDATION_TYPE as err:
                 issues.append(
                     m.Infra.Issue(
                         file="<pyrefly-output>",

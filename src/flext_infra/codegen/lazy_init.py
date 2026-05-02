@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
 from collections.abc import (
     MutableMapping,
@@ -139,9 +140,11 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            state = rope.semantic(entry.file_path)
-            for class_info in state.class_infos:
-                name = class_info.name
+            tree = ast.parse(entry.file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+            for node in tree.body:
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                name = node.name
                 if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
                     continue
                 scoped_modules[name, scope_key].add(entry.module_name)
