@@ -73,16 +73,16 @@ class FlextInfraConstantsSharedInfra:
 
     TIER_WHITELIST_ALLOWLIST_MARKERS: Final[tuple[str, ...]] = (
         "flext-core/src/flext_core",
-        "flext-core/src/flext_tests",
         "flext-cli/src/flext_cli/_utilities/yaml.py",
         "flext-cli/src/flext_cli/typings.py",
     )
     """Canonical wrapper sites where banned-runtime-lib imports ARE allowed.
 
-    The first two markers cover flext-core (most-root SSOT for pydantic,
-    structlog, returns, etc.). The flext-cli markers cover the canonical
-    YAML facade — the one place outside flext-core that owns yaml access
-    for the workspace.
+    flext-core covers the SSOT (pydantic, structlog, returns, …); flext-cli
+    markers cover the canonical YAML facade (the sole place outside
+    flext-core that owns yaml access). Lib ownership is declared in
+    ``c.ENFORCEMENT_LIBRARY_OWNERS``; this list narrows owner-project
+    paths to the wrapper file when ownership is finer-grained than project.
     """
 
     # --- File names (was: class Files) ---
