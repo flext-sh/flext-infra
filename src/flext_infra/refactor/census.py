@@ -114,75 +114,79 @@ class FlextInfraRefactorCensus(
         return (c.Infra.LINT, c.Infra.PYREFLY)
 
     @staticmethod
-    def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
-        """Render the canonical workspace census report."""
+    def _render_workspace_report(report: m.Infra.Census.WorkspaceReport) -> str:
+        """Render workspace census report from dumped model data."""
         data = report.model_dump(mode="json")
-        if "total_objects" in data:
-            projects = data.get("projects", [])
-            duplicates = data.get("duplicates", [])
-            candidates = data.get("removal_candidates", [])
-            lines = [
-                "Workspace Census Report",
-                f"Objects: {int(data.get('total_objects', 0))}",
-                f"Violations: {int(data.get('total_violations', 0))}",
-                f"Fixable: {int(data.get('total_fixable', 0))}",
-                f"Fixes: {int(data.get('fixes_total', 0))}",
-                f"Unused: {int(data.get('unused_count', 0))}",
-                f"Test-only: {int(data.get('test_only_count', 0))}",
-                f"Removal candidates: {int(data.get('removal_candidate_count', 0))}",
-                f"Duplicate groups: {len(duplicates) if isinstance(duplicates, list) else 0}",
-                f"Duration: {float(data.get('scan_duration_seconds', 0.0)):.2f}s",
-                "",
-            ]
-            if isinstance(projects, list):
-                for project in projects:
-                    if not isinstance(project, Mapping):
+        projects = data.get("projects", [])
+        duplicates = data.get("duplicates", [])
+        candidates = data.get("removal_candidates", [])
+        lines = [
+            "Workspace Census Report",
+            f"Objects: {int(data.get('total_objects', 0))}",
+            f"Violations: {int(data.get('total_violations', 0))}",
+            f"Fixable: {int(data.get('total_fixable', 0))}",
+            f"Fixes: {int(data.get('fixes_total', 0))}",
+            f"Unused: {int(data.get('unused_count', 0))}",
+            f"Test-only: {int(data.get('test_only_count', 0))}",
+            f"Removal candidates: {int(data.get('removal_candidate_count', 0))}",
+            f"Duplicate groups: {len(duplicates) if isinstance(duplicates, list) else 0}",
+            f"Duration: {float(data.get('scan_duration_seconds', 0.0)):.2f}s",
+            "",
+        ]
+        if isinstance(projects, list):
+            for project in projects:
+                if not isinstance(project, Mapping):
+                    continue
+                project_name = str(project.get("project", ""))
+                if not project_name:
+                    continue
+                lines.append(
+                    "- "
+                    f"{project_name}: "
+                    f"objects={int(project.get('objects_total', 0))} "
+                    f"violations={int(project.get('violations_total', 0))} "
+                    f"unused={int(project.get('unused_count', 0))} "
+                    f"test-only={int(project.get('test_only_count', 0))} "
+                    f"candidates={int(project.get('removal_candidate_count', 0))}"
+                )
+        if isinstance(candidates, list) and candidates:
+            lines.extend(("", "Candidate preview:"))
+            for candidate in candidates[:10]:
+                if not isinstance(candidate, Mapping):
+                    continue
+                reference_groups = (
+                    candidate.get("test_reference_sites", []),
+                    candidate.get("runtime_reference_sites", []),
+                    candidate.get("example_reference_sites", []),
+                    candidate.get("script_reference_sites", []),
+                )
+                reference_preview = ""
+                for group in reference_groups:
+                    if not isinstance(group, list) or not group:
                         continue
-                    project_name = str(project.get("project", ""))
-                    if not project_name:
-                        continue
-                    lines.append(
-                        "- "
-                        f"{project_name}: "
-                        f"objects={int(project.get('objects_total', 0))} "
-                        f"violations={int(project.get('violations_total', 0))} "
-                        f"unused={int(project.get('unused_count', 0))} "
-                        f"test-only={int(project.get('test_only_count', 0))} "
-                        f"candidates={int(project.get('removal_candidate_count', 0))}"
-                    )
-            if isinstance(candidates, list) and candidates:
-                lines.extend(("", "Candidate preview:"))
-                for candidate in candidates[:10]:
-                    if not isinstance(candidate, Mapping):
-                        continue
-                    reference_groups = (
-                        candidate.get("test_reference_sites", []),
-                        candidate.get("runtime_reference_sites", []),
-                        candidate.get("example_reference_sites", []),
-                        candidate.get("script_reference_sites", []),
-                    )
-                    reference_preview = ""
-                    for group in reference_groups:
-                        if not isinstance(group, list) or not group:
+                    preview_sites: list[str] = []
+                    for site in group[:3]:
+                        if not isinstance(site, Mapping):
                             continue
-                        preview_sites: list[str] = []
-                        for site in group[:3]:
-                            if not isinstance(site, Mapping):
-                                continue
-                            site_path = str(site.get("file_path", ""))
-                            site_line = int(site.get("line", 0))
-                            preview_sites.append(f"{site_path}:{site_line}")
-                        if preview_sites:
-                            reference_preview = ", ".join(preview_sites)
-                            break
-                    lines.append(
-                        "- "
-                        f"{candidate.get('reason', 'candidate')!s} "
-                        f"{candidate.get('object_name', '')!s} "
-                        f"@ {candidate.get('file_path', '')!s}:{int(candidate.get('line', 0))}"
-                        + (f" refs={reference_preview}" if reference_preview else "")
-                    )
-            return "\n".join(lines)
+                        site_path = str(site.get("file_path", ""))
+                        site_line = int(site.get("line", 0))
+                        preview_sites.append(f"{site_path}:{site_line}")
+                    if preview_sites:
+                        reference_preview = ", ".join(preview_sites)
+                        break
+                lines.append(
+                    "- "
+                    f"{candidate.get('reason', 'candidate')!s} "
+                    f"{candidate.get('object_name', '')!s} "
+                    f"@ {candidate.get('file_path', '')!s}:{int(candidate.get('line', 0))}"
+                    + (f" refs={reference_preview}" if reference_preview else "")
+                )
+        return "\n".join(lines)
+
+    @staticmethod
+    def _render_utilities_report(report: m.Infra.Census.WorkspaceReport) -> str:
+        """Render utilities census report from dumped model data."""
+        data = report.model_dump(mode="json")
         totals = {
             "classes": data.get("total_classes", 0),
             "methods": data.get("total_methods", 0),
@@ -212,6 +216,14 @@ class FlextInfraRefactorCensus(
                     if project_name:
                         lines.append(f"- {project_name}: {total}")
         return "\n".join(lines)
+
+    @staticmethod
+    def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
+        """Render the canonical workspace census report."""
+        data = report.model_dump(mode="json")
+        if "total_objects" in data:
+            return FlextInfraRefactorCensus._render_workspace_report(report)
+        return FlextInfraRefactorCensus._render_utilities_report(report)
 
     @override
     def execute(self) -> p.Result[m.Infra.Census.WorkspaceReport]:
