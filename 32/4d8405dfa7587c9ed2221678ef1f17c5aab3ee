@@ -1,0 +1,14 @@
+src/flext_infra/refactor/census.py
+  h_9db9d35f50cf33 760-762
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "324d8405dfa7587c9ed2221678ef1f17c5aab3ee",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
