@@ -171,7 +171,7 @@ class FlextInfraProjectMigrator(
             try:
                 u.write_file(target, generated_text, encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
-                return r[str].fail(f"base.mk update failed: {exc}")
+                return r[str].fail_op("base.mk update", exc)
         return r[str].ok(
             self._action_text(
                 "base.mk regenerated via BaseMkGenerator",
@@ -188,7 +188,7 @@ class FlextInfraProjectMigrator(
                 else list[str]()
             )
         except OSError as exc:
-            return r[str].fail(f".gitignore read failed: {exc}")
+            return r[str].fail_op(".gitignore read", exc)
         filtered = [
             line
             for line in existing_lines
@@ -219,7 +219,7 @@ class FlextInfraProjectMigrator(
             try:
                 u.write_file(gitignore_path, body, encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
-                return r[str].fail(f".gitignore update failed: {exc}")
+                return r[str].fail_op(".gitignore update", exc)
         return r[str].ok(
             self._action_text(
                 ".gitignore cleaned from scripts/ and normalized",
@@ -234,7 +234,7 @@ class FlextInfraProjectMigrator(
         try:
             original = makefile_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
-            return r[str].fail(f"Makefile read failed: {exc}")
+            return r[str].fail_op("Makefile read", exc)
         updated = original
         for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
             updated = updated.replace(before, after)
@@ -245,7 +245,7 @@ class FlextInfraProjectMigrator(
             try:
                 u.write_file(makefile_path, updated, encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
-                return r[str].fail(f"Makefile update failed: {exc}")
+                return r[str].fail_op("Makefile update", exc)
         return r[str].ok(
             self._action_text(
                 "Makefile migrated to bootstrap include",
