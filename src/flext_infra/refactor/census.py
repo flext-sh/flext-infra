@@ -757,7 +757,9 @@ class FlextInfraRefactorCensus(
         inherited by str/int/dict/list constants do not pollute collision
         candidates with names like `count`, `index`, `replace`, etc.
         """
-        module_name = value.__module__
+        module_name = getattr(value, "__module__", "")
+        if not isinstance(module_name, str):
+            return False
         return module_name.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
 
     @classmethod
