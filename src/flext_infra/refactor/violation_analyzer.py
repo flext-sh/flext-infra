@@ -41,7 +41,7 @@ class FlextInfraRefactorViolationAnalyzer:
         for file_path in files:
             try:
                 content = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except (OSError, UnicodeDecodeError):
+            except c.EXC_OS_DECODING:
                 continue
             helper_analysis = cls._analyze_file_helpers(
                 file_path=file_path,

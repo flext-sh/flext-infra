@@ -236,7 +236,7 @@ class FlextInfraProjectClassifier:
     ) -> t.Pair[t.Infra.StrSet, t.Infra.StrSet]:
         try:
             source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except (OSError, UnicodeDecodeError):
+        except c.EXC_OS_DECODING:
             return (set(), set())
         base_names: t.Infra.StrSet = set()
         class_names: t.Infra.StrSet = set()

@@ -26,7 +26,7 @@ class FlextInfraClassNestingPostCheckGate:
     def _read_source_safe(file_path: Path) -> str | None:
         try:
             return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except (OSError, UnicodeDecodeError):
+        except c.EXC_OS_DECODING:
             return None
 
     def validate(

@@ -152,7 +152,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
                 continue
             try:
                 source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except (OSError, UnicodeDecodeError):
+            except c.EXC_OS_DECODING:
                 continue
             if c.Infra.FUTURE_ANNOTATIONS in source:
                 continue

@@ -301,7 +301,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
                 path = Path(modified_file)
                 if path.is_file():
                     u.Infra.run_ruff_fix(path, quiet=True)
-        except (OSError, UnicodeDecodeError):
+        except c.EXC_OS_DECODING:
             u.Infra.restore_files(bak_paths)
             raise
         remaining_violations_result = u.Infra.parse_namespace_validation(

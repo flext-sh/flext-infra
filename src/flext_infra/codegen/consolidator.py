@@ -256,7 +256,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         value_map: t.MutableStrMapping = {}
         try:
             source = constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except (OSError, UnicodeDecodeError):
+        except c.EXC_OS_DECODING:
             return value_map
 
         for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
