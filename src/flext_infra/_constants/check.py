@@ -22,17 +22,6 @@ class FlextInfraConstantsCheck:
         WARNING = "warning"
         NOTE = "note"
 
-    ALLOWED_GATES: Final[frozenset[str]] = frozenset({
-        "lint",
-        "format",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "silent-failure",
-        "security",
-        "markdown",
-        "go",
-    })
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.Infra.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -50,6 +39,8 @@ class FlextInfraConstantsCheck:
         ),
         "go": ("Go Vet", "https://pkg.go.dev/cmd/vet"),
     })
+    ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
+    "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
     REQUIRED_EXCLUDES: Final[tuple[str, ...]] = (
         "**/*_pb2*.py",
         "**/*_pb2_grpc*.py",
@@ -65,12 +56,8 @@ class FlextInfraConstantsCheck:
     )
     MAX_DISPLAY_ISSUES: Final[int] = 50
 
-    VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset({
-        GateSeverity.ERROR,
-        GateSeverity.WARNING,
-        GateSeverity.NOTE,
-    })
-    "Severity levels accepted by gate output parsers."
+    VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
+    "Severity levels accepted by gate output parsers — derived from GateSeverity."
 
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     BANDIT_RESULTS_KEY: Final[str] = "results"
