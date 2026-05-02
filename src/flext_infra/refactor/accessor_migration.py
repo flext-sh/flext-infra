@@ -39,106 +39,11 @@ class FlextInfraAccessorMigrationOrchestrator(
         ),
     ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
 
-    # Compact data-table for accessor-migration rules. Origin is constant
-    # ``"flext_core"`` (all current rules target the flext-core surface) so it
-    # is hoisted into the comprehension below. Each row maps to a single
-    # ``m.Infra.AccessorMigrationRule`` via Pydantic v2 batch construction.
-    # Row layout: (source_name, replacement_name, reason).
-    #
-    # Token-level rename is idempotent — once ``source_name`` has been renamed,
-    # subsequent passes find zero matching tokens. The legacy table carried
-    # 4 redundant duplicates per ``is_success_result``/``is_failure_result``
-    # (one per AST stage label) that produced no additional rewrites. The
-    # canonical table below keeps a single entry per ``(source, replacement)``
-    # pair (18 unique rules vs 24 stale entries).
-    _AUTOMATED_RULE_ROWS: ClassVar[tuple[tuple[str, str, str], ...]] = (
-        (
-            "is_success_result",
-            "successful_result",
-            "Rename result helper to the canonical success helper",
-        ),
-        (
-            "is_failure_result",
-            "failed_result",
-            "Rename result helper to the canonical failure helper",
-        ),
-        (
-            "is_success",
-            "success",
-            "Rename boolean result predicate to the canonical success field",
-        ),
-        (
-            "is_failure",
-            "failure",
-            "Rename boolean result predicate to the canonical failure field",
-        ),
-        (
-            "set_attribute",
-            "update_attribute",
-            "Rewrite attribute mutator to the canonical update verb",
-        ),
-        (
-            "get_beartype_conf",
-            "build_beartype_conf",
-            "Rewrite beartype settings accessor to the canonical build verb",
-        ),
-        (
-            "get_message_route",
-            "resolve_message_route",
-            "Rewrite route accessor to the canonical resolve helper",
-        ),
-        (
-            "set_container_adapter",
-            "container_set_adapter",
-            "Rewrite type adapter accessor to the canonical container_* name",
-        ),
-        (
-            "set_str_adapter",
-            "string_set_adapter",
-            "Rewrite type adapter accessor to the canonical string_* name",
-        ),
-        (
-            "set_scalar_adapter",
-            "scalar_set_adapter",
-            "Rewrite type adapter accessor to the canonical scalar_* name",
-        ),
-        (
-            "get_logger",
-            "fetch_logger",
-            "Rewrite logger accessor to the canonical fetch verb",
-        ),
-        (
-            "is_structlog_configured",
-            "structlog_configured",
-            "Rewrite structlog predicate to the canonical boolean helper",
-        ),
-        (
-            "get_log_level_from_config",
-            "resolve_log_level_from_config",
-            "Rewrite log-level accessor to the canonical resolve helper",
-        ),
-        (
-            "get_version_string",
-            "resolve_version_string",
-            "Rewrite version accessor to the canonical resolve helper",
-        ),
-        (
-            "get_version_info",
-            "resolve_version_info",
-            "Rewrite version info accessor to the canonical resolve helper",
-        ),
-        (
-            "get_package_info",
-            "resolve_package_info",
-            "Rewrite package info accessor to the canonical resolve helper",
-        ),
-        (
-            "is_version_at_least",
-            "version_at_least",
-            "Rewrite version predicate to the canonical boolean helper",
-        ),
-    )
-
+    # Rename rules sourced from c.ENFORCEMENT_ACCESSOR_RENAMES (flext-core SSOT).
+    # All entries target flext-core surface (origin="flext_core"); adding a
+    # rename = one entry in flext-core's enforcement constant, never duplicated
+    # here. Token-level rename is idempotent — once source_name has been
+    # renamed, subsequent passes find zero matching tokens.
     _AUTOMATED_RULES: ClassVar[tuple[m.Infra.AccessorMigrationRule, ...]] = tuple(
         m.Infra.AccessorMigrationRule(
             source_name=src,
@@ -146,10 +51,10 @@ class FlextInfraAccessorMigrationOrchestrator(
             reason=reason,
             origin="flext_core",
         )
-        for src, repl, reason in _AUTOMATED_RULE_ROWS
+        for src, (repl, reason) in c.ENFORCEMENT_ACCESSOR_RENAMES.items()
     )
     _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset(
-        row[0] for row in _AUTOMATED_RULE_ROWS
+        c.ENFORCEMENT_ACCESSOR_RENAMES
     )
     _MANUAL_WARNING_REASON: ClassVar[str] = (
         "Public {prefix}-prefixed accessor: rename to canonical verb "
