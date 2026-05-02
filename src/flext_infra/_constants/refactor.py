@@ -53,43 +53,6 @@ class FlextInfraConstantsRefactor:
     )
     """Allowed keys under the ``refactor_engine`` config scope."""
 
-    LEGACY_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "remove",
-        "inline_and_remove",
-        "remove_and_update_refs",
-        "keep_try_only",
-    })
-    IMPORT_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "replace_with_alias",
-        "hoist_to_module_top",
-    })
-    CLASS_FIX_ACTIONS: Final[frozenset[str]] = frozenset({"reorder_methods"})
-    MRO_MIGRATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "migrate_to_class_mro",
-    })
-    MRO_REDUNDANCY_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "remove_inheritance_keep_class",
-        "fix_mro_redeclaration",
-    })
-    PATTERN_GENERIC_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "convert_dict_to_mapping_annotations",
-        "fix_silent_failure_sentinels",
-    })
-    PATTERN_REDUNDANT_CAST_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "remove_redundant_casts",
-    })
-    SIGNATURE_PROPAGATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "propagate_signature_migrations",
-    })
-    TYPE_ALIAS_FIX_ACTIONS: Final[frozenset[str]] = frozenset({"unify_typings"})
-    TYPING_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "replace_object_annotations",
-        "remove_unused_models",
-    })
-    TIER0_FIX_ACTIONS: Final[frozenset[str]] = frozenset({"fix_tier0_imports"})
-    FUTURE_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "ensure_future_annotations",
-    })
     TYPING_DEFINITION_FILES: Final[frozenset[str]] = frozenset({
         "typings.py",
         "_typings",
@@ -111,7 +74,6 @@ class FlextInfraConstantsRefactor:
             }): "t.JsonValue",
         })
     )
-    FUTURE_CHECKS: Final[frozenset[str]] = frozenset({"missing_future_import"})
 
     @unique
     class RefactorRuleKind(StrEnum):
@@ -146,37 +108,75 @@ class FlextInfraConstantsRefactor:
         ]
     ] = MappingProxyType({
         RefactorRuleKind.FUTURE_ANNOTATIONS: (
-            (FUTURE_FIX_ACTIONS, FUTURE_CHECKS, frozenset(), frozenset()),
+            (
+                frozenset({"ensure_future_annotations"}),
+                frozenset({"missing_future_import"}),
+                frozenset(),
+                frozenset(),
+            ),
         ),
         RefactorRuleKind.MRO_CLASS_MIGRATION: (
-            (MRO_MIGRATION_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (
+                frozenset({"migrate_to_class_mro"}),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+            ),
         ),
         RefactorRuleKind.LEGACY_REMOVAL: (
-            (LEGACY_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (
+                frozenset({
+                    "remove",
+                    "inline_and_remove",
+                    "remove_and_update_refs",
+                    "keep_try_only",
+                }),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+            ),
         ),
         RefactorRuleKind.IMPORT_MODERNIZER: (
-            (IMPORT_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (
+                frozenset({"replace_with_alias", "hoist_to_module_top"}),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+            ),
         ),
         RefactorRuleKind.CLASS_RECONSTRUCTOR: (
-            (CLASS_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (frozenset({"reorder_methods"}), frozenset(), frozenset(), frozenset()),
         ),
         RefactorRuleKind.PATTERN_CORRECTIONS: (
-            (PATTERN_GENERIC_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
             (
-                PATTERN_REDUNDANT_CAST_FIX_ACTIONS,
+                frozenset({
+                    "convert_dict_to_mapping_annotations",
+                    "fix_silent_failure_sentinels",
+                }),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+            ),
+            (
+                frozenset({"remove_redundant_casts"}),
                 frozenset(),
                 frozenset(),
                 frozenset({RK_REDUNDANT_TYPE_TARGETS}),
             ),
         ),
         RefactorRuleKind.TYPING_UNIFICATION: (
-            (TYPE_ALIAS_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (frozenset({"unify_typings"}), frozenset(), frozenset(), frozenset()),
         ),
         RefactorRuleKind.TYPING_ANNOTATION_FIX: (
-            (TYPING_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (
+                frozenset({"replace_object_annotations", "remove_unused_models"}),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+            ),
         ),
         RefactorRuleKind.TIER0_IMPORT_FIX: (
-            (TIER0_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (frozenset({"fix_tier0_imports"}), frozenset(), frozenset(), frozenset()),
         ),
         RefactorRuleKind.SYMBOL_PROPAGATION: (
             (
@@ -194,14 +194,19 @@ class FlextInfraConstantsRefactor:
         ),
         RefactorRuleKind.SIGNATURE_PROPAGATION: (
             (
-                SIGNATURE_PROPAGATION_FIX_ACTIONS,
+                frozenset({"propagate_signature_migrations"}),
                 frozenset(),
                 frozenset(),
                 frozenset({RK_SIGNATURE_MIGRATIONS}),
             ),
         ),
         RefactorRuleKind.MRO_REDUNDANCY: (
-            (MRO_REDUNDANCY_FIX_ACTIONS, frozenset(), frozenset(), frozenset()),
+            (
+                frozenset({"remove_inheritance_keep_class", "fix_mro_redeclaration"}),
+                frozenset(),
+                frozenset(),
+                frozenset(),
+            ),
         ),
     })
     FILE_RULE_MATCHERS_BY_KIND: Final[
