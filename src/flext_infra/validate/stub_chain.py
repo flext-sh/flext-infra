@@ -156,9 +156,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
                 ),
             )
         except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.ValidationReport].fail(
-                f"stub validation failed: {exc}",
-            )
+            return r[m.Infra.ValidationReport].fail_op("stub validation", exc)
 
     @override
     def execute(self) -> p.Result[bool]:

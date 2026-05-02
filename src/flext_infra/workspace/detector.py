@@ -85,7 +85,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].ok(mode)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             u.Cli.info(f"Running in standalone mode (detection error: {exc})")
-            return r[c.Infra.WorkspaceMode].fail(f"Detection failed: {exc}")
+            return r[c.Infra.WorkspaceMode].fail_op("Detection", exc)
 
     @override
     def execute(self) -> p.Result[c.Infra.WorkspaceMode]:

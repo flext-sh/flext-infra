@@ -133,7 +133,7 @@ class FlextInfraUtilitiesRelease:
             )
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f"changelog update failed: {exc}")
+            return r[bool].fail_op("changelog update", exc)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRelease"]

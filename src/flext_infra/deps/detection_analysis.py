@@ -312,9 +312,7 @@ class FlextInfraDependencyDetectionAnalysis:
             with contextlib.chdir(project_path):
                 stdout, stderr, _exit_code = mypy_api.run(list(cmd))
         except Exception as exc:
-            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
-                f"mypy execution failed: {exc}",
-            )
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail_op("mypy execution", exc)
         output = f"{stdout}\n{stderr}"
         hinted = {
             match.group(1).strip()

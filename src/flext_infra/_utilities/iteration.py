@@ -1025,7 +1025,7 @@ class FlextInfraUtilitiesIteration:
                     )
             return r[t.SequenceOf[Path]].ok(sorted(set(files)))
         except OSError as exc:
-            return r[t.SequenceOf[Path]].fail(f"python file iteration failed: {exc}")
+            return r[t.SequenceOf[Path]].fail_op("python file iteration", exc)
 
     @staticmethod
     def _iter_known_dirs(
@@ -1116,9 +1116,7 @@ class FlextInfraUtilitiesIteration:
                 )
             return r[t.SequenceOf[t.Pair[Path, Path]]].ok(result)
         except OSError as exc:
-            return r[t.SequenceOf[t.Pair[Path, Path]]].fail(
-                f"workspace python module iteration failed: {exc}",
-            )
+            return r[t.SequenceOf[t.Pair[Path, Path]]].fail_op("workspace python module iteration", exc)
 
     @staticmethod
     def resolve_project_root(file_path: Path) -> Path | None:

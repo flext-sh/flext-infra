@@ -155,9 +155,7 @@ class FlextInfraUtilitiesDocs:
                 )
             return r[t.SequenceOf[m.Infra.DocScope]].ok(scopes)
         except (OSError, TypeError, ValueError) as exc:
-            return r[t.SequenceOf[m.Infra.DocScope]].fail(
-                f"scope resolution failed: {exc}",
-            )
+            return r[t.SequenceOf[m.Infra.DocScope]].fail_op("scope resolution", exc)
 
     @staticmethod
     def iter_markdown_files(workspace_root: Path) -> t.SequenceOf[Path]:

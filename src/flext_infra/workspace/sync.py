@@ -69,7 +69,7 @@ class FlextInfraSyncService(
                         canonical_root=self.canonical_root,
                     )
                 except OSError as exc:
-                    return r[m.Infra.SyncResult].fail(f"lock acquisition failed: {exc}")
+                    return r[m.Infra.SyncResult].fail_op("lock acquisition", exc)
                 finally:
                     with contextlib.suppress(OSError):
                         fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
@@ -257,7 +257,7 @@ class FlextInfraSyncService(
                     _ = handle.write(f"{pattern}\n")
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f".gitignore update failed: {exc}")
+            return r[bool].fail_op(".gitignore update", exc)
 
     def _sync_basemk(
         self,

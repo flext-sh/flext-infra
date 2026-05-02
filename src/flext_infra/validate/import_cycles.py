@@ -55,9 +55,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         try:
             graph = self._build_graph(workspace_root)
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail(
-                f"import-cycles scan failed: {exc}",
-            )
+            return r[m.Infra.ValidationReport].fail_op("import-cycles scan", exc)
         cycles = tuple(
             scc for scc in self._tarjan(graph) if len(scc) >= self._MIN_CYCLE_SIZE
         )

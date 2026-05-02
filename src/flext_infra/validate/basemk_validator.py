@@ -79,9 +79,7 @@ class FlextInfraBaseMkValidator(s[bool]):
                 ),
             )
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail(
-                f"base.mk validation failed: {exc}",
-            )
+            return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
 
     @override
     def execute(self) -> p.Result[bool]:

@@ -54,7 +54,7 @@ class FlextInfraProjectMakefileUpdater:
         try:
             meta = u.read_project_metadata(project_root)
         except (FileNotFoundError, ValueError) as exc:
-            return r[bool].fail(f"pyproject.toml parse failed: {exc}")
+            return r[bool].fail_op("pyproject.toml parse", exc)
 
         bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
         if bootstrap_result.failure:
@@ -70,7 +70,7 @@ class FlextInfraProjectMakefileUpdater:
             try:
                 existing = makefile_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
-                return r[bool].fail(f"Makefile read failed: {exc}")
+                return r[bool].fail_op("Makefile read", exc)
 
             if u.Cli.sha256_content(existing) == u.Cli.sha256_content(new_content):
                 return r[bool].ok(False)

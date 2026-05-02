@@ -118,7 +118,7 @@ class FlextInfraUtilitiesVersioning:
         try:
             content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
-            return r[str].fail(f"read failed: {exc}")
+            return r[str].fail_op("read", exc)
         version = FlextInfraUtilitiesVersioning._extract_project_version_from_text(
             content,
         )
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesVersioning:
         try:
             content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
-            return r[bool].fail(f"read failed: {exc}")
+            return r[bool].fail_op("read", exc)
         if not FlextInfraUtilitiesVersioning._has_project_table(content):
             return r[bool].fail(f"missing [project] table in {pyproject}")
         updated = FlextInfraUtilitiesVersioning._replace_project_version_in_text(
@@ -174,7 +174,7 @@ class FlextInfraUtilitiesVersioning:
         try:
             _ = pyproject.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
-            return r[bool].fail(f"write failed: {exc}")
+            return r[bool].fail_op("write", exc)
         return r[bool].ok(True)
 
 

@@ -49,7 +49,6 @@ class FlextInfraEnsurePytestConfigPhase:
                 "filterwarnings",
                 (
                     "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning",
-                    "ignore:.*TestsFlextBad.*:flext_core.FlextMroViolation",
                 ),
                 strategy=c.Infra.TomlMergeMode.MERGE,
             )

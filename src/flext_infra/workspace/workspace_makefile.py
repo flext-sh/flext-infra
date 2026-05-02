@@ -72,7 +72,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             try:
                 existing = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except OSError as exc:
-                return r[bool].fail(f"Makefile read failed: {exc}")
+                return r[bool].fail_op("Makefile read", exc)
             if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
                 return r[bool].ok(False)
 
@@ -132,7 +132,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             if template_write.failure:
                 return template_write
         except OSError as exc:
-            return r[bool].fail(f"template bootstrap failed: {exc}")
+            return r[bool].fail_op("template bootstrap", exc)
 
         render_result = self._render_template(
             pr_branch=pr_branch,
@@ -172,7 +172,7 @@ class FlextInfraWorkspaceMakefileGenerator:
             )
             return r[str].ok(rendered)
         except (OSError, TemplateError, TypeError, ValueError) as exc:
-            return r[str].fail(f"template render failed: {exc}")
+            return r[str].fail_op("template render", exc)
 
     @staticmethod
     def _render_template_content(

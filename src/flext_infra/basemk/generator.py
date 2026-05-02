@@ -92,7 +92,7 @@ class FlextInfraBaseMkGenerator(s[str]):
                 _ = target_stream.write(content)
                 return r[bool].ok(True)
             except (OSError, ValueError) as exc:
-                return r[bool].fail(f"base.mk stdout write failed: {exc}")
+                return r[bool].fail_op("base.mk stdout write", exc)
         try:
             output.parent.mkdir(parents=True, exist_ok=True)
             _ = output.write_text(
@@ -101,7 +101,7 @@ class FlextInfraBaseMkGenerator(s[str]):
             )
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f"base.mk write failed: {exc}")
+            return r[bool].fail_op("base.mk write", exc)
 
     def _validate_generated_output(self, content: str) -> p.Result[str]:
         """Validate generated base.mk by running make --dry-run."""
@@ -127,11 +127,9 @@ class FlextInfraBaseMkGenerator(s[str]):
                 ])
                 if process_result.failure:
                     error_text = process_result.error or "make validation failed"
-                    return r[str].fail(
-                        f"generated base.mk validation failed: {error_text}",
-                    )
+                    return r[str].fail_op("generated base.mk validation", error_text)
         except OSError as exc:
-            return r[str].fail(f"generated base.mk validation failed: {exc}")
+            return r[str].fail_op("generated base.mk validation", exc)
         return r[str].ok(content)
 
 

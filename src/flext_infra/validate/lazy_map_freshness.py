@@ -47,9 +47,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         try:
             errors = generator.generate_inits(check_only=True)
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail(
-                f"lazy-map freshness scan failed: {exc}",
-            )
+            return r[m.Infra.ValidationReport].fail_op("lazy-map freshness scan", exc)
         if errors > 0:
             return r[m.Infra.ValidationReport].fail(
                 f"lazy-map freshness scan errored in {errors} package(s)",

@@ -87,9 +87,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             )
             return r[m.Infra.BaseMkConfig].ok(normalized)
         except (TypeError, ValueError) as exc:
-            return r[m.Infra.BaseMkConfig].fail(
-                f"base.mk configuration validation failed: {exc}",
-            )
+            return r[m.Infra.BaseMkConfig].fail_op("base.mk configuration validation", exc)
 
     @staticmethod
     def render_bootstrap_include() -> p.Result[str]:
@@ -134,7 +132,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             content = "\n\n".join(sections).rstrip("\n") + "\n"
             return r[str].ok(content)
         except (TemplateError, ValueError, TypeError) as exc:
-            return r[str].fail(f"base.mk template render failed: {exc}")
+            return r[str].fail_op("base.mk template render", exc)
 
     def render_single(
         self,
@@ -149,7 +147,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             content = self._render_template(template, **kwargs)
             return r[str].ok(content.rstrip("\n"))
         except (TemplateError, OSError, ValueError, TypeError) as exc:
-            return r[str].fail(f"template render failed: {exc}")
+            return r[str].fail_op("template render", exc)
 
 
 __all__: list[str] = ["FlextInfraBaseMkTemplateEngine"]

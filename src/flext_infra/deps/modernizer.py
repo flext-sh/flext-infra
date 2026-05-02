@@ -128,9 +128,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
                 payload_source,
             )
         except c.ValidationError as exc:
-            return r[m.Infra.PyprojectDocumentState].fail(
-                f"TOML payload validation failed: {exc}",
-            )
+            return r[m.Infra.PyprojectDocumentState].fail_op("TOML payload validation", exc)
         return r[m.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState.model_validate(
                 {

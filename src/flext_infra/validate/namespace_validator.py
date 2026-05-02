@@ -96,9 +96,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 ),
             )
         except (OSError, TypeError, ValueError, RuntimeError) as exc:
-            return r[m.Infra.ValidationReport].fail(
-                f"Namespace validation failed: {exc}",
-            )
+            return r[m.Infra.ValidationReport].fail_op("Namespace validation", exc)
 
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""

@@ -108,9 +108,7 @@ class FlextInfraInventoryService(s[bool]):
             )
             return r[m.Infra.InventoryReport].ok(result)
         except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.InventoryReport].fail(
-                f"inventory generation failed: {exc}",
-            )
+            return r[m.Infra.InventoryReport].fail_op("inventory generation", exc)
 
     @override
     def execute(self) -> p.Result[bool]:

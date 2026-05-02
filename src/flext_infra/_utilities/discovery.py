@@ -426,7 +426,7 @@ class FlextInfraUtilitiesDiscovery:
                 )
             ]
         except OSError as exc:
-            return r[t.SequenceOf[Path]].fail(f"pyproject file scan failed: {exc}")
+            return r[t.SequenceOf[Path]].fail_op("pyproject file scan", exc)
         if project_paths is not None:
             all_files = [
                 path

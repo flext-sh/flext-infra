@@ -50,7 +50,7 @@ class FlextInfraReleaseOrchestratorPhases:
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            return r[bool].fail(f"report dir creation failed: {exc}")
+            return r[bool].fail_op("report dir creation", exc)
         targets = self._build_targets(workspace_root, project_names)
         records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
         failures = 0
