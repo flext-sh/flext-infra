@@ -403,8 +403,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         selected = tuple(
             project
             for project in discovered
-            if project.name not in c.Infra.EXCLUDED_PROJECTS
-            and not (project.path / c.Infra.GO_MOD).exists()
+            if not (project.path / c.Infra.GO_MOD).exists()
         )
         return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(selected)
 

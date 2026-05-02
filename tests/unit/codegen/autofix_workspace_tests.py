@@ -26,11 +26,12 @@ def _project_info(
     )
 
 
-def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
+def test_go_only_project_excluded_from_run(tmp_path: Path) -> None:
     flexcore = tmp_path / "flexcore"
     flexcore.mkdir()
     (flexcore / "Makefile").touch()
     (flexcore / "pyproject.toml").write_text("[project]\nname='flexcore'\n")
+    (flexcore / "go.mod").write_text("module flexcore\n\ngo 1.22\n")
     (flexcore / ".git").mkdir()
     pkg = flexcore / "src" / "flexcore"
     pkg.mkdir(parents=True)

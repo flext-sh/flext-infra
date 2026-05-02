@@ -21,8 +21,6 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCodegen:
     """Namespace for all codegen-related constants."""
 
-    EXCLUDED_PROJECTS: Final[frozenset[str]] = frozenset({"flexcore"})
-    "Projects excluded from all codegen operations (Go/Python hybrid)."
     SRC_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),

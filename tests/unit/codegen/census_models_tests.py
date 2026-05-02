@@ -1,7 +1,8 @@
-"""Tests for census models, excluded projects, and violation pattern.
+"""Tests for census models and violation pattern.
 
-Validates CensusViolation/CensusReport models, project exclusion set,
-and the compiled violation regex pattern.
+Validates CensusViolation/CensusReport models and the compiled violation
+regex pattern. Go-only projects are filtered via go.mod existence at the
+discovery boundary, not via a hand-curated list.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,14 +13,6 @@ from __future__ import annotations
 from flext_tests import tm
 
 from tests import c, m, t
-
-
-class TestExcludedProjects:
-    def test_flexcore_in_excluded_set(self) -> None:
-        tm.that(c.Infra.EXCLUDED_PROJECTS, has="flexcore")
-
-    def test_excluded_set_is_frozenset(self) -> None:
-        tm.that(type(c.Infra.EXCLUDED_PROJECTS).__name__, eq="frozenset")
 
 
 class TestViolationPattern:
