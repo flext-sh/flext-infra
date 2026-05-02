@@ -64,21 +64,6 @@ class FlextInfraConstantsRefactor:
         "hoist_to_module_top",
     })
     CLASS_FIX_ACTIONS: Final[frozenset[str]] = frozenset({"reorder_methods"})
-    MRO_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "remove_inheritance_keep_class",
-        "fix_mro_redeclaration",
-        "migrate_to_class_mro",
-    })
-    PROPAGATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "propagate_symbol_renames",
-        "rename_imported_symbols",
-        "propagate_signature_migrations",
-    })
-    PATTERN_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "convert_dict_to_mapping_annotations",
-        "remove_redundant_casts",
-        "fix_silent_failure_sentinels",
-    })
     MRO_MIGRATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
         "migrate_to_class_mro",
     })
@@ -92,10 +77,6 @@ class FlextInfraConstantsRefactor:
     })
     PATTERN_REDUNDANT_CAST_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
         "remove_redundant_casts",
-    })
-    SYMBOL_PROPAGATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
-        "propagate_symbol_renames",
-        "rename_imported_symbols",
     })
     SIGNATURE_PROPAGATION_FIX_ACTIONS: Final[frozenset[str]] = frozenset({
         "propagate_signature_migrations",
