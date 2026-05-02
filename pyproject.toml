@@ -441,7 +441,6 @@ addopts = [
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [
-  "ignore:.*TestsFlextBad.*:flext_core.FlextMroViolation",
   "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning",
   "ignore:Remove `format_exc_info` from your processor chain:UserWarning:structlog",
 ]

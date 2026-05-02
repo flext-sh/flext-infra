@@ -250,7 +250,9 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             )
             return r[m.Infra.PytestDiagnostics].ok(result)
         except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.PytestDiagnostics].fail_op("pytest diagnostics extraction", exc)
+            return r[m.Infra.PytestDiagnostics].fail_op(
+                "pytest diagnostics extraction", exc
+            )
 
     @override
     def execute(self) -> p.Result[bool]:

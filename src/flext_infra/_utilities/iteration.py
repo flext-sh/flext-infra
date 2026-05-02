@@ -1116,7 +1116,9 @@ class FlextInfraUtilitiesIteration:
                 )
             return r[t.SequenceOf[t.Pair[Path, Path]]].ok(result)
         except OSError as exc:
-            return r[t.SequenceOf[t.Pair[Path, Path]]].fail_op("workspace python module iteration", exc)
+            return r[t.SequenceOf[t.Pair[Path, Path]]].fail_op(
+                "workspace python module iteration", exc
+            )
 
     @staticmethod
     def resolve_project_root(file_path: Path) -> Path | None:

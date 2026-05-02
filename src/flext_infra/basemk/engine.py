@@ -87,7 +87,9 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             )
             return r[m.Infra.BaseMkConfig].ok(normalized)
         except (TypeError, ValueError) as exc:
-            return r[m.Infra.BaseMkConfig].fail_op("base.mk configuration validation", exc)
+            return r[m.Infra.BaseMkConfig].fail_op(
+                "base.mk configuration validation", exc
+            )
 
     @staticmethod
     def render_bootstrap_include() -> p.Result[str]:
