@@ -52,7 +52,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
         )
 
     def _orchestrate_in(self, workspace_root: Path) -> p.Result[bool]:
-        clone = self.model_copy(update={"root": workspace_root})
+        clone = self.model_copy(update={"workspace_root": workspace_root})
         return FlextInfraOrchestratorService.execute(clone)
 
     def _rollback_sandbox(self) -> p.Result[bool]:
