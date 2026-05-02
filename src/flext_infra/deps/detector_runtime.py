@@ -9,7 +9,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, e, m, p, r, t, u
 
 
 class FlextInfraDependencyDetectorRuntime:
@@ -49,7 +49,7 @@ class FlextInfraDependencyDetectorRuntime:
                 "deps_deptry_missing",
                 path=str(venv_bin / c.Infra.DEPTRY),
             )
-            return r[bool].fail("deptry executable not found")
+            return e.fail_not_found("deptry executable", "", result_type=r[bool])
         apply_typings = params.apply_typings
         do_typings = params.typings or apply_typings
         limits_path = params.limits_path or limits_default
