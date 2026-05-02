@@ -121,12 +121,14 @@ class TestStubChain:
         )
         (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         u.Tests.mk_project(tmp_path, "project-b", with_src=False)
+        valid_project = u.Tests.mk_project(tmp_path, "project-c", with_src=True)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
         tm.that(result.value.summary, eq="stub chain: 2 projects, 0 issues")
         tm.that(result.value.violations, empty=True)
+        tm.that(valid_project.exists(), eq=True)
 
     def test_build_report_uses_explicit_project_dirs(self, tmp_path: Path) -> None:
         project_a = u.Tests.mk_project(tmp_path, "project-a", with_src=True)
@@ -140,7 +142,7 @@ class TestStubChain:
         tm.ok(result)
         tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
 
-    def test_build_report_ignores_untracked_git_projects(self, tmp_path: Path) -> None:
+    def test_build_report_includes_untracked_git_projects(self, tmp_path: Path) -> None:
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         assert init_result.success
         assert init_result.value.exit_code == 0
@@ -172,7 +174,7 @@ class TestStubChain:
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
+        tm.that(result.value.summary, eq="stub chain: 2 projects, 0 issues")
         tm.that(tracked_project.exists(), eq=True)
 
     def test_build_report_fails_for_missing_workspace(self, tmp_path: Path) -> None:

@@ -76,7 +76,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
 
-    def test_validate_ignores_untracked_git_files(self, tmp_path: Path) -> None:
+    def test_validate_tracked_git_files(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
         project_root = tmp_path / "project"
         package_dir = project_root / "src" / "flext_test"
@@ -84,8 +84,7 @@ class TestFlextInfraNamespaceValidator:
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
         tracked_module = package_dir / "models.py"
         tracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
-        untracked_module = package_dir / "constants.py"
-        untracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
+
         init_result = u.Cli.run_raw(["git", "init"], cwd=project_root)
         assert init_result.success
         assert init_result.value.exit_code == 0

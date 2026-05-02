@@ -190,7 +190,9 @@ class FlextInfraUtilitiesDependencyPathSync:
             )
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
-            return r[m.Infra.PyprojectDocumentState].fail(f"TOML parse failed for: {path}")
+            return r[m.Infra.PyprojectDocumentState].fail(
+                f"TOML parse failed for: {path}"
+            )
         return r[m.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,
