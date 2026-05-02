@@ -55,6 +55,17 @@ class FlextInfraNamespaceRules:
     def _annotation_contains(annotation: ast.expr | None, name: str) -> bool:
         return name in (ast.unparse(annotation) if annotation else "")
 
+    def target_name(self, target: ast.expr | None) -> str:
+        match target:
+            case ast.Name(id=name):
+                return name
+            case _:
+                return ""
+
+    def call_name(self, func: ast.expr | None) -> str:
+        unparsed = ast.unparse(func) if func else ""
+        return unparsed.rsplit(".", maxsplit=1)[-1]
+
     def _accumulate_violations(
         self,
         rule_prefix: str,
@@ -148,7 +159,7 @@ class FlextInfraNamespaceRules:
             and self._annotation_contains(node.annotation, "Final")
         ):
             return []
-        target_name = self._target_name(node.target)
+        target_name = self.target_name(node.target)
         if target_name and not target_name.startswith("_"):
             return [
                 f"{filepath}:{node.lineno} — Loose Final constant '{target_name}' belongs in constants.py"
@@ -162,10 +173,10 @@ class FlextInfraNamespaceRules:
     ) -> t.StrSequence:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return []
-        func_name = self._call_name(node.value.func)
+        func_name = self.call_name(node.value.func)
         if func_name not in c.Infra.COLLECTION_CALLS:
             return []
-        target_name = self._target_name(node.targets[0] if node.targets else None)
+        target_name = self.target_name(node.targets[0] if node.targets else None)
         if (
             target_name
             and target_name not in c.Infra.DUNDER_ALLOWED
@@ -252,10 +263,10 @@ class FlextInfraNamespaceRules:
     ) -> t.StrSequence:
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return []
-        func_name = self._call_name(node.value.func)
+        func_name = self.call_name(node.value.func)
         if func_name not in c.Infra.TYPEVAR_CALLABLES:
             return []
-        target_name = self._target_name(node.targets[0] if node.targets else None)
+        target_name = self.target_name(node.targets[0] if node.targets else None)
         return [
             f"{filepath}:{node.lineno} — TypeVar '{target_name}' belongs in typings.py"
         ]
@@ -270,7 +281,7 @@ class FlextInfraNamespaceRules:
             and self._annotation_contains(node.annotation, "TypeAlias")
         ):
             return []
-        target_name = self._target_name(node.target)
+        target_name = self.target_name(node.target)
         return [
             f"{filepath}:{node.lineno} — TypeAlias '{target_name}' belongs in typings.py"
         ]
@@ -403,7 +414,7 @@ class FlextInfraNamespaceRules:
             if isinstance(target, ast.Name) and target.id in c.Infra.ALIAS_NAMES:
                 return True
         if isinstance(node.value, ast.Call):
-            func_name = self._call_name(node.value.func)
+            func_name = self.call_name(node.value.func)
             if func_name in c.Infra.TYPEVAR_CALLABLES:
                 # TypeVar allowed in typings.py and _typings/ sub-modules.
                 return (
