@@ -1,4 +1,10 @@
-"""Silent failure quality gate for first-wave FLEXT projects."""
+"""Silent failure quality gate.
+
+Enforces silent-failure detection across every Python project the workspace
+discovers. Per-project opt-out is expressed via the absence of Python
+sources (``iter_python_files`` returning empty), not via a hand-curated
+project-name allowlist.
+"""
 
 from __future__ import annotations
 
@@ -17,22 +23,13 @@ from flext_infra import (
 
 
 class FlextInfraSilentFailureGate(FlextInfraGate):
-    """Block silent failure sentinels in the first remediation wave."""
+    """Block silent failure sentinels in any Python project under the workspace."""
 
     gate_id: ClassVar[str] = "silent-failure"
     gate_name: ClassVar[str] = "Silent Failure"
     can_fix: ClassVar[bool] = False
     tool_name: ClassVar[str] = "Flext Silent Failure Detector"
     tool_url: ClassVar[str] = "internal://flext-infra/silent-failure"
-    _FIRST_WAVE_PROJECTS: ClassVar[frozenset[str]] = frozenset({
-        "flext-infra",
-        "flext-core",
-        "flext-cli",
-        "flext-tests",
-        "flext-ldif",
-        "flext-ldap",
-        "algar-oud-mig",
-    })
 
     @override
     def check(
@@ -40,19 +37,8 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
+        _ = ctx
         started = time.monotonic()
-        if project_dir.name not in self._FIRST_WAVE_PROJECTS:
-            return self._build_gate_result(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=[],
-                raw_output="silent-failure gate not enforced for this project",
-            )
         files_result = u.Infra.iter_python_files(
             project_dir,
             project_roots=[project_dir],
