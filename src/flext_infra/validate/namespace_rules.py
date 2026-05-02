@@ -385,13 +385,14 @@ class FlextInfraNamespaceRules:
         node: ast.Assign | ast.TypeAlias | ast.AnnAssign,
         filepath: Path,
     ) -> bool:
+        typings_directory: str = c.Infra.FAMILY_DIRECTORIES["t"]
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
         if isinstance(node, ast.TypeAlias):
             # TypeAlias allowed in typings.py and _typings/ sub-modules.
             return (
                 filepath.name == c.Infra.TYPINGS_PY
-                or filepath.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
+                or filepath.parent.name == typings_directory
             )
         return self._is_allowed_ann_assign(node, filepath)
 
@@ -408,6 +409,7 @@ class FlextInfraNamespaceRules:
         node: ast.Assign,
         filepath: Path,
     ) -> bool:
+        typings_directory: str = c.Infra.FAMILY_DIRECTORIES["t"]
         for target in node.targets:
             if isinstance(target, ast.Name) and target.id in c.Infra.DUNDER_ALLOWED:
                 return True
@@ -421,7 +423,7 @@ class FlextInfraNamespaceRules:
                 # TypeVar allowed in typings.py and _typings/ sub-modules.
                 return (
                     filepath.name == c.Infra.TYPINGS_PY
-                    or filepath.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
+                    or filepath.parent.name == typings_directory
                 )
         return False
 
@@ -430,6 +432,7 @@ class FlextInfraNamespaceRules:
         node: ast.AnnAssign,
         filepath: Path,
     ) -> bool:
+        typings_directory: str = c.Infra.FAMILY_DIRECTORIES["t"]
         # __all__: list[str] = [...] and other dunders with annotations are always allowed.
         if (
             isinstance(node.target, ast.Name)
@@ -440,7 +443,7 @@ class FlextInfraNamespaceRules:
             # TypeAlias allowed in typings.py and _typings/ sub-modules.
             return (
                 filepath.name == c.Infra.TYPINGS_PY
-                or filepath.parent.name == c.Infra.FAMILY_DIRECTORIES["t"]
+                or filepath.parent.name == typings_directory
             )
         if (
             isinstance(node.target, ast.Name)

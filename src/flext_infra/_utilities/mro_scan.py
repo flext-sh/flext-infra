@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesIteration,
@@ -25,6 +26,45 @@ class FlextInfraUtilitiesRefactorMroScan:
     _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = (
         c.Infra.MRO_SCAN_PROTOCOL_BASE_PATTERN
     )
+    _ALL_SPECS: ClassVar[tuple[m.Infra.MROTargetSpec, ...]] = (
+        m.Infra.MROTargetSpec(
+            family_alias="c",
+            file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
+            package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
+            class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
+        ),
+        m.Infra.MROTargetSpec(
+            family_alias="t",
+            file_names=c.Infra.MRO_TYPINGS_FILE_NAMES,
+            package_directory=c.Infra.MRO_TYPINGS_DIRECTORY,
+            class_suffix="Types",
+        ),
+        m.Infra.MROTargetSpec(
+            family_alias="p",
+            file_names=c.Infra.MRO_PROTOCOLS_FILE_NAMES,
+            package_directory=c.Infra.MRO_PROTOCOLS_DIRECTORY,
+            class_suffix="Protocols",
+        ),
+        m.Infra.MROTargetSpec(
+            family_alias="m",
+            file_names=c.Infra.MRO_MODELS_FILE_NAMES,
+            package_directory=c.Infra.MRO_MODELS_DIRECTORY,
+            class_suffix="Models",
+        ),
+        m.Infra.MROTargetSpec(
+            family_alias="u",
+            file_names=c.Infra.MRO_UTILITIES_FILE_NAMES,
+            package_directory=c.Infra.MRO_UTILITIES_DIRECTORY,
+            class_suffix="Utilities",
+        ),
+    )
+    _TARGET_MAP: ClassVar[tuple[tuple[str, str], ...]] = (
+        ("constants", "c"),
+        ("typings", "t"),
+        ("protocols", "p"),
+        ("models", "m"),
+        ("utilities", "u"),
+    )
 
     @staticmethod
     def scan_workspace(
@@ -40,7 +80,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
         results: list[m.Infra.MROScanReport] = []
         scanned = 0
-        target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target=target)
+        target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target)
         project_name_set: set[str] = set(project_names or ())
         for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root,
@@ -142,11 +182,11 @@ class FlextInfraUtilitiesRefactorMroScan:
                 )
                 if cand:
                     candidates.append(cand)
-        except Exception as exc:
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS as exc:
             u.fetch_logger(__name__).info(
                 "MRO scan skipped for %s: %s",
                 resource.real_path,
-                exc,
+                str(exc),
             )
 
         return m.Infra.MROScanReport(
@@ -171,25 +211,32 @@ class FlextInfraUtilitiesRefactorMroScan:
         alias = target_spec.family_alias
         kind = ""
 
-        if alias == "t":
-            if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_PATTERN.match(
-                name
-            ):
-                return None
-            if "TypeAlias" in src_line or src_line.startswith(f"type {name}"):
-                kind = "typealias"
-            elif any(x in src_line for x in ("TypeVar", "ParamSpec", "NewType")):
-                kind = "typevar"
-        elif alias == "p":
-            if FlextInfraUtilitiesRefactorMroScan._mro_scan_is_protocol_class(
-                name=name,
-                obj=obj,
-                class_header=class_header,
-            ):
-                kind = "protocol"
-        elif FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(name):
-            if re.match(rf"^{name}\s*(:|==?)\s*", src_line) and not name.islower():
-                kind = "constant"
+        match alias:
+            case "t":
+                if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_PATTERN.match(
+                    name
+                ):
+                    return None
+                if "TypeAlias" in src_line or src_line.startswith(f"type {name}"):
+                    kind = "typealias"
+                elif any(x in src_line for x in ("TypeVar", "ParamSpec", "NewType")):
+                    kind = "typevar"
+            case "p":
+                if FlextInfraUtilitiesRefactorMroScan._mro_scan_is_protocol_class(
+                    name=name,
+                    obj=obj,
+                    class_header=class_header,
+                ):
+                    kind = "protocol"
+            case _:
+                if (
+                    FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
+                        name
+                    )
+                    and re.match(rf"^{name}\s*(:|==?)\s*", src_line)
+                    and not name.islower()
+                ):
+                    kind = "constant"
 
         if not kind:
             return None
@@ -199,8 +246,6 @@ class FlextInfraUtilitiesRefactorMroScan:
             line=line,
             end_line=(end_line if end_line > line else None),
             kind=kind,
-            class_name="",
-            facade_name="",
         )
 
     @staticmethod
@@ -208,63 +253,36 @@ class FlextInfraUtilitiesRefactorMroScan:
         source: str,
         spec: m.Infra.MROTargetSpec,
     ) -> str:
-        assign = re.search(
+        if assign := re.search(
             rf"^{re.escape(spec.family_alias)}\s*=\s*([A-Za-z_]\w*{spec.class_suffix})\b",
             source,
             re.MULTILINE,
-        )
-        if assign:
+        ):
             return assign.group(1)
-        cls = re.search(
-            rf"^class\s+([A-Za-z_]\w*{spec.class_suffix})\b", source, re.MULTILINE
+        return (
+            m.group(1)
+            if (
+                m := re.search(
+                    rf"^class\s+([A-Za-z_]\w*{spec.class_suffix})\b",
+                    source,
+                    re.MULTILINE,
+                )
+            )
+            else ""
         )
-        return cls.group(1) if cls else ""
 
     @staticmethod
-    def _target_specs(
-        target: str,
-    ) -> tuple[m.Infra.MROTargetSpec, ...]:
-        all_specs = (
-            m.Infra.MROTargetSpec(
-                family_alias="c",
-                file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
-                package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
-                class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
-            ),
-            m.Infra.MROTargetSpec(
-                family_alias="t",
-                file_names=c.Infra.MRO_TYPINGS_FILE_NAMES,
-                package_directory=c.Infra.MRO_TYPINGS_DIRECTORY,
-                class_suffix="Types",
-            ),
-            m.Infra.MROTargetSpec(
-                family_alias="p",
-                file_names=c.Infra.MRO_PROTOCOLS_FILE_NAMES,
-                package_directory=c.Infra.MRO_PROTOCOLS_DIRECTORY,
-                class_suffix="Protocols",
-            ),
-            m.Infra.MROTargetSpec(
-                family_alias="m",
-                file_names=c.Infra.MRO_MODELS_FILE_NAMES,
-                package_directory=c.Infra.MRO_MODELS_DIRECTORY,
-                class_suffix="Models",
-            ),
-            m.Infra.MROTargetSpec(
-                family_alias="u",
-                file_names=c.Infra.MRO_UTILITIES_FILE_NAMES,
-                package_directory=c.Infra.MRO_UTILITIES_DIRECTORY,
-                class_suffix="Utilities",
-            ),
+    def _target_specs(target: str) -> tuple[m.Infra.MROTargetSpec, ...]:
+        al = dict(FlextInfraUtilitiesRefactorMroScan._TARGET_MAP).get(target)
+        return (
+            tuple(
+                s
+                for s in FlextInfraUtilitiesRefactorMroScan._ALL_SPECS
+                if s.family_alias == al
+            )
+            if al
+            else FlextInfraUtilitiesRefactorMroScan._ALL_SPECS
         )
-        mapping = {
-            "constants": "c",
-            "typings": "t",
-            "protocols": "p",
-            "models": "m",
-            "utilities": "u",
-        }
-        al = mapping.get(target)
-        return tuple(s for s in all_specs if s.family_alias == al) if al else all_specs
 
     @staticmethod
     def _class_header(*, lines: t.StrSequence, start_line: int) -> str:
@@ -305,8 +323,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             if not stripped:
                 end_index = current_index
                 continue
-            current_indent = len(current_line) - len(current_line.lstrip())
-            if current_indent <= base_indent:
+            if len(current_line) - len(current_line.lstrip()) <= base_indent:
                 break
             end_index = current_index
         return (start_index + 1, end_index + 1)
@@ -324,11 +341,11 @@ class FlextInfraUtilitiesRefactorMroScan:
                 bases = tuple(obj.get_superclasses())
                 if any("Protocol" in str(b.get_name()) for b in bases):
                     return True
-            except Exception as exc:
+            except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS as exc:
                 u.fetch_logger(__name__).info(
                     "Protocol base scan skipped for %s: %s",
                     name,
-                    exc,
+                    str(exc),
                 )
         return cls._class_header_declares_protocol(
             name=name,
@@ -337,13 +354,14 @@ class FlextInfraUtilitiesRefactorMroScan:
 
     @classmethod
     def _class_header_declares_protocol(cls, *, name: str, class_header: str) -> bool:
-        match = re.match(
-            rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:",
-            class_header,
-        )
-        if match is None:
+        if (
+            m := re.match(
+                rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:",
+                class_header,
+            )
+        ) is None:
             return False
-        return bool(cls._MRO_SCAN_PROTOCOL_BASE_PATTERN.search(match.group("bases")))
+        return bool(cls._MRO_SCAN_PROTOCOL_BASE_PATTERN.search(m.group("bases")))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorMroScan"]
