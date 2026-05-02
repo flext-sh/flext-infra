@@ -50,7 +50,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         try:
             results = self.fix_workspace()
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            return r[str].fail(f"auto-fix failed: {exc}", exception=exc)
+            return r[str].fail_op("auto-fix", exc)
         total_fixed = sum(len(result.violations_fixed) for result in results)
         total_skipped = sum(len(result.violations_skipped) for result in results)
         lines: t.MutableSequenceOf[str] = []

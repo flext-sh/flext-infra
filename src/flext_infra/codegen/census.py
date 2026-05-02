@@ -37,7 +37,7 @@ class FlextInfraCodegenCensus(s[str]):
         try:
             reports = self.run()
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            return r[str].fail(f"census failed: {exc}", exception=exc)
+            return r[str].fail_op("census", exc)
         total_violations = sum(report.total for report in reports)
         total_fixable = sum(report.fixable for report in reports)
         if self.output_format == c.Cli.OutputFormats.JSON:

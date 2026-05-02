@@ -117,7 +117,7 @@ class FlextInfraWorkspaceMakefileGenerator:
         try:
             content = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
-            return r[bool].fail(f"Makefile read failed: {exc}")
+            return r[bool].fail_op("Makefile read", exc)
         if c.Infra.MAKEFILE_GENERATED_MARKER in content:
             return r[bool].ok(False)
 

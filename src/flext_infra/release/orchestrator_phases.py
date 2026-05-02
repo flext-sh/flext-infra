@@ -115,7 +115,7 @@ class FlextInfraReleaseOrchestratorPhases:
         try:
             notes_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            return r[bool].fail(f"report dir creation failed: {exc}")
+            return r[bool].fail_op("report dir creation", exc)
         notes_path = notes_dir / "RELEASE_NOTES.md"
         notes_result = self._generate_notes(ctx, notes_path)
         if notes_result.failure:
