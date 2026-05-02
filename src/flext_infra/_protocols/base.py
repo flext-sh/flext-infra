@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from flext_infra import m, p, t
 
 
+@runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
@@ -171,6 +172,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Scan a single file and return scan result."""
             ...
 
+    @runtime_checkable
     class WorkspaceReport(Protocol):
         """Protocol for workspace dependency report model contract."""
 
@@ -193,6 +195,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Write payload to JSON file."""
             ...
 
+    @runtime_checkable
     class ProjectReportLike(Protocol):
         """Protocol for project-level dependency report contracts."""
 
@@ -276,6 +279,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Run command and return raw output."""
             ...
 
+    @runtime_checkable
     class DetectorRuntime(Protocol):
         """Protocol for detector runtime service dependencies."""
 
@@ -319,6 +323,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Execute one make verb across multiple projects."""
             ...
 
+    @runtime_checkable
     class CodegenFixer(Protocol):
         """Protocol for codegen namespace fixer services."""
 
@@ -340,6 +345,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Run census and return typed reports."""
             ...
 
+    @runtime_checkable
     class PyprojectModernizer(Protocol):
         """Protocol for pyproject.toml modernization services."""
 
@@ -347,6 +353,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Execute modernization pass."""
             ...
 
+    @runtime_checkable
     class GithubService(Protocol):
         """Protocol for GitHub operations services."""
 
@@ -354,6 +361,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Execute GitHub operations."""
             ...
 
+    @runtime_checkable
     class RefactorEngine(Protocol):
         """Protocol for rope-based refactor engine services."""
 
@@ -361,6 +369,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Execute refactoring pass."""
             ...
 
+    @runtime_checkable
     class ReleaseOrchestrator(Protocol):
         """Protocol for release orchestration services."""
 
@@ -405,6 +414,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Iterate over matching elements."""
             ...
 
+    @runtime_checkable
     class GithubCliHandlers(Protocol):
         """Protocol for GitHub CLI handler mixins."""
 

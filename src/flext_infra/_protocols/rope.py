@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from flext_infra import m, p, t
 
 
+@runtime_checkable
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
@@ -138,6 +139,7 @@ class FlextInfraProtocolsRope(Protocol):
             export_options: m.Infra.ExportOptions | None = None,
         ) -> t.StrSequence: ...
 
+    @runtime_checkable
     class RopePostHook(Protocol):
         """Contract for post-processing hooks invoked after Rope refactoring."""
 
@@ -150,6 +152,7 @@ class FlextInfraProtocolsRope(Protocol):
             """Execute the hook and return results."""
             ...
 
+    @runtime_checkable
     class PatchingASTWalker(Protocol):
         """Structural contract for rope's internal ``_PatchingASTWalker``.
 
@@ -165,6 +168,7 @@ class FlextInfraProtocolsRope(Protocol):
             separator: str,
         ) -> list[p.AttributeProbe]: ...
 
+    @runtime_checkable
     class RopeAnalysisMethods(Protocol):
         """Class contract shared by the Rope analysis mixins."""
 

@@ -9,15 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from flext_infra import m
 
 
+@runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
+    @runtime_checkable
     class WorkspaceLoopOutcome(Protocol):
         """Public structural view of the workspace gate loop outcome."""
 
