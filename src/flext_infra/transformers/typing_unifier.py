@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import copy
 import re
 from pathlib import Path
 from typing import ClassVar, override
@@ -104,32 +103,31 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
     def _annotation_nodes(cls, module: ast.Module) -> list[ast.expr]:
         annotations: list[ast.expr] = []
         for node in ast.walk(module):
-            if isinstance(node, ast.AnnAssign):
-                annotations.append(node.annotation)
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                annotations.extend(
-                    arg.annotation
-                    for arg in (
-                        *node.args.posonlyargs,
-                        *node.args.args,
-                        *node.args.kwonlyargs,
+            match node:
+                case ast.AnnAssign(annotation=ann) if ann is not None:
+                    annotations.append(ann)
+                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                    annotations.extend(
+                        arg.annotation
+                        for arg in (
+                            *node.args.posonlyargs,
+                            *node.args.args,
+                            *node.args.kwonlyargs,
+                        )
+                        if arg.annotation is not None
                     )
-                    if arg.annotation is not None
-                )
-                if node.args.vararg and node.args.vararg.annotation is not None:
-                    annotations.append(node.args.vararg.annotation)
-                if node.args.kwarg and node.args.kwarg.annotation is not None:
-                    annotations.append(node.args.kwarg.annotation)
-                if node.returns is not None:
-                    annotations.append(node.returns)
-            if isinstance(node, ast.TypeAlias):
-                annotations.append(node.value)
+                    if node.args.vararg and node.args.vararg.annotation is not None:
+                        annotations.append(node.args.vararg.annotation)
+                    if node.args.kwarg and node.args.kwarg.annotation is not None:
+                        annotations.append(node.args.kwarg.annotation)
+                    if node.returns is not None:
+                        annotations.append(node.returns)
+                case ast.TypeAlias(value=value):
+                    annotations.append(value)
         return annotations
 
     def _rewrite_annotation(self, annotation: ast.expr) -> ast.expr | None:
-        rewritten: ast.expr = self._AnnotationRewriter().visit(
-            copy.deepcopy(annotation)
-        )
+        rewritten: ast.expr = self._AnnotationRewriter().visit(annotation)
         if ast.dump(rewritten) == ast.dump(annotation):
             return None
         self._record_change(
@@ -335,15 +333,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
     def _canonical_import_module(self) -> str:
         if self._file_path is None:
             return ""
-        parts = self._file_path.resolve().parts
-        for package_name in ("tests", "examples", "scripts"):
-            if package_name in parts:
-                return package_name
-        module_head: str = u.Infra.package_name(self._file_path).split(
-            ".",
-            maxsplit=1,
-        )[0]
-        return module_head
+        return u.Infra.package_name(self._file_path).split(".", maxsplit=1)[0]
 
     @staticmethod
     def _import_insertion_offset(source: str) -> int:
@@ -359,8 +349,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         matched_line = source[last_match.start() : last_match.end()]
         if matched_line.rstrip().endswith("("):
             tail = source[last_match.end() :]
-            close_match = re.search(r"^\)\s*$", tail, re.MULTILINE)
-            if close_match is not None:
+            if (close_match := re.search(r"^\)\s*$", tail, re.MULTILINE)) is not None:
                 close_offset = last_match.end() + close_match.end()
                 if close_offset < len(source) and source[close_offset] == "\n":
                     close_offset += 1
