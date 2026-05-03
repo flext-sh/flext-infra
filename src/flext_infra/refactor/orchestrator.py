@@ -249,29 +249,33 @@ class FlextInfraRefactorOrchestrator(
     def _collect_files(
         self, args: t.Infra.CliNamespace
     ) -> t.MutableSequenceOf[Path] | None:
+        result: t.MutableSequenceOf[Path] | None
         if args.project:
             collected = u.Infra.collect_engine_project_files(
                 self.loader.settings,
                 args.project,
                 pattern=args.pattern,
             )
-            return None if collected is None else list(collected)
-        if args.workspace:
-            return list(
+            result = None if collected is None else list(collected)
+        elif args.workspace:
+            result = list(
                 u.Infra.collect_engine_workspace_files(
                     self.loader.settings,
                     args.workspace,
                     pattern=args.pattern,
                 )
             )
-        if args.file:
+        elif args.file:
             if not args.file.exists():
                 u.Cli.error(f"File not found: {args.file}")
-                return None
-            return [args.file]
-        if args.files:
-            return [path for path in args.files if path.exists()]
-        return []
+                result = None
+            else:
+                result = [args.file]
+        elif args.files:
+            result = [path for path in args.files if path.exists()]
+        else:
+            result = []
+        return result
 
     def run_refactor(self, args: t.Infra.CliNamespace) -> int:
         """Run refactor CLI dispatch for the selected scope."""
