@@ -129,22 +129,26 @@ class FlextInfraUtilitiesRopeCore:
         caller should bail out of the file — the canonical "skip this
         file" sentinel.
         """
-        if file_path.suffix != c.Infra.EXT_PYTHON:
-            return None
-        if skip_init_py and file_path.name == c.Infra.INIT_PY:
-            return None
-        if skip_protected and file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
-            return None
-        if skip_settings and file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
-            return None
+        result: t.Infra.RopeResource | None = None
         if (
-            skip_alias_modules
-            and file_path.stem in c.Infra.NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS
+            file_path.suffix == c.Infra.EXT_PYTHON
+            and not (skip_init_py and file_path.name == c.Infra.INIT_PY)
+            and not (
+                skip_protected and file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
+            )
+            and not (
+                skip_settings
+                and file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
+            )
+            and not (
+                skip_alias_modules
+                and file_path.stem in c.Infra.NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS
+            )
         ):
-            return None
-        return FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            rope_project, file_path
-        )
+            result = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project, file_path
+            )
+        return result
 
     @staticmethod
     def python_resources(
