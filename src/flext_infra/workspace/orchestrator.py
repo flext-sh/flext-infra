@@ -112,36 +112,59 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
     def execute(self) -> p.Result[bool]:
         """Execute the workspace-orchestrate CLI flow."""
         allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
+        result: p.Result[bool]
         if self.verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
-            return r[bool].fail(
+            result = r[bool].fail(
                 f"unsupported orchestrate verb '{self.verb}' (allowed: {allowed})",
             )
-        resolved_projects = self._resolved_projects()
-        if resolved_projects.failure:
-            return r[bool].fail(resolved_projects.error or "project resolution failed")
-        projects = resolved_projects.value
-        if not projects:
-            return r[bool].fail("no projects discovered")
-        workspace_root = self.root
-        prepare_result = self._prepare_projects(projects, workspace_root=workspace_root)
-        if prepare_result.failure:
-            return prepare_result
-        result = self.orchestrate(
-            projects=[
-                self._project_target(project, workspace_root=workspace_root)
-                for project in projects
-            ],
-            verb=self.verb,
-            fail_fast=self.fail_fast,
-            make_args=self.make_args,
-        )
-        if result.failure:
-            return r[bool].fail(result.error or "orchestration completed with failures")
-        failures = sum(1 for item in result.value if item.exit_code != 0)
-        if failures:
-            return r[bool].fail(f"orchestration completed with failures: {failures}")
-        return r[bool].ok(True)
+        else:
+            resolved_projects = self._resolved_projects()
+            if resolved_projects.failure:
+                result = r[bool].fail(
+                    resolved_projects.error or "project resolution failed"
+                )
+            else:
+                projects = resolved_projects.value
+                if not projects:
+                    result = r[bool].fail("no projects discovered")
+                else:
+                    workspace_root = self.root
+                    prepare_result = self._prepare_projects(
+                        projects, workspace_root=workspace_root
+                    )
+                    if prepare_result.failure:
+                        result = prepare_result
+                    else:
+                        orchestrate_result = self.orchestrate(
+                            projects=[
+                                self._project_target(
+                                    project, workspace_root=workspace_root
+                                )
+                                for project in projects
+                            ],
+                            verb=self.verb,
+                            fail_fast=self.fail_fast,
+                            make_args=self.make_args,
+                        )
+                        if orchestrate_result.failure:
+                            result = r[bool].fail(
+                                orchestrate_result.error
+                                or "orchestration completed with failures"
+                            )
+                        else:
+                            failures = sum(
+                                1
+                                for item in orchestrate_result.value
+                                if item.exit_code != 0
+                            )
+                            if failures:
+                                result = r[bool].fail(
+                                    f"orchestration completed with failures: {failures}"
+                                )
+                            else:
+                                result = r[bool].ok(True)
+        return result
 
     def _execute_project(
         self,
