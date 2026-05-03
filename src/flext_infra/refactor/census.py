@@ -415,9 +415,17 @@ class FlextInfraRefactorCensus(
         """Project name for a module entry."""
         layout = convention.project_layout
         if layout is not None:
-            return layout.project_name
+            project_name = layout.project_name
+            if not isinstance(project_name, str):
+                msg = f"invalid layout project name for {module.file_path}"
+                raise RuntimeError(msg)
+            return project_name
         if module.project_root is not None:
-            return module.project_root.name
+            project_name = module.project_root.name
+            if not isinstance(project_name, str):
+                msg = f"invalid project root name for {module.file_path}"
+                raise RuntimeError(msg)
+            return project_name
         return ""
 
     @staticmethod
@@ -616,8 +624,8 @@ class FlextInfraRefactorCensus(
         if selected_kinds is None:
             selected_kinds = frozenset(kind_names) if kind_names else frozenset()
         ctx: m.Infra.DetectorContext | None = None
-        symbol_index: dict[str, tuple[str, int]] = (
-            self._lightweight_symbol_index(file_path) if objects is None else {}
+        symbol_index: dict[str, tuple[str, int]] = self._lightweight_symbol_index(
+            file_path,
         )
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
@@ -697,8 +705,12 @@ class FlextInfraRefactorCensus(
                     file_path,
                     convention=resolved_convention,
                 )
+            manual_ctx = ctx
+            if manual_ctx is None:
+                msg = f"manual typing detector context unavailable for {file_path}"
+                raise RuntimeError(msg)
             for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
-                ctx,
+                manual_ctx,
             ):
                 matched = (
                     self._named_object(objects, detector_violation.name)
@@ -710,7 +722,7 @@ class FlextInfraRefactorCensus(
                     continue
                 action = (
                     "rewrite_manual_typing_alias"
-                    if ctx.project_root is not None
+                    if manual_ctx.project_root is not None
                     else ""
                 )
                 violations.append(
@@ -1151,8 +1163,7 @@ class FlextInfraRefactorCensus(
                 symbols.setdefault(node.name, ("function", node.lineno))
                 continue
             if isinstance(node, ast.TypeAlias):
-                if isinstance(node.name, ast.Name):
-                    symbols.setdefault(node.name.id, ("assignment", node.lineno))
+                symbols.setdefault(node.name.id, ("assignment", node.lineno))
                 continue
             if isinstance(node, ast.AnnAssign):
                 if isinstance(node.target, ast.Name):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
@@ -69,6 +70,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     )
     _name_index: dict[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None = (
         u.PrivateAttr(default_factory=lambda: None)
+    )
+    _import_dependents_index: dict[str, tuple[Path, ...]] | None = u.PrivateAttr(
+        default_factory=lambda: None,
     )
 
     @override
@@ -171,6 +175,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_object_cache.clear()
         self._resource_cache.clear()
         self._name_index = None
+        self._import_dependents_index = None
         return self.session_snapshot()
 
     def reload(self) -> m.Infra.RopeWorkspaceSession:
@@ -230,6 +235,26 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         text: str = self._resource_for(file_path).read()
         return text
 
+    def import_dependents(self, import_target: str) -> tuple[Path, ...]:
+        """Return cached module paths that semantically import ``import_target``."""
+        if not import_target:
+            return ()
+        index = self._import_dependents_index
+        if index is None:
+            dependents: dict[str, set[Path]] = defaultdict(set)
+            for module in self.modules():
+                file_path = module.file_path.resolve()
+                for target in self.semantic(file_path).semantic_imports.values():
+                    if not target:
+                        continue
+                    dependents[target].add(file_path)
+            index = {
+                target: tuple(sorted(paths))
+                for target, paths in dependents.items()
+            }
+            self._import_dependents_index = index
+        return index.get(import_target, ())
+
     def name_index(
         self,
     ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
@@ -247,8 +272,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             py_file = entry.file_path
             try:
                 source_text = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError:
-                continue
+            except OSError as exc:
+                msg = (
+                    "rope name index failed to read "
+                    f"{py_file}: {type(exc).__name__}: {exc!s}"
+                )
+                raise RuntimeError(msg) from exc
             surface = self._reference_surface_for(py_file)
             lines_by_name: dict[str, list[int]] = {}
             for lineno, source_line in enumerate(source_text.splitlines(), start=1):
@@ -484,6 +513,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_object_cache.clear()
         self._resource_cache.clear()
         self._name_index = None
+        self._import_dependents_index = None
 
     def __enter__(self) -> Self:
         """Open the Rope project on context-manager entry."""

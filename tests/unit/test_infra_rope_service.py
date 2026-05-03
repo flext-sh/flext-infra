@@ -290,6 +290,171 @@ class TestsFlextInfraInfraRopeService:
             ):
                 rope.objects(module_path)
 
+    def test_workspace_name_index_raises_on_module_read_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Name index failures surface instead of quietly dropping unreadable modules."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "def public() -> int:\n"
+                "    return 1\n"
+            ),
+            encoding="utf-8",
+        )
+        original_read_text = type(module_path).read_text
+
+        def _broken_read_text(
+            path: Path,
+            encoding: str | None = None,
+            errors: str | None = None,
+            newline: str | None = None,
+        ) -> str:
+            if path.resolve() == module_path.resolve():
+                msg = "boom"
+                raise OSError(msg)
+            text: str = original_read_text(
+                path,
+                encoding=encoding,
+                errors=errors,
+                newline=newline,
+            )
+            return text
+
+        monkeypatch.setattr(type(module_path), "read_text", _broken_read_text)
+
+        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+            with pytest.raises(
+                RuntimeError,
+                match=r"rope name index failed to read .*service\.py",
+            ):
+                rope.name_index()
+
+    def test_workspace_objects_raise_on_indexed_resource_lookup_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Indexed reference search must fail loudly when a referenced module resource vanishes."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        service_path = package_root / "service.py"
+        service_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "def public() -> int:\n"
+                "    return 1\n"
+            ),
+            encoding="utf-8",
+        )
+        consumer_path = package_root / "consumer.py"
+        consumer_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "from flext_demo.service import public\n\n"
+                "def consume() -> int:\n"
+                "    return public()\n"
+            ),
+            encoding="utf-8",
+        )
+        original_resource = flext_infra.FlextInfraRopeWorkspace.resource
+
+        def _broken_resource(
+            rope: flext_infra.FlextInfraRopeWorkspace,
+            file_path: Path,
+        ) -> t.Infra.RopeResource | None:
+            if file_path.resolve() == consumer_path.resolve():
+                return None
+            return original_resource(rope, file_path)
+
+        monkeypatch.setattr(
+            flext_infra.FlextInfraRopeWorkspace,
+            "resource",
+            _broken_resource,
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            with pytest.raises(
+                RuntimeError,
+                match=r"rope search resource unavailable for indexed path .*consumer\.py",
+            ):
+                rope.objects(service_path, include_local_scopes=False)
+
+    def test_indexed_search_raises_on_invalid_import_dependents_result(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Indexed dependency narrowing must reject invalid import_dependents payloads."""
+        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        examples_dir = workspace_root / "examples"
+        examples_dir.mkdir(parents=True, exist_ok=True)
+        example_path = examples_dir / "demo.py"
+        example_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "def helper() -> int:\n"
+                "    return 1\n"
+            ),
+            encoding="utf-8",
+        )
+        consumer_path = examples_dir / "consumer.py"
+        consumer_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "from demo import helper\n\n"
+                "def consume() -> int:\n"
+                "    return helper()\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+            resource = rope.resource(example_path)
+            assert resource is not None
+
+            class _BrokenWorkspace:
+                def name_index(
+                    self,
+                ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
+                    return rope.name_index()
+
+                def resource(
+                    self,
+                    file_path: Path,
+                ) -> t.Infra.RopeResource | None:
+                    return rope.resource(file_path)
+
+                def import_dependents(self, import_target: str) -> object:
+                    del import_target
+                    return object()
+
+            with pytest.raises(
+                TypeError,
+                match=r"rope import_dependents returned non-tuple for demo",
+            ):
+                FlextInfraUtilitiesRopeInventory._search_resources_from_index(
+                    _BrokenWorkspace(),
+                    resource=resource,
+                    name="helper",
+                    definition_path=example_path,
+                    module_name="demo",
+                )
+
     def test_workspace_dsl_classifies_test_only_references(
         self,
         tmp_path: Path,
@@ -413,6 +578,7 @@ class TestsFlextInfraInfraRopeService:
             resource: t.Infra.RopeResource,
             *,
             source: str,
+            module_name: str,
             name: str,
             line: int,
             rope_workspace: p.AttributeProbe | None = None,
@@ -427,6 +593,7 @@ class TestsFlextInfraInfraRopeService:
                 rope_project,
                 resource,
                 source=source,
+                module_name=module_name,
                 name=name,
                 line=line,
                 rope_workspace=rope_workspace,
@@ -448,3 +615,58 @@ class TestsFlextInfraInfraRopeService:
         assert objects["__all__"].references_count == 0
         assert "__all__" not in seen_names
         assert "public" in seen_names
+
+    def test_workspace_dsl_tracks_example_importers_for_generic_names(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Generic example names keep example references after resource narrowing."""
+        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        examples_dir = workspace_root / c.Infra.DIR_EXAMPLES
+        examples_dir.mkdir(parents=True, exist_ok=True)
+        (examples_dir / c.Infra.INIT_PY).write_text(
+            "from __future__ import annotations\n",
+            encoding="utf-8",
+        )
+        producer_path = examples_dir / "producer.py"
+        consumer_path = examples_dir / "consumer.py"
+        producer_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "def run() -> int:\n"
+                "    return 1\n"
+            ),
+            encoding="utf-8",
+        )
+        consumer_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "from examples.producer import run\n\n"
+                "VALUE = run()\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            objects = {
+                item.scope_path: item
+                for item in rope.objects(
+                    producer_path,
+                    include_local_scopes=False,
+                )
+            }
+
+        candidate = objects["run"]
+        assert candidate.references_count == 2
+        assert candidate.runtime_references_count == 0
+        assert candidate.test_references_count == 0
+        assert candidate.example_references_count == 2
+        assert candidate.script_references_count == 0
+        assert {site.file_path for site in candidate.example_reference_sites} == {
+            str(consumer_path)
+        }
+        assert sorted(site.line for site in candidate.example_reference_sites) == [3, 5]

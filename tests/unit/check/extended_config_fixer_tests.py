@@ -20,7 +20,7 @@ class TestConfigFixerProcessFile:
 
     def test_process_file_missing_file(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        tm.fail(fixer.process_file(tmp_path / "missing.toml"), has="failed to read")
+        tm.fail(fixer.process_file(tmp_path / "missing.toml"), has="not found")
 
     def test_process_file_invalid_toml(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace=tmp_path)

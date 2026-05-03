@@ -144,8 +144,13 @@ class FlextInfraUtilitiesRopeImports:
             TypeError,
         ) as exc:
             return r[bool].fail(f"rope organize_imports raised: {exc!s}")
-        if not isinstance(changes, ChangeSet):
+        if changes is None:
             return r[bool].ok(False)
+        if not isinstance(changes, ChangeSet):
+            return r[bool].fail(
+                "unexpected rope organize_imports result type: "
+                f"{type(changes).__name__}"
+            )
         change_list = tuple(changes.changes)
         if not change_list:
             return r[bool].ok(False)
@@ -291,7 +296,11 @@ class FlextInfraUtilitiesRopeImports:
             and import_info.level == 0
             and import_info.module_name == target_module
         ):
-            return ()
+            msg = (
+                "rope target import mismatch for "
+                f"{target_module}: {type(import_info).__name__}"
+            )
+            raise RuntimeError(msg)
         merged_pairs = list(import_info.names_and_aliases)
         existing_plain_names = {name for name, alias in merged_pairs if alias is None}
         merged_pairs.extend(

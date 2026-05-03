@@ -585,6 +585,57 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     @cache
+    def _git_repo_root(scope_root: str) -> str | None:
+        """Return the nearest enclosing Git worktree root for ``scope_root``."""
+        current = Path(scope_root).resolve()
+        while True:
+            if (current / ".git").exists():
+                return str(current)
+            parent = current.parent
+            if parent == current:
+                return None
+            current = parent
+
+    @staticmethod
+    @cache
+    def _git_tracked_repo_relative_paths(repo_root: str) -> tuple[str, ...] | None:
+        """Return tracked and dirty paths relative to one Git repo root."""
+        resolved_root = Path(repo_root).resolve()
+        try:
+            repo = Repo(resolved_root)
+        except (InvalidGitRepositoryError, NoSuchPathError, OSError, ValueError):
+            return None
+        if repo.bare or repo.working_tree_dir is None:
+            return None
+        scope_paths: set[str] = set()
+        try:
+            tracked_output = repo.git.ls_files()
+        except GitCommandError:
+            return None
+        for raw_line in tracked_output.splitlines():
+            normalized = raw_line.strip()
+            if normalized:
+                scope_paths.add(normalized)
+        try:
+            status_output = repo.git.status(
+                "--porcelain",
+                "--untracked-files=all",
+            )
+        except GitCommandError:
+            status_output = ""
+        for raw_line in status_output.splitlines():
+            if not raw_line:
+                continue
+            file_path = raw_line[3:]
+            if " -> " in file_path:
+                file_path = file_path.split(" -> ", 1)[1]
+            normalized = file_path.strip()
+            if normalized:
+                scope_paths.add(normalized)
+        return tuple(sorted(scope_paths))
+
+    @staticmethod
+    @cache
     def _git_tracked_scope_relative_paths(scope_root: str) -> tuple[str, ...] | None:
         """Return tracked file paths relative to ``scope_root`` or ``None`` outside Git.
 
@@ -594,52 +645,25 @@ class FlextInfraUtilitiesIteration:
         returned paths are scope-relative, never repo-relative.
         """
         resolved_root = Path(scope_root)
-        try:
-            repo = Repo(resolved_root, search_parent_directories=True)
-        except (InvalidGitRepositoryError, NoSuchPathError, OSError, ValueError):
+        repo_root_text = FlextInfraUtilitiesIteration._git_repo_root(scope_root)
+        if repo_root_text is None:
             return None
-        if repo.bare or repo.working_tree_dir is None:
+        repo_relative_paths = (
+            FlextInfraUtilitiesIteration._git_tracked_repo_relative_paths(
+                repo_root_text,
+            )
+        )
+        if repo_relative_paths is None:
             return None
-        repo_root = Path(repo.working_tree_dir).resolve()
+        repo_root = Path(repo_root_text).resolve()
         try:
             scope_prefix = resolved_root.resolve().relative_to(repo_root)
         except ValueError:
             return None
-        scope_prefix_text = "" if not scope_prefix.parts else scope_prefix.as_posix()
-        try:
-            tracked_output = repo.git.ls_files(
-                *((scope_prefix_text,) if scope_prefix_text else ())
-            )
-        except GitCommandError:
-            return None
         prefix_parts = scope_prefix.parts
         scope_paths: set[str] = set()
-        for raw_line in tracked_output.splitlines():
-            repo_relative = Path(raw_line)
-            if prefix_parts:
-                if repo_relative.parts[: len(prefix_parts)] != prefix_parts:
-                    continue
-                scope_relative = Path(*repo_relative.parts[len(prefix_parts) :])
-            else:
-                scope_relative = repo_relative
-            scope_paths.add(scope_relative.as_posix())
-        # Include dirty and untracked files so uncommitted changes are targets.
-        try:
-            status_output = repo.git.status(
-                "--porcelain",
-                "--untracked-files=all",
-                *((scope_prefix_text,) if scope_prefix_text else ()),
-            )
-        except GitCommandError:
-            status_output = ""
-        for raw_line in status_output.splitlines():
-            if not raw_line:
-                continue
-            # porcelain format: "XY path" or "XY orig_path -> path"
-            file_path = raw_line[3:]
-            if " -> " in file_path:
-                file_path = file_path.split(" -> ", 1)[1]
-            repo_relative = Path(file_path)
+        for repo_relative_text in repo_relative_paths:
+            repo_relative = Path(repo_relative_text)
             if prefix_parts:
                 if repo_relative.parts[: len(prefix_parts)] != prefix_parts:
                     continue

@@ -61,9 +61,9 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
             / "fixtures/namespace_validator/rule0_valid.pysrc"
         )
         source = fixture_file.read_text(encoding="utf-8")
-        utilities_dir = tmp_path / "_utilities"
-        utilities_dir.mkdir(parents=True, exist_ok=True)
-        target_file = utilities_dir / "single_file_refactor_target.py"
+        target_dir = tmp_path / "nonstandard_dir"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_file = target_dir / "single_file_refactor_target.py"
         target_file.write_text(
             source
             + "\n\n"

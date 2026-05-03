@@ -148,14 +148,28 @@ class FlextInfraUtilitiesRefactorCensus:
         (unsafe — candidate must be handled manually).
         """
         target_name = candidate.object_name
+        definition_path = Path(candidate.file_path).resolve()
         updates: dict[Path, str] = {}
-        for module in rope.modules():
-            file_path = module.file_path
-            if file_path.name == c.Infra.INIT_PY:
+        name_index_getter = getattr(rope, "name_index", None)
+        if name_index_getter is None:
+            candidate_paths = tuple(module.file_path for module in rope.modules())
+        else:
+            candidate_paths = tuple(
+                path.resolve()
+                for path, _surface, _lines in name_index_getter().get(target_name, ())
+            )
+        seen_paths: set[str] = set()
+        for file_path in candidate_paths:
+            resolved_path = file_path.resolve()
+            cache_key = str(resolved_path)
+            if cache_key in seen_paths:
                 continue
-            if file_path.resolve() == Path(candidate.file_path).resolve():
+            seen_paths.add(cache_key)
+            if resolved_path.name == c.Infra.INIT_PY:
                 continue
-            source = rope.source(file_path)
+            if resolved_path == definition_path:
+                continue
+            source = rope.source(resolved_path)
             if target_name not in source:
                 continue
             rewritten, disqualified = (
@@ -168,7 +182,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 return None
             if rewritten == source:
                 continue
-            updates[file_path.resolve()] = rewritten
+            updates[resolved_path] = rewritten
         return updates
 
     @staticmethod

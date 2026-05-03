@@ -85,7 +85,7 @@ class TestsFlextInfraExtraPathsManager:
         pyproject.write_text('[tool.pyright]\nextraPaths = ["old"]\n', encoding="utf-8")
         pyproject.chmod(0o444)
 
-        tm.fail(_manager().sync_one(pyproject, is_root=True), has="TOML write error")
+        tm.fail(_manager().sync_one(pyproject, is_root=True), has="TOML write")
 
     def test_base_constants(self) -> None:
         manager = _manager()

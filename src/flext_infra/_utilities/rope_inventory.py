@@ -260,6 +260,7 @@ class FlextInfraUtilitiesRopeInventory:
                 options.rope_project,
                 options.resource,
                 source=options.source,
+                module_name=options.module_name,
                 name=options.name,
                 line=line,
                 rope_workspace=options.rope_workspace,
@@ -399,6 +400,7 @@ class FlextInfraUtilitiesRopeInventory:
         name: str,
         line: int,
         rope_workspace: p.AttributeProbe | None = None,
+        module_name: str,
     ) -> tuple[
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
@@ -433,6 +435,7 @@ class FlextInfraUtilitiesRopeInventory:
                 FlextInfraUtilitiesRopeInventory._search_resources_from_index(
                     rope_workspace,
                     resource=resource,
+                    module_name=module_name,
                     name=name,
                     definition_path=definition_path,
                 )
@@ -564,6 +567,7 @@ class FlextInfraUtilitiesRopeInventory:
         resource: t.Infra.RopeResource,
         name: str,
         definition_path: Path,
+        module_name: str,
     ) -> tuple[t.Infra.RopeResource, ...] | None:
         """Build the minimal Rope resource search set for one symbol name.
 
@@ -578,6 +582,35 @@ class FlextInfraUtilitiesRopeInventory:
             return None
         occurrences = name_index_getter().get(name, ())
         resolved_definition = definition_path.resolve()
+        dependent_paths: frozenset[str] | None = None
+        import_dependents_getter = getattr(rope_workspace, "import_dependents", None)
+        if (
+            callable(import_dependents_getter)
+            and module_name
+            and FlextInfraUtilitiesRopeInventory._reference_surface(definition_path)
+            != c.Infra.DEFAULT_SRC_DIR
+        ):
+            dependent_candidates: set[Path] = set()
+            for import_target in (module_name, f"{module_name}.{name}"):
+                dependent_paths_raw = import_dependents_getter(import_target)
+                if not isinstance(dependent_paths_raw, tuple):
+                    msg = (
+                        "rope import_dependents returned non-tuple for "
+                        f"{import_target}: {type(dependent_paths_raw).__name__}"
+                    )
+                    raise TypeError(msg)
+                for path in dependent_paths_raw:
+                    if not isinstance(path, Path):
+                        msg = (
+                            "rope import_dependents returned invalid path for "
+                            f"{import_target}: {type(path).__name__}"
+                        )
+                        raise TypeError(msg)
+                    dependent_candidates.add(path.resolve())
+            if dependent_candidates:
+                dependent_paths = frozenset(
+                    str(path) for path in (*dependent_candidates, resolved_definition)
+                )
         seen_paths = {str(resolved_definition)}
         resources: list[t.Infra.RopeResource] = [resource]
         for path, _surface, _lines in occurrences:
@@ -587,11 +620,17 @@ class FlextInfraUtilitiesRopeInventory:
             if path.name == c.Infra.INIT_PY:
                 continue
             cache_key = str(resolved_path)
+            if dependent_paths is not None and cache_key not in dependent_paths:
+                continue
             if cache_key in seen_paths:
                 continue
             candidate_resource = resource_getter(resolved_path)
             if candidate_resource is None:
-                continue
+                msg = (
+                    "rope search resource unavailable for indexed path "
+                    f"{resolved_path} while resolving '{name}'"
+                )
+                raise RuntimeError(msg)
             seen_paths.add(cache_key)
             resources.append(candidate_resource)
         return tuple(resources)
