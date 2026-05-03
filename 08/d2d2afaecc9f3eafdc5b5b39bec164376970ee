@@ -1,0 +1,31 @@
+src/flext_infra/validate/skill_validator.py
+  473c59be621cc5d5 63-75,116,190-192
+src/flext_infra/validate/pytest_diag.py
+  473c59be621cc5d5 160,167,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "08d2d2afaecc9f3eafdc5b5b39bec164376970ee",
+  "prompts": {
+    "473c59be621cc5d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6001f8b-afdd-4757-8812-9bff0bfd46d9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 42,
+      "accepted_lines": 33,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/f7bd32bdd1731f31fa4f0b9cf03fd36cc45f0c2aa65f6098f944be8b4e28c9a0"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
