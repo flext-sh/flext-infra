@@ -68,38 +68,46 @@ class FlextInfraUtilitiesIteration:
         lock_path: Path,
     ) -> t.MappingKV[str, str]:
         """Return normalized registry package versions from one ``uv.lock`` file."""
-        if not lock_path.is_file():
-            return {}
-        try:
-            raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError:
-            return {}
-        payload_source = u.Cli.toml_mapping_from_text(raw_text)
-        if payload_source is None:
-            return {}
-        try:
-            payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload_source)
-        except c.ValidationError:
-            return {}
-        raw_packages = payload.get("package")
-        if not isinstance(raw_packages, list):
-            return {}
-        versions: MutableMapping[str, str] = {}
-        for raw_package in raw_packages:
-            if not isinstance(raw_package, Mapping):
-                continue
-            raw_source = raw_package.get("source")
-            if not isinstance(raw_source, Mapping) or "registry" not in raw_source:
-                continue
-            raw_name = raw_package.get("name")
-            raw_version = raw_package.get(c.Infra.VERSION)
-            if not isinstance(raw_name, str) or not isinstance(raw_version, str):
-                continue
-            dependency_name = cls.dep_name(raw_name)
-            if dependency_name is None:
-                continue
-            versions[dependency_name] = raw_version.strip()
-        return dict(versions)
+        result: t.MappingKV[str, str] = {}
+        if lock_path.is_file():
+            try:
+                raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            except OSError:
+                pass
+            else:
+                payload_source = u.Cli.toml_mapping_from_text(raw_text)
+                if payload_source is not None:
+                    try:
+                        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                            payload_source
+                        )
+                    except c.ValidationError:
+                        pass
+                    else:
+                        raw_packages = payload.get("package")
+                        if isinstance(raw_packages, list):
+                            versions: MutableMapping[str, str] = {}
+                            for raw_package in raw_packages:
+                                if not isinstance(raw_package, Mapping):
+                                    continue
+                                raw_source = raw_package.get("source")
+                                if (
+                                    not isinstance(raw_source, Mapping)
+                                    or "registry" not in raw_source
+                                ):
+                                    continue
+                                raw_name = raw_package.get("name")
+                                raw_version = raw_package.get(c.Infra.VERSION)
+                                if not isinstance(raw_name, str) or not isinstance(
+                                    raw_version, str
+                                ):
+                                    continue
+                                dependency_name = cls.dep_name(raw_name)
+                                if dependency_name is None:
+                                    continue
+                                versions[dependency_name] = raw_version.strip()
+                            result = dict(versions)
+        return result
 
     @classmethod
     def rewrite_requirement_constraint(
@@ -111,28 +119,30 @@ class FlextInfraUtilitiesIteration:
         policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> str | None:
         """Rewrite one PEP 621 requirement string using the locked version policy."""
+        result: str | None = None
         raw_text = requirement.strip()
-        if not raw_text:
-            return None
-        requirement_part, marker_separator, marker_part = raw_text.partition(";")
-        if " @ " in requirement_part:
-            return None
-        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
-        if head_match is None:
-            return None
-        head = head_match.group("head").strip()
-        dependency_name = cls.dep_name(head)
-        internal_set = set(internal_names)
-        if dependency_name is None or dependency_name in internal_set:
-            return None
-        locked_version = locked_versions.get(dependency_name)
-        if locked_version is None:
-            return None
-        rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy)}"
-        marker_text = marker_part.strip()
-        if marker_separator and marker_text:
-            rewritten = f"{rewritten}; {marker_text}"
-        return rewritten if rewritten != raw_text else None
+        if raw_text:
+            requirement_part, marker_separator, marker_part = raw_text.partition(";")
+            if " @ " not in requirement_part:
+                head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(
+                    requirement_part.strip()
+                )
+                if head_match is not None:
+                    head = head_match.group("head").strip()
+                    dependency_name = cls.dep_name(head)
+                    internal_set = set(internal_names)
+                    if (
+                        dependency_name is not None
+                        and dependency_name not in internal_set
+                    ):
+                        locked_version = locked_versions.get(dependency_name)
+                        if locked_version is not None:
+                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy)}"
+                            marker_text = marker_part.strip()
+                            if marker_separator and marker_text:
+                                rewritten = f"{rewritten}; {marker_text}"
+                            result = rewritten if rewritten != raw_text else None
+        return result
 
     @classmethod
     def rewrite_poetry_constraint(

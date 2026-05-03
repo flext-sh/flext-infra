@@ -161,7 +161,8 @@ class FlextInfraUtilitiesDocsScope:
             return None
         has_src = (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
         has_tests = (entry / c.Infra.DIR_TESTS).is_dir()
-        if not is_workspace_member and not has_src and not has_tests:
+        has_deps = bool(project_section.get("dependencies"))
+        if not is_workspace_member and not has_src and not has_tests and not has_deps:
             return None
         workspace_role = (
             c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
@@ -172,8 +173,8 @@ class FlextInfraUtilitiesDocsScope:
             path=entry,
             name=project_state.project_name,
             stack="python/flext",
-            has_tests=(entry / c.Infra.DIR_TESTS).is_dir(),
-            has_src=(entry / c.Infra.DEFAULT_SRC_DIR).is_dir(),
+            has_tests=has_tests,
+            has_src=has_src,
             project_class=(
                 FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                     project_state.project_name,
