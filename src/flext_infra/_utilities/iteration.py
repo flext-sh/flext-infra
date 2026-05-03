@@ -408,37 +408,45 @@ class FlextInfraUtilitiesIteration:
         payload: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         """Extract workspace-local dependency namespaces from one normalized payload."""
+        result: t.StrSequence
         try:
             normalized = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         except c.ValidationError:
-            return ()
-        tool = normalized.get(c.Infra.TOOL)
-        if not isinstance(tool, Mapping):
-            return ()
-        uv = tool.get("uv")
-        if not isinstance(uv, Mapping):
-            return ()
-        sources = uv.get("sources")
-        if not isinstance(sources, Mapping):
-            return ()
-        workspace_project_names = tuple(
-            dependency_name
-            for raw_name, raw_source in sources.items()
-            if isinstance(raw_source, Mapping)
-            if raw_source.get("workspace") is True
-            if (dependency_name := cls.dep_name(str(raw_name))) is not None
-        )
-        if not workspace_project_names:
-            return ()
-        return tuple(
-            sorted(
-                dependency_name.replace("-", "_")
-                for dependency_name in cls.local_dependency_names_from_payload(
-                    normalized,
-                    workspace_project_names=workspace_project_names,
-                )
-            )
-        )
+            result = ()
+        else:
+            tool = normalized.get(c.Infra.TOOL)
+            if not isinstance(tool, Mapping):
+                result = ()
+            else:
+                uv = tool.get("uv")
+                if not isinstance(uv, Mapping):
+                    result = ()
+                else:
+                    sources = uv.get("sources")
+                    if not isinstance(sources, Mapping):
+                        result = ()
+                    else:
+                        workspace_project_names = tuple(
+                            dependency_name
+                            for raw_name, raw_source in sources.items()
+                            if isinstance(raw_source, Mapping)
+                            if raw_source.get("workspace") is True
+                            if (dependency_name := cls.dep_name(str(raw_name)))
+                            is not None
+                        )
+                        if not workspace_project_names:
+                            result = ()
+                        else:
+                            result = tuple(
+                                sorted(
+                                    dependency_name.replace("-", "_")
+                                    for dependency_name in cls.local_dependency_names_from_payload(
+                                        normalized,
+                                        workspace_project_names=workspace_project_names,
+                                    )
+                                )
+                            )
+        return result
 
     @staticmethod
     @cache
