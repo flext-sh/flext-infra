@@ -25,36 +25,47 @@ class FlextInfraUtilitiesSafety:
 
         Returns an empty string for non-repositories or clean trees.
         """
+        result: p.Result[str]
         repo_check = u.Cli.run_raw(
             [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
             cwd=repo,
         )
         if repo_check.failure or repo_check.value.exit_code != 0:
-            return r[str].ok("")
-        status_result = u.Cli.run_raw(
-            [c.Infra.GIT, "status", "--porcelain"],
-            cwd=repo,
-        )
-        if status_result.failure or status_result.value.exit_code != 0:
-            return r[str].fail(status_result.error or "git status failed")
-        if not status_result.value.stdout.strip():
-            return r[str].ok("")
-        stash_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "push", "--include-untracked", "-m", label],
-            cwd=repo,
-        )
-        if stash_result.failure or stash_result.value.exit_code != 0:
-            return r[str].fail(stash_result.error or "git stash push failed")
-        list_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "list", "-1", "--format=%gd"],
-            cwd=repo,
-        )
-        if list_result.failure or list_result.value.exit_code != 0:
-            return r[str].fail(list_result.error or "git stash list failed")
-        stash_ref = list_result.value.stdout.strip()
-        if not stash_ref:
-            return r[str].fail("git stash list returned no checkpoint ref")
-        return r[str].ok(f"{label}: {stash_ref}")
+            result = r[str].ok("")
+        else:
+            status_result = u.Cli.run_raw(
+                [c.Infra.GIT, "status", "--porcelain"],
+                cwd=repo,
+            )
+            if status_result.failure or status_result.value.exit_code != 0:
+                result = r[str].fail(status_result.error or "git status failed")
+            elif not status_result.value.stdout.strip():
+                result = r[str].ok("")
+            else:
+                stash_result = u.Cli.run_raw(
+                    [c.Infra.GIT, "stash", "push", "--include-untracked", "-m", label],
+                    cwd=repo,
+                )
+                if stash_result.failure or stash_result.value.exit_code != 0:
+                    result = r[str].fail(stash_result.error or "git stash push failed")
+                else:
+                    list_result = u.Cli.run_raw(
+                        [c.Infra.GIT, "stash", "list", "-1", "--format=%gd"],
+                        cwd=repo,
+                    )
+                    if list_result.failure or list_result.value.exit_code != 0:
+                        result = r[str].fail(
+                            list_result.error or "git stash list failed"
+                        )
+                    else:
+                        stash_ref = list_result.value.stdout.strip()
+                        if not stash_ref:
+                            result = r[str].fail(
+                                "git stash list returned no checkpoint ref"
+                            )
+                        else:
+                            result = r[str].ok(f"{label}: {stash_ref}")
+        return result
 
     @staticmethod
     def rollback_to_checkpoint(repo: Path, checkpoint: str = "") -> p.Result[bool]:
