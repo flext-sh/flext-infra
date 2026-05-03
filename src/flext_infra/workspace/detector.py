@@ -51,41 +51,54 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             c.Infra.WorkspaceMode.STANDALONE otherwise.
 
         """
+        result: p.Result[c.Infra.WorkspaceMode]
         try:
             resolved_project_root = project_root.resolve()
+            mode = c.Infra.WorkspaceMode.WORKSPACE
             for candidate in (resolved_project_root, *resolved_project_root.parents):
                 if (candidate / c.Infra.GITMODULES).exists():
-                    return r[c.Infra.WorkspaceMode].ok(
-                        c.Infra.WorkspaceMode.WORKSPACE,
+                    break
+            else:
+                parent = resolved_project_root.parent
+                git_marker = parent / c.Infra.GIT_DIR
+                if not git_marker.exists():
+                    u.Cli.info(
+                        "Running in standalone mode (no parent workspace detected)"
                     )
-            parent = resolved_project_root.parent
-            git_marker = parent / c.Infra.GIT_DIR
-            if not git_marker.exists():
-                u.Cli.info("Running in standalone mode (no parent workspace detected)")
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            result = u.Cli.capture(
-                [c.Infra.GIT, "config", "--get", "remote.origin.url"],
-                cwd=parent,
-            )
-            if result.failure:
-                u.Cli.info("Running in standalone mode (unable to detect workspace)")
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            origin = result.value.strip()
-            if not origin:
-                u.Cli.info("Running in standalone mode (no remote origin found)")
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            repo_name = self._repo_name_from_url(origin)
-            mode = (
-                c.Infra.WorkspaceMode.WORKSPACE
-                if repo_name == c.Infra.PKG_ROOT
-                else c.Infra.WorkspaceMode.STANDALONE
-            )
-            if mode == c.Infra.WorkspaceMode.STANDALONE:
-                u.Cli.info(f"Running in standalone mode (parent repo: {repo_name})")
-            return r[c.Infra.WorkspaceMode].ok(mode)
+                    mode = c.Infra.WorkspaceMode.STANDALONE
+                else:
+                    capture_result = u.Cli.capture(
+                        [c.Infra.GIT, "config", "--get", "remote.origin.url"],
+                        cwd=parent,
+                    )
+                    if capture_result.failure:
+                        u.Cli.info(
+                            "Running in standalone mode (unable to detect workspace)"
+                        )
+                        mode = c.Infra.WorkspaceMode.STANDALONE
+                    else:
+                        origin = capture_result.value.strip()
+                        if not origin:
+                            u.Cli.info(
+                                "Running in standalone mode (no remote origin found)"
+                            )
+                            mode = c.Infra.WorkspaceMode.STANDALONE
+                        else:
+                            repo_name = self._repo_name_from_url(origin)
+                            mode = (
+                                c.Infra.WorkspaceMode.WORKSPACE
+                                if repo_name == c.Infra.PKG_ROOT
+                                else c.Infra.WorkspaceMode.STANDALONE
+                            )
+                            if mode == c.Infra.WorkspaceMode.STANDALONE:
+                                u.Cli.info(
+                                    f"Running in standalone mode (parent repo: {repo_name})"
+                                )
+            result = r[c.Infra.WorkspaceMode].ok(mode)
         except c.EXC_OS_RUNTIME_TYPE as exc:
             u.Cli.info(f"Running in standalone mode (detection error: {exc})")
-            return r[c.Infra.WorkspaceMode].fail_op("Detection", exc)
+            result = r[c.Infra.WorkspaceMode].fail_op("Detection", exc)
+        return result
 
     @override
     def execute(self) -> p.Result[c.Infra.WorkspaceMode]:
