@@ -233,22 +233,28 @@ class FlextInfraUtilitiesRefactorCensus:
             entries = [entry.strip() for entry in body.split(",") if entry.strip()]
             remaining = [entry for entry in entries if entry not in quoted_target]
             if len(remaining) == len(entries):
-                return match.group(0)
-            return f"{match.group('prefix')}[{', '.join(remaining)}]"
+                result = match.group(0)
+            else:
+                result = f"{match.group('prefix')}[{', '.join(remaining)}]"
+            return result
 
         def _rewrite_multi(match: re.Match[str]) -> str:
             body = match.group("body")
             if "\n" not in body:
-                return match.group(0)
-            entries = [entry.strip() for entry in body.split(",") if entry.strip()]
-            remaining = [entry for entry in entries if entry not in quoted_target]
-            if len(remaining) == len(entries):
-                return match.group(0)
-            prefix = match.group("prefix")
-            if not remaining:
-                return f"{prefix}[]"
-            lines = ",\n".join(f"    {entry}" for entry in remaining)
-            return f"{prefix}[\n{lines},\n]"
+                result = match.group(0)
+            else:
+                entries = [entry.strip() for entry in body.split(",") if entry.strip()]
+                remaining = [entry for entry in entries if entry not in quoted_target]
+                if len(remaining) == len(entries):
+                    result = match.group(0)
+                else:
+                    prefix = match.group("prefix")
+                    if not remaining:
+                        result = f"{prefix}[]"
+                    else:
+                        lines = ",\n".join(f"    {entry}" for entry in remaining)
+                        result = f"{prefix}[\n{lines},\n]"
+            return result
 
         first = single_line.sub(_rewrite_single, source)
         return multi_line.sub(_rewrite_multi, first)
