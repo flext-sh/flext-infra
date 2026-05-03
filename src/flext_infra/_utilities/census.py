@@ -65,9 +65,30 @@ class FlextInfraUtilitiesRefactorCensus:
         )
 
     @staticmethod
+    def _source_snapshot(
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        *,
+        source_cache: dict[Path, str] | None = None,
+    ) -> str:
+        """Return one original source snapshot, optionally cached by path."""
+        resolved_path = file_path.resolve()
+        if source_cache is None:
+            source_text: str = rope.source(resolved_path)
+            return source_text
+        cached_source = source_cache.get(resolved_path)
+        if cached_source is not None:
+            return cached_source
+        source: str = rope.source(resolved_path)
+        source_cache[resolved_path] = source
+        return source
+
+    @staticmethod
     def plan_simple_removal_edits(
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
+        *,
+        source_cache: dict[Path, str] | None = None,
     ) -> t.MappingKV[Path, tuple[t.IntPair, ...]] | None:
         """Plan safe line-range removals for simple top-level removal candidates."""
         if candidate.scope_path != candidate.object_name:
@@ -76,7 +97,11 @@ class FlextInfraUtilitiesRefactorCensus:
             return None
         definition_path = Path(candidate.file_path).resolve()
         definition_range = FlextInfraUtilitiesRefactorCensus._definition_line_range(
-            rope.source(definition_path),
+            FlextInfraUtilitiesRefactorCensus._source_snapshot(
+                rope,
+                definition_path,
+                source_cache=source_cache,
+            ),
             candidate,
         )
         if definition_range is None:
@@ -88,7 +113,11 @@ class FlextInfraUtilitiesRefactorCensus:
         ):
             site_path = Path(site.file_path).resolve()
             site_range = FlextInfraUtilitiesRefactorCensus._reference_line_range(
-                rope.source(site_path),
+                FlextInfraUtilitiesRefactorCensus._source_snapshot(
+                    rope,
+                    site_path,
+                    source_cache=source_cache,
+                ),
                 site,
             )
             if site_range is None:
@@ -114,6 +143,8 @@ class FlextInfraUtilitiesRefactorCensus:
         cls,
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
+        *,
+        source_cache: dict[Path, str] | None = None,
     ) -> p.Result[t.MappingKV[Path, str] | None]:
         """Return projected sources or a loud failure for broken planning.
 
@@ -124,7 +155,11 @@ class FlextInfraUtilitiesRefactorCensus:
         """
         if not cls._supports_simple_removal_candidate(candidate):
             return r[t.MappingKV[Path, str] | None].ok(None)
-        updates = cls.build_simple_removal_sources(rope, candidate)
+        updates = cls.build_simple_removal_sources(
+            rope,
+            candidate,
+            source_cache=source_cache,
+        )
         if updates is not None:
             return r[t.MappingKV[Path, str] | None].ok(updates)
         return r[t.MappingKV[Path, str] | None].fail(
@@ -136,11 +171,14 @@ class FlextInfraUtilitiesRefactorCensus:
     def build_simple_removal_sources(
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
+        *,
+        source_cache: dict[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
         """Build updated sources for a simple removal candidate without writing."""
         edit_plan = FlextInfraUtilitiesRefactorCensus.plan_simple_removal_edits(
             rope,
             candidate,
+            source_cache=source_cache,
         )
         if edit_plan is None:
             return None
@@ -148,7 +186,11 @@ class FlextInfraUtilitiesRefactorCensus:
         updates: dict[Path, str] = {}
         for file_path, ranges in edit_plan.items():
             source = FlextInfraUtilitiesRefactorCensus.apply_line_ranges(
-                rope.source(file_path),
+                FlextInfraUtilitiesRefactorCensus._source_snapshot(
+                    rope,
+                    file_path,
+                    source_cache=source_cache,
+                ),
                 ranges,
             )
             if file_path.resolve() == definition_path:
@@ -161,6 +203,7 @@ class FlextInfraUtilitiesRefactorCensus:
             FlextInfraUtilitiesRefactorCensus.build_facade_base_cascade_updates(
                 rope,
                 candidate,
+                source_cache=source_cache,
             )
         )
         if facade_cascade is None:
@@ -172,6 +215,8 @@ class FlextInfraUtilitiesRefactorCensus:
     def build_facade_base_cascade_updates(
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
+        *,
+        source_cache: dict[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
         """Drop ``candidate`` from class-base lists in facade modules.
 
@@ -202,7 +247,11 @@ class FlextInfraUtilitiesRefactorCensus:
                 continue
             if resolved_path == definition_path:
                 continue
-            source = rope.source(resolved_path)
+            source = FlextInfraUtilitiesRefactorCensus._source_snapshot(
+                rope,
+                resolved_path,
+                source_cache=source_cache,
+            )
             if target_name not in source:
                 continue
             rewritten, disqualified = (
@@ -317,6 +366,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         gates: t.StrSequence,
+        source_cache: dict[Path, str] | None = None,
     ) -> p.Result[bool]:
         """Preview one simple removal candidate, requiring clean gates.
 
@@ -329,6 +379,7 @@ class FlextInfraUtilitiesRefactorCensus:
             FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
                 rope,
                 candidate,
+                source_cache=source_cache,
             )
         )
         if updates_result.failure:

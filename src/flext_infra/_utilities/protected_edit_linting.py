@@ -18,6 +18,17 @@ class FlextInfraUtilitiesProtectedEditLinting:
     _SNAPSHOT_MAX_WORKERS: ClassVar[int] = 4
 
     @staticmethod
+    def _workspace_tool_command(
+        workspace: Path,
+        tool_name: str,
+    ) -> tuple[str, ...]:
+        """Resolve one tool against the workspace venv before falling back to PATH."""
+        tool_path = (workspace.resolve() / c.Infra.VENV_BIN_REL / tool_name).resolve()
+        if tool_path.is_file():
+            return (str(tool_path),)
+        return (tool_name,)
+
+    @staticmethod
     def _normalize_lint_line(line: str) -> str:
         """Normalize lint line."""
         if c.Infra.CODE_FRAME_RE.match(line) or c.Infra.CODE_FRAME_BODY_RE.match(line):
@@ -149,7 +160,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
             tmpl: tuple[str, ...],
         ) -> tuple[str, t.StrSequence]:
             """Run gate."""
-            cmd = [item.replace("{file}", str(py_file)) for item in tmpl]
+            cmd = [
+                *cls._workspace_tool_command(workspace, tmpl[0]),
+                *(item.replace("{file}", str(py_file)) for item in tmpl[1:]),
+            ]
             run_result = u.Cli.run_raw(
                 cmd,
                 cwd=command_cwd,

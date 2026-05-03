@@ -128,7 +128,13 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):
             return r[bool].ok(True)
         run_result = u.Cli.run_raw(
-            ["pytest", str(py_file), "-x", "--tb=short", "-q"],
+            [
+                *cls._workspace_tool_command(workspace, "pytest"),
+                str(py_file),
+                "-x",
+                "--tb=short",
+                "-q",
+            ],
             cwd=cls._command_cwd(py_file, workspace),
             env=cls._command_env(),
             timeout=c.Infra.TIMEOUT_MEDIUM,

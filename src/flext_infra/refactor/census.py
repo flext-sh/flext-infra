@@ -581,20 +581,31 @@ class FlextInfraRefactorCensus(
     ) -> tuple[m.Infra.Census.ProjectReport, ...]:
         """Keep only removal candidates that pass the configured dry-run gates."""
         validated_reports: list[m.Infra.Census.ProjectReport] = []
+        # Preview writes are restored before the next candidate, so one shared
+        # source cache stays valid for the entire dry-run validation pass.
+        source_cache: dict[Path, str] = {}
         for report in project_reports:
             if not report.removal_candidates:
                 validated_reports.append(report)
                 continue
-            validated_candidates = tuple(
-                candidate
-                for candidate in report.removal_candidates
-                if u.Infra.preview_simple_removal_candidate(
+            validated_candidates_list: list[m.Infra.Census.RemovalCandidate] = []
+            for candidate in report.removal_candidates:
+                preview_result = u.Infra.preview_simple_removal_candidate(
                     rope,
                     self.root,
                     candidate,
                     gates=self.dry_run_gate_names,
-                ).unwrap_or(False)
-            )
+                    source_cache=source_cache,
+                )
+                if preview_result.failure:
+                    msg = preview_result.error or (
+                        "simple removal preview failed for "
+                        f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
+                    )
+                    raise RuntimeError(msg)
+                if preview_result.unwrap_or(False):
+                    validated_candidates_list.append(candidate)
+            validated_candidates = tuple(validated_candidates_list)
             validated_reports.append(
                 report.model_copy(
                     update={
@@ -977,12 +988,19 @@ class FlextInfraRefactorCensus(
                 for object_name in object_names
             )
         for candidate in report.removal_candidates:
-            if u.Infra.apply_simple_removal_candidate(
+            apply_result = u.Infra.apply_simple_removal_candidate(
                 rope,
                 self.root,
                 candidate,
                 gates=self.dry_run_gate_names,
-            ).unwrap_or(False):
+            )
+            if apply_result.failure:
+                msg = apply_result.error or (
+                    "simple removal apply failed for "
+                    f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
+                )
+                raise RuntimeError(msg)
+            if apply_result.unwrap_or(False):
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
                 )

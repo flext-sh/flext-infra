@@ -9,8 +9,11 @@ from rope.base.exceptions import RopeError
 from flext_infra import (
     FlextInfraRefactorCensus,
     FlextInfraRopeWorkspace,
+    m,
     main as infra_main,
+    p,
 )
+from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from tests import t, u
 
@@ -1124,6 +1127,78 @@ class TestsFlextInfraRefactorMainCli:
         assert report.removal_candidate_count == 1
         assert "only_for_tests" in service_file.read_text(encoding="utf-8")
         assert "only_for_tests" in test_file.read_text(encoding="utf-8")
+
+    def test_refactor_census_dry_run_raises_on_simple_removal_planning_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+        original_build = (
+            FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
+        )
+
+        def _broken_build(
+            rope: p.Infra.RopeWorkspaceDsl,
+            candidate: m.Infra.Census.RemovalCandidate,
+        ) -> object:
+            if candidate.object_name == "only_for_tests":
+                return None
+            return original_build(rope, candidate)
+
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRefactorCensus,
+            "build_simple_removal_sources",
+            staticmethod(_broken_build),
+        )
+
+        with pytest.raises(
+            RuntimeError,
+            match=r"simple removal planning failed for .*only_for_tests",
+        ):
+            FlextInfraRefactorCensus(
+                workspace=workspace,
+                dry_run=True,
+                include_local_scopes=False,
+                kinds=("function",),
+                rules=("test_only",),
+            ).execute()
+
+    def test_refactor_census_apply_raises_on_simple_removal_planning_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        workspace = self._build_test_only_workspace(tmp_path)
+        original_build = (
+            FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
+        )
+
+        def _broken_build(
+            rope: p.Infra.RopeWorkspaceDsl,
+            candidate: m.Infra.Census.RemovalCandidate,
+        ) -> object:
+            if candidate.object_name == "only_for_tests":
+                return None
+            return original_build(rope, candidate)
+
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRefactorCensus,
+            "build_simple_removal_sources",
+            staticmethod(_broken_build),
+        )
+
+        with pytest.raises(
+            RuntimeError,
+            match=r"simple removal planning failed for .*only_for_tests",
+        ):
+            FlextInfraRefactorCensus(
+                workspace=workspace,
+                apply_changes=True,
+                include_local_scopes=False,
+                kinds=("function",),
+                rules=("test_only",),
+            ).execute()
 
     def _assert_dry_run_one_violation_no_candidate(
         self,
