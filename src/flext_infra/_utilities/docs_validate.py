@@ -65,29 +65,39 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_load_required_skills(workspace_root: Path) -> p.Result[t.StrSequence]:
-        """Load the required skills list from the architecture settings."""
+        """Load the required skills list from the architecture settings.
+
+        Returns ``r.ok([])`` only when the config file is genuinely absent.
+        Any other failure (read error, malformed JSON, broken
+        ``docs_validation`` block, invalid ``required_skills`` payload)
+        propagates as ``r.fail(...)`` so callers see the config defect
+        instead of a silent empty list — fail-fast over fail-quiet.
+        """
         settings = workspace_root / "docs/architecture/architecture_config.json"
         if not settings.exists():
             return r[t.StrSequence].ok([])
-        payload_result = u.Cli.json_read(settings)
-        if payload_result.failure:
-            return r[t.StrSequence].fail(
-                f"failed to read architecture config: {payload_result.error}"
-            )
-        extract_result = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(
-            payload_result.value,
+        return (
+            u.Cli
+            .json_read(settings)
+            .map_error(lambda e: f"failed to read architecture config: {e}")
+            .flat_map(FlextInfraUtilitiesDocsValidate.docs_extract_required_skills)
+            .flat_map(FlextInfraUtilitiesDocsValidate._validate_required_skills)
+            .map(lambda values: [item for item in values if item])
         )
-        if extract_result.failure:
-            return r[t.StrSequence].ok([])
-        try:
-            values = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                extract_result.value, strict=True
+
+    @staticmethod
+    def _validate_required_skills(
+        raw: t.Infra.InfraSequence,
+    ) -> p.Result[t.StrSequence]:
+        """Validate ``required_skills`` payload against the canonical adapter."""
+        return (
+            r[t.StrSequence]
+            .create_from_callable(
+                lambda: t.Infra.STR_SEQ_ADAPTER.validate_python(raw, strict=True),
+                error_code="required_skills_validation",
             )
-        except c.ValidationError as e:
-            return r[t.StrSequence].fail(
-                f"invalid required_skills configuration: {e!s}"
-            )
-        return r[t.StrSequence].ok([item for item in values if item])
+            .map_error(lambda e: f"invalid required_skills configuration: {e}")
+        )
 
     @staticmethod
     def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:

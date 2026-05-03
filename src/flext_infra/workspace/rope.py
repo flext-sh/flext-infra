@@ -161,6 +161,18 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             workspace_index=self.workspace_index,
         )
 
+    def refresh(self) -> m.Infra.RopeWorkspaceSession:
+        """Invalidate content-derived caches without reopening the Rope project."""
+        if self._rope_project is not None:
+            self._rope_project.validate()
+        self._package_context_cache.clear()
+        self._module_policy_cache.clear()
+        self._module_convention_cache.clear()
+        self._module_object_cache.clear()
+        self._resource_cache.clear()
+        self._name_index = None
+        return self.session_snapshot()
+
     def reload(self) -> m.Infra.RopeWorkspaceSession:
         """Reopen the shared Rope project and drop all transient caches."""
         self.close()
@@ -471,6 +483,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
+        self._name_index = None
 
     def __enter__(self) -> Self:
         """Open the Rope project on context-manager entry."""

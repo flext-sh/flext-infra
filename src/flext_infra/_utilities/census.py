@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import re
 import shutil
 from collections import defaultdict
@@ -11,10 +10,12 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, p, r, t
+from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, p, r, t, u
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+
+_log = u.fetch_logger(__name__)
 
 
 class FlextInfraUtilitiesRefactorCensus:
@@ -287,26 +288,51 @@ class FlextInfraUtilitiesRefactorCensus:
 
         def _post_write() -> None:
             """Post write."""
-            with contextlib.suppress(RecursionError):
+            try:
                 rope.rope_project.validate()
+            except RecursionError as exc:
+                _log.warning(
+                    "rope_validate_recursion_limit",
+                    candidate=candidate.file_path,
+                    error=str(exc),
+                )
             for file_path in file_paths:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                with contextlib.suppress(RecursionError):
-                    FlextInfraUtilitiesRopeImports.organize_imports(
+                try:
+                    organize_result = FlextInfraUtilitiesRopeImports.organize_imports(
                         rope.rope_project,
                         resource,
                         apply=True,
                     )
+                    if organize_result.failure:
+                        msg = organize_result.error or "rope organize_imports failed"
+                        raise RuntimeError(msg)
+                except RecursionError as exc:
+                    _log.warning(
+                        "rope_organize_imports_recursion_limit",
+                        file_path=str(file_path),
+                        error=str(exc),
+                    )
 
-        applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
-            updates,
-            workspace=workspace,
-            gates=gates,
-            post_write=_post_write,
-        )
-        rope.reload()
+        try:
+            applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
+                updates,
+                workspace=workspace,
+                gates=gates,
+                post_write=_post_write,
+            )
+        except RuntimeError as exc:
+            _log.warning(
+                "census_preview_candidate_rejected",
+                candidate=candidate.file_path,
+                object_name=candidate.object_name,
+                error=str(exc),
+            )
+            return r[bool].fail(str(exc))
+        finally:
+            rope.refresh()
         if applied:
             return r[bool].ok(True)
         return r[bool].fail(
@@ -342,17 +368,29 @@ class FlextInfraUtilitiesRefactorCensus:
 
         def _post_write() -> None:
             """Post write."""
-            with contextlib.suppress(RecursionError):
+            try:
                 rope.rope_project.validate()
+            except RecursionError as exc:
+                _log.warning(
+                    "rope_validate_recursion_limit",
+                    candidate=candidate.file_path,
+                    error=str(exc),
+                )
             for file_path in file_paths:
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                with contextlib.suppress(RecursionError):
+                try:
                     FlextInfraUtilitiesRopeImports.organize_imports(
                         rope.rope_project,
                         resource,
                         apply=True,
+                    )
+                except RecursionError as exc:
+                    _log.warning(
+                        "rope_organize_imports_recursion_limit",
+                        file_path=str(file_path),
+                        error=str(exc),
                     )
             if post_apply_hook is not None:
                 post_apply_hook(workspace)

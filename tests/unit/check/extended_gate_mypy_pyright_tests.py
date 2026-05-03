@@ -65,7 +65,7 @@ class TestTypeGates:
                 True,
                 r.ok(u.Tests.stub_run(stdout="invalid json", returncode=1)),
                 False,
-                0,
+                1,
             ),
         ],
     )

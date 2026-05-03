@@ -57,14 +57,26 @@ class TestRunnerPublicBehavior:
         return original_path
 
     @staticmethod
-    def _install_fake_mypy(tmp_path: Path, *, stdout: str, exit_code: int) -> str:
+    def _install_fake_mypy(
+        tmp_path: Path,
+        *,
+        stdout: str,
+        exit_code: int,
+        stderr: str = "",
+        log_file: Path | None = None,
+    ) -> str:
         fake_pkg = tmp_path / "fake_modules" / "mypy"
         fake_pkg.mkdir(parents=True, exist_ok=True)
         (fake_pkg / "__init__.py").write_text("", encoding="utf-8")
         (fake_pkg / "__main__.py").write_text(
             (
                 "import sys\n"
+                "from pathlib import Path\n"
                 f"sys.stdout.write({stdout!r})\n"
+                f"sys.stderr.write({stderr!r})\n"
+                f"log_file = {str(log_file) if log_file else None!r}\n"
+                "if log_file is not None:\n"
+                "    Path(log_file).write_text('\\n'.join(sys.argv[1:]), encoding='utf-8')\n"
                 f"raise SystemExit({exit_code})\n"
             ),
             encoding="utf-8",
@@ -289,3 +301,57 @@ class TestRunnerPublicBehavior:
 
         assert not result.result.passed
         assert len(result.issues) == 2
+
+    def test_run_mypy_limits_check_to_local_python_dirs_and_root_files(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        (proj_dir / "tests").mkdir()
+        (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        (proj_dir / "tests" / "test_main.py").write_text("# code\n", encoding="utf-8")
+        (proj_dir / "conftest.py").write_text("# code\n", encoding="utf-8")
+        log_file = tmp_path / "mypy-command.txt"
+        original_pythonpath = self._install_fake_mypy(
+            tmp_path,
+            stdout="",
+            exit_code=0,
+            log_file=log_file,
+        )
+        try:
+            result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
+        finally:
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
+
+        assert result.result.passed
+        command_args = log_file.read_text(encoding="utf-8").splitlines()
+        assert command_args[0:4] == ["src", "tests", "conftest.py", "--config-file"]
+        assert Path(command_args[4]).name == "pyproject.toml"
+
+    def test_run_mypy_reports_command_failures_without_json(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        original_pythonpath = self._install_fake_mypy(
+            tmp_path,
+            stdout="",
+            stderr="mypy timed out waiting for dependency graph",
+            exit_code=1,
+        )
+        try:
+            result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
+        finally:
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
+
+        assert not result.result.passed
+        assert len(result.issues) == 1
+        assert result.issues[0].code == "mypy-exec"
+        assert "mypy timed out" in result.issues[0].message

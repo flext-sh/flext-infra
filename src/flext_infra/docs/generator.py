@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import override
 
 from flext_infra import (
+    FlextInfraDocServiceBase,
     m,
     p,
     t,
     u,
 )
-from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
 class FlextInfraDocGenerator(FlextInfraDocServiceBase):

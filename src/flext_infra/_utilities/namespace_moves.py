@@ -7,7 +7,6 @@ from collections import defaultdict
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import u as core_u
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProtectedEdit,
@@ -72,7 +71,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         package_name=project_package,
                         aliases=tuple(
                             sorted(
-                                core_u.read_project_constants(
+                                u.read_project_constants(
                                     "flext-infra"
                                 ).RUNTIME_ALIAS_NAMES
                             )
@@ -517,8 +516,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             node.id
             for node in ast.walk(ast.parse(moved_source))
             if isinstance(node, ast.Name)
-            and node.id
-            in core_u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
+            and node.id in u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
         }
         if not moved_aliases:
             return []

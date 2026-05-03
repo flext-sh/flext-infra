@@ -6,20 +6,17 @@ import difflib
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraClassNestingPostCheckGate,
+    FlextInfraRefactorFileExecutor,
+    FlextInfraRefactorRuleLoader,
     FlextInfraRefactorSafetyManager,
+    FlextInfraRefactorTextExecutor,
     FlextInfraRefactorViolationAnalyzer,
     c,
     m,
     t,
     u,
 )
-
-from .engine_file import (
-    FlextInfraClassNestingPostCheckGate,
-    FlextInfraRefactorFileExecutor,
-)
-from .engine_text import FlextInfraRefactorTextExecutor
-from .loader import FlextInfraRefactorRuleLoader
 
 _log = u.fetch_logger(__name__)
 

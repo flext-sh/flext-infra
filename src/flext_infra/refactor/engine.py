@@ -5,15 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraRefactorOrchestrator,
+    FlextInfraRefactorRuleLoader,
     FlextInfraRefactorSafetyManager,
     c,
     m,
     p,
     t,
 )
-
-from .loader import FlextInfraRefactorRuleLoader
-from .orchestrator import FlextInfraRefactorOrchestrator
 
 
 class FlextInfraRefactorEngine:

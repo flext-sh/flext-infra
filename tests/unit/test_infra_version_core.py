@@ -12,30 +12,6 @@ from flext_infra.__version__ import FlextInfraVersion
 class TestsFlextInfraInfraVersionCore:
     """Test FlextInfraVersion class attributes and methods."""
 
-    def test_flext_infra_version_has_version_attribute(self) -> None:
-        """Test that FlextInfraVersion has __version__ attribute."""
-
-    def test_flext_infra_version_has_version_info_attribute(self) -> None:
-        """Test that FlextInfraVersion has __version_info__ attribute."""
-
-    def test_flext_infra_version_has_title_attribute(self) -> None:
-        """Test that FlextInfraVersion has __title__ attribute."""
-
-    def test_flext_infra_version_has_description_attribute(self) -> None:
-        """Test that FlextInfraVersion has __description__ attribute."""
-
-    def test_flext_infra_version_has_author_attribute(self) -> None:
-        """Test that FlextInfraVersion has __author__ attribute."""
-
-    def test_flext_infra_version_has_author_email_attribute(self) -> None:
-        """Test that FlextInfraVersion has __author_email__ attribute."""
-
-    def test_flext_infra_version_has_license_attribute(self) -> None:
-        """Test that FlextInfraVersion has __license__ attribute."""
-
-    def test_flext_infra_version_has_url_attribute(self) -> None:
-        """Test that FlextInfraVersion has __url__ attribute."""
-
     def test_resolve_version_string_returns_string(self) -> None:
         """Test that resolve_version_string() returns a string."""
         result = FlextInfraVersion.resolve_version_string()

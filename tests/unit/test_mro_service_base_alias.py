@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from flext_cli.base import FlextCliServiceBase
-from flext_core import FlextUtilitiesEnforcement as u
-from flext_infra.base import FlextInfraServiceBase
+from flext_cli import FlextCliServiceBase
+from flext_infra import FlextInfraServiceBase
+from tests import u
 
 
 def test_service_base_generic_alias_mro_is_permitted() -> None:

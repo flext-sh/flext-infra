@@ -92,8 +92,8 @@ class FlextInfraConfigFixer(s[bool]):
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = (
                 t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(pyrefly_data)
             )
-        except c.ValidationError:
-            return r[t.StrSequence].ok([])
+        except c.ValidationError as err:
+            return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", err)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root

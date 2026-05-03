@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraProjectMigrator, m
-from tests import t, u
+from flext_infra import FlextInfraProjectMigrator
+from tests import m, t, u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:

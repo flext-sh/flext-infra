@@ -8,6 +8,7 @@ import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
 from rope.base.change import ChangeSet
 from rope.base.exceptions import (
+    ModuleSyntaxError,
     RefactoringError,
     ResourceNotFoundError,
 )
@@ -89,6 +90,7 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeResource,
         offset: int,
         *,
+        resources: t.SequenceOf[t.Infra.RopeResource] | None = None,
         in_hierarchy: bool = False,
     ) -> t.SequenceOf[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
@@ -98,6 +100,7 @@ class FlextInfraUtilitiesRopeImports:
                     rope_project,
                     resource,
                     offset,
+                    resources=resources,
                     in_hierarchy=in_hierarchy,
                 )
             )
@@ -133,6 +136,8 @@ class FlextInfraUtilitiesRopeImports:
             organizer = rope_importutils.ImportOrganizer(rope_project)
             changes = organizer.organize_imports(resource)
         except (
+            ModuleSyntaxError,
+            SyntaxError,
             RefactoringError,
             ResourceNotFoundError,
             AttributeError,

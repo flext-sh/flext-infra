@@ -101,6 +101,32 @@ class FlextInfraCodegenPipeline(s[str]):
         return stage_list
 
     # ------------------------------------------------------------------
+    # Stage harness — single fail-fast boundary, no per-stage duplication
+    # ------------------------------------------------------------------
+
+    def _run_stage[V](
+        self,
+        stage_id: str,
+        action: Callable[[], V],
+        emit: Callable[[V], t.JsonMapping],
+    ) -> p.Result[m.Cli.PipelineStageResult]:
+        """Run one pipeline stage with a single try-boundary.
+
+        ``action`` performs the work and may mutate ``self._state``; ``emit``
+        builds the output payload from the action's return value. Any
+        exception is captured and returned as ``r.fail_op(stage_id, exc)``
+        so the DAG engine can fail-fast — never silenced, never demoted.
+        """
+        return r[m.Cli.PipelineStageResult].create_from_callable(
+            lambda: m.Cli.PipelineStageResult(
+                stage_id=stage_id,
+                status=c.Cli.PipelineStageStatus.OK,
+                output=emit(action()),
+            ),
+            error_code=stage_id,
+        )
+
+    # ------------------------------------------------------------------
     # Stage handlers
     # ------------------------------------------------------------------
 
@@ -108,40 +134,41 @@ class FlextInfraCodegenPipeline(s[str]):
         self,
         ctx: m.Cli.PipelineStageContext,
     ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Discover workspace projects once for reuse across all stages."""
-        try:
+        """Discover workspace projects once for reuse across all stages.
+
+        Failure to enumerate projects propagates as a stage failure — no
+        silent empty-tuple fallback, since downstream stages depend on the
+        actual workspace inventory.
+        """
+
+        def _action() -> tuple[m.Infra.ProjectInfo, ...]:
             projects_result = u.Infra.projects(ctx.workspace_root)
-            discovered = (
-                tuple(projects_result.unwrap()) if projects_result.success else ()
-            )
-        except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail_op("discover", exc)
-        self._state.discovered_projects = discovered
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=c.Infra.PipelineStage.DISCOVER,
-                status=c.Cli.PipelineStageStatus.OK,
-                output={"projects_discovered": len(discovered)},
-            ),
-        )
+            if projects_result.failure:
+                msg = projects_result.error or "project discovery failed"
+                raise RuntimeError(msg)
+            return tuple(projects_result.unwrap())
+
+        def _emit(discovered: tuple[m.Infra.ProjectInfo, ...]) -> t.JsonMapping:
+            self._state.discovered_projects = discovered
+            return {"projects_discovered": len(discovered)}
+
+        return self._run_stage(c.Infra.PipelineStage.DISCOVER, _action, _emit)
 
     def _stage_py_typed(
         self,
         ctx: m.Cli.PipelineStageContext,
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run PEP 561 py.typed marker generation."""
-        try:
-            count = FlextInfraCodegenPyTyped.model_validate({
+
+        def _action() -> int:
+            return FlextInfraCodegenPyTyped.model_validate({
                 "workspace_root": ctx.workspace_root,
             }).run()
-        except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail_op("py_typed", exc)
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=c.Infra.PipelineStage.PY_TYPED,
-                status=c.Cli.PipelineStageStatus.OK,
-                output={"markers_updated": count},
-            ),
+
+        return self._run_stage(
+            c.Infra.PipelineStage.PY_TYPED,
+            _action,
+            lambda count: {"markers_updated": count},
         )
 
     def _stage_census_before(
@@ -149,93 +176,90 @@ class FlextInfraCodegenPipeline(s[str]):
         ctx: m.Cli.PipelineStageContext,
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
-        try:
+
+        def _action() -> tuple[
+            FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
+        ]:
             census = FlextInfraCodegenCensus.model_validate({
                 "workspace_root": ctx.workspace_root,
             })
             projects = self._state.discovered_projects or None
-            reports = census.run(projects=projects)
-        except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail_op("census_before", exc)
-        self._state.census_service = census
-        self._state.reports_before = reports
-        total = sum(report.total for report in reports)
-        fixable = sum(report.fixable for report in reports)
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=c.Infra.PipelineStage.CENSUS_BEFORE,
-                status=c.Cli.PipelineStageStatus.OK,
-                output={"total_violations": total, "total_fixable": fixable},
-            ),
-        )
+            return census, census.run(projects=projects)
+
+        def _emit(
+            payload: tuple[FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]],
+        ) -> t.JsonMapping:
+            census, reports = payload
+            self._state.census_service = census
+            self._state.reports_before = reports
+            return {
+                "total_violations": sum(report.total for report in reports),
+                "total_fixable": sum(report.fixable for report in reports),
+            }
+
+        return self._run_stage(c.Infra.PipelineStage.CENSUS_BEFORE, _action, _emit)
 
     def _stage_scaffold(
         self,
         ctx: m.Cli.PipelineStageContext,
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
-        try:
+
+        def _action() -> t.SequenceOf[m.Infra.ScaffoldResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
-            results = FlextInfraCodegenScaffolder.model_validate({
+            return FlextInfraCodegenScaffolder.model_validate({
                 "workspace_root": ctx.workspace_root,
             }).run(dry_run=dry_run, projects=projects)
-        except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail_op("scaffold", exc)
-        self._state.scaffold_results = results
-        created = sum(len(result.files_created) for result in results)
-        skipped = sum(len(result.files_skipped) for result in results)
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=c.Infra.PipelineStage.SCAFFOLD,
-                status=c.Cli.PipelineStageStatus.OK,
-                output={"total_created": created, "total_skipped": skipped},
-            ),
-        )
+
+        def _emit(results: t.SequenceOf[m.Infra.ScaffoldResult]) -> t.JsonMapping:
+            self._state.scaffold_results = results
+            return {
+                "total_created": sum(len(rsl.files_created) for rsl in results),
+                "total_skipped": sum(len(rsl.files_skipped) for rsl in results),
+            }
+
+        return self._run_stage(c.Infra.PipelineStage.SCAFFOLD, _action, _emit)
 
     def _stage_auto_fix(
         self,
         ctx: m.Cli.PipelineStageContext,
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
-        try:
+
+        def _action() -> t.SequenceOf[m.Infra.AutoFixResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
-            results = FlextInfraCodegenFixer.model_validate({
+            return FlextInfraCodegenFixer.model_validate({
                 "workspace_root": ctx.workspace_root,
                 "dry_run": dry_run,
             }).fix_workspace(projects=projects)
-        except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail_op("auto_fix", exc)
-        self._state.fix_results = results
-        fixed = sum(len(result.violations_fixed) for result in results)
-        skipped = sum(len(result.violations_skipped) for result in results)
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=c.Infra.PipelineStage.AUTO_FIX,
-                status=c.Cli.PipelineStageStatus.OK,
-                output={"total_fixed": fixed, "total_skipped": skipped},
-            ),
-        )
+
+        def _emit(results: t.SequenceOf[m.Infra.AutoFixResult]) -> t.JsonMapping:
+            self._state.fix_results = results
+            return {
+                "total_fixed": sum(len(rsl.violations_fixed) for rsl in results),
+                "total_skipped": sum(len(rsl.violations_skipped) for rsl in results),
+            }
+
+        return self._run_stage(c.Infra.PipelineStage.AUTO_FIX, _action, _emit)
 
     def _stage_lazy_init(
         self,
         ctx: m.Cli.PipelineStageContext,
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run lazy-init __init__.py generation."""
-        try:
+
+        def _action() -> int:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            count = FlextInfraCodegenLazyInit.model_validate({
+            return FlextInfraCodegenLazyInit.model_validate({
                 "workspace_root": ctx.workspace_root,
             }).generate_inits(check_only=dry_run)
-        except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail_op("lazy_init", exc)
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=c.Infra.PipelineStage.LAZY_INIT,
-                status=c.Cli.PipelineStageStatus.OK,
-                output={"unmapped_count": count},
-            ),
+
+        return self._run_stage(
+            c.Infra.PipelineStage.LAZY_INIT,
+            _action,
+            lambda count: {"unmapped_count": count},
         )
 
     def _stage_census_after(
@@ -243,26 +267,25 @@ class FlextInfraCodegenPipeline(s[str]):
         ctx: m.Cli.PipelineStageContext,
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (after fixes) and cache reports."""
-        try:
-            census = self._state.census_service
-            if census is None:
-                census = FlextInfraCodegenCensus.model_validate({
+
+        def _action() -> t.SequenceOf[m.Infra.CensusReport]:
+            census = (
+                self._state.census_service
+                or FlextInfraCodegenCensus.model_validate({
                     "workspace_root": ctx.workspace_root,
                 })
+            )
             projects = self._state.discovered_projects or None
-            reports = census.run(projects=projects)
-        except Exception as exc:
-            return r[m.Cli.PipelineStageResult].fail_op("census_after", exc)
-        self._state.reports_after = reports
-        total = sum(report.total for report in reports)
-        fixable = sum(report.fixable for report in reports)
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=c.Infra.PipelineStage.CENSUS_AFTER,
-                status=c.Cli.PipelineStageStatus.OK,
-                output={"total_violations": total, "total_fixable": fixable},
-            ),
-        )
+            return census.run(projects=projects)
+
+        def _emit(reports: t.SequenceOf[m.Infra.CensusReport]) -> t.JsonMapping:
+            self._state.reports_after = reports
+            return {
+                "total_violations": sum(report.total for report in reports),
+                "total_fixable": sum(report.fixable for report in reports),
+            }
+
+        return self._run_stage(c.Infra.PipelineStage.CENSUS_AFTER, _action, _emit)
 
     # ------------------------------------------------------------------
     # Output collection

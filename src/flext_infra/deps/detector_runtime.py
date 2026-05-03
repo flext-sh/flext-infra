@@ -130,7 +130,7 @@ class FlextInfraDependencyDetectorRuntime:
         if not deptry_path.exists():
             detector.log.error("deps_deptry_missing", path=str(deptry_path))
             return r[tuple[t.SequenceOf[Path], Path]].fail(
-                f"deptry executable not found at {deptry_path}",
+                f"Deptry executable not found at {deptry_path}",
             )
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
         limits_path = params.limits_path or limits_default

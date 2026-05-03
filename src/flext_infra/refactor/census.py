@@ -26,7 +26,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra._models.census import FlextInfraModelsCensus
 
 _log = u.fetch_logger(__name__)
 
@@ -237,6 +236,12 @@ class FlextInfraRefactorCensus(
     ) -> m.Infra.Census.WorkspaceReport:
         """Collect report."""
         selected_families = self._selected_families(family_names)
+        selected_kinds: frozenset[str] | None = (
+            frozenset(kind_names) if kind_names else None
+        )
+        selected_rules: frozenset[str] | None = (
+            frozenset(rule_names) if rule_names else None
+        )
         include_object_references = self._should_collect_object_references(
             rule_names,
         )
@@ -282,6 +287,7 @@ class FlextInfraRefactorCensus(
                     item,
                     kind_names=kind_names,
                     selected_families=selected_families,
+                    selected_kinds=selected_kinds,
                 )
             )
             if objects:
@@ -295,6 +301,8 @@ class FlextInfraRefactorCensus(
                     applied=applied,
                     kind_names=kind_names,
                     rule_names=rule_names,
+                    selected_kinds=selected_kinds,
+                    selected_rules=selected_rules,
                 )
             except _ROPE_SAFE_EXCEPTIONS as exc:
                 self._handle_rope_stage_failure(
@@ -326,6 +334,7 @@ class FlextInfraRefactorCensus(
                 fixes=tuple(project_fixes[project]),
                 duplicate_keys=duplicate_keys,
                 rule_names=rule_names,
+                selected_rules=selected_rules,
             )
             for project in report_project_names
         )
@@ -428,20 +437,31 @@ class FlextInfraRefactorCensus(
         fixes: tuple[m.Infra.Census.Fix, ...],
         duplicate_keys: frozenset[str],
         rule_names: t.StrSequence | None,
+        selected_rules: frozenset[str] | None = None,
     ) -> m.Infra.Census.ProjectReport:
         """Project report."""
         violations = list(seed_violations)
-        include_unused = self._include_rule("unused", rule_names=rule_names)
-        include_test_only = self._include_rule("test_only", rule_names=rule_names)
+        if selected_rules is None and rule_names:
+            selected_rules = frozenset(rule_names)
+        include_unused = self._include_rule(
+            "unused", rule_names=rule_names, selected_rules=selected_rules
+        )
+        include_test_only = self._include_rule(
+            "test_only", rule_names=rule_names, selected_rules=selected_rules
+        )
+        include_duplicate = self._include_rule(
+            "duplicate", rule_names=rule_names, selected_rules=selected_rules
+        )
+        include_wrong_tier = self._include_rule(
+            "wrong_tier", rule_names=rule_names, selected_rules=selected_rules
+        )
         unused_count = 0
         test_only_count = 0
         removal_candidates: list[m.Infra.Census.RemovalCandidate] = []
         for item in objects:
             is_unused = self._is_unused(item)
             is_test_only = self._is_test_only(item)
-            if self._object_key(item) in duplicate_keys and self._include_rule(
-                "duplicate", rule_names=rule_names
-            ):
+            if include_duplicate and self._object_key(item) in duplicate_keys:
                 violations.append(
                     self._violation(
                         item,
@@ -468,10 +488,10 @@ class FlextInfraRefactorCensus(
                     )
                 )
             if (
-                item.expected_tier
+                include_wrong_tier
+                and item.expected_tier
                 and item.actual_tier
                 and item.expected_tier != item.actual_tier
-                and self._include_rule("wrong_tier", rule_names=rule_names)
             ):
                 violations.append(
                     self._violation(
@@ -543,15 +563,20 @@ class FlextInfraRefactorCensus(
         applied: frozenset[str],
         kind_names: t.StrSequence | None,
         rule_names: t.StrSequence | None,
+        selected_kinds: frozenset[str] | None = None,
+        selected_rules: frozenset[str] | None = None,
     ) -> tuple[tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]]:
         """Module rules."""
         convention = rope.convention(file_path)
         ctx = self._detector_context(rope, file_path)
-        selected_kinds = frozenset(kind_names) if kind_names else frozenset()
+        if selected_kinds is None:
+            selected_kinds = frozenset(kind_names) if kind_names else frozenset()
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
 
-        if self._include_rule("runtime_alias", rule_names=rule_names):
+        if self._include_rule(
+            "runtime_alias", rule_names=rule_names, selected_rules=selected_rules
+        ):
             runtime_target = self._runtime_alias_target(convention, objects)
             for detector_violation in FlextInfraRuntimeAliasDetector.detect_file(ctx):
                 object_name = (
@@ -594,7 +619,11 @@ class FlextInfraRefactorCensus(
                         )
                     )
 
-        if self._include_rule("manual_typing_alias", rule_names=rule_names):
+        if self._include_rule(
+            "manual_typing_alias",
+            rule_names=rule_names,
+            selected_rules=selected_rules,
+        ):
             for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
                 ctx,
             ):
@@ -639,7 +668,11 @@ class FlextInfraRefactorCensus(
                         )
                     )
 
-        if self._include_rule("compatibility_alias", rule_names=rule_names):
+        if self._include_rule(
+            "compatibility_alias",
+            rule_names=rule_names,
+            selected_rules=selected_rules,
+        ):
             for detector_violation in FlextInfraCompatibilityAliasDetector.detect_file(
                 ctx,
             ):
@@ -680,7 +713,11 @@ class FlextInfraRefactorCensus(
                     )
                 )
 
-        if self._include_rule("mro_completeness", rule_names=rule_names):
+        if self._include_rule(
+            "mro_completeness",
+            rule_names=rule_names,
+            selected_rules=selected_rules,
+        ):
             parse_failures: list[m.Infra.ParseFailureViolation] = []
             mro_ctx = self._detector_context(
                 rope,
@@ -911,7 +948,7 @@ class FlextInfraRefactorCensus(
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]
             groups[item.kind, item.name, owner].append(item)
-        duplicates: list[FlextInfraModelsCensus.Census.DuplicateGroup] = []
+        duplicates: list[m.Infra.Census.DuplicateGroup] = []
         for key in sorted(groups):
             definitions = groups[key]
             if len(definitions) < FlextInfraRefactorCensus._MIN_DUPLICATE_DEFINITIONS:
@@ -938,9 +975,21 @@ class FlextInfraRefactorCensus(
         *,
         kind_names: t.StrSequence | None,
         selected_families: frozenset[str],
+        selected_kinds: frozenset[str] | None = None,
     ) -> bool:
-        """Include object."""
-        if kind_names and item.kind not in frozenset(kind_names):
+        """Include object.
+
+        ``selected_kinds`` is a precomputed frozenset of ``kind_names``; when
+        omitted it is rebuilt from ``kind_names`` (kept for back-compat). Hot
+        callers must pass the precomputed set to avoid per-object frozenset
+        construction.
+        """
+        kinds = (
+            selected_kinds
+            if selected_kinds is not None
+            else (frozenset(kind_names) if kind_names else None)
+        )
+        if kinds and item.kind not in kinds:
             return False
         if not selected_families:
             return True
@@ -950,9 +999,20 @@ class FlextInfraRefactorCensus(
         )
 
     @staticmethod
-    def _include_rule(rule: str, *, rule_names: t.StrSequence | None) -> bool:
-        """Include rule."""
-        return rule_names is None or rule in frozenset(rule_names)
+    def _include_rule(
+        rule: str,
+        *,
+        rule_names: t.StrSequence | None,
+        selected_rules: frozenset[str] | None = None,
+    ) -> bool:
+        """Include rule.
+
+        ``selected_rules`` is a precomputed frozenset of ``rule_names``;
+        callers in hot loops MUST pass it to avoid per-call set construction.
+        """
+        if selected_rules is None:
+            return rule_names is None or rule in frozenset(rule_names)
+        return rule in selected_rules
 
     @staticmethod
     def _named_object(
@@ -1098,13 +1158,18 @@ class FlextInfraRefactorCensus(
     @staticmethod
     def _is_unused(item: m.Infra.Census.Object) -> bool:
         """Is unused."""
-        return item.references_count == 0 and not item.name.startswith("_")
+        return (
+            not item.is_facade_member
+            and item.references_count == 0
+            and not item.name.startswith("_")
+        )
 
     @staticmethod
     def _is_test_only(item: m.Infra.Census.Object) -> bool:
         """Is test only."""
         return (
-            item.references_count > 0
+            not item.is_facade_member
+            and item.references_count > 0
             and item.runtime_references_count == 0
             and item.test_references_count == item.references_count
             and not item.name.startswith("_")

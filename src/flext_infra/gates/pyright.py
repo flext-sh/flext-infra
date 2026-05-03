@@ -93,6 +93,23 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 )
             )
             return False, issues
+        if (not issues) and result.exit_code != 0:
+            message = (result.stderr or result.stdout).strip()
+            if not message:
+                message = (
+                    f"pyright exited with code {result.exit_code} "
+                    "without JSON diagnostics"
+                )
+            issues.append(
+                m.Infra.Issue(
+                    file=c.Infra.PYPROJECT_FILENAME,
+                    line=1,
+                    column=1,
+                    code="pyright-exec",
+                    message=message,
+                    severity=c.Infra.ERROR,
+                )
+            )
         return result.exit_code == 0, issues
 
 

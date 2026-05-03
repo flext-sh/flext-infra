@@ -8,8 +8,10 @@ import pytest
 from rope.base.exceptions import RopeError
 
 import flext_infra
-from flext_infra import FlextInfraUtilitiesRopeCore
-from tests import c, m, u
+from flext_infra._utilities.rope_inventory import (
+    FlextInfraUtilitiesRopeInventory,
+)
+from tests import c, m, p, t, u
 
 
 class TestsFlextInfraInfraRopeService:
@@ -276,7 +278,7 @@ class TestsFlextInfraInfraRopeService:
             raise RopeError(msg)
 
         monkeypatch.setattr(
-            FlextInfraUtilitiesRopeCore,
+            u.Infra,
             "get_pymodule",
             staticmethod(_explode),
         )
@@ -339,3 +341,110 @@ class TestsFlextInfraInfraRopeService:
         assert {site.surface for site in candidate.test_reference_sites} == {
             c.Infra.DIR_TESTS
         }
+
+    def test_workspace_dsl_skips_reference_scan_for_facade_members(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Governed facade members skip expensive reference collection."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "models.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "class FlextDemoModels:\n"
+                "    pass\n\n"
+                "m = FlextDemoModels\n"
+            ),
+            encoding="utf-8",
+        )
+
+        def _explode(*args: object, **kwargs: object) -> object:
+            msg = "facade members should not trigger reference scanning"
+            raise AssertionError(msg)
+
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRopeInventory,
+            "_reference_sites",
+            staticmethod(_explode),
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            objects = {
+                item.name: item
+                for item in rope.objects(module_path, include_local_scopes=False)
+            }
+
+        assert objects["FlextDemoModels"].is_facade_member
+        assert objects["m"].is_facade_member
+
+    def test_workspace_dsl_skips_reference_scan_for_private_names(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Private and dunder names do not trigger removal-only reference scans."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                '__all__: list[str] = ["public"]\n\n'
+                "def public() -> int:\n"
+                "    return 1\n"
+            ),
+            encoding="utf-8",
+        )
+
+        original = FlextInfraUtilitiesRopeInventory._reference_sites
+        seen_names: list[str] = []
+
+        def _tracking(
+            rope_project: t.Infra.RopeProject,
+            resource: t.Infra.RopeResource,
+            *,
+            source: str,
+            name: str,
+            line: int,
+            rope_workspace: p.AttributeProbe | None = None,
+        ) -> tuple[
+            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[m.Infra.Census.ReferenceSite, ...],
+        ]:
+            seen_names.append(name)
+            return original(
+                rope_project,
+                resource,
+                source=source,
+                name=name,
+                line=line,
+                rope_workspace=rope_workspace,
+            )
+
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRopeInventory,
+            "_reference_sites",
+            staticmethod(_tracking),
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            objects = {
+                item.name: item
+                for item in rope.objects(module_path, include_local_scopes=False)
+            }
+
+        assert "__all__" in objects
+        assert objects["__all__"].references_count == 0
+        assert "__all__" not in seen_names
+        assert "public" in seen_names

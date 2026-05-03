@@ -66,16 +66,14 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     @override
     def execute(self) -> p.Result[t.StrSequence]:
         """Apply all phases and return one flat change list."""
-        try:
-            return r[t.StrSequence].ok(
-                tuple(
-                    change
-                    for phase in self.phases
-                    for change in self._apply_phase(phase, parent_path=())
-                ),
-            )
-        except Exception as exc:
-            return r[t.StrSequence].fail(str(exc))
+        return r[t.StrSequence].create_from_callable(
+            lambda: tuple(
+                change
+                for phase in self.phases
+                for change in self._apply_phase(phase, parent_path=())
+            ),
+            error_code="phase_engine_execute",
+        )
 
     def apply(self) -> t.StrSequence:
         """Apply phases and return one flat change list."""

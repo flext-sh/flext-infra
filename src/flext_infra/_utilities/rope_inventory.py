@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from operator import itemgetter
 from pathlib import Path
 
 from rope.base.exceptions import RopeError
@@ -37,7 +38,10 @@ class FlextInfraUtilitiesRopeInventory:
     ) -> tuple[m.Infra.Census.Object, ...]:
         """Return all same-file defined objects for one Rope module."""
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS as exc:
             msg = (
                 "rope inventory failed to load "
@@ -55,7 +59,7 @@ class FlextInfraUtilitiesRopeInventory:
         module_scope = pymodule.get_scope()
         if not isinstance(module_scope, p.Infra.RopeScopeDsl):
             msg = f"rope inventory scope unavailable for {resource.path}"
-            raise RuntimeError(msg)
+            raise TypeError(msg)
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
             record_options = m.Infra.RopeInventoryRecordInput.model_validate({
@@ -202,22 +206,16 @@ class FlextInfraUtilitiesRopeInventory:
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
         """Sorted names."""
+        candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
+        for name, pyname in names.items():
+            if isinstance(pyname, ImportedName):
+                continue
+            line = FlextInfraUtilitiesRopeInventory._definition_line(pyname, resource)
+            if line is None:
+                continue
+            candidates.append((line, name, pyname))
         return tuple(
-            sorted(
-                (
-                    (name, pyname)
-                    for name, pyname in names.items()
-                    if FlextInfraUtilitiesRopeInventory._definition_line(
-                        pyname, resource
-                    )
-                    is not None
-                    and not isinstance(pyname, ImportedName)
-                ),
-                key=lambda item: (
-                    FlextInfraUtilitiesRopeInventory._definition_line(item[1], resource)
-                    or 0
-                ),
-            )
+            (name, pyname) for _, name, pyname in sorted(candidates, key=itemgetter(0))
         )
 
     @classmethod
@@ -231,7 +229,29 @@ class FlextInfraUtilitiesRopeInventory:
         line = cls._definition_line(options.pyname, options.resource)
         if line is None:
             return None
-        if include_references:
+        expected_alias = options.convention.module_policy.expected_alias or ""
+        kind = (
+            "assignment"
+            if not options.scope_chain and options.name == expected_alias
+            else cls._kind_for(
+                options.pyname,
+                class_chain=options.class_chain,
+                scope_chain=options.scope_chain,
+                name=options.name,
+            )
+        )
+        if kind == "parameter" and options.name in {"self", "cls"}:
+            return None
+        is_facade_member = cls._is_facade_member(
+            options.convention,
+            name=options.name,
+            scope_chain=options.scope_chain,
+        )
+        if (
+            include_references
+            and not is_facade_member
+            and not options.name.startswith("_")
+        ):
             (
                 runtime_reference_sites,
                 test_reference_sites,
@@ -259,14 +279,6 @@ class FlextInfraUtilitiesRopeInventory:
                 script_reference_sites,
             )
         )
-        kind = cls._kind_for(
-            options.pyname,
-            class_chain=options.class_chain,
-            scope_chain=options.scope_chain,
-            name=options.name,
-        )
-        if kind == "parameter" and options.name in {"self", "cls"}:
-            return None
         scope_path = ".".join((*options.scope_chain, options.name))
         class_path = (
             ".".join((*options.class_chain, options.name))
@@ -284,11 +296,7 @@ class FlextInfraUtilitiesRopeInventory:
             scope_path=scope_path,
             actual_tier=cls._actual_tier(options.convention),
             expected_tier=cls._expected_tier(options.convention, kind=kind),
-            is_facade_member=cls._is_facade_member(
-                options.convention,
-                name=options.name,
-                scope_chain=options.scope_chain,
-            ),
+            is_facade_member=is_facade_member,
             references_count=references_count,
             runtime_references_count=len(runtime_reference_sites),
             test_references_count=len(test_reference_sites),
@@ -336,6 +344,8 @@ class FlextInfraUtilitiesRopeInventory:
         scope = next((scope for scope in scopes if scope.get_start() == line), None)
         if scope is not None:
             return scope
+        if isinstance(pyname, (AssignedName, ParameterName)):
+            return None
         getter = getattr(pyname.get_object(), "get_scope", None)
         candidate = getter() if callable(getter) else None
         return candidate if isinstance(candidate, p.Infra.RopeScopeDsl) else None
@@ -527,6 +537,45 @@ class FlextInfraUtilitiesRopeInventory:
         if has_external:
             return None
         return ((), (), (), ())
+
+    @staticmethod
+    def _search_resources_from_index(
+        rope_workspace: p.AttributeProbe,
+        *,
+        resource: t.Infra.RopeResource,
+        name: str,
+        definition_path: Path,
+    ) -> tuple[t.Infra.RopeResource, ...] | None:
+        """Build the minimal Rope resource search set for one symbol name.
+
+        Rope's default occurrence finder scans every Python file in the project.
+        The workspace name index already gives the exact module set containing the
+        textual symbol, so we restrict the semantic search to that subset and let
+        Rope still confirm the final ``pyname`` identity.
+        """
+        name_index_getter = getattr(rope_workspace, "name_index", None)
+        resource_getter = getattr(rope_workspace, "resource", None)
+        if name_index_getter is None or resource_getter is None:
+            return None
+        occurrences = name_index_getter().get(name, ())
+        resolved_definition = definition_path.resolve()
+        seen_paths = {str(resolved_definition)}
+        resources: list[t.Infra.RopeResource] = [resource]
+        for path, _surface, _lines in occurrences:
+            resolved_path = path.resolve()
+            if resolved_path == resolved_definition:
+                continue
+            if path.name == c.Infra.INIT_PY:
+                continue
+            cache_key = str(resolved_path)
+            if cache_key in seen_paths:
+                continue
+            candidate_resource = resource_getter(resolved_path)
+            if candidate_resource is None:
+                continue
+            seen_paths.add(cache_key)
+            resources.append(candidate_resource)
+        return tuple(resources)
 
     @staticmethod
     def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:

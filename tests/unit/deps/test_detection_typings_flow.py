@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 from flext_tests import tm
 
@@ -114,9 +113,8 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         )
         tm.ok(service.get_required_typings(tmp_path, include_mypy=False))
 
-        failing_service = u.Tests.create_deptry_service()
+        failing_service = u.Tests.create_deptry_service(run_error="mypy crash")
         failing_service.toml = u.Tests.TomlReaderSequence(
             [u.Tests.infra_mapping_result({})],
         )
-        with patch("mypy.api.run", side_effect=RuntimeError("mypy crash")):
-            tm.fail(failing_service.get_required_typings(tmp_path))
+        tm.fail(failing_service.get_required_typings(tmp_path))

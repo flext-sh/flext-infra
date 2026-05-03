@@ -41,6 +41,8 @@ def test_docs_write_todo_writes_only_for_project_scopes(tmp_path: Path) -> None:
 
     assert scopes.success
     root_scope, project_scope = scopes.value
-    assert u.Infra.docs_write_todo(root_scope, apply_mode=True) is False
-    assert u.Infra.docs_write_todo(project_scope, apply_mode=True) is True
+    root_result = u.Infra.docs_write_todo(root_scope, apply_mode=True)
+    project_result = u.Infra.docs_write_todo(project_scope, apply_mode=True)
+    assert root_result.success and root_result.value is False
+    assert project_result.success and project_result.value is True
     assert (workspace / "flext-a/TODOS.md").exists()

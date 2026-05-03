@@ -9,6 +9,7 @@ from flext_infra import (
     FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorImportModernizer,
     FlextInfraRefactorLazyImportFixer,
+    FlextInfraRefactorLegacyTextOps,
     FlextInfraRefactorMRORemover,
     FlextInfraRefactorSignaturePropagator,
     FlextInfraRefactorSymbolPropagator,
@@ -20,8 +21,6 @@ from flext_infra import (
     t,
     u,
 )
-
-from .engine_legacy import FlextInfraRefactorLegacyTextOps
 
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):

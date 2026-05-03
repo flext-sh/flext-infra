@@ -18,6 +18,24 @@ class FlextInfraMypyGate(FlextInfraGate):
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][1]
 
+    @override
+    def _get_check_dirs(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrSequence:
+        """Check local Python roots directly instead of recursively scanning ``.``."""
+        _ = ctx
+        discovered_dirs = list(u.Infra.discover_python_dirs(project_dir))
+        root_files = [
+            path.name
+            for path in sorted(project_dir.iterdir())
+            if path.is_file() and path.suffix in {".py", ".pyi"}
+        ]
+        if discovered_dirs or root_files:
+            return [*discovered_dirs, *root_files]
+        return []
+
     def _resolve_config(
         self,
         project_dir: Path,
@@ -56,6 +74,17 @@ class FlextInfraMypyGate(FlextInfraGate):
             "--output",
             c.Infra.OUTPUT_JSON,
         ]
+
+    @override
+    def _check_timeout(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> int:
+        """Allow large projects enough time for a full mypy graph walk."""
+        _ = project_dir, ctx
+        timeout: int = c.Infra.TIMEOUT_LONG
+        return timeout
 
     @override
     def _check_env(
@@ -108,6 +137,22 @@ class FlextInfraMypyGate(FlextInfraGate):
                     )
             except c.ValidationError:
                 continue
+        if (not issues) and result.exit_code != 0:
+            message = (result.stderr or result.stdout).strip()
+            if not message:
+                message = (
+                    f"mypy exited with code {result.exit_code} without JSON diagnostics"
+                )
+            issues.append(
+                m.Infra.Issue(
+                    file=c.Infra.PYPROJECT_FILENAME,
+                    line=1,
+                    column=1,
+                    code="mypy-exec",
+                    message=message,
+                    severity=c.Infra.ERROR,
+                )
+            )
         return result.exit_code == 0, issues
 
 

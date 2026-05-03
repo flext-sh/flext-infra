@@ -97,6 +97,25 @@ class TestsFlextInfraRefactorMainCli:
         return workspace, module_path
 
     @staticmethod
+    def _build_facade_member_workspace(tmp_path: Path) -> tuple[Path, Path]:
+        workspace, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "models.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "class FlextDemoModels:\n"
+                "    pass\n\n"
+                "m = FlextDemoModels\n"
+            ),
+            encoding="utf-8",
+        )
+        return workspace, module_path
+
+    @staticmethod
     def _build_compatibility_alias_workspace(
         tmp_path: Path,
     ) -> tuple[Path, Path]:
@@ -711,6 +730,26 @@ class TestsFlextInfraRefactorMainCli:
         assert "Test-only: 1" in rendered
         assert "Removal candidates:" in rendered
         assert "Candidate preview:" in rendered
+
+    def test_refactor_census_keeps_facade_members_out_of_removal_candidates(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, _module_path = self._build_facade_member_workspace(tmp_path)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("class", "assignment"),
+            rules=("unused", "test_only"),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        assert report.unused_count == 0
+        assert report.test_only_count == 0
+        assert report.removal_candidate_count == 0
+        assert report.removal_candidates == ()
 
     def test_refactor_census_apply_removes_simple_test_only_candidate(
         self,

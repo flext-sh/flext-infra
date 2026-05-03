@@ -14,15 +14,11 @@ from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesRefactorNamespaceCommon,
+    FlextInfraUtilitiesRopeModulePatch,
     c,
     m,
     t,
-)
-from flext_infra._utilities.namespace_common import (
-    FlextInfraUtilitiesRefactorNamespaceCommon,
-)
-from flext_infra._utilities.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
 )
 
 

@@ -10,8 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import m
-from tests import t, u
+from tests import m, t, u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorPyproject:

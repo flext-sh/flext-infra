@@ -1,4 +1,4 @@
-"""Tests for FlextInfraUtilities facade.
+"""Tests for u facade.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,44 +6,29 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import FlextUtilities
-from flext_infra import FlextInfraUtilities
 from tests import u
 
 
 class TestsFlextInfraInfraUtilities:
-    """Test FlextInfraUtilities class import and structure."""
+    """Test u class import and structure."""
 
-    def test_flext_infra_utilities_is_importable(self) -> None:
-        """Test that FlextInfraUtilities can be imported."""
-        assert FlextInfraUtilities is not None
+    def test_extract_definition_keeps_multiline_class_header_intact(self) -> None:
+        """Multi-line class headers must keep their closing line during extraction."""
+        source = (
+            "class ExamplesFlextModels(\n"
+            "    m,\n"
+            "):\n"
+            '    """Doc."""\n'
+            "\n"
+            "    class Examples:\n"
+            "        pass\n"
+        )
 
-    def test_flext_infra_utilities_inherits_from_flext_utilities(self) -> None:
-        """Test that FlextInfraUtilities extends FlextUtilities."""
-        assert issubclass(FlextInfraUtilities, FlextUtilities)
+        block = u.Infra.extract_definition(
+            source,
+            "ExamplesFlextModels",
+            kind="class",
+        )
 
-    def test_runtime_alias_u_is_flext_infra_utilities(self) -> None:
-        """Test that test alias u resolves to the local test utilities facade."""
-        assert issubclass(u, FlextInfraUtilities)
-
-    def test_flext_infra_utilities_is_class(self) -> None:
-        """Test that FlextInfraUtilities is a class."""
-        assert isinstance(FlextInfraUtilities, type)
-
-    def test_flext_infra_utilities_can_be_instantiated(self) -> None:
-        """Test that FlextInfraUtilities can be instantiated."""
-        instance = FlextInfraUtilities()
-        assert instance is not None
-
-    def test_flext_infra_utilities_instance_is_flext_infra_utilities(self) -> None:
-        """Test that instance is of correct type."""
-        instance = FlextInfraUtilities()
-        assert isinstance(instance, FlextInfraUtilities)
-
-    def test_flext_infra_utilities_has_inherited_methods(self) -> None:
-        """Test that FlextInfraUtilities inherits methods from FlextUtilities."""
-        flext_utils_methods = {m for m in dir(FlextUtilities) if not m.startswith("_")}
-        infra_utils_methods = {
-            m for m in dir(FlextInfraUtilities) if not m.startswith("_")
-        }
-        assert len(infra_utils_methods) >= len(flext_utils_methods)
+        assert u.Infra.bracket_balance_line("class ExamplesFlextModels(") == 1
+        assert block == source.rstrip("\n")

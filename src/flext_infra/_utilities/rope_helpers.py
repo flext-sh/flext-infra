@@ -229,7 +229,43 @@ class FlextInfraUtilitiesRopeHelpers:
                 if token.type == tokenize.OP and token.string in "()[]{}"
             )
         except tokenize.TokenError:
-            return 0
+            return FlextInfraUtilitiesRopeHelpers._fallback_bracket_balance_line(line)
+
+    @staticmethod
+    def _fallback_bracket_balance_line(line: str) -> int:
+        """Approximate bracket balance for incomplete lines that ``tokenize`` rejects."""
+        balance = 0
+        in_single_quote = False
+        in_double_quote = False
+        escaped = False
+        for char in line:
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\" and (in_single_quote or in_double_quote):
+                escaped = True
+                continue
+            if in_single_quote:
+                if char == "'":
+                    in_single_quote = False
+                continue
+            if in_double_quote:
+                if char == '"':
+                    in_double_quote = False
+                continue
+            if char == "#":
+                break
+            if char == "'":
+                in_single_quote = True
+                continue
+            if char == '"':
+                in_double_quote = True
+                continue
+            if char in "([{":
+                balance += 1
+            elif char in ")]}":
+                balance -= 1
+        return balance
 
     @staticmethod
     def append_to_class_body(

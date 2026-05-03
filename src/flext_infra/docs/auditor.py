@@ -10,13 +10,13 @@ from typing import Annotated, override
 
 from flext_infra import (
     FlextInfraDocAuditorMixin,
+    FlextInfraDocServiceBase,
     c,
     m,
     p,
     t,
     u,
 )
-from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
 class FlextInfraDocAuditor(

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, t
 
 
 class FlextInfraManualTypingAliasDetector:
@@ -22,35 +22,45 @@ class FlextInfraManualTypingAliasDetector:
             or c.Infra.MRO_TYPINGS_DIRECTORY in ctx.file_path.parts
         ):
             return []
-        resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
-        if resource is None:
-            return []
         file_path = ctx.file_path
-        rope_project = ctx.rope_project
-        lines = resource.read().splitlines()
+        lines = file_path.read_text(encoding="utf-8").splitlines()
         violations: t.MutableSequenceOf[m.Infra.ManualTypingAliasViolation] = []
-        for symbol in u.Infra.get_module_symbols(rope_project, resource):
-            if symbol.kind != "assignment" or not 0 < symbol.line <= len(lines):
+        for line_number, line in enumerate(lines, start=1):
+            if not line or line[0].isspace():
                 continue
-            line = lines[symbol.line - 1]
-            detail = ""
-            if line.lstrip().startswith("type "):
-                detail = "PEP695 alias must be centralized under typings scope"
-            elif c.Infra.TYPEALIAS_ANNOT_RE.match(line):
-                detail = "TypeAlias assignment must be centralized under typings scope"
-            elif c.Infra.TYPING_FACTORY_ASSIGN_RE.match(line):
-                detail = (
-                    "Typing factory assignment must be centralized under typings scope"
-                )
-            if detail:
+            pep695_match = c.Infra.PEP695_RE.match(line)
+            if pep695_match is not None:
                 violations.append(
                     m.Infra.ManualTypingAliasViolation(
                         file=str(file_path),
-                        line=symbol.line,
-                        name=symbol.name,
-                        detail=detail,
+                        line=line_number,
+                        name=pep695_match.group(1),
+                        detail="PEP695 alias must be centralized under typings scope",
                     )
                 )
+                continue
+            type_alias_match = c.Infra.TYPEALIAS_ANNOT_RE.match(line)
+            if type_alias_match is not None:
+                violations.append(
+                    m.Infra.ManualTypingAliasViolation(
+                        file=str(file_path),
+                        line=line_number,
+                        name=type_alias_match.group(1),
+                        detail="TypeAlias assignment must be centralized under typings scope",
+                    )
+                )
+                continue
+            typing_factory_match = c.Infra.TYPING_FACTORY_ASSIGN_RE.match(line)
+            if typing_factory_match is None:
+                continue
+            violations.append(
+                m.Infra.ManualTypingAliasViolation(
+                    file=str(file_path),
+                    line=line_number,
+                    name=typing_factory_match.group(1),
+                    detail="Typing factory assignment must be centralized under typings scope",
+                )
+            )
         return violations
 
 
