@@ -47,7 +47,7 @@ class FlextInfraGateRegistry:
 
     def __init__(self) -> None:
         """Build the gate-id to gate-class mapping used by check execution."""
-        self._gates: t.MappingKV[str, type[FlextInfraGate]] = {
+        self._gates: dict[str, type[FlextInfraGate]] = {
             g.gate_id: g for g in self.GATE_CLASSES
         }
 

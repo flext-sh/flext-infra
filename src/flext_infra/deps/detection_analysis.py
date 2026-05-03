@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import contextlib
+import sys
 from collections.abc import (
     Mapping,
     MutableMapping,
 )
 from pathlib import Path
-
-from mypy import api as mypy_api
 
 from flext_infra import c, m, p, r, t, u
 
@@ -301,21 +300,27 @@ class FlextInfraDependencyDetectionAnalysis:
         self,
         project_path: Path,
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
-        """Run mypy via the Python API to detect missing stubs and hint packages."""
+        """Run mypy via the command runner to detect missing stubs and hint packages."""
         cmd: t.StrSequence = [
+            sys.executable,
+            "-m",
+            c.Infra.MYPY,
             c.Infra.DEFAULT_SRC_DIR,
             "--config-file",
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
         ]
-        try:
-            with contextlib.chdir(project_path):
-                stdout, stderr, _exit_code = mypy_api.run(list(cmd))
-        except Exception as exc:
-            return r[t.Pair[t.StrSequence, t.StrSequence]].fail_op(
-                "mypy execution", exc
+        result = self._run_raw(
+            cmd,
+            cwd=project_path,
+            timeout=c.Infra.TIMEOUT_MEDIUM,
+        )
+        if result.failure:
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
+                result.error or "mypy execution failed"
             )
-        output = f"{stdout}\n{stderr}"
+        command_output: m.Cli.CommandOutput = result.value
+        output = f"{command_output.stdout}\n{command_output.stderr}"
         hinted = {
             match.group(1).strip()
             for match in u.Infra.MYPY_HINT_RE.finditer(output)

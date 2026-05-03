@@ -42,30 +42,31 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
         if not current_pkg:
-            return mod
-        if mod.startswith("_"):
-            return f".{mod}"
-        if mod == current_pkg:
-            return "."
-        prefix = f"{current_pkg}."
-        if mod.startswith(prefix):
-            return f".{mod.removeprefix(prefix)}"
-        root_pkg = current_pkg.split(".", maxsplit=1)[0]
-        first_segment = mod.split(".", maxsplit=1)[0]
-        if first_segment == root_pkg:
-            return mod
-        internal_segments = frozenset(current_pkg.split(".")[1:])
-        if internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS:
-            return mod
-        if first_segment in internal_segments:
-            return f".{mod}"
-        if (
-            current_pkg == root_pkg
-            and "." in mod
-            and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
-        ):
-            return f".{mod}"
-        return mod
+            result = mod
+        elif mod.startswith("_"):
+            result = f".{mod}"
+        elif mod == current_pkg:
+            result = "."
+        elif mod.startswith(f"{current_pkg}."):
+            result = f".{mod.removeprefix(f'{current_pkg}.')}"
+        else:
+            root_pkg = current_pkg.split(".", maxsplit=1)[0]
+            first_segment = mod.split(".", maxsplit=1)[0]
+            internal_segments = frozenset(current_pkg.split(".")[1:])
+            if (
+                first_segment == root_pkg
+                or internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS
+            ):
+                result = mod
+            elif first_segment in internal_segments or (
+                current_pkg == root_pkg
+                and "." in mod
+                and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
+            ):
+                result = f".{mod}"
+            else:
+                result = mod
+        return result
 
     @staticmethod
     def _normalize_type_checking_module_path(
@@ -73,23 +74,26 @@ class FlextInfraCodegenGeneration:
         local_package_root: str | None,
     ) -> str:
         if not local_package_root:
-            return mod
-        root_pkg = local_package_root.split(".", maxsplit=1)[0]
-        first_segment = mod.split(".", maxsplit=1)[0]
-        if first_segment == root_pkg:
-            return mod
-        if mod.startswith("_"):
-            return f"{root_pkg}.{mod}"
-        internal_segments = frozenset(local_package_root.split(".")[1:])
-        if first_segment in internal_segments:
-            return f"{root_pkg}.{mod}"
-        if (
-            local_package_root == root_pkg
-            and "." in mod
-            and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
-        ):
-            return f"{root_pkg}.{mod}"
-        return mod
+            result = mod
+        else:
+            root_pkg = local_package_root.split(".", maxsplit=1)[0]
+            first_segment = mod.split(".", maxsplit=1)[0]
+            internal_segments = frozenset(local_package_root.split(".")[1:])
+            if first_segment == root_pkg:
+                result = mod
+            elif (
+                mod.startswith("_")
+                or first_segment in internal_segments
+                or (
+                    local_package_root == root_pkg
+                    and "." in mod
+                    and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
+                )
+            ):
+                result = f"{root_pkg}.{mod}"
+            else:
+                result = mod
+        return result
 
     @staticmethod
     def _reject_non_absolute_import(

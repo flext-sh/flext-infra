@@ -118,7 +118,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
         cached_table = self._table_cache.get(phase_path)
         if cached_table is not None:
             return cached_table
-        table = u.Cli.toml_ensure_path(self.doc, phase_path)
+        table: Table = u.Cli.toml_ensure_path(self.doc, phase_path)
         self._table_cache[phase_path] = table
         return table
 

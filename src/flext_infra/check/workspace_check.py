@@ -120,20 +120,18 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
                     continue
                 for issue in execution.issues:
                     rule_id = issue.code or gate
-                    if rule_id not in rules_by_id:
-                        rules_by_id[rule_id] = m.Infra.SarifRule(
-                            id=rule_id,
-                            short_description=f"{gate} issue",
-                        )
+                    rules_by_id.setdefault(
+                        rule_id,
+                        m.Infra.SarifRule(
+                            id=rule_id, short_description=f"{gate} issue"
+                        ),
+                    )
                     sarif_results.append(
                         m.Infra.SarifResult(
                             rule_id=rule_id,
-                            level=(
-                                "warning"
-                                if issue.severity.lower()
-                                == c.Infra.SeverityLevel.WARNING
-                                else "error"
-                            ),
+                            level="warning"
+                            if issue.severity.lower() == c.Infra.SeverityLevel.WARNING
+                            else "error",
                             message=issue.message,
                             locations=[
                                 m.Infra.SarifLocation(
@@ -243,11 +241,10 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
             results,
             resolved_gates,
         )
-        try:
-            u.Infra.export_pydantic_json(sarif_report, sarif_path)
-        except OSError as exc:
+        write_result = u.Infra.export_pydantic_json_safe(sarif_report, sarif_path)
+        if write_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                f"failed to write sarif report: {exc}"
+                f"failed to write sarif report: {write_result.error}"
             )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed
