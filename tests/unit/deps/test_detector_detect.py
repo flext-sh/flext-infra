@@ -29,7 +29,7 @@ class TestsFlextInfraDepsDetectorDetect:
             deptry_exists=False,
         ).model_copy(update={"no_pip_check": True})
         result = detector.execute()
-        tm.fail(result, has="deptry executable")
+        tm.fail(result, has="Deptry executable")
 
     def test_run_with_projects_and_deptry(
         self,
