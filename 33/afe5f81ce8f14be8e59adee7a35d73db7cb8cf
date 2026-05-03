@@ -1,0 +1,117 @@
+src/flext_infra/_utilities/protected_edit_writes.py
+  h_9db9d35f50cf33 1-16
+tests/unit/test_infra_rope_service.py
+  81bd344b75a4c5f1 275-276
+  h_9db9d35f50cf33 7-9,11,67-103,253-274,277-289
+src/flext_infra/workspace/rope.py
+  81bd344b75a4c5f1 264
+  h_9db9d35f50cf33 64-65,242-243,277,281,291
+src/flext_infra/_utilities/rope_pep695_patch.py
+  h_9db9d35f50cf33 1,3-10,23-24,70-73,75-83,161-164,166-179,181-186,188-193,195,203-206
+  81bd344b75a4c5f1 58,74,91,110,131,141,151,158,165,180,187,194
+src/flext_infra/_protocols/rope.py
+  h_9db9d35f50cf33 101
+src/flext_infra/_utilities/rope_inventory.py
+  h_9db9d35f50cf33 35,41-44,46-52,57-58,80-81,92,103,117-119,129,142,157,227-228,234,247-252
+  81bd344b75a4c5f1 105,144,165,182,193,204,230,314,329,351,389,391-396,533,545,553,570,588,599,621,645,655,667,683
+tests/unit/refactor/test_main_cli.py
+  h_9db9d35f50cf33 6-9,11-14,123-124,504-609
+src/flext_infra/_utilities/protected_edit_linting.py
+  81bd344b75a4c5f1 20-149
+src/flext_infra/_utilities/protected_edit_preview.py
+  81bd344b75a4c5f1 29-111
+src/flext_infra/_utilities/discovery.py
+  81bd344b75a4c5f1 359,377,409-411,507
+src/flext_infra/_models/refactor_violations.py
+  81bd344b75a4c5f1 232
+src/flext_infra/__init__.py
+  81bd344b75a4c5f1 120-131,528-539,1021-1024
+src/flext_infra/_models/base.py
+  h_9db9d35f50cf33 9,109-136
+src/flext_infra/codegen/consolidator.py
+  h_9db9d35f50cf33 232,253-254
+  81bd344b75a4c5f1 123,150,174,207,262
+src/flext_infra/refactor/census.py
+  h_9db9d35f50cf33 240-242,248-252,259,262-266,299-304,316,330,361-364,366-373,375-389,391-409,411-416,418-420,1033,1038
+  81bd344b75a4c5f1 31-32,238,365,374,390,410,432,547,737,861-864,869-887,907,942,954,962,976,1007,1024,1053,1068,1085,1100,1105,1121,1148,1153,1162,1193,1202
+tests/unit/codegen/lazy_init_helpers_tests.py
+  h_9db9d35f50cf33 241,264-265
+src/flext_infra/_utilities/rope_imports.py
+  h_9db9d35f50cf33 10,12-13,25,198,213
+  81bd344b75a4c5f1 111-115,177,179,190-197,199-212,214-221,223-300,304,315
+src/flext_infra/_utilities/protected_edit_apply.py
+  81bd344b75a4c5f1 27,43,62,100,147,180,259,266
+  h_9db9d35f50cf33 1-26,28-42,44-61,63-73,75-78,80-99,101-146,148-179,181-258,260-265,267-350
+src/flext_infra/_utilities/rope_analysis.py
+  h_9db9d35f50cf33 328,330,332,357,377,382,430,433-434
+  81bd344b75a4c5f1 36,58,73,86,101,118
+src/flext_infra/_models/refactor_namespace_enforcer.py
+  81bd344b75a4c5f1 28,38-39,45-46,53-54,71-72,78-79,91-92,96-97,107-108,123-124,132-133,140-141,145-146,155-156,164-165,292-293
+src/flext_infra/_utilities/mro_scan.py
+  81bd344b75a4c5f1 25
+src/flext_infra/_utilities/deps_path_sync.py
+  81bd344b75a4c5f1 35,83,124,148,285,290,294-347,354,367,369-377,381-393,395-397,399-419,421-429
+src/flext_infra/_models/refactor_ast_grep.py
+  81bd344b75a4c5f1 174
+src/flext_infra/codegen/fixer.py
+  81bd344b75a4c5f1 74,87
+src/flext_infra/codegen/lazy_init_planner.py
+  h_9db9d35f50cf33 473-476,478-479,481,562-563,565,568-572
+  81bd344b75a4c5f1 111,188,229,263,268,279,312,349,368,466,485,497,516,541,556,579,583,598,641,652,666
+src/flext_infra/refactor/wrapper_root_namespace.py
+  81bd344b75a4c5f1 7-8,24-41,63-101,107-109,115-117,124-207,209-212,214,216-218,220-223,225-239,242-246,248-259,261-270,272-281,289-295,297-301,308
+tests/__init__.py
+  81bd344b75a4c5f1 49-51,448-450,1011
+src/flext_infra/deps/detector_runtime.py
+  81bd344b75a4c5f1 12,32,36-40,58-65,68-78,80,82-91,94-235,237-289,309,311-329,331
+src/flext_infra/codegen/lazy_init.py
+  81bd344b75a4c5f1 170,209,242,264
+  h_9db9d35f50cf33 144-145,211
+src/flext_infra/_utilities/rope_core.py
+  h_9db9d35f50cf33 222-223
+  81bd344b75a4c5f1 243
+src/flext_infra/_utilities/census.py
+  81bd344b75a4c5f1 189,233,244,289,344,358,441,453,468,493,507,540
+src/flext_infra/transformers/typing_unifier.py
+  81bd344b75a4c5f1 149
+src/flext_infra/_utilities/docs_api.py
+  81bd344b75a4c5f1 211,215-219,226,242-252,254-332,353-362,364,367,375-382,386
+src/flext_infra/_utilities/__init__.py
+  81bd344b75a4c5f1 40-43
+tests/unit/__init__.py
+  81bd344b75a4c5f1 36-38
+tests/unit/_utilities/__init__.py
+  81bd344b75a4c5f1 14
+src/flext_infra/_models/docs.py
+  81bd344b75a4c5f1 86-119,143
+src/flext_infra/_models/codegen.py
+  81bd344b75a4c5f1 337,370-371,380-381
+src/flext_infra/_utilities/protected_edit.py
+  h_9db9d35f50cf33 1,5-6,10,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "33afe5f81ce8f14be8e59adee7a35d73db7cb8cf",
+  "prompts": {
+    "81bd344b75a4c5f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "288f9aad-a0e4-4b23-a3ad-bc9b7b265cbd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 1207,
+      "total_deletions": 630,
+      "accepted_lines": 1127,
+      "overriden_lines": 4,
+      "messages_url": "https://usegitai.com/cas/189ba7da34d9a77e1e30d41fb4ec6bbe82dbc4990e38a9baa16dd57b8de1ebf2"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
