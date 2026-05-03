@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -44,6 +45,12 @@ class FlextInfraRefactorCensus(
     """Generalized Rope-only census service for Python objects across the workspace."""
 
     _MIN_DUPLICATE_DEFINITIONS: ClassVar[int] = 2
+    _LIGHTWEIGHT_MODULE_RULES: ClassVar[frozenset[str]] = frozenset({
+        "runtime_alias",
+        "manual_typing_alias",
+        "compatibility_alias",
+        "mro_completeness",
+    })
 
     json_output: Annotated[
         str | None,
@@ -242,6 +249,10 @@ class FlextInfraRefactorCensus(
         selected_rules: frozenset[str] | None = (
             frozenset(rule_names) if rule_names else None
         )
+        collect_object_inventory = self._should_collect_object_inventory(
+            rule_names,
+            selected_rules=selected_rules,
+        )
         include_object_references = self._should_collect_object_references(
             rule_names,
         )
@@ -250,48 +261,49 @@ class FlextInfraRefactorCensus(
             list
         )
         project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
+        report_projects: set[str] = set()
         for module in self._modules_for_rules(
             rope,
             project_names=project_names,
             selected_families=selected_families,
             rule_names=rule_names,
         ):
-            try:
-                module_objects = tuple(
-                    rope.objects(
-                        module.file_path,
-                        include_local_scopes=include_local_scopes,
-                        include_references=include_object_references,
-                    )
-                )
-            except _ROPE_SAFE_EXCEPTIONS as exc:
-                self._handle_rope_stage_failure(
-                    file_path=module.file_path,
-                    stage="inventory",
-                    exc=exc,
-                )
-                continue
-            project = (
-                module_objects[0].project
-                if module_objects
-                else module.project_root.name
-                if module.project_root is not None
-                else ""
-            )
+            convention = rope.convention(module.file_path)
+            project = self._project_name_for_module(module, convention)
             if not project:
                 continue
-            objects = tuple(
-                item
-                for item in module_objects
-                if self._include_object(
-                    item,
-                    kind_names=kind_names,
-                    selected_families=selected_families,
-                    selected_kinds=selected_kinds,
+            module_objects: tuple[m.Infra.Census.Object, ...] | None = None
+            objects: tuple[m.Infra.Census.Object, ...] = ()
+            if collect_object_inventory:
+                try:
+                    module_objects = tuple(
+                        rope.objects(
+                            module.file_path,
+                            include_local_scopes=include_local_scopes,
+                            include_references=include_object_references,
+                        )
+                    )
+                except _ROPE_SAFE_EXCEPTIONS as exc:
+                    self._handle_rope_stage_failure(
+                        file_path=module.file_path,
+                        stage="inventory",
+                        exc=exc,
+                    )
+                    continue
+                objects = tuple(
+                    item
+                    for item in module_objects
+                    if self._include_object(
+                        item,
+                        kind_names=kind_names,
+                        selected_families=selected_families,
+                        selected_kinds=selected_kinds,
+                    )
                 )
-            )
+                if objects:
+                    project_objects[project].extend(objects)
             if objects:
-                project_objects[project].extend(objects)
+                report_projects.add(project)
             try:
                 violations, fixes = self._module_rules(
                     rope,
@@ -303,6 +315,7 @@ class FlextInfraRefactorCensus(
                     rule_names=rule_names,
                     selected_kinds=selected_kinds,
                     selected_rules=selected_rules,
+                    convention=convention,
                 )
             except _ROPE_SAFE_EXCEPTIONS as exc:
                 self._handle_rope_stage_failure(
@@ -311,6 +324,7 @@ class FlextInfraRefactorCensus(
                     exc=exc,
                 )
                 continue
+            report_projects.add(project)
             if not objects and not violations and not fixes:
                 continue
             project_violations[project].extend(violations)
@@ -323,7 +337,10 @@ class FlextInfraRefactorCensus(
         )
         report_project_names = tuple(
             sorted(
-                set(project_objects) | set(project_violations) | set(project_fixes),
+                report_projects
+                | set(project_objects)
+                | set(project_violations)
+                | set(project_fixes),
             )
         )
         project_reports = tuple(
@@ -375,6 +392,33 @@ class FlextInfraRefactorCensus(
         if rule_names is None:
             return True
         return bool({"unused", "test_only"} & set(rule_names))
+
+    @classmethod
+    def _should_collect_object_inventory(
+        cls,
+        rule_names: t.StrSequence | None,
+        *,
+        selected_rules: frozenset[str] | None = None,
+    ) -> bool:
+        """Should collect full object inventory."""
+        if selected_rules is None:
+            selected_rules = frozenset(rule_names) if rule_names else None
+        if not selected_rules:
+            return True
+        return not selected_rules <= cls._LIGHTWEIGHT_MODULE_RULES
+
+    @staticmethod
+    def _project_name_for_module(
+        module: m.Infra.RopeModuleIndexEntry,
+        convention: m.Infra.RopeModuleConvention,
+    ) -> str:
+        """Project name for a module entry."""
+        layout = convention.project_layout
+        if layout is not None:
+            return layout.project_name
+        if module.project_root is not None:
+            return module.project_root.name
+        return ""
 
     @staticmethod
     def _mro_facade_module_names(
@@ -558,41 +602,64 @@ class FlextInfraRefactorCensus(
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         *,
-        objects: tuple[m.Infra.Census.Object, ...],
+        objects: tuple[m.Infra.Census.Object, ...] | None,
         project_name: str,
         applied: frozenset[str],
         kind_names: t.StrSequence | None,
         rule_names: t.StrSequence | None,
         selected_kinds: frozenset[str] | None = None,
         selected_rules: frozenset[str] | None = None,
+        convention: m.Infra.RopeModuleConvention | None = None,
     ) -> tuple[tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]]:
         """Module rules."""
-        convention = rope.convention(file_path)
-        ctx = self._detector_context(rope, file_path)
+        resolved_convention = convention or rope.convention(file_path)
         if selected_kinds is None:
             selected_kinds = frozenset(kind_names) if kind_names else frozenset()
+        ctx: m.Infra.DetectorContext | None = None
+        symbol_index: dict[str, tuple[str, int]] = (
+            self._lightweight_symbol_index(file_path) if objects is None else {}
+        )
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
 
         if self._include_rule(
             "runtime_alias", rule_names=rule_names, selected_rules=selected_rules
         ):
-            runtime_target = self._runtime_alias_target(convention, objects)
+            if ctx is None:
+                ctx = self._detector_context(
+                    rope,
+                    file_path,
+                    convention=resolved_convention,
+                )
+            runtime_target = (
+                self._runtime_alias_target(resolved_convention, objects)
+                if objects is not None
+                else None
+            )
+            runtime_target_name = ""
+            runtime_target_kind = "assignment"
+            runtime_target_line = 0
+            if runtime_target is not None:
+                runtime_target_name = runtime_target.name
+                runtime_target_kind = runtime_target.kind
+                runtime_target_line = runtime_target.line
+            else:
+                expected_name = self._runtime_alias_target_name(resolved_convention)
+                expected_symbol = symbol_index.get(expected_name)
+                if expected_symbol is not None:
+                    runtime_target_name = expected_name
+                    runtime_target_kind, runtime_target_line = expected_symbol
+            fixable = runtime_target is not None or runtime_target_kind == "class"
             for detector_violation in FlextInfraRuntimeAliasDetector.detect_file(ctx):
                 object_name = (
-                    runtime_target.name
-                    if runtime_target is not None
-                    else detector_violation.alias
+                    runtime_target_name if fixable else detector_violation.alias
                 )
-                object_kind = (
-                    runtime_target.kind if runtime_target is not None else "assignment"
-                )
+                object_kind = runtime_target_kind if fixable else "assignment"
                 if selected_kinds and object_kind not in selected_kinds:
                     continue
                 line = detector_violation.line or (
-                    runtime_target.line if runtime_target is not None else 0
+                    runtime_target_line if fixable else 0
                 )
-                fixable = runtime_target is not None
                 action = "rewrite_runtime_alias" if fixable else ""
                 violations.append(
                     self._raw_violation(
@@ -624,10 +691,20 @@ class FlextInfraRefactorCensus(
             rule_names=rule_names,
             selected_rules=selected_rules,
         ):
+            if ctx is None:
+                ctx = self._detector_context(
+                    rope,
+                    file_path,
+                    convention=resolved_convention,
+                )
             for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
                 ctx,
             ):
-                matched = self._named_object(objects, detector_violation.name)
+                matched = (
+                    self._named_object(objects, detector_violation.name)
+                    if objects is not None
+                    else None
+                )
                 object_kind = matched.kind if matched is not None else "assignment"
                 if selected_kinds and object_kind not in selected_kinds:
                     continue
@@ -656,7 +733,7 @@ class FlextInfraRefactorCensus(
                             action=action,
                             source_file=str(file_path),
                             target_file=str(
-                                convention.package_dir / c.Infra.TYPINGS_PY
+                                resolved_convention.package_dir / c.Infra.TYPINGS_PY
                             ),
                             files_changed=2,
                             applied=self._fix_key(
@@ -673,11 +750,28 @@ class FlextInfraRefactorCensus(
             rule_names=rule_names,
             selected_rules=selected_rules,
         ):
+            if ctx is None:
+                ctx = self._detector_context(
+                    rope,
+                    file_path,
+                    convention=resolved_convention,
+                )
             for detector_violation in FlextInfraCompatibilityAliasDetector.detect_file(
                 ctx,
             ):
-                matched = self._named_object(objects, detector_violation.alias_name)
+                matched = (
+                    self._named_object(objects, detector_violation.alias_name)
+                    if objects is not None
+                    else None
+                )
                 object_kind = matched.kind if matched is not None else "assignment"
+                if matched is None:
+                    target_symbol = symbol_index.get(detector_violation.target_name)
+                    if target_symbol is not None and target_symbol[0] in {
+                        "class",
+                        "function",
+                    }:
+                        object_kind = target_symbol[0]
                 if selected_kinds and object_kind not in selected_kinds:
                     continue
                 action = "rewrite_compatibility_alias"
@@ -723,14 +817,20 @@ class FlextInfraRefactorCensus(
                 rope,
                 file_path,
                 parse_failures=parse_failures,
+                convention=resolved_convention,
             )
             for detector_violation in FlextInfraMROCompletenessDetector.detect_file(
                 mro_ctx,
             ):
-                matched = self._named_object(objects, detector_violation.facade_class)
+                matched = (
+                    self._named_object(objects, detector_violation.facade_class)
+                    if objects is not None
+                    else None
+                )
                 object_kind = matched.kind if matched is not None else "class"
                 if selected_kinds and object_kind not in selected_kinds:
                     continue
+                symbol = symbol_index.get(detector_violation.facade_class)
                 action = "rewrite_mro_completeness"
                 violations.append(
                     self._raw_violation(
@@ -742,6 +842,8 @@ class FlextInfraRefactorCensus(
                         line=(
                             matched.line
                             if matched is not None
+                            else symbol[1]
+                            if symbol is not None
                             else detector_violation.line
                         ),
                         description=detector_violation.suggestion,
@@ -1025,17 +1127,63 @@ class FlextInfraRefactorCensus(
             None,
         )
 
+    @classmethod
+    def _lightweight_symbol_index(
+        cls,
+        file_path: Path,
+    ) -> dict[str, tuple[str, int]]:
+        """Top-level symbol index for detector-only rule sets."""
+        try:
+            source = file_path.read_text(encoding="utf-8")
+            module = ast.parse(source, filename=str(file_path))
+        except (OSError, SyntaxError, ValueError) as exc:
+            msg = (
+                "census lightweight symbol parsing failed for "
+                f"{file_path}: {type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
+        symbols: dict[str, tuple[str, int]] = {}
+        for node in module.body:
+            if isinstance(node, ast.ClassDef):
+                symbols.setdefault(node.name, ("class", node.lineno))
+                continue
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                symbols.setdefault(node.name, ("function", node.lineno))
+                continue
+            if isinstance(node, ast.TypeAlias):
+                if isinstance(node.name, ast.Name):
+                    symbols.setdefault(node.name.id, ("assignment", node.lineno))
+                continue
+            if isinstance(node, ast.AnnAssign):
+                if isinstance(node.target, ast.Name):
+                    symbols.setdefault(node.target.id, ("assignment", node.lineno))
+                continue
+            if not isinstance(node, ast.Assign):
+                continue
+            value_name = node.value.id if isinstance(node.value, ast.Name) else ""
+            inherited_kind = symbols.get(value_name, ("assignment", node.lineno))[0]
+            kind = (
+                inherited_kind
+                if inherited_kind in {"class", "function"}
+                else "assignment"
+            )
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    symbols.setdefault(target.id, (kind, node.lineno))
+        return symbols
+
     @staticmethod
     def _detector_context(
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         *,
+        convention: m.Infra.RopeModuleConvention | None = None,
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
         | None = None,
     ) -> m.Infra.DetectorContext:
         """Detector context."""
-        convention = rope.convention(file_path)
-        layout = convention.project_layout
+        resolved_convention = convention or rope.convention(file_path)
+        layout = resolved_convention.project_layout
         module_entry = rope.module(file_path)
         project_root = (
             layout.project_root
@@ -1065,14 +1213,24 @@ class FlextInfraRefactorCensus(
         objects: tuple[m.Infra.Census.Object, ...],
     ) -> m.Infra.Census.Object | None:
         """Runtime alias target."""
-        layout = convention.project_layout
-        family = convention.module_policy.expected_family or ""
-        if layout is None or not family:
+        target_name = FlextInfraRefactorCensus._runtime_alias_target_name(convention)
+        if not target_name:
             return None
         return FlextInfraRefactorCensus._named_object(
             objects,
-            f"{layout.class_stem}{family}",
+            target_name,
         )
+
+    @staticmethod
+    def _runtime_alias_target_name(
+        convention: m.Infra.RopeModuleConvention,
+    ) -> str:
+        """Expected runtime alias target name."""
+        layout = convention.project_layout
+        family = convention.module_policy.expected_family or ""
+        if layout is None or not family:
+            return ""
+        return f"{layout.class_stem}{family}"
 
     @staticmethod
     def _rewrite_runtime_alias_source(

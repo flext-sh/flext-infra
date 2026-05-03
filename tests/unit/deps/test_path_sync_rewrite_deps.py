@@ -113,7 +113,7 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
                 internal_names={"flext-core"},
                 workspace_members=(),
             ),
-            has="TOML write error",
+            has="TOML write",
         )
 
     def test_rewrite_dep_paths_with_internal_names(self, tmp_path: Path) -> None:

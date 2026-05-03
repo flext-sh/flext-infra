@@ -24,6 +24,8 @@ from flext_infra import (
 class FlextInfraUtilitiesRopeInventory:
     """Generic Rope-only inventory helpers for Python objects."""
 
+    get_pymodule = staticmethod(FlextInfraUtilitiesRopeCore.get_pymodule)
+
     @classmethod
     def objects(
         cls,
@@ -38,10 +40,7 @@ class FlextInfraUtilitiesRopeInventory:
     ) -> tuple[m.Infra.Census.Object, ...]:
         """Return all same-file defined objects for one Rope module."""
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project,
-                resource,
-            )
+            pymodule = cls.get_pymodule(rope_project, resource)
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS as exc:
             msg = (
                 "rope inventory failed to load "
@@ -359,26 +358,36 @@ class FlextInfraUtilitiesRopeInventory:
         name: str,
     ) -> str:
         """Kind for."""
-        obj = pyname.get_object()
         result: str
-        if isinstance(obj, AbstractClass):
-            result = "class"
-        elif isinstance(obj, PyFunction):
-            result = (
-                "method"
-                if class_chain and len(scope_chain) == len(class_chain)
-                else "function"
-            )
-        elif isinstance(pyname, ParameterName):
+        if isinstance(pyname, ParameterName):
             result = "parameter"
-        elif class_chain and len(scope_chain) == len(class_chain):
-            result = "attribute"
-        elif scope_chain:
-            result = "local" if not name.isupper() else "constant"
-        elif isinstance(pyname, (DefinedName, AssignedName)) and name.isupper():
-            result = "constant"
+        elif isinstance(pyname, AssignedName):
+            if class_chain and len(scope_chain) == len(class_chain):
+                result = "attribute"
+            elif scope_chain:
+                result = "local" if not name.isupper() else "constant"
+            elif name.isupper():
+                result = "constant"
+            else:
+                result = "assignment"
         else:
-            result = "assignment"
+            obj = pyname.get_object()
+            if isinstance(obj, AbstractClass):
+                result = "class"
+            elif isinstance(obj, PyFunction):
+                result = (
+                    "method"
+                    if class_chain and len(scope_chain) == len(class_chain)
+                    else "function"
+                )
+            elif class_chain and len(scope_chain) == len(class_chain):
+                result = "attribute"
+            elif scope_chain:
+                result = "local" if not name.isupper() else "constant"
+            elif isinstance(pyname, DefinedName) and name.isupper():
+                result = "constant"
+            else:
+                result = "assignment"
         return result
 
     @staticmethod
@@ -409,6 +418,7 @@ class FlextInfraUtilitiesRopeInventory:
             rope_project,
             resource,
         )
+        search_resources: tuple[t.Infra.RopeResource, ...] | None = None
         if rope_workspace is not None and definition_path is not None:
             fast_path = (
                 FlextInfraUtilitiesRopeInventory._fast_reference_sites_from_index(
@@ -419,10 +429,19 @@ class FlextInfraUtilitiesRopeInventory:
             )
             if fast_path is not None:
                 return fast_path
+            search_resources = (
+                FlextInfraUtilitiesRopeInventory._search_resources_from_index(
+                    rope_workspace,
+                    resource=resource,
+                    name=name,
+                    definition_path=definition_path,
+                )
+            )
         hits = FlextInfraUtilitiesRopeImports.find_occurrences(
             rope_project,
             resource,
             offset,
+            resources=search_resources,
         )
         runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         test_reference_sites: list[m.Infra.Census.ReferenceSite] = []

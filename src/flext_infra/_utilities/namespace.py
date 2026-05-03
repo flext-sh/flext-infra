@@ -30,6 +30,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     _governance_cache: ClassVar[
         MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
     ] = {}
+    _lazy_init_config_cache: ClassVar[m.Infra.LazyInitConfig | None] = None
     _governance_file: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
     )
@@ -52,14 +53,19 @@ class FlextInfraUtilitiesCodegenNamespace:
             return not module.endswith(rule.fixable_exclusion)
         return False
 
-    @staticmethod
-    def _lazy_init_config() -> m.Infra.LazyInitConfig:
+    @classmethod
+    def _lazy_init_config(cls) -> m.Infra.LazyInitConfig:
         """Return the validated lazy-init policy document."""
+        cached = cls._lazy_init_config_cache
+        if cached is not None:
+            return cached
         settings = FlextInfraUtilitiesBase.load_tool_config()
         if settings.failure:
             msg = settings.error or "lazy-init configuration is unavailable"
             raise RuntimeError(msg)
-        return settings.unwrap().lazy_init
+        cached = settings.unwrap().lazy_init
+        cls._lazy_init_config_cache = cached
+        return cached
 
     @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:

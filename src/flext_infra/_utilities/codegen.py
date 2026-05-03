@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import r, u
+from flext_cli import u
 from flext_infra import c, p, t
 
 
@@ -15,31 +15,36 @@ class FlextInfraUtilitiesCodegen:
     def run_ruff_fix(path: Path, *, quiet: bool = False) -> p.Result[bool]:
         """Run Ruff fix + format for one file path.
 
-        Returns ``r.ok(None)`` on success, ``r.fail(...)`` carrying the
+        Returns ``r.ok(True)`` on success, ``r.fail(...)`` carrying the
         underlying CLI error when either ``ruff check --fix`` or
         ``ruff format`` exits non-zero. ``quiet=True`` suppresses the
         CLI error log; the failure still surfaces via ``r``.
         """
         cwd = path.parent if path.suffix else path
-        check_result = u.Cli.capture(
-            [c.Infra.RUFF, "check", "--fix", str(path)],
-            cwd=cwd,
+
+        def _step(args: list[str], default_msg: str) -> p.Result[str]:
+            return (
+                u.Cli
+                .capture(args, cwd=cwd)
+                .map_error(
+                    lambda e: e or default_msg,
+                )
+                .tap_error(lambda e: None if quiet else u.Cli.error(e))
+            )
+
+        return (
+            _step(
+                [c.Infra.RUFF, "check", "--fix", str(path)],
+                f"ruff check --fix failed: {path}",
+            )
+            .flat_map(
+                lambda _: _step(
+                    [c.Infra.RUFF, "format", str(path)],
+                    f"ruff format failed: {path}",
+                )
+            )
+            .map(lambda _: True)
         )
-        if check_result.failure:
-            message = check_result.error or f"ruff check --fix failed: {path}"
-            if not quiet:
-                u.Cli.error(message)
-            return r[bool].fail(message)
-        format_result = u.Cli.capture(
-            [c.Infra.RUFF, "format", str(path)],
-            cwd=cwd,
-        )
-        if format_result.failure:
-            message = format_result.error or f"ruff format failed: {path}"
-            if not quiet:
-                u.Cli.error(message)
-            return r[bool].fail(message)
-        return r[bool].ok(True)
 
     @staticmethod
     def generate_module_skeleton(

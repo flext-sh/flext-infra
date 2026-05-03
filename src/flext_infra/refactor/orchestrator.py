@@ -357,23 +357,21 @@ class FlextInfraRefactorOrchestrator(
             processed_targets=processed_targets,
         )
         if checkpoint.failure:
-            msg = checkpoint.error or "checkpoint save failed"
-            self.safety_manager.request_emergency_stop(msg)
-            u.Cli.error(msg)
-            rollback = self.safety_manager.rollback(target, stash_ref)
-            if rollback.failure:
-                u.Cli.error(rollback.error or "rollback failed")
-            results.append(self._error_result(target, msg))
+            self._abort_with_rollback(
+                target=target,
+                stash_ref=stash_ref,
+                results=results,
+                msg=checkpoint.error or "checkpoint save failed",
+            )
             return
         validation = self.safety_manager.run_semantic_validation(target)
         if validation.failure:
-            msg = validation.error or "semantic validation failed"
-            self.safety_manager.request_emergency_stop(msg)
-            u.Cli.error(msg)
-            rollback = self.safety_manager.rollback(target, stash_ref)
-            if rollback.failure:
-                u.Cli.error(rollback.error or "rollback failed")
-            results.append(self._error_result(target, msg))
+            self._abort_with_rollback(
+                target=target,
+                stash_ref=stash_ref,
+                results=results,
+                msg=validation.error or "semantic validation failed",
+            )
             return
         cleared = self.safety_manager.clear_checkpoint(
             keep=[
@@ -384,6 +382,28 @@ class FlextInfraRefactorOrchestrator(
         )
         if cleared.failure:
             u.Cli.error(cleared.error or "checkpoint clear failed")
+
+    def _abort_with_rollback(
+        self,
+        *,
+        target: Path,
+        stash_ref: str,
+        results: t.MutableSequenceOf[m.Infra.Result],
+        msg: str,
+    ) -> None:
+        """Stop processing, log, attempt rollback, and append a failure result.
+
+        Centralizes the "fail + rollback + record" pattern shared by every
+        post-transform safety failure path so each failure branch stays one
+        line at the call site (DRY + fail-loud — rollback errors are also
+        logged, never silently swallowed).
+        """
+        self.safety_manager.request_emergency_stop(msg)
+        u.Cli.error(msg)
+        rollback = self.safety_manager.rollback(target, stash_ref)
+        if rollback.failure:
+            u.Cli.error(rollback.error or "rollback failed")
+        results.append(self._error_result(target, msg))
 
     def refactor_project(
         self,

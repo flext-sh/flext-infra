@@ -67,7 +67,7 @@ class TestFlextInfraConfigFixer:
         result = fixer.process_file(missing_file)
         tm.fail(result)
         assert isinstance(result.error, str)
-        assert "failed to read" in result.error
+        assert "not found" in result.error or "failed to read" in result.error
 
     def test_process_file_with_valid_toml(self, tmp_path: Path) -> None:
         """Test that process_file handles valid TOML without pyrefly section."""

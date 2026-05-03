@@ -552,6 +552,77 @@ class TestsFlextInfraRefactorMainCli:
         assert len(violations) == 1
         assert violations[0].kind == "mro_completeness"
 
+    @pytest.mark.parametrize(
+        ("builder_name", "kinds", "rules", "expected_kind"),
+        [
+            (
+                "_build_runtime_alias_duplicate_workspace",
+                ("class",),
+                ("runtime_alias",),
+                "runtime_alias",
+            ),
+            (
+                "_build_basic_workspace",
+                ("assignment",),
+                ("manual_typing_alias",),
+                "manual_typing_alias",
+            ),
+            (
+                "_build_compatibility_alias_workspace",
+                ("class",),
+                ("compatibility_alias",),
+                "compatibility_alias",
+            ),
+            (
+                "_build_mro_incomplete_workspace",
+                ("class",),
+                ("mro_completeness",),
+                "mro_completeness",
+            ),
+        ],
+    )
+    def test_refactor_census_detector_only_rules_skip_inventory(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        builder_name: str,
+        kinds: tuple[str, ...],
+        rules: tuple[str, ...],
+        expected_kind: str,
+    ) -> None:
+        builder = getattr(self, builder_name)
+        built_workspace = builder(tmp_path)
+        workspace = (
+            built_workspace[0]
+            if isinstance(built_workspace, tuple)
+            else built_workspace
+        )
+
+        def _explode(
+            _self: FlextInfraRopeWorkspace,
+            *_args: object,
+            **_kwargs: object,
+        ) -> object:
+            msg = "detector-only rules should not trigger rope.objects inventory"
+            raise AssertionError(msg)
+
+        monkeypatch.setattr(FlextInfraRopeWorkspace, "objects", _explode)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=kinds,
+            rules=rules,
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert violations
+        assert all(violation.kind == expected_kind for violation in violations)
+
     def test_refactor_census_fail_fast_raises_on_rope_inventory_error(
         self,
         tmp_path: Path,
@@ -570,7 +641,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         with pytest.raises(
-            RuntimeError, match=r"census rope inventory failed for .*models\.py"
+            RuntimeError, match=r"census rope inventory failed for .*models.*\.py"
         ):
             FlextInfraRefactorCensus(
                 workspace=workspace,

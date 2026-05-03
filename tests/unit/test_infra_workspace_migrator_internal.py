@@ -115,7 +115,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
         tm.that(
-            any("TOML write error" in err for err in migration.errors),
+            any("TOML write" in err for err in migration.errors),
             eq=True,
         )
 
