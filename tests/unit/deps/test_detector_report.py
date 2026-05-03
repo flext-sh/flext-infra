@@ -119,7 +119,9 @@ class TestsFlextInfraDepsDetectorReport:
             eq=True,
         )
         tm.that(default_output.exists(), eq=True)
-        payload = tm.ok(u.Cli.json_read(default_output))
+        payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
+            tm.ok(u.Cli.json_read(default_output))
+        )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
 
     def test_run_with_output_flag(
@@ -144,7 +146,9 @@ class TestsFlextInfraDepsDetectorReport:
             eq=True,
         )
         tm.that(custom_output.exists(), eq=True)
-        payload = tm.ok(u.Cli.json_read(custom_output))
+        payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
+            tm.ok(u.Cli.json_read(custom_output))
+        )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
 
     def test_run_with_output_to_blocked_path_fails(

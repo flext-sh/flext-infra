@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import t, u
+from tests import m, t, u
 
 
 class TestsFlextInfraDepsDetectionUncovered:
@@ -26,9 +26,10 @@ class TestsFlextInfraDepsDetectionUncovered:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output(),
         )
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, venv_bin, json_output_path=out_file),
+        deptry_result: t.Pair[t.SequenceOf[t.Infra.ContainerDict], int] = tm.ok(
+            service.run_deptry(project, venv_bin, json_output_path=out_file)
         )
+        issues, exit_code = deptry_result
         tm.that(len(issues), eq=1)
         tm.that(exit_code, eq=0)
 
@@ -42,7 +43,10 @@ class TestsFlextInfraDepsDetectionUncovered:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output(),
         )
-        lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
+        pip_check_result: t.Pair[t.StrSequence, int] = tm.ok(
+            service.run_pip_check(tmp_path, venv_bin)
+        )
+        lines, exit_code = pip_check_result
         assert list(lines) == []
         tm.that(exit_code, eq=0)
 
@@ -61,7 +65,7 @@ class TestsFlextInfraDepsDetectionUncovered:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output(),
         )
-        report = tm.ok(
+        report: m.Infra.TypingsReport = tm.ok(
             service.get_required_typings(tmp_path, limits_path=limits_path),
         )
         tm.that(report.limits_applied, eq=True)
