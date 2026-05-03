@@ -24,8 +24,9 @@ class FlextInfraInjectCommentsPhase:
 
     @staticmethod
     def _marker_for_section(section_header: str) -> str | None:
-        for section_prefix, marker in c.Infra.COMMENT_MARKERS:
+        for section_prefix, marker_text in c.Infra.COMMENT_MARKERS:
             if section_header.startswith(section_prefix):
+                marker: str = marker_text
                 return marker
         return None
 

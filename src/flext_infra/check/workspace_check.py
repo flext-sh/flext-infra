@@ -241,10 +241,11 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
             results,
             resolved_gates,
         )
-        write_result = u.Infra.export_pydantic_json_safe(sarif_report, sarif_path)
-        if write_result.failure:
+        try:
+            u.Infra.export_pydantic_json(sarif_report, sarif_path)
+        except OSError as exc:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                f"failed to write sarif report: {write_result.error}"
+                f"failed to write sarif report: {exc}"
             )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed
