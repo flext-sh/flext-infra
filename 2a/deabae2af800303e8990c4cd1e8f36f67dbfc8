@@ -1,0 +1,40 @@
+src/flext_infra/_utilities/protected_edit_linting.py
+  h_9db9d35f50cf33 21-30,164-165
+src/flext_infra/refactor/census.py
+  h_9db9d35f50cf33 584-586,591-593,598,600-608,991,997-1003
+src/flext_infra/_utilities/protected_edit_apply.py
+  h_9db9d35f50cf33 132,136
+tests/unit/refactor/test_main_cli.py
+  h_9db9d35f50cf33 12,14,16,1131-1201
+src/flext_infra/_utilities/census.py
+  h_9db9d35f50cf33 68-85,90-91,100-103,116-119,146-147,160-161,174-175,181,189-192,206,218-219,250-253,369,382
+tests/unit/refactor/test_infra_refactor_census_preview_cache.py
+  h_9db9d35f50cf33 1-8,11-174
+  98bf020f6e9ed6f0 9-10,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "2adeabae2af800303e8990c4cd1e8f36f67dbfc8",
+  "prompts": {
+    "98bf020f6e9ed6f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04127b3c-cba2-4f1b-a0ce-6ab03f072691",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 4,
+      "accepted_lines": 4,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/9921b5fa1fbd1055611a85186138726152c520a7ec31fce8ae6860645fd0320a"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
