@@ -60,26 +60,35 @@ class FlextInfraDocAuditorMixin:
         workspace_root: Path,
     ) -> t.Pair[int | None, t.IntMapping]:
         """Load audit budgets from the nearest architecture settings."""
+        result: t.Pair[int | None, t.IntMapping]
         settings = cls.find_architecture_config(workspace_root)
         if settings is None:
-            return (None, {})
-        payload_result = u.Cli.json_read(settings)
-        if payload_result.failure or not isinstance(payload_result.value, Mapping):
-            return (None, {})
-        docs_validation = payload_result.value.get("docs_validation")
-        if not isinstance(docs_validation, Mapping):
-            return (None, {})
-        audit_gate = docs_validation.get("audit_gate")
-        if not isinstance(audit_gate, Mapping):
-            return (None, {})
-        try:
-            validated_gate = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                audit_gate,
-                strict=False,
-            )
-        except c.ValidationError:
-            return (None, {})
-        return cls.parse_audit_gate(validated_gate)
+            result = (None, {})
+        else:
+            payload_result = u.Cli.json_read(settings)
+            if payload_result.failure or not isinstance(payload_result.value, Mapping):
+                result = (None, {})
+            else:
+                docs_validation = payload_result.value.get("docs_validation")
+                if not isinstance(docs_validation, Mapping):
+                    result = (None, {})
+                else:
+                    audit_gate = docs_validation.get("audit_gate")
+                    if not isinstance(audit_gate, Mapping):
+                        result = (None, {})
+                    else:
+                        try:
+                            validated_gate = (
+                                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                                    audit_gate,
+                                    strict=False,
+                                )
+                            )
+                        except c.ValidationError:
+                            result = (None, {})
+                        else:
+                            result = cls.parse_audit_gate(validated_gate)
+        return result
 
     @staticmethod
     def resolve_checks(check: str) -> t.Infra.StrSet:
