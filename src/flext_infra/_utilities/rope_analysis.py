@@ -234,6 +234,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         symbol: str,
     ) -> int | None:
         """Return offset of symbol's definition via semantic analysis."""
+        result: int | None = None
         source = resource.read()
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
@@ -241,29 +242,26 @@ class FlextInfraUtilitiesRopeAnalysis:
                 resource,
             )
             attributes = pymodule.get_attributes()
-            if symbol not in attributes:
-                return None
-            pyname = attributes[symbol]
-            definition_module, definition_line = pyname.get_definition_location()
-            if definition_module is not None:
-                definition_resource = definition_module.get_resource()
-                if definition_resource is not None:
-                    source = definition_resource.read()
-            if definition_line is None:
-                return None
-            lines = source.splitlines(keepends=True)
-            if definition_line < 1 or definition_line > len(lines):
-                return None
-            line = lines[definition_line - 1]
-            column = line.find(symbol)
-            if column < 0:
-                return None
-            offset: int = (
-                sum(len(item) for item in lines[: definition_line - 1]) + column
-            )
-            return offset
+            if symbol in attributes:
+                pyname = attributes[symbol]
+                definition_module, definition_line = pyname.get_definition_location()
+                if definition_module is not None:
+                    definition_resource = definition_module.get_resource()
+                    if definition_resource is not None:
+                        source = definition_resource.read()
+                if definition_line is not None:
+                    lines = source.splitlines(keepends=True)
+                    if 1 <= definition_line <= len(lines):
+                        line = lines[definition_line - 1]
+                        column = line.find(symbol)
+                        if column >= 0:
+                            result = (
+                                sum(len(item) for item in lines[: definition_line - 1])
+                                + column
+                            )
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
-            return None
+            pass
+        return result
 
     @staticmethod
     def get_semantic_module_imports(
@@ -323,91 +321,111 @@ class FlextInfraUtilitiesRopeAnalysis:
         )
         cached = FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE.get(cache_key)
         if cached is not None:
-            return cached
-        try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project,
-                resource,
-            )
-            attributes = pymodule.get_attributes()
-            if resolved_export_options.include_dunder:
-                exports = tuple(
-                    dict.fromkeys(
-                        name
-                        for name, pyname in attributes.items()
-                        if name != c.Infra.DUNDER_ALL
-                        and name.startswith("__")
-                        and name.endswith("__")
-                        and isinstance(pyname, RopeAssignedName)
-                        and FlextInfraUtilitiesRopeAnalysis._is_local_name(
-                            pyname,
-                            resource,
-                        )
-                    )
-                )
-                FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = exports
-                return exports
-            explicit_all: t.StrSequence | None = None
-            explicit_all_name = attributes.get(c.Infra.DUNDER_ALL)
-            if isinstance(explicit_all_name, RopeAssignedName) and (
-                FlextInfraUtilitiesRopeAnalysis._is_local_name(
-                    explicit_all_name,
+            result = cached
+        else:
+            result: t.StrSequence = ()
+            try:
+                pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                    rope_project,
                     resource,
                 )
-            ):
-                explicit_all = FlextInfraUtilitiesRopeAnalysis._explicit_all_names(
-                    explicit_all_name,
-                )
-            if explicit_all is not None:
-                exports = tuple(dict.fromkeys(explicit_all))
-                FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = exports
-                return exports
-            if resolved_export_options.require_explicit_all:
-                FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()
-                return ()
-            names: t.MutableSequenceOf[str] = []
-            for name, pyname in attributes.items():
-                if name == c.Infra.DUNDER_ALL or not (
-                    FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource)
-                ):
-                    continue
-                if isinstance(pyname, RopeImportedName):
-                    continue
-                if isinstance(pyname, RopeDefinedName):
-                    obj = pyname.get_object()
-                    if isinstance(
-                        obj,
-                        FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES,
-                    ):
-                        names.append(name)
-                        continue
-                    if (
-                        resolved_export_options.allow_main
-                        and name == "main"
-                        and isinstance(
-                            obj,
-                            FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
+                attributes = pymodule.get_attributes()
+                if resolved_export_options.include_dunder:
+                    exports = tuple(
+                        dict.fromkeys(
+                            name
+                            for name, pyname in attributes.items()
+                            if name != c.Infra.DUNDER_ALL
+                            and name.startswith("__")
+                            and name.endswith("__")
+                            and isinstance(pyname, RopeAssignedName)
+                            and FlextInfraUtilitiesRopeAnalysis._is_local_name(
+                                pyname,
+                                resource,
+                            )
+                        )
+                    )
+                    FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = (
+                        exports
+                    )
+                    result = exports
+                else:
+                    explicit_all: t.StrSequence | None = None
+                    explicit_all_name = attributes.get(c.Infra.DUNDER_ALL)
+                    if isinstance(explicit_all_name, RopeAssignedName) and (
+                        FlextInfraUtilitiesRopeAnalysis._is_local_name(
+                            explicit_all_name,
+                            resource,
                         )
                     ):
-                        names.append(name)
-                        continue
-                    if resolved_export_options.allow_functions and isinstance(
-                        obj,
-                        FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
-                    ):
-                        names.append(name)
-                        continue
-                if resolved_export_options.allow_assignments and isinstance(
-                    pyname,
-                    RopeAssignedName,
-                ):
-                    names.append(name)
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
-            FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()
-            return ()
-        exports = tuple(dict.fromkeys(names))
-        FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = exports
-        return exports
+                        explicit_all = (
+                            FlextInfraUtilitiesRopeAnalysis._explicit_all_names(
+                                explicit_all_name,
+                            )
+                        )
+                    if explicit_all is not None:
+                        exports = tuple(dict.fromkeys(explicit_all))
+                        FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[
+                            cache_key
+                        ] = exports
+                        result = exports
+                    elif resolved_export_options.require_explicit_all:
+                        FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[
+                            cache_key
+                        ] = ()
+                        result = ()
+                    else:
+                        names: t.MutableSequenceOf[str] = []
+                        for name, pyname in attributes.items():
+                            if name == c.Infra.DUNDER_ALL or not (
+                                FlextInfraUtilitiesRopeAnalysis._is_local_name(
+                                    pyname, resource
+                                )
+                            ):
+                                continue
+                            if isinstance(pyname, RopeImportedName):
+                                continue
+                            if isinstance(pyname, RopeDefinedName):
+                                obj = pyname.get_object()
+                                if isinstance(
+                                    obj,
+                                    FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES,
+                                ):
+                                    names.append(name)
+                                    continue
+                                if (
+                                    resolved_export_options.allow_main
+                                    and name == "main"
+                                    and isinstance(
+                                        obj,
+                                        FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
+                                    )
+                                ):
+                                    names.append(name)
+                                    continue
+                                if (
+                                    resolved_export_options.allow_functions
+                                    and isinstance(
+                                        obj,
+                                        FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES,
+                                    )
+                                ):
+                                    names.append(name)
+                                    continue
+                            if resolved_export_options.allow_assignments and isinstance(
+                                pyname,
+                                RopeAssignedName,
+                            ):
+                                names.append(name)
+                        exports = tuple(dict.fromkeys(names))
+                        FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[
+                            cache_key
+                        ] = exports
+                        result = exports
+            except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+                FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()
+                result = ()
+        return result
 
     @staticmethod
     def _explicit_all_names(
