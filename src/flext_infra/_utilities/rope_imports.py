@@ -310,60 +310,59 @@ class FlextInfraUtilitiesRopeImports:
         requested_aliases = frozenset(
             alias for alias in effective_aliases if len(alias) == 1 and alias.islower()
         )
-        if not requested_aliases:
-            return None
-        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
-            rope_project,
-            resource,
-        )
-        if module_imports is None:
-            return None
-        moved_aliases: t.Infra.StrSet = set()
-        package_prefix = f"{package_name}."
-        import_statements = module_imports.imports
-        if not isinstance(import_statements, list):
-            return None
-        for import_stmt in import_statements:
-            import_info = import_stmt.import_info
-            from_import = (
-                import_info
-                if isinstance(import_info, FromImport) and import_info.level == 0
-                else None
+        result: str | None = None
+        if requested_aliases:
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project,
+                resource,
             )
-            if from_import is None or not from_import.module_name.startswith(
-                package_prefix
-            ):
-                continue
-            kept_pairs: list[tuple[str, str | None]] = []
-            for name, alias in from_import.names_and_aliases:
-                if alias is None and name in requested_aliases:
-                    moved_aliases.add(name)
-                    continue
-                kept_pairs.append((name, alias))
-            if len(kept_pairs) == len(from_import.names_and_aliases):
-                continue
-            import_stmt.import_info = FromImport(
-                from_import.module_name,
-                0,
-                kept_pairs,
-            )
-        if not moved_aliases:
-            return None
-        module_imports.add_import(
-            FromImport(
-                package_name,
-                0,
-                [(name, None) for name in sorted(moved_aliases)],
-            )
-        )
-        module_imports.remove_duplicates()
-        module_imports.sort_imports()
-        updated_source: str = module_imports.get_changed_source()
-        if updated_source == resource.read():
-            return None
-        if apply:
-            resource.write(updated_source)
-        return updated_source
+            if module_imports is not None:
+                moved_aliases: t.Infra.StrSet = set()
+                package_prefix = f"{package_name}."
+                import_statements = module_imports.imports
+                if isinstance(import_statements, list):
+                    for import_stmt in import_statements:
+                        import_info = import_stmt.import_info
+                        from_import = (
+                            import_info
+                            if isinstance(import_info, FromImport)
+                            and import_info.level == 0
+                            else None
+                        )
+                        if (
+                            from_import is None
+                            or not from_import.module_name.startswith(package_prefix)
+                        ):
+                            continue
+                        kept_pairs: list[tuple[str, str | None]] = []
+                        for name, alias in from_import.names_and_aliases:
+                            if alias is None and name in requested_aliases:
+                                moved_aliases.add(name)
+                                continue
+                            kept_pairs.append((name, alias))
+                        if len(kept_pairs) == len(from_import.names_and_aliases):
+                            continue
+                        import_stmt.import_info = FromImport(
+                            from_import.module_name,
+                            0,
+                            kept_pairs,
+                        )
+                    if moved_aliases:
+                        module_imports.add_import(
+                            FromImport(
+                                package_name,
+                                0,
+                                [(name, None) for name in sorted(moved_aliases)],
+                            )
+                        )
+                        module_imports.remove_duplicates()
+                        module_imports.sort_imports()
+                        updated_source: str = module_imports.get_changed_source()
+                        if updated_source != resource.read():
+                            if apply:
+                                resource.write(updated_source)
+                            result = updated_source
+        return result
 
     @staticmethod
     def add_import(
