@@ -29,9 +29,9 @@ from flext_infra.validate._rope_import_boundary import _RopeImportBoundaryBase
 class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
     """Enforce the §2.7 abstraction boundary at runtime-import level.
 
-    Banned-lib set is derived from ``c.ENFORCEMENT_LIBRARY_OWNERS`` keys
-    (flext-core SSOT). Canonical wrapper paths come from
-    ``c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS``. No parallel lists.
+    Banned-lib set + per-library ownership are both derived from
+    ``c.ENFORCEMENT_LIBRARY_OWNERS`` (flext-core SSOT): each banned library's
+    owning project tree is the only place that library may be imported.
     """
 
     _BANNED: ClassVar[frozenset[str]] = frozenset(c.ENFORCEMENT_LIBRARY_OWNERS)
@@ -48,18 +48,21 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
     })
 
     @override
-    def _is_allowlisted(self, file_path: Path) -> bool:
-        """Return True iff ``file_path`` is a canonical wrapper or non-runtime surface.
+    def _is_allowlisted(self, file_path: Path, module_name: str) -> bool:
+        """Return True iff ``file_path`` owns ``module_name`` per OWNERS SSOT.
 
-        Sources the canonical-wrapper marker list from
-        ``c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS`` (SSOT). Also exempts
-        ``tests/``, ``examples/``, and ``scripts/`` directories — only
-        runtime ``src/`` modules are gated by the abstraction boundary.
+        Ownership comes directly from ``c.ENFORCEMENT_LIBRARY_OWNERS``
+        (flext-core SSOT): each banned library has exactly one owning project,
+        and the entire ``<owner>/src/<package>/`` tree is allowed to import
+        that library. ``tests/``, ``examples/``, ``scripts/`` are runtime-
+        exempt globally.
         """
-        posix = file_path.as_posix()
-        if any(marker in posix for marker in c.Infra.TIER_WHITELIST_ALLOWLIST_MARKERS):
+        if any(part in self.NON_RUNTIME_DIR_PARTS for part in file_path.parts):
             return True
-        return any(part in self.NON_RUNTIME_DIR_PARTS for part in file_path.parts)
+        owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(self._top_module(module_name))
+        if owner is None:
+            return False
+        return f"/{owner}/src/" in file_path.as_posix()
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:

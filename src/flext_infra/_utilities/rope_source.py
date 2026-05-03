@@ -460,7 +460,10 @@ class FlextInfraUtilitiesRopeSource:
             match = c.Infra.FUNCTION_SIGNATURE_RE.search(signature)
             if match is None:
                 return None
-            return match.group("legacy_inner") or match.group("result_inner")
+            inner_result: str | None = match.group("legacy_inner") or match.group(
+                "result_inner"
+            )
+            return inner_result
         return None
 
     @classmethod

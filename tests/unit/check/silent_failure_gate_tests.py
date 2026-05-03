@@ -32,12 +32,13 @@ _CLEAN_UTILITIES = (
 
 
 def _create_gate_project(tmp_path: Path, *, name: str, utilities_src: str) -> Path:
-    return u.Tests.create_codegen_project(
+    project_dir: Path = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
         pkg_name=name.replace("-", "_"),
         files={"utilities.py": utilities_src},
     )
+    return project_dir
 
 
 class TestSilentFailureGate:

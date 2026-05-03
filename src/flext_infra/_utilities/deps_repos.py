@@ -138,18 +138,20 @@ class FlextInfraInternalSyncRepoMixin:
             cwd=project_root,
         )
         if branch.success:
-            branch_val = branch.value
-            current = branch_val.strip()
-            if current and current != c.Infra.GIT_HEAD:
-                return current
+            branch_val: str = branch.value
+            current_branch: str = branch_val.strip()
+            if current_branch and current_branch != c.Infra.GIT_HEAD:
+                return current_branch
         tag = u.Cli.capture(
             [c.Infra.GIT, "describe", "--tags", "--exact-match"],
             cwd=project_root,
         )
         if tag.success:
-            tag_val = tag.value
-            return tag_val.strip()
-        return c.Infra.GIT_MAIN
+            tag_val: str = tag.value
+            tag_name: str = tag_val.strip()
+            return tag_name
+        default_branch: str = c.Infra.GIT_MAIN
+        return default_branch
 
     def synthesized_repo_map(
         self,

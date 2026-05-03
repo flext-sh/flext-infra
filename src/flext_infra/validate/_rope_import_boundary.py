@@ -62,11 +62,7 @@ class _RopeImportBoundaryBase(s[bool]):
         with u.Infra.open_project(workspace_root) as project:
             for resource in u.Infra.python_resources(project):
                 file_path = u.Infra.resource_file_path(project, resource)
-                if (
-                    file_path is None
-                    or not self._is_in_scope(file_path)
-                    or self._is_allowlisted(file_path)
-                ):
+                if file_path is None or not self._is_in_scope(file_path):
                     continue
                 module_imports = u.Infra.get_module_imports(project, resource)
                 if module_imports is None:
@@ -80,8 +76,8 @@ class _RopeImportBoundaryBase(s[bool]):
         """Default: every traversed module is in scope. Override to narrow."""
         return True
 
-    def _is_allowlisted(self, _file_path: Path) -> bool:
-        """Default: nothing is allowlisted. Override to exempt canonical wrappers."""
+    def _is_allowlisted(self, _file_path: Path, _module_name: str) -> bool:
+        """Per (file, module) allowlist check. Override to exempt canonical owners."""
         return False
 
     def _violations_for_module(
@@ -94,11 +90,15 @@ class _RopeImportBoundaryBase(s[bool]):
         for stmt in u.Infra.import_statements(module_imports):
             module_name = u.Infra.import_statement_module_name(stmt)
             if module_name is not None:
-                if self._top_module(module_name) in self._BANNED:
+                if self._top_module(
+                    module_name
+                ) in self._BANNED and not self._is_allowlisted(file_path, module_name):
                     out.append(self._format_violation(file_path, module_name))
                 continue
             for imported, _alias in u.Infra.import_statement_names_and_aliases(stmt):
-                if self._top_module(imported) in self._BANNED:
+                if self._top_module(
+                    imported
+                ) in self._BANNED and not self._is_allowlisted(file_path, imported):
                     out.append(self._format_violation(file_path, imported))
         return tuple(out)
 

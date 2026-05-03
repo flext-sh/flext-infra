@@ -3,7 +3,7 @@ from flext_infra.__version__ import FlextInfraVersion
 
 
 def test_version_diag() -> None:
-    version_value = infra_pkg.__version__
-    if not isinstance(version_value, str):
-        version_value = version_value.__version__
+    if "__version__" in infra_pkg.__dict__:
+        del infra_pkg.__dict__["__version__"]
+    version_value: str = infra_pkg.__version__
     assert version_value == FlextInfraVersion.__version__

@@ -6,8 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraProjectMigrator
-from tests import u
+from flext_infra import FlextInfraProjectMigrator, m
+from tests import t, u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorDeps:
@@ -39,7 +39,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDeps:
             pyproject='[tool.poetry.dependencies]\nflext-core = "^0.1.0"\n',
             base_mk="base.mk",
         )
-        migrations = tm.ok(migrator.execute())
+        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(migrator.execute())
         tm.that(
             any("already includes" in change for change in migrations[0].changes),
             eq=True,
@@ -50,7 +50,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDeps:
             tmp_path,
             pyproject="[tool]\n",
         )
-        migrations = tm.ok(migrator.execute())
+        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(migrator.execute())
         tm.that(
             any("flext-core dependency" in change for change in migrations[0].changes),
             eq=True,
@@ -64,7 +64,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDeps:
             tmp_path,
             pyproject="[tool.poetry]\ndependencies = []\n",
         )
-        migrations = tm.ok(migrator.execute())
+        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(migrator.execute())
         tm.that(
             any("flext-core dependency" in change for change in migrations[0].changes),
             eq=True,

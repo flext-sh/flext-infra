@@ -61,9 +61,9 @@ class TestsFlextInfraInfraVersionExtra:
 
     def test_module_level_version_is_string(self) -> None:
         """Test that module-level __version__ is a string."""
-        version_value = infra_pkg.__version__
-        if not isinstance(version_value, str):
-            version_value = version_value.__version__
+        if "__version__" in infra_pkg.__dict__:
+            del infra_pkg.__dict__["__version__"]
+        version_value: str = infra_pkg.__version__
         assert isinstance(version_value, str)
 
     def test_module_level_version_info_is_tuple(self) -> None:
@@ -100,9 +100,7 @@ class TestsFlextInfraInfraVersionExtra:
         # shadowing the lazy string export. Force re-resolution.
         if "__version__" in infra_pkg.__dict__:
             del infra_pkg.__dict__["__version__"]
-        version_value = infra_pkg.__version__
-        if not isinstance(version_value, str):
-            version_value = version_value.__version__
+        version_value: str = infra_pkg.__version__
         assert version_value == FlextInfraVersion.__version__
 
     def test_module_level_version_info_matches_class_version_info(self) -> None:

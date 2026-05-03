@@ -165,14 +165,14 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return parsed.body
 
     @staticmethod
-    def _line_offsets(source: str) -> t.SequenceOf[int]:
+    def _line_offsets(source: str) -> tuple[int, ...]:
         offsets = [0]
         for line in source.splitlines(keepends=True):
             offsets.append(offsets[-1] + len(line))
-        return offsets
+        return tuple(offsets)
 
     @staticmethod
-    def _offset(line_offsets: t.SequenceOf[int], line: int, column: int) -> int:
+    def _offset(line_offsets: tuple[int, ...], line: int, column: int) -> int:
         return line_offsets[line - 1] + column
 
 

@@ -454,7 +454,10 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         package_names: t.StrSequence,
         alias_name: str,
     ) -> str:
-        for package_name in reversed(tuple(name for name in package_names if name)):
+        candidate_packages: tuple[str, ...] = tuple(
+            name for name in package_names if name
+        )
+        for package_name in reversed(candidate_packages):
             if alias_name in self._export_names_for_package(package_name):
                 return package_name
         return ""

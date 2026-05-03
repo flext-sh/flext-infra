@@ -7,6 +7,7 @@ from typing import override
 
 from flext_infra import (
     FlextInfraRopeTransformer,
+    m,
     t,
     u,
 )
@@ -200,7 +201,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
 
     def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:
         """Check policy for a specific propagation mode."""
-        policy = u.Infra.policy_for_symbol(
+        policy: m.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
@@ -208,16 +209,19 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         if policy is None:
             return True
         if policy_key == "propagate_imports":
-            return policy.propagate_imports
+            propagate_imports: bool = policy.propagate_imports
+            return propagate_imports
         if policy_key == "propagate_name_references":
-            return policy.propagate_name_references
+            propagate_name_references: bool = policy.propagate_name_references
+            return propagate_name_references
         if policy_key == "propagate_attribute_references":
-            return policy.propagate_attribute_references
+            propagate_attribute_references: bool = policy.propagate_attribute_references
+            return propagate_attribute_references
         return False
 
     def _blocked_by_prefix(self, symbol_name: str) -> bool:
         """Check if symbol is blocked by prefix policy."""
-        policy = u.Infra.policy_for_symbol(
+        policy: m.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,

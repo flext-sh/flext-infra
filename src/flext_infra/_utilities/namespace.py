@@ -160,7 +160,9 @@ class FlextInfraUtilitiesCodegenNamespace:
             else resolved_root.name
         )
         class_name_source = (
-            project_name if project_name != resolved_root.name else package_name
+            project_name
+            if project_name != resolved_root.name
+            else package_name.split(".", maxsplit=1)[0].replace("_", "-")
         )
         src_dir = resolved_root / c.Infra.DEFAULT_SRC_DIR
         package_dir = src_dir / Path(*package_name.split("."))

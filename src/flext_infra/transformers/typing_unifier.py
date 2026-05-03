@@ -333,7 +333,8 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
     def _canonical_import_module(self) -> str:
         if self._file_path is None:
             return ""
-        return u.Infra.package_name(self._file_path).split(".", maxsplit=1)[0]
+        package_name: str = u.Infra.package_name(self._file_path)
+        return package_name.split(".", maxsplit=1)[0]
 
     @staticmethod
     def _import_insertion_offset(source: str) -> int:

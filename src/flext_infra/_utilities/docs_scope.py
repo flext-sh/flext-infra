@@ -334,12 +334,14 @@ class FlextInfraUtilitiesDocsScope:
             for item in packages:
                 package_path = Path(str(item).strip())
                 if package_path.parts:
-                    return package_path.parts[-1]
+                    package_parts: tuple[str, ...] = package_path.parts
+                    return package_parts[-1]
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if src_dir.is_dir():
             for child in sorted(src_dir.iterdir()):
                 if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                    return child.name
+                    child_path: Path = child
+                    return child_path.name
         project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
             project_root,
             payload,

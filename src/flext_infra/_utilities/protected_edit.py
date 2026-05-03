@@ -26,16 +26,16 @@ class FlextInfraUtilitiesProtectedEdit:
     def _normalize_lint_line(line: str) -> str:
         if c.Infra.CODE_FRAME_RE.match(line) or c.Infra.CODE_FRAME_BODY_RE.match(line):
             return ""
-        normalized = c.Infra.LINE_COL_RE.sub("", line)
-        normalized = c.Infra.UNUSED_IMPORT_RE.sub(
+        normalized_line: str = c.Infra.LINE_COL_RE.sub("", line)
+        normalized_without_unused_imports: str = c.Infra.UNUSED_IMPORT_RE.sub(
             lambda match: (
                 f"`{match.group(1).rsplit('.', maxsplit=1)[-1]}` imported but unused"
             ),
-            normalized,
+            normalized_line,
         )
-        if c.Infra.LINT_SUMMARY_RE.match(normalized):
+        if c.Infra.LINT_SUMMARY_RE.match(normalized_without_unused_imports):
             return ""
-        return normalized.strip()
+        return normalized_without_unused_imports.strip()
 
     @staticmethod
     def _selected_lint_tools(

@@ -358,7 +358,7 @@ class FlextInfraUtilitiesRopeImports:
         )
         module_imports.remove_duplicates()
         module_imports.sort_imports()
-        updated_source = module_imports.get_changed_source()
+        updated_source: str = module_imports.get_changed_source()
         if updated_source == resource.read():
             return None
         if apply:
@@ -386,7 +386,7 @@ class FlextInfraUtilitiesRopeImports:
         )
         module_imports.remove_duplicates()
         module_imports.sort_imports()
-        updated = module_imports.get_changed_source()
+        updated: str = module_imports.get_changed_source()
         if updated == resource.read():
             return None
         if apply:
@@ -437,7 +437,7 @@ class FlextInfraUtilitiesRopeImports:
             return None
         module_imports.remove_duplicates()
         module_imports.sort_imports()
-        updated = module_imports.get_changed_source()
+        updated: str = module_imports.get_changed_source()
         if updated == resource.read():
             return None
         if apply:

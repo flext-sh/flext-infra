@@ -366,7 +366,7 @@ class FlextInfraUtilitiesDocsRender:
         template = FlextInfraCodegenGeneration.get_template(
             c.Infra.TEMPLATE_MKDOCS_PROJECT,
         )
-        return template.render(
+        rendered_template: str = template.render(
             site_title=str(data.get("site_title", "")).strip() or scope.name,
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
@@ -382,6 +382,7 @@ class FlextInfraUtilitiesDocsRender:
                 ("src",),
             ),
         )
+        return rendered_template
 
     @staticmethod
     def docs_overview_page(
@@ -474,7 +475,7 @@ class FlextInfraUtilitiesDocsRender:
         template = FlextInfraCodegenGeneration.get_template(
             c.Infra.TEMPLATE_MKDOCS_ROOT,
         )
-        return template.render(
+        rendered_template: str = template.render(
             site_title=(str(data.get("site_title", "")).strip() or "FLEXT Workspace"),
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
@@ -489,6 +490,7 @@ class FlextInfraUtilitiesDocsRender:
                 (),
             ),
         )
+        return rendered_template
 
     @staticmethod
     def docs_root_overview_page(
