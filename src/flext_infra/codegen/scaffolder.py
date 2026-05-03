@@ -179,7 +179,7 @@ class FlextInfraCodegenScaffolder(s[str]):
                 files_created.append(str(filepath))
                 continue
             u.write_file(filepath, content, encoding=c.Cli.ENCODING_DEFAULT)
-            u.Infra.run_ruff_fix(filepath)
+            _ = u.Infra.run_ruff_fix(filepath)
             files_created.append(str(filepath))
 
 

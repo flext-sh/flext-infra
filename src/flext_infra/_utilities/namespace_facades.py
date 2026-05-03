@@ -184,6 +184,27 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             )
 
     @staticmethod
+    def _all_block_end_index(*, lines: list[str], start_index: int) -> int:
+        r"""Return the last line index of an ``__all__`` declaration block.
+
+        Handles both single-line (``__all__: list[str] = ["A", "B"]``) and
+        multi-line (``__all__: list[str] = [\n    "A",\n    "B",\n]``)
+        forms. Counts opening and closing brackets to skip ``list[str]``
+        annotation brackets and only stop on the closing bracket of the
+        list literal itself.
+        """
+        depth = 0
+        for offset, line in enumerate(lines[start_index:]):
+            segment = line.partition("=")[2] if offset == 0 else line
+            if not segment:
+                continue
+            depth += segment.count("[")
+            depth -= segment.count("]")
+            if depth == 0 and "]" in segment:
+                return start_index + offset
+        return start_index
+
+    @staticmethod
     def _patch_existing_facade_file(
         *,
         target_path: Path,
@@ -250,7 +271,13 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             if all_index < 0:
                 updated_lines.extend(["", all_line])
             else:
-                updated_lines[all_index] = all_line
+                end_index = (
+                    FlextInfraUtilitiesRefactorNamespaceFacades._all_block_end_index(
+                        lines=updated_lines,
+                        start_index=all_index,
+                    )
+                )
+                updated_lines[all_index : end_index + 1] = [all_line]
             updated_source = "\n".join(updated_lines).rstrip() + "\n"
         if updated_source != source:
             _ = target_path.write_text(

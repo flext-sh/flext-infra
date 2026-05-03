@@ -4,32 +4,42 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u
-from flext_infra import c, t
+from flext_cli import r, u
+from flext_infra import c, p, t
 
 
 class FlextInfraUtilitiesCodegen:
     """Compose all codegen utility concerns for ``u.Infra``."""
 
     @staticmethod
-    def run_ruff_fix(path: Path, *, quiet: bool = False) -> bool:
-        """Run Ruff fix + format for one file path; return success status."""
+    def run_ruff_fix(path: Path, *, quiet: bool = False) -> p.Result[None]:
+        """Run Ruff fix + format for one file path.
+
+        Returns ``r.ok(None)`` on success, ``r.fail(...)`` carrying the
+        underlying CLI error when either ``ruff check --fix`` or
+        ``ruff format`` exits non-zero. ``quiet=True`` suppresses the
+        CLI error log; the failure still surfaces via ``r``.
+        """
         cwd = path.parent if path.suffix else path
         check_result = u.Cli.capture(
             [c.Infra.RUFF, "check", "--fix", str(path)],
             cwd=cwd,
         )
         if check_result.failure:
+            message = check_result.error or f"ruff check --fix failed: {path}"
             if not quiet:
-                u.Cli.error(check_result.error or f"ruff check --fix failed: {path}")
-            return False
+                u.Cli.error(message)
+            return r[None].fail(message)
         format_result = u.Cli.capture(
             [c.Infra.RUFF, "format", str(path)],
             cwd=cwd,
         )
-        if format_result.failure and not quiet:
-            u.Cli.error(format_result.error or f"ruff format failed: {path}")
-        return not format_result.failure
+        if format_result.failure:
+            message = format_result.error or f"ruff format failed: {path}"
+            if not quiet:
+                u.Cli.error(message)
+            return r[None].fail(message)
+        return r[None].ok(None)
 
     @staticmethod
     def generate_module_skeleton(

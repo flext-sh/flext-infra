@@ -49,7 +49,8 @@ class FlextInfraUtilitiesGithubPr:
         )
         failures = 0
         for repo_root in repos:
-            failed = cls._github_pr_process_repo(repo_root, context)
+            outcome_result = cls._github_pr_process_repo(repo_root, context)
+            failed = outcome_result.failure or outcome_result.unwrap().exit_code != 0
             if failed:
                 failures += 1
                 if request.fail_fast:
@@ -69,15 +70,22 @@ class FlextInfraUtilitiesGithubPr:
         cls,
         repo_root: Path,
         context: m.Infra.GithubPullRequestWorkspaceContext,
-    ) -> bool:
-        """Process one repository during workspace pull-request execution."""
+    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+        """Process one repository during workspace pull-request execution.
+
+        ``r.ok(outcome)`` when the per-repo run produced an outcome (which
+        the caller appends to ``context.outcomes``); the outcome's
+        ``exit_code`` still has to be inspected to know if it succeeded.
+        ``r.fail(reason)`` when the underlying ``_run_github_pull_request_for_repo``
+        could not produce an outcome at all.
+        """
         if context.request.branch:
             _ = u.Cli.run_checked(
                 [c.Infra.GIT, "checkout", context.request.branch],
                 cwd=repo_root,
             )
         if context.request.checkpoint:
-            cls._github_pr_checkpoint(repo_root, context.request.branch)
+            _ = cls._github_pr_checkpoint(repo_root, context.request.branch)
         run_result: p.Result[m.Infra.GithubPullRequestOutcome] = (
             cls._run_github_pull_request_for_repo(
                 repo_root=repo_root,
@@ -85,12 +93,11 @@ class FlextInfraUtilitiesGithubPr:
                 request=context.request,
             )
         )
-        if run_result.success:
-            outcome = run_result.value
-            context.outcomes.append(outcome)
-            failed: bool = outcome.exit_code != 0
-            return failed
-        return True
+        if run_result.failure:
+            return run_result
+        outcome = run_result.value
+        context.outcomes.append(outcome)
+        return r[m.Infra.GithubPullRequestOutcome].ok(outcome)
 
     @classmethod
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> p.Result[bool]:

@@ -14,8 +14,12 @@ from rope.base.exceptions import RopeError
 from flext_cli import cli
 from flext_infra import (
     FlextInfraCodegenLazyInit,
+    FlextInfraCompatibilityAliasDetector,
+    FlextInfraManualTypingAliasDetector,
+    FlextInfraMROCompletenessDetector,
     FlextInfraProjectSelectionServiceBase,
     FlextInfraRopeWorkspace,
+    FlextInfraRuntimeAliasDetector,
     c,
     m,
     p,
@@ -246,6 +250,15 @@ class FlextInfraRefactorCensus(
                 )
             except _ROPE_SAFE_EXCEPTIONS:
                 continue
+            project = (
+                module_objects[0].project
+                if module_objects
+                else module.project_root.name
+                if module.project_root is not None
+                else ""
+            )
+            if not project:
+                continue
             objects = tuple(
                 item
                 for item in module_objects
@@ -255,34 +268,34 @@ class FlextInfraRefactorCensus(
                     selected_families=selected_families,
                 )
             )
-            if not objects:
-                continue
-            project = objects[0].project
-            project_objects[project].extend(objects)
+            if objects:
+                project_objects[project].extend(objects)
             try:
                 violations, fixes = self._module_rules(
                     rope,
                     module.file_path,
-                    objects=objects,
+                    objects=module_objects,
+                    project_name=project,
                     applied=applied,
+                    kind_names=kind_names,
+                    rule_names=rule_names,
                 )
             except _ROPE_SAFE_EXCEPTIONS:
                 continue
-            project_violations[project].extend(
-                violation
-                for violation in violations
-                if self._include_rule(violation.kind, rule_names=rule_names)
-            )
-            project_fixes[project].extend(
-                fix
-                for fix in fixes
-                if self._include_rule("runtime_alias", rule_names=rule_names)
-            )
+            if not objects and not violations and not fixes:
+                continue
+            project_violations[project].extend(violations)
+            project_fixes[project].extend(fixes)
         duplicates = self._duplicate_groups(tuple(project_objects.values()))
         duplicate_keys = frozenset(
             self._object_key(item)
             for group in duplicates
             for item in group.definitions[1:]
+        )
+        project_names = tuple(
+            sorted(
+                set(project_objects) | set(project_violations) | set(project_fixes),
+            )
         )
         project_reports = tuple(
             self._project_report(
@@ -293,7 +306,7 @@ class FlextInfraRefactorCensus(
                 duplicate_keys=duplicate_keys,
                 rule_names=rule_names,
             )
-            for project in sorted(project_objects)
+            for project in project_names
         )
         if self.effective_dry_run:
             project_reports = self._validated_project_reports(
@@ -425,7 +438,7 @@ class FlextInfraRefactorCensus(
                     self.root,
                     candidate,
                     gates=self.dry_run_gate_names,
-                )
+                ).unwrap_or(False)
             )
             validated_reports.append(
                 report.model_copy(
@@ -443,39 +456,194 @@ class FlextInfraRefactorCensus(
         file_path: Path,
         *,
         objects: tuple[m.Infra.Census.Object, ...],
+        project_name: str,
         applied: frozenset[str],
+        kind_names: t.StrSequence | None,
+        rule_names: t.StrSequence | None,
     ) -> tuple[tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]]:
         convention = rope.convention(file_path)
-        layout = convention.project_layout
-        alias = convention.module_policy.expected_alias or ""
-        family = convention.module_policy.expected_family or ""
-        if layout is None or not alias or not family:
-            return (), ()
-        target_name = f"{layout.class_stem}{family}"
-        target = next(
-            (item for item in objects if item.scope_path == target_name), None
-        )
-        if target is None or f"{alias} = {target_name}" in rope.source(file_path):
-            return (), ()
-        fix = m.Infra.Census.Fix(
-            object_name=target_name,
-            action="ensure_runtime_alias",
-            source_file=str(file_path),
-            files_changed=1,
-            applied=self._fix_key(file_path, target_name) in applied,
-        )
-        return (
-            (
-                self._violation(
-                    target,
-                    kind="runtime_alias",
-                    description=f"Missing runtime alias '{alias}' for governed facade",
-                    fixable=True,
-                    fix_action="ensure_runtime_alias",
-                ),
-            ),
-            (fix,),
-        )
+        ctx = self._detector_context(rope, file_path)
+        selected_kinds = frozenset(kind_names) if kind_names else frozenset()
+        violations: list[m.Infra.Census.Violation] = []
+        fixes: list[m.Infra.Census.Fix] = []
+
+        if self._include_rule("runtime_alias", rule_names=rule_names):
+            runtime_target = self._runtime_alias_target(convention, objects)
+            for detector_violation in FlextInfraRuntimeAliasDetector.detect_file(ctx):
+                object_name = (
+                    runtime_target.name
+                    if runtime_target is not None
+                    else detector_violation.alias
+                )
+                object_kind = (
+                    runtime_target.kind if runtime_target is not None else "assignment"
+                )
+                if selected_kinds and object_kind not in selected_kinds:
+                    continue
+                line = detector_violation.line or (
+                    runtime_target.line if runtime_target is not None else 0
+                )
+                fixable = runtime_target is not None
+                action = "rewrite_runtime_alias" if fixable else ""
+                violations.append(
+                    self._raw_violation(
+                        project=project_name,
+                        object_name=object_name,
+                        object_kind=object_kind,
+                        kind="runtime_alias",
+                        file_path=file_path,
+                        line=line,
+                        description=detector_violation.detail,
+                        fixable=fixable,
+                        fix_action=action,
+                    )
+                )
+                if fixable:
+                    fixes.append(
+                        m.Infra.Census.Fix(
+                            object_name=object_name,
+                            action=action,
+                            source_file=str(file_path),
+                            files_changed=1,
+                            applied=self._fix_key(file_path, object_name, action)
+                            in applied,
+                        )
+                    )
+
+        if self._include_rule("manual_typing_alias", rule_names=rule_names):
+            for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
+                ctx,
+            ):
+                matched = self._named_object(objects, detector_violation.name)
+                object_kind = matched.kind if matched is not None else "assignment"
+                if selected_kinds and object_kind not in selected_kinds:
+                    continue
+                action = (
+                    "rewrite_manual_typing_alias"
+                    if ctx.project_root is not None
+                    else ""
+                )
+                violations.append(
+                    self._raw_violation(
+                        project=project_name,
+                        object_name=detector_violation.name,
+                        object_kind=object_kind,
+                        kind="manual_typing_alias",
+                        file_path=file_path,
+                        line=detector_violation.line,
+                        description=detector_violation.detail,
+                        fixable=bool(action),
+                        fix_action=action,
+                    )
+                )
+                if action:
+                    fixes.append(
+                        m.Infra.Census.Fix(
+                            object_name=detector_violation.name,
+                            action=action,
+                            source_file=str(file_path),
+                            target_file=str(
+                                convention.package_dir / c.Infra.TYPINGS_PY
+                            ),
+                            files_changed=2,
+                            applied=self._fix_key(
+                                file_path,
+                                detector_violation.name,
+                                action,
+                            )
+                            in applied,
+                        )
+                    )
+
+        if self._include_rule("compatibility_alias", rule_names=rule_names):
+            for detector_violation in FlextInfraCompatibilityAliasDetector.detect_file(
+                ctx,
+            ):
+                matched = self._named_object(objects, detector_violation.alias_name)
+                object_kind = matched.kind if matched is not None else "assignment"
+                if selected_kinds and object_kind not in selected_kinds:
+                    continue
+                action = "rewrite_compatibility_alias"
+                violations.append(
+                    self._raw_violation(
+                        project=project_name,
+                        object_name=detector_violation.alias_name,
+                        object_kind=object_kind,
+                        kind="compatibility_alias",
+                        file_path=file_path,
+                        line=detector_violation.line,
+                        description=(
+                            "Compatibility alias "
+                            f"'{detector_violation.alias_name}' should use "
+                            f"'{detector_violation.target_name}' directly"
+                        ),
+                        fixable=True,
+                        fix_action=action,
+                    )
+                )
+                fixes.append(
+                    m.Infra.Census.Fix(
+                        object_name=detector_violation.alias_name,
+                        action=action,
+                        source_file=str(file_path),
+                        files_changed=1,
+                        applied=self._fix_key(
+                            file_path,
+                            detector_violation.alias_name,
+                            action,
+                        )
+                        in applied,
+                    )
+                )
+
+        if self._include_rule("mro_completeness", rule_names=rule_names):
+            parse_failures: list[m.Infra.ParseFailureViolation] = []
+            mro_ctx = self._detector_context(
+                rope,
+                file_path,
+                parse_failures=parse_failures,
+            )
+            for detector_violation in FlextInfraMROCompletenessDetector.detect_file(
+                mro_ctx,
+            ):
+                matched = self._named_object(objects, detector_violation.facade_class)
+                object_kind = matched.kind if matched is not None else "class"
+                if selected_kinds and object_kind not in selected_kinds:
+                    continue
+                action = "rewrite_mro_completeness"
+                violations.append(
+                    self._raw_violation(
+                        project=project_name,
+                        object_name=detector_violation.facade_class,
+                        object_kind=object_kind,
+                        kind="mro_completeness",
+                        file_path=file_path,
+                        line=(
+                            matched.line
+                            if matched is not None
+                            else detector_violation.line
+                        ),
+                        description=detector_violation.suggestion,
+                        fixable=True,
+                        fix_action=action,
+                    )
+                )
+                fixes.append(
+                    m.Infra.Census.Fix(
+                        object_name=detector_violation.facade_class,
+                        action=action,
+                        source_file=str(file_path),
+                        files_changed=1,
+                        applied=self._fix_key(
+                            file_path,
+                            detector_violation.facade_class,
+                            action,
+                        )
+                        in applied,
+                    )
+                )
+
+        return (tuple(violations), tuple(fixes))
 
     def _apply_supported_fixes(
         self,
@@ -484,27 +652,81 @@ class FlextInfraRefactorCensus(
     ) -> frozenset[str]:
         applied: set[str] = set()
         touched_paths: set[Path] = set()
+        requested_fixes: dict[tuple[Path, str], set[str]] = defaultdict(set)
         for project in report.projects:
             for fix in project.fixes:
-                file_path = Path(fix.source_file)
-                convention = rope.convention(file_path)
-                alias = convention.module_policy.expected_alias or ""
-                if fix.action != "ensure_runtime_alias" or not alias:
-                    continue
-                source = rope.source(file_path)
-                updated = u.Infra.ensure_runtime_alias(
-                    source,
-                    alias=alias,
-                    target_name=fix.object_name,
+                requested_fixes[Path(fix.source_file), fix.action].add(
+                    fix.object_name,
                 )
-                if updated == source:
+        for (file_path, action), object_names in requested_fixes.items():
+            parse_failures: list[m.Infra.ParseFailureViolation] = []
+            ctx = self._detector_context(
+                rope,
+                file_path,
+                parse_failures=parse_failures,
+            )
+            changed = False
+            if action == "rewrite_runtime_alias":
+                violations = FlextInfraRuntimeAliasDetector.detect_file(ctx)
+                if not violations:
                     continue
-                resource = rope.resource(file_path)
-                if resource is None:
+                u.Infra.rewrite_runtime_alias_violations(py_files=(file_path,))
+                changed = True
+            elif action == "rewrite_manual_typing_alias":
+                if ctx.project_root is None:
                     continue
-                resource.write(updated)
-                applied.add(self._fix_key(file_path, fix.object_name))
-                touched_paths.add(file_path.resolve())
+                violations = tuple(
+                    violation
+                    for violation in FlextInfraManualTypingAliasDetector.detect_file(
+                        ctx,
+                    )
+                    if violation.name in object_names
+                )
+                if not violations:
+                    continue
+                u.Infra.rewrite_manual_typing_alias_violations(
+                    project_root=ctx.project_root,
+                    violations=violations,
+                    parse_failures=parse_failures,
+                )
+                changed = True
+            elif action == "rewrite_compatibility_alias":
+                violations = tuple(
+                    violation
+                    for violation in FlextInfraCompatibilityAliasDetector.detect_file(
+                        ctx,
+                    )
+                    if violation.alias_name in object_names
+                )
+                if not violations:
+                    continue
+                u.Infra.rewrite_compatibility_alias_violations(
+                    violations=violations,
+                    parse_failures=parse_failures,
+                )
+                changed = True
+            elif action == "rewrite_mro_completeness":
+                violations = tuple(
+                    violation
+                    for violation in FlextInfraMROCompletenessDetector.detect_file(
+                        ctx,
+                    )
+                    if violation.facade_class in object_names
+                )
+                if not violations:
+                    continue
+                u.Infra.rewrite_mro_completeness_violations(
+                    violations=violations,
+                    parse_failures=parse_failures,
+                )
+                changed = True
+            if not changed:
+                continue
+            touched_paths.add(file_path.resolve())
+            applied.update(
+                self._fix_key(file_path, object_name, action)
+                for object_name in object_names
+            )
         for candidate in report.removal_candidates:
             if u.Infra.apply_simple_removal_candidate(
                 rope,
@@ -617,6 +839,88 @@ class FlextInfraRefactorCensus(
         return rule_names is None or rule in frozenset(rule_names)
 
     @staticmethod
+    def _named_object(
+        objects: tuple[m.Infra.Census.Object, ...],
+        name: str,
+    ) -> m.Infra.Census.Object | None:
+        return next(
+            (item for item in objects if name in {item.scope_path, item.name}),
+            None,
+        )
+
+    @staticmethod
+    def _detector_context(
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        *,
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
+        | None = None,
+    ) -> m.Infra.DetectorContext:
+        convention = rope.convention(file_path)
+        layout = convention.project_layout
+        module_entry = rope.module(file_path)
+        project_root = (
+            layout.project_root
+            if layout is not None
+            else module_entry.project_root
+            if module_entry is not None
+            else None
+        )
+        project_name = (
+            layout.project_name
+            if layout is not None
+            else project_root.name
+            if project_root is not None
+            else ""
+        )
+        return m.Infra.DetectorContext(
+            file_path=file_path,
+            rope_project=rope.rope_project,
+            parse_failures=parse_failures,
+            project_name=project_name,
+            project_root=project_root,
+        )
+
+    @staticmethod
+    def _runtime_alias_target(
+        convention: m.Infra.RopeModuleConvention,
+        objects: tuple[m.Infra.Census.Object, ...],
+    ) -> m.Infra.Census.Object | None:
+        layout = convention.project_layout
+        family = convention.module_policy.expected_family or ""
+        if layout is None or not family:
+            return None
+        return FlextInfraRefactorCensus._named_object(
+            objects,
+            f"{layout.class_stem}{family}",
+        )
+
+    @staticmethod
+    def _raw_violation(
+        *,
+        project: str,
+        object_name: str,
+        object_kind: str,
+        kind: str,
+        file_path: Path,
+        line: int,
+        description: str,
+        fixable: bool = False,
+        fix_action: str = "",
+    ) -> m.Infra.Census.Violation:
+        return m.Infra.Census.Violation(
+            project=project,
+            object_name=object_name,
+            object_kind=object_kind,
+            kind=kind,
+            file_path=str(file_path),
+            line=line,
+            fixable=fixable,
+            fix_action=fix_action,
+            description=description,
+        )
+
+    @staticmethod
     def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
         if not family_names:
             return frozenset()
@@ -634,16 +938,16 @@ class FlextInfraRefactorCensus(
         fixable: bool = False,
         fix_action: str = "",
     ) -> m.Infra.Census.Violation:
-        return m.Infra.Census.Violation(
+        return FlextInfraRefactorCensus._raw_violation(
             project=item.project,
             object_name=item.name,
             object_kind=item.kind,
             kind=kind,
-            file_path=item.file_path,
+            file_path=Path(item.file_path),
             line=item.line,
+            description=description,
             fixable=fixable,
             fix_action=fix_action,
-            description=description,
         )
 
     @staticmethod
@@ -696,8 +1000,9 @@ class FlextInfraRefactorCensus(
         return f"{item.file_path}:{item.line}:{item.scope_path}:{item.kind}"
 
     @staticmethod
-    def _fix_key(file_path: Path, object_name: str) -> str:
-        return f"{file_path.resolve()}::{object_name}"
+    def _fix_key(file_path: Path, object_name: str, action: str = "") -> str:
+        suffix = f"::{action}" if action else ""
+        return f"{file_path.resolve()}::{object_name}{suffix}"
 
     @classmethod
     def _impact_map_results(

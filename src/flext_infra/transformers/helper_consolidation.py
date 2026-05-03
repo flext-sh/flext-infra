@@ -92,7 +92,11 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
             else:
                 params_str = match.group(1)
                 param_names = u.Infra.parse_param_names(params_str)
-                if any(r not in param_names for r in policy.required_parameters) or any(f in param_names for f in policy.forbidden_parameters) or (not policy.allow_vararg and "*args" in params_str):
+                if (
+                    any(r not in param_names for r in policy.required_parameters)
+                    or any(f in param_names for f in policy.forbidden_parameters)
+                    or (not policy.allow_vararg and "*args" in params_str)
+                ):
                     result = False
                 else:
                     result = not (not policy.allow_kwarg and "**" in params_str)

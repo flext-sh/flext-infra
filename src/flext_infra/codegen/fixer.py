@@ -300,7 +300,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             for modified_file in sorted(ctx.files_modified):
                 path = Path(modified_file)
                 if path.is_file():
-                    u.Infra.run_ruff_fix(path, quiet=True)
+                    _ = u.Infra.run_ruff_fix(path, quiet=True)
         except c.EXC_OS_DECODING:
             u.Infra.restore_files(bak_paths)
             raise

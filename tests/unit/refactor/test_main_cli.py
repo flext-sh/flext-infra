@@ -66,6 +66,73 @@ class TestsFlextInfraRefactorMainCli:
         return workspace, service_file
 
     @staticmethod
+    def _build_runtime_alias_duplicate_workspace(
+        tmp_path: Path,
+    ) -> tuple[Path, Path]:
+        workspace, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "models.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "class FlextDemoModels:\n"
+                "    pass\n\n"
+                "m = FlextDemoModels\n"
+                "m = FlextDemoModels\n"
+            ),
+            encoding="utf-8",
+        )
+        return workspace, module_path
+
+    @staticmethod
+    def _build_compatibility_alias_workspace(
+        tmp_path: Path,
+    ) -> tuple[Path, Path]:
+        workspace, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "models.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "class NewThing:\n"
+                "    pass\n\n"
+                "LegacyThing = NewThing\n"
+            ),
+            encoding="utf-8",
+        )
+        return workspace, module_path
+
+    @staticmethod
+    def _build_mro_incomplete_workspace(tmp_path: Path) -> Path:
+        workspace, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        models_dir = package_root / "models"
+        models_dir.mkdir(parents=True, exist_ok=True)
+        TestsFlextInfraRefactorMainCli._write(
+            models_dir / "domain.py",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoModelsDomain:\n"
+            "    pass\n",
+        )
+        TestsFlextInfraRefactorMainCli._write(
+            package_root / "models.py",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoModels:\n"
+            "    pass\n\n"
+            "m = FlextDemoModels\n",
+        )
+        return workspace
+
+    @staticmethod
     def _build_test_only_workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
         TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
@@ -303,6 +370,124 @@ class TestsFlextInfraRefactorMainCli:
         source = module_path.read_text(encoding="utf-8")
         assert '"m"' in source
         assert "m = FlextDemoModels" in source
+
+    def test_refactor_census_reports_duplicate_runtime_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, _ = self._build_runtime_alias_duplicate_workspace(tmp_path)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("class",),
+            rules=("runtime_alias",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert report.fixes_total == 1
+        assert violations[0].kind == "runtime_alias"
+        assert violations[0].object_name == "FlextDemoModels"
+        assert "Found 2 'm = ...' assignments" in violations[0].description
+
+    def test_refactor_census_apply_rewrites_duplicate_runtime_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, module_path = self._build_runtime_alias_duplicate_workspace(tmp_path)
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "runtime_alias",
+        )
+
+        assert result == 0
+        source = module_path.read_text(encoding="utf-8")
+        assert source.count("m = FlextDemoModels") == 1
+
+    def test_refactor_census_reports_manual_typing_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, _ = self._build_basic_workspace(tmp_path)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("assignment",),
+            rules=("manual_typing_alias",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert report.fixes_total == 1
+        assert violations[0].kind == "manual_typing_alias"
+        assert violations[0].object_name == "PayloadMap"
+        assert violations[0].object_kind == "assignment"
+        assert "typings scope" in violations[0].description
+
+    def test_refactor_census_reports_compatibility_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, _ = self._build_compatibility_alias_workspace(tmp_path)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("assignment",),
+            rules=("compatibility_alias",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert report.fixes_total == 1
+        assert violations[0].kind == "compatibility_alias"
+        assert violations[0].object_name == "LegacyThing"
+        assert violations[0].object_kind == "assignment"
+        assert "should use 'NewThing' directly" in violations[0].description
+
+    def test_refactor_census_reports_mro_completeness(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_mro_incomplete_workspace(tmp_path)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("class",),
+            rules=("mro_completeness",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert report.fixes_total == 1
+        assert violations[0].kind == "mro_completeness"
+        assert violations[0].object_name == "FlextDemoModels"
+        assert violations[0].object_kind == "class"
+        assert "FlextDemoModelsDomain" in violations[0].description
 
     def test_refactor_census_flags_test_only_candidates(
         self,

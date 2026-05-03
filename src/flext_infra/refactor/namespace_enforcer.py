@@ -30,11 +30,6 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
             self._workspace_root,
         )
 
-    def _reload_rope_project(self) -> None:
-        """Refresh rope state after on-disk rewrites."""
-        self._rope_project.close()
-        self._rope_project = u.Infra.init_rope_project(self._workspace_root)
-
     @override
     def enforce(
         self,
@@ -102,7 +97,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
         if not (apply and violations and rewrite_fn is not None):
             return violations
         rewrite_fn(violations)
-        self._reload_rope_project()
+        self._rope_project.validate(self._rope_project.root)
         post_violations: t.MutableSequenceOf[V] = []
         for py_file in py_files:
             post_violations.extend(detect_fn(py_file))

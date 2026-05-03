@@ -11,7 +11,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, p, t
+from flext_infra import FlextInfraModelsRefactorCensus as mrc, c, m, p, r, t
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
@@ -266,14 +266,20 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         gates: t.StrSequence,
-    ) -> bool:
-        """Preview one simple removal candidate and require clean Ruff/Pyrefly gates."""
+    ) -> p.Result[bool]:
+        """Preview one simple removal candidate, requiring clean gates.
+
+        ``r.ok(True)`` when the simulated removal cleared the gate
+        snapshot. ``r.ok(False)`` when the candidate has no removal
+        sources to project. ``r.fail(...)`` when ``preview_source_writes``
+        produced gate failures — the message lists the failing tools.
+        """
         updates = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources(
             rope,
             candidate,
         )
         if updates is None:
-            return False
+            return r[bool].ok(False)
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
@@ -290,15 +296,18 @@ class FlextInfraUtilitiesRefactorCensus:
                         apply=True,
                     )
 
-        result = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
+        applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
             updates,
             workspace=workspace,
             gates=gates,
             post_write=_post_write,
         )
         rope.reload()
-        applied: bool = result[0]
-        return applied
+        if applied:
+            return r[bool].ok(True)
+        return r[bool].fail(
+            "; ".join(reports) if reports else "preview gates rejected removal",
+        )
 
     @staticmethod
     def apply_simple_removal_candidate(
@@ -308,7 +317,7 @@ class FlextInfraUtilitiesRefactorCensus:
         *,
         gates: t.StrSequence,
         post_apply_hook: _CensusCallable[[Path], None] | None = None,
-    ) -> bool:
+    ) -> p.Result[bool]:
         """Apply one simple removal candidate permanently, gates-validated.
 
         ``post_apply_hook`` is executed **after** sources are written and rope
@@ -324,7 +333,7 @@ class FlextInfraUtilitiesRefactorCensus:
             candidate,
         )
         if updates is None:
-            return False
+            return r[bool].ok(False)
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
@@ -344,7 +353,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 with contextlib.suppress(Exception):
                     post_apply_hook(workspace)
 
-        result = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+        applied, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
             workspace=workspace,
             gates=gates,
@@ -352,8 +361,11 @@ class FlextInfraUtilitiesRefactorCensus:
             skip_pytest=True,
         )
         rope.reload()
-        applied: bool = result[0]
-        return applied
+        if applied:
+            return r[bool].ok(True)
+        return r[bool].fail(
+            "; ".join(reports) if reports else "apply gates rejected removal",
+        )
 
     @staticmethod
     def apply_line_ranges(

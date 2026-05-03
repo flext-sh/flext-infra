@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections import defaultdict
 from collections.abc import (
     MutableMapping,
@@ -133,30 +132,36 @@ class FlextInfraCodegenLazyInit(s[bool]):
         for entry in rope.workspace_index.modules_by_path.values():
             if entry.is_package_init or not entry.module_name:
                 continue
-            first_segment = entry.module_name.partition(".")[0]
-            is_private_scope = first_segment in c.Infra.ROOT_WRAPPER_SEGMENTS
+            resource = rope.resource(entry.file_path)
+            if resource is None:
+                continue
+            is_private_scope = (
+                entry.module_name.partition(".")[0] in c.Infra.ROOT_WRAPPER_SEGMENTS
+            )
             scope_key = (
                 str(entry.project_root)
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            tree = ast.parse(entry.file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
-            for node in tree.body:
-                if not isinstance(node, ast.ClassDef):
-                    continue
-                name = node.name
-                if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
+            for class_info in u.Infra.get_class_info(rope.rope_project, resource):
+                name = class_info.name
+                if (
+                    len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN
+                    or not name[:1].isupper()
+                ):
                     continue
                 scoped_modules[name, scope_key].add(entry.module_name)
-        return {
-            f"[{Path(scope_key).name}] {name}"
-            if scope_key
-            else f"[workspace] {name}": tuple(
-                sorted(modules),
+        duplicates: dict[str, tuple[str, ...]] = {}
+        for (name, scope_key), modules in scoped_modules.items():
+            if len(modules) <= 1:
+                continue
+            label = (
+                f"[{Path(scope_key).name}] {name}"
+                if scope_key
+                else f"[workspace] {name}"
             )
-            for (name, scope_key), modules in scoped_modules.items()
-            if len(modules) > 1
-        }
+            duplicates[label] = tuple(sorted(modules))
+        return duplicates
 
     def _generate_all_inits(
         self,
@@ -203,34 +208,32 @@ class FlextInfraCodegenLazyInit(s[bool]):
         dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
         planner: FlextInfraCodegenLazyInitPlanner,
     ) -> t.Infra.LazyInitProcessResult:
+        result: t.Infra.LazyInitProcessResult
         try:
             plan = planner.build_plan(
                 pkg_dir,
                 dir_exports=dir_exports,
             )
             if plan.action == "skip":
-                return (None, dict(plan.lazy_map))
-            if check_only:
-                return (0, dict(plan.lazy_map))
-            if plan.action == "remove":
-                return self._remove_init(plan)
-            return self._write_init(
-                plan.context.init_path,
-                plan.exports,
-                plan.lazy_map,
-                plan.inline_constants,
-                plan.context.current_pkg,
-                wildcard_runtime_imports=plan.wildcard_runtime_modules,
-                child_packages_for_lazy=plan.child_packages_for_lazy,
-                child_packages_for_tc=plan.child_packages_for_tc,
-            )
+                result = (None, dict(plan.lazy_map))
+            elif check_only:
+                result = (0, dict(plan.lazy_map))
+            elif plan.action == "remove":
+                result = self._remove_init(plan)
+            else:
+                result = self._write_init(plan)
         except ValueError as exc:
             u.Cli.error(
                 f"export collision in {pkg_dir}: {exc}; "
                 "correct the source exports before regenerating __init__.py",
             )
             failed_lazy_map: t.Infra.MutableLazyImportMap = {}
-            return (-1, failed_lazy_map)
+            result = (-1, failed_lazy_map)
+        except c.EXC_OS_VALUE as exc:
+            u.Cli.error(f"generating {pkg_dir}: {exc}")
+            failed_lazy_map: t.Infra.MutableLazyImportMap = {}
+            result = (-1, failed_lazy_map)
+        return result
 
     def _remove_init(
         self,
@@ -255,26 +258,18 @@ class FlextInfraCodegenLazyInit(s[bool]):
 
     def _write_init(
         self,
-        init_path: Path,
-        exports: t.StrSequence,
-        lazy_map: t.Infra.LazyImportMap,
-        inline_constants: t.StrMapping,
-        current_pkg: str,
-        eager_imports: t.Infra.LazyImportMap | None = None,
-        wildcard_runtime_imports: t.StrSequence | None = None,
-        child_packages_for_lazy: t.StrSequence | None = None,
-        child_packages_for_tc: t.StrSequence | None = None,
+        plan: m.Infra.LazyInitPlan,
     ) -> t.Infra.LazyInitWriteResult:
+        init_path = plan.context.init_path
         try:
             generated = FlextInfraCodegenGeneration.generate_file(
-                exports,
-                lazy_map,
-                inline_constants,
-                current_pkg,
-                eager_imports,
-                wildcard_runtime_imports,
-                child_packages_for_lazy=child_packages_for_lazy or [],
-                child_packages_for_tc=child_packages_for_tc or [],
+                plan.exports,
+                plan.lazy_map,
+                plan.inline_constants,
+                plan.context.current_pkg,
+                wildcard_runtime_modules=plan.wildcard_runtime_modules,
+                child_packages_for_lazy=plan.child_packages_for_lazy,
+                child_packages_for_tc=plan.child_packages_for_tc,
             )
             previous = (
                 init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -285,19 +280,19 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 write_result = u.Cli.atomic_write_text_file(init_path, generated)
                 if write_result.failure:
                     u.Cli.error(f"writing {init_path}: {write_result.error}")
-                    return (-1, dict(lazy_map))
+                    return (-1, dict(plan.lazy_map))
                 self._modified_files.add(str(init_path))
-                u.Infra.run_ruff_fix(init_path, quiet=True)
+                _ = u.Infra.run_ruff_fix(init_path, quiet=True)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating {init_path}: {exc}")
-            return (-1, dict(lazy_map))
+            return (-1, dict(plan.lazy_map))
         rel_path = (
             init_path.relative_to(self.workspace_root)
             if self.workspace_root in init_path.parents
             else init_path
         )
-        u.Cli.info(f"  OK: {rel_path} — {len(exports)} exports")
-        return (0, dict(lazy_map))
+        u.Cli.info(f"  OK: {rel_path} — {len(plan.exports)} exports")
+        return (0, dict(plan.lazy_map))
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInit"]

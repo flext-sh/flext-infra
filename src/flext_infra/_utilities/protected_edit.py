@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import FlextInfraUtilitiesDiscovery, c, t
+from flext_infra import FlextInfraUtilitiesDiscovery, c, p, r, t
 
 
 class FlextInfraUtilitiesProtectedEdit:
@@ -360,9 +360,16 @@ class FlextInfraUtilitiesProtectedEdit:
             _restore()
 
     @staticmethod
-    def _pytest_failure(py_file: Path, workspace: Path) -> str | None:
+    def _pytest_failure(py_file: Path, workspace: Path) -> p.Result[None]:
+        """Run pytest for a single file and surface a failure message via ``r``.
+
+        ``r.ok(None)`` for non-test files or when pytest passed (or
+        legitimately collected no tests). ``r.fail(error_message)`` when
+        pytest reported a real failure — the error message is the
+        truncated (300-char) stdout/stderr or driver error.
+        """
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):
-            return None
+            return r[None].ok(None)
         command_cwd = FlextInfraUtilitiesProtectedEdit._command_cwd(py_file, workspace)
         result = u.Cli.run_raw(
             ["pytest", str(py_file), "-x", "--tb=short", "-q"],
@@ -370,28 +377,24 @@ class FlextInfraUtilitiesProtectedEdit:
             env=FlextInfraUtilitiesProtectedEdit._command_env(),
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
-        failure_msg: str | None = None
         if result.failure:
             error = (result.error or "pytest execution failed")[:300]
-            if (
-                "no tests collected" not in error.lower()
-                and "no tests ran" not in error.lower()
-            ):
-                failure_msg = error
-        else:
-            output = (result.value.stdout + result.value.stderr)[:300]
-            if (
-                result.value.exit_code
-                == FlextInfraUtilitiesProtectedEdit._NO_TESTS_EXIT_CODE
-                and (
-                    "no tests collected" in output.lower()
-                    or "no tests ran" in output.lower()
-                )
-            ):
-                pass
-            elif result.value.exit_code != 0:
-                failure_msg = output
-        return failure_msg
+            if "no tests collected" in error.lower() or "no tests ran" in error.lower():
+                return r[None].ok(None)
+            return r[None].fail(error)
+        output = (result.value.stdout + result.value.stderr)[:300]
+        if (
+            result.value.exit_code
+            == FlextInfraUtilitiesProtectedEdit._NO_TESTS_EXIT_CODE
+            and (
+                "no tests collected" in output.lower()
+                or "no tests ran" in output.lower()
+            )
+        ):
+            return r[None].ok(None)
+        if result.value.exit_code != 0:
+            return r[None].fail(output)
+        return r[None].ok(None)
 
     @staticmethod
     def _preserve_backup(py_file: Path) -> Path | None:
@@ -442,7 +445,14 @@ class FlextInfraUtilitiesProtectedEdit:
             before,
             cls.lint_snapshot(py_file, workspace, gates=gates),
         )
-        test_fail = None if new_errors else cls._pytest_failure(py_file, workspace)
+        test_fail: str | None = (
+            None
+            if new_errors
+            else cls._pytest_failure(py_file, workspace).fold(
+                on_failure=lambda msg: msg,
+                on_success=lambda _: None,
+            )
+        )
         if not new_errors and not test_fail:
             if backup_path is None:
                 return (True, [])
@@ -589,9 +599,12 @@ class FlextInfraUtilitiesProtectedEdit:
                 cls.lint_snapshot(path, workspace, gates=gates),
             )
             if new_errors or skip_pytest:
-                test_fail = None
+                test_fail: str | None = None
             else:
-                test_fail = cls._pytest_failure(path, workspace)
+                test_fail = cls._pytest_failure(path, workspace).fold(
+                    on_failure=lambda msg: msg,
+                    on_success=lambda _: None,
+                )
             if not new_errors and not test_fail:
                 continue
             failed = True

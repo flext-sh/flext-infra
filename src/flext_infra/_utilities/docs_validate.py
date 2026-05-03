@@ -34,15 +34,28 @@ class FlextInfraUtilitiesDocsValidate:
     @staticmethod
     def docs_extract_required_skills(
         payload: t.JsonPayload | t.MappingKV[str, t.Infra.InfraValue],
-    ) -> t.Infra.InfraSequence | None:
-        """Extract the configured required skills list from architecture settings."""
+    ) -> p.Result[t.Infra.InfraSequence]:
+        """Extract the configured required skills list from architecture settings.
+
+        ``r.ok(list)`` when the configuration block is present and well
+        shaped, ``r.fail(reason)`` otherwise. Callers that want to treat
+        absence as "no override" can collapse with ``unwrap_or(())``.
+        """
         if not isinstance(payload, Mapping):
-            return None
+            return r[t.Infra.InfraSequence].fail(
+                "payload is not a mapping",
+            )
         docs_validation = payload.get("docs_validation")
         if not isinstance(docs_validation, Mapping):
-            return None
+            return r[t.Infra.InfraSequence].fail(
+                "docs_validation block missing or not a mapping",
+            )
         configured = docs_validation.get("required_skills")
-        return configured if isinstance(configured, list) else None
+        if not isinstance(configured, list):
+            return r[t.Infra.InfraSequence].fail(
+                "required_skills missing or not a list",
+            )
+        return r[t.Infra.InfraSequence].ok(configured)
 
     @staticmethod
     def docs_load_required_skills(workspace_root: Path) -> p.Result[t.StrSequence]:
@@ -55,13 +68,15 @@ class FlextInfraUtilitiesDocsValidate:
             return r[t.StrSequence].fail(
                 f"failed to read architecture config: {payload_result.error}"
             )
-        configured = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(
+        extract_result = FlextInfraUtilitiesDocsValidate.docs_extract_required_skills(
             payload_result.value,
         )
-        if configured is None:
+        if extract_result.failure:
             return r[t.StrSequence].ok([])
         try:
-            values = t.Infra.STR_SEQ_ADAPTER.validate_python(configured, strict=True)
+            values = t.Infra.STR_SEQ_ADAPTER.validate_python(
+                extract_result.value, strict=True
+            )
         except c.ValidationError as e:
             return r[t.StrSequence].fail(
                 f"invalid required_skills configuration: {e!s}"
@@ -120,18 +135,26 @@ class FlextInfraUtilitiesDocsValidate:
         scope: m.Infra.DocScope,
         *,
         apply_mode: bool,
-    ) -> bool:
-        """Write the standard ``TODOS.md`` helper file when requested."""
+    ) -> p.Result[bool]:
+        """Write the standard ``TODOS.md`` helper file when requested.
+
+        ``r.ok(True)`` when a TODO file was written, ``r.ok(False)`` when
+        the call is a no-op (root scope or non-apply mode), ``r.fail(...)``
+        when the underlying ``write_text`` raises.
+        """
         if scope.name == c.Infra.RK_ROOT or not apply_mode:
-            return False
+            return r[bool].ok(False)
         path = scope.path / "TODOS.md"
         content = (
             "# TODOS\n\n"
             "- [ ] Resolve documentation validation findings from "
             "`.reports/docs/validate-report.md`.\n"
         )
-        _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
-        return True
+        try:
+            _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+        except OSError as exc:
+            return r[bool].fail(f"failed to write {path}: {exc}")
+        return r[bool].ok(True)
 
     @staticmethod
     def docs_write_validate_reports(

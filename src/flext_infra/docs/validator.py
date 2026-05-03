@@ -110,7 +110,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         wrote_todo = u.Infra.docs_write_todo(
             scope,
             apply_mode=apply_mode,
-        )
+        ).unwrap_or(False)
         report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,
