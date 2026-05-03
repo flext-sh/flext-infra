@@ -81,21 +81,22 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
 
     def _sig_allowed(self, source: str, name: str) -> bool:
         policy = self._policy_for(name)
+        result: bool
         if policy is None or not policy.require_signature_validation:
-            return True
-        sig_pat = re.compile(rf"def\s+{re.escape(name)}\s*\(([^)]*)\)", re.DOTALL)
-        match = sig_pat.search(source)
-        if match is None:
-            return True
-        params_str = match.group(1)
-        param_names = u.Infra.parse_param_names(params_str)
-        if any(r not in param_names for r in policy.required_parameters):
-            return False
-        if any(f in param_names for f in policy.forbidden_parameters):
-            return False
-        if not policy.allow_vararg and "*args" in params_str:
-            return False
-        return not (not policy.allow_kwarg and "**" in params_str)
+            result = True
+        else:
+            sig_pat = re.compile(rf"def\s+{re.escape(name)}\s*\(([^)]*)\)", re.DOTALL)
+            match = sig_pat.search(source)
+            if match is None:
+                result = True
+            else:
+                params_str = match.group(1)
+                param_names = u.Infra.parse_param_names(params_str)
+                if any(r not in param_names for r in policy.required_parameters) or any(f in param_names for f in policy.forbidden_parameters) or (not policy.allow_vararg and "*args" in params_str):
+                    result = False
+                else:
+                    result = not (not policy.allow_kwarg and "**" in params_str)
+        return result
 
     def _policy_for(self, name: str) -> m.Infra.ClassNestingPolicy | None:
         return u.Infra.policy_for_symbol(
