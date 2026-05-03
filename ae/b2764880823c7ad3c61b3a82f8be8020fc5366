@@ -1,0 +1,20 @@
+tests/unit/test_infra_workspace_migrator_errors.py
+  h_9db9d35f50cf33 10,44,63,82,101,116
+tests/unit/test_infra_workspace_migrator.py
+  h_9db9d35f50cf33 7-8,26,40,120,137
+tests/unit/test_infra_workspace_migrator_pyproject.py
+  h_9db9d35f50cf33 13,27,44,65,82,101,118,138,160
+tests/unit/test_infra_workspace_migrator_dryrun.py
+  h_9db9d35f50cf33 13-14,29,46,66,86,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "aeb2764880823c7ad3c61b3a82f8be8020fc5366",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
