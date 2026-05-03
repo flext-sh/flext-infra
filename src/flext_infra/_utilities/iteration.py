@@ -155,29 +155,33 @@ class FlextInfraUtilitiesIteration:
         policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> t.Infra.InfraValue | None:
         """Rewrite one Poetry dependency value using the locked version policy."""
+        result: t.Infra.InfraValue | None = None
         normalized_name = cls.dep_name(dependency_name)
         internal_set = set(internal_names)
         if (
-            normalized_name is None
-            or normalized_name == "python"
-            or normalized_name in internal_set
+            normalized_name is not None
+            and normalized_name != "python"
+            and normalized_name not in internal_set
         ):
-            return None
-        locked_version = locked_versions.get(normalized_name)
-        if locked_version is None:
-            return None
-        rewritten_specifier = cls.constraint_specifier(locked_version, policy=policy)
-        if isinstance(raw_value, str):
-            return rewritten_specifier if raw_value != rewritten_specifier else None
-        if not isinstance(raw_value, Mapping):
-            return None
-        if any(key in raw_value for key in (c.Infra.PATH, "git", "url")):
-            return None
-        updated: MutableMapping[str, t.JsonValue] = dict(raw_value)
-        if updated.get(c.Infra.VERSION) == rewritten_specifier:
-            return None
-        updated[c.Infra.VERSION] = rewritten_specifier
-        return dict(updated)
+            locked_version = locked_versions.get(normalized_name)
+            if locked_version is not None:
+                rewritten_specifier = cls.constraint_specifier(
+                    locked_version, policy=policy
+                )
+                if isinstance(raw_value, str):
+                    result = (
+                        rewritten_specifier
+                        if raw_value != rewritten_specifier
+                        else None
+                    )
+                elif isinstance(raw_value, Mapping) and not any(
+                    key in raw_value for key in (c.Infra.PATH, "git", "url")
+                ):
+                    updated: MutableMapping[str, t.JsonValue] = dict(raw_value)
+                    if updated.get(c.Infra.VERSION) != rewritten_specifier:
+                        updated[c.Infra.VERSION] = rewritten_specifier
+                        result = dict(updated)
+        return result
 
     @staticmethod
     def _normalized_toml_payload(document: TOMLDocument) -> t.Infra.ContainerDict:
