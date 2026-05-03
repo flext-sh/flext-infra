@@ -89,7 +89,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             chain = base_chains.get(family, [])
             if chain:
                 return "\n".join(
-                    f"from {FlextInfraUtilitiesRefactorNamespaceCommon.class_name_to_module(base)} import {base}"
+                    f"from {u.class_name_to_module(base)} import {base}"
                     for base in chain
                 )
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "Utilities")

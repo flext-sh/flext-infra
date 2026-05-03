@@ -41,7 +41,7 @@ class TestImportCyclesValidatorCore:
         tmp_path: Path,
         v: FlextInfraValidateImportCycles,
     ) -> None:
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -53,7 +53,7 @@ class TestImportCyclesValidatorCore:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("X = 1\n", "a.py")
         tf(base_dir=pkg).create("from pkg.a import X\n", "b.py")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
     def test_two_module_cycle_fails(
@@ -64,7 +64,7 @@ class TestImportCyclesValidatorCore:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
         tm.that(joined, has="pkg.a")
@@ -79,7 +79,7 @@ class TestImportCyclesValidatorCore:
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import c\n", "b.py")
         tf(base_dir=pkg).create("from pkg import a\n", "c.py")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
         tm.that(joined, has="pkg.a")
@@ -102,7 +102,7 @@ class TestImportCyclesValidatorCore:
             "a.py",
         )
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
 
@@ -117,7 +117,7 @@ class TestImportCyclesValidatorSummary:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="1")
         tm.that(report.summary, has="cycle")
 
@@ -127,7 +127,7 @@ class TestImportCyclesValidatorSummary:
         v: FlextInfraValidateImportCycles,
     ) -> None:
         _seed_pkg(tmp_path)
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="cycle")
 
 

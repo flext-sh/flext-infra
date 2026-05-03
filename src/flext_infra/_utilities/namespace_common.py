@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import operator
-import re
 import token
 import tokenize
 from collections import defaultdict
@@ -158,12 +157,6 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
                 line_text = line_text[:start_col] + replacement + line_text[end_col:]
             line_buffer[line_idx] = line_text
         return "".join(line_buffer)
-
-    @staticmethod
-    def class_name_to_module(class_name: str) -> str:
-        """Convert CamelCase class names to snake_case module names."""
-        head = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", class_name)
-        return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", head).lower()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceCommon"]

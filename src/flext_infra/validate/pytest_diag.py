@@ -151,7 +151,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
     ) -> t.Pair[float, str]:
         """Process a single testcase element; returns (seconds, label)."""
         classname = case.attrib.get("classname", "")
-        name = case.attrib.get(c.NAME, "")
+        name = case.attrib.get(c.Infra.NAME, "")
         label = f"{classname}::{name}" if classname else name
         try:
             secs = float(case.attrib.get("time", "0") or 0.0)

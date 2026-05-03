@@ -137,7 +137,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             _module_name, names = parsed
             existing_imports.update(names)
         return [
-            f"from {FlextInfraUtilitiesRefactorNamespaceCommon.class_name_to_module(base)} import {base}"
+            f"from {u.class_name_to_module(base)} import {base}"
             for base in sorted(new_bases)
             if base not in existing_imports
         ]

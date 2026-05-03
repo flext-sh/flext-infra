@@ -30,7 +30,7 @@ class TestFreshImportValidatorCore:
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(v.build_report(packages=()))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
         assert isinstance(report, m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
@@ -39,7 +39,7 @@ class TestFreshImportValidatorCore:
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(v.build_report(packages=("sys",)))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys",)))
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
 
@@ -47,7 +47,9 @@ class TestFreshImportValidatorCore:
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(v.build_report(packages=("nonexistent_pkg_xyz_abc_123",)))
+        report: m.Infra.ValidationReport = tm.ok(
+            v.build_report(packages=("nonexistent_pkg_xyz_abc_123",))
+        )
         tm.that(report.passed, eq=False)
         tm.that(report.violations, length=1)
         tm.that(report.violations[0], has="nonexistent_pkg_xyz_abc_123")
@@ -56,7 +58,9 @@ class TestFreshImportValidatorCore:
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(v.build_report(packages=("sys", "nonexistent_xyz_qqq", "os")))
+        report: m.Infra.ValidationReport = tm.ok(
+            v.build_report(packages=("sys", "nonexistent_xyz_qqq", "os"))
+        )
         tm.that(report.passed, eq=False)
         tm.that(report.violations, length=1)
         tm.that(report.violations[0], has="nonexistent_xyz_qqq")
@@ -65,7 +69,7 @@ class TestFreshImportValidatorCore:
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(
+        report: m.Infra.ValidationReport = tm.ok(
             v.build_report(
                 packages=("nonexistent_a_qqq", "nonexistent_b_qqq"),
             )
@@ -77,7 +81,7 @@ class TestFreshImportValidatorCore:
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(v.build_report(packages=("sys", "os")))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys", "os")))
         tm.that(report.summary, has="import")
 
 
@@ -88,14 +92,18 @@ class TestFreshImportValidatorFlextPackages:
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(v.build_report(packages=("flext_core",)))
+        report: m.Infra.ValidationReport = tm.ok(
+            v.build_report(packages=("flext_core",))
+        )
         assert report.passed, report.summary
 
     def test_flext_infra_imports_cleanly(
         self,
         v: FlextInfraValidateFreshImport,
     ) -> None:
-        report = tm.ok(v.build_report(packages=("flext_infra",)))
+        report: m.Infra.ValidationReport = tm.ok(
+            v.build_report(packages=("flext_infra",))
+        )
         assert report.passed, report.summary
 
 

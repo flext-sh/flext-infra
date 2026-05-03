@@ -104,7 +104,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         annotations: list[ast.expr] = []
         for node in ast.walk(module):
             match node:
-                case ast.AnnAssign(annotation=ann) if ann is not None:
+                case ast.AnnAssign(annotation=ann):
                     annotations.append(ann)
                 case ast.FunctionDef() | ast.AsyncFunctionDef():
                     annotations.extend(
@@ -124,6 +124,8 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
                         annotations.append(node.returns)
                 case ast.TypeAlias(value=value):
                     annotations.append(value)
+                case _:
+                    pass
         return annotations
 
     def _rewrite_annotation(self, annotation: ast.expr) -> ast.expr | None:

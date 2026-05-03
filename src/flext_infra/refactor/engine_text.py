@@ -38,34 +38,35 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     ) -> t.Infra.TransformResult:
         match kind:
             case c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS:
-                return self._apply_future_annotations(source)
+                result = self._apply_future_annotations(source)
             case c.Infra.RefactorRuleKind.MRO_CLASS_MIGRATION:
-                return self._apply_mro_class_migration(source, file_path)
+                result = self._apply_mro_class_migration(source, file_path)
             case c.Infra.RefactorRuleKind.LEGACY_REMOVAL:
-                return self._apply_legacy_removal(settings, source)
+                result = self._apply_legacy_removal(settings, source)
             case c.Infra.RefactorRuleKind.IMPORT_MODERNIZER:
-                return self._apply_import_modernizer(settings, source)
+                result = self._apply_import_modernizer(settings, source)
             case c.Infra.RefactorRuleKind.CLASS_RECONSTRUCTOR:
-                return self._apply_class_reconstructor(settings, source)
+                result = self._apply_class_reconstructor(settings, source)
             case c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS:
-                return self._apply_pattern_corrections(settings, source, file_path)
+                result = self._apply_pattern_corrections(settings, source, file_path)
             case c.Infra.RefactorRuleKind.TYPING_UNIFICATION:
-                return self._apply_typing_unification(source, file_path)
+                result = self._apply_typing_unification(source, file_path)
             case c.Infra.RefactorRuleKind.TYPING_ANNOTATION_FIX:
-                return self._apply_typing_annotation_fix(settings, source, file_path)
+                result = self._apply_typing_annotation_fix(settings, source, file_path)
             case c.Infra.RefactorRuleKind.TIER0_IMPORT_FIX:
-                return self._apply_tier0_import_fix(settings, source, file_path)
+                result = self._apply_tier0_import_fix(settings, source, file_path)
             case c.Infra.RefactorRuleKind.SYMBOL_PROPAGATION:
-                return self._apply_symbol_propagation(settings, source)
+                result = self._apply_symbol_propagation(settings, source)
             case c.Infra.RefactorRuleKind.SIGNATURE_PROPAGATION:
-                return self._apply_signature_propagation(settings, source)
+                result = self._apply_signature_propagation(settings, source)
             case c.Infra.RefactorRuleKind.MRO_REDUNDANCY:
-                return self._apply_change_tracker_transformer(
+                result = self._apply_change_tracker_transformer(
                     FlextInfraRefactorMRORemover(),
                     source,
                 )
             case _:
-                return (source, list[str]())
+                result = (source, list[str]())
+        return result
 
     @staticmethod
     def _apply_change_tracker_transformer(

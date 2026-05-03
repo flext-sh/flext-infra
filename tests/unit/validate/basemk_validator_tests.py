@@ -25,7 +25,8 @@ def _generated_content() -> str:
     gen = FlextInfraBaseMkGenerator()
     result = gen.generate_basemk()
     assert result.success
-    return result.value
+    generated_content: str = result.value
+    return generated_content
 
 
 @pytest.fixture
@@ -42,7 +43,7 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="missing root base.mk")
 
@@ -55,7 +56,7 @@ class TestBaseMkValidatorCore:
             _generated_content(),
             encoding="utf-8",
         )
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -65,7 +66,7 @@ class TestBaseMkValidatorCore:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         tf(base_dir=tmp_path).create("# stale content", "base.mk")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="out of sync")
 
@@ -78,7 +79,7 @@ class TestBaseMkValidatorCore:
             _generated_content(),
             encoding="utf-8",
         )
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="matches generated template")
 
@@ -87,7 +88,7 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
 
 
@@ -100,7 +101,7 @@ class TestBaseMkValidatorEdgeCases:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         tf(base_dir=tmp_path).create("# different", "base.mk")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations[0], has="stale")
 
@@ -110,7 +111,7 @@ class TestBaseMkValidatorEdgeCases:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         tf(base_dir=tmp_path).create("# mismatch", "base.mk")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations, length=1)
 
@@ -133,7 +134,8 @@ class TestBaseMkValidatorSha256:
 
     @staticmethod
     def _sha(path: Path) -> str:
-        return u.Cli.sha256_file(path)
+        sha_value: str = u.Cli.sha256_file(path)
+        return sha_value
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
         f = tf(base_dir=tmp_path).create("content", "test.txt")

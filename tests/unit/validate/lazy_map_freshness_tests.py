@@ -34,7 +34,7 @@ class TestLazyMapFreshnessValidatorCore:
         tmp_path: Path,
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
@@ -44,7 +44,7 @@ class TestLazyMapFreshnessValidatorCore:
         tmp_path: Path,
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="lazy")
 
     def test_report_is_validation_report(
@@ -52,7 +52,7 @@ class TestLazyMapFreshnessValidatorCore:
         tmp_path: Path,
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
 
 
