@@ -47,35 +47,49 @@ class FlextInfraProjectMakefileUpdater:
 
         """
         _ = canonical_root  # reserved for future cross-project dependency resolution
+        result: p.Result[bool]
         pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
-            return r[bool].ok(False)
-
-        try:
-            meta = u.read_project_metadata(project_root)
-        except (FileNotFoundError, ValueError) as exc:
-            return r[bool].fail_op("pyproject.toml parse", exc)
-
-        bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
-        if bootstrap_result.failure:
-            return r[bool].fail(
-                bootstrap_result.error or "bootstrap template read failed",
-            )
-        bootstrap = bootstrap_result.value
-
-        new_content = self._build_makefile(meta, bootstrap)
-        makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
-
-        if makefile_path.exists():
+            result = r[bool].ok(False)
+        else:
             try:
-                existing = makefile_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[bool].fail_op("Makefile read", exc)
+                meta = u.read_project_metadata(project_root)
+            except (FileNotFoundError, ValueError) as exc:
+                result = r[bool].fail_op("pyproject.toml parse", exc)
+            else:
+                bootstrap_result = (
+                    FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
+                )
+                if bootstrap_result.failure:
+                    result = r[bool].fail(
+                        bootstrap_result.error or "bootstrap template read failed",
+                    )
+                else:
+                    bootstrap = bootstrap_result.value
+                    new_content = self._build_makefile(meta, bootstrap)
+                    makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
 
-            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(new_content):
-                return r[bool].ok(False)
-
-        return u.Cli.atomic_write_text_file(makefile_path, new_content)
+                    if makefile_path.exists():
+                        try:
+                            existing = makefile_path.read_text(
+                                encoding=c.Cli.ENCODING_DEFAULT
+                            )
+                        except OSError as exc:
+                            result = r[bool].fail_op("Makefile read", exc)
+                        else:
+                            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(
+                                new_content
+                            ):
+                                result = r[bool].ok(False)
+                            else:
+                                result = u.Cli.atomic_write_text_file(
+                                    makefile_path, new_content
+                                )
+                    else:
+                        result = u.Cli.atomic_write_text_file(
+                            makefile_path, new_content
+                        )
+        return result
 
     @staticmethod
     def _build_makefile(meta: m.ProjectMetadata, bootstrap: str) -> str:
