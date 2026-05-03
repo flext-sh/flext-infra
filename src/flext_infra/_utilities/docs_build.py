@@ -28,7 +28,7 @@ class FlextInfraUtilitiesDocsBuild:
         """Run MkDocs directly through the MkDocs Python API for one scope."""
         settings = scope.path / "mkdocs.yml"
         if not settings.exists():
-            return m.Infra.DocsPhaseReport(
+            result = m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
                 result="SKIP",
@@ -36,71 +36,79 @@ class FlextInfraUtilitiesDocsBuild:
                 site_dir="",
                 passed=True,
             )
-        site_dir = (
-            scope.path / c.Infra.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.DIR_SITE
-        ).resolve()
-        if not isinstance(runner, type):
-            completed = runner.run_raw(
-                [
-                    "mkdocs",
-                    c.Infra.DIR_BUILD,
-                    "--strict",
-                    "-f",
-                    str(settings),
-                    "-d",
-                    str(site_dir),
-                ],
-                cwd=scope.path,
-            )
-            if completed.failure:
-                return m.Infra.DocsPhaseReport(
-                    phase="build",
-                    scope=scope.name,
-                    result=c.Infra.ResultStatus.FAIL,
-                    reason=completed.error or "mkdocs build failed",
-                    site_dir=site_dir.as_posix(),
-                    passed=False,
+        else:
+            site_dir = (
+                scope.path / c.Infra.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.DIR_SITE
+            ).resolve()
+            if not isinstance(runner, type):
+                completed = runner.run_raw(
+                    [
+                        "mkdocs",
+                        c.Infra.DIR_BUILD,
+                        "--strict",
+                        "-f",
+                        str(settings),
+                        "-d",
+                        str(site_dir),
+                    ],
+                    cwd=scope.path,
                 )
-            output = completed.value
-            if output.exit_code == 0:
-                return m.Infra.DocsPhaseReport(
-                    phase="build",
-                    scope=scope.name,
-                    result=c.Infra.ResultStatus.OK,
-                    reason="build succeeded",
-                    site_dir=site_dir.as_posix(),
-                    passed=True,
-                )
-            reason_lines = (output.stderr or output.stdout).strip().splitlines()
-            return m.Infra.DocsPhaseReport(
-                phase="build",
-                scope=scope.name,
-                result=c.Infra.ResultStatus.FAIL,
-                reason=reason_lines[-1]
-                if reason_lines
-                else f"mkdocs exited {output.exit_code}",
-                site_dir=site_dir.as_posix(),
-                passed=False,
-            )
-        try:
-            FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
-        except c.EXC_OS_VALUE as exc:
-            return m.Infra.DocsPhaseReport(
-                phase="build",
-                scope=scope.name,
-                result=c.Infra.ResultStatus.FAIL,
-                reason=str(exc) or "mkdocs build failed",
-                site_dir=site_dir.as_posix(),
-                passed=False,
-            )
-        return m.Infra.DocsPhaseReport(
-            phase="build",
-            scope=scope.name,
-            result=c.Infra.ResultStatus.OK,
-            reason="build succeeded",
-            site_dir=site_dir.as_posix(),
-            passed=True,
-        )
+                if completed.failure:
+                    result = m.Infra.DocsPhaseReport(
+                        phase="build",
+                        scope=scope.name,
+                        result=c.Infra.ResultStatus.FAIL,
+                        reason=completed.error or "mkdocs build failed",
+                        site_dir=site_dir.as_posix(),
+                        passed=False,
+                    )
+                else:
+                    output = completed.value
+                    if output.exit_code == 0:
+                        result = m.Infra.DocsPhaseReport(
+                            phase="build",
+                            scope=scope.name,
+                            result=c.Infra.ResultStatus.OK,
+                            reason="build succeeded",
+                            site_dir=site_dir.as_posix(),
+                            passed=True,
+                        )
+                    else:
+                        reason_lines = (
+                            (output.stderr or output.stdout).strip().splitlines()
+                        )
+                        result = m.Infra.DocsPhaseReport(
+                            phase="build",
+                            scope=scope.name,
+                            result=c.Infra.ResultStatus.FAIL,
+                            reason=reason_lines[-1]
+                            if reason_lines
+                            else f"mkdocs exited {output.exit_code}",
+                            site_dir=site_dir.as_posix(),
+                            passed=False,
+                        )
+            else:
+                try:
+                    FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
+                except c.EXC_OS_VALUE as exc:
+                    result = m.Infra.DocsPhaseReport(
+                        phase="build",
+                        scope=scope.name,
+                        result=c.Infra.ResultStatus.FAIL,
+                        reason=str(exc) or "mkdocs build failed",
+                        site_dir=site_dir.as_posix(),
+                        passed=False,
+                    )
+                else:
+                    result = m.Infra.DocsPhaseReport(
+                        phase="build",
+                        scope=scope.name,
+                        result=c.Infra.ResultStatus.OK,
+                        reason="build succeeded",
+                        site_dir=site_dir.as_posix(),
+                        passed=True,
+                    )
+        return result
 
     @staticmethod
     def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:

@@ -129,11 +129,12 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return annotations
 
     def _rewrite_annotation(self, annotation: ast.expr) -> ast.expr | None:
+        original = ast.unparse(annotation)
         rewritten: ast.expr = self._AnnotationRewriter().visit(annotation)
         if ast.dump(rewritten) == ast.dump(annotation):
             return None
         self._record_change(
-            f"Canonicalized built-in annotation {ast.unparse(annotation)} -> {ast.unparse(rewritten)}"
+            f"Canonicalized built-in annotation {original} -> {ast.unparse(rewritten)}"
         )
         return rewritten
 

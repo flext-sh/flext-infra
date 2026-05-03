@@ -14,19 +14,18 @@ class FlextInfraUtilitiesDocsFix:
     @staticmethod
     def docs_maybe_fix_link(md_file: Path, raw_link: str) -> str | None:
         """Return a corrected link target when a simple ``.md`` fix is possible."""
-        if raw_link.startswith(("http://", "https://", "mailto:", "tel:", "#")):
-            return None
-        base = raw_link.split("#", maxsplit=1)[0]
-        if not base:
-            return None
-        if (md_file.parent / base).exists():
-            return None
-        if base.endswith(".md"):
-            return None
-        md_candidate = md_file.parent / f"{base}.md"
-        if not md_candidate.exists():
-            return None
-        return f"{base}.md{raw_link[len(base) :]}"
+        result: str | None = None
+        if not raw_link.startswith(("http://", "https://", "mailto:", "tel:", "#")):
+            base = raw_link.split("#", maxsplit=1)[0]
+            if (
+                base
+                and not (md_file.parent / base).exists()
+                and not base.endswith(".md")
+            ):
+                md_candidate = md_file.parent / f"{base}.md"
+                if md_candidate.exists():
+                    result = f"{base}.md{raw_link[len(base) :]}"
+        return result
 
     @staticmethod
     def docs_process_markdown_file(
