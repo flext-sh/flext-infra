@@ -42,7 +42,7 @@ class TestTierWhitelistAbstractionBoundary:
         tmp_path: Path,
         v: FlextInfraValidateTierWhitelist,
     ) -> None:
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -55,7 +55,7 @@ class TestTierWhitelistAbstractionBoundary:
         tf(base_dir=pkg).create(
             "from flext_core import m, c\nX = m.BaseModel\n", "good.py"
         )
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
     @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ class TestTierWhitelistAbstractionBoundary:
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create(source, filename)
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         tm.that(" | ".join(report.violations), has=expected_substring)
 
@@ -92,7 +92,7 @@ class TestTierWhitelistAbstractionBoundary:
         tf(base_dir=src).create(
             "from pydantic import BaseModel\nX = BaseModel\n", "abstractions.py"
         )
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
 
@@ -107,7 +107,7 @@ class TestTierWhitelistSummary:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("from pydantic import BaseModel\n", "a.py")
         tf(base_dir=pkg).create("import structlog\n", "b.py")
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="2")
 
     def test_passing_summary_mentions_boundary(
@@ -116,7 +116,7 @@ class TestTierWhitelistSummary:
         v: FlextInfraValidateTierWhitelist,
     ) -> None:
         _seed_pkg(tmp_path)
-        report = tm.ok(v.build_report(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="boundary")
 
 

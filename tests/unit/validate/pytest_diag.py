@@ -41,7 +41,9 @@ class TestPytestDiagExtractorBehavior:
         log = tmp_path / "log.txt"
         log.write_text("")
 
-        report = tm.ok(_extractor(junit, log).extract(junit, log))
+        report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(junit, log).extract(junit, log)
+        )
 
         tm.that(report, is_=m.Infra.PytestDiagnostics)
         tm.that(report.failed_count, eq=0)
@@ -55,12 +57,16 @@ class TestPytestDiagExtractorBehavior:
         log.write_text("FAILED test_case.py::test_foo")
         missing_xml = tmp_path / "missing.xml"
 
-        missing_report = tm.ok(_extractor(missing_xml, log).extract(missing_xml, log))
+        missing_report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(missing_xml, log).extract(missing_xml, log)
+        )
         tm.that(missing_report.failed_cases, length_gt=0)
 
         bad_xml = tmp_path / "bad.xml"
         bad_xml.write_text("invalid xml content")
-        invalid_report = tm.ok(_extractor(bad_xml, log).extract(bad_xml, log))
+        invalid_report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(bad_xml, log).extract(bad_xml, log)
+        )
         tm.that(invalid_report.failed_cases, length_gt=0)
 
     def test_extract_failed_and_error_tests_from_xml(self, tmp_path: Path) -> None:
@@ -74,7 +80,9 @@ class TestPytestDiagExtractorBehavior:
             "</testcase></testsuite></testsuites>",
         )
 
-        fail_report = tm.ok(_extractor(fail_xml, log).extract(fail_xml, log))
+        fail_report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(fail_xml, log).extract(fail_xml, log)
+        )
         tm.that(fail_report.failed_count, eq=1)
         tm.that(fail_report.error_traces, length_gt=0)
 
@@ -86,7 +94,9 @@ class TestPytestDiagExtractorBehavior:
             "</testcase></testsuite></testsuites>",
         )
 
-        err_report = tm.ok(_extractor(err_xml, log).extract(err_xml, log))
+        err_report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(err_xml, log).extract(err_xml, log)
+        )
         tm.that(err_report.error_count, eq=1)
 
     def test_extract_skipped_and_slow_tests_from_xml(self, tmp_path: Path) -> None:
@@ -100,7 +110,9 @@ class TestPytestDiagExtractorBehavior:
             "</testcase></testsuite></testsuites>",
         )
 
-        skip_report = tm.ok(_extractor(skip_xml, log).extract(skip_xml, log))
+        skip_report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(skip_xml, log).extract(skip_xml, log)
+        )
         tm.that(skip_report.skipped_count, eq=1)
 
         slow_xml = tmp_path / "slow.xml"
@@ -110,7 +122,9 @@ class TestPytestDiagExtractorBehavior:
             "</testsuite></testsuites>",
         )
 
-        slow_report = tm.ok(_extractor(slow_xml, log).extract(slow_xml, log))
+        slow_report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(slow_xml, log).extract(slow_xml, log)
+        )
         tm.that(slow_report.slow_entries, length_gt=0)
 
     def test_extract_missing_log_is_graceful(self, tmp_path: Path) -> None:
@@ -120,7 +134,7 @@ class TestPytestDiagExtractorBehavior:
             '<testsuite name="t" tests="0"/></testsuites>',
         )
 
-        report = tm.ok(
+        report: m.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, tmp_path / "missing.txt").extract(
                 junit,
                 tmp_path / "missing.txt",
@@ -142,7 +156,9 @@ class TestPytestDiagExtractorBehavior:
             "-- Docs: https://docs.pytest.org/\n",
         )
 
-        report = tm.ok(_extractor(junit, log).extract(junit, log))
+        report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(junit, log).extract(junit, log)
+        )
 
         tm.that(report.error_traces, length_gt=0)
         tm.that(report.warning_lines, length_gt=0)
@@ -152,7 +168,9 @@ class TestPytestDiagExtractorBehavior:
         log = tmp_path / "log.txt"
         log.write_text("test_case.py:10: DeprecationWarning: test warning")
 
-        report = tm.ok(_extractor(junit, log).extract(junit, log))
+        report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(junit, log).extract(junit, log)
+        )
 
         tm.that(report.warning_lines, length_gt=0)
 
@@ -168,7 +186,9 @@ class TestPytestDiagExtractorBehavior:
             "=== 2 passed in 6.00s ===\n",
         )
 
-        report = tm.ok(_extractor(junit, log).extract(junit, log))
+        report: m.Infra.PytestDiagnostics = tm.ok(
+            _extractor(junit, log).extract(junit, log)
+        )
 
         tm.that(report.slow_entries, length_gt=0)
 

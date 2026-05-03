@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraSkillValidator
-from tests import c, t, u
+from tests import c, m, t, u
 
 
 class TestSafeLoadYaml:
@@ -74,7 +74,9 @@ class TestSkillValidatorCore:
         validator = FlextInfraSkillValidator(skill="test-skill")
         skills = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skills.mkdir(parents=True)
-        report = tm.ok(validator.build_report(tmp_path, "test-skill"))
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(tmp_path, "test-skill")
+        )
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, contains="no rules.yml")
 
@@ -103,7 +105,9 @@ class TestSkillValidatorCore:
         skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
-        report = tm.ok(validator.build_report(tmp_path, "test-skill"))
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(tmp_path, "test-skill")
+        )
         tm.that(report.passed, eq=True)
 
     def test_validate_scalar_rules_yml_yields_empty_success(
@@ -114,7 +118,9 @@ class TestSkillValidatorCore:
         skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
-        report = tm.ok(validator.build_report(tmp_path, "test-skill"))
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(tmp_path, "test-skill")
+        )
         tm.that(report.passed, eq=True)
         tm.that(report.violations, empty=True)
 
