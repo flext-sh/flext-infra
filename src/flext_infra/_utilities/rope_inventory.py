@@ -311,23 +311,26 @@ class FlextInfraUtilitiesRopeInventory:
         name: str,
     ) -> str:
         obj = pyname.get_object()
+        result: str
         if isinstance(obj, AbstractClass):
-            return "class"
-        if isinstance(obj, PyFunction):
-            return (
+            result = "class"
+        elif isinstance(obj, PyFunction):
+            result = (
                 "method"
                 if class_chain and len(scope_chain) == len(class_chain)
                 else "function"
             )
-        if isinstance(pyname, ParameterName):
-            return "parameter"
-        if class_chain and len(scope_chain) == len(class_chain):
-            return "attribute"
-        if scope_chain:
-            return "local" if not name.isupper() else "constant"
-        if isinstance(pyname, (DefinedName, AssignedName)) and name.isupper():
-            return "constant"
-        return "assignment"
+        elif isinstance(pyname, ParameterName):
+            result = "parameter"
+        elif class_chain and len(scope_chain) == len(class_chain):
+            result = "attribute"
+        elif scope_chain:
+            result = "local" if not name.isupper() else "constant"
+        elif isinstance(pyname, (DefinedName, AssignedName)) and name.isupper():
+            result = "constant"
+        else:
+            result = "assignment"
+        return result
 
     @staticmethod
     def _reference_sites(
