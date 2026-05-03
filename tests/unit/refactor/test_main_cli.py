@@ -1141,7 +1141,10 @@ class TestsFlextInfraRefactorMainCli:
         def _broken_build(
             rope: p.Infra.RopeWorkspaceDsl,
             candidate: m.Infra.Census.RemovalCandidate,
+            *,
+            source_cache: dict[Path, str] | None = None,
         ) -> object:
+            del source_cache
             if candidate.object_name == "only_for_tests":
                 return None
             return original_build(rope, candidate)
@@ -1177,7 +1180,10 @@ class TestsFlextInfraRefactorMainCli:
         def _broken_build(
             rope: p.Infra.RopeWorkspaceDsl,
             candidate: m.Infra.Census.RemovalCandidate,
+            *,
+            source_cache: dict[Path, str] | None = None,
         ) -> object:
+            del source_cache
             if candidate.object_name == "only_for_tests":
                 return None
             return original_build(rope, candidate)

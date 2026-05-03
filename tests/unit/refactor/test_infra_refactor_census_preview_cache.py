@@ -129,8 +129,8 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             encoding="utf-8",
         )
         service = FlextInfraRefactorCensus(
-            workspace=str(workspace_root),
-            projects=["flext-demo"],
+            workspace=workspace_root,
+            selected_projects=("flext-demo",),
             include_local_scopes=False,
         )
         project_report = m.Infra.Census.ProjectReport(

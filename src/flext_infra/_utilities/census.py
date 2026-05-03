@@ -145,24 +145,21 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         source_cache: dict[Path, str] | None = None,
-    ) -> p.Result[t.MappingKV[Path, str] | None]:
+    ) -> p.Result[t.MappingKV[Path, str]]:
         """Return projected sources or a loud failure for broken planning.
 
-        ``r.ok(None)`` is reserved for candidates that are explicitly outside the
-        simple-removal contract. Supported top-level class/function candidates
-        must either produce concrete source updates or fail loudly; they must not
-        silently collapse into an empty projection.
+        Supported top-level class/function candidates must either produce
+        concrete source updates or fail loudly; they must not silently collapse
+        into an empty projection.
         """
-        if not cls._supports_simple_removal_candidate(candidate):
-            return r[t.MappingKV[Path, str] | None].ok(None)
         updates = cls.build_simple_removal_sources(
             rope,
             candidate,
             source_cache=source_cache,
         )
         if updates is not None:
-            return r[t.MappingKV[Path, str] | None].ok(updates)
-        return r[t.MappingKV[Path, str] | None].fail(
+            return r[t.MappingKV[Path, str]].ok(updates)
+        return r[t.MappingKV[Path, str]].fail(
             "simple removal planning failed for "
             f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
         )
@@ -375,20 +372,19 @@ class FlextInfraUtilitiesRefactorCensus:
         simple-removal contract. ``r.fail(...)`` when planning or
         ``preview_source_writes`` failed — the message lists the reason.
         """
-        updates_result = (
-            FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
-                rope,
-                candidate,
-                source_cache=source_cache,
-            )
+        if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
+            candidate,
+        ):
+            return r[bool].ok(False)
+        updates_result = FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
+            rope,
+            candidate,
         )
         if updates_result.failure:
             return r[bool].fail(
                 updates_result.error or "simple removal planning failed"
             )
-        updates = updates_result.unwrap_or(None)
-        if updates is None:
-            return r[bool].ok(False)
+        updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
@@ -463,19 +459,19 @@ class FlextInfraUtilitiesRefactorCensus:
         the ``flext_infra.codegen.lazy_init`` import cycle while still
         giving gates a chance to verify post-cascade correctness.
         """
-        updates_result = (
-            FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
-                rope,
-                candidate,
-            )
+        if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
+            candidate,
+        ):
+            return r[bool].ok(False)
+        updates_result = FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
+            rope,
+            candidate,
         )
         if updates_result.failure:
             return r[bool].fail(
                 updates_result.error or "simple removal planning failed"
             )
-        updates = updates_result.unwrap_or(None)
-        if updates is None:
-            return r[bool].ok(False)
+        updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
