@@ -1,0 +1,47 @@
+tests/unit/test_infra_workspace_migrator_internal.py
+  81bd344b75a4c5f1 118
+src/flext_infra/_utilities/namespace.py
+  h_9db9d35f50cf33 33,56-57,59-61,66-68
+src/flext_infra/_utilities/codegen.py
+  81bd344b75a4c5f1 7,18,24-25,27-31,33-46
+src/flext_infra/refactor/census.py
+  h_9db9d35f50cf33 5,252-254,264,271-272,275-280,285-287,291-292,301,303-304,306,318,327,340-341,396-421,605,612,615,618-619,621,628-652,657,661,694-699,703-706,736,753-758,762-765,768-774,820,825-828,833,845-846,1130-1164,1170-1173,1180,1185-1186,1216-1217,1221,1224-1233
+  81bd344b75a4c5f1 48-53,620,655,1165-1169
+tests/unit/check/pyrefly_tests.py
+  81bd344b75a4c5f1 70
+tests/unit/refactor/test_main_cli.py
+  h_9db9d35f50cf33 555-594,600-625
+  81bd344b75a4c5f1 595-599,644
+src/flext_infra/_utilities/rope_inventory.py
+  h_9db9d35f50cf33 27-28,43,364-372,374,383-389,421,432-439,444
+src/flext_infra/refactor/orchestrator.py
+  81bd344b75a4c5f1 360-365,369-374,386-406
+tests/unit/deps/test_path_sync_rewrite_deps.py
+  81bd344b75a4c5f1 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0055b72651b56f33f4ae8fcd692ab378894abfb9",
+  "prompts": {
+    "81bd344b75a4c5f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "288f9aad-a0e4-4b23-a3ad-bc9b7b265cbd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 82,
+      "total_deletions": 61,
+      "accepted_lines": 80,
+      "overriden_lines": 5,
+      "messages_url": "https://usegitai.com/cas/6b69c5ce9d25b053e4bf2745210de1d2d5987b3f173e13a8d66a5b6919b1e3c9"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
