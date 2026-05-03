@@ -197,18 +197,22 @@ class FlextInfraModelsGithub:
 
         @property
         def workflows_dir(self) -> Path:
+            """Workflows dir."""
             return self.project_root / ".github" / "workflows"
 
         @property
         def ci_destination(self) -> Path:
+            """Ci destination."""
             return self.workflows_dir / "ci.yml"
 
         @property
         def apply(self) -> bool:
+            """Apply."""
             return self.request.apply
 
         @property
         def prune(self) -> bool:
+            """Prune."""
             return self.request.prune
 
     class GithubPullRequestWorkspaceContext(

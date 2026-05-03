@@ -60,9 +60,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     _module_convention_cache: dict[str, m.Infra.RopeModuleConvention] = u.PrivateAttr(
         default_factory=dict
     )
-    _module_object_cache: dict[tuple[str, bool], tuple[m.Infra.Census.Object, ...]] = (
-        u.PrivateAttr(default_factory=dict)
-    )
+    _module_object_cache: dict[
+        tuple[str, bool, bool],
+        tuple[m.Infra.Census.Object, ...],
+    ] = u.PrivateAttr(default_factory=dict)
     _resource_cache: dict[str, t.Infra.RopeResource | None] = u.PrivateAttr(
         default_factory=dict
     )
@@ -238,10 +239,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
                 continue
             surface = self._reference_surface_for(py_file)
             lines_by_name: dict[str, list[int]] = {}
-            for match in self._IDENTIFIER_PATTERN.finditer(source_text):
-                name = match.group(0)
-                lineno = source_text.count("\n", 0, match.start()) + 1
-                lines_by_name.setdefault(name, []).append(lineno)
+            for lineno, source_line in enumerate(source_text.splitlines(), start=1):
+                for match in self._IDENTIFIER_PATTERN.finditer(source_line):
+                    name = match.group(0)
+                    lines_by_name.setdefault(name, []).append(lineno)
             for name, line_numbers in lines_by_name.items():
                 index.setdefault(name, []).append(
                     (py_file, surface, line_numbers),
@@ -260,6 +261,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     @classmethod
     def _reference_surface_for(cls, file_path: Path) -> str:
+        """Reference surface for."""
         for part in file_path.parts:
             if part in cls._SURFACE_DIRS:
                 surface: str = part
@@ -272,10 +274,11 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         file_path: Path,
         *,
         include_local_scopes: bool = True,
+        include_references: bool = True,
     ) -> t.SequenceOf[m.Infra.Census.Object]:
         """Return Rope-only discovered objects for one module path."""
         resolved_file = file_path.resolve()
-        cache_key = (str(resolved_file), include_local_scopes)
+        cache_key = (str(resolved_file), include_local_scopes, include_references)
         cached = self._module_object_cache.get(cache_key)
         if cached is not None:
             return cached
@@ -285,6 +288,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             module_entry=self.module(resolved_file),
             convention=self.convention(resolved_file),
             include_local_scopes=include_local_scopes,
+            include_references=include_references,
             rope_workspace=self,
         )
         self._module_object_cache[cache_key] = objects

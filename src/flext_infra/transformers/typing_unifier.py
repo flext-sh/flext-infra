@@ -42,6 +42,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
                 def replacer(
                     match: t.Infra.RegexMatch, canonical: str = canonical
                 ) -> str:
+                    """Replacer."""
                     # Capture exact matched text for accurate reporting.
                     matched_text = match.group(0)
                     self._record_change(
@@ -57,6 +58,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return source, list(self.changes)
 
     def _canonicalize_annotation_builtins(self, source: str) -> str:
+        """Canonicalize annotation builtins."""
         try:
             module = ast.parse(source)
         except SyntaxError:
@@ -88,6 +90,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
     @staticmethod
     def _line_offsets(source: str) -> list[int]:
+        """Line offsets."""
         offsets = [0]
         total = 0
         for line in source.splitlines(keepends=True):
@@ -97,10 +100,12 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
     @staticmethod
     def _offset(line_offsets: list[int], lineno: int, col: int) -> int:
+        """Offset."""
         return line_offsets[lineno - 1] + col
 
     @classmethod
     def _annotation_nodes(cls, module: ast.Module) -> list[ast.expr]:
+        """Annotation nodes."""
         annotations: list[ast.expr] = []
         for node in ast.walk(module):
             match node:
@@ -129,6 +134,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return annotations
 
     def _rewrite_annotation(self, annotation: ast.expr) -> ast.expr | None:
+        """Rewrite annotation."""
         original = ast.unparse(annotation)
         rewritten: ast.expr = self._AnnotationRewriter().visit(annotation)
         if ast.dump(rewritten) == ast.dump(annotation):
@@ -139,6 +145,8 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return rewritten
 
     class _AnnotationRewriter(ast.NodeTransformer):
+        """Annotation rewriter."""
+
         PAIR_ARITY: ClassVar[int] = 2
         _TUPLE_NAMES: ClassVar[t.MappingKV[int, str]] = {
             2: "Pair",
@@ -149,6 +157,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
         @override
         def visit_Name(self, node: ast.Name) -> ast.expr:
+            """Visit name."""
             if node.id in {"Any", "object"}:
                 return ast.copy_location(
                     ast.Attribute(
@@ -162,6 +171,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
         @override
         def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
+            """Visit attribute."""
             self.generic_visit(node)
             if (
                 node.attr == "Any"
@@ -180,6 +190,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
         @override
         def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
+            """Visit subscript."""
             self.generic_visit(node)
             name = self.name(node.value)
             if name == "dict":
@@ -208,6 +219,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
             return node
 
         def _rewrite_tuple(self, node: ast.Subscript) -> ast.expr:
+            """Rewrite tuple."""
             items = self._tuple_items(node.slice)
             if (
                 len(items) == self.PAIR_ARITY
@@ -236,6 +248,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
         @staticmethod
         def name(node: ast.expr) -> str:
+            """Name."""
             if isinstance(node, ast.Name):
                 return node.id
             if isinstance(node, ast.Attribute):
@@ -246,6 +259,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         def _mapping_args(
             slice_node: ast.expr,
         ) -> tuple[ast.expr | None, ast.expr | None]:
+            """Mapping args."""
             if (
                 isinstance(slice_node, ast.Tuple)
                 and len(slice_node.elts)
@@ -256,18 +270,21 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
         @staticmethod
         def _sequence_arg(slice_node: ast.expr) -> ast.expr:
+            """Sequence arg."""
             if isinstance(slice_node, ast.Tuple) and len(slice_node.elts) == 1:
                 return slice_node.elts[0]
             return slice_node
 
         @staticmethod
         def _tuple_items(slice_node: ast.expr) -> list[ast.expr]:
+            """Tuple items."""
             if isinstance(slice_node, ast.Tuple):
                 return list(slice_node.elts)
             return [slice_node]
 
         @staticmethod
         def _t_attr(name: str) -> ast.Attribute:
+            """T attr."""
             return ast.Attribute(
                 value=ast.Name(id="t", ctx=ast.Load()),
                 attr=name,
@@ -295,6 +312,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
     @staticmethod
     def _is_typing_definition_file(file_path: Path | None) -> bool:
+        """Is typing definition file."""
         if file_path is None:
             return False
         if file_path.name in c.Infra.TYPING_DEFINITION_FILES:
@@ -302,6 +320,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return any(part in c.Infra.TYPING_DEFINITION_FILES for part in file_path.parts)
 
     def _ensure_t_import(self, source: str) -> str:
+        """Ensure t import."""
         if "t." not in source or self._has_t_import(source):
             return source
         module_name = self._canonical_import_module()
@@ -316,6 +335,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
     @staticmethod
     def _has_t_import(source: str) -> bool:
+        """Has t import."""
         try:
             module = ast.parse(source)
         except SyntaxError:
@@ -334,6 +354,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return False
 
     def _canonical_import_module(self) -> str:
+        """Canonical import module."""
         if self._file_path is None:
             return ""
         package_name: str = u.Infra.package_name(self._file_path)
@@ -341,6 +362,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
     @staticmethod
     def _import_insertion_offset(source: str) -> int:
+        """Import insertion offset."""
         pattern = re.compile(
             r"^(?:from\s+\S+\s+import\s+.+|import\s+.+)$",
             re.MULTILINE,

@@ -22,6 +22,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
 
     @staticmethod
     def shared_workspace_root(*, py_files: t.SequenceOf[Path]) -> Path:
+        """Shared workspace root."""
         existing_files = [path.resolve() for path in py_files if path.exists()]
         if not existing_files:
             return Path.cwd()
@@ -38,6 +39,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     def _parse_simple_from_import_line(
         line: str,
     ) -> t.Infra.TransformResult | None:
+        """Parse simple from import line."""
         stripped = line.strip()
         if (
             not stripped.startswith("from ")
@@ -60,6 +62,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         lines: t.StrSequence,
         imports: t.StrSequence,
     ) -> t.StrSequence:
+        """Insert import lines."""
         if not imports:
             return list(lines)
         insert_idx = (
@@ -76,6 +79,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         source_file: Path,
         filename: str,
     ) -> Path:
+        """Canonical target file."""
         parts = source_file.parts
         src_dir: str = c.Infra.DEFAULT_SRC_DIR
         if src_dir in parts:
@@ -91,6 +95,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         lines: t.StrSequence,
         header: str,
     ) -> tuple[int, int] | None:
+        """Find top level block."""
         start_idx = -1
         for idx, line in enumerate(lines):
             if line.startswith(header):
@@ -112,6 +117,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         *,
         alias_map: t.StrMapping,
     ) -> str | None:
+        """Compat assignment target."""
         stripped = line.strip()
         if "=" not in stripped or stripped.startswith("#"):
             return None
@@ -124,6 +130,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         source: str,
         alias_map: t.StrMapping,
     ) -> str:
+        """Apply token replacements."""
         line_buffer = source.splitlines(keepends=True)
         replacements_by_line: t.MappingKV[
             int,

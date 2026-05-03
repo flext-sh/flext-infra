@@ -53,6 +53,7 @@ class FlextInfraNamespaceRules:
 
     @staticmethod
     def _annotation_contains(annotation: ast.expr | None, name: str) -> bool:
+        """Annotation contains."""
         return name in (ast.unparse(annotation) if annotation else "")
 
     def target_name(self, target: ast.expr | None) -> str:
@@ -73,6 +74,7 @@ class FlextInfraNamespaceRules:
         rule_prefix: str,
         messages: Iterable[str],
     ) -> t.StrSequence:
+        """Accumulate violations."""
         return [
             f"[{rule_prefix}-{i:03d}] {msg}" for i, msg in enumerate(messages, start=1)
         ]
@@ -123,6 +125,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check rule 1 canonical."""
         messages: t.MutableSequenceOf[str] = []
         for cls in (n for n in tree.body if isinstance(n, ast.ClassDef)):
             base_strs = {ast.unparse(b) for b in cls.bases}
@@ -142,6 +145,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check rule 1 non canonical."""
         messages: t.MutableSequenceOf[str] = []
         for node in tree.body:
             messages.extend(self._check_loose_final(node, filepath))
@@ -156,6 +160,7 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check loose final."""
         if not (
             isinstance(node, ast.AnnAssign)
             and self._annotation_contains(node.annotation, "Final")
@@ -173,6 +178,7 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check loose collection."""
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return []
         func_name = self.call_name(node.value.func)
@@ -194,6 +200,7 @@ class FlextInfraNamespaceRules:
         cls: ast.ClassDef,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check loose enums."""
         messages: t.MutableSequenceOf[str] = []
         for inner in cls.body:
             if isinstance(inner, ast.ClassDef) and any(
@@ -223,6 +230,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check rule 2 canonical."""
         messages: t.MutableSequenceOf[str] = []
         for cls in (n for n in tree.body if isinstance(n, ast.ClassDef)):
             base_strs = {ast.unparse(b) for b in cls.bases}
@@ -243,6 +251,7 @@ class FlextInfraNamespaceRules:
         self,
         inner: ast.ClassDef,
     ) -> bool:
+        """Inner inherits forbidden base."""
         forbidden = {"BaseModel", "Protocol"}
         return any(ast.unparse(base) in forbidden for base in inner.bases)
 
@@ -251,6 +260,7 @@ class FlextInfraNamespaceRules:
         tree: ast.Module,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check rule 2 non canonical."""
         messages: t.MutableSequenceOf[str] = []
         for node in tree.body:
             messages.extend(self._check_loose_typevar(node, filepath))
@@ -263,6 +273,7 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check loose typevar."""
         if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
             return []
         func_name = self.call_name(node.value.func)
@@ -278,6 +289,7 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check loose typealias annotation."""
         if not (
             isinstance(node, ast.AnnAssign)
             and self._annotation_contains(node.annotation, "TypeAlias")
@@ -293,6 +305,7 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
     ) -> t.StrSequence:
+        """Check loose pep695 typealias."""
         if not isinstance(node, ast.TypeAlias):
             return []
         name = getattr(node, c.Infra.DUNDER_NAME, None)
@@ -335,6 +348,7 @@ class FlextInfraNamespaceRules:
         imported_name: str,
         owner_rules: tuple[tuple[str, str, str], ...],
     ) -> bool:
+        """Allows direct facade import."""
         for prefix, facade_filename, private_dir in owner_rules:
             if not imported_name.startswith(prefix):
                 continue
@@ -349,6 +363,7 @@ class FlextInfraNamespaceRules:
         imported_name: str,
         owner_rules: tuple[tuple[str, str, str], ...],
     ) -> bool:
+        """Is local facade owner import."""
         return any(
             imported_name.startswith(prefix)
             for prefix, _facade_filename, _private_dir in owner_rules
@@ -358,6 +373,7 @@ class FlextInfraNamespaceRules:
         self,
         class_stem: str,
     ) -> tuple[tuple[str, str, str], ...]:
+        """Owner direct facade rules."""
         return tuple(
             (f"{class_stem}{suffix}", facade_filename, private_dir)
             for suffix, facade_filename, private_dir in self._DIRECT_FACADE_SUFFIX_RULES
@@ -370,6 +386,7 @@ class FlextInfraNamespaceRules:
         node: ast.stmt,
         filepath: Path,
     ) -> bool:
+        """Is allowed module level."""
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             return True
         if self._is_module_docstring(node):
@@ -385,6 +402,7 @@ class FlextInfraNamespaceRules:
         node: ast.Assign | ast.TypeAlias | ast.AnnAssign,
         filepath: Path,
     ) -> bool:
+        """Is allowed assignment."""
         typings_directory: str = c.Infra.FAMILY_DIRECTORIES["t"]
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
@@ -398,6 +416,7 @@ class FlextInfraNamespaceRules:
 
     @staticmethod
     def _is_module_docstring(node: ast.stmt) -> bool:
+        """Is module docstring."""
         return (
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Constant)
@@ -409,6 +428,7 @@ class FlextInfraNamespaceRules:
         node: ast.Assign,
         filepath: Path,
     ) -> bool:
+        """Is allowed assign."""
         typings_directory: str = c.Infra.FAMILY_DIRECTORIES["t"]
         for target in node.targets:
             if isinstance(target, ast.Name) and target.id in c.Infra.DUNDER_ALLOWED:
@@ -432,6 +452,7 @@ class FlextInfraNamespaceRules:
         node: ast.AnnAssign,
         filepath: Path,
     ) -> bool:
+        """Is allowed ann assign."""
         typings_directory: str = c.Infra.FAMILY_DIRECTORIES["t"]
         # __all__: list[str] = [...] and other dunders with annotations are always allowed.
         if (

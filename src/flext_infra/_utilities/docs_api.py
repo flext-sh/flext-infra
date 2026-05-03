@@ -208,51 +208,22 @@ class FlextInfraUtilitiesDocsApi:
         package_name: str,
     ) -> t.Infra.ContainerDict:
         """Build the public API contract from pyproject, exports, and Rope validation."""
-        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
-        exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            project_root,
-            "exclude_docs",
-        )
-        project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta: t.Infra.ContainerDict = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                project_meta_value if isinstance(project_meta_value, Mapping) else {}
-            )
-        )
-        project_urls_value = project_meta.get("urls")
-        project_urls: t.Infra.ContainerDict = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                project_urls_value if isinstance(project_urls_value, Mapping) else {}
-            )
-        )
-        site_title = (
-            str(docs_meta.get("site_title", "")).strip()
-            or str(project_meta.get("name", "")).strip()
-        )
-        site_url = str(
-            project_urls.get("Documentation") or project_urls.get("Homepage") or ""
-        ).strip()
-        repo_url = str(
-            project_urls.get("Repository") or project_urls.get("Homepage") or ""
-        ).strip()
-        description = str(project_meta.get("description", "")).strip()
-        version = str(project_meta.get(c.Infra.VERSION, "")).strip()
+        meta = FlextInfraUtilitiesDocsApi._extract_project_metadata(project_root)
         if not package_name:
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
                 "package_name": "",
-                "description": description,
-                "version": version,
-                "site_title": site_title,
-                "site_url": site_url,
-                "repo_url": repo_url,
+                "description": meta.description,
+                "version": meta.version,
+                "site_title": meta.site_title,
+                "site_url": meta.site_url,
+                "repo_url": meta.repo_url,
                 "exports": [],
                 "aliases": [],
                 "facades": [],
                 "public_symbols": [],
                 "target_map": {},
                 "modules": [],
-                "exclude_docs": list(exclude_docs),
+                "exclude_docs": list(meta.exclude_docs),
             })
         init_path = (
             project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
@@ -268,15 +239,97 @@ class FlextInfraUtilitiesDocsApi:
             package_name,
             all_exports,
         )
-        modules = sorted(
-            {
-                module
-                for module in target_map.values()
-                if module.startswith(package_name)
-                and "._" not in module
-                and not module.endswith(".__version__")
-            },
+        aliases, module_exports, symbol_exports = (
+            FlextInfraUtilitiesDocsApi._classify_exports(all_exports, target_map)
         )
+        modules = FlextInfraUtilitiesDocsApi._resolve_modules(
+            package_name=package_name,
+            target_map=target_map,
+            docs_meta=meta.docs_meta,
+        )
+        rope_symbols = FlextInfraUtilitiesDocsApi._rope_public_symbols(
+            project_root,
+            target_map,
+        )
+        public_symbols = [
+            name for name in rope_symbols if name in symbol_exports
+        ] or symbol_exports
+        metadata = u.read_project_constants("flext-infra")
+        facades = [
+            name
+            for name in public_symbols
+            if name.startswith(metadata.TIER_FACADE_PREFIX["src"])
+        ]
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+            "package_name": package_name,
+            "description": meta.description,
+            "keywords": FlextInfraUtilitiesDocsApi._project_keywords(
+                meta.project_meta,
+            ),
+            "version": meta.version,
+            "site_title": meta.site_title,
+            "site_url": meta.site_url,
+            "repo_url": meta.repo_url,
+            "exports": all_exports,
+            "aliases": aliases,
+            "facades": facades,
+            "module_exports": module_exports,
+            "public_symbols": public_symbols,
+            "target_map": dict(target_map),
+            "modules": modules,
+            "exclude_docs": list(meta.exclude_docs),
+        })
+
+    @staticmethod
+    def _extract_project_metadata(
+        project_root: Path,
+    ) -> m.Infra.DocsProjectMeta:
+        """Pull pyproject + docs metadata into a strongly-typed view."""
+        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
+        docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
+        exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
+            project_root,
+            "exclude_docs",
+        )
+        project_meta_value = payload.get(c.Infra.PROJECT)
+        project_meta: t.Infra.ContainerDict = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                project_meta_value if isinstance(project_meta_value, Mapping) else {},
+            )
+        )
+        project_urls_value = project_meta.get("urls")
+        project_urls: t.Infra.ContainerDict = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                project_urls_value if isinstance(project_urls_value, Mapping) else {},
+            )
+        )
+        site_title = (
+            str(docs_meta.get("site_title", "")).strip()
+            or str(project_meta.get("name", "")).strip()
+        )
+        site_url = str(
+            project_urls.get("Documentation") or project_urls.get("Homepage") or "",
+        ).strip()
+        repo_url = str(
+            project_urls.get("Repository") or project_urls.get("Homepage") or "",
+        ).strip()
+        return m.Infra.DocsProjectMeta(
+            project_meta=project_meta,
+            docs_meta=docs_meta,
+            exclude_docs=exclude_docs,
+            site_title=site_title,
+            site_url=site_url,
+            repo_url=repo_url,
+            description=str(project_meta.get("description", "")).strip(),
+            version=str(project_meta.get(c.Infra.VERSION, "")).strip(),
+        )
+
+    @staticmethod
+    def _classify_exports(
+        all_exports: t.StrSequence,
+        target_map: t.StrMapping,
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Split ``__all__`` entries into ``(aliases, module_exports, symbol_exports)``."""
         aliases = [
             name
             for name in all_exports
@@ -294,15 +347,24 @@ class FlextInfraUtilitiesDocsApi:
             name
             for name in all_exports
             if name not in FlextInfraUtilitiesDocsApi._ALIAS_EXPORTS
-            and not name.startswith("__")
             and not name.startswith("_")
             and name not in module_exports
         ]
+        return aliases, module_exports, symbol_exports
+
+    @staticmethod
+    def _resolve_modules(
+        *,
+        package_name: str,
+        target_map: t.StrMapping,
+        docs_meta: t.MappingKV[str, t.Infra.InfraValue],
+    ) -> list[str]:
+        """Compute the doc-eligible module list with include/exclude overrides."""
         include_modules = FlextInfraUtilitiesDocsApi._string_values(
-            docs_meta.get("module_include")
+            docs_meta.get("module_include"),
         )
         exclude_modules = FlextInfraUtilitiesDocsApi._string_values(
-            docs_meta.get("module_exclude")
+            docs_meta.get("module_exclude"),
         )
         if include_modules:
             modules = sorted({
@@ -310,41 +372,18 @@ class FlextInfraUtilitiesDocsApi:
                 for item in include_modules
                 if item.strip().startswith(package_name)
             })
+        else:
+            modules = sorted({
+                module
+                for module in target_map.values()
+                if module.startswith(package_name)
+                and "._" not in module
+                and not module.endswith(".__version__")
+            })
         if exclude_modules:
             excluded = {item.strip() for item in exclude_modules if item.strip()}
             modules = [module for module in modules if module not in excluded]
-        public_symbols = [
-            name
-            for name in FlextInfraUtilitiesDocsApi._rope_public_symbols(
-                project_root, target_map
-            )
-            if name in symbol_exports
-        ]
-        if not public_symbols:
-            public_symbols = symbol_exports
-        metadata = u.read_project_constants("flext-infra")
-        facades = [
-            name
-            for name in public_symbols
-            if name.startswith(metadata.TIER_FACADE_PREFIX["src"])
-        ]
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
-            "package_name": package_name,
-            "description": description,
-            "keywords": FlextInfraUtilitiesDocsApi._project_keywords(project_meta),
-            "version": version,
-            "site_title": site_title,
-            "site_url": site_url,
-            "repo_url": repo_url,
-            "exports": all_exports,
-            "aliases": aliases,
-            "facades": facades,
-            "module_exports": module_exports,
-            "public_symbols": public_symbols,
-            "target_map": dict(target_map),
-            "modules": modules,
-            "exclude_docs": list(exclude_docs),
-        })
+        return modules
 
     @staticmethod
     def docstring_issues(

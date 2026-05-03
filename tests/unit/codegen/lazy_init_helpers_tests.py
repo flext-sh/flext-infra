@@ -238,7 +238,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         cli_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: list[str] = ["c"]\n',
+            '__all__: list[str] = ["c", "r"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         cli_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -261,7 +261,8 @@ class TestsFlextInfraLazyInitHelpers:
         assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
-        assert '"r"' in init_content
+        assert "from flext_cli import d, e, h, m, p, r, s, t, u, x" in init_content
+        assert '"flext_cli": (' in init_content
 
     def test_nested_tests_namespace_exports_local_symbols_only(
         self,

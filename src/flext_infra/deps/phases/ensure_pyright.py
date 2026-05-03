@@ -47,6 +47,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         extra_paths: t.StrSequence,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
     ) -> m.Infra.PyrightConfig.ExecutionEnvironment:
+        """Env entry."""
         return m.Infra.PyrightConfig.ExecutionEnvironment(
             root=root,
             report_private_usage=self._report_private_usage_for_env(
@@ -79,6 +80,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_root: str,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        """Envs for dirs."""
         return [
             self._env_entry(
                 env_dir=env_dir,
@@ -100,6 +102,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         prefix: str = "",
     ) -> str:
+        """Project source path."""
         rules = self._tool_config.tools.pyright.path_rules
         src_dir = project_dir / rules.source_dir
         if src_dir.is_dir():
@@ -113,6 +116,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         workspace_root: Path | None,
         project_dir: Path | None = None,
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        """Expected envs."""
         if not is_root or workspace_root is None:
             return self._expected_envs_for_project(project_dir)
         rules = self._tool_config.tools.pyright.path_rules
@@ -217,6 +221,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         is_root: bool,
     ) -> t.StrMapping:
+        """Venv settings."""
         rules = self._tool_config.tools.pyright.path_rules
         venv_path = rules.root_venv_path if is_root else rules.project_venv_path
         return {
@@ -242,6 +247,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         base_dir: Path | None,
         configured_paths: t.StrSequence,
     ) -> t.StrSequence:
+        """Existing paths."""
         if base_dir is None:
             return []
         existing: t.StrSequence = [

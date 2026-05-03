@@ -92,6 +92,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         class_names: t.StrSequence,
         ns_exists: bool,
     ) -> str:
+        """Nest classes."""
         extracted: list[str] = []
         for class_name in class_names:
             block = u.Infra.extract_definition(source, class_name, kind="class")
@@ -111,6 +112,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         return source.rstrip("\n") + f"\n\nclass {namespace}:\n{nested_block}\n"
 
     def _is_nesting_allowed(self, class_name: str, target_namespace: str) -> bool:
+        """Is nesting allowed."""
         policy = self._policy_for(class_name)
         if policy is None:
             return True
@@ -128,6 +130,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         target_namespace: str,
         operation: str,
     ) -> bool:
+        """Ns op allowed."""
         for class_name in class_names:
             policy = self._policy_for(class_name)
             if policy is None:
@@ -144,6 +147,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         return True
 
     def _policy_for(self, symbol_name: str) -> m.Infra.ClassNestingPolicy | None:
+        """Policy for."""
         return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,

@@ -41,6 +41,7 @@ class FlextInfraRefactorDeprecatedRemover:
         )
 
     def _record_change(self, message: str) -> None:
+        """Record change."""
         self.changes.append(message)
         if self._on_change is not None:
             self._on_change(message)

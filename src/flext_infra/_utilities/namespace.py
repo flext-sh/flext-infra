@@ -36,6 +36,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _is_rule_fixable(cls, rule_id: str, module: str) -> bool:
+        """Is rule fixable."""
         cached = cls._governance_cache.get("settings")
         if cached is None:
             raw = u.Cli.yaml_load_mapping(cls._governance_file)
@@ -477,6 +478,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         base_name: str,
         ctx: m.Infra.FixContext,
     ) -> None:
+        """Normalize facade base."""
         if file_path.is_file():
             with FlextInfraUtilitiesRopeCore.open_project(
                 file_path.parent
@@ -532,6 +534,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     def _normalize_class_header(*, line: str, class_name: str, base_name: str) -> str:
+        """Normalize class header."""
         stripped = line.strip()
         prefix = f"class {class_name}"
         if not stripped.startswith(prefix) or not stripped.endswith(":"):
@@ -541,6 +544,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _insert_import_line(cls, *, source: str, import_line: str) -> str:
+        """Insert import line."""
         lines = source.splitlines()
         if import_line in lines:
             return source
@@ -598,6 +602,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     def _read_source_lines(project_path: Path, module: str) -> t.StrSequence:
+        """Read source lines."""
         module_path = project_path / module
         if not module_path.is_file():
             return ()
@@ -611,6 +616,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_path: Path,
         source_cache: MutableMapping[str, t.StrSequence],
     ) -> m.Infra.ViolationKey:
+        """Build violation key."""
         if violation.module not in source_cache:
             source_cache[violation.module] = cls._read_source_lines(
                 project_path,

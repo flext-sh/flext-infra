@@ -170,6 +170,8 @@ class FlextInfraModelsRefactorGrep:
         )
 
     class EngineConfig(m.ContractModel):
+        """Engine config."""
+
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_scan_dirs: t.StrSequence = m.Field(

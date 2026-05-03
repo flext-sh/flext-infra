@@ -22,6 +22,7 @@ class FlextInfraUtilitiesVersioning:
 
     @staticmethod
     def _extract_project_version_from_text(content: str) -> str | None:
+        """Extract project version from text."""
         in_project_section = False
         for raw_line in content.splitlines():
             line = raw_line.strip()
@@ -38,6 +39,7 @@ class FlextInfraUtilitiesVersioning:
 
     @staticmethod
     def _has_project_table(content: str) -> bool:
+        """Has project table."""
         return any(
             raw_line.strip() == c.Infra.SEMVER_PROJECT_SECTION
             for raw_line in content.splitlines()
@@ -45,6 +47,7 @@ class FlextInfraUtilitiesVersioning:
 
     @staticmethod
     def _replace_project_version_in_text(content: str, version: str) -> str | None:
+        """Replace project version in text."""
         lines = content.splitlines(keepends=True)
         in_project_section = False
         updated_lines: t.MutableSequenceOf[str] = []

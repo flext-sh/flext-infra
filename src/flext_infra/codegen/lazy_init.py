@@ -139,7 +139,11 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for obj in rope.objects(entry.file_path, include_local_scopes=False):
+            for obj in rope.objects(
+                entry.file_path,
+                include_local_scopes=False,
+                include_references=False,
+            ):
                 if obj.kind != "class" or obj.scope_path:
                     continue
                 name = obj.name
@@ -163,6 +167,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
         check_only: bool,
         planner: FlextInfraCodegenLazyInitPlanner,
     ) -> tuple[int, int, int, MutableMapping[str, t.Infra.LazyImportMap]]:
+        """Generate all inits."""
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.Infra.LazyImportMap] = {}
         progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
@@ -201,7 +206,9 @@ class FlextInfraCodegenLazyInit(s[bool]):
         dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
         planner: FlextInfraCodegenLazyInitPlanner,
     ) -> t.Infra.LazyInitProcessResult:
+        """Process directory."""
         result: t.Infra.LazyInitProcessResult
+        failed_lazy_map: t.Infra.MutableLazyImportMap
         try:
             plan = planner.build_plan(
                 pkg_dir,
@@ -220,11 +227,11 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 f"export collision in {pkg_dir}: {exc}; "
                 "correct the source exports before regenerating __init__.py",
             )
-            failed_lazy_map: t.Infra.MutableLazyImportMap = {}
+            failed_lazy_map = {}
             result = (-1, failed_lazy_map)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating {pkg_dir}: {exc}")
-            failed_lazy_map: t.Infra.MutableLazyImportMap = {}
+            failed_lazy_map = {}
             result = (-1, failed_lazy_map)
         return result
 
@@ -232,6 +239,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
         self,
         plan: m.Infra.LazyInitPlan,
     ) -> t.Infra.LazyInitWriteResult:
+        """Remove init."""
         init_path = plan.context.init_path
         if not init_path.is_file():
             return (0, dict(plan.lazy_map))
@@ -253,6 +261,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
         self,
         plan: m.Infra.LazyInitPlan,
     ) -> t.Infra.LazyInitWriteResult:
+        """Write init."""
         init_path = plan.context.init_path
         try:
             generated = FlextInfraCodegenGeneration.generate_file(

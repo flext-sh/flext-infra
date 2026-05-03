@@ -38,6 +38,7 @@ class FlextInfraRefactorLooseClassScanner:
         *,
         project_root: Path,
     ) -> tuple[t.SequenceOf[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:
+        """Scan discovered files."""
         violations: t.MutableSequenceOf[m.Infra.LooseClassViolation] = []
         targets_found: dict[str, bool] = dict.fromkeys(
             c.Infra.REQUIRED_CLASS_TARGETS,
@@ -84,6 +85,7 @@ class FlextInfraRefactorLooseClassScanner:
         targets_found: t.BoolMapping,
         classes_scanned: int,
     ) -> t.Infra.ContainerDict:
+        """Build report."""
         counters = Counter(v.confidence for v in violations)
         violations_infra: t.SequenceOf[t.Infra.InfraValue] = [
             v.model_dump() for v in violations
@@ -107,6 +109,7 @@ class FlextInfraRefactorLooseClassScanner:
         rel_path: Path,
         occ: m.Infra.ClassOccurrence,
     ) -> m.Infra.LooseClassViolation | None:
+        """Build violation."""
         if not occ.is_top_level:
             return None
         prefix = self._expected_prefix_for_module(rel_path)
@@ -128,12 +131,14 @@ class FlextInfraRefactorLooseClassScanner:
         )
 
     def _confidence_from_location(self, rel_path: Path) -> str:
+        """Confidence from location."""
         parts = rel_path.parent.parts[1:]
         if any(p.startswith("_") for p in parts):
             return "high"
         return "medium" if parts else c.Infra.SeverityLevel.LOW
 
     def _expected_prefix_for_module(self, rel_path: Path) -> str:
+        """Expected prefix for module."""
         parts = rel_path.parts
         if len(parts) < c.Infra.MIN_PATH_DEPTH:
             return ""
@@ -143,9 +148,11 @@ class FlextInfraRefactorLooseClassScanner:
         return f"{proj}{dirs}{pc(rel_path.stem)}"
 
     def _has_private_directory(self, rel_path: Path) -> bool:
+        """Has private directory."""
         return any(p.startswith("_") for p in rel_path.parent.parts[1:])
 
     def _pascal_case(self, value: str) -> str:
+        """Pascal case."""
         norm = c.Infra.CLASS_PATTERN.sub(" ", value.replace("_", " "))
         return "".join(w.capitalize() for w in norm.split())
 

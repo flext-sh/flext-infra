@@ -70,6 +70,7 @@ class FlextInfraSettings(FlextSettings):
     @u.field_validator("standalone", mode="before")
     @classmethod
     def _coerce_standalone(cls, value: bool | str | None) -> bool | str:
+        """Coerce standalone."""
         default: bool = c.Infra.ENV_DEFAULT_STANDALONE
         if value is None:
             return default
@@ -80,6 +81,7 @@ class FlextInfraSettings(FlextSettings):
     @u.field_validator("workspace_root", mode="before")
     @classmethod
     def _coerce_workspace_root(cls, value: str | Path | None) -> Path | None:
+        """Coerce workspace root."""
         if value is None:
             return None
         text = str(value).strip()

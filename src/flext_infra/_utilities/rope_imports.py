@@ -7,19 +7,22 @@ import re
 import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
 from rope.base.change import ChangeSet
-from rope.base.exceptions import RefactoringError, ResourceNotFoundError
+from rope.base.exceptions import (
+    RefactoringError,
+    ResourceNotFoundError,
+)
 from rope.refactor.importutils.importinfo import (
     FromImport,
     ImportStatement,
     NormalImport,
 )
 
-from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
     p,
     r,
     t,
+    u,
 )
 
 
@@ -104,8 +107,12 @@ class FlextInfraUtilitiesRopeImports:
             AttributeError,
             TypeError,
             RecursionError,
-        ):
-            return ()
+        ) as exc:
+            msg = (
+                "rope find_occurrences failed for "
+                f"{resource.path}@{offset}: {type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
 
     @staticmethod
     def organize_imports(
@@ -167,8 +174,9 @@ class FlextInfraUtilitiesRopeImports:
             and import_stmt.import_info.level == 0
         )
 
-    @staticmethod
+    @classmethod
     def relocate_from_import_aliases(
+        cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
@@ -178,109 +186,122 @@ class FlextInfraUtilitiesRopeImports:
         apply: bool,
     ) -> str | None:
         """Move unaliased names from one absolute import to another using Rope."""
-        result: str | None = None
         aliases_to_move = frozenset(aliases)
-        if aliases_to_move:
-            original_source = resource.read()
-            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
-                rope_project,
-                resource,
+        if not aliases_to_move:
+            return None
+        module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+            rope_project,
+            resource,
+        )
+        if module_imports is None:
+            return None
+        original_source: str = resource.read()
+        target_import_stmt, moved_aliases = cls._strip_aliases_from_source_imports(
+            module_imports,
+            source_module=source_module,
+            target_module=target_module,
+            aliases_to_move=aliases_to_move,
+        )
+        if not moved_aliases:
+            return None
+        merged_target_pairs = cls._merge_aliases_into_target(
+            module_imports,
+            target_import_stmt=target_import_stmt,
+            target_module=target_module,
+            moved_aliases=moved_aliases,
+        )
+        updated_source: str = module_imports.get_changed_source()
+        if merged_target_pairs and cls._uses_parenthesized_from_import(
+            source=original_source,
+            module_name=target_module,
+        ):
+            updated_source = cls._format_parenthesized_from_import(
+                source=updated_source,
+                module_name=target_module,
+                names_and_aliases=merged_target_pairs,
             )
-            if module_imports is not None:
-                moved_aliases: t.Infra.StrSet = set()
-                target_import_stmt: t.Infra.RopeImportStatement | None = None
-                merged_target_pairs: t.SequenceOf[tuple[str, str | None]] = ()
-                import_statements = module_imports.imports
-                if isinstance(import_statements, list):
-                    for import_stmt in import_statements:
-                        import_info = import_stmt.import_info
-                        target_from_import = (
-                            import_info
-                            if isinstance(import_info, FromImport)
-                            and import_info.level == 0
-                            and import_info.module_name == target_module
-                            else None
-                        )
-                        if target_from_import is not None:
-                            target_import_stmt = import_stmt
-                        from_import = (
-                            import_info
-                            if isinstance(import_info, FromImport)
-                            and import_info.level == 0
-                            and import_info.module_name == source_module
-                            else None
-                        )
-                        if from_import is None:
-                            continue
-                        kept_pairs: list[tuple[str, str | None]] = []
-                        for name, alias in from_import.names_and_aliases:
-                            if alias is None and name in aliases_to_move:
-                                moved_aliases.add(name)
-                                continue
-                            kept_pairs.append((name, alias))
-                        if len(kept_pairs) == len(from_import.names_and_aliases):
-                            continue
-                        import_stmt.import_info = FromImport(
-                            source_module, 0, kept_pairs
-                        )
-                    if moved_aliases:
-                        if target_import_stmt is not None:
-                            import_info = target_import_stmt.import_info
-                            if (
-                                isinstance(import_info, FromImport)
-                                and import_info.level == 0
-                                and import_info.module_name == target_module
-                            ):
-                                merged_pairs = list(import_info.names_and_aliases)
-                                existing_plain_names = {
-                                    name
-                                    for name, alias in merged_pairs
-                                    if alias is None
-                                }
-                                merged_pairs.extend(
-                                    (name, None)
-                                    for name in sorted(moved_aliases)
-                                    if name not in existing_plain_names
-                                )
-                                merged_target_pairs = tuple(merged_pairs)
-                                target_import_stmt.import_info = FromImport(
-                                    target_module,
-                                    0,
-                                    list(merged_target_pairs),
-                                )
-                        else:
-                            module_imports.add_import(
-                                FromImport(
-                                    target_module,
-                                    0,
-                                    [(name, None) for name in sorted(moved_aliases)],
-                                )
-                            )
-                            module_imports.sort_imports()
-                            merged_target_pairs = tuple(
-                                (name, None) for name in sorted(moved_aliases)
-                            )
-                        updated_source = module_imports.get_changed_source()
-                        if (
-                            merged_target_pairs
-                            and FlextInfraUtilitiesRopeImports._uses_parenthesized_from_import(
-                                source=original_source,
-                                module_name=target_module,
-                            )
-                        ):
-                            updated_source = FlextInfraUtilitiesRopeImports._format_parenthesized_from_import(
-                                source=updated_source,
-                                module_name=target_module,
-                                names_and_aliases=merged_target_pairs,
-                            )
-                        if updated_source != original_source:
-                            if apply:
-                                resource.write(updated_source)
-                            result = updated_source
-        return result
+        if updated_source == original_source:
+            return None
+        if apply:
+            resource.write(updated_source)
+        return updated_source
+
+    @staticmethod
+    def _strip_aliases_from_source_imports(
+        module_imports: t.Infra.RopeModuleImports,
+        *,
+        source_module: str,
+        target_module: str,
+        aliases_to_move: frozenset[str],
+    ) -> tuple[t.Infra.RopeImportStatement | None, t.Infra.StrSet]:
+        """Remove ``aliases_to_move`` from each ``from source_module`` statement.
+
+        Returns ``(target_import_stmt_or_None, moved_aliases_set)``. Mutates
+        the source-module statements in place via ``import_info`` reassignment;
+        the caller still owns the merge into the target.
+        """
+        target_import_stmt: t.Infra.RopeImportStatement | None = None
+        moved_aliases: t.Infra.StrSet = set()
+        import_statements = module_imports.imports
+        if not isinstance(import_statements, list):
+            return target_import_stmt, moved_aliases
+        for import_stmt in import_statements:
+            import_info = import_stmt.import_info
+            if not (isinstance(import_info, FromImport) and import_info.level == 0):
+                continue
+            if import_info.module_name == target_module:
+                target_import_stmt = import_stmt
+            if import_info.module_name != source_module:
+                continue
+            kept_pairs: list[tuple[str, str | None]] = []
+            for name, alias in import_info.names_and_aliases:
+                if alias is None and name in aliases_to_move:
+                    moved_aliases.add(name)
+                    continue
+                kept_pairs.append((name, alias))
+            if len(kept_pairs) == len(import_info.names_and_aliases):
+                continue
+            import_stmt.import_info = FromImport(source_module, 0, kept_pairs)
+        return target_import_stmt, moved_aliases
+
+    @staticmethod
+    def _merge_aliases_into_target(
+        module_imports: t.Infra.RopeModuleImports,
+        *,
+        target_import_stmt: t.Infra.RopeImportStatement | None,
+        target_module: str,
+        moved_aliases: t.Infra.StrSet,
+    ) -> t.SequenceOf[tuple[str, str | None]]:
+        """Merge ``moved_aliases`` into the target import; create one if missing."""
+        sorted_moved = sorted(moved_aliases)
+        if target_import_stmt is None:
+            module_imports.add_import(
+                FromImport(target_module, 0, [(name, None) for name in sorted_moved]),
+            )
+            module_imports.sort_imports()
+            return tuple((name, None) for name in sorted_moved)
+        import_info = target_import_stmt.import_info
+        if not (
+            isinstance(import_info, FromImport)
+            and import_info.level == 0
+            and import_info.module_name == target_module
+        ):
+            return ()
+        merged_pairs = list(import_info.names_and_aliases)
+        existing_plain_names = {name for name, alias in merged_pairs if alias is None}
+        merged_pairs.extend(
+            (name, None) for name in sorted_moved if name not in existing_plain_names
+        )
+        target_import_stmt.import_info = FromImport(
+            target_module,
+            0,
+            list(merged_pairs),
+        )
+        return tuple(merged_pairs)
 
     @staticmethod
     def _uses_parenthesized_from_import(*, source: str, module_name: str) -> bool:
+        """Uses parenthesized from import."""
         pattern = re.compile(rf"^from\s+{re.escape(module_name)}\s+import\s+\(")
         return any(pattern.match(line) for line in source.splitlines())
 
@@ -291,6 +312,7 @@ class FlextInfraUtilitiesRopeImports:
         module_name: str,
         names_and_aliases: t.SequenceOf[tuple[str, str | None]],
     ) -> str:
+        """Format parenthesized from import."""
         entries = [
             (f"{name} as {alias}" if alias else name)
             for name, alias in names_and_aliases

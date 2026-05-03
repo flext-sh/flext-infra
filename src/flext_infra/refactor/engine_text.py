@@ -36,6 +36,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
+        """Apply text rule selection."""
         match kind:
             case c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS:
                 result = self._apply_future_annotations(source)
@@ -73,6 +74,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         transformer: p.Infra.ChangeTracker,
         source: str,
     ) -> t.Infra.TransformResult:
+        """Apply change tracker transformer."""
         apply_fn = getattr(transformer, "apply_to_source", None)
         if callable(apply_fn):
             result = apply_fn(source)
@@ -86,6 +88,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     @staticmethod
     def _apply_future_annotations(source: str) -> t.Infra.TransformResult:
+        """Apply future annotations."""
         future_import = c.Infra.FUTURE_ANNOTATIONS
         lines = [line for line in source.splitlines() if line.strip() != future_import]
         insert_idx = 0
@@ -131,6 +134,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     def _apply_mro_class_migration(
         source: str, file_path: Path
     ) -> t.Infra.TransformResult:
+        """Apply mro class migration."""
         if file_path.name != c.Infra.CONSTANTS_PY:
             return (source, list[str]())
         candidates = u.Infra.find_final_candidates(source)
@@ -157,6 +161,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
+        """Apply import modernizer."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
             settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
@@ -205,6 +210,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
+        """Apply pattern corrections."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
             settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
@@ -234,6 +240,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     def _apply_typing_unification(
         self, source: str, file_path: Path
     ) -> t.Infra.TransformResult:
+        """Apply typing unification."""
         return self._apply_change_tracker_transformer(
             FlextInfraRefactorTypingUnifier(
                 canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
@@ -248,6 +255,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
+        """Apply typing annotation fix."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
             settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
@@ -267,6 +275,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
+        """Replace object annotations."""
         updated_source, count = u.Infra.batch_replace_annotations(
             rope_project,
             resource,
@@ -285,6 +294,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
+        """Remove redundant casts."""
         updated_source, count = u.Infra.remove_redundant_cast(
             rope_project,
             resource,
@@ -299,6 +309,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
+        """Replace mapping annotations."""
         _ = rope_project
         source = resource.read()
         total = 0
@@ -323,6 +334,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
+        """Apply tier0 import fix."""
         analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
             file_path=file_path,
             tier0_modules=self._tuple_setting(
@@ -361,6 +373,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
+        """Apply symbol propagation."""
         transformer = FlextInfraRefactorSymbolPropagator(
             target_modules=set(
                 u.Infra.string_list(settings.get(c.Infra.RK_TARGET_MODULES, []))
@@ -377,6 +390,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
+        """Apply signature propagation."""
         try:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 settings.get(c.Infra.RK_SIGNATURE_MIGRATIONS, []),
@@ -399,6 +413,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
+        """Apply class reconstructor."""
         try:
             order_config = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 settings.get(c.Infra.RK_METHOD_ORDER)
@@ -419,6 +434,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         key: str,
         default: t.StrSequence,
     ) -> tuple[str, ...]:
+        """Tuple setting."""
         value = settings.get(key, list(default))
         return (
             tuple(str(item) for item in value)
@@ -431,6 +447,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         settings: t.MappingKV[str, t.Infra.InfraValue],
         key: str,
     ) -> t.StrMapping:
+        """Mapping setting."""
         mapping_value = u.Cli.json_as_mapping(settings.get(key, {}))
         normalized_mapping: dict[str, str] = {
             item_key: str(item_value) for item_key, item_value in mapping_value.items()

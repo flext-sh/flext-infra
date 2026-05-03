@@ -33,6 +33,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilitiesdiscoveryconsolidated",
             ),
             "._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+            "._utilities.test_protected_edit": (
+                "TestsFlextInfraUtilitiesProtectedEdit",
+            ),
             "._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
             "._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
             "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),

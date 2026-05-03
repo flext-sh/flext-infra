@@ -40,6 +40,7 @@ class FlextInfraUtilitiesDocsFix:
         link_count = 0
 
         def replace_link(match: t.Infra.RegexMatch) -> str:
+            """Replace link."""
             nonlocal link_count
             text, link = match.groups()
             fixed = FlextInfraUtilitiesDocsFix.docs_maybe_fix_link(md_file, link)

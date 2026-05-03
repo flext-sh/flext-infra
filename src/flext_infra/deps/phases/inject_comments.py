@@ -10,11 +10,13 @@ class FlextInfraInjectCommentsPhase:
 
     @staticmethod
     def _is_section_header(line: str) -> bool:
+        """Is section header."""
         stripped = line.strip()
         return stripped.startswith("[") and stripped.endswith("]")
 
     @staticmethod
     def _managed_marker_lines() -> t.Infra.StrSet:
+        """Managed marker lines."""
         markers = {marker for _section_prefix, marker in c.Infra.COMMENT_MARKERS}
         markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_MARKER)
@@ -24,6 +26,7 @@ class FlextInfraInjectCommentsPhase:
 
     @staticmethod
     def _marker_for_section(section_header: str) -> str | None:
+        """Marker for section."""
         for section_prefix, marker_text in c.Infra.COMMENT_MARKERS:
             if section_header.startswith(section_prefix):
                 marker: str = marker_text
@@ -35,6 +38,7 @@ class FlextInfraInjectCommentsPhase:
         cls,
         lines: t.StrSequence,
     ) -> t.Pair[t.StrSequence, t.StrSequence]:
+        """Strip managed lines."""
         changes: t.MutableSequenceOf[str] = []
         managed_lines = cls._managed_marker_lines()
         cleaned: t.MutableSequenceOf[str] = []
@@ -69,6 +73,7 @@ class FlextInfraInjectCommentsPhase:
         changes: t.MutableSequenceOf[str],
         emitted_markers: t.Infra.StrSet,
     ) -> None:
+        """Inject dev markers."""
         managed_marker = c.Infra.DEV_OPTIONAL_DEPS_MARKER
         if managed_marker not in emitted_markers:
             out.append(managed_marker)

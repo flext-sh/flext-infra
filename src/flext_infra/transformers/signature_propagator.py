@@ -123,6 +123,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         remove_keywords: t.Infra.StrSet,
         add_keywords: t.MutableStrMapping,
     ) -> tuple[str, bool]:
+        """Rewrite call node."""
         rewritten_keywords: list[t.Infra.AstKeyword] = []
         changed = False
         for keyword in node.keywords:
@@ -166,6 +167,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
 
     @staticmethod
     def _line_offsets(source: str) -> tuple[int, ...]:
+        """Line offsets."""
         offsets = [0]
         for line in source.splitlines(keepends=True):
             offsets.append(offsets[-1] + len(line))
@@ -173,6 +175,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
 
     @staticmethod
     def _offset(line_offsets: tuple[int, ...], line: int, column: int) -> int:
+        """Offset."""
         return line_offsets[line - 1] + column
 
 

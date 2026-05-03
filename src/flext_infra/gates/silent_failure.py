@@ -37,6 +37,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
+        """Check."""
         _ = ctx
         started = time.monotonic()
         files_result = u.Infra.iter_python_files(
@@ -96,6 +97,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = project_dir, ctx, check_dirs
         return []
 
@@ -106,6 +108,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = result, project_dir, ctx
         return True, ()
 

@@ -497,6 +497,7 @@ class FlextInfraCli(FlextCli):
 
     @staticmethod
     def _cli_settings() -> FlextCliSettings:
+        """Cli settings."""
         return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
 
     def main(self, args: t.StrSequence | None = None) -> int:
@@ -533,6 +534,7 @@ class FlextInfraCli(FlextCli):
             )
 
     def _normalize_group_args(self, args: t.StrSequence) -> list[str]:
+        """Normalize group args."""
         reordered: list[str] = u.Cli.reorder_prefixed_options(
             args,
             bool_options=tuple(self._SHARED_BOOL_FLAGS),
@@ -541,6 +543,7 @@ class FlextInfraCli(FlextCli):
         return reordered
 
     def _register_group_commands(self, group: str, app: t.Cli.CliApp) -> None:
+        """Register group commands."""
         self.register_result_routes(app, self._GROUP_COMMANDS[group])
 
     def _run_group(self, group: str, args: t.StrSequence) -> int:

@@ -83,6 +83,40 @@ class FlextInfraModelsDocs:
         severity: Annotated[str, m.Field(description="Issue severity")]
         message: Annotated[str, m.Field(description="Issue description")]
 
+    class DocsProjectMeta(m.ContractModel):
+        """Typed view over pyproject + docs metadata used to build public contracts.
+
+        Single source of truth for the metadata bundle ``public_contract``
+        passes between its own helpers; replaces the prior dict-of-Any
+        approach so callers get strict typing for free. All payload fields
+        are required — callers always populate them — so no mutable
+        ``default_factory`` is needed.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            frozen=True,
+            arbitrary_types_allowed=True,
+        )
+
+        project_meta: Annotated[
+            t.Infra.ContainerDict,
+            m.Field(description="Pyproject ``[project]`` table"),
+        ]
+        docs_meta: Annotated[
+            t.Infra.ContainerDict,
+            m.Field(description="Pyproject ``[tool.flext.docs]`` table"),
+        ]
+        exclude_docs: Annotated[
+            t.StrSequence,
+            m.Field(description="Docs paths excluded from generation"),
+        ]
+        site_title: Annotated[str, m.Field(description="Resolved site title")] = ""
+        site_url: Annotated[str, m.Field(description="Resolved site URL")] = ""
+        repo_url: Annotated[str, m.Field(description="Resolved repository URL")] = ""
+        description: Annotated[str, m.Field(description="Project description")] = ""
+        version: Annotated[str, m.Field(description="Project version")] = ""
+
     class GeneratedFile(m.ContractModel):
         """Record of a generated file operation."""
 
@@ -106,6 +140,7 @@ class FlextInfraModelsDocs:
 
         @staticmethod
         def _items_default() -> list[FlextInfraModelsDocs.DocsPhaseItemModel]:
+            """Items default."""
             return []
 
         phase: Annotated[

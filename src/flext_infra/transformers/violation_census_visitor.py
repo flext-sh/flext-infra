@@ -34,6 +34,7 @@ class FlextInfraViolationCensusVisitor:
         self._check_type_aliases(source)
 
     def _check_container_invariance(self, source: str) -> None:
+        """Check container invariance."""
         for _ in c.Infra.CensusPatterns.DICT_INVARIANCE_RE.finditer(source):
             self._add_record(
                 kind="container_invariance",
@@ -41,6 +42,7 @@ class FlextInfraViolationCensusVisitor:
             )
 
     def _check_literal_usage(self, source: str) -> None:
+        """Check literal usage."""
         for _ in c.Infra.CensusPatterns.LITERAL_RE.finditer(source):
             self._add_record(
                 kind="literal_usage",
@@ -48,6 +50,7 @@ class FlextInfraViolationCensusVisitor:
             )
 
     def _check_cast_calls(self, source: str) -> None:
+        """Check cast calls."""
         for _ in c.Infra.CensusPatterns.CAST_RE.finditer(source):
             self._add_record(
                 kind="redundant_cast",
@@ -55,6 +58,7 @@ class FlextInfraViolationCensusVisitor:
             )
 
     def _check_imports(self, source: str) -> None:
+        """Check imports."""
         for hit in c.Infra.CensusPatterns.DIRECT_SUBMODULE_RE.finditer(source):
             module_match = re.search(
                 r"^from\s+(flext_core\.\S+)\s+import",
@@ -81,6 +85,7 @@ class FlextInfraViolationCensusVisitor:
                 )
 
     def _check_strenum_usage(self, source: str) -> None:
+        """Check strenum usage."""
         for match in c.Infra.CensusPatterns.STRENUM_RE.finditer(source):
             class_name = match.group(1)
             self._add_record(
@@ -89,6 +94,7 @@ class FlextInfraViolationCensusVisitor:
             )
 
     def _check_assignments(self, source: str) -> None:
+        """Check assignments."""
         for _ in c.Infra.CensusPatterns.CONSTANT_DICT_RE.finditer(source):
             self._add_record(
                 kind="manual_mapping_constant",
@@ -103,6 +109,7 @@ class FlextInfraViolationCensusVisitor:
                 )
 
     def _check_type_aliases(self, source: str) -> None:
+        """Check type aliases."""
         for _ in c.Infra.CensusPatterns.TYPE_ALIAS_OLD_RE.finditer(source):
             self._add_record(
                 kind="manual_typing_alias",
@@ -116,6 +123,7 @@ class FlextInfraViolationCensusVisitor:
             )
 
     def _add_record(self, *, kind: str, detail: str) -> None:
+        """Add record."""
         self.records.append({
             "file": str(self._file_path),
             "line": 0,
@@ -125,6 +133,7 @@ class FlextInfraViolationCensusVisitor:
 
     @staticmethod
     def _is_pascal_case(name: str) -> bool:
+        """Is pascal case."""
         if not name or "_" in name:
             return False
         if not name[0].isupper():

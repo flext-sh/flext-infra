@@ -3,7 +3,15 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorCensus, main as infra_main
+import pytest
+from rope.base.exceptions import RopeError
+
+from flext_infra import (
+    FlextInfraRefactorCensus,
+    FlextInfraRopeWorkspace,
+    main as infra_main,
+)
+from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from tests import t, u
 
 
@@ -112,6 +120,8 @@ class TestsFlextInfraRefactorMainCli:
 
     @staticmethod
     def _build_mro_incomplete_workspace(tmp_path: Path) -> Path:
+        workspace: Path
+        package_root: Path
         workspace, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
@@ -490,6 +500,115 @@ class TestsFlextInfraRefactorMainCli:
         assert violations[0].object_name == "FlextDemoModels"
         assert violations[0].object_kind == "class"
         assert "FlextDemoModelsDomain" in violations[0].description
+
+    def test_refactor_census_reports_mro_completeness_without_reference_scan(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        workspace = self._build_mro_incomplete_workspace(tmp_path)
+
+        def _explode(*args: object, **kwargs: object) -> object:
+            msg = "mro_completeness should not trigger reference discovery"
+            raise AssertionError(msg)
+
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRopeInventory,
+            "_reference_sites",
+            staticmethod(_explode),
+        )
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("class",),
+            rules=("mro_completeness",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert violations[0].kind == "mro_completeness"
+
+    def test_refactor_census_fail_fast_raises_on_rope_inventory_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        workspace = self._build_mro_incomplete_workspace(tmp_path)
+        rope_error_message = "boom"
+
+        def _explode(*args: object, **kwargs: object) -> object:
+            raise RopeError(rope_error_message)
+
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRopeInventory,
+            "_reference_sites",
+            staticmethod(_explode),
+        )
+
+        with pytest.raises(
+            RuntimeError, match=r"census rope inventory failed for .*models\.py"
+        ):
+            FlextInfraRefactorCensus(
+                workspace=workspace,
+                include_local_scopes=False,
+                kinds=("class",),
+                rules=("unused",),
+                fail_fast=True,
+            ).execute()
+
+    def test_refactor_census_mro_completeness_skips_irrelevant_modules(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        workspace = self._build_mro_incomplete_workspace(tmp_path)
+        service_path = workspace / "src" / "flext_demo" / "service.py"
+        self._write(
+            service_path,
+            "from __future__ import annotations\n\n"
+            "def helper() -> int:\n"
+            "    return 1\n",
+        )
+        original_objects = FlextInfraRopeWorkspace.objects
+
+        def _guard(
+            self: FlextInfraRopeWorkspace,
+            file_path: Path,
+            *,
+            include_local_scopes: bool = True,
+            include_references: bool = True,
+        ) -> t.SequenceOf[object]:
+            if file_path.resolve() == service_path.resolve():
+                msg = "irrelevant module should not be inventoried for mro_completeness"
+                raise AssertionError(msg)
+            return original_objects(
+                self,
+                file_path,
+                include_local_scopes=include_local_scopes,
+                include_references=include_references,
+            )
+
+        monkeypatch.setattr(FlextInfraRopeWorkspace, "objects", _guard)
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            kinds=("class",),
+            rules=("mro_completeness",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert violations[0].kind == "mro_completeness"
 
     def test_refactor_census_apply_rewrites_manual_typing_alias(
         self,

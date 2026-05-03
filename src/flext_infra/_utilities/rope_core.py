@@ -199,6 +199,31 @@ class FlextInfraUtilitiesRopeCore:
         return Path(root_real_path, resource.path).resolve()
 
     @staticmethod
+    def find_identifier_offset_in_lines(
+        lines: t.SequenceOf[str],
+        *,
+        line: int,
+        symbol: str,
+    ) -> int | None:
+        """Return the absolute offset of one exact identifier token on a line.
+
+        Rope returns definition line numbers but not the column for many ``PyName``
+        variants. Using ``str.find(symbol)`` is incorrect because it can match a
+        substring inside another token or keyword, e.g. ``except ... as e``.
+        This helper resolves the first exact identifier token equal to ``symbol``
+        on the reported line.
+        """
+        if line < 1 or line > len(lines):
+            return None
+        line_start = sum(len(item) for item in lines[: line - 1])
+        source_line = lines[line - 1]
+        for match in c.Infra.IDENTIFIER_PATTERN.finditer(source_line):
+            if match.group(0) == symbol:
+                offset: int = line_start + match.start()
+                return offset
+        return None
+
+    @staticmethod
     def get_pymodule(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -215,6 +240,7 @@ class FlextInfraUtilitiesRopeCore:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.RopeModuleImports | None:
+        """Get module imports."""
         try:
             module_imports = rope_importutils.get_module_imports(
                 rope_project,

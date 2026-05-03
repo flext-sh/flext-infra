@@ -101,6 +101,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
 
     @override
     def execute(self) -> p.Result[str]:
+        """Execute."""
         return self.render_all()
 
     @staticmethod
@@ -108,6 +109,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         template: p.Infra.RenderableTemplate,
         **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
     ) -> str:
+        """Render template."""
         rendered: str = template.render(**kwargs)
         return rendered
 

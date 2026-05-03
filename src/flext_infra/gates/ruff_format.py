@@ -23,6 +23,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
+        """Get check dirs."""
         _ = ctx
         return self._existing_check_dirs(project_dir) or ["."]
 
@@ -33,6 +34,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = project_dir, ctx
         return [
             c.Infra.RUFF,
@@ -49,6 +51,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if result.exit_code != 0 and result.stdout.strip():
@@ -83,6 +86,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
     ) -> t.StrSequence:
+        """Build fix command."""
         _ = project_dir, ctx, targets
         return [c.Infra.RUFF, c.Infra.FORMAT, "."]
 

@@ -228,6 +228,8 @@ class FlextInfraModelsRefactorViolations:
         ] = m.Field(default_factory=tuple, description="Manual-review candidates")
 
     class HelperFileAnalysis(m.ArbitraryTypesModel):
+        """Helper file analysis."""
+
         suggestions: tuple[
             FlextInfraModelsRefactorViolations.HelperClassification,
             ...,

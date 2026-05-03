@@ -54,6 +54,7 @@ class FlextInfraRefactorMROResolver:
         facade_class: type,
         expected_chain: t.SequenceOf[t.Infra.ExpectedBase],
     ) -> m.Infra.FamilyMROResolution:
+        """Resolve family."""
         expected_names = cls._normalize_expected_chain(expected_chain=expected_chain)
         cls._validate_base_policy(
             family=family,
@@ -83,6 +84,7 @@ class FlextInfraRefactorMROResolver:
         *,
         expected_chain: t.SequenceOf[t.Infra.ExpectedBase],
     ) -> t.VariadicTuple[str]:
+        """Normalize expected chain."""
         expected_names: t.StrSequence = [
             base if isinstance(base, str) else base.__name__ for base in expected_chain
         ]
@@ -96,6 +98,7 @@ class FlextInfraRefactorMROResolver:
         facade_class: type,
         expected_names: t.VariadicTuple[str],
     ) -> None:
+        """Validate base policy."""
         direct_base_names = tuple(base.__name__ for base in facade_class.__bases__)
         if len(direct_base_names) < len(expected_names):
             msg = f"family={family} has fewer direct bases than expected: expected={expected_names!r} direct={direct_base_names!r}"
@@ -126,6 +129,7 @@ class FlextInfraRefactorMROResolver:
         expected_names: t.VariadicTuple[str],
         accessible_namespaces: t.VariadicTuple[str],
     ) -> None:
+        """Validate expected accessibility."""
         missing_namespaces: t.MutableSequenceOf[str] = []
         for base_name in expected_names:
             namespace = cls._namespace_from_class_name(
@@ -148,6 +152,7 @@ class FlextInfraRefactorMROResolver:
         family: c.Infra.FacadeFamily,
         facade_class: type,
     ) -> t.VariadicTuple[str]:
+        """Collect accessible namespaces."""
         namespace_order: t.MutableSequenceOf[str] = []
         for current in inspect.getmro(facade_class):
             if current.__name__ == "NormalizedValue":
@@ -173,6 +178,7 @@ class FlextInfraRefactorMROResolver:
         class_name: str,
         family: c.Infra.FacadeFamily,
     ) -> str | None:
+        """Namespace from class name."""
         suffix = c.Infra.FAMILY_SUFFIXES[family]
         if not class_name.endswith(suffix):
             return None
@@ -184,6 +190,7 @@ class FlextInfraRefactorMROResolver:
 
     @staticmethod
     def _append_unique(namespaces: t.MutableSequenceOf[str], candidate: str) -> None:
+        """Append unique."""
         if candidate not in namespaces:
             namespaces.append(candidate)
 

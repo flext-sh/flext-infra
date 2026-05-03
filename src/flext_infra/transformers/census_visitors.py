@@ -137,6 +137,7 @@ class FlextInfraCensusUsageCollector:
         method_name: str,
         mode: c.Infra.CensusMode,
     ) -> None:
+        """Record."""
         self.records.append(
             m.Infra.CensusUsageRecord(
                 class_name=class_name,

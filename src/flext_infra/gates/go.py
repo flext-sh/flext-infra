@@ -23,6 +23,7 @@ class FlextInfraGoGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
+        """Get check dirs."""
         _ = ctx
         if not (project_dir / c.Infra.GO_MOD).exists():
             return []
@@ -35,6 +36,7 @@ class FlextInfraGoGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = project_dir, ctx, check_dirs
         return [c.Infra.GOVET, "vet", "./..."]
 
@@ -44,6 +46,7 @@ class FlextInfraGoGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> int:
+        """Check timeout."""
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_CI
         return timeout
@@ -55,6 +58,7 @@ class FlextInfraGoGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         passed = result.exit_code == 0

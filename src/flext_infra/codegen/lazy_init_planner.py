@@ -108,6 +108,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         context: m.Infra.LazyInitPackageContext,
     ) -> t.Infra.MutableLazyImportMap:
+        """Package exports."""
         if self._is_private_test_fixture_package(
             context.pkg_dir,
             context.surface,
@@ -184,6 +185,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         *,
         export_options: m.Infra.ExportOptions | None = None,
     ) -> t.Infra.MutableLazyImportMap:
+        """Module exports."""
         resolved_export_options = export_options or m.Infra.ExportOptions()
         cache_key = (
             str(py_file.resolve()),
@@ -224,6 +226,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         lazy_map: t.Infra.MutableLazyImportMap,
         dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
     ) -> tuple[t.StrSequence, t.StrSequence]:
+        """Merge children."""
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None:
             return ((), ())
@@ -257,10 +260,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:
+        """Is fixture package."""
         return pkg_dir.name == "_fixtures"
 
     @classmethod
     def _is_private_test_fixture_package(cls, pkg_dir: Path, surface: str) -> bool:
+        """Is private test fixture package."""
         return surface == "tests" and cls._is_fixture_package(pkg_dir)
 
     def _resolve_aliases(
@@ -271,6 +276,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         pkg_dir: Path,
         surface: str,
     ) -> None:
+        """Resolve aliases."""
         if not u.Infra.matches_project_namespace_package(current_pkg):
             return
         self._resolve_local_aliases(
@@ -303,6 +309,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         current_pkg: str,
         pkg_dir: Path,
     ) -> None:
+        """Resolve local aliases."""
         alias_to_file = {
             alias_name: file_name
             for file_name, alias_name in self.lazy_init.public_file_aliases.items()
@@ -339,6 +346,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         package_names: t.StrSequence,
     ) -> tuple[str, ...]:
+        """Resolve transitive parent packages."""
         ordered: list[str] = []
         for package_name in package_names:
             if not package_name or package_name in ordered:
@@ -357,6 +365,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return tuple(ordered)
 
     def _parent_packages(self, pkg_dir: Path) -> t.StrSequence:
+        """Parent packages."""
         cache_key = str(pkg_dir.resolve())
         cached = self._parent_package_cache.get(cache_key)
         if cached is not None:
@@ -454,15 +463,26 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         package_names: t.StrSequence,
         alias_name: str,
     ) -> str:
+        """Resolve inherited alias source."""
         candidate_packages: tuple[str, ...] = tuple(
             name for name in package_names if name
         )
         for package_name in reversed(candidate_packages):
             if alias_name in self._export_names_for_package(package_name):
                 return package_name
+        # Project-scoped generation only indexes the selected project.
+        # When parent packages live outside that Rope workspace, fall back to
+        # the nearest declared parent facade instead of dropping the alias.
+        for package_name in reversed(candidate_packages):
+            if (
+                package_name
+                not in self.rope_workspace.workspace_index.package_dir_by_name
+            ):
+                return package_name
         return ""
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
+        """Export names for package."""
         cached = self._package_exports_cache.get(package_name)
         if cached is not None:
             return cached
@@ -474,6 +494,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return exports
 
     def _package_init_exports(self, package_name: str) -> frozenset[str]:
+        """Package init exports."""
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
             package_name
         )
@@ -492,6 +513,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         )
 
     def _source_export_names_for_package(self, package_name: str) -> frozenset[str]:
+        """Source export names for package."""
         cached = self._source_exports_cache.get(package_name)
         if cached is not None:
             return cached
@@ -516,6 +538,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return exports
 
     def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str:
+        """Source package name."""
         if inherited_key == "src":
             return ""
         package_entry = self._package_entry(pkg_dir)
@@ -530,20 +553,34 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return project_pkg
 
     def _package_name_from_target(self, target: str) -> str:
+        """Package name from target."""
         parts = tuple(part for part in target.split(".") if part)
         for size in range(len(parts), 0, -1):
             package_name = ".".join(parts[:size])
             if package_name in self.rope_workspace.workspace_index.package_dir_by_name:
                 return package_name
+        if not parts:
+            return ""
+        sibling_project_root = self.rope_workspace.workspace_root.parent / parts[
+            0
+        ].replace("_", "-")
+        sibling_package_root = sibling_project_root / c.Infra.DEFAULT_SRC_DIR / parts[0]
+        if (
+            sibling_project_root.joinpath(c.Infra.PYPROJECT_FILENAME).is_file()
+            and sibling_package_root.joinpath(c.Infra.INIT_PY).is_file()
+        ):
+            return parts[0]
         return ""
 
     def _package_entry(
         self,
         pkg_dir: Path,
     ) -> m.Infra.RopePackageIndexEntry | None:
+        """Package entry."""
         return self.rope_workspace.package(pkg_dir)
 
     def _module_file(self, module_path: str) -> Path | None:
+        """Module file."""
         resolved = self._module_file_by_name.get(module_path)
         if resolved is not None:
             return resolved
@@ -558,6 +595,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return resolved
 
     def _target_score(self, name: str, target: t.Infra.StrPair) -> int:
+        """Target score."""
         module_path, attr = target
         score = 0
         module_file = self._module_file(module_path)
@@ -600,6 +638,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         existing: t.Infra.StrPair,
         target: t.Infra.StrPair,
     ) -> t.Infra.StrPair:
+        """Pick preferred target."""
         existing_score = self._target_score(name, existing)
         target_score = self._target_score(name, target)
         if target_score > existing_score:
@@ -610,6 +649,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:
+        """Publish."""
         return (
             not name.startswith("_")
             and name not in c.Infra.INFRA_ONLY_EXPORTS
@@ -623,6 +663,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         name: str,
         target: t.Infra.StrPair,
     ) -> None:
+        """Add."""
         existing = index.get(name)
         if existing is None or existing == target:
             index[name] = target

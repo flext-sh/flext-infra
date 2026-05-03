@@ -154,6 +154,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         result: list[list[str]] = []
 
         def strongconnect(node: str) -> None:
+            """Strongconnect."""
             index[node] = index_counter[0]
             lowlink[node] = index_counter[0]
             index_counter[0] += 1

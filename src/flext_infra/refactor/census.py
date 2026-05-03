@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -28,6 +27,8 @@ from flext_infra import (
     u,
 )
 from flext_infra._models.census import FlextInfraModelsCensus
+
+_log = u.fetch_logger(__name__)
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     RecursionError,
@@ -234,21 +235,36 @@ class FlextInfraRefactorCensus(
         include_local_scopes: bool,
         applied: frozenset[str],
     ) -> m.Infra.Census.WorkspaceReport:
+        """Collect report."""
         selected_families = self._selected_families(family_names)
+        include_object_references = self._should_collect_object_references(
+            rule_names,
+        )
         project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
         project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
             list
         )
         project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
-        for module in rope.modules(project_names=project_names):
+        for module in self._modules_for_rules(
+            rope,
+            project_names=project_names,
+            selected_families=selected_families,
+            rule_names=rule_names,
+        ):
             try:
                 module_objects = tuple(
                     rope.objects(
                         module.file_path,
                         include_local_scopes=include_local_scopes,
+                        include_references=include_object_references,
                     )
                 )
-            except _ROPE_SAFE_EXCEPTIONS:
+            except _ROPE_SAFE_EXCEPTIONS as exc:
+                self._handle_rope_stage_failure(
+                    file_path=module.file_path,
+                    stage="inventory",
+                    exc=exc,
+                )
                 continue
             project = (
                 module_objects[0].project
@@ -280,7 +296,12 @@ class FlextInfraRefactorCensus(
                     kind_names=kind_names,
                     rule_names=rule_names,
                 )
-            except _ROPE_SAFE_EXCEPTIONS:
+            except _ROPE_SAFE_EXCEPTIONS as exc:
+                self._handle_rope_stage_failure(
+                    file_path=module.file_path,
+                    stage="rules",
+                    exc=exc,
+                )
                 continue
             if not objects and not violations and not fixes:
                 continue
@@ -292,7 +313,7 @@ class FlextInfraRefactorCensus(
             for group in duplicates
             for item in group.definitions[1:]
         )
-        project_names = tuple(
+        report_project_names = tuple(
             sorted(
                 set(project_objects) | set(project_violations) | set(project_fixes),
             )
@@ -306,7 +327,7 @@ class FlextInfraRefactorCensus(
                 duplicate_keys=duplicate_keys,
                 rule_names=rule_names,
             )
-            for project in project_names
+            for project in report_project_names
         )
         if self.effective_dry_run:
             project_reports = self._validated_project_reports(
@@ -337,6 +358,67 @@ class FlextInfraRefactorCensus(
             ),
         )
 
+    @staticmethod
+    def _should_collect_object_references(
+        rule_names: t.StrSequence | None,
+    ) -> bool:
+        """Should collect object references."""
+        if rule_names is None:
+            return True
+        return bool({"unused", "test_only"} & set(rule_names))
+
+    @staticmethod
+    def _mro_facade_module_names(
+        selected_families: frozenset[str],
+    ) -> frozenset[str]:
+        """Mro facade module names."""
+        families = selected_families or c.Infra.MRO_FAMILIES
+        return frozenset(
+            Path(module_path).name
+            for family, module_path in c.Infra.MRO_FAMILY_FACADE_MODULES.items()
+            if family in families
+        )
+
+    def _modules_for_rules(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        *,
+        project_names: t.StrSequence | None,
+        selected_families: frozenset[str],
+        rule_names: t.StrSequence | None,
+    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
+        """Modules for rules."""
+        modules = tuple(rope.modules(project_names=project_names))
+        if rule_names is None or set(rule_names) != {"mro_completeness"}:
+            return modules
+        facade_module_names = self._mro_facade_module_names(selected_families)
+        return tuple(
+            module
+            for module in modules
+            if module.module_name
+            and module.module_name.count(".") == 1
+            and module.file_path.name in facade_module_names
+        )
+
+    def _handle_rope_stage_failure(
+        self,
+        *,
+        file_path: Path,
+        stage: str,
+        exc: BaseException,
+    ) -> None:
+        """Handle rope stage failure."""
+        error = f"{type(exc).__name__}: {exc}"
+        _log.warning(
+            "census_rope_stage_failed",
+            stage=stage,
+            file_path=str(file_path),
+            error=error,
+        )
+        if self.fail_fast:
+            msg = f"census rope {stage} failed for {file_path}: {error}"
+            raise RuntimeError(msg) from exc
+
     def _project_report(
         self,
         project: str,
@@ -347,6 +429,7 @@ class FlextInfraRefactorCensus(
         duplicate_keys: frozenset[str],
         rule_names: t.StrSequence | None,
     ) -> m.Infra.Census.ProjectReport:
+        """Project report."""
         violations = list(seed_violations)
         include_unused = self._include_rule("unused", rule_names=rule_names)
         include_test_only = self._include_rule("test_only", rule_names=rule_names)
@@ -461,6 +544,7 @@ class FlextInfraRefactorCensus(
         kind_names: t.StrSequence | None,
         rule_names: t.StrSequence | None,
     ) -> tuple[tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]]:
+        """Module rules."""
         convention = rope.convention(file_path)
         ctx = self._detector_context(rope, file_path)
         selected_kinds = frozenset(kind_names) if kind_names else frozenset()
@@ -650,6 +734,7 @@ class FlextInfraRefactorCensus(
         rope: p.Infra.RopeWorkspaceDsl,
         report: m.Infra.Census.WorkspaceReport,
     ) -> frozenset[str]:
+        """Apply supported fixes."""
         applied: set[str] = set()
         touched_paths: set[Path] = set()
         requested_fixes: dict[tuple[Path, str], set[str]] = defaultdict(set)
@@ -773,19 +858,34 @@ class FlextInfraRefactorCensus(
         behind after candidate removal. Scope is deliberately narrow:
         ``--select I,W`` — not ``F`` or ``E`` — so that unused-import
         removal does not fight the lazy-init ``TYPE_CHECKING`` re-exports
-        produced by ``FlextInfraCodegenLazyInit``. Failures are swallowed
-        so apply remains successful even if cosmetic cleanup cannot run.
+        produced by ``FlextInfraCodegenLazyInit``. Cosmetic-only failures
+        are surfaced through the standard ``r[T]`` channel (``u.Cli.run_raw``
+        already returns ``r[CommandResult]``); they are logged but never
+        suppressed, so the next maintenance run can act on them.
         """
         existing = sorted({str(path) for path in paths if path.is_file()})
         if not existing:
             return
-        with contextlib.suppress(Exception):
-            u.Cli.run_raw(
-                ["ruff", "check", "--fix", "--select", "I,W", *existing],
-                timeout=c.Infra.TIMEOUT_SHORT,
+        check_result = u.Cli.run_raw(
+            ["ruff", "check", "--fix", "--select", "I,W", *existing],
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        if check_result.failure:
+            _log.warning(
+                "ruff_check_fix_cosmetic_failed",
+                error=check_result.error or "ruff check --fix failed",
+                files=len(existing),
             )
-        with contextlib.suppress(Exception):
-            u.Cli.run_raw(["ruff", "format", *existing], timeout=c.Infra.TIMEOUT_SHORT)
+        format_result = u.Cli.run_raw(
+            ["ruff", "format", *existing],
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        if format_result.failure:
+            _log.warning(
+                "ruff_format_cosmetic_failed",
+                error=format_result.error or "ruff format failed",
+                files=len(existing),
+            )
 
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
@@ -804,6 +904,7 @@ class FlextInfraRefactorCensus(
     def _duplicate_groups(
         project_objects: tuple[list[m.Infra.Census.Object], ...],
     ) -> tuple[m.Infra.Census.DuplicateGroup, ...]:
+        """Duplicate groups."""
         groups: dict[tuple[str, str, str], list[m.Infra.Census.Object]] = defaultdict(
             list
         )
@@ -838,6 +939,7 @@ class FlextInfraRefactorCensus(
         kind_names: t.StrSequence | None,
         selected_families: frozenset[str],
     ) -> bool:
+        """Include object."""
         if kind_names and item.kind not in frozenset(kind_names):
             return False
         if not selected_families:
@@ -849,6 +951,7 @@ class FlextInfraRefactorCensus(
 
     @staticmethod
     def _include_rule(rule: str, *, rule_names: t.StrSequence | None) -> bool:
+        """Include rule."""
         return rule_names is None or rule in frozenset(rule_names)
 
     @staticmethod
@@ -856,6 +959,7 @@ class FlextInfraRefactorCensus(
         objects: tuple[m.Infra.Census.Object, ...],
         name: str,
     ) -> m.Infra.Census.Object | None:
+        """Named object."""
         return next(
             (item for item in objects if name in {item.scope_path, item.name}),
             None,
@@ -869,6 +973,7 @@ class FlextInfraRefactorCensus(
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
         | None = None,
     ) -> m.Infra.DetectorContext:
+        """Detector context."""
         convention = rope.convention(file_path)
         layout = convention.project_layout
         module_entry = rope.module(file_path)
@@ -899,6 +1004,7 @@ class FlextInfraRefactorCensus(
         convention: m.Infra.RopeModuleConvention,
         objects: tuple[m.Infra.Census.Object, ...],
     ) -> m.Infra.Census.Object | None:
+        """Runtime alias target."""
         layout = convention.project_layout
         family = convention.module_policy.expected_family or ""
         if layout is None or not family:
@@ -915,6 +1021,7 @@ class FlextInfraRefactorCensus(
         alias: str,
         target_name: str,
     ) -> str:
+        """Rewrite runtime alias source."""
         filtered_lines = [
             line
             for line in source.splitlines()
@@ -923,11 +1030,12 @@ class FlextInfraRefactorCensus(
         cleaned_source = "\n".join(filtered_lines).rstrip()
         if cleaned_source:
             cleaned_source = f"{cleaned_source}\n"
-        return u.Infra.ensure_runtime_alias(
+        updated_source: str = u.Infra.ensure_runtime_alias(
             cleaned_source,
             alias=alias,
             target_name=target_name,
         )
+        return updated_source
 
     @staticmethod
     def _raw_violation(
@@ -942,6 +1050,7 @@ class FlextInfraRefactorCensus(
         fixable: bool = False,
         fix_action: str = "",
     ) -> m.Infra.Census.Violation:
+        """Raw violation."""
         return m.Infra.Census.Violation(
             project=project,
             object_name=object_name,
@@ -956,6 +1065,7 @@ class FlextInfraRefactorCensus(
 
     @staticmethod
     def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
+        """Selected families."""
         if not family_names:
             return frozenset()
         resolved = {
@@ -972,6 +1082,7 @@ class FlextInfraRefactorCensus(
         fixable: bool = False,
         fix_action: str = "",
     ) -> m.Infra.Census.Violation:
+        """Violation."""
         return FlextInfraRefactorCensus._raw_violation(
             project=item.project,
             object_name=item.name,
@@ -986,10 +1097,12 @@ class FlextInfraRefactorCensus(
 
     @staticmethod
     def _is_unused(item: m.Infra.Census.Object) -> bool:
+        """Is unused."""
         return item.references_count == 0 and not item.name.startswith("_")
 
     @staticmethod
     def _is_test_only(item: m.Infra.Census.Object) -> bool:
+        """Is test only."""
         return (
             item.references_count > 0
             and item.runtime_references_count == 0
@@ -1005,6 +1118,7 @@ class FlextInfraRefactorCensus(
         include_unused: bool,
         include_test_only: bool,
     ) -> m.Infra.Census.RemovalCandidate | None:
+        """Removal candidate."""
         if include_unused and cls._is_unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
         elif include_test_only and cls._is_test_only(item):
@@ -1031,10 +1145,12 @@ class FlextInfraRefactorCensus(
 
     @staticmethod
     def _object_key(item: m.Infra.Census.Object) -> str:
+        """Object key."""
         return f"{item.file_path}:{item.line}:{item.scope_path}:{item.kind}"
 
     @staticmethod
     def _fix_key(file_path: Path, object_name: str, action: str = "") -> str:
+        """Fix key."""
         suffix = f"::{action}" if action else ""
         return f"{file_path.resolve()}::{object_name}{suffix}"
 
@@ -1043,6 +1159,7 @@ class FlextInfraRefactorCensus(
         cls,
         report: m.Infra.Census.WorkspaceReport,
     ) -> tuple[m.Infra.Result, ...]:
+        """Impact map results."""
         changes_by_file: dict[Path, list[str]] = defaultdict(list)
         for candidate in report.removal_candidates:
             source_path = Path(candidate.file_path)
@@ -1073,6 +1190,7 @@ class FlextInfraRefactorCensus(
         file_path: Path,
         change: str,
     ) -> None:
+        """Append impact change."""
         normalized_path = file_path.resolve()
         if change not in changes_by_file[normalized_path]:
             changes_by_file[normalized_path].append(change)
@@ -1081,6 +1199,7 @@ class FlextInfraRefactorCensus(
     def _reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+        """Reference sites."""
         return (
             *candidate.test_reference_sites,
             *candidate.runtime_reference_sites,

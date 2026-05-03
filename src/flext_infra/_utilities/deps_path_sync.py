@@ -32,6 +32,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         *,
         internal_names: t.Infra.StrSet,
     ) -> t.Pair[t.StrSequence, t.Infra.StrSet]:
+        """Rewrite pep621."""
         project_section = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
         if project_section is None:
             return ([], set())
@@ -79,6 +80,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         internal_deps: t.Infra.StrSet,
         workspace_members: t.StrSequence,
     ) -> t.StrSequence:
+        """Rewrite uv sources."""
         expected_names: t.Infra.StrSet = (
             set(workspace_members)
             if is_root and mode == c.Infra.PathSyncMode.WORKSPACE
@@ -119,6 +121,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         is_root: bool,
         members: t.StrSequence,
     ) -> t.StrSequence:
+        """Rewrite uv workspace."""
         if not is_root:
             return []
         changes: t.MutableSequenceOf[str] = []
@@ -142,6 +145,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         is_root: bool,
         mode: c.Infra.PathSyncMode,
     ) -> t.StrSequence:
+        """Rewrite poetry."""
         tool_section = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
         if tool_section is None:
             return []
@@ -274,36 +278,80 @@ class FlextInfraUtilitiesDependencyPathSync:
     def execute(self, params: FlextInfraModelsDeps.PathSyncCommand) -> int:
         """Execute dependency path synchronization for one canonical command payload."""
         workspace_root = params.workspace_path
-        dry_run = params.dry_run
-        selected_projects: t.StrSequence = list(params.project_names or [])
         mode = params.mode
-
         if mode == c.Infra.PathSyncMode.AUTO:
             mode = self.detect_mode(workspace_root)
         effective_command = params.model_copy(update={"mode": mode})
-
-        root_pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
-
-        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
-            workspace_root,
-        )
+        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
         if discover_result.failure:
-            discovery_error = discover_result.error or "sync_dep_paths_discovery_failed"
             self._log.error(
                 "sync_dep_paths_discovery_failed",
                 root=str(workspace_root),
-                error_detail=discovery_error,
+                error_detail=discover_result.error or "sync_dep_paths_discovery_failed",
             )
             return 1
-
         projects_list = discover_result.value
+        if not self._workspace_members_consistent(workspace_root, projects_list):
+            return 1
+        selected_projects: t.StrSequence = list(params.project_names or [])
+        root_pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        internal_names = self._compute_internal_names(workspace_root, projects_list)
+        workspace_members = sorted(
+            str(project.path.relative_to(workspace_root))
+            for project in projects_list
+            if project.workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        )
+        project_dirs = (
+            [workspace_root / project for project in selected_projects]
+            if selected_projects
+            else [project.path for project in projects_list]
+        )
+        total_changes = 0
+        if not selected_projects and root_pyproject.exists():
+            root_changes = self._apply_changes_for_pyproject(
+                root_pyproject,
+                effective_command=effective_command,
+                internal_names=internal_names,
+                workspace_members=workspace_members,
+                error_event="sync_dep_paths_root_failed",
+            )
+            if root_changes < 0:
+                return 1
+            total_changes += root_changes
+        for project_dir in sorted(project_dirs):
+            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+            if not pyproject.exists():
+                continue
+            project_changes = self._apply_changes_for_pyproject(
+                pyproject,
+                effective_command=effective_command,
+                internal_names=internal_names,
+                workspace_members=workspace_members,
+                error_event="sync_dep_paths_project_failed",
+            )
+            if project_changes < 0:
+                return 1
+            total_changes += project_changes
+        if total_changes > 0:
+            action = "would change" if params.dry_run else "changed"
+            _ = self._log.info(
+                f"[sync-dep-paths] {action} {total_changes} path(s).",
+            )
+        return 0
+
+    def _workspace_members_consistent(
+        self,
+        workspace_root: Path,
+        projects_list: t.SequenceOf[p.Infra.ProjectInfo],
+    ) -> bool:
+        """Verify every configured workspace member was actually discovered."""
         discovered_member_paths: t.Infra.StrSet = {
             str(project.path.relative_to(workspace_root))
             for project in projects_list
             if project.path.is_relative_to(workspace_root)
         }
         configured_members = tuple(
-            FlextInfraUtilitiesIteration.workspace_member_names(workspace_root)
+            FlextInfraUtilitiesIteration.workspace_member_names(workspace_root),
         )
         invalid_members = [
             member
@@ -313,97 +361,72 @@ class FlextInfraUtilitiesDependencyPathSync:
             and member not in discovered_member_paths
         ]
         if invalid_members:
-            member_text = ", ".join(sorted(invalid_members))
             self._log.error(
                 "sync_dep_paths_invalid_workspace_members",
                 root=str(workspace_root),
-                members=member_text,
+                members=", ".join(sorted(invalid_members)),
             )
-            return 1
-        total_changes = 0
+            return False
+        return True
+
+    @staticmethod
+    def _compute_internal_names(
+        workspace_root: Path,
+        projects_list: t.SequenceOf[p.Infra.ProjectInfo],
+    ) -> t.Infra.StrSet:
+        """Collect every internal project name (including the workspace root if any)."""
         internal_names: t.Infra.StrSet = {
             project.name for project in projects_list if project.name
         }
-        if root_pyproject.exists():
-            root_payload: t.Infra.ContainerDict
-            try:
-                root_payload = FlextInfraUtilitiesDocsScope.project_payload(
-                    workspace_root,
-                )
-            except c.EXC_TYPE_VALIDATION:
-                root_payload = {}
-            project_section = root_payload.get(c.Infra.PROJECT)
-            if isinstance(project_section, dict):
-                root_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
-                    workspace_root,
-                    root_payload,
-                )
-                if root_name:
-                    internal_names.add(root_name)
-        all_project_dirs = [project.path for project in projects_list]
-        workspace_members = sorted(
-            str(project.path.relative_to(workspace_root))
-            for project in projects_list
-            if project.workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        root_pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        if not root_pyproject.exists():
+            return internal_names
+        try:
+            root_payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
+        except c.EXC_TYPE_VALIDATION:
+            return internal_names
+        project_section = root_payload.get(c.Infra.PROJECT)
+        if not isinstance(project_section, dict):
+            return internal_names
+        root_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
+            workspace_root,
+            root_payload,
         )
-        if selected_projects:
-            project_dirs = [workspace_root / project for project in selected_projects]
-        else:
-            project_dirs = all_project_dirs
+        if root_name:
+            internal_names.add(root_name)
+        return internal_names
 
-        if not selected_projects and root_pyproject.exists():
-            changes_result = self.rewrite_dep_paths(
-                root_pyproject,
-                command=effective_command,
-                internal_names=internal_names,
-                workspace_members=workspace_members,
+    def _apply_changes_for_pyproject(
+        self,
+        pyproject: Path,
+        *,
+        effective_command: FlextInfraModelsDeps.PathSyncCommand,
+        internal_names: t.Infra.StrSet,
+        workspace_members: t.StrSequence,
+        error_event: str,
+    ) -> int:
+        """Apply path-sync changes for one pyproject; ``-1`` on failure, count otherwise."""
+        changes_result = self.rewrite_dep_paths(
+            pyproject,
+            command=effective_command,
+            internal_names=internal_names,
+            workspace_members=workspace_members,
+        )
+        if changes_result.failure:
+            self._log.error(
+                error_event,
+                pyproject=str(pyproject),
+                error_detail=changes_result.error or error_event,
             )
-            if changes_result.failure:
-                root_error = changes_result.error or "sync_dep_paths_root_failed"
-                self._log.error(
-                    "sync_dep_paths_root_failed",
-                    pyproject=str(root_pyproject),
-                    error_detail=root_error,
-                )
-                return 1
-            changes: t.StrSequence = changes_result.value
-            if changes:
-                prefix = "[DRY-RUN] " if dry_run else ""
-                _ = self._log.info(f"{prefix}{root_pyproject}:")
-                for change in changes:
-                    _ = self._log.info(change)
-                total_changes += len(changes)
-
-        for project_dir in sorted(project_dirs):
-            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-            if not pyproject.exists():
-                continue
-            changes_result = self.rewrite_dep_paths(
-                pyproject,
-                command=effective_command,
-                internal_names=internal_names,
-                workspace_members=workspace_members,
-            )
-            if changes_result.failure:
-                project_error = changes_result.error or "sync_dep_paths_project_failed"
-                self._log.error(
-                    "sync_dep_paths_project_failed",
-                    pyproject=str(pyproject),
-                    error_detail=project_error,
-                )
-                return 1
-            project_changes: t.StrSequence = changes_result.value
-            if project_changes:
-                prefix = "[DRY-RUN] " if dry_run else ""
-                _ = self._log.info(f"{prefix}{pyproject}:")
-                for change in project_changes:
-                    _ = self._log.info(change)
-                total_changes += len(project_changes)
-
-        if total_changes > 0:
-            action = "would change" if dry_run else "changed"
-            _ = self._log.info(f"[sync-dep-paths] {action} {total_changes} path(s).")
-        return 0
+            return -1
+        changes: t.StrSequence = changes_result.value
+        if not changes:
+            return 0
+        prefix = "[DRY-RUN] " if effective_command.dry_run else ""
+        _ = self._log.info(f"{prefix}{pyproject}:")
+        for change in changes:
+            _ = self._log.info(change)
+        return len(changes)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDependencyPathSync"]

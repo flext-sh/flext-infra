@@ -57,6 +57,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def normalize_module_path(path_value: str | Path) -> str:
+        """Normalize module path."""
         path = Path(str(path_value).replace("\\", "/"))
         parts = path.parts
         if c.Infra.DEFAULT_SRC_DIR in parts:

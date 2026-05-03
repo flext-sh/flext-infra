@@ -22,6 +22,7 @@ class FlextInfraDependencyDetectionAnalysis:
     """
 
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        """Read plain."""
         _ = path
         msg = "_read_plain must be implemented by the concrete analyzer"
         raise NotImplementedError(msg)
@@ -34,6 +35,7 @@ class FlextInfraDependencyDetectionAnalysis:
         timeout: int | None = None,
         env: t.StrMapping | None = None,
     ) -> p.Result[m.Cli.CommandOutput]:
+        """Run raw."""
         _ = cmd, cwd, timeout, env
         msg = "_run_raw must be implemented by the concrete analyzer"
         raise NotImplementedError(msg)
@@ -42,6 +44,7 @@ class FlextInfraDependencyDetectionAnalysis:
     def _to_toml_config(
         payload: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.Infra.ContainerDict:
+        """To toml config."""
         normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, value in payload.items():
             if value is None:
@@ -103,6 +106,7 @@ class FlextInfraDependencyDetectionAnalysis:
     def _mapping_from_value(
         value: t.Infra.InfraValue | None,
     ) -> t.Infra.ContainerDict:
+        """Mapping from value."""
         if not isinstance(value, Mapping):
             return {}
         return FlextInfraDependencyDetectionAnalysis._to_toml_config(value)

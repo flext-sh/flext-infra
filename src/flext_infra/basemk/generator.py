@@ -41,6 +41,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     @override
     def execute(self) -> p.Result[str]:
+        """Execute."""
         settings = (
             FlextInfraBaseMkTemplateEngine.default_config().model_copy(
                 update={"project_name": self.project_name},

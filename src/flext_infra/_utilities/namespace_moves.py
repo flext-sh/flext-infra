@@ -32,6 +32,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         py_files: t.SequenceOf[Path],
         project_package: str,
     ) -> None:
+        """Rewrite import violations."""
         if not py_files:
             return
         with FlextInfraUtilitiesRopeCore.open_project(
@@ -94,6 +95,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         *,
         py_files: t.SequenceOf[Path],
     ) -> None:
+        """Rewrite runtime alias violations."""
         if not py_files:
             return
         workspace_root = (
@@ -158,6 +160,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         py_files: t.SequenceOf[Path],
         violations: t.SequenceOf[m.Infra.ManualProtocolViolation],
     ) -> None:
+        """Rewrite manual protocol violations."""
         grouped: t.MappingKV[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
             grouped[Path(violation.file)].add(violation.name)
@@ -188,6 +191,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         violations: t.SequenceOf[m.Infra.ManualTypingAliasViolation],
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
+        """Rewrite manual typing alias violations."""
         _ = parse_failures
         grouped: t.MappingKV[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
@@ -205,6 +209,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
+        """Rewrite compatibility alias violations."""
         _ = parse_failures
         grouped: t.MappingKV[Path, t.MutableStrMapping] = defaultdict(dict)
         for violation in violations:
@@ -221,6 +226,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         file_path: Path,
         alias_map: t.StrMapping,
     ) -> None:
+        """Rewrite compat aliases in file."""
         source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         kept_source = "\n".join(
             line
@@ -254,6 +260,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         names: t.Infra.StrSet,
         header_prefix: str,
     ) -> t.Triple[Path, Path, t.VariadicTuple[str]] | None:
+        """Move named blocks."""
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         blocks: t.MutableSequenceOf[str] = []
@@ -302,6 +309,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             del filtered_lines[start:end]
 
         def _post_write() -> None:
+            """Post write."""
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
 
@@ -326,6 +334,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source: str,
         blocks: t.StrSequence,
     ) -> t.StrSequence:
+        """Collect required import lines."""
         source_ast = ast.parse(source)
         source_lines = source.splitlines()
         import_map: dict[str, str] = {}
@@ -365,6 +374,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_file: Path,
         alias_names: t.Infra.StrSet,
     ) -> None:
+        """Move typing alias lines."""
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         moved_lines: t.MutableSequenceOf[str] = []
@@ -450,6 +460,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         )
 
         def _post_write() -> None:
+            """Post write."""
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
 
@@ -475,6 +486,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         kept_source: str,
         alias_names: t.Infra.StrSet,
     ) -> t.StrSequence:
+        """Typing alias source imports."""
         source_ast = ast.parse(kept_source)
         referenced_aliases = sorted({
             node.id
@@ -499,6 +511,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         target_source: str,
         blocks: t.StrSequence,
     ) -> t.StrSequence:
+        """Collect missing runtime alias imports."""
         moved_source = "\n".join(blocks)
         moved_aliases = {
             node.id
@@ -538,6 +551,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         kept_source: str,
         max_line: int,
     ) -> t.StrSequence:
+        """Collect orphaned import lines."""
         source_ast = ast.parse(source)
         source_lines = source.splitlines()
         kept_names = {
@@ -569,6 +583,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         py_files: t.SequenceOf[Path],
         moves: t.SequenceOf[t.Triple[Path, Path, t.VariadicTuple[str]]],
     ) -> None:
+        """Rewrite moved imports."""
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_project:
             mappings: t.MutableSequenceOf[t.Triple[str, str, t.VariadicTuple[str]]] = []
             for source, target, names in moves:

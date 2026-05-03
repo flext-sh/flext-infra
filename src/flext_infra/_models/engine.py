@@ -73,6 +73,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 lists: t.SequenceOf[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> tuple[FlextInfraModelsEngine.TomlOperation, ...]:
+                """Nested operations."""
                 return tuple(
                     chain(
                         (
@@ -104,6 +105,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 /,
                 **data: t.JsonValue | t.JsonPayload | t.SequenceOf[t.JsonPayload],
             ) -> Self:
+                """Operation."""
                 operation_item = operation_type.model_validate(data)
                 replaced: Self = self._replace(
                     self.state.model_copy(
@@ -115,14 +117,17 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 return replaced
 
             def root(self, *path: str) -> Self:
+                """Root."""
                 result: Self = self._path("root_path", *path)
                 return result
 
             def table(self, *path: str) -> Self:
+                """Table."""
                 result: Self = self._path("table_path", *path)
                 return result
 
             def value(self, key: str, value: t.JsonValue) -> Self:
+                """Value."""
                 return self.operation(
                     FlextInfraModelsEngine.TomlSetOp, key=key, value=value
                 )
@@ -135,6 +140,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 strategy: c.Infra.TomlMergeMode = c.Infra.TomlMergeMode.REPLACE,
                 sort: bool = True,
             ) -> Self:
+                """List."""
                 return self.operation(
                     FlextInfraModelsEngine.TomlListOp,
                     key=key,
@@ -144,6 +150,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 )
 
             def deprecated(self, key: str, *sub_path: str) -> Self:
+                """Deprecated."""
                 return self.operation(
                     FlextInfraModelsEngine.TomlRemoveOp,
                     key=key,
@@ -157,6 +164,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 lists: t.SequenceOf[tuple[str, t.StrSequence]] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> Self:
+                """Nested."""
                 nested_table = FlextInfraModelsEngine.TomlPhaseConfig(
                     name=self.state.name,
                     root_path=(),
@@ -182,6 +190,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 return replaced
 
             def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
+                """Handler."""
                 replaced: Self = self._replace(
                     self.state.model_copy(update={"custom_handler": fn})
                 )

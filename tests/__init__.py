@@ -46,6 +46,9 @@ if _t.TYPE_CHECKING:
         TestsFlextInfraUtilitiesdiscoveryconsolidated,
     )
     from tests.unit._utilities.test_formatting import TestsFlextInfraUtilitiesformatting
+    from tests.unit._utilities.test_protected_edit import (
+        TestsFlextInfraUtilitiesProtectedEdit,
+    )
     from tests.unit._utilities.test_rope_hooks import TestsFlextInfraUtilitiesRopeHooks
     from tests.unit._utilities.test_safety import TestsFlextInfraUtilitiessafety
     from tests.unit._utilities.test_scanning import TestsFlextInfraUtilitiesscanning
@@ -442,6 +445,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilitiesdiscoveryconsolidated",
             ),
             ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+            ".unit._utilities.test_protected_edit": (
+                "TestsFlextInfraUtilitiesProtectedEdit",
+            ),
             ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
             ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
             ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
@@ -1002,6 +1008,7 @@ __all__: list[str] = [
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
+    "TestsFlextInfraUtilitiesProtectedEdit",
     "TestsFlextInfraUtilitiesRopeHooks",
     "TestsFlextInfraUtilitiesdiscoveryconsolidated",
     "TestsFlextInfraUtilitiesformatting",

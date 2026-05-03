@@ -101,6 +101,7 @@ class FlextInfraUtilitiesGithubPr:
 
     @classmethod
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> p.Result[bool]:
+        """Github pr checkpoint."""
         changes_capture = u.Cli.capture(
             [c.Infra.GIT, "status", "--porcelain"],
             cwd=repo_root,

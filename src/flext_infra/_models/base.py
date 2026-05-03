@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
@@ -104,6 +105,34 @@ class FlextInfraModelsBase:
             bool,
             m.Field(description="Whether to bypass per-file pytest validation"),
         ] = False
+
+    class ProtectedFileEditRequest(m.ArbitraryTypesModel):
+        """Validated options for a protected single-file edit pipeline."""
+
+        workspace: Annotated[
+            Path,
+            m.Field(description="Workspace root used for lint and pytest checks"),
+        ]
+        before_source: Annotated[
+            str,
+            m.Field(description="Original source text used for diff and restore"),
+        ]
+        edit_fn: Annotated[
+            Callable[[], None],
+            m.Field(description="Callback that applies the file mutation"),
+        ]
+        restore_fn: Annotated[
+            Callable[[], None] | None,
+            m.Field(description="Optional callback that restores the original file"),
+        ] = None
+        keep_backup: Annotated[
+            bool,
+            m.Field(description="Whether to preserve a .bak copy before editing"),
+        ] = False
+        gates: Annotated[
+            t.StrSequence | None,
+            m.Field(description="Optional lint gate selection for validation"),
+        ] = None
 
     class TransformStep(m.ContractModel):
         """Declarative step for enforcement pipeline."""

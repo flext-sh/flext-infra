@@ -42,6 +42,7 @@ class FlextInfraModelsCodegen:
 
         @staticmethod
         def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
+            """Violations default."""
             return []
 
         violations: Annotated[
@@ -84,6 +85,7 @@ class FlextInfraModelsCodegen:
 
         @staticmethod
         def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
+            """Violations default."""
             return []
 
         violations_fixed: Annotated[
@@ -331,6 +333,8 @@ class FlextInfraModelsCodegen:
         line: Annotated[t.PositiveInt, m.Field(description="Line number")]
 
     class CanonicalValueRule(m.ArbitraryTypesModel):
+        """Canonical value rule."""
+
         value: Annotated[
             t.Infra.CanonicalValue,
             m.Field(description="Canonical value"),
@@ -363,6 +367,8 @@ class FlextInfraModelsCodegen:
             return self
 
     class NsRule(m.ArbitraryTypesModel):
+        """Ns rule."""
+
         id: str = m.Field(description="Rule ID")
         description: str = m.Field(description="Rule description")
         fixable: bool = m.Field(description="Whether the rule is fixable")
@@ -371,6 +377,8 @@ class FlextInfraModelsCodegen:
         ] = None
 
     class ConstantsGovernanceConfig(m.ArbitraryTypesModel):
+        """Constants governance config."""
+
         version: str = m.Field(description="Config version")
         rules: list[FlextInfraModelsCodegen.NsRule] = m.Field(
             description="Governance rules"
@@ -392,6 +400,7 @@ class FlextInfraModelsCodegen:
 
         @staticmethod
         def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
+            """Violations default."""
             return []
 
         violations_fixed: Annotated[
@@ -422,6 +431,7 @@ class FlextInfraModelsCodegen:
             return bool(self.files_modified)
 
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
+            """Skip."""
             self.violations_skipped.append(
                 FlextInfraModelsCodegen.CensusViolation(
                     module=module, rule=rule, line=line, message=message, fixable=False
@@ -429,6 +439,7 @@ class FlextInfraModelsCodegen:
             )
 
         def fix(self, *, module: str, rule: str, line: int, message: str) -> None:
+            """Fix."""
             self.violations_fixed.append(
                 FlextInfraModelsCodegen.CensusViolation(
                     module=module, rule=rule, line=line, message=message, fixable=True

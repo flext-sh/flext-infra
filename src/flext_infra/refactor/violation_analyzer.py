@@ -101,6 +101,7 @@ class FlextInfraRefactorViolationAnalyzer:
         file_path: Path,
         content: str,
     ) -> m.Infra.HelperFileAnalysis:
+        """Analyze file helpers."""
         suggestions: t.MutableSequenceOf[m.Infra.HelperClassification] = []
         totals: Counter[str] = Counter()
         manual_review: t.MutableSequenceOf[m.Infra.HelperClassification] = []
@@ -151,6 +152,7 @@ class FlextInfraRefactorViolationAnalyzer:
         dependencies: t.Infra.StrSet,
         has_decorators: bool,
     ) -> t.Infra.StrSet:
+        """Match categories."""
         matched: t.Infra.StrSet = set()
         for dependency in dependencies:
             lowered = dependency.lower()
@@ -171,6 +173,7 @@ class FlextInfraRefactorViolationAnalyzer:
         dependencies: t.Infra.StrSet,
         matched_categories: t.Infra.StrSet,
     ) -> t.Triple[str, bool, str]:
+        """Resolve category."""
         if len(matched_categories) > 1:
             ordered = [
                 category
@@ -192,6 +195,7 @@ class FlextInfraRefactorViolationAnalyzer:
 
     @classmethod
     def _is_pure_utility_dependencies(cls, dependencies: t.Infra.StrSet) -> bool:
+        """Is pure utility dependencies."""
         if not dependencies:
             return True
         for dependency in dependencies:

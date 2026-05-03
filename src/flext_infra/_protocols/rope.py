@@ -98,6 +98,7 @@ class FlextInfraProtocolsRope(Protocol):
             file_path: Path,
             *,
             include_local_scopes: bool = True,
+            include_references: bool = True,
         ) -> t.SequenceOf[m.Infra.Census.Object]: ...
 
         def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
@@ -160,7 +161,30 @@ class FlextInfraProtocolsRope(Protocol):
         type-parameter handlers without depending on rope's private class.
         """
 
-        def _handle(self, node: ast.AST, children: list[p.AttributeProbe]) -> None: ...
+        @runtime_checkable
+        class SourceLines(Protocol):
+            """Minimal line adapter contract exposed by rope patched AST walkers."""
+
+            def get_line_start(self, lineno: int) -> int: ...
+
+        @runtime_checkable
+        class SourceBuffer(Protocol):
+            """Minimal source buffer contract exposed by rope patched AST walkers."""
+
+            source: str
+
+        lines: FlextInfraProtocolsRope.PatchingASTWalker.SourceLines
+        source: FlextInfraProtocolsRope.PatchingASTWalker.SourceBuffer
+        empty_tuple: p.AttributeProbe
+
+        def _handle(
+            self,
+            node: ast.AST,
+            children: list[p.AttributeProbe],
+            *,
+            eat_parens: bool = False,
+            eat_spaces: bool = False,
+        ) -> None: ...
 
         def _child_nodes(
             self,

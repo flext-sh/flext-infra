@@ -25,14 +25,17 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _is_module_or_package_export(attr_name: str) -> bool:
+        """Is module or package export."""
         return not attr_name
 
     @staticmethod
     def _is_root_namespace_package(current_pkg: str) -> bool:
+        """Is root namespace package."""
         return bool(current_pkg) and "." not in current_pkg
 
     @staticmethod
     def _is_local_module(mod: str, root_name: str) -> bool:
+        """Is local module."""
         return (
             mod.startswith(".")
             or not root_name
@@ -41,6 +44,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
+        """Compact lazy module path."""
         if not current_pkg:
             result = mod
         elif mod.startswith("_"):
@@ -73,6 +77,7 @@ class FlextInfraCodegenGeneration:
         mod: str,
         local_package_root: str | None,
     ) -> str:
+        """Normalize type checking module path."""
         if not local_package_root:
             result = mod
         else:
@@ -144,6 +149,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _format_root_package_docstring(current_pkg: str) -> str:
+        """Format root package docstring."""
         label = current_pkg.replace("_", " ").replace("-", " ").strip()
         package_name = " ".join(word.capitalize() for word in label.split())
         return f'"""{package_name} package."""'
@@ -154,6 +160,7 @@ class FlextInfraCodegenGeneration:
         mod: str,
         parts: t.StrSequence,
     ) -> t.StrSequence:
+        """Format import."""
         joined = ", ".join(parts)
         line = f"{indent}from {mod} import {joined}"
         if len(line) <= c.Infra.MAX_LINE_LENGTH:
@@ -170,6 +177,7 @@ class FlextInfraCodegenGeneration:
         mod: str,
         export_name: str,
     ) -> str:
+        """Format module alias import."""
         if mod.startswith(".") and mod != ".":
             parent_mod, _, child_name = mod.rpartition(".")
             return (
@@ -183,6 +191,7 @@ class FlextInfraCodegenGeneration:
         mod: str,
         export_name: str,
     ) -> t.StrSequence:
+        """Format type checking module alias import."""
         return (
             FlextInfraCodegenGeneration._format_module_alias_import(
                 indent,
@@ -195,6 +204,7 @@ class FlextInfraCodegenGeneration:
     def _group_imports(
         import_map: t.Infra.LazyImportMap,
     ) -> t.MappingKV[str, t.MutableSequenceOf[t.Infra.StrPair]]:
+        """Group imports."""
         groups: dict[str, list[t.Infra.StrPair]] = defaultdict(list)
         for export_name in sorted(import_map):
             mod, attr = import_map[export_name]
@@ -206,6 +216,7 @@ class FlextInfraCodegenGeneration:
         groups: t.MappingKV[str, t.Infra.StrPairSequence],
         child_packages: t.StrSequence | None,
     ) -> t.MappingKV[str, t.MutableSequenceOf[t.Infra.StrPair]]:
+        """Collapse to children."""
         sorted_children: list[str] = sorted(
             set(child_packages or []),
             key=len,
@@ -225,6 +236,7 @@ class FlextInfraCodegenGeneration:
     def _has_flext_types(
         collapsed: t.MappingKV[str, t.Infra.StrPairSequence],
     ) -> bool:
+        """Has flext types."""
         return any(
             export_name == "FlextTypes"
             for items in collapsed.values()
@@ -236,6 +248,7 @@ class FlextInfraCodegenGeneration:
         mod: str,
         local_package_root: str | None,
     ) -> t.Infra.StrPair:
+        """Type checking sort key."""
         top = mod.split(".", maxsplit=1)[0]
         if local_package_root == "tests":
             test_order = {"flext_tests": "0", "flext_infra": "1", "tests": "2"}
@@ -249,6 +262,7 @@ class FlextInfraCodegenGeneration:
         attr_name: str,
         root_name: str,
     ) -> bool:
+        """Should skip type checking module export."""
         if export_name in c.Infra.ALIAS_NAMES:
             return False
         if not export_name or export_name in {"cli", "main", "infra"}:
@@ -267,6 +281,7 @@ class FlextInfraCodegenGeneration:
         root_name: str,
         lines: t.MutableSequenceOf[str],
     ) -> None:
+        """Emit type checking module."""
         alias_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
@@ -320,6 +335,7 @@ class FlextInfraCodegenGeneration:
         lazy_filtered: t.Infra.LazyImportMap,
         context: _LazyEntryContext,
     ) -> t.SequenceOf[tuple[str, str, str]]:
+        """Build lazy entries."""
         current_pkg, child_aliases, include_module_exports = context
         entries: t.MutableSequenceOf[tuple[str, str, str]] = []
         for exp in exports:
@@ -349,6 +365,7 @@ class FlextInfraCodegenGeneration:
         t.SequenceOf[tuple[str, t.StrSequence]],
         t.SequenceOf[tuple[str, t.Infra.StrPairSequence]],
     ]:
+        """Group lazy entries."""
         module_groups: dict[str, list[str]] = defaultdict(list)
         alias_groups: dict[str, list[t.Infra.StrPair]] = defaultdict(list)
         for export_name, mod, attr_name in lazy_entries:
@@ -375,6 +392,7 @@ class FlextInfraCodegenGeneration:
         exports: t.StrSequence,
         lazy_filtered: t.Infra.LazyImportMap,
     ) -> t.StrSequence:
+        """Build published exports."""
         return tuple(
             export_name
             for export_name in exports
@@ -386,6 +404,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _collapse_blank_runs(lines: t.StrSequence) -> t.StrSequence:
+        """Collapse blank runs."""
         normalized: t.MutableSequenceOf[str] = []
         previous_blank = False
         for line in lines:
@@ -433,6 +452,7 @@ class FlextInfraCodegenGeneration:
         lines: t.MutableSequenceOf[str] = []
 
         def _emit_module(mod: str) -> None:
+            """Emit module."""
             items = groups[mod]
             alias_items = sorted(
                 (item for item in items if not item[1]),

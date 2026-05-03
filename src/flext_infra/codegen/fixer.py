@@ -71,6 +71,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
 
     @staticmethod
     def _empty_result(project_name: str) -> m.Infra.AutoFixResult:
+        """Empty result."""
         return m.Infra.AutoFixResult(
             project=project_name,
             violations_fixed=[],
@@ -83,6 +84,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         project_name: str,
         ctx: m.Infra.FixContext,
     ) -> m.Infra.AutoFixResult:
+        """Build result."""
         return m.Infra.AutoFixResult(
             project=project_name,
             violations_fixed=list(ctx.violations_fixed),
@@ -94,7 +96,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         self,
         project: p.Infra.ProjectInfo,
     ) -> m.Infra.AutoFixResult:
-        """Auto-fix namespace violations in a single project."""
+        """Auto-fix namespace violations in a single project (orchestrator)."""
         project_path = project.path
         project_layout = u.Infra.layout(project_path)
         if project_layout is None or not project_layout.class_stem:
@@ -102,17 +104,36 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         pkg_dir = project_layout.package_dir
         if not (pkg_dir / c.Infra.INIT_PY).is_file():
             return self._empty_result(project_path.name)
-        ctx = m.Infra.FixContext()
-        src_dir = pkg_dir.parent
-        if not src_dir.is_dir():
+        if not pkg_dir.parent.is_dir():
             return self._empty_result(project_path.name)
+        ctx = m.Infra.FixContext()
+        initial_violations = self._load_initial_violations(ctx, project_path)
+        if self.dry_run or self.rules_only:
+            ctx.violations_skipped.extend(initial_violations)
+            return self._build_result(project_path.name, ctx)
+        py_files_result = u.Infra.iter_python_files(
+            workspace_root=project_path,
+            project_roots=[project_path],
+        )
+        py_files = tuple(py_files_result.value) if py_files_result.success else ()
+        bak_paths = u.Infra.backup_files(py_files)
+        u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
+        self._run_mro_migration(ctx, project_path)
+        self._run_refactor_engine(ctx, project_path)
+        self._run_namespace_enforcement(ctx, project_path)
+        self._run_lazy_init_regeneration(ctx, project_path)
+        self._post_fix_ruff_format(ctx, bak_paths)
+        self._classify_remaining_violations(ctx, project_path, initial_violations)
+        return self._build_result(project_path.name, ctx)
+
+    @staticmethod
+    def _load_initial_violations(
+        ctx: m.Infra.FixContext,
+        project_path: Path,
+    ) -> t.SequenceOf[m.Infra.CensusViolation]:
+        """Read the initial namespace violations and record skip reason on failure."""
         initial_violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate(project_path),
-        )
-        initial_violations = (
-            initial_violations_result.unwrap()
-            if initial_violations_result.success
-            else ()
         )
         if initial_violations_result.failure:
             _log.warning(
@@ -127,16 +148,15 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
                 message=initial_violations_result.error
                 or "namespace validation failed",
             )
-        py_files_result = u.Infra.iter_python_files(
-            workspace_root=project_path,
-            project_roots=[project_path],
-        )
-        if self.dry_run or self.rules_only:
-            ctx.violations_skipped.extend(initial_violations)
-            return self._build_result(project_path.name, ctx)
-        py_files = tuple(py_files_result.value) if py_files_result.success else ()
-        bak_paths = u.Infra.backup_files(py_files)
-        u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
+            return ()
+        return initial_violations_result.unwrap()
+
+    @staticmethod
+    def _run_mro_migration(
+        ctx: m.Infra.FixContext,
+        project_path: Path,
+    ) -> None:
+        """Run the MRO migrator and accumulate fixed/skipped violations."""
         report = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=project_path,
         ).run(target="all", apply=True)
@@ -145,9 +165,9 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             project=project_path.name,
             migrations=len(report.migrations),
         )
-        ctx.files_modified = {
-            *ctx.files_modified,
+        ctx.files_modified |= {
             *(migration.file for migration in report.migrations),
+            *(rewrite.file for rewrite in report.rewrites),
         }
         ctx.violations_fixed.extend(
             m.Infra.CensusViolation(
@@ -162,10 +182,6 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             )
             for migration in report.migrations
         )
-        ctx.files_modified = {
-            *ctx.files_modified,
-            *(rewrite.file for rewrite in report.rewrites),
-        }
         ctx.violations_fixed.extend(
             m.Infra.CensusViolation(
                 module=rewrite.file,
@@ -186,10 +202,17 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             )
             for error in report.errors
         )
+
+    @staticmethod
+    def _run_refactor_engine(
+        ctx: m.Infra.FixContext,
+        project_path: Path,
+    ) -> None:
+        """Load refactor rules and run the engine; record fixed/skipped violations."""
         engine = FlextInfraRefactorEngine()
         config_result = engine.load_config()
         rules_result = engine.load_rules() if config_result.success else None
-        refactor_load_error = next(
+        load_error = next(
             (
                 message
                 for failed, message in (
@@ -211,52 +234,54 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             ),
             None,
         )
-        if refactor_load_error is not None:
+        if load_error is not None:
             ctx.skip(
                 module=project_path.name,
                 rule="REFACTOR",
                 line=0,
-                message=refactor_load_error,
+                message=load_error,
             )
-        else:
-            refactor_results = tuple(
-                engine.refactor_project(
-                    project_path,
-                    dry_run=False,
-                    apply_safety=False,
-                ),
+            return
+        refactor_results = tuple(
+            engine.refactor_project(
+                project_path,
+                dry_run=False,
+                apply_safety=False,
+            ),
+        )
+        ctx.files_modified |= {
+            str(result.file_path) for result in refactor_results if result.success
+        }
+        ctx.violations_fixed.extend(
+            m.Infra.CensusViolation(
+                module=str(result.file_path),
+                rule="REFACTOR",
+                line=1,
+                message=change,
+                fixable=True,
             )
-            ctx.files_modified = {
-                *ctx.files_modified,
-                *(
-                    str(result.file_path)
-                    for result in refactor_results
-                    if result.success
-                ),
-            }
-            ctx.violations_fixed.extend(
-                m.Infra.CensusViolation(
-                    module=str(result.file_path),
-                    rule="REFACTOR",
-                    line=1,
-                    message=change,
-                    fixable=True,
-                )
-                for result in refactor_results
-                if result.modified
-                for change in (tuple(result.changes) or ("refactor applied",))
+            for result in refactor_results
+            if result.modified
+            for change in (tuple(result.changes) or ("refactor applied",))
+        )
+        ctx.violations_skipped.extend(
+            m.Infra.CensusViolation(
+                module=str(result.file_path),
+                rule="REFACTOR",
+                line=1,
+                message=result.error or "refactor failed",
+                fixable=False,
             )
-            ctx.violations_skipped.extend(
-                m.Infra.CensusViolation(
-                    module=str(result.file_path),
-                    rule="REFACTOR",
-                    line=1,
-                    message=result.error or "refactor failed",
-                    fixable=False,
-                )
-                for result in refactor_results
-                if (not result.modified) and (not result.success)
-            )
+            for result in refactor_results
+            if (not result.modified) and (not result.success)
+        )
+
+    @staticmethod
+    def _run_namespace_enforcement(
+        ctx: m.Infra.FixContext,
+        project_path: Path,
+    ) -> None:
+        """Run namespace enforcement and record any unresolved violations."""
         enforcement = FlextInfraNamespaceEnforcer(
             workspace_root=project_path,
         ).enforce(apply=True)
@@ -265,30 +290,35 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             for project_report in enforcement.projects
             if project_report.has_violations
         )
-        if violating_projects:
-            _log.warning(
-                "namespace_enforcement_failed",
-                project=project_path.name,
-                error="violations remain after namespace enforcement",
+        if not violating_projects:
+            return
+        _log.warning(
+            "namespace_enforcement_failed",
+            project=project_path.name,
+            error="violations remain after namespace enforcement",
+        )
+        ctx.violations_skipped.extend(
+            m.Infra.CensusViolation(
+                module=project_report.project,
+                rule="NAMESPACE",
+                line=0,
+                message="violations remain after namespace enforcement",
+                fixable=False,
             )
-            ctx.violations_skipped.extend(
-                m.Infra.CensusViolation(
-                    module=project_report.project,
-                    rule="NAMESPACE",
-                    line=0,
-                    message="violations remain after namespace enforcement",
-                    fixable=False,
-                )
-                for project_report in violating_projects
-            )
+            for project_report in violating_projects
+        )
+
+    @staticmethod
+    def _run_lazy_init_regeneration(
+        ctx: m.Infra.FixContext,
+        project_path: Path,
+    ) -> None:
+        """Regenerate lazy ``__init__.py`` files and record skip on errors."""
         lazy_generator = FlextInfraCodegenLazyInit.model_validate(
             {"workspace_root": project_path},
         )
         lazy_errors = lazy_generator.generate_inits(check_only=False)
-        ctx.files_modified = {
-            *ctx.files_modified,
-            *lazy_generator.modified_files,
-        }
+        ctx.files_modified |= set(lazy_generator.modified_files)
         if lazy_errors > 0:
             ctx.skip(
                 module=project_path.name,
@@ -296,6 +326,13 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
                 line=0,
                 message=f"lazy propagation finished with {lazy_errors} errors",
             )
+
+    @staticmethod
+    def _post_fix_ruff_format(
+        ctx: m.Infra.FixContext,
+        bak_paths: t.SequenceOf[Path],
+    ) -> None:
+        """Run ruff fix+format on every touched file; restore from backup on decode error."""
         try:
             for modified_file in sorted(ctx.files_modified):
                 path = Path(modified_file)
@@ -304,30 +341,32 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         except c.EXC_OS_DECODING:
             u.Infra.restore_files(bak_paths)
             raise
-        remaining_violations_result = u.Infra.parse_namespace_validation(
+
+    @staticmethod
+    def _classify_remaining_violations(
+        ctx: m.Infra.FixContext,
+        project_path: Path,
+        initial_violations: t.SequenceOf[m.Infra.CensusViolation],
+    ) -> None:
+        """Re-run validation and split outstanding violations into fixed vs skipped."""
+        remaining_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate(project_path),
         )
-        if remaining_violations_result.failure:
+        if remaining_result.failure:
             ctx.skip(
                 module=project_path.name,
                 rule="NAMESPACE",
                 line=0,
-                message=remaining_violations_result.error
-                or "namespace validation failed",
+                message=remaining_result.error or "namespace validation failed",
             )
-        else:
-            fixed, skipped = u.Infra.classify_violation_outcomes(
-                project_path=project_path,
-                initial_violations=initial_violations,
-                remaining_violations=(
-                    remaining_violations_result.unwrap()
-                    if remaining_violations_result.success
-                    else ()
-                ),
-            )
-            ctx.violations_fixed.extend(fixed)
-            ctx.violations_skipped.extend(skipped)
-        return self._build_result(project_path.name, ctx)
+            return
+        fixed, skipped = u.Infra.classify_violation_outcomes(
+            project_path=project_path,
+            initial_violations=initial_violations,
+            remaining_violations=remaining_result.unwrap(),
+        )
+        ctx.violations_fixed.extend(fixed)
+        ctx.violations_skipped.extend(skipped)
 
     def fix_workspace(
         self,

@@ -213,6 +213,7 @@ class FlextInfraUtilitiesRopeHelpers:
 
     @staticmethod
     def _bracket_balance_total(text: str) -> int:
+        """Bracket balance total."""
         total = 0
         for line in text.splitlines():
             total += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(line)

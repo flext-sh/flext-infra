@@ -120,6 +120,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         self,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
+        """Selected projects."""
         _ = rope_workspace
         discovered = u.Infra.projects(self.workspace_root)
         if discovered.failure:
@@ -146,6 +147,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         ]
         | None
     ):
+        """Scan file."""
         resource = u.Infra.get_resource_from_path(rope_project, python_file)
         if resource is None:
             return None
@@ -169,6 +171,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         source_lines: t.StrSequence,
         value_to_ref: t.StrMapping,
     ) -> t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]:
+        """Match assignments."""
         matches: t.MutableSequenceOf[tuple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
             line_number = symbol.line
@@ -201,6 +204,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         backup: str,
         matches: t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
     ) -> t.Infra.EditResultWithDescs:
+        """Apply and validate."""
         src_lines = backup.splitlines(keepends=True)
         rel = py_file.relative_to(workspace)
         edits: t.MutableSequenceOf[tuple[int, int, str]] = []
@@ -225,27 +229,29 @@ class FlextInfraCodegenConsolidator(s[str]):
 
         ok, report = u.Infra.protected_file_edit(
             py_file,
-            workspace=workspace,
-            before_source=backup,
-            edit_fn=lambda: (
-                u.Infra.rewrite_source_at_offsets(
-                    rope_project,
-                    resource,
-                    edits,
-                    apply=True,
-                ),
-                u.Infra.add_import(
-                    rope_project,
-                    resource,
-                    pkg_name,
-                    ["c"],
-                    apply=True,
-                ),
-                None,
-            )[-1],
-            restore_fn=lambda: resource.write(backup),
-            keep_backup=True,
-            gates=cls._ALL_LINT_GATES,
+            request=m.Infra.ProtectedFileEditRequest(
+                workspace=workspace,
+                before_source=backup,
+                edit_fn=lambda: (
+                    u.Infra.rewrite_source_at_offsets(
+                        rope_project,
+                        resource,
+                        edits,
+                        apply=True,
+                    ),
+                    u.Infra.add_import(
+                        rope_project,
+                        resource,
+                        pkg_name,
+                        ["c"],
+                        apply=True,
+                    ),
+                    None,
+                )[-1],
+                restore_fn=lambda: resource.write(backup),
+                keep_backup=True,
+                gates=cls._ALL_LINT_GATES,
+            ),
         )
         if ok:
             return (True, list(descs), [f"  APPLIED {rel}: {item}" for item in descs])
@@ -253,6 +259,7 @@ class FlextInfraCodegenConsolidator(s[str]):
 
     @classmethod
     def _build_value_map_from_constants_file(cls, constants_file: Path) -> t.StrMapping:
+        """Build value map from constants file."""
         value_map: t.MutableStrMapping = {}
         try:
             source = constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)

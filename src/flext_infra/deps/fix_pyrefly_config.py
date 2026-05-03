@@ -48,6 +48,7 @@ class FlextInfraConfigFixer(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
+        """Execute."""
         return r[bool].fail("Use execute_command() directly")
 
     @classmethod

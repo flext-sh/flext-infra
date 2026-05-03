@@ -15,6 +15,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         workspace_root: Path,
         file_path: Path,
     ) -> Path | None:
+        """Project root for file."""
         for parent in file_path.parents:
             if (parent / "pyproject.toml").is_file():
                 return parent.resolve()
@@ -28,6 +29,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         *,
         project_root: Path,
     ) -> str:
+        """Package name for dir."""
         try:
             relative_parts = package_dir.relative_to(project_root).parts
         except ValueError:
@@ -51,6 +53,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         *,
         project_root: Path,
     ) -> str:
+        """Module name for file."""
         if file_path.name == c.Infra.INIT_PY:
             return cls._package_name_for_dir(
                 file_path.parent,
@@ -74,6 +77,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         dict[str, str],
         set[Path],
     ]:
+        """Collect modules."""
         modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
         modules_by_dir: dict[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
         package_dir_by_name: dict[str, Path] = {}

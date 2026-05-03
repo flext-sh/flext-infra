@@ -36,6 +36,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         *,
         project_root: Path,
     ) -> t.StrSequenceMapping:
+        """Build expected base chains."""
         resolved = project_root.resolve()
         cached = FlextInfraUtilitiesRefactorNamespaceFacades._base_chains_cache.get(
             resolved,
@@ -55,6 +56,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         *,
         project_root: Path,
     ) -> t.StrSequenceMapping:
+        """Compute base chains."""
         pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject_path.exists():
             return {}
@@ -85,6 +87,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         family: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> str:
+        """Base import for family."""
         if base_chains:
             chain = base_chains.get(family, [])
             if chain:
@@ -101,6 +104,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         family: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> str:
+        """Base class for family."""
         if base_chains:
             chain = base_chains.get(family, [])
             if chain:
@@ -116,6 +120,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
+        """Write missing facade file."""
         content = (
             '"""Auto-generated facade to enforce MRO namespace contracts."""\n\n'
             "from __future__ import annotations\n\n"
@@ -136,6 +141,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         facade_statuses: t.SequenceOf[m.Infra.FacadeStatus],
         workspace_root: Path | None = None,
     ) -> None:
+        """Ensure missing facades."""
         del project_name
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
@@ -212,6 +218,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
+        """Patch existing facade file."""
         source = target_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         base_class = FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(

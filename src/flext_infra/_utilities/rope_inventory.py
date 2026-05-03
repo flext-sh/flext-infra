@@ -32,20 +32,30 @@ class FlextInfraUtilitiesRopeInventory:
         module_entry: m.Infra.RopeModuleIndexEntry | None,
         convention: m.Infra.RopeModuleConvention,
         include_local_scopes: bool,
+        include_references: bool = True,
         rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
     ) -> tuple[m.Infra.Census.Object, ...]:
         """Return all same-file defined objects for one Rope module."""
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
-            return ()
-        except (RecursionError, SyntaxError, ValueError, RopeError):
-            return ()
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS as exc:
+            msg = (
+                "rope inventory failed to load "
+                f"{resource.path}: {type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
+        except (RecursionError, SyntaxError, ValueError, RopeError) as exc:
+            msg = (
+                "rope inventory failed to load "
+                f"{resource.path}: {type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
         source = resource.read()
         items: t.MutableSequenceOf[m.Infra.Census.Object] = []
         module_scope = pymodule.get_scope()
         if not isinstance(module_scope, p.Infra.RopeScopeDsl):
-            return ()
+            msg = f"rope inventory scope unavailable for {resource.path}"
+            raise RuntimeError(msg)
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
             record_options = m.Infra.RopeInventoryRecordInput.model_validate({
@@ -66,7 +76,10 @@ class FlextInfraUtilitiesRopeInventory:
                 "child_scope": cls._child_scope_for(child_scopes, pyname),
                 "rope_workspace": rope_workspace,
             })
-            record = cls._record(record_options)
+            record = cls._record(
+                record_options,
+                include_references=include_references,
+            )
             if record is None:
                 continue
             items.append(record)
@@ -76,6 +89,7 @@ class FlextInfraUtilitiesRopeInventory:
                     child_scope=record_options.child_scope,
                     record_options=record_options,
                     include_local_scopes=include_local_scopes,
+                    include_references=include_references,
                 )
             )
         return tuple(items)
@@ -86,7 +100,9 @@ class FlextInfraUtilitiesRopeInventory:
         scope: p.Infra.RopeScopeDsl,
         *,
         parent_options: m.Infra.RopeInventoryRecordInput,
+        include_references: bool = True,
     ) -> tuple[m.Infra.Census.Object, ...]:
+        """Scope objects."""
         items: t.MutableSequenceOf[m.Infra.Census.Object] = []
         child_scopes = tuple(scope.get_scopes())
         for name, pyname in cls._sorted_scope_names(scope, parent_options.resource):
@@ -98,7 +114,10 @@ class FlextInfraUtilitiesRopeInventory:
                     "child_scope": child_scope,
                 }
             )
-            record = cls._record(record_options)
+            record = cls._record(
+                record_options,
+                include_references=include_references,
+            )
             if record is None:
                 continue
             items.append(record)
@@ -107,6 +126,7 @@ class FlextInfraUtilitiesRopeInventory:
                     record=record,
                     child_scope=child_scope,
                     record_options=record_options,
+                    include_references=include_references,
                 )
             )
         return tuple(items)
@@ -119,7 +139,9 @@ class FlextInfraUtilitiesRopeInventory:
         child_scope: p.Infra.RopeScopeDsl | None,
         record_options: m.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
+        include_references: bool = True,
     ) -> tuple[m.Infra.Census.Object, ...]:
+        """Child scope objects."""
         if (
             not include_local_scopes
             or record.kind not in {"class", "function", "method"}
@@ -132,6 +154,7 @@ class FlextInfraUtilitiesRopeInventory:
                 record_options,
                 record,
             ),
+            include_references=include_references,
         )
 
     @staticmethod
@@ -139,6 +162,7 @@ class FlextInfraUtilitiesRopeInventory:
         parent_options: m.Infra.RopeInventoryRecordInput,
         record: m.Infra.Census.Object,
     ) -> m.Infra.RopeInventoryRecordInput:
+        """Descend options."""
         return parent_options.model_copy(
             update={
                 "scope_chain": tuple(
@@ -155,6 +179,7 @@ class FlextInfraUtilitiesRopeInventory:
         pymodule: PyModule,
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
+        """Sorted module names."""
         return FlextInfraUtilitiesRopeInventory._sorted_names(
             pymodule.get_attributes(),
             resource,
@@ -165,6 +190,7 @@ class FlextInfraUtilitiesRopeInventory:
         scope: p.Infra.RopeScopeDsl,
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
+        """Sorted scope names."""
         return FlextInfraUtilitiesRopeInventory._sorted_names(
             scope.get_names(),
             resource,
@@ -175,6 +201,7 @@ class FlextInfraUtilitiesRopeInventory:
         names: t.MappingKV[str, t.Infra.RopePyName],
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
+        """Sorted names."""
         return tuple(
             sorted(
                 (
@@ -197,23 +224,32 @@ class FlextInfraUtilitiesRopeInventory:
     def _record(
         cls,
         options: m.Infra.RopeInventoryRecordInput,
+        *,
+        include_references: bool,
     ) -> m.Infra.Census.Object | None:
+        """Record."""
         line = cls._definition_line(options.pyname, options.resource)
         if line is None:
             return None
-        (
-            runtime_reference_sites,
-            test_reference_sites,
-            example_reference_sites,
-            script_reference_sites,
-        ) = cls._reference_sites(
-            options.rope_project,
-            options.resource,
-            source=options.source,
-            name=options.name,
-            line=line,
-            rope_workspace=options.rope_workspace,
-        )
+        if include_references:
+            (
+                runtime_reference_sites,
+                test_reference_sites,
+                example_reference_sites,
+                script_reference_sites,
+            ) = cls._reference_sites(
+                options.rope_project,
+                options.resource,
+                source=options.source,
+                name=options.name,
+                line=line,
+                rope_workspace=options.rope_workspace,
+            )
+        else:
+            runtime_reference_sites = ()
+            test_reference_sites = ()
+            example_reference_sites = ()
+            script_reference_sites = ()
         references_count = sum(
             len(reference_sites)
             for reference_sites in (
@@ -275,6 +311,7 @@ class FlextInfraUtilitiesRopeInventory:
         pyname: t.Infra.RopePyName,
         resource: t.Infra.RopeResource,
     ) -> int | None:
+        """Definition line."""
         location = pyname.get_definition_location()
         if location is None:
             return None
@@ -289,6 +326,7 @@ class FlextInfraUtilitiesRopeInventory:
     def _child_scope_for(
         scopes: t.SequenceOf[p.Infra.RopeScopeDsl], pyname: t.Infra.RopePyName
     ) -> p.Infra.RopeScopeDsl | None:
+        """Child scope for."""
         location = pyname.get_definition_location()
         if location is None:
             return None
@@ -310,6 +348,7 @@ class FlextInfraUtilitiesRopeInventory:
         scope_chain: tuple[str, ...],
         name: str,
     ) -> str:
+        """Kind for."""
         obj = pyname.get_object()
         result: str
         if isinstance(obj, AbstractClass):
@@ -347,13 +386,15 @@ class FlextInfraUtilitiesRopeInventory:
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
     ]:
+        """Reference sites."""
         lines = source.splitlines(keepends=True)
-        if line < 1 or line > len(lines):
+        offset = FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
+            lines,
+            line=line,
+            symbol=name,
+        )
+        if offset is None:
             return ((), (), (), ())
-        column = lines[line - 1].find(name)
-        if column < 0:
-            return ((), (), (), ())
-        offset = sum(len(item) for item in lines[: line - 1]) + column
         definition_path = FlextInfraUtilitiesRopeCore.resource_file_path(
             rope_project,
             resource,
@@ -489,6 +530,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:
+        """Location file path."""
         resource = getattr(location, "resource", None)
         real_path = getattr(resource, "real_path", None)
         if isinstance(real_path, str) and real_path:
@@ -500,6 +542,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _location_line(location: t.Infra.RopeLocation) -> int:
+        """Location line."""
         line = getattr(location, "lineno", None)
         return line if isinstance(line, int) and line >= 0 else 0
 
@@ -507,6 +550,7 @@ class FlextInfraUtilitiesRopeInventory:
     def _reference_site(
         location: t.Infra.RopeLocation,
     ) -> m.Infra.Census.ReferenceSite | None:
+        """Reference site."""
         file_path = FlextInfraUtilitiesRopeInventory._location_file_path(location)
         if file_path is None:
             return None
@@ -523,6 +567,7 @@ class FlextInfraUtilitiesRopeInventory:
         definition_path: Path,
         line: int,
     ) -> None:
+        """Discard definition site."""
         definition_key = (
             FlextInfraUtilitiesRopeInventory._normalize_file_path(definition_path),
             line,
@@ -540,6 +585,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _normalize_file_path(file_path: Path) -> str:
+        """Normalize file path."""
         return str(file_path.resolve() if file_path.is_absolute() else file_path)
 
     @staticmethod
@@ -550,6 +596,7 @@ class FlextInfraUtilitiesRopeInventory:
         line: int,
         offset: int,
     ) -> bool:
+        """Is definition occurrence."""
         location_path = FlextInfraUtilitiesRopeInventory._location_file_path(location)
         if (
             definition_path is not None
@@ -571,6 +618,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _reference_surface(file_path: Path | None) -> str:
+        """Reference surface."""
         default_src: str = c.Infra.DEFAULT_SRC_DIR
         if file_path is None:
             return default_src
@@ -594,6 +642,7 @@ class FlextInfraUtilitiesRopeInventory:
         line: int,
         child_scope: p.Infra.RopeScopeDsl | None,
     ) -> str:
+        """Fingerprint."""
         start = max(1, line)
         end = child_scope.get_end() if child_scope is not None else start
         end = end if isinstance(end, int) and end >= start else start
@@ -603,6 +652,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _actual_tier(convention: m.Infra.RopeModuleConvention) -> str:
+        """Actual tier."""
         policy = convention.module_policy
         expected: str = policy.expected_family or ""
         if expected:
@@ -614,6 +664,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _expected_tier(convention: m.Infra.RopeModuleConvention, *, kind: str) -> str:
+        """Expected tier."""
         expected: str = convention.module_policy.expected_family or ""
         if expected:
             return expected
@@ -629,6 +680,7 @@ class FlextInfraUtilitiesRopeInventory:
         name: str,
         scope_chain: tuple[str, ...],
     ) -> bool:
+        """Is facade member."""
         if scope_chain:
             return False
         layout = convention.project_layout

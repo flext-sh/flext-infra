@@ -18,6 +18,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
     def _collect_markdown_files(self, project_dir: Path) -> t.SequenceOf[Path]:
+        """Collect markdown files."""
         return [
             path
             for path in project_dir.rglob("*.md")
@@ -54,6 +55,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = ctx
         return [
             c.Infra.MARKDOWNLINT,
@@ -68,6 +70,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
@@ -92,6 +95,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
     ) -> t.StrSequence:
+        """Build fix command."""
         _ = ctx
         return [
             c.Infra.MARKDOWNLINT,
@@ -102,6 +106,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _fix_raw_output(self, result: m.Cli.CommandOutput) -> str:
+        """Fix raw output."""
         return "\n".join(part for part in (result.stdout, result.stderr) if part)
 
 

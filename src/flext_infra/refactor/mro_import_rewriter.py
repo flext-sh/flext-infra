@@ -138,6 +138,7 @@ class FlextInfraRefactorMROImportRewriter:
         Path,
         t.MappingKV[str, t.Pair[str, t.StrMapping]],
     ]:
+        """Collect file moves."""
         rope_project = u.Infra.init_rope_project(workspace_root)
         module_file_moves: MutableMapping[
             Path,
@@ -213,6 +214,7 @@ class FlextInfraRefactorMROImportRewriter:
         Path,
         t.MappingKV[str, t.Pair[str, t.StrMapping]],
     ]:
+        """Merge file moves."""
         return {
             file_path: {
                 module_name: (facade_alias, dict(symbol_paths))
@@ -236,6 +238,7 @@ class FlextInfraRefactorMROImportRewriter:
         Path,
         t.MappingKV[str, t.Pair[str, t.StrMapping]],
     ]:
+        """Expand file moves."""
         expanded: MutableMapping[
             Path,
             t.MappingKV[str, t.Pair[str, t.StrMapping]],
@@ -253,6 +256,7 @@ class FlextInfraRefactorMROImportRewriter:
         workspace_root: Path,
         project_names: t.StrSequence | None = None,
     ) -> t.SequenceOf[Path]:
+        """Iter workspace python files."""
         paths: list[Path] = []
         project_name_set: set[str] = set(project_names or ())
         for project_root in u.Infra.discover_project_roots(
@@ -279,6 +283,7 @@ class FlextInfraRefactorMROImportRewriter:
         t.SequenceOf[m.Infra.MRORewriteResult],
         t.StrSequence,
     ]:
+        """Rewrite files."""
         rewrites: list[m.Infra.MRORewriteResult] = []
         errors: list[str] = []
         for file_path in sorted(request.file_moves):
@@ -320,6 +325,7 @@ class FlextInfraRefactorMROImportRewriter:
         file_path: Path,
         updated_source: str,
     ) -> t.Infra.EditResult:
+        """Protected source write."""
         return u.Infra.protected_source_write(
             file_path,
             request=m.Infra.ProtectedSourceWriteRequest(
@@ -336,6 +342,7 @@ class FlextInfraRefactorMROImportRewriter:
         workspace_root: Path,
         pending_sources: t.MappingKV[Path, str],
     ) -> tuple[t.StrSequence, t.SequenceOf[Path]]:
+        """Write pending sources."""
         errors: list[str] = []
         failed_paths: list[Path] = []
         for file_path, source in pending_sources.items():

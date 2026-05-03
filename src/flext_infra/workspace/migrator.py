@@ -33,6 +33,7 @@ class FlextInfraProjectMigrator(
 
     @staticmethod
     def _action_text(action: str, *, dry_run: bool) -> str:
+        """Action text."""
         return f"[DRY-RUN] {action}" if dry_run else action
 
     @staticmethod
@@ -48,6 +49,7 @@ class FlextInfraProjectMigrator(
         changes: t.MutableSequenceOf[str],
         errors: t.MutableSequenceOf[str],
     ) -> None:
+        """Append result."""
         if result.failure:
             errors.append(result.error or "migration action failed")
             return
@@ -151,6 +153,7 @@ class FlextInfraProjectMigrator(
         dry_run: bool,
         is_workspace_root: bool = False,
     ) -> p.Result[str]:
+        """Migrate basemk."""
         _ = is_workspace_root
         target = project_root / c.Infra.BASE_MK
         generator = self._get_generator()
@@ -180,6 +183,7 @@ class FlextInfraProjectMigrator(
         )
 
     def _migrate_gitignore(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
+        """Migrate gitignore."""
         gitignore_path = project_root / c.Infra.GITIGNORE
         try:
             existing_lines = (
@@ -228,6 +232,7 @@ class FlextInfraProjectMigrator(
         )
 
     def _migrate_makefile(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
+        """Migrate makefile."""
         makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
         if not makefile_path.exists():
             return self._no_change_result("Makefile not found", dry_run=dry_run)
@@ -254,6 +259,7 @@ class FlextInfraProjectMigrator(
         )
 
     def _apply_bootstrap_include(self, content: str) -> str:
+        """Apply bootstrap include."""
         if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
             return content
         bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
@@ -271,6 +277,7 @@ class FlextInfraProjectMigrator(
         dry_run: bool,
         workspace_root: Path,
     ) -> m.Infra.MigrationResult:
+        """Migrate project."""
         is_root = project.path.resolve() == workspace_root.resolve()
         changes: t.MutableSequenceOf[str] = []
         errors: t.MutableSequenceOf[str] = []
@@ -304,6 +311,7 @@ class FlextInfraProjectMigrator(
         project_name: str,
         dry_run: bool,
     ) -> p.Result[str]:
+        """Migrate pyproject."""
         pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject_path.exists():
             return self._no_change_result("pyproject.toml not found", dry_run=dry_run)

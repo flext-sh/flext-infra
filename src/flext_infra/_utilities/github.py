@@ -123,6 +123,7 @@ class FlextInfraUtilitiesGithub:
 
     @classmethod
     def _github_render_template(cls, template_path: Path) -> p.Result[str]:
+        """Github render template."""
         try:
             body = template_path.read_text(
                 encoding=c.Cli.ENCODING_DEFAULT,
@@ -148,6 +149,7 @@ class FlextInfraUtilitiesGithub:
         workspace_root: Path,
         source_workflow: Path | None = None,
     ) -> p.Result[Path]:
+        """Github resolve source workflow."""
         if source_workflow is not None:
             candidate = (
                 source_workflow
@@ -167,6 +169,7 @@ class FlextInfraUtilitiesGithub:
         cls,
         ctx: m.Infra.GithubWorkflowSyncContext,
     ) -> p.Result[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]]:
+        """Github sync project."""
         operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
         try:
             cls._github_sync_ci_yml(ctx, operations)

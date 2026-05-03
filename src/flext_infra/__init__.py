@@ -117,6 +117,18 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
     from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
     from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+    from flext_infra._utilities.protected_edit_apply import (
+        FlextInfraUtilitiesProtectedEditApply,
+    )
+    from flext_infra._utilities.protected_edit_linting import (
+        FlextInfraUtilitiesProtectedEditLinting,
+    )
+    from flext_infra._utilities.protected_edit_preview import (
+        FlextInfraUtilitiesProtectedEditPreview,
+    )
+    from flext_infra._utilities.protected_edit_writes import (
+        FlextInfraUtilitiesProtectedEditWrites,
+    )
     from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -513,6 +525,18 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.patterns": ("FlextInfraUtilitiesPatterns",),
             "._utilities.policy": ("FlextInfraUtilitiesRefactorPolicy",),
             "._utilities.protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
+            "._utilities.protected_edit_apply": (
+                "FlextInfraUtilitiesProtectedEditApply",
+            ),
+            "._utilities.protected_edit_linting": (
+                "FlextInfraUtilitiesProtectedEditLinting",
+            ),
+            "._utilities.protected_edit_preview": (
+                "FlextInfraUtilitiesProtectedEditPreview",
+            ),
+            "._utilities.protected_edit_writes": (
+                "FlextInfraUtilitiesProtectedEditWrites",
+            ),
             "._utilities.refactor": ("FlextInfraUtilitiesRefactor",),
             "._utilities.release": ("FlextInfraUtilitiesRelease",),
             "._utilities.rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
@@ -994,6 +1018,10 @@ __all__: list[str] = [
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesPatterns",
     "FlextInfraUtilitiesProtectedEdit",
+    "FlextInfraUtilitiesProtectedEditApply",
+    "FlextInfraUtilitiesProtectedEditLinting",
+    "FlextInfraUtilitiesProtectedEditPreview",
+    "FlextInfraUtilitiesProtectedEditWrites",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorEngine",

@@ -213,6 +213,7 @@ class FlextInfraReleaseOrchestratorPhases:
         workspace_root: Path,
         project_names: t.StrSequence,
     ) -> t.SequenceOf[t.Pair[str, Path]]:
+        """Build targets."""
         raise NotImplementedError
 
     def _generate_notes(
@@ -220,12 +221,15 @@ class FlextInfraReleaseOrchestratorPhases:
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         output_path: Path,
     ) -> p.Result[bool]:
+        """Generate notes."""
         raise NotImplementedError
 
     def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
+        """Create tag."""
         raise NotImplementedError
 
     def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
+        """Push release."""
         raise NotImplementedError
 
     def _version_files(
@@ -233,6 +237,7 @@ class FlextInfraReleaseOrchestratorPhases:
         workspace_root: Path,
         project_names: t.StrSequence,
     ) -> t.SequenceOf[Path]:
+        """Version files."""
         raise NotImplementedError
 
 

@@ -20,6 +20,7 @@ class FlextInfraUtilitiesRopeModulePatch:
 
     @staticmethod
     def _ensure_alias_line(source: str, *, alias: str, target_name: str) -> str:
+        """Ensure alias line."""
         target_line = f"{alias} = {target_name}"
         lines = source.splitlines()
         for index, line in enumerate(lines):
@@ -37,6 +38,7 @@ class FlextInfraUtilitiesRopeModulePatch:
 
     @classmethod
     def _ensure_all_entry(cls, source: str, *, name: str) -> str:
+        """Ensure all entry."""
         quoted_name = f'"{name}"'
         if quoted_name in source or f"'{name}'" in source:
             return source
@@ -56,6 +58,7 @@ class FlextInfraUtilitiesRopeModulePatch:
 
     @staticmethod
     def _update_single_line_all(source: str, *, line_index: int, entry: str) -> str:
+        """Update single line all."""
         lines = source.splitlines()
         line = lines[line_index]
         closing_index = line.rfind("]")
@@ -68,6 +71,7 @@ class FlextInfraUtilitiesRopeModulePatch:
 
     @staticmethod
     def _update_block_all(lines: list[str], *, start: int, entry: str) -> str:
+        """Update block all."""
         for index in range(start, len(lines)):
             if "]" not in lines[index]:
                 continue

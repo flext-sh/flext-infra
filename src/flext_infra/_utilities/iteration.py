@@ -235,6 +235,7 @@ class FlextInfraUtilitiesIteration:
         payload: t.Infra.ContainerDict,
         names: set[str],
     ) -> None:
+        """Append project dependency names."""
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return
@@ -258,6 +259,7 @@ class FlextInfraUtilitiesIteration:
         payload: t.Infra.ContainerDict,
         names: set[str],
     ) -> None:
+        """Append dependency group names."""
         dependency_groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
         if not isinstance(dependency_groups, Mapping):
             return
@@ -274,6 +276,7 @@ class FlextInfraUtilitiesIteration:
         payload: t.Infra.ContainerDict,
         names: set[str],
     ) -> None:
+        """Append poetry dependency names."""
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, Mapping):
             return
@@ -302,6 +305,7 @@ class FlextInfraUtilitiesIteration:
         raw_requirements: t.Infra.InfraValue,
         names: set[str],
     ) -> None:
+        """Append requirement names."""
         if not isinstance(raw_requirements, list):
             return
         for raw_requirement in raw_requirements:
@@ -317,6 +321,7 @@ class FlextInfraUtilitiesIteration:
         raw_mapping: t.Infra.InfraValue,
         names: set[str],
     ) -> None:
+        """Append mapping dependency names."""
         if not isinstance(raw_mapping, Mapping):
             return
         for raw_name in raw_mapping:

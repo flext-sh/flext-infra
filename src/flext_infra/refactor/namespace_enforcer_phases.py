@@ -41,6 +41,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         *,
         project_names: t.StrSequence | None = None,
     ) -> t.SequenceOf[Path]:
+        """Resolve project roots."""
         msg = "_resolve_project_roots must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
 
@@ -52,6 +53,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         rewrite_fn: Callable[[t.MutableSequenceOf[V]], None] | None,
         apply: bool,
     ) -> t.MutableSequenceOf[V]:
+        """Detect and apply."""
         _ = self, py_files, detect_fn, rewrite_fn, apply
         msg = "_detect_and_apply must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
@@ -74,6 +76,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         project_name: str,
         apply: bool,
     ) -> m.Infra.ProjectEnforcementReport:
+        """Enforce project."""
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation] = []
         facade_statuses = self._scan_facades(
             project=(project_root, project_name),
@@ -96,6 +99,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             project_name: str = "",
             project_root: Path | None = None,
         ) -> m.Infra.DetectorContext:
+            """Ctx."""
             return m.Infra.DetectorContext(
                 file_path=file_path,
                 rope_project=self._rope_project,

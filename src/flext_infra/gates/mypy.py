@@ -44,6 +44,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         cfg = self._resolve_config(project_dir, ctx)
         return [
             sys.executable,
@@ -62,6 +63,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrMapping | None:
+        """Check env."""
         _ = project_dir
         typings_generated = ctx.workspace_root / c.Infra.DIR_TYPINGS / "generated"
         if not typings_generated.is_dir():
@@ -78,6 +80,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for raw_line in (result.stdout or "").splitlines():

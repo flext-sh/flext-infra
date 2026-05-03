@@ -89,6 +89,7 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
 
     @staticmethod
     def _is_import_line(stripped: str) -> bool:
+        """Is import line."""
         return stripped.startswith(("from ", "import "))
 
     @classmethod

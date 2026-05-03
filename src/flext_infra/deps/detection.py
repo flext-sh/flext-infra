@@ -24,6 +24,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     @override
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        """Read plain."""
         if self.toml is not None:
             return self.toml.read_plain(path)
         plain_result = u.Cli.toml_read_json(path)
@@ -44,6 +45,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         timeout: int | None = None,
         env: t.StrMapping | None = None,
     ) -> p.Result[m.Cli.CommandOutput]:
+        """Run raw."""
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         return u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
@@ -95,6 +97,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         def _module_names(
             items: t.SequenceOf[t.MappingKV[str, t.JsonValue | None]],
         ) -> t.MutableSequenceOf[str]:
+            """Module names."""
             return [
                 str(val)
                 for item in items

@@ -227,6 +227,7 @@ class FlextInfraGate(ABC):
         timeout: int = c.Infra.TIMEOUT_DEFAULT,
         env: t.StrMapping | None = None,
     ) -> m.Cli.CommandOutput:
+        """Run."""
         runner = self._runner or u.Cli
         result = runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.failure:
@@ -244,6 +245,7 @@ class FlextInfraGate(ABC):
         issues: t.SequenceOf[m.Infra.Issue],
         raw_output: str = "",
     ) -> m.Infra.GateExecution:
+        """Build gate result."""
         return m.Infra.GateExecution(
             result=result,
             issues=tuple(issues),
@@ -251,6 +253,7 @@ class FlextInfraGate(ABC):
         )
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
+        """Existing check dirs."""
         has_root_python = any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
             project_dir.glob("*.pyi"),
         )
@@ -261,6 +264,7 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:
+        """Dirs with py."""
         out: t.MutableSequenceOf[str] = []
         for directory in dirs:
             path = project_dir / directory
@@ -278,6 +282,7 @@ class FlextInfraGate(ABC):
         project_dir: Path,
         started: float,
     ) -> m.Infra.GateExecution:
+        """Skip result."""
         return self._build_gate_result(
             result=m.Infra.GateResult(
                 gate=self.gate_id,

@@ -49,6 +49,7 @@ class FlextInfraProjectClassifier:
         )
 
     def _read_project_metadata(self) -> t.Infra.TransformResult:
+        """Read project metadata."""
         if self._pyproject_payload is not None:
             return self._project_metadata_from_payload(self._pyproject_payload)
         empty_dependencies: list[str] = []
@@ -65,6 +66,7 @@ class FlextInfraProjectClassifier:
         self,
         parsed: t.Infra.ContainerDict,
     ) -> t.Infra.TransformResult:
+        """Project metadata from payload."""
         raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
         dependencies: t.MutableSequenceOf[str] = []
@@ -86,6 +88,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_value: t.Infra.InfraValue | None,
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
+        """As mapping."""
         if isinstance(raw_value, Mapping):
             validated: t.MappingKV[str, t.Infra.InfraValue] = (
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
@@ -97,6 +100,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> str:
+        """Normalized name from mapping."""
         raw_name = raw_mapping.get(c.Infra.NAME)
         if isinstance(raw_name, str):
             return self._normalize_dependency_name(raw_name)
@@ -108,6 +112,7 @@ class FlextInfraProjectClassifier:
         raw_project: t.MappingKV[str, t.Infra.InfraValue],
         dependencies: t.MutableSequenceOf[str],
     ) -> None:
+        """Append project dependencies."""
         raw_dependencies = raw_project.get(c.Infra.DEPENDENCIES)
         if not isinstance(raw_dependencies, list):
             return
@@ -126,6 +131,7 @@ class FlextInfraProjectClassifier:
         raw_poetry: t.MappingKV[str, t.Infra.InfraValue],
         dependencies: t.MutableSequenceOf[str],
     ) -> None:
+        """Append poetry dependencies."""
         self._append_poetry_dependency_mapping(
             raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.DEPENDENCIES)),
             dependencies=dependencies,
@@ -143,6 +149,7 @@ class FlextInfraProjectClassifier:
         raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
         dependencies: t.MutableSequenceOf[str],
     ) -> None:
+        """Append poetry dependency mapping."""
         dependency_keys = self._ordered_mapping_keys(raw_mapping)
         for dependency_key in dependency_keys:
             dependency_name = self._extract_dependency_name(dependency_key)
@@ -157,6 +164,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
+        """Ordered mapping keys."""
         keys = list(raw_mapping.keys())
         if self._mapping_order_is_trusted(raw_mapping):
             return keys
@@ -166,6 +174,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> bool:
+        """Mapping order is trusted."""
         return isinstance(raw_mapping, dict)
 
     def _append_unique_dependency(
@@ -174,6 +183,7 @@ class FlextInfraProjectClassifier:
         dependency_name: str,
         dependencies: t.MutableSequenceOf[str],
     ) -> None:
+        """Append unique dependency."""
         if (not dependency_name) or (dependency_name in dependencies):
             return
         dependencies.append(dependency_name)
@@ -184,6 +194,7 @@ class FlextInfraProjectClassifier:
         dependencies: t.StrSequence,
         project_name: str,
     ) -> t.StrSequence:
+        """Internal dependencies."""
         return [
             dependency
             for dependency in dependencies
@@ -192,6 +203,7 @@ class FlextInfraProjectClassifier:
         ]
 
     def _extract_dependency_name(self, raw_dependency: str) -> str:
+        """Extract dependency name."""
         cleaned = raw_dependency.strip().split(";", maxsplit=1)[0].strip()
         if not cleaned:
             return ""
@@ -205,12 +217,14 @@ class FlextInfraProjectClassifier:
         return self._normalize_dependency_name(base_token)
 
     def _normalize_dependency_name(self, raw_name: str) -> str:
+        """Normalize dependency name."""
         normalized = u.norm_str(raw_name, case="lower").replace("_", "-")
         return normalized.strip("./")
 
     def _discover_facade_inheritance(
         self,
     ) -> t.Pair[t.MappingKV[str, t.Infra.StrSet], t.Infra.StrSet]:
+        """Discover facade inheritance."""
         family_bases: t.MappingKV[str, t.Infra.StrSet] = {
             family: set() for family in c.Infra.FAMILY_SUFFIXES
         }
@@ -234,6 +248,7 @@ class FlextInfraProjectClassifier:
         file_path: Path,
         suffix: str,
     ) -> t.Pair[t.Infra.StrSet, t.Infra.StrSet]:
+        """Parse family file."""
         try:
             source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except c.EXC_OS_DECODING:
@@ -261,6 +276,7 @@ class FlextInfraProjectClassifier:
         internal_dependencies: t.StrSequence,
         family_bases: t.MappingKV[str, t.Infra.StrSet],
     ) -> t.MappingKV[str, t.StrSequence]:
+        """Build confirmed family chains."""
         family_chains: MutableMapping[str, t.StrSequence] = {}
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_parents = self._expected_parents_for_family(
@@ -283,6 +299,7 @@ class FlextInfraProjectClassifier:
         family_suffix: str,
         internal_dependencies: t.StrSequence,
     ) -> t.StrSequence:
+        """Expected parents for family."""
         expected: t.MutableSequenceOf[str] = []
         for dependency in internal_dependencies:
             stem = self._dependency_to_class_stem(dependency)
@@ -294,6 +311,7 @@ class FlextInfraProjectClassifier:
         return expected
 
     def _dependency_to_class_stem(self, dependency: str) -> str:
+        """Dependency to class stem."""
         normalized = self._normalize_dependency_name(dependency)
         if normalized == c.Infra.PKG_CORE:
             return "Flext"
@@ -314,6 +332,7 @@ class FlextInfraProjectClassifier:
         internal_dependencies: t.StrSequence,
         local_facade_classes: t.Infra.StrSet,
     ) -> str:
+        """Infer project kind."""
         if not internal_dependencies:
             return "core"
         has_domain_dependency = any(

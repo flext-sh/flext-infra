@@ -106,6 +106,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         cls,
         files: t.SequenceOf[Path],
     ) -> t.MappingKV[Path, t.Infra.StrSet]:
+        """Group targets by project root."""
         grouped: MutableMapping[Path, t.Infra.StrSet] = {}
         for file_path in files:
             project_root = u.Infra.resolve_project_root(file_path)
@@ -119,6 +120,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _module_path_for_file(cls, file_path: Path, project_root: Path) -> str | None:
+        """Module path for file."""
         src_dir = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
         resolved = file_path.resolve()
         try:
@@ -131,6 +133,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     def _load_mapping_index(
         cls,
     ) -> p.Result[t.MappingKV[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
+        """Load mapping index."""
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
             typed_doc = u.Cli.yaml_load_mapping(mapping_path)
@@ -169,6 +172,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _normalize_rewrite_scope(cls, raw_scope: str | None) -> str:
+        """Normalize rewrite scope."""
         default_scope: str = c.Infra.RK_FILE
         if not isinstance(raw_scope, str):
             return default_scope

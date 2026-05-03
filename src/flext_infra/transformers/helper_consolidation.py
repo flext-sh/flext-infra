@@ -57,6 +57,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         return updated, list(self.changes)
 
     def _rewrite_calls(self, source: str) -> str:
+        """Rewrite calls."""
         for name, ns in self._mappings.items():
             if not self._policy_ok(name, ns, "allow_helper_call_rewrite"):
                 continue
@@ -68,6 +69,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         return source
 
     def _policy_ok(self, name: str, target_ns: str, attr: str) -> bool:
+        """Policy ok."""
         policy = self._policy_for(name)
         if policy is None:
             return True
@@ -80,6 +82,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         return allowed
 
     def _sig_allowed(self, source: str, name: str) -> bool:
+        """Sig allowed."""
         policy = self._policy_for(name)
         result: bool
         if policy is None or not policy.require_signature_validation:
@@ -103,6 +106,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         return result
 
     def _policy_for(self, name: str) -> m.Infra.ClassNestingPolicy | None:
+        """Policy for."""
         return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._families,

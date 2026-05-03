@@ -24,6 +24,8 @@ class FlextInfraModelsNamespaceEnforcer:
         """Shared base: file + line + current_import."""
 
     class FacadeStatus(m.ContractModel):
+        """Facade status."""
+
         family: Annotated[t.NonEmptyStr, m.Field(description="Facade family name")]
         exists: Annotated[bool, m.Field(description="Whether facade exists")]
         class_name: Annotated[str, m.Field(description="Facade class name")] = ""
@@ -33,17 +35,23 @@ class FlextInfraModelsNamespaceEnforcer:
         ] = 0
 
     class LooseObjectViolation(FileLineViolation):
+        """Loose object violation."""
+
         name: Annotated[t.NonEmptyStr, m.Field(description="Symbol name")]
         kind: Annotated[str, m.Field(description="Object kind")]
         suggestion: Annotated[str, m.Field(description="Fix suggestion")] = ""
 
     class ImportAliasViolation(ImportViolationBase):
+        """Import alias violation."""
+
         suggested_import: Annotated[
             str,
             m.Field(description="Suggested import statement"),
         ]
 
     class NamespaceSourceViolation(FileLineViolation):
+        """Namespace source violation."""
+
         alias: Annotated[t.NonEmptyStr, m.Field(description="Runtime alias letter")]
         current_source: Annotated[
             t.NonEmptyStr,
@@ -60,11 +68,15 @@ class FlextInfraModelsNamespaceEnforcer:
         ]
 
     class ClassPlacementViolation(FileLineViolation):
+        """Class placement violation."""
+
         name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         base_class: Annotated[t.NonEmptyStr, m.Field(description="Base class name")]
         suggestion: Annotated[str, m.Field(description="Fix suggestion")]
 
     class MROCompletenessViolation(FileLineViolation):
+        """M r o completeness violation."""
+
         family: Annotated[t.NonEmptyStr, m.Field(description="Facade family")]
         facade_class: Annotated[t.NonEmptyStr, m.Field(description="Facade class name")]
         missing_base: Annotated[
@@ -76,9 +88,13 @@ class FlextInfraModelsNamespaceEnforcer:
         mm.ViolationDetailMixin,
         ImportViolationBase,
     ):
+        """Internal import violation."""
+
         pass
 
     class ManualProtocolViolation(FileLineViolation):
+        """Manual protocol violation."""
+
         name: Annotated[t.NonEmptyStr, m.Field(description="Protocol class name")]
         suggestion: Annotated[
             str,
@@ -88,6 +104,8 @@ class FlextInfraModelsNamespaceEnforcer:
         ] = "Move to protocols.py/protocols/*.py/_protocols.py"
 
     class CyclicImportViolation(m.ContractModel):
+        """Cyclic import violation."""
+
         cycle: Annotated[
             t.VariadicTuple[str], m.Field(description="Import cycle chain")
         ]
@@ -102,6 +120,8 @@ class FlextInfraModelsNamespaceEnforcer:
         mm.ViolationDetailMixin,
         m.ContractModel,
     ):
+        """Runtime alias violation."""
+
         kind: Annotated[str, m.Field(description="Violation kind")]
         alias: Annotated[str, m.Field(description="Alias involved")]
 
@@ -109,15 +129,21 @@ class FlextInfraModelsNamespaceEnforcer:
         mm.FilePathMixin,
         m.ContractModel,
     ):
+        """Future annotations violation."""
+
         pass
 
     class ManualTypingAliasViolation(
         mm.ViolationDetailMixin,
         FileLineViolation,
     ):
+        """Manual typing alias violation."""
+
         name: Annotated[t.NonEmptyStr, m.Field(description="Alias name")]
 
     class CompatibilityAliasViolation(FileLineViolation):
+        """Compatibility alias violation."""
+
         alias_name: Annotated[t.NonEmptyStr, m.Field(description="Alias name")]
         target_name: Annotated[t.NonEmptyStr, m.Field(description="Target name")]
 
@@ -126,6 +152,8 @@ class FlextInfraModelsNamespaceEnforcer:
         mm.ErrorDetailMixin,
         m.ContractModel,
     ):
+        """Parse failure violation."""
+
         stage: Annotated[t.NonEmptyStr, m.Field(description="Parse stage")]
         error_type: Annotated[t.NonEmptyStr, m.Field(description="Error type")]
 
@@ -133,6 +161,8 @@ class FlextInfraModelsNamespaceEnforcer:
         mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
+        """Project enforcement report."""
+
         project_root: Annotated[str, m.Field(description="Project root path")]
         facade_statuses: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.FacadeStatus],
@@ -259,6 +289,8 @@ class FlextInfraModelsNamespaceEnforcer:
             return missing_facades or any(v for v in violation_fields)
 
     class WorkspaceEnforcementReport(m.ArbitraryTypesModel):
+        """Workspace enforcement report."""
+
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
         projects: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],
@@ -323,6 +355,7 @@ class FlextInfraModelsNamespaceEnforcer:
                 FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport
             ],
         ) -> Self:
+            """From projects."""
             return cls(
                 workspace=workspace,
                 projects=projects,
@@ -364,6 +397,7 @@ class FlextInfraModelsNamespaceEnforcer:
         @u.computed_field()
         @property
         def has_violations(self) -> bool:
+            """Has violations."""
             return any(
                 getattr(self, field_name) > 0
                 for field_name in type(self).model_fields

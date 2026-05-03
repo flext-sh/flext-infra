@@ -75,6 +75,7 @@ class FlextInfraModelsScan:
 
         @staticmethod
         def _violations_default() -> list[FlextInfraModelsScan.ScanViolation]:
+            """Violations default."""
             return []
 
         file_path: Annotated[Path, m.Field(description="Path to the scanned file")]

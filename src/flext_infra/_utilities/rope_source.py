@@ -411,6 +411,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def _indent_width(line: str) -> int:
+        """Indent width."""
         return len(line) - len(line.lstrip())
 
     @classmethod
@@ -421,6 +422,7 @@ class FlextInfraUtilitiesRopeSource:
         start_index: int,
         block_indent: int,
     ) -> tuple[int, str, str] | None:
+        """Silent failure block return."""
         index = start_index + 1
         while index < len(lines):
             line = lines[index]
@@ -443,6 +445,7 @@ class FlextInfraUtilitiesRopeSource:
         *,
         line_index: int,
     ) -> str | None:
+        """Enclosing result inner."""
         target_indent = cls._indent_width(lines[line_index])
         for index in range(line_index, -1, -1):
             line = lines[index]
@@ -471,6 +474,7 @@ class FlextInfraUtilitiesRopeSource:
         cls,
         source: str,
     ) -> t.SequenceOf[tuple[int, int, str, str, tuple[int, int, str] | None]]:
+        """Collect silent failure findings."""
         lines = source.splitlines(keepends=True)
         offsets: list[int] = []
         current_offset = 0
@@ -580,6 +584,7 @@ class FlextInfraUtilitiesRopeSource:
         *,
         apply: bool = True,
     ) -> t.Infra.TransformResult:
+        """Fix silent failure sentinels."""
         source = resource.read()
         findings = cls.collect_silent_failure_findings(source)
         changes: list[tuple[int, int, str]] = [

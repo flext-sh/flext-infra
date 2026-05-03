@@ -27,6 +27,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         violations: t.SequenceOf[m.Infra.MROCompletenessViolation],
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
+        """Rewrite mro completeness violations."""
         _ = parse_failures
         violations_by_file: t.MappingKV[
             Path,
@@ -89,6 +90,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         missing: t.Infra.StrSet,
         core_bases: frozenset[str],
     ) -> tuple[str, t.Infra.StrSet]:
+        """Rewrite class header."""
         prefix = f"class {facade_name}"
         stripped = line.strip()
         if not stripped.startswith(prefix):
@@ -125,6 +127,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         lines: t.StrSequence,
         new_bases: t.Infra.StrSet,
     ) -> t.StrSequence:
+        """Build missing imports."""
         existing_imports: t.Infra.StrSet = set()
         for line in lines:
             parsed = (
@@ -147,6 +150,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         *,
         py_files: t.SequenceOf[Path],
     ) -> None:
+        """Rewrite missing future annotations."""
         for file_path in py_files:
             if file_path.name == c.Infra.PY_TYPED:
                 continue

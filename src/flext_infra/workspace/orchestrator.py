@@ -358,6 +358,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         verb: str,
         make_args: t.StrSequence,
     ) -> t.StrSequence:
+        """Normalize make args for project."""
         if (verb != c.Infra.VERB_CHECK) or (not self._is_go_project(project)):
             return make_args
         normalized_args: t.MutableSequenceOf[str] = []
@@ -371,10 +372,12 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         return normalized_args
 
     def _is_go_project(self, project: str) -> bool:
+        """Is go project."""
         go_mod: str = c.Infra.GO_MOD
         return (Path(project) / go_mod).exists()
 
     def _normalize_check_gates_for_go(self, gates_value: str) -> str:
+        """Normalize check gates for go."""
         raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]
         if not raw_gates:
             return gates_value

@@ -41,6 +41,7 @@ class FlextInfraLooseObjectDetector:
         violations: t.MutableSequenceOf[m.Infra.LooseObjectViolation] = []
 
         def _add(symbol: m.Infra.SymbolInfo, kind: str, suffix: str) -> None:
+            """Add."""
             violations.append(
                 m.Infra.LooseObjectViolation(
                     file=file_str,

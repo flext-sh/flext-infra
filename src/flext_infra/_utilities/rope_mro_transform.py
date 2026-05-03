@@ -130,6 +130,7 @@ class FlextInfraUtilitiesRopeMroTransform:
         symbol: str,
         target: str,
     ) -> list[str]:
+        """Rename symbol in block."""
         renamed_lines = list(block_lines)
         for index, line in enumerate(renamed_lines):
             if f"class {symbol}" not in line and not re.match(
@@ -148,6 +149,7 @@ class FlextInfraUtilitiesRopeMroTransform:
 
     @staticmethod
     def _indent_block(block_lines: t.StrSequence) -> list[str]:
+        """Indent block."""
         return [("    " + line) if line else "" for line in block_lines]
 
     @staticmethod
@@ -157,6 +159,7 @@ class FlextInfraUtilitiesRopeMroTransform:
         class_name: str,
         symbol_map: t.StrMapping,
     ) -> list[str]:
+        """Drop redundant class aliases."""
         alias_lines = {
             f"{target} = {symbol}"
             for symbol, target in symbol_map.items()
@@ -186,6 +189,7 @@ class FlextInfraUtilitiesRopeMroTransform:
         facade_alias: str,
         symbol_map: t.StrMapping,
     ) -> str:
+        """Qualify local references."""
         updated_source = source
         for symbol, target_path in symbol_map.items():
             qualified = f"{facade_alias}.{target_path}"

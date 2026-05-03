@@ -16,6 +16,7 @@ class FlextInfraRefactorLegacyTextOps:
         settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
+        """Apply legacy removal."""
         changes: t.MutableSequenceOf[str] = []
         rule_id = str(settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN))
         fix_action = u.Cli.json_get_str_key(
@@ -43,6 +44,7 @@ class FlextInfraRefactorLegacyTextOps:
         settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
+        """Remove aliases."""
         allow_aliases = set(
             u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_ALIASES, []))
         )
@@ -73,6 +75,7 @@ class FlextInfraRefactorLegacyTextOps:
 
     @staticmethod
     def _remove_deprecated(source: str) -> t.Infra.TransformResult:
+        """Remove deprecated."""
         deprecated_re = re.compile(
             r"^@deprecated.*\n(?:class|def)\s+(\w+).*?(?=\n(?:class |def |@|\Z))",
             re.MULTILINE | re.DOTALL,
@@ -89,6 +92,7 @@ class FlextInfraRefactorLegacyTextOps:
 
     @classmethod
     def _remove_wrappers(cls, source: str) -> t.Infra.TransformResult:
+        """Remove wrappers."""
         try:
             module = ast.parse(source)
         except SyntaxError:
@@ -125,6 +129,7 @@ class FlextInfraRefactorLegacyTextOps:
         func: t.Infra.AstFunctionDef,
         call: t.Infra.AstCall,
     ) -> bool:
+        """Is passthrough wrapper."""
         param_names = [arg.arg for arg in (*func.args.posonlyargs, *func.args.args)]
         keyword_names = [arg.arg for arg in func.args.kwonlyargs]
         named_keywords = {
@@ -134,6 +139,7 @@ class FlextInfraRefactorLegacyTextOps:
         pos_index = 0
 
         def _is_name(node: t.Infra.AstExpr, name: str) -> bool:
+            """Is name."""
             return isinstance(node, ast.Name) and node.id == name
 
         for name in param_names:
@@ -168,6 +174,7 @@ class FlextInfraRefactorLegacyTextOps:
 
     @staticmethod
     def _remove_import_bypasses(source: str) -> t.Infra.TransformResult:
+        """Remove import bypasses."""
         bypass_re = re.compile(
             r"^try:\s*\n"
             r"(?P<primary>\s+from\s+\S+\s+import\s+\S+[^\n]*)\n"

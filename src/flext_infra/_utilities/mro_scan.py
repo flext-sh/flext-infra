@@ -21,6 +21,8 @@ from flext_infra import (
 
 
 class FlextInfraUtilitiesRefactorMroScan:
+    """Flext infra utilities refactor mro scan."""
+
     _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.CONSTANT_NAME_RE
     _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = c.Infra.MRO_SCAN_TYPE_PATTERN
     _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = (
@@ -207,6 +209,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         target_spec: m.Infra.MROTargetSpec,
         obj: t.Infra.RopePyObject,
     ) -> m.Infra.MROSymbolCandidate | None:
+        """Create candidate."""
         line, end_line = block
         alias = target_spec.family_alias
         kind = ""
@@ -253,6 +256,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         source: str,
         spec: m.Infra.MROTargetSpec,
     ) -> str:
+        """Find facade."""
         if assign := re.search(
             rf"^{re.escape(spec.family_alias)}\s*=\s*([A-Za-z_]\w*{spec.class_suffix})\b",
             source,
@@ -273,6 +277,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
     @staticmethod
     def _target_specs(target: str) -> tuple[m.Infra.MROTargetSpec, ...]:
+        """Target specs."""
         al = dict(FlextInfraUtilitiesRefactorMroScan._TARGET_MAP).get(target)
         return (
             tuple(
@@ -286,6 +291,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
     @staticmethod
     def _class_header(*, lines: t.StrSequence, start_line: int) -> str:
+        """Class header."""
         header_parts: list[str] = []
         for current_line in lines[start_line - 1 :]:
             stripped = current_line.strip()
@@ -304,6 +310,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         lines: t.StrSequence,
         start_line: int,
     ) -> tuple[int, int]:
+        """Top level block bounds."""
         class_line_index = start_line - 1
         start_index = class_line_index
         while start_index > 0:
@@ -336,6 +343,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         obj: t.Infra.RopePyObject,
         class_header: str,
     ) -> bool:
+        """Mro scan is protocol class."""
         if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
             try:
                 bases = tuple(obj.get_superclasses())
@@ -354,6 +362,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
     @classmethod
     def _class_header_declares_protocol(cls, *, name: str, class_header: str) -> bool:
+        """Class header declares protocol."""
         if (
             m := re.match(
                 rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:",

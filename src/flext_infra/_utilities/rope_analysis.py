@@ -33,6 +33,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> tuple[str, str, int]:
+        """Resource cache key."""
         file_path = FlextInfraUtilitiesRopeCore.resource_file_path(
             rope_project,
             resource,
@@ -54,6 +55,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         module_name: str,
         resource: t.Infra.RopeResource,
     ) -> str:
+        """Package name for module."""
         if (
             resource.path.endswith(f"/{c.Infra.INIT_PY}")
             or resource.path == c.Infra.INIT_PY
@@ -68,6 +70,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         module_name: str,
         level: int,
     ) -> str:
+        """Resolve import module."""
         if level <= 0:
             return module_name
         try:
@@ -80,6 +83,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def _root_name(expr: _ast.expr) -> str:
+        """Root name."""
         match expr:
             case _ast.Name(id=name):
                 return name
@@ -94,6 +98,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def _target_names(target: _ast.expr) -> tuple[str, ...]:
+        """Target names."""
         match target:
             case _ast.Name(id=name):
                 return (name,)
@@ -110,6 +115,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     def _explicit_all_from_node(
         node: _ast.Assign | _ast.AnnAssign,
     ) -> t.StrSequence | None:
+        """Explicit all from node."""
         targets = node.targets if isinstance(node, _ast.Assign) else (node.target,)
         if c.Infra.DUNDER_ALL not in {
             name
@@ -251,14 +257,13 @@ class FlextInfraUtilitiesRopeAnalysis:
                         source = definition_resource.read()
                 if definition_line is not None:
                     lines = source.splitlines(keepends=True)
-                    if 1 <= definition_line <= len(lines):
-                        line = lines[definition_line - 1]
-                        column = line.find(symbol)
-                        if column >= 0:
-                            result = (
-                                sum(len(item) for item in lines[: definition_line - 1])
-                                + column
-                            )
+                    result = (
+                        FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
+                            lines,
+                            line=definition_line,
+                            symbol=symbol,
+                        )
+                    )
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             pass
         return result
@@ -320,10 +325,11 @@ class FlextInfraUtilitiesRopeAnalysis:
             resolved_export_options.require_explicit_all,
         )
         cached = FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE.get(cache_key)
+        export_names: t.StrSequence
         if cached is not None:
-            result = cached
+            export_names = cached
         else:
-            result: t.StrSequence = ()
+            export_names = ()
             try:
                 pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
                     rope_project,
@@ -348,7 +354,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                     FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = (
                         exports
                     )
-                    result = exports
+                    export_names = exports
                 else:
                     explicit_all: t.StrSequence | None = None
                     explicit_all_name = attributes.get(c.Infra.DUNDER_ALL)
@@ -368,12 +374,12 @@ class FlextInfraUtilitiesRopeAnalysis:
                         FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[
                             cache_key
                         ] = exports
-                        result = exports
+                        export_names = exports
                     elif resolved_export_options.require_explicit_all:
                         FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[
                             cache_key
                         ] = ()
-                        result = ()
+                        export_names = ()
                     else:
                         names: t.MutableSequenceOf[str] = []
                         for name, pyname in attributes.items():
@@ -421,11 +427,11 @@ class FlextInfraUtilitiesRopeAnalysis:
                         FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[
                             cache_key
                         ] = exports
-                        result = exports
+                        export_names = exports
             except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
                 FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()
-                result = ()
-        return result
+                export_names = ()
+        return export_names
 
     @staticmethod
     def _explicit_all_names(

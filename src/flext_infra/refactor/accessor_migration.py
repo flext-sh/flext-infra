@@ -75,6 +75,7 @@ class FlextInfraAccessorMigrationOrchestrator(
 
     @override
     def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:
+        """Execute."""
         resolved = u.Infra.resolve_projects(
             self.workspace_root,
             self.project_names or (),
@@ -201,6 +202,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         totals: dict[str, int],
         snapshot: t.Infra.LintSnapshot,
     ) -> None:
+        """Accumulate lint totals."""
         for tool, lines in snapshot.items():
             totals[tool] = totals.get(tool, 0) + len(tuple(lines))
 
@@ -214,6 +216,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange],
         include_preview: bool,
     ) -> m.Infra.AccessorMigrationFile:
+        """Process file."""
         lint_before: dict[str, tuple[str, ...]] = {}
         lint_after: dict[str, tuple[str, ...]] = {}
         new_lint_errors: dict[str, tuple[str, ...]] = {}
@@ -295,6 +298,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         py_file: Path,
         source: str,
     ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+        """Apply automated rewrites."""
         resource = u.Infra.get_resource_from_path(rope_project, py_file)
         if resource is None:
             return source, ()
@@ -324,6 +328,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         reason: str,
         file_path: Path,
     ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+        """Rename symbol tokens."""
         token_lines: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         rewrite_ranges: t.MutableSequenceOf[tuple[int, int, str]] = []
         for token in generate_tokens(io.StringIO(source).readline):
@@ -362,6 +367,7 @@ class FlextInfraAccessorMigrationOrchestrator(
 
     @staticmethod
     def _offset_from_position(source: str, line: int, column: int) -> int:
+        """Offset from position."""
         source_lines = source.splitlines(keepends=True)
         line_offset = sum(len(item) for item in source_lines[: line - 1])
         return line_offset + column
@@ -371,6 +377,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         py_file: Path,
         source: str,
     ) -> t.SequenceOf[m.Infra.AccessorMigrationChange]:
+        """Collect manual warnings."""
         lines = source.splitlines()
         warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
         scope_stack: t.MutableSequenceOf[tuple[str, int]] = []
@@ -436,10 +443,12 @@ class FlextInfraAccessorMigrationOrchestrator(
 
     @staticmethod
     def _freeze_lints(snapshot: t.Infra.LintSnapshot) -> dict[str, tuple[str, ...]]:
+        """Freeze lints."""
         return {tool: tuple(lines) for tool, lines in snapshot.items()}
 
     @staticmethod
     def _diff(py_file: Path, before: str, after: str) -> str:
+        """Diff."""
         diff_lines = list(
             difflib.unified_diff(
                 before.splitlines(keepends=True),

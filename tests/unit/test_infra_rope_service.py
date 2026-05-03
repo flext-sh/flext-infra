@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+from rope.base.exceptions import RopeError
+
 import flext_infra
+from flext_infra import FlextInfraUtilitiesRopeCore
 from tests import c, m, u
 
 
@@ -59,6 +63,43 @@ class TestsFlextInfraInfraRopeService:
                 class_info.name == "FlextTestsModels"
                 for class_info in state.class_infos
             )
+
+    def test_open_workspace_keeps_project_scope_with_sibling_projects(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Project-root and package-root calls stay scoped to the containing project."""
+        monorepo_root = tmp_path / "repo"
+        monorepo_root.mkdir()
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            monorepo_root,
+            project_name="flext-infra",
+            package_name="flext_infra",
+        )
+        u.Tests.create_lazy_init_workspace(
+            monorepo_root,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module_path,
+            class_name="FlextInfraModels",
+            alias="m",
+            docstring="Models.",
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            assert rope.rope_workspace_root == workspace_root.resolve()
+            assert {entry.project_root for entry in rope.modules()} == {
+                workspace_root.resolve()
+            }
+
+        with flext_infra.infra.rope_workspace(package_root) as rope:
+            assert rope.rope_workspace_root == workspace_root.resolve()
+            assert {entry.project_root for entry in rope.modules()} == {
+                workspace_root.resolve()
+            }
 
     def test_workspace_exports_fixture_functions_when_requested(
         self,
@@ -208,6 +249,44 @@ class TestsFlextInfraInfraRopeService:
                 "first",
                 "second",
             }
+
+    def test_workspace_objects_raise_on_inventory_bootstrap_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Inventory bootstrap failures surface instead of pretending the module is empty."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "def first() -> int:\n"
+                "    return 1\n"
+            ),
+            encoding="utf-8",
+        )
+
+        def _explode(*args: object, **kwargs: object) -> object:
+            msg = "boom"
+            raise RopeError(msg)
+
+        monkeypatch.setattr(
+            FlextInfraUtilitiesRopeCore,
+            "get_pymodule",
+            staticmethod(_explode),
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            with pytest.raises(
+                RuntimeError,
+                match=r"rope inventory failed to load .*service\.py",
+            ):
+                rope.objects(module_path)
 
     def test_workspace_dsl_classifies_test_only_references(
         self,

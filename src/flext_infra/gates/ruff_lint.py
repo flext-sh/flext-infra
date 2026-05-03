@@ -37,6 +37,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = project_dir
         return [
             c.Infra.RUFF,
@@ -55,6 +56,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         parsed_result = u.Cli.json_parse(result.stdout or "[]")
@@ -96,6 +98,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
     ) -> t.StrSequence:
+        """Build fix command."""
         _ = project_dir
         return [
             c.Infra.RUFF,

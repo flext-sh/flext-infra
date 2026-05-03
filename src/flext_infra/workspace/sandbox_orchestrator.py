@@ -42,18 +42,22 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
 
     @property
     def _sandbox_path(self) -> Path:
+        """Sandbox path."""
         return self.sandbox_root.resolve()
 
     def _snapshot(self) -> p.Result[Path]:
+        """Snapshot."""
         return FlextInfraUtilitiesSnapshot.rsync(
             src=self.root.resolve(), dst=self._sandbox_path
         )
 
     def _orchestrate_in(self, workspace_root: Path) -> p.Result[bool]:
+        """Orchestrate in."""
         clone = self.model_copy(update={"workspace_root": workspace_root})
         return FlextInfraOrchestratorService.execute(clone)
 
     def _rollback_sandbox(self) -> p.Result[bool]:
+        """Rollback sandbox."""
         for project_root in u.Infra.discover_project_roots(self._sandbox_path):
             try:
                 Repo(project_root).git.checkout("--", ".")

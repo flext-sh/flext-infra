@@ -251,6 +251,7 @@ class FlextInfraRefactorOrchestrator(
     def _collect_files(
         self, args: t.Infra.CliNamespace
     ) -> t.MutableSequenceOf[Path] | None:
+        """Collect files."""
         result: t.MutableSequenceOf[Path] | None
         if args.project:
             collected = u.Infra.collect_engine_project_files(
@@ -333,6 +334,7 @@ class FlextInfraRefactorOrchestrator(
         apply_safety: bool,
         dry_run: bool,
     ) -> t.Pair[str, t.SequenceOf[m.Infra.Result] | None]:
+        """Try safety stash."""
         if not apply_safety or dry_run:
             return "", None
         stash = self.safety_manager.create_pre_transformation_stash(target)
@@ -350,6 +352,7 @@ class FlextInfraRefactorOrchestrator(
         processed_targets: t.StrSequence,
         results: t.MutableSequenceOf[m.Infra.Result],
     ) -> None:
+        """Finalize safety."""
         checkpoint = self.safety_manager.save_checkpoint_state(
             target,
             status="post-transform",

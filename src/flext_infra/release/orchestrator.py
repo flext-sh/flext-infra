@@ -273,6 +273,7 @@ class FlextInfraReleaseOrchestrator(
         def handler(
             _ctx: m.Cli.PipelineStageContext,
         ) -> p.Result[m.Cli.PipelineStageResult]:
+            """Handler."""
             phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
             phase_result = self._dispatch_phase(phase_cfg)
             if phase_result.failure:

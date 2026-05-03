@@ -180,6 +180,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         self,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateContext:
+        """Gate ctx."""
         return m.Infra.GateContext(
             workspace=self._workspace_root,
             reports_dir=reports_dir or self._default_reports_dir,
@@ -193,6 +194,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         *,
         ctx: m.Infra.GateContext | None = None,
     ) -> m.Infra.GateExecution:
+        """Run gate."""
         gate = self._registry.create(gate_id, self._workspace_root)
         if gate is None:
             return m.Infra.GateExecution(
@@ -271,6 +273,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         def _handler(
             _pipeline_ctx: m.Cli.PipelineStageContext,
         ) -> p.Result[m.Cli.PipelineStageResult]:
+            """Handler."""
             execution = self._execute_gate(gate_instance, project_dir, ctx)
             gates_sink[gate_id] = execution
             self._gate_logger.debug(

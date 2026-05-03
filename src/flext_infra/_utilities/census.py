@@ -186,6 +186,7 @@ class FlextInfraUtilitiesRefactorCensus:
         disqualified = False
 
         def _rewrite(match: re.Match[str]) -> str:
+            """Rewrite."""
             nonlocal disqualified
             bases_raw = match.group("bases")
             entries = [entry.strip() for entry in bases_raw.split(",") if entry.strip()]
@@ -229,6 +230,7 @@ class FlextInfraUtilitiesRefactorCensus:
         quoted_target = {f'"{name}"', f"'{name}'"}
 
         def _rewrite_single(match: re.Match[str]) -> str:
+            """Rewrite single."""
             body = match.group("body")
             entries = [entry.strip() for entry in body.split(",") if entry.strip()]
             remaining = [entry for entry in entries if entry not in quoted_target]
@@ -239,6 +241,7 @@ class FlextInfraUtilitiesRefactorCensus:
             return result
 
         def _rewrite_multi(match: re.Match[str]) -> str:
+            """Rewrite multi."""
             body = match.group("body")
             if "\n" not in body:
                 result = match.group(0)
@@ -283,6 +286,7 @@ class FlextInfraUtilitiesRefactorCensus:
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
+            """Post write."""
             with contextlib.suppress(RecursionError):
                 rope.rope_project.validate()
             for file_path in file_paths:
@@ -337,6 +341,7 @@ class FlextInfraUtilitiesRefactorCensus:
         file_paths = tuple(sorted(updates))
 
         def _post_write() -> None:
+            """Post write."""
             with contextlib.suppress(RecursionError):
                 rope.rope_project.validate()
             for file_path in file_paths:
@@ -350,8 +355,7 @@ class FlextInfraUtilitiesRefactorCensus:
                         apply=True,
                     )
             if post_apply_hook is not None:
-                with contextlib.suppress(Exception):
-                    post_apply_hook(workspace)
+                post_apply_hook(workspace)
 
         applied, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
@@ -434,6 +438,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def _supporting_reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+        """Supporting reference sites."""
         return (
             *candidate.test_reference_sites,
             *candidate.example_reference_sites,
@@ -445,6 +450,7 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> t.IntPair | None:
+        """Definition line range."""
         block = FlextInfraUtilitiesRopeHelpers.extract_definition(
             source,
             candidate.object_name,
@@ -459,6 +465,7 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         site: m.Infra.Census.ReferenceSite,
     ) -> t.IntPair | None:
+        """Reference line range."""
         lines = source.splitlines()
         if site.line < 1 or site.line > len(lines):
             return None
@@ -483,6 +490,7 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         snippet: str,
     ) -> t.IntPair | None:
+        """Line range for snippet."""
         start_offset = source.find(snippet)
         if start_offset < 0:
             return None
@@ -496,6 +504,7 @@ class FlextInfraUtilitiesRefactorCensus:
         *,
         line_index: int,
     ) -> int | None:
+        """Top level statement start."""
         start = line_index
         while start >= 0:
             line = lines[start]
@@ -528,6 +537,7 @@ class FlextInfraUtilitiesRefactorCensus:
         *,
         start_index: int,
     ) -> int | None:
+        """Top level statement end."""
         if start_index < 0 or start_index >= len(lines):
             return None
         bracket_balance = FlextInfraUtilitiesRopeHelpers.bracket_balance_line(

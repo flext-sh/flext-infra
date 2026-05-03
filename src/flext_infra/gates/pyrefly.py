@@ -45,6 +45,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         return [
             c.Infra.PYREFLY,
@@ -68,6 +69,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if json_file.exists():

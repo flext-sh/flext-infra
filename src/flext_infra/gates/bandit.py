@@ -26,6 +26,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
+        """Get check dirs."""
         _ = ctx
         if not (project_dir / c.Infra.DEFAULT_SRC_DIR).exists():
             return []
@@ -38,6 +39,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = project_dir, ctx
         return [
             c.Infra.BANDIT,
@@ -56,6 +58,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         try:

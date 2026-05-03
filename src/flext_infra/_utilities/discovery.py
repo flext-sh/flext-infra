@@ -356,6 +356,7 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def _sibling_project_roots(project_root: Path) -> tuple[Path, ...]:
+        """Sibling project roots."""
         parent = project_root.parent
         if not parent.is_dir():
             return ()
@@ -373,6 +374,7 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def _child_project_roots(workspace_root: Path) -> tuple[Path, ...]:
+        """Child project roots."""
         if not workspace_root.is_dir():
             return ()
         return tuple(
@@ -404,11 +406,9 @@ class FlextInfraUtilitiesDiscovery:
             return resolved_root
         if FlextInfraUtilitiesDiscovery._child_project_roots(resolved_root):
             return resolved_root
-        project_root = (
-            FlextInfraUtilitiesDiscovery.project_root(resolved_root) or resolved_root
-        )
-        if FlextInfraUtilitiesDiscovery._sibling_project_roots(project_root):
-            return project_root.parent
+        project_root = FlextInfraUtilitiesDiscovery.project_root(resolved_root)
+        if project_root is not None:
+            return project_root
         return resolved_root
 
     @staticmethod
@@ -504,6 +504,7 @@ class FlextInfraUtilitiesDiscovery:
         visited: set[str] = set()
 
         def visit(package_name: str) -> None:
+            """Visit."""
             if not package_name or package_name in visited:
                 return
             visited.add(package_name)
