@@ -252,6 +252,51 @@ class TestsFlextInfraInfraRopeService:
                 "second",
             }
 
+    def test_workspace_refresh_can_preserve_reverted_name_indexes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Refresh can retain the text index after preview-style reverted writes."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        original_source = (
+            "from __future__ import annotations\n\n"
+            "def first() -> int:\n"
+            "    return 1\n"
+        )
+        changed_source = (
+            "from __future__ import annotations\n\n"
+            "def first() -> int:\n"
+            "    return 1\n\n"
+            "def second() -> int:\n"
+            "    return first()\n"
+        )
+        module_path.write_text(original_source, encoding="utf-8")
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            original_index = rope.name_index()
+            assert "first" in original_index
+            assert "second" not in original_index
+
+            module_path.write_text(changed_source, encoding="utf-8")
+            module_path.write_text(original_source, encoding="utf-8")
+            rope.refresh(preserve_indexes=True)
+
+            preserved_index = rope.name_index()
+            assert preserved_index is original_index
+            assert "second" not in preserved_index
+
+            module_path.write_text(changed_source, encoding="utf-8")
+            rope.refresh()
+
+            rebuilt_index = rope.name_index()
+            assert rebuilt_index is not original_index
+            assert "second" in rebuilt_index
+
     def test_workspace_objects_raise_on_inventory_bootstrap_error(
         self,
         tmp_path: Path,

@@ -66,14 +66,15 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         """Protected write reports."""
         reports: list[str] = []
         failed = False
+        after_lints = FlextInfraUtilitiesProtectedEditApply.lint_snapshots(
+            tuple(updates),
+            request.workspace,
+            gates=request.gates,
+        )
         for path in updates:
             new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
                 before_lints[path],
-                FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
-                    path,
-                    request.workspace,
-                    gates=request.gates,
-                ),
+                after_lints[path],
             )
             test_fail = (
                 FlextInfraUtilitiesProtectedEditApply._protected_write_test_failure(

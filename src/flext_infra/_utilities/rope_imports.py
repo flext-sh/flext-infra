@@ -6,7 +6,6 @@ import re
 
 import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
-from rope.base.change import ChangeSet
 from rope.base.exceptions import (
     ModuleSyntaxError,
     RefactoringError,
@@ -146,16 +145,18 @@ class FlextInfraUtilitiesRopeImports:
             return r[bool].fail(f"rope organize_imports raised: {exc!s}")
         if changes is None:
             return r[bool].ok(False)
-        if not isinstance(changes, ChangeSet):
+        change_list_raw = getattr(changes, "changes", None)
+        if not isinstance(change_list_raw, list):
             return r[bool].fail(
                 "unexpected rope organize_imports result type: "
                 f"{type(changes).__name__}"
             )
-        change_list = tuple(changes.changes)
+        change_list = tuple(change_list_raw)
         if not change_list:
             return r[bool].ok(False)
         changed = any(
-            change.new_contents is not None and change.new_contents != original_source
+            getattr(change, "new_contents", None) is not None
+            and getattr(change, "new_contents", None) != original_source
             for change in change_list
         )
         if changed and apply:

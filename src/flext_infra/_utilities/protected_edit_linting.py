@@ -15,6 +15,8 @@ from flext_infra import FlextInfraUtilitiesDiscovery, c, t
 class FlextInfraUtilitiesProtectedEditLinting:
     """Shared linting and path helpers for protected edit workflows."""
 
+    _SNAPSHOT_MAX_WORKERS: ClassVar[int] = 4
+
     @staticmethod
     def _normalize_lint_line(line: str) -> str:
         """Normalize lint line."""
@@ -234,6 +236,38 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if cache_key is not None:
             cls._snapshot_cache[cache_key] = dict(result)
         return result
+
+    @classmethod
+    def lint_snapshots(
+        cls,
+        paths: t.SequenceOf[Path],
+        workspace: Path,
+        *,
+        gates: t.StrSequence | None = None,
+    ) -> MutableMapping[Path, t.Infra.LintSnapshot]:
+        """Run lint snapshots for multiple files concurrently."""
+        ordered_paths = tuple(paths)
+        if not ordered_paths:
+            return {}
+        if len(ordered_paths) == 1:
+            path = ordered_paths[0]
+            return {path: cls.lint_snapshot(path, workspace, gates=gates)}
+
+        snapshots_by_path: MutableMapping[Path, t.Infra.LintSnapshot] = {}
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(
+                1,
+                min(cls._SNAPSHOT_MAX_WORKERS, len(ordered_paths)),
+            ),
+        ) as pool:
+            futures_by_path = {
+                pool.submit(cls.lint_snapshot, path, workspace, gates=gates): path
+                for path in ordered_paths
+            }
+            for future in concurrent.futures.as_completed(futures_by_path):
+                snapshots_by_path[futures_by_path[future]] = future.result()
+
+        return {path: snapshots_by_path[path] for path in ordered_paths}
 
     @staticmethod
     def lint_new_errors(

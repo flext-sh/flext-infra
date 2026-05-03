@@ -82,7 +82,12 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
             encoding="utf-8",
         )
         result = _apply_rule(tmp_path, target_file, config_path, dry_run=False)
-        # Module family policy rejects temp paths as unknown_module_family
-        assert not result.success
-        assert result.changes
-        assert any("unknown_module_family" in v for v in result.changes)
+        # Module family policy treats unknown families as out-of-scope (no policy
+        # to enforce against), so the refactor proceeds gracefully and the loose
+        # ``ResultHelpers`` class is nested under ``FlextUtilities`` per the
+        # mapping config.
+        assert result.success, result.error
+        assert result.modified
+        assert result.refactored_code is not None
+        assert "class FlextUtilities:" in result.refactored_code
+        assert "class ResultHelpers:" in result.refactored_code

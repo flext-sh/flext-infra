@@ -30,20 +30,26 @@ class FlextInfraUtilitiesProtectedEditPreview(
         """Preview write baselines."""
         before_sources: MutableMapping[Path, str | None] = {}
         before_lints: MutableMapping[Path, t.Infra.LintSnapshot] = {}
+        existing_paths: list[Path] = []
         for path in updates:
             if path.exists():
                 before_sources[path] = path.read_text(
                     encoding=c.Cli.ENCODING_DEFAULT,
                 )
-                before_lints[path] = (
-                    FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
-                        path,
-                        workspace,
-                        gates=gates,
-                    )
-                )
+                existing_paths.append(path)
                 continue
             before_sources[path] = None
+        if existing_paths:
+            before_lints.update(
+                FlextInfraUtilitiesProtectedEditPreview.lint_snapshots(
+                    tuple(existing_paths),
+                    workspace,
+                    gates=gates,
+                )
+            )
+        for path in updates:
+            if before_sources[path] is not None:
+                continue
             before_lints[path] = (
                 FlextInfraUtilitiesProtectedEditPreview._new_file_lint_baseline(
                     path,
@@ -112,14 +118,15 @@ class FlextInfraUtilitiesProtectedEditPreview(
         """Preview write reports."""
         reports: list[str] = []
         failed = False
+        after_lints = FlextInfraUtilitiesProtectedEditPreview.lint_snapshots(
+            tuple(updates),
+            workspace,
+            gates=gates,
+        )
         for path in updates:
             new_errors = FlextInfraUtilitiesProtectedEditPreview.lint_new_errors(
                 before_lints[path],
-                FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
-                    path,
-                    workspace,
-                    gates=gates,
-                ),
+                after_lints[path],
             )
             if not new_errors:
                 continue

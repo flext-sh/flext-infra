@@ -346,7 +346,7 @@ class FlextInfraUtilitiesRefactorCensus:
             )
             return r[bool].fail(str(exc))
         finally:
-            rope.refresh()
+            rope.refresh(preserve_indexes=True)
         if applied:
             return r[bool].ok(True)
         return r[bool].fail(

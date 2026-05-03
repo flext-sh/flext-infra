@@ -57,7 +57,11 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
 
-        def refresh(self) -> m.Infra.RopeWorkspaceSession: ...
+        def refresh(
+            self,
+            *,
+            preserve_indexes: bool = False,
+        ) -> m.Infra.RopeWorkspaceSession: ...
 
         def reload(self) -> m.Infra.RopeWorkspaceSession: ...
 
@@ -94,6 +98,10 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]: ...
 
         def source(self, file_path: Path) -> str: ...
+
+        def name_index(
+            self,
+        ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]: ...
 
         def objects(
             self,

@@ -165,8 +165,17 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             workspace_index=self.workspace_index,
         )
 
-    def refresh(self) -> m.Infra.RopeWorkspaceSession:
-        """Invalidate content-derived caches without reopening the Rope project."""
+    def refresh(
+        self,
+        *,
+        preserve_indexes: bool = False,
+    ) -> m.Infra.RopeWorkspaceSession:
+        """Invalidate Rope caches without reopening the Rope project.
+
+        ``preserve_indexes=True`` is reserved for flows that temporarily wrote
+        files and already restored the original on-disk content before the
+        refresh runs.
+        """
         if self._rope_project is not None:
             self._rope_project.validate()
         self._package_context_cache.clear()
@@ -174,8 +183,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
-        self._name_index = None
-        self._import_dependents_index = None
+        if not preserve_indexes:
+            self._name_index = None
+            self._import_dependents_index = None
         return self.session_snapshot()
 
     def reload(self) -> m.Infra.RopeWorkspaceSession:
