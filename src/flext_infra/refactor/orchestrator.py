@@ -177,9 +177,11 @@ class FlextInfraRefactorOrchestrator(
                     if not dry_run and modified:
                         ok, report = u.Infra.protected_source_write(
                             file_path,
-                            workspace=workspace_root,
-                            updated_source=current,
-                            keep_backup=True,
+                            request=m.Infra.ProtectedSourceWriteRequest(
+                                workspace=workspace_root,
+                                updated_source=current,
+                                keep_backup=True,
+                            ),
                         )
                         all_changes.extend(report)
                         if not ok:

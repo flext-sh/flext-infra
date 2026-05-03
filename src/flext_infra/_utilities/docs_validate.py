@@ -41,21 +41,27 @@ class FlextInfraUtilitiesDocsValidate:
         shaped, ``r.fail(reason)`` otherwise. Callers that want to treat
         absence as "no override" can collapse with ``unwrap_or(())``.
         """
-        if not isinstance(payload, Mapping):
-            return r[t.Infra.InfraSequence].fail(
-                "payload is not a mapping",
-            )
-        docs_validation = payload.get("docs_validation")
-        if not isinstance(docs_validation, Mapping):
-            return r[t.Infra.InfraSequence].fail(
-                "docs_validation block missing or not a mapping",
-            )
-        configured = docs_validation.get("required_skills")
-        if not isinstance(configured, list):
-            return r[t.Infra.InfraSequence].fail(
-                "required_skills missing or not a list",
-            )
-        return r[t.Infra.InfraSequence].ok(configured)
+        match payload:
+            case Mapping() as outer:
+                pass
+            case _:
+                return r[t.Infra.InfraSequence].fail(
+                    "payload is not a mapping",
+                )
+        match outer.get("docs_validation"):
+            case Mapping() as inner:
+                pass
+            case _:
+                return r[t.Infra.InfraSequence].fail(
+                    "docs_validation block missing or not a mapping",
+                )
+        match inner.get("required_skills"):
+            case list() as configured:
+                return r[t.Infra.InfraSequence].ok(configured)
+            case _:
+                return r[t.Infra.InfraSequence].fail(
+                    "required_skills missing or not a list",
+                )
 
     @staticmethod
     def docs_load_required_skills(workspace_root: Path) -> p.Result[t.StrSequence]:

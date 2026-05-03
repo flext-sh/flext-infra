@@ -493,7 +493,7 @@ class TestRunRuffFix:
     def test_with_nonexistent_file(self, tmp_path: Path) -> None:
         """Test handles nonexistent files gracefully."""
         nonexistent = tmp_path / "nonexistent.py"
-        u.Infra.run_ruff_fix(nonexistent)
+        _ = u.Infra.run_ruff_fix(nonexistent)
 
     def test_runs_ruff_check_and_format(
         self,
@@ -502,17 +502,19 @@ class TestRunRuffFix:
         """Test generated files are lint-fixed and formatted."""
         generated = tmp_path / "__init__.py"
         generated.write_text("__all__=[]\n", encoding="utf-8")
-        u.Infra.run_ruff_fix(generated)
+        result = u.Infra.run_ruff_fix(generated)
+        tm.that(result.success, eq=True)
         tm.that(generated.read_text(encoding="utf-8"), eq="__all__ = []\n")
 
     def test_raises_when_ruff_postprocess_fails(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test ruff post-processing failure is reported via a false status."""
+        """Ruff post-processing failure is surfaced via ``r.fail``."""
         generated = tmp_path / "__init__.py"
         generated.write_text("def broken(:\n", encoding="utf-8")
-        tm.that(u.Infra.run_ruff_fix(generated), eq=False)
+        result = u.Infra.run_ruff_fix(generated)
+        tm.that(result.failure, eq=True)
 
 
 def test_codegen_init_getattr_raises_attribute_error() -> None:

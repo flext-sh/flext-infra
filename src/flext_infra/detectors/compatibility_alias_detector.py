@@ -21,13 +21,10 @@ class FlextInfraCompatibilityAliasDetector:
         if resource is None:
             return []
         file_path = ctx.file_path
-        rope_project = ctx.rope_project
         lines = resource.read().splitlines()
         violations: list[m.Infra.CompatibilityAliasViolation] = []
-        for symbol in u.Infra.get_module_symbols(rope_project, resource):
-            if symbol.kind != "assignment" or not 0 < symbol.line <= len(lines):
-                continue
-            match = c.Infra.COMPAT_ALIAS_RE.match(lines[symbol.line - 1])
+        for line_number, line in enumerate(lines, start=1):
+            match = c.Infra.COMPAT_ALIAS_RE.match(line)
             if match is None:
                 continue
             alias_name, target_name = match.group(1), match.group(2)
@@ -38,7 +35,7 @@ class FlextInfraCompatibilityAliasDetector:
             violations.append(
                 m.Infra.CompatibilityAliasViolation(
                     file=str(file_path),
-                    line=symbol.line,
+                    line=line_number,
                     alias_name=alias_name,
                     target_name=target_name,
                 )

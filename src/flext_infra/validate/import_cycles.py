@@ -84,9 +84,10 @@ class FlextInfraValidateImportCycles(s[bool]):
         graph: MutableMapping[str, set[str]] = {}
         with u.Infra.open_project(workspace_root) as project:
             for resource in u.Infra.python_resources(project):
-                module_name = self._module_name_for(project, resource)
-                if module_name is None:
+                module_name_result = self._module_name_for(project, resource)
+                if module_name_result.failure:
                     continue
+                module_name = module_name_result.value
                 graph.setdefault(module_name, set())
                 module_imports = u.Infra.get_module_imports(
                     project,
@@ -102,25 +103,32 @@ class FlextInfraValidateImportCycles(s[bool]):
         self,
         project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> str | None:
-        """Resolve a rope resource to its fully-qualified module name."""
+    ) -> p.Result[str]:
+        """Resolve a rope resource to its fully-qualified module name.
+
+        ``r.ok(name)`` when rope identifies the module or its on-disk
+        path can be projected onto a dotted name. ``r.fail(reason)`` for
+        rope runtime/type errors or paths that do not yield a name.
+        """
         try:
             pymodule = u.Infra.get_pymodule(project, resource)
-        except u.Infra.RUNTIME_ERRORS:
-            return None
-        except TypeError:
-            return None
+        except u.Infra.RUNTIME_ERRORS as exc:
+            return r[str].fail(f"get_pymodule rope error: {exc!s}")
+        except TypeError as exc:
+            return r[str].fail(f"get_pymodule type error: {exc!s}")
         try:
             name = pymodule.get_name()
         except c.EXC_ATTR_TYPE:
             name = None
         if isinstance(name, str) and name:
-            return name
+            return r[str].ok(name)
         resource_path = resource.path
         parts = Path(resource_path).with_suffix("").parts
         if parts and parts[-1] == "__init__":
             parts = parts[:-1]
-        return ".".join(parts) if parts else None
+        if not parts:
+            return r[str].fail(f"could not derive module name for {resource_path}")
+        return r[str].ok(".".join(parts))
 
     def _iter_imported_modules(
         self,

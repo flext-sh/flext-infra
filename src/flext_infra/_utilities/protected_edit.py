@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import FlextInfraUtilitiesDiscovery, c, p, r, t
+from flext_infra import FlextInfraUtilitiesDiscovery, c, m, p, r, t
 
 
 class FlextInfraUtilitiesProtectedEdit:
@@ -86,6 +86,25 @@ class FlextInfraUtilitiesProtectedEdit:
     @staticmethod
     def _command_env() -> t.StrMapping:
         return u.Cli.process_env(remove_keys=("PYTHONPATH",))
+
+    @classmethod
+    def _new_file_lint_baseline(
+        cls,
+        py_file: Path,
+        workspace: Path,
+        *,
+        gates: t.StrSequence | None = None,
+    ) -> t.Infra.LintSnapshot:
+        py_file.parent.mkdir(parents=True, exist_ok=True)
+        py_file.write_text(
+            f"{c.Infra.FUTURE_ANNOTATIONS}\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        try:
+            return cls.lint_snapshot(py_file, workspace, gates=gates)
+        finally:
+            if py_file.exists():
+                py_file.unlink()
 
     _snapshot_cache: ClassVar[
         MutableMapping[tuple[str, str, tuple[str, ...]], t.Infra.LintSnapshot]
@@ -274,9 +293,8 @@ class FlextInfraUtilitiesProtectedEdit:
             )
         return before, after
 
-    @classmethod
+    @staticmethod
     def preview_source_writes(
-        cls,
         updates: t.MappingKV[Path, str],
         *,
         workspace: Path,
@@ -298,10 +316,20 @@ class FlextInfraUtilitiesProtectedEdit:
                 before_sources[path] = path.read_text(
                     encoding=c.Cli.ENCODING_DEFAULT,
                 )
-                before_lints[path] = cls.lint_snapshot(path, workspace, gates=gates)
+                before_lints[path] = FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                    path,
+                    workspace,
+                    gates=gates,
+                )
                 continue
             before_sources[path] = None
-            before_lints[path] = {}
+            before_lints[path] = (
+                FlextInfraUtilitiesProtectedEdit._new_file_lint_baseline(
+                    path,
+                    workspace,
+                    gates=gates,
+                )
+            )
 
         def _restore() -> None:
             for path, original_source in before_sources.items():
@@ -327,14 +355,18 @@ class FlextInfraUtilitiesProtectedEdit:
             reports: t.MutableSequenceOf[str] = []
             failed = False
             for path in normalized_updates:
-                new_errors = cls.lint_new_errors(
+                new_errors = FlextInfraUtilitiesProtectedEdit.lint_new_errors(
                     before_lints[path],
-                    cls.lint_snapshot(path, workspace, gates=gates),
+                    FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                        path,
+                        workspace,
+                        gates=gates,
+                    ),
                 )
                 if not new_errors:
                     continue
                 failed = True
-                rel = cls._relative_path(path, workspace)
+                rel = FlextInfraUtilitiesProtectedEdit._relative_path(path, workspace)
                 before_source = before_sources[path] or ""
                 modified = path.read_text(
                     encoding=c.Cli.ENCODING_DEFAULT,
@@ -359,42 +391,47 @@ class FlextInfraUtilitiesProtectedEdit:
         finally:
             _restore()
 
-    @staticmethod
-    def _pytest_failure(py_file: Path, workspace: Path) -> p.Result[None]:
+    _NO_TESTS_MARKERS: ClassVar[frozenset[str]] = frozenset({
+        "no tests collected",
+        "no tests ran",
+    })
+
+    @classmethod
+    def _has_no_tests_marker(cls, text: str) -> bool:
+        """Return whether *text* contains any pytest "no tests" marker."""
+        lowered = text.lower()
+        return any(marker in lowered for marker in cls._NO_TESTS_MARKERS)
+
+    @classmethod
+    def _pytest_failure(cls, py_file: Path, workspace: Path) -> p.Result[bool]:
         """Run pytest for a single file and surface a failure message via ``r``.
 
-        ``r.ok(None)`` for non-test files or when pytest passed (or
+        ``r.ok(True)`` for non-test files or when pytest passed (or
         legitimately collected no tests). ``r.fail(error_message)`` when
         pytest reported a real failure — the error message is the
         truncated (300-char) stdout/stderr or driver error.
         """
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):
-            return r[None].ok(None)
-        command_cwd = FlextInfraUtilitiesProtectedEdit._command_cwd(py_file, workspace)
-        result = u.Cli.run_raw(
+            return r[bool].ok(True)
+        run_result = u.Cli.run_raw(
             ["pytest", str(py_file), "-x", "--tb=short", "-q"],
-            cwd=command_cwd,
-            env=FlextInfraUtilitiesProtectedEdit._command_env(),
+            cwd=cls._command_cwd(py_file, workspace),
+            env=cls._command_env(),
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
-        if result.failure:
-            error = (result.error or "pytest execution failed")[:300]
-            if "no tests collected" in error.lower() or "no tests ran" in error.lower():
-                return r[None].ok(None)
-            return r[None].fail(error)
-        output = (result.value.stdout + result.value.stderr)[:300]
-        if (
-            result.value.exit_code
-            == FlextInfraUtilitiesProtectedEdit._NO_TESTS_EXIT_CODE
-            and (
-                "no tests collected" in output.lower()
-                or "no tests ran" in output.lower()
+        if run_result.failure:
+            error = (run_result.error or "pytest execution failed")[:300]
+            return (
+                r[bool].ok(True)
+                if cls._has_no_tests_marker(error)
+                else r[bool].fail(error)
             )
-        ):
-            return r[None].ok(None)
-        if result.value.exit_code != 0:
-            return r[None].fail(output)
-        return r[None].ok(None)
+        output = (run_result.value.stdout + run_result.value.stderr)[:300]
+        passed_or_no_tests = run_result.value.exit_code == 0 or (
+            run_result.value.exit_code == cls._NO_TESTS_EXIT_CODE
+            and cls._has_no_tests_marker(output)
+        )
+        return r[bool].ok(True) if passed_or_no_tests else r[bool].fail(output)
 
     @staticmethod
     def _preserve_backup(py_file: Path) -> Path | None:
@@ -482,26 +519,22 @@ class FlextInfraUtilitiesProtectedEdit:
             report.append(f"    pytest failure: {test_fail}")
         return (False, report)
 
-    @classmethod
+    @staticmethod
     def protected_source_write(
-        cls,
         py_file: Path,
         *,
-        workspace: Path,
-        updated_source: str,
-        keep_backup: bool = False,
-        gates: t.StrSequence | None = None,
+        request: m.Infra.ProtectedSourceWriteRequest,
     ) -> t.Infra.EditResult:
-        """Write *updated_source* with protected validation and rollback."""
+        """Write validated source content with protected validation and rollback."""
         original_source = py_file.read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        if updated_source == original_source:
+        if request.updated_source == original_source:
             return (True, [])
 
         def _write_updated() -> None:
             py_file.write_text(
-                updated_source,
+                request.updated_source,
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
 
@@ -511,33 +544,28 @@ class FlextInfraUtilitiesProtectedEdit:
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
 
-        return cls.protected_file_edit(
+        return FlextInfraUtilitiesProtectedEdit.protected_file_edit(
             py_file,
-            workspace=workspace,
+            workspace=request.workspace,
             before_source=original_source,
             edit_fn=_write_updated,
             restore_fn=_restore_original,
-            keep_backup=keep_backup,
-            gates=gates,
+            keep_backup=request.keep_backup,
+            gates=request.gates,
         )
 
-    @classmethod
+    @staticmethod
     def protected_source_writes(
-        cls,
         updates: t.MappingKV[Path, str],
         *,
-        workspace: Path,
-        keep_backup: bool = False,
-        gates: t.StrSequence | None = None,
-        post_write: Callable[[], None] | None = None,
-        skip_pytest: bool = False,
+        request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Write multiple files transactionally with lint delta validation.
 
-        ``skip_pytest=True`` bypasses the per-file pytest invocation performed
-        after the lint delta check. Callers that only remove code (e.g. the
-        census apply path) can opt out because pytest on the shrunk file is
-        guaranteed to collect no tests and return exit code 5 — a ~5s
+        ``request.skip_pytest=True`` bypasses the per-file pytest invocation
+        performed after the lint delta check. Callers that only remove code
+        (e.g. the census apply path) can opt out because pytest on the shrunk
+        file is guaranteed to collect no tests and return exit code 5 — a ~5s
         per-file no-op that dominates the wall-clock time in monorepo scale.
         """
         if not updates:
@@ -555,15 +583,31 @@ class FlextInfraUtilitiesProtectedEdit:
                 before_sources[path] = path.read_text(
                     encoding=c.Cli.ENCODING_DEFAULT,
                 )
-                before_lints[path] = cls.lint_snapshot(path, workspace, gates=gates)
+                before_lints[path] = FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                    path,
+                    request.workspace,
+                    gates=request.gates,
+                )
                 if (
-                    keep_backup
-                    and (backup_path := cls._preserve_backup(path)) is not None
+                    request.keep_backup
+                    and (
+                        backup_path
+                        := FlextInfraUtilitiesProtectedEdit._preserve_backup(
+                            path,
+                        )
+                    )
+                    is not None
                 ):
                     backup_paths[path] = backup_path
                 continue
             before_sources[path] = None
-            before_lints[path] = {}
+            before_lints[path] = (
+                FlextInfraUtilitiesProtectedEdit._new_file_lint_baseline(
+                    path,
+                    request.workspace,
+                    gates=request.gates,
+                )
+            )
 
         def _restore() -> None:
             for path, original_source in before_sources.items():
@@ -584,8 +628,8 @@ class FlextInfraUtilitiesProtectedEdit:
                     updated_source,
                     encoding=c.Cli.ENCODING_DEFAULT,
                 )
-            if post_write is not None:
-                post_write()
+            if request.post_write is not None:
+                request.post_write()
             write_completed = True
         finally:
             if not write_completed:
@@ -594,21 +638,31 @@ class FlextInfraUtilitiesProtectedEdit:
         reports: t.MutableSequenceOf[str] = []
         failed = False
         for path in normalized_updates:
-            new_errors = cls.lint_new_errors(
+            new_errors = FlextInfraUtilitiesProtectedEdit.lint_new_errors(
                 before_lints[path],
-                cls.lint_snapshot(path, workspace, gates=gates),
+                FlextInfraUtilitiesProtectedEdit.lint_snapshot(
+                    path,
+                    request.workspace,
+                    gates=request.gates,
+                ),
             )
-            if new_errors or skip_pytest:
+            if new_errors or request.skip_pytest:
                 test_fail: str | None = None
             else:
-                test_fail = cls._pytest_failure(path, workspace).fold(
+                test_fail = FlextInfraUtilitiesProtectedEdit._pytest_failure(
+                    path,
+                    request.workspace,
+                ).fold(
                     on_failure=lambda msg: msg,
                     on_success=lambda _: None,
                 )
             if not new_errors and not test_fail:
                 continue
             failed = True
-            rel = cls._relative_path(path, workspace)
+            rel = FlextInfraUtilitiesProtectedEdit._relative_path(
+                path,
+                request.workspace,
+            )
             before_source = before_sources[path] or ""
             modified = path.read_text(
                 encoding=c.Cli.ENCODING_DEFAULT,
@@ -640,7 +694,9 @@ class FlextInfraUtilitiesProtectedEdit:
         return (
             True,
             [
-                f"  BACKUP {cls._relative_path(path, workspace)} -> {backup.name}"
+                "  BACKUP "
+                f"{FlextInfraUtilitiesProtectedEdit._relative_path(path, request.workspace)}"
+                f" -> {backup.name}"
                 for path, backup in backup_paths.items()
             ],
         )

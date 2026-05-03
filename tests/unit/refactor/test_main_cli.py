@@ -59,6 +59,7 @@ class TestsFlextInfraRefactorMainCli:
             "from __future__ import annotations\n"
             "from collections.abc import Mapping\n"
             "from typing import TypeAlias\n\n"
+            '__all__: list[str] = ["consume"]\n\n'
             "PayloadMap: TypeAlias = t.StrMapping\n"
             "def consume(payload: PayloadMap) -> PayloadMap:\n"
             "    return payload\n",
@@ -100,6 +101,7 @@ class TestsFlextInfraRefactorMainCli:
         module_path.write_text(
             (
                 "from __future__ import annotations\n\n"
+                '__all__: list[str] = ["NewThing"]\n\n'
                 "class NewThing:\n"
                 "    pass\n\n"
                 "LegacyThing = NewThing\n"
@@ -448,7 +450,7 @@ class TestsFlextInfraRefactorMainCli:
         report_result = FlextInfraRefactorCensus(
             workspace=workspace,
             include_local_scopes=False,
-            kinds=("assignment",),
+            kinds=("class",),
             rules=("compatibility_alias",),
         ).execute()
 
@@ -461,7 +463,7 @@ class TestsFlextInfraRefactorMainCli:
         assert report.fixes_total == 1
         assert violations[0].kind == "compatibility_alias"
         assert violations[0].object_name == "LegacyThing"
-        assert violations[0].object_kind == "assignment"
+        assert violations[0].object_kind == "class"
         assert "should use 'NewThing' directly" in violations[0].description
 
     def test_refactor_census_reports_mro_completeness(
@@ -488,6 +490,71 @@ class TestsFlextInfraRefactorMainCli:
         assert violations[0].object_name == "FlextDemoModels"
         assert violations[0].object_kind == "class"
         assert "FlextDemoModelsDomain" in violations[0].description
+
+    def test_refactor_census_apply_rewrites_manual_typing_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, service_file = self._build_basic_workspace(tmp_path)
+        typings_file = service_file.parent / "typings.py"
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "manual_typing_alias",
+        )
+
+        assert result == 0
+        service_source = service_file.read_text(encoding="utf-8")
+        typings_source = typings_file.read_text(encoding="utf-8")
+        assert "PayloadMap: TypeAlias = t.StrMapping" not in service_source
+        assert "from sample_pkg.typings import PayloadMap" in service_source
+        assert "PayloadMap: TypeAlias = t.StrMapping" in typings_source
+        assert "from flext_core import t" in typings_source
+
+    def test_refactor_census_apply_rewrites_compatibility_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace, module_path = self._build_compatibility_alias_workspace(tmp_path)
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "compatibility_alias",
+        )
+
+        assert result == 0
+        source = module_path.read_text(encoding="utf-8")
+        assert "LegacyThing = NewThing" not in source
+        assert "class NewThing:" in source
+
+    def test_refactor_census_apply_rewrites_mro_completeness(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = self._build_mro_incomplete_workspace(tmp_path)
+        module_path = workspace / "src" / "flext_demo" / "models.py"
+
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "mro_completeness",
+        )
+
+        assert result == 0
+        source = module_path.read_text(encoding="utf-8")
+        assert "from flext_demo import FlextDemoModelsDomain" in source
+        assert "class FlextDemoModels(FlextDemoModelsDomain):" in source
 
     def test_refactor_census_flags_test_only_candidates(
         self,

@@ -12,7 +12,7 @@ class FlextInfraUtilitiesCodegen:
     """Compose all codegen utility concerns for ``u.Infra``."""
 
     @staticmethod
-    def run_ruff_fix(path: Path, *, quiet: bool = False) -> p.Result[None]:
+    def run_ruff_fix(path: Path, *, quiet: bool = False) -> p.Result[bool]:
         """Run Ruff fix + format for one file path.
 
         Returns ``r.ok(None)`` on success, ``r.fail(...)`` carrying the
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesCodegen:
             message = check_result.error or f"ruff check --fix failed: {path}"
             if not quiet:
                 u.Cli.error(message)
-            return r[None].fail(message)
+            return r[bool].fail(message)
         format_result = u.Cli.capture(
             [c.Infra.RUFF, "format", str(path)],
             cwd=cwd,
@@ -38,8 +38,8 @@ class FlextInfraUtilitiesCodegen:
             message = format_result.error or f"ruff format failed: {path}"
             if not quiet:
                 u.Cli.error(message)
-            return r[None].fail(message)
-        return r[None].ok(None)
+            return r[bool].fail(message)
+        return r[bool].ok(True)
 
     @staticmethod
     def generate_module_skeleton(

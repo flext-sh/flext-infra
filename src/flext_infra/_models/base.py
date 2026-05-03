@@ -61,6 +61,50 @@ class FlextInfraModelsBase:
             m.Field(description="Whether rollback was performed"),
         ]
 
+    class ProtectedSourceWriteRequest(m.ContractModel):
+        """Validated options for a single protected source write."""
+
+        workspace: Annotated[
+            Path,
+            m.Field(description="Workspace root used for lint and pytest checks"),
+        ]
+        updated_source: Annotated[
+            str,
+            m.Field(description="Replacement source content to write"),
+        ]
+        keep_backup: Annotated[
+            bool,
+            m.Field(description="Whether to preserve a .bak copy before editing"),
+        ] = False
+        gates: Annotated[
+            t.StrSequence | None,
+            m.Field(description="Optional lint gate selection for validation"),
+        ] = None
+
+    class ProtectedSourceWritesRequest(m.ArbitraryTypesModel):
+        """Validated options for transactionally writing multiple sources."""
+
+        workspace: Annotated[
+            Path,
+            m.Field(description="Workspace root used for lint and pytest checks"),
+        ]
+        keep_backup: Annotated[
+            bool,
+            m.Field(description="Whether to preserve .bak copies before editing"),
+        ] = False
+        gates: Annotated[
+            t.StrSequence | None,
+            m.Field(description="Optional lint gate selection for validation"),
+        ] = None
+        post_write: Annotated[
+            Callable[[], None] | None,
+            m.Field(description="Optional callback invoked after writes land"),
+        ] = None
+        skip_pytest: Annotated[
+            bool,
+            m.Field(description="Whether to bypass per-file pytest validation"),
+        ] = False
+
     class TransformStep(m.ContractModel):
         """Declarative step for enforcement pipeline."""
 

@@ -322,9 +322,11 @@ class FlextInfraRefactorMROImportRewriter:
     ) -> t.Infra.EditResult:
         return u.Infra.protected_source_write(
             file_path,
-            workspace=workspace_root,
-            updated_source=updated_source,
-            keep_backup=True,
+            request=m.Infra.ProtectedSourceWriteRequest(
+                workspace=workspace_root,
+                updated_source=updated_source,
+                keep_backup=True,
+            ),
         )
 
     @classmethod

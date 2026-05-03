@@ -355,10 +355,12 @@ class FlextInfraUtilitiesRefactorCensus:
 
         applied, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             updates,
-            workspace=workspace,
-            gates=gates,
-            post_write=_post_write,
-            skip_pytest=True,
+            request=m.Infra.ProtectedSourceWritesRequest(
+                workspace=workspace,
+                gates=gates,
+                post_write=_post_write,
+                skip_pytest=True,
+            ),
         )
         rope.reload()
         if applied:

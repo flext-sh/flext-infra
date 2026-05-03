@@ -239,9 +239,11 @@ class FlextInfraAccessorMigrationOrchestrator(
                 )
                 ok, report = u.Infra.protected_source_write(
                     py_file,
-                    workspace=self.workspace_root,
-                    updated_source=updated_source,
-                    gates=self.gate_names,
+                    request=m.Infra.ProtectedSourceWriteRequest(
+                        workspace=self.workspace_root,
+                        updated_source=updated_source,
+                        gates=self.gate_names,
+                    ),
                 )
                 if not ok:
                     warnings.append(

@@ -17,6 +17,8 @@ from rope.refactor.importutils.importinfo import (
 from flext_core import u
 from flext_infra import (
     FlextInfraUtilitiesRopeCore,
+    p,
+    r,
     t,
 )
 
@@ -111,26 +113,37 @@ class FlextInfraUtilitiesRopeImports:
         resource: t.Infra.RopeResource,
         *,
         apply: bool,
-    ) -> bool:
-        """Organize imports for one rope resource using rope's import engine."""
+    ) -> p.Result[bool]:
+        """Organize imports for one rope resource using rope's import engine.
+
+        ``r.ok(True)`` when rope produced a non-empty change set; the
+        change is applied when ``apply`` is set. ``r.ok(False)`` when
+        rope produced no changes (already organised). ``r.fail(reason)``
+        when rope raised a refactoring/resource/type error.
+        """
         try:
             original_source = resource.read()
             organizer = rope_importutils.ImportOrganizer(rope_project)
             changes = organizer.organize_imports(resource)
-        except (RefactoringError, ResourceNotFoundError, AttributeError, TypeError):
-            return False
+        except (
+            RefactoringError,
+            ResourceNotFoundError,
+            AttributeError,
+            TypeError,
+        ) as exc:
+            return r[bool].fail(f"rope organize_imports raised: {exc!s}")
         if not isinstance(changes, ChangeSet):
-            return False
+            return r[bool].ok(False)
         change_list = tuple(changes.changes)
         if not change_list:
-            return False
+            return r[bool].ok(False)
         changed = any(
             change.new_contents is not None and change.new_contents != original_source
             for change in change_list
         )
         if changed and apply:
             rope_project.do(changes)
-        return changed
+        return r[bool].ok(changed)
 
     @staticmethod
     def get_absolute_from_imports(

@@ -144,9 +144,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     continue
                 _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
                     file_path,
-                    workspace=workspace_root,
-                    updated_source=rewritten,
-                    keep_backup=True,
+                    request=m.Infra.ProtectedSourceWriteRequest(
+                        workspace=workspace_root,
+                        updated_source=rewritten,
+                        keep_backup=True,
+                    ),
                 )
 
     @staticmethod
@@ -236,9 +238,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         if rewritten != source:
             _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
                 file_path,
-                workspace=file_path.parent,
-                updated_source=rewritten,
-                keep_backup=True,
+                request=m.Infra.ProtectedSourceWriteRequest(
+                    workspace=file_path.parent,
+                    updated_source=rewritten,
+                    keep_backup=True,
+                ),
             )
 
     @staticmethod
@@ -306,9 +310,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 target_file: updated_target.rstrip() + "\n",
                 source_file: "\n".join(filtered_lines).rstrip() + "\n",
             },
-            workspace=project_root,
-            keep_backup=True,
-            post_write=_post_write,
+            request=m.Infra.ProtectedSourceWritesRequest(
+                workspace=project_root,
+                keep_backup=True,
+                post_write=_post_write,
+            ),
         )
         if not ok:
             return None
@@ -426,6 +432,22 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         for moved_line in moved_lines:
             if moved_line not in target_lines:
                 updated_target += f"\n\n{moved_line}"
+        source_imports = (
+            FlextInfraUtilitiesRefactorNamespaceMoves._typing_alias_source_imports(
+                project_root=project_root,
+                target_file=target_file,
+                kept_source=kept_source,
+                alias_names=alias_names,
+            )
+        )
+        updated_source_lines = (
+            FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
+                lines=kept_lines,
+                imports=source_imports,
+            )
+            if source_imports
+            else kept_lines
+        )
 
         def _post_write() -> None:
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
@@ -434,13 +456,42 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         ok, _ = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
                 target_file: updated_target + "\n",
-                source_file: "\n".join(kept_lines).rstrip() + "\n",
+                source_file: "\n".join(updated_source_lines).rstrip() + "\n",
             },
-            workspace=project_root,
-            keep_backup=True,
-            post_write=_post_write,
+            request=m.Infra.ProtectedSourceWritesRequest(
+                workspace=project_root,
+                keep_backup=True,
+                gates=("lint",),
+                post_write=_post_write,
+            ),
         )
         _ = ok
+
+    @staticmethod
+    def _typing_alias_source_imports(
+        *,
+        project_root: Path,
+        target_file: Path,
+        kept_source: str,
+        alias_names: t.Infra.StrSet,
+    ) -> t.StrSequence:
+        source_ast = ast.parse(kept_source)
+        referenced_aliases = sorted({
+            node.id
+            for node in ast.walk(source_ast)
+            if isinstance(node, ast.Name) and node.id in alias_names
+        })
+        if not referenced_aliases:
+            return []
+        src_root = project_root / c.Infra.DEFAULT_SRC_DIR
+        try:
+            module_name = ".".join(
+                target_file.relative_to(src_root).with_suffix("").parts
+            )
+        except ValueError:
+            return []
+        import_line = f"from {module_name} import {', '.join(referenced_aliases)}"
+        return [import_line] if import_line not in kept_source.splitlines() else []
 
     @staticmethod
     def _collect_missing_runtime_alias_imports(

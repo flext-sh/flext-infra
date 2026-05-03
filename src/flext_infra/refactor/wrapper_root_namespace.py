@@ -162,8 +162,10 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if updates:
             ok, report = u.Infra.protected_source_writes(
                 updates,
-                workspace=self.workspace_root,
-                skip_pytest=True,
+                request=m.Infra.ProtectedSourceWritesRequest(
+                    workspace=self.workspace_root,
+                    skip_pytest=True,
+                ),
             )
             if not ok:
                 snippet = " ; ".join(report[:5]) or "protected write failed"

@@ -70,9 +70,10 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
             violations: t.MutableSequenceOf[str] = []
             with u.Infra.open_project(project_root) as rope_project:
                 for filepath in files:
-                    tree = self._parse_file(rope_project, filepath)
-                    if tree is None:
+                    tree_result = self._parse_file(rope_project, filepath)
+                    if tree_result.failure:
                         continue
+                    tree = tree_result.value
                     rel = filepath.relative_to(project_root)
                     if self._is_namespace_governed_file(rel):
                         violations.extend(self.check_rule_0(tree, rel, prefix))
@@ -113,19 +114,30 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         self,
         rope_project: t.Infra.RopeProject,
         path: Path,
-    ) -> ast.Module | None:
-        """Return the AST module for ``path`` via rope, ``None`` on failure."""
+    ) -> p.Result[ast.Module]:
+        """Return the AST module for ``path`` via rope.
+
+        ``r.ok(module)`` on success. ``r.fail(reason)`` when the resource
+        cannot be fetched, the module fails to parse, or rope returns no
+        ``PyModule``. Callers that want "skip silently" can collapse with
+        ``unwrap_or(None)`` or ``.failure``.
+        """
         try:
             resource = u.Infra.fetch_python_resource(rope_project, path)
-        except c.EXC_OS_SYNTAX:
-            return None
+        except c.EXC_OS_SYNTAX as exc:
+            return r[ast.Module].fail(f"fetch_python_resource raised: {exc!s}")
         if resource is None:
-            return None
+            return r[ast.Module].fail(f"no rope resource for {path}")
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except c.EXC_OS_SYNTAX:
-            return None
-        return pymodule.get_ast() if pymodule is not None else None
+        except c.EXC_OS_SYNTAX as exc:
+            return r[ast.Module].fail(f"get_pymodule raised: {exc!s}")
+        if pymodule is None:
+            return r[ast.Module].fail(f"rope returned no pymodule for {path}")
+        ast_module = pymodule.get_ast()
+        if ast_module is None:
+            return r[ast.Module].fail(f"pymodule has no AST for {path}")
+        return r[ast.Module].ok(ast_module)
 
     def _is_namespace_governed_file(self, rel_path: Path) -> bool:
         """Return whether NS-000/001/002 structural rules apply to this file."""

@@ -132,36 +132,29 @@ class FlextInfraCodegenLazyInit(s[bool]):
         for entry in rope.workspace_index.modules_by_path.values():
             if entry.is_package_init or not entry.module_name:
                 continue
-            resource = rope.resource(entry.file_path)
-            if resource is None:
-                continue
-            is_private_scope = (
-                entry.module_name.partition(".")[0] in c.Infra.ROOT_WRAPPER_SEGMENTS
-            )
+            first_segment = entry.module_name.partition(".")[0]
+            is_private_scope = first_segment in c.Infra.ROOT_WRAPPER_SEGMENTS
             scope_key = (
                 str(entry.project_root)
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for class_info in u.Infra.get_class_info(rope.rope_project, resource):
-                name = class_info.name
-                if (
-                    len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN
-                    or not name[:1].isupper()
-                ):
+            for obj in rope.objects(entry.file_path, include_local_scopes=False):
+                if obj.kind != "class" or obj.scope_path:
+                    continue
+                name = obj.name
+                if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
                     continue
                 scoped_modules[name, scope_key].add(entry.module_name)
-        duplicates: dict[str, tuple[str, ...]] = {}
-        for (name, scope_key), modules in scoped_modules.items():
-            if len(modules) <= 1:
-                continue
-            label = (
-                f"[{Path(scope_key).name}] {name}"
-                if scope_key
-                else f"[workspace] {name}"
+        return {
+            f"[{Path(scope_key).name}] {name}"
+            if scope_key
+            else f"[workspace] {name}": tuple(
+                sorted(modules),
             )
-            duplicates[label] = tuple(sorted(modules))
-        return duplicates
+            for (name, scope_key), modules in scoped_modules.items()
+            if len(modules) > 1
+        }
 
     def _generate_all_inits(
         self,

@@ -667,10 +667,23 @@ class FlextInfraRefactorCensus(
             )
             changed = False
             if action == "rewrite_runtime_alias":
-                violations = FlextInfraRuntimeAliasDetector.detect_file(ctx)
-                if not violations:
+                convention = rope.convention(file_path)
+                alias = convention.module_policy.expected_alias or ""
+                target_name = next(iter(sorted(object_names)), "")
+                if not alias or not target_name:
                     continue
-                u.Infra.rewrite_runtime_alias_violations(py_files=(file_path,))
+                source = rope.source(file_path)
+                updated = self._rewrite_runtime_alias_source(
+                    source,
+                    alias=alias,
+                    target_name=target_name,
+                )
+                if updated == source:
+                    continue
+                resource = rope.resource(file_path)
+                if resource is None:
+                    continue
+                resource.write(updated)
                 changed = True
             elif action == "rewrite_manual_typing_alias":
                 if ctx.project_root is None:
@@ -733,7 +746,7 @@ class FlextInfraRefactorCensus(
                 self.root,
                 candidate,
                 gates=self.dry_run_gate_names,
-            ):
+            ).unwrap_or(False):
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
                 )
@@ -893,6 +906,27 @@ class FlextInfraRefactorCensus(
         return FlextInfraRefactorCensus._named_object(
             objects,
             f"{layout.class_stem}{family}",
+        )
+
+    @staticmethod
+    def _rewrite_runtime_alias_source(
+        source: str,
+        *,
+        alias: str,
+        target_name: str,
+    ) -> str:
+        filtered_lines = [
+            line
+            for line in source.splitlines()
+            if not line.strip().startswith(f"{alias} =")
+        ]
+        cleaned_source = "\n".join(filtered_lines).rstrip()
+        if cleaned_source:
+            cleaned_source = f"{cleaned_source}\n"
+        return u.Infra.ensure_runtime_alias(
+            cleaned_source,
+            alias=alias,
+            target_name=target_name,
         )
 
     @staticmethod
