@@ -112,35 +112,44 @@ class FlextInfraWorkspaceMakefileGenerator:
 
     def _bootstrap_template(self, makefile: Path) -> p.Result[bool]:
         """Create the template from the current Makefile (one-time bootstrap)."""
+        result: p.Result[bool]
         if not makefile.exists():
-            return r[bool].ok(False)
-        try:
-            content = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError as exc:
-            return r[bool].fail_op("Makefile read", exc)
-        if c.Infra.MAKEFILE_GENERATED_MARKER in content:
-            return r[bool].ok(False)
+            result = r[bool].ok(False)
+        else:
+            try:
+                content = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            except OSError as exc:
+                result = r[bool].fail_op("Makefile read", exc)
+            else:
+                if c.Infra.MAKEFILE_GENERATED_MARKER in content:
+                    result = r[bool].ok(False)
+                else:
+                    pr_branch = self._current_branch(makefile.parent)
+                    template_content = self._build_template_lines(content)
 
-        pr_branch = self._current_branch(makefile.parent)
-        template_content = self._build_template_lines(content)
-
-        try:
-            _ = u.Cli.ensure_dir(Path(__file__).parent.parent / "templates")
-            template_write = u.Cli.atomic_write_text_file(
-                self.template_path, template_content
-            )
-            if template_write.failure:
-                return template_write
-        except OSError as exc:
-            return r[bool].fail_op("template bootstrap", exc)
-
-        render_result = self._render_template(
-            pr_branch=pr_branch,
-            template_text=template_content,
-        )
-        if render_result.failure:
-            return r[bool].fail(render_result.error or "template render failed")
-        return u.Cli.atomic_write_text_file(makefile, render_result.value)
+                    try:
+                        _ = u.Cli.ensure_dir(Path(__file__).parent.parent / "templates")
+                        template_write = u.Cli.atomic_write_text_file(
+                            self.template_path, template_content
+                        )
+                        if template_write.failure:
+                            result = template_write
+                        else:
+                            render_result = self._render_template(
+                                pr_branch=pr_branch,
+                                template_text=template_content,
+                            )
+                            if render_result.failure:
+                                result = r[bool].fail(
+                                    render_result.error or "template render failed"
+                                )
+                            else:
+                                result = u.Cli.atomic_write_text_file(
+                                    makefile, render_result.value
+                                )
+                    except OSError as exc:
+                        result = r[bool].fail_op("template bootstrap", exc)
+        return result
 
     def _render_template(
         self,
