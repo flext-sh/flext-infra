@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraProjectMigrator
+from flext_infra import FlextInfraProjectMigrator, m
 from tests import t, u
 
 
@@ -41,7 +41,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         )
 
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(expected_error in err for err in migration[0].errors),
             eq=True,
@@ -60,7 +60,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         )
 
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("Makefile update failed" in err for err in migration[0].errors),
             eq=True,
@@ -79,7 +79,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         )
 
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(".gitignore read failed" in err for err in migration[0].errors),
             eq=True,
@@ -98,7 +98,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         migrator.discovery = u.Tests.create_migrator_discovery([proj])
         migrator.generator = u.Tests.create_migrator_generator(fail="Generation failed")
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("Generation failed" in err for err in migration[0].errors),
             eq=True,
@@ -113,7 +113,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
             dry_run=False,
         )
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("parse failed" in err for err in migration[0].errors),
             eq=True,
