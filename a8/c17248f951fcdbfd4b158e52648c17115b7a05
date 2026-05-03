@@ -1,0 +1,14 @@
+src/flext_infra/codegen/lazy_init_planner.py
+  h_9db9d35f50cf33 457,460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a8c17248f951fcdbfd4b158e52648c17115b7a05",
+  "prompts": {},
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
