@@ -99,31 +99,43 @@ class FlextInfraUtilitiesGithubPr:
             cwd=repo_root,
         )
         if changes_capture.failure:
-            return r[bool].fail(changes_capture.error or "changes check failed")
-        if not changes_capture.unwrap().strip():
-            return r[bool].ok(True)
-        add_result = u.Cli.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root)
-        if add_result.failure:
-            return r[bool].fail(add_result.error or "git add failed")
-        staged_result = u.Cli.capture(
-            [c.Infra.GIT, "diff", "--cached", "--name-only"],
-            cwd=repo_root,
-        )
-        if staged_result.success and (not staged_result.value.strip()):
-            return r[bool].ok(True)
-        commit_result = u.Cli.run_checked(
-            [c.Infra.GIT, "commit", "-m", "chore: checkpoint pending changes"],
-            cwd=repo_root,
-        )
-        if commit_result.failure:
-            return r[bool].fail(commit_result.error or "git commit failed")
-        command = [c.Infra.GIT, "push"]
-        if branch:
-            command.extend(["-u", c.Infra.GIT_ORIGIN, branch])
-        return u.Cli.run_checked(
-            command,
-            cwd=repo_root,
-        )
+            result = r[bool].fail(changes_capture.error or "changes check failed")
+        elif not changes_capture.unwrap().strip():
+            result = r[bool].ok(True)
+        else:
+            add_result = u.Cli.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root)
+            if add_result.failure:
+                result = r[bool].fail(add_result.error or "git add failed")
+            else:
+                staged_result = u.Cli.capture(
+                    [c.Infra.GIT, "diff", "--cached", "--name-only"],
+                    cwd=repo_root,
+                )
+                if staged_result.success and (not staged_result.value.strip()):
+                    result = r[bool].ok(True)
+                else:
+                    commit_result = u.Cli.run_checked(
+                        [
+                            c.Infra.GIT,
+                            "commit",
+                            "-m",
+                            "chore: checkpoint pending changes",
+                        ],
+                        cwd=repo_root,
+                    )
+                    if commit_result.failure:
+                        result = r[bool].fail(
+                            commit_result.error or "git commit failed"
+                        )
+                    else:
+                        command = [c.Infra.GIT, "push"]
+                        if branch:
+                            command.extend(["-u", c.Infra.GIT_ORIGIN, branch])
+                        result = u.Cli.run_checked(
+                            command,
+                            cwd=repo_root,
+                        )
+        return result
 
     @classmethod
     def run_github_pull_request(

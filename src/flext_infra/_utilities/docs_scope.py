@@ -159,6 +159,10 @@ class FlextInfraUtilitiesDocsScope:
         enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
+        has_src = (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
+        has_tests = (entry / c.Infra.DIR_TESTS).is_dir()
+        if not is_workspace_member and not has_src and not has_tests:
+            return None
         workspace_role = (
             c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
             if is_workspace_member

@@ -17,78 +17,83 @@ class FlextInfraNamespaceSourceDetector:
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[m.Infra.NamespaceSourceViolation]:
         """Detect runtime aliases imported from a different flext package root."""
+        result: t.SequenceOf[m.Infra.NamespaceSourceViolation] = []
         file_path = ctx.file_path
         project_root = ctx.project_root
-        if project_root is None:
-            return []
-        project_layout = u.Infra.layout(project_root)
-        if project_layout is None:
-            return []
-        local_aliases = frozenset(project_layout.runtime_aliases)
-        if not local_aliases:
-            return []
-        metadata = u.read_project_constants("flext-infra")
-        contextual_sources = u.Infra.contextual_runtime_alias_sources(
-            project_root=project_root,
-            file_path=file_path,
-        )
-        resource = u.Infra.fetch_python_resource(
-            ctx.rope_project, file_path, skip_init_py=True
-        )
-        if resource is None:
-            return []
-        source = resource.read()
-        if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
-            return []
-        source_lines = source.splitlines()
-        violations: list[m.Infra.NamespaceSourceViolation] = []
-        for from_import in u.Infra.get_absolute_from_imports(
-            ctx.rope_project,
-            resource,
-        ):
-            current_source = from_import.module_name
-            if (
-                current_source == project_layout.package_name
-                or current_source.startswith(f"{project_layout.package_name}.")
-            ):
-                continue
-            if not (
-                current_source.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
-                and "." not in current_source
-            ):
-                continue
-            wrong_aliases = sorted(
-                name
-                for name, alias in from_import.names_and_aliases
-                if (
-                    alias is None
-                    and name in local_aliases
-                    and name not in metadata.UNIVERSAL_ALIAS_PARENT_SOURCES
-                    and current_source not in contextual_sources.get(name, frozenset())
-                )
-            )
-            if not wrong_aliases:
-                continue
-            current_import = f"from {current_source} import {', '.join(wrong_aliases)}"
-            line_number = u.Infra.find_import_line(
-                lines=source_lines,
-                module_name=current_source,
-            )
-            violations.extend(
-                m.Infra.NamespaceSourceViolation(
-                    file=str(file_path),
-                    line=line_number,
-                    alias=alias_name,
-                    current_source=current_source,
-                    correct_source=project_layout.package_name,
-                    current_import=current_import,
-                    suggested_import=(
-                        f"from {project_layout.package_name} import {alias_name}"
-                    ),
-                )
-                for alias_name in wrong_aliases
-            )
-        return violations
+        if project_root is not None:
+            project_layout = u.Infra.layout(project_root)
+            if project_layout is not None:
+                local_aliases = frozenset(project_layout.runtime_aliases)
+                if local_aliases:
+                    metadata = u.read_project_constants("flext-infra")
+                    contextual_sources = u.Infra.contextual_runtime_alias_sources(
+                        project_root=project_root,
+                        file_path=file_path,
+                    )
+                    resource = u.Infra.fetch_python_resource(
+                        ctx.rope_project, file_path, skip_init_py=True
+                    )
+                    if resource is not None:
+                        source = resource.read()
+                        if not u.Infra.looks_like_facade_file(
+                            file_path=file_path, source=source
+                        ):
+                            source_lines = source.splitlines()
+                            violations: list[m.Infra.NamespaceSourceViolation] = []
+                            for from_import in u.Infra.get_absolute_from_imports(
+                                ctx.rope_project,
+                                resource,
+                            ):
+                                current_source = from_import.module_name
+                                if (
+                                    current_source == project_layout.package_name
+                                    or current_source.startswith(
+                                        f"{project_layout.package_name}."
+                                    )
+                                ):
+                                    continue
+                                if not (
+                                    current_source.startswith(
+                                        c.Infra.PKG_PREFIX_UNDERSCORE
+                                    )
+                                    and "." not in current_source
+                                ):
+                                    continue
+                                wrong_aliases = sorted(
+                                    name
+                                    for name, alias in from_import.names_and_aliases
+                                    if (
+                                        alias is None
+                                        and name in local_aliases
+                                        and name
+                                        not in metadata.UNIVERSAL_ALIAS_PARENT_SOURCES
+                                        and current_source
+                                        not in contextual_sources.get(name, frozenset())
+                                    )
+                                )
+                                if not wrong_aliases:
+                                    continue
+                                current_import = f"from {current_source} import {', '.join(wrong_aliases)}"
+                                line_number = u.Infra.find_import_line(
+                                    lines=source_lines,
+                                    module_name=current_source,
+                                )
+                                violations.extend(
+                                    m.Infra.NamespaceSourceViolation(
+                                        file=str(file_path),
+                                        line=line_number,
+                                        alias=alias_name,
+                                        current_source=current_source,
+                                        correct_source=project_layout.package_name,
+                                        current_import=current_import,
+                                        suggested_import=(
+                                            f"from {project_layout.package_name} import {alias_name}"
+                                        ),
+                                    )
+                                    for alias_name in wrong_aliases
+                                )
+                            result = violations
+        return result
 
 
 __all__: list[str] = ["FlextInfraNamespaceSourceDetector"]
