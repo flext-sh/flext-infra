@@ -157,21 +157,18 @@ class FlextInfraPytestDiagExtractor(s[bool]):
             secs = float(case.attrib.get("time", "0") or 0.0)
         except ValueError:
             secs = 0.0
-        failure = case.find("failure")
-        error = case.find(c.Infra.ERROR)
-        skipped = case.find("skipped")
-        if failure is not None:
+        if (failure := case.find("failure")) is not None:
             diag.failed_cases.append(label)
             diag.error_traces.append(
                 FlextInfraPytestDiagExtractor._build_trace_chunk(
                     "FAILURE", label, failure
                 ),
             )
-        if error is not None:
+        if (error := case.find(c.Infra.ERROR)) is not None:
             diag.error_traces.append(
                 FlextInfraPytestDiagExtractor._build_trace_chunk("ERROR", label, error),
             )
-        if skipped is not None:
+        if (skipped := case.find("skipped")) is not None:
             reason = (
                 skipped.attrib.get(c.Infra.RK_MESSAGE) or skipped.text or ""
             ).strip()

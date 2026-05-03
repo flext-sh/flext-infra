@@ -60,18 +60,19 @@ class FlextInfraSkillValidator(s[bool]):
         group = (
             u.Cli.json_get_str_key(rule_obj, c.Infra.GROUP, default=rule_id) or rule_id
         )
-        if rule_type == "ast-grep":
-            count = self._run_ast_grep_count(
-                rule_obj,
-                skill_dir,
-                root,
-                include_globs,
-                exclude_globs,
-            )
-        elif rule_type == "custom":
-            count = self._run_custom_count(rule_obj, skill_dir, root, mode)
-        else:
-            return
+        match rule_type:
+            case "ast-grep":
+                count = self._run_ast_grep_count(
+                    rule_obj,
+                    skill_dir,
+                    root,
+                    include_globs,
+                    exclude_globs,
+                )
+            case "custom":
+                count = self._run_custom_count(rule_obj, skill_dir, root, mode)
+            case _:
+                return
         counts[group] = counts.get(group, 0) + count
         if count > 0:
             label = (
@@ -112,8 +113,7 @@ class FlextInfraSkillValidator(s[bool]):
             if isinstance(val_obj, int):
                 bl_counts[key_obj] = int(val_obj)
         if strategy == c.Infra.RK_TOTAL:
-            total_ok: bool = total <= sum(bl_counts.values())
-            return total_ok
+            return total <= sum(bl_counts.values())
         return all(
             counts.get(g, 0) <= bl_counts.get(g, 0)
             for g in set(counts) | set(bl_counts)
@@ -187,8 +187,9 @@ class FlextInfraSkillValidator(s[bool]):
                     violations,
                 )
             total = sum(counts.values())
-            passed = total == 0 if mode == c.Infra.OperationMode.STRICT else True
-            if mode != c.Infra.OperationMode.STRICT:
+            if mode == c.Infra.OperationMode.STRICT:
+                passed = total == 0
+            else:
                 passed = self._apply_baseline_comparison(
                     rules,
                     root,
