@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     """Open one shared Rope workspace with cached public DSL methods."""
 
-    _IDENTIFIER_PATTERN: ClassVar[re.Pattern[str]] = c.Infra.IDENTIFIER_PATTERN
+    _IDENTIFIER_PATTERN: ClassVar[t.Infra.RegexPattern] = c.Infra.IDENTIFIER_PATTERN
 
     project_prefix: Annotated[
         str,
@@ -169,14 +168,16 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self,
         *,
         preserve_indexes: bool = False,
+        validate_project: bool = True,
     ) -> m.Infra.RopeWorkspaceSession:
         """Invalidate Rope caches without reopening the Rope project.
 
         ``preserve_indexes=True`` is reserved for flows that temporarily wrote
         files and already restored the original on-disk content before the
-        refresh runs.
+        refresh runs. ``validate_project=False`` is reserved for those reverted
+        preview flows so cleanup does not rescan an already-restored project.
         """
-        if self._rope_project is not None:
+        if validate_project and self._rope_project is not None:
             self._rope_project.validate()
         self._package_context_cache.clear()
         self._module_policy_cache.clear()
@@ -259,8 +260,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
                         continue
                     dependents[target].add(file_path)
             index = {
-                target: tuple(sorted(paths))
-                for target, paths in dependents.items()
+                target: tuple(sorted(paths)) for target, paths in dependents.items()
             }
             self._import_dependents_index = index
         return index.get(import_target, ())

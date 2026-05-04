@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import (
     Iterable,
 )
@@ -316,7 +315,7 @@ class FlextInfraUtilitiesRopeSource:
         source = resource.read()
         kept: list[str] = []
         removed: list[str] = []
-        alias_pattern = re.compile(r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$")
+        alias_pattern = c.Infra.MODULE_ALIAS_RE
         scope_depth = 0
         for line in source.splitlines(keepends=True):
             stripped = line.strip()
@@ -362,7 +361,7 @@ class FlextInfraUtilitiesRopeSource:
         source = resource.read()
         total = 0
         for old_annotation, new_annotation in replacements.items():
-            pattern = re.compile(rf"\b{re.escape(old_annotation)}\b")
+            pattern = c.Infra.compile_word(old_annotation)
             source, count = pattern.subn(new_annotation, source)
             total += count
         if total > 0 and apply and source != resource.read():
@@ -379,11 +378,7 @@ class FlextInfraUtilitiesRopeSource:
         """Remove ``cast(Type, value)`` calls, replacing with just ``value``."""
         _ = rope_project
         source = resource.read()
-        new_source, count = re.subn(
-            r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)",
-            r"\1",
-            source,
-        )
+        new_source, count = c.Infra.CAST_CALL_RE.subn(r"\1", source)
         if count > 0 and apply and new_source != source:
             resource.write(new_source)
         return new_source, count

@@ -19,10 +19,7 @@ from flext_tests import FlextTestsConstants
 from flext_infra import c, t
 
 
-class TestsFlextInfraConstants(
-    FlextTestsConstants,
-    c,
-):
+class TestsFlextInfraConstants(FlextTestsConstants, c):
     """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
     Architecture layer: Layer 0 foundation constants with infra test extensions.
@@ -67,7 +64,7 @@ class TestsFlextInfraConstants(
             ("warning: ignoring duplicate", 0),
             ("Success: 5 passed", 0),
         )
-        LOG_ERROR_PREFIX_RE: ClassVar[re.Pattern[str]] = re.compile(
+        LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
             r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)",
         )
         LOG_MIXED_SCENARIO_LINES: Final[tuple[str, ...]] = (
@@ -76,6 +73,13 @@ class TestsFlextInfraConstants(
             "INFO: post-build",
             "FAIL: test broken",
             "Total: 2 failed",
+        )
+        SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = re.compile(
+            r"hello",
+            re.MULTILINE,
+        )
+        LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = re.compile(
+            r'["\']([^"\']+)["\']',
         )
 
         WORKSPACE_PROJECT_NAME: Final[str] = "workspace"

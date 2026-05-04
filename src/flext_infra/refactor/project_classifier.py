@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import (
     Mapping,
     MutableMapping,
@@ -210,7 +209,7 @@ class FlextInfraProjectClassifier:
         left_side = cleaned.split(" @ ", maxsplit=1)[0].strip()
         base_token = left_side.split()[0]
         base_token = base_token.split("[", maxsplit=1)[0]
-        base_token = re.split(r"[<>=!~]", base_token, maxsplit=1)[0]
+        base_token = c.Infra.DEPENDENCY_VERSION_OP_RE.split(base_token, maxsplit=1)[0]
         if "/" in base_token:
             path = Path(base_token)
             base_token = path.name

@@ -9,12 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 from types import TracebackType
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
+    import ast  # Why: TYPE_CHECKING-only — Protocol signatures reference ast.AST without runtime import.
+
     from flext_infra import m, p, t
 
 
@@ -61,6 +62,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             *,
             preserve_indexes: bool = False,
+            validate_project: bool = True,
         ) -> m.Infra.RopeWorkspaceSession: ...
 
         def reload(self) -> m.Infra.RopeWorkspaceSession: ...

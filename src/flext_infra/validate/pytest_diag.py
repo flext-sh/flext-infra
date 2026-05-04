@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 from typing import Annotated, ClassVar, override
@@ -71,10 +70,10 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         """Extract slow test durations from log when XML unavailable."""
         capture_slow = False
         for line in lines:
-            if re.match(r"^=+ slowest durations =+", line):
+            if c.Infra.PYTEST_SLOWEST_HEADER_RE.match(line):
                 capture_slow = True
                 continue
-            if capture_slow and re.match(r"^=+", line):
+            if capture_slow and c.Infra.PYTEST_SECTION_DIVIDER_RE.match(line):
                 break
             if capture_slow and line.strip():
                 diag.slow_entries.append(line)
@@ -84,42 +83,34 @@ class FlextInfraPytestDiagExtractor(s[bool]):
         """Extract warning lines from pytest log."""
         capture_warn = False
         for line in lines:
-            if re.match(r"^=+ warnings summary =+", line):
+            if c.Infra.PYTEST_WARNINGS_HEADER_RE.match(line):
                 capture_warn = True
             if capture_warn:
                 diag.warning_lines.append(line)
-                if re.match(r"^-- Docs: https://docs.pytest.org/", line):
+                if c.Infra.PYTEST_DOCS_FOOTER_RE.match(line):
                     break
         if not diag.warning_lines:
             diag.warning_lines = [
-                line
-                for line in lines
-                if re.search(
-                    r"CoverageWarning|PytestCollectionWarning|DeprecationWarning|UserWarning|RuntimeWarning",
-                    line,
-                )
+                line for line in lines if c.Infra.PYTEST_KNOWN_WARNINGS_RE.search(line)
             ]
 
     @staticmethod
     def _parse_log_into_diag(lines: t.StrSequence, diag: _DiagResult) -> None:
         """Parse pytest log output for failures/skips when XML unavailable."""
         diag.failed_cases = [
-            line for line in lines if re.search(r"(^FAILED |::.* FAILED( |$))", line)
+            line for line in lines if c.Infra.PYTEST_FAILED_LINE_RE.search(line)
         ]
         diag.skip_cases = [
-            line for line in lines if re.search(r"(^SKIPPED |::.* SKIPPED( |$))", line)
+            line for line in lines if c.Infra.PYTEST_SKIPPED_LINE_RE.search(line)
         ]
         capture = False
         block: t.MutableSequenceOf[str] = []
         for line in lines:
-            if re.match(r"^=+ (FAILURES|ERRORS) =+", line):
+            if c.Infra.PYTEST_FAILURES_OR_ERRORS_RE.match(line):
                 capture = True
             if capture:
                 block.append(line)
-                if re.match(
-                    r"^=+ (short test summary info|warnings summary|.+ in [0-9.]+s) =+",
-                    line,
-                ):
+                if c.Infra.PYTEST_BLOCK_END_RE.match(line):
                     break
         diag.error_traces = block
 

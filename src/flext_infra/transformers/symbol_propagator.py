@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import re
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, t
+from flext_infra import FlextInfraRopeTransformer, c, t
 
 
 class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
@@ -74,10 +73,10 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         new_module: str,
     ) -> str:
         """Replace ``from old_module import ...`` with ``from new_module import ...``."""
-        pattern = re.compile(
-            rf"(from\s+){re.escape(old_module)}(\s+import\s)",
-        )
-        new_source, count = pattern.subn(rf"\g<1>{new_module}\2", source)
+        pattern = c.Infra.compile_from_module_rename(old_module)
+        replacement_result = pattern.subn(rf"\g<1>{new_module}\2", source)
+        new_source: str = replacement_result[0]
+        count = replacement_result[1]
         if count > 0 and new_source != source:
             self._record_change(
                 f"Renamed import module: {old_module} -> {new_module}",
@@ -95,11 +94,11 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         """Rename symbol in import statement within target modules."""
         # Match the symbol in from-import lines for any target module
         for target_module in self._target_modules:
-            pattern = re.compile(
-                rf"(from\s+{re.escape(target_module)}\s+import\s+.*?)"
-                rf"\b{re.escape(old_name)}\b",
+            pattern = c.Infra.compile_import_symbol_rename(
+                target_module,
+                old_name,
             )
-            new_source = pattern.sub(rf"\g<1>{new_name}", source)
+            new_source: str = pattern.sub(rf"\g<1>{new_name}", source)
             if new_source != source:
                 self._record_change(
                     f"Renamed imported symbol: {old_name} -> {new_name}",
@@ -115,12 +114,10 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
         new_name: str,
     ) -> str:
         """Replace bare references to old_name with new_name in non-import lines."""
-        pattern = re.compile(
-            rf"(?<!import\s)(?<!\.)(?<!class\s)(?<!def\s)"
-            rf"\b{re.escape(old_name)}\b"
-            rf"(?!\s*=)",
-        )
-        new_source, count = pattern.subn(new_name, source)
+        pattern = c.Infra.compile_bare_reference_rename(old_name)
+        replacement_result = pattern.subn(new_name, source)
+        new_source: str = replacement_result[0]
+        count = replacement_result[1]
         if count > 0 and new_source != source:
             self._record_change(
                 f"Propagated local symbol rename: {old_name} -> {new_name}",

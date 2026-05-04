@@ -6,7 +6,6 @@ aliases to their correct sources (core, submodule, or TYPE_CHECKING block).
 
 from __future__ import annotations
 
-import re
 from collections.abc import (
     MutableMapping,
 )
@@ -155,7 +154,7 @@ class FlextInfraTransformerTier0ImportFixer:
         def _scan_runtime_usage(self, source: str) -> None:
             """Detect aliases used at runtime (not just in annotations)."""
             for alias in self._self_import_aliases:
-                pattern = re.compile(rf"\b{re.escape(alias)}\b")
+                pattern = c.Infra.compile_word(alias)
                 # Check for usage outside import lines and annotations
                 for line in source.splitlines():
                     stripped = line.strip()

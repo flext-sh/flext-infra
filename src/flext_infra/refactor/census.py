@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import ast
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable
+from operator import itemgetter
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -27,15 +27,18 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 _log = u.fetch_logger(__name__)
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
+    RopeError,
     RecursionError,
     SyntaxError,
     ValueError,
     RuntimeError,
-    RopeError,
 )
 
 
@@ -579,7 +582,12 @@ class FlextInfraRefactorCensus(
         rope: p.Infra.RopeWorkspaceDsl,
         project_reports: tuple[m.Infra.Census.ProjectReport, ...],
     ) -> tuple[m.Infra.Census.ProjectReport, ...]:
-        """Keep only removal candidates that pass the configured dry-run gates."""
+        """Keep only removal candidates that pass the configured dry-run gates.
+
+        Gate rejections are surfaced as explicit ``preview_rejected``
+        violations so the census still completes with actionable output
+        instead of aborting on the first rejected candidate.
+        """
         validated_reports: list[m.Infra.Census.ProjectReport] = []
         # Preview writes are restored before the next candidate, so one shared
         # source cache stays valid for the entire dry-run validation pass.
@@ -589,6 +597,7 @@ class FlextInfraRefactorCensus(
                 validated_reports.append(report)
                 continue
             validated_candidates_list: list[m.Infra.Census.RemovalCandidate] = []
+            validated_violations = list(report.violations)
             for candidate in report.removal_candidates:
                 preview_result = u.Infra.preview_simple_removal_candidate(
                     rope,
@@ -602,13 +611,34 @@ class FlextInfraRefactorCensus(
                         "simple removal preview failed for "
                         f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
                     )
-                    raise RuntimeError(msg)
+                    if self.dry_run or self.fail_fast:
+                        raise RuntimeError(msg)
+                    _log.warning(
+                        "census_preview_candidate_rejected",
+                        candidate=candidate.file_path,
+                        object_name=candidate.object_name,
+                        error=msg,
+                    )
+                    validated_violations.append(
+                        self._raw_violation(
+                            project=report.project,
+                            object_name=candidate.object_name,
+                            object_kind=candidate.object_kind,
+                            kind="preview_rejected",
+                            file_path=Path(candidate.file_path),
+                            line=candidate.line,
+                            description=msg,
+                        )
+                    )
+                    continue
                 if preview_result.unwrap_or(False):
                     validated_candidates_list.append(candidate)
             validated_candidates = tuple(validated_candidates_list)
             validated_reports.append(
                 report.model_copy(
                     update={
+                        "violations": tuple(validated_violations),
+                        "violations_total": len(validated_violations),
                         "removal_candidate_count": len(validated_candidates),
                         "removal_candidates": validated_candidates,
                     }
@@ -636,6 +666,7 @@ class FlextInfraRefactorCensus(
             selected_kinds = frozenset(kind_names) if kind_names else frozenset()
         ctx: m.Infra.DetectorContext | None = None
         symbol_index: dict[str, tuple[str, int]] = self._lightweight_symbol_index(
+            rope,
             file_path,
         )
         violations: list[m.Infra.Census.Violation] = []
@@ -1160,46 +1191,82 @@ class FlextInfraRefactorCensus(
     @classmethod
     def _lightweight_symbol_index(
         cls,
+        rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
     ) -> dict[str, tuple[str, int]]:
         """Top-level symbol index for detector-only rule sets."""
+        resource = rope.resource(file_path)
+        if resource is None:
+            return {}
         try:
-            source = file_path.read_text(encoding="utf-8")
-            module = ast.parse(source, filename=str(file_path))
-        except (OSError, SyntaxError, ValueError) as exc:
+            attributes = u.Infra.get_pymodule(
+                rope.rope_project,
+                resource,
+            ).get_attributes()
+        except (
+            *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
+            RecursionError,
+            SyntaxError,
+            ValueError,
+        ) as exc:
             msg = (
-                "census lightweight symbol parsing failed for "
+                "census lightweight symbol discovery failed for "
                 f"{file_path}: {type(exc).__name__}: {exc!s}"
             )
             raise RuntimeError(msg) from exc
         symbols: dict[str, tuple[str, int]] = {}
-        for node in module.body:
-            if isinstance(node, ast.ClassDef):
-                symbols.setdefault(node.name, ("class", node.lineno))
+        object_kinds: dict[int, str] = {}
+        candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
+        for name, pyname in attributes.items():
+            if FlextInfraUtilitiesRopeAnalysis.is_imported_name(pyname):
                 continue
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                symbols.setdefault(node.name, ("function", node.lineno))
+            line = cls._lightweight_symbol_line(pyname, resource)
+            if line is None:
                 continue
-            if isinstance(node, ast.TypeAlias):
-                symbols.setdefault(node.name.id, ("assignment", node.lineno))
-                continue
-            if isinstance(node, ast.AnnAssign):
-                if isinstance(node.target, ast.Name):
-                    symbols.setdefault(node.target.id, ("assignment", node.lineno))
-                continue
-            if not isinstance(node, ast.Assign):
-                continue
-            value_name = node.value.id if isinstance(node.value, ast.Name) else ""
-            inherited_kind = symbols.get(value_name, ("assignment", node.lineno))[0]
-            kind = (
-                inherited_kind
-                if inherited_kind in {"class", "function"}
-                else "assignment"
+            candidates.append((line, name, pyname))
+        for line, name, pyname in sorted(candidates, key=itemgetter(0)):
+            obj = pyname.get_object()
+            kind = cls._lightweight_symbol_kind(
+                name=name,
+                obj=obj,
+                object_kinds=object_kinds,
             )
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    symbols.setdefault(target.id, (kind, node.lineno))
+            symbols.setdefault(name, (kind, line))
+            if kind in {"class", "function"}:
+                object_kinds[id(obj)] = kind
         return symbols
+
+    @staticmethod
+    def _lightweight_symbol_line(
+        pyname: t.Infra.RopePyName,
+        resource: t.Infra.RopeResource,
+    ) -> int | None:
+        """Return the local definition line for one top-level Rope symbol."""
+        location = pyname.get_definition_location()
+        if location is None:
+            return None
+        module, line = location
+        origin = module.get_resource() if module is not None else None
+        if not isinstance(line, int) or line < 1 or origin is None:
+            return None
+        return line if origin.path == resource.path else None
+
+    @staticmethod
+    def _lightweight_symbol_kind(
+        *,
+        name: str,
+        obj: object,
+        object_kinds: dict[int, str],
+    ) -> str:
+        """Infer a detector-only symbol kind from Rope metadata."""
+        inherited_kind = object_kinds.get(id(obj))
+        if inherited_kind in {"class", "function"}:
+            return inherited_kind
+        if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+            return "class"
+        if isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
+            return "function"
+        return "constant" if name.isupper() else "assignment"
 
     @staticmethod
     def _detector_context(

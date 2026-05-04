@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -12,6 +11,7 @@ from typing import Annotated, ClassVar, override
 
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
+    FlextInfraUtilitiesRopeAnalysis,
     c,
     m,
     p,
@@ -158,7 +158,10 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if file_path.name == c.Infra.INIT_PY and (not self.include_init):
             return
         source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        module_ast = ast.parse(source)
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return
+        module_ast = pymodule.get_ast()
         line_offsets = self._build_line_offsets(source)
         core_rewrites = self._collect_core_test_rewrites(
             module_ast,
@@ -195,52 +198,66 @@ class FlextInfraWrapperRootNamespaceRefactor(
 
     def _collect_core_test_rewrites(
         self,
-        module_ast: ast.Module,
+        module_ast: object,
         *,
         line_offsets: list[int],
         runtime_aliases: frozenset[str],
     ) -> list[tuple[int, int, str]]:
         """Find every ``<alias>.Core.Tests`` chain and emit ``(start, end, repl)``."""
         rewrites: list[tuple[int, int, str]] = []
-        for node in ast.walk(module_ast):
-            if not isinstance(node, ast.Attribute) or node.attr != "Tests":
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
+            if (
+                FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Attribute"
+                or getattr(node, "attr", "") != "Tests"
+            ):
                 continue
-            parent_attr = node.value if isinstance(node.value, ast.Attribute) else None
-            if parent_attr is None or parent_attr.attr != "Core":
+            parent_attr = getattr(node, "value", None)
+            if (
+                parent_attr is None
+                or FlextInfraUtilitiesRopeAnalysis.node_kind(parent_attr) != "Attribute"
+                or getattr(parent_attr, "attr", "") != "Core"
+            ):
                 continue
-            base_name = (
-                parent_attr.value if isinstance(parent_attr.value, ast.Name) else None
-            )
-            if base_name is None or base_name.id not in runtime_aliases:
+            base_name = getattr(parent_attr, "value", None)
+            if (
+                base_name is None
+                or FlextInfraUtilitiesRopeAnalysis.node_kind(base_name) != "Name"
+            ):
                 continue
-            end_lineno = node.end_lineno
-            end_col_offset = node.end_col_offset
-            if end_lineno is None or end_col_offset is None:
+            base_id = getattr(base_name, "id", "")
+            if base_id not in runtime_aliases:
                 continue
-            start = line_offsets[node.lineno - 1] + node.col_offset
+            line_col = FlextInfraUtilitiesRopeAnalysis.line_col_range(node)
+            if line_col is None:
+                continue
+            lineno, col_offset, end_lineno, end_col_offset = line_col
+            start = line_offsets[lineno - 1] + col_offset
             end = line_offsets[end_lineno - 1] + end_col_offset
-            rewrites.append((start, end, f"{base_name.id}.Tests"))
+            rewrites.append((start, end, f"{base_id}.Tests"))
         return rewrites
 
     def _has_wrapper_import_candidate(
         self,
-        module_ast: ast.Module,
+        module_ast: object,
         *,
         wrapper_submodules: frozenset[str],
         runtime_aliases: frozenset[str],
     ) -> bool:
         """Return whether any ``from wrapper.<sub> import <alias>`` exists."""
-        for node in ast.walk(module_ast):
-            if not isinstance(node, ast.ImportFrom):
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "ImportFrom":
                 continue
-            module_name = node.module or ""
+            module_name = getattr(node, "module", "") or ""
             parent, dot, child = module_name.partition(".")
             if not (
                 dot and parent in self._WRAPPER_PACKAGES and child in wrapper_submodules
             ):
                 continue
+            names = getattr(node, "names", []) or []
             if any(
-                (alias.asname or alias.name) in runtime_aliases for alias in node.names
+                (getattr(alias, "asname", None) or getattr(alias, "name", ""))
+                in runtime_aliases
+                for alias in names
             ):
                 return True
         return False

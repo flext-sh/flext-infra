@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from collections.abc import (
     MutableMapping,
@@ -236,14 +235,13 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
                 )
             )
         class_line_indices = [
-            idx for idx, line in enumerate(lines) if re.match(r"^class\s+\w+", line)
+            idx
+            for idx, line in enumerate(lines)
+            if c.Infra.CLASS_HEADER_ANY_RE.match(line)
         ]
+        class_header_re = c.Infra.compile_class_header_match(class_name)
         existing_class_index = next(
-            (
-                idx
-                for idx in class_line_indices
-                if re.match(rf"^class\s+{re.escape(class_name)}\b", lines[idx])
-            ),
+            (idx for idx in class_line_indices if class_header_re.match(lines[idx])),
             -1,
         )
         if existing_class_index >= 0:
@@ -267,7 +265,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
                 (
                     idx
                     for idx, line in enumerate(updated_lines)
-                    if re.match(r"^__all__\s*:", line)
+                    if c.Infra.DUNDER_ALL_DECL_RE.match(line)
                 ),
                 -1,
             )

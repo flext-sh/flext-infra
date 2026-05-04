@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import re
 import textwrap
 from typing import override
 
 from flext_infra import (
     FlextInfraRopeTransformer,
+    c,
     m,
     t,
     u,
@@ -61,7 +61,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         for name, ns in self._mappings.items():
             if not self._policy_ok(name, ns, "allow_helper_call_rewrite"):
                 continue
-            pat = re.compile(rf"(?<!\.)(?<!class\s)(?<!def\s)\b{re.escape(name)}\s*\(")
+            pat = c.Infra.compile_helper_call_site(name)
             new = pat.sub(f"{ns}.{name}(", source)
             if new != source:
                 self._record_change(f"Rewritten call: {name}() -> {ns}.{name}()")
@@ -88,7 +88,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         if policy is None or not policy.require_signature_validation:
             result = True
         else:
-            sig_pat = re.compile(rf"def\s+{re.escape(name)}\s*\(([^)]*)\)", re.DOTALL)
+            sig_pat = c.Infra.compile_function_signature(name)
             match = sig_pat.search(source)
             if match is None:
                 result = True

@@ -233,6 +233,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".io.test_infra_terminal_detection": (
                 "TestsFlextInfraIoInfraTerminalDetection",
             ),
+            ".refactor.test_infra_refactor_census_preview_cache": (
+                "TestsFlextInfraRefactorCensusPreviewCache",
+            ),
             ".refactor.test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
             ),
@@ -304,6 +307,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
             ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
+            ".test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
             ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
             ".test_infra_selection": ("TestsFlextInfraInfraSelection",),
             ".test_infra_typings": ("TestsFlextInfraInfraTypings",),

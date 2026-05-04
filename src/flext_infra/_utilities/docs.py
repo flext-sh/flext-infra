@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import (
     Callable,
 )
@@ -12,7 +11,6 @@ from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesPatterns,
     c,
     m,
     p,
@@ -219,18 +217,23 @@ class FlextInfraUtilitiesDocs:
     @staticmethod
     def anchorize(text: str) -> str:
         """Convert a heading title to a GitHub-compatible anchor slug."""
-        value = u.norm_str(text, case="lower")
-        value = re.sub(r"[^a-z0-9\s-]", "", value)
-        value = re.sub(r"\s+", "-", value)
-        return re.sub(r"-+", "-", value).strip("-")
+        normalized: str = u.norm_str(text, case="lower")
+        alnum_only: str = c.Infra.ANCHOR_NON_ALNUM_RE.sub("", normalized)
+        collapsed_whitespace: str = c.Infra.ANCHOR_WHITESPACE_RE.sub(
+            "-",
+            alnum_only,
+        )
+        slug: str = c.Infra.ANCHOR_DASH_COLLAPSE_RE.sub(
+            "-",
+            collapsed_whitespace,
+        ).strip("-")
+        return slug
 
     @staticmethod
     def build_toc(content: str) -> str:
         """Generate a TOC block from ## and ### headings in content."""
         items: t.MutableSequenceOf[str] = []
-        for level, title in FlextInfraUtilitiesPatterns.HEADING_H2_H3_RE.findall(
-            content
-        ):
+        for level, title in c.Infra.HEADING_H2_H3_RE.findall(content):
             anchor = FlextInfraUtilitiesDocs.anchorize(title)
             if not anchor:
                 continue
@@ -245,13 +248,7 @@ class FlextInfraUtilitiesDocs:
         """Insert or replace the TOC in content, returning (updated, changed)."""
         toc = FlextInfraUtilitiesDocs.build_toc(content)
         if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
-            updated = re.sub(
-                r"<!-- TOC START -->.*?<!-- TOC END -->",
-                toc,
-                content,
-                count=1,
-                flags=re.DOTALL,
-            )
+            updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
             return (updated, int(updated != content))
         lines = content.splitlines()
         if lines and lines[0].startswith("# "):

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -211,7 +210,7 @@ class TestScannerHelpers:
         """_count_matches counts regex matches and handles edge cases."""
         f = tmp_path / "test.txt"
         f.write_text("hello hello hello")
-        regex = re.compile(r"hello")
+        regex = c.Tests.SCANNER_HELLO_RE
         tm.that(FlextInfraTextPatternScanner._count_matches([f], regex), eq=3)
         empty = tmp_path / "empty.txt"
         empty.write_text("")
@@ -224,7 +223,10 @@ class TestScannerHelpers:
         f.chmod(0o000)
         try:
             tm.that(
-                FlextInfraTextPatternScanner._count_matches([f], re.compile(r"hello")),
+                FlextInfraTextPatternScanner._count_matches(
+                    [f],
+                    c.Tests.SCANNER_HELLO_RE,
+                ),
                 eq=0,
             )
         finally:

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from flext_infra import c, m, t
@@ -132,18 +131,14 @@ class FlextInfraUtilitiesRopeMroTransform:
     ) -> list[str]:
         """Rename symbol in block."""
         renamed_lines = list(block_lines)
+        line_start_pattern = c.Infra.compile(
+            rf"^\s*{c.Infra.escape(symbol)}\b",
+        )
+        word_pattern = c.Infra.compile_word(symbol)
         for index, line in enumerate(renamed_lines):
-            if f"class {symbol}" not in line and not re.match(
-                rf"^\s*{re.escape(symbol)}\b",
-                line,
-            ):
+            if f"class {symbol}" not in line and not line_start_pattern.match(line):
                 continue
-            renamed_lines[index] = re.sub(
-                rf"\b{re.escape(symbol)}\b",
-                target,
-                line,
-                count=1,
-            )
+            renamed_lines[index] = word_pattern.sub(target, line, count=1)
             break
         return renamed_lines
 
@@ -193,14 +188,9 @@ class FlextInfraUtilitiesRopeMroTransform:
         updated_source = source
         for symbol, target_path in symbol_map.items():
             qualified = f"{facade_alias}.{target_path}"
-            bare_pattern = re.compile(
-                rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
-                rf"\b{re.escape(symbol)}\b"
-                rf"(?!\s*[=:](?!=))"
-                rf"(?!\s*\()",
-            )
-            annotation_pattern = re.compile(rf"(:[ \t]*)\b{re.escape(symbol)}\b")
-            return_pattern = re.compile(rf"(->[ \t]*)\b{re.escape(symbol)}\b")
+            bare_pattern = c.Infra.compile_mro_bare_qualify(symbol)
+            annotation_pattern = c.Infra.compile_mro_prefixed_annotation(":", symbol)
+            return_pattern = c.Infra.compile_mro_prefixed_annotation("->", symbol)
             updated_source = bare_pattern.sub(qualified, updated_source)
             updated_source = annotation_pattern.sub(
                 rf"\1{qualified}",

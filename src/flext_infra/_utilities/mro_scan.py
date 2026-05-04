@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import ClassVar
 
@@ -23,9 +22,9 @@ from flext_infra import (
 class FlextInfraUtilitiesRefactorMroScan:
     """Flext infra utilities refactor mro scan."""
 
-    _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = c.Infra.CONSTANT_NAME_RE
-    _MRO_SCAN_TYPE_PATTERN: re.Pattern[str] = c.Infra.MRO_SCAN_TYPE_PATTERN
-    _MRO_SCAN_PROTOCOL_BASE_PATTERN: re.Pattern[str] = (
+    _MRO_SCAN_CONSTANT_PATTERN: t.Infra.RegexPattern = c.Infra.CONSTANT_NAME_RE
+    _MRO_SCAN_TYPE_PATTERN: t.Infra.RegexPattern = c.Infra.MRO_SCAN_TYPE_PATTERN
+    _MRO_SCAN_PROTOCOL_BASE_PATTERN: t.Infra.RegexPattern = (
         c.Infra.MRO_SCAN_PROTOCOL_BASE_PATTERN
     )
     _ALL_SPECS: ClassVar[tuple[m.Infra.MROTargetSpec, ...]] = (
@@ -236,7 +235,9 @@ class FlextInfraUtilitiesRefactorMroScan:
                     FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
                         name
                     )
-                    and re.match(rf"^{name}\s*(:|==?)\s*", src_line)
+                    and c.Infra.compile_assign_or_annotation_start(name).match(
+                        src_line,
+                    )
                     and not name.islower()
                 ):
                     kind = "constant"
@@ -257,19 +258,17 @@ class FlextInfraUtilitiesRefactorMroScan:
         spec: m.Infra.MROTargetSpec,
     ) -> str:
         """Find facade."""
-        if assign := re.search(
-            rf"^{re.escape(spec.family_alias)}\s*=\s*([A-Za-z_]\w*{spec.class_suffix})\b",
-            source,
-            re.MULTILINE,
-        ):
-            return assign.group(1)
+        if assign := c.Infra.compile_facade_alias_assignment(
+            spec.family_alias,
+            spec.class_suffix,
+        ).search(source):
+            facade_name: str = assign.group(1)
+            return facade_name
         return (
-            m.group(1)
+            str(m.group(1))
             if (
-                m := re.search(
-                    rf"^class\s+([A-Za-z_]\w*{spec.class_suffix})\b",
+                m := c.Infra.compile_class_with_suffix(spec.class_suffix).search(
                     source,
-                    re.MULTILINE,
                 )
             )
             else ""
@@ -364,10 +363,7 @@ class FlextInfraUtilitiesRefactorMroScan:
     def _class_header_declares_protocol(cls, *, name: str, class_header: str) -> bool:
         """Class header declares protocol."""
         if (
-            m := re.match(
-                rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:",
-                class_header,
-            )
+            m := c.Infra.compile_class_header_with_bases(name).match(class_header)
         ) is None:
             return False
         return bool(cls._MRO_SCAN_PROTOCOL_BASE_PATTERN.search(m.group("bases")))

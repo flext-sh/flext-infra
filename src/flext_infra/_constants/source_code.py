@@ -86,6 +86,11 @@ class FlextInfraConstantsSourceCode:
         re.MULTILINE,
     )
     "Regex: ``def/async def/class <name>``."
+    FUNCTION_DEF_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?:async\s+)?def\s+(\w+)",
+        re.MULTILINE,
+    )
+    "Regex: ``def/async def <name>`` — captures function name only."
     CLASS_NAME_RE: Final[re.Pattern[str]] = re.compile(
         r"^class\s+(\w+)",
         re.MULTILINE,
@@ -160,6 +165,432 @@ class FlextInfraConstantsSourceCode:
         re.MULTILINE | re.DOTALL,
     )
     "Regex: try/except ImportError bypass pattern."
+    REQUIRES_PYTHON_RE: Final[re.Pattern[str]] = re.compile(
+        r'requires-python\s*=\s*"[>!=]*(\d+)\.(\d+)',
+    )
+    'Regex: ``requires-python = ">=3.X"`` — captures major and minor.'
+    DEPENDENCY_VERSION_OP_RE: Final[re.Pattern[str]] = re.compile(
+        r"[<>=!~]",
+    )
+    "Regex: dependency version operator characters (used to split a name+spec)."
+
+    REGEX_ERROR: Final[type[Exception]] = re.error
+    "Centralized alias for ``re.error`` so consumers needn't import ``re``."
+    IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"\b([A-Za-z_]\w*)\b")
+    "Regex: Python identifier — captures the bare name token."
+    DECORATOR_RE: Final[re.Pattern[str]] = re.compile(r"@\w+")
+    "Regex: ``@<name>`` decorator usage."
+
+    DICT_STR_JSONVALUE_RE: Final[re.Pattern[str]] = re.compile(
+        r"\b(?:dict|Dict)\[str,\s*t\.JsonValue\]",
+    )
+    "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
+    DICT_GENERIC_RE: Final[re.Pattern[str]] = re.compile(r"\b(?:dict|Dict)\[")
+    "Regex: opening of any ``dict[...]`` / ``Dict[...]`` annotation."
+    ANCHOR_NON_ALNUM_RE: Final[re.Pattern[str]] = re.compile(r"[^a-z0-9\s-]")
+    "Regex: characters to strip when generating an anchor slug."
+    ANCHOR_WHITESPACE_RE: Final[re.Pattern[str]] = re.compile(r"\s+")
+    "Regex: any run of whitespace (collapsed to single hyphen in anchors)."
+    ANCHOR_DASH_COLLAPSE_RE: Final[re.Pattern[str]] = re.compile(r"-+")
+    "Regex: collapse consecutive hyphens to one in anchor slugs."
+    TOC_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
+        r"<!-- TOC START -->.*?<!-- TOC END -->",
+        re.DOTALL,
+    )
+    "Regex: TOC marker block (start..end), DOTALL."
+    DUNDER_ALL_SINGLE_LINE_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?P<prefix>__all__(?:\s*:\s*[^\n=]+)?\s*=\s*)\[(?P<body>[^\[\]\n]*)\]",
+        re.MULTILINE,
+    )
+    "Regex: single-line ``__all__ = [...]`` declaration."
+    DUNDER_ALL_MULTI_LINE_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?P<prefix>__all__(?:\s*:\s*[^\n=]+)?\s*=\s*)\[(?P<body>[^\[\]]*?)\]",
+        re.MULTILINE | re.DOTALL,
+    )
+    "Regex: multi-line ``__all__ = [...]`` declaration (DOTALL body)."
+    BLANK_LINE_RUN_RE: Final[re.Pattern[str]] = re.compile(r"\n{4,}")
+    "Regex: 4+ consecutive newlines — collapsed to triple newline."
+    LEGACY_TYPEALIAS_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$",
+        re.MULTILINE,
+    )
+    "Regex: legacy ``X: TypeAlias = expr`` (rewritten to PEP 695 ``type X = ...``)."
+    T_IMPORT_RE: Final[re.Pattern[str]] = re.compile(
+        r"^from\s+\S+\s+import\s+.*\bt\b",
+        re.MULTILINE,
+    )
+    "Regex: any ``from X import ... t ...`` line (canonical t import detector)."
+    IMPORT_LINE_ANCHORED_RE: Final[re.Pattern[str]] = re.compile(
+        r"^(?:from\s+\S+\s+import\s+.+|import\s+.+)$",
+        re.MULTILINE,
+    )
+    "Regex: any anchored import line (used to find the insertion offset)."
+    IMPORT_PAREN_CLOSE_RE: Final[re.Pattern[str]] = re.compile(
+        r"^\)\s*$",
+        re.MULTILINE,
+    )
+    "Regex: closing ``)`` of a parenthesized import block, anchored at line start."
+
+    # ── Annotation canonicalization (built-in → t.* alias) ──
+    ANNOTATION_DICT_BRACKET_RE: Final[re.Pattern[str]] = re.compile(
+        r"\b(?:dict|Dict)\[",
+    )
+    "Regex: ``dict[`` or ``Dict[`` annotation prefix (rewrite target ``t.MappingKV[``)."
+    ANNOTATION_LIST_BRACKET_RE: Final[re.Pattern[str]] = re.compile(
+        r"\b(?:list|List)\[",
+    )
+    "Regex: ``list[`` or ``List[`` annotation prefix (rewrite target ``t.SequenceOf[``)."
+    ANNOTATION_TYPING_ANY_RE: Final[re.Pattern[str]] = re.compile(
+        r"\btyping\.Any\b",
+    )
+    "Regex: ``typing.Any`` (rewrite target ``t.JsonValue``)."
+    ANNOTATION_BARE_ANY_RE: Final[re.Pattern[str]] = re.compile(
+        r"(?<![\w.])Any(?![\w(])",
+    )
+    "Regex: bare ``Any`` (not preceded by word/dot, not followed by word/call paren)."
+    ANNOTATION_BARE_OBJECT_RE: Final[re.Pattern[str]] = re.compile(
+        r"(?<=[:[, ])object(?=[\s\],|=)])",
+    )
+    "Regex: ``object`` only when in annotation position (after ``:``, ``[``, ``,``, space)."
+
+    @staticmethod
+    def compile_multiline(pattern: str) -> re.Pattern[str]:
+        """Compile a user-supplied pattern with ``re.MULTILINE`` (centralized)."""
+        return re.compile(pattern, re.MULTILINE)
+
+    @staticmethod
+    def compile_word(name: str) -> re.Pattern[str]:
+        r"""Compile ``\b<escaped name>\b`` for word-boundary matching."""
+        return re.compile(rf"\b{re.escape(name)}\b")
+
+    @staticmethod
+    def compile_bare_reference_rename(name: str) -> re.Pattern[str]:
+        """Compile a "bare reference" pattern excluding imports/defs/assignments."""
+        return re.compile(
+            rf"(?<!import\s)(?<!\.)(?<!class\s)(?<!def\s)"
+            rf"\b{re.escape(name)}\b"
+            rf"(?!\s*=)",
+        )
+
+    @staticmethod
+    def compile_from_module_rename(old_module: str) -> re.Pattern[str]:
+        r"""Compile ``(from )<old_module>(\s+import\s)`` for module rename."""
+        return re.compile(rf"(from\s+){re.escape(old_module)}(\s+import\s)")
+
+    @staticmethod
+    def compile_import_symbol_rename(
+        target_module: str,
+        old_name: str,
+    ) -> re.Pattern[str]:
+        r"""Compile ``(from <target_module> import .*?)\b<old_name>\b`` rename."""
+        return re.compile(
+            rf"(from\s+{re.escape(target_module)}\s+import\s+.*?)"
+            rf"\b{re.escape(old_name)}\b",
+        )
+
+    @staticmethod
+    def compile(pattern: str, *, multiline: bool = False) -> re.Pattern[str]:
+        """Compile an arbitrary pattern (centralized so consumers needn't import re)."""
+        return re.compile(pattern, re.MULTILINE if multiline else 0)
+
+    @staticmethod
+    def compile_class_base_with_generic(name: str) -> re.Pattern[str]:
+        r"""Compile ``<escaped name>(?:\[.*\])?`` for class-base + generic match."""
+        return re.compile(rf"{re.escape(name)}(?:\[.*\])?")
+
+    @staticmethod
+    def compile_keyword_argument(name: str) -> re.Pattern[str]:
+        r"""Compile ``\b<name>\s*=`` to find a keyword-argument occurrence."""
+        return re.compile(rf"\b{re.escape(name)}(\s*=)")
+
+    BARE_ALIAS_LINE_RE: Final[re.Pattern[str]] = re.compile(
+        r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$",
+    )
+    "Regex: ``X = Y`` bare alias on a single stripped line (no leading indent)."
+
+    @staticmethod
+    def compile_helper_call_site(name: str) -> re.Pattern[str]:
+        r"""Compile ``(?<!.)(?<!class )(?<!def )\b<name>\s*\(`` for free-call detection."""
+        return re.compile(
+            rf"(?<!\.)(?<!class\s)(?<!def\s)\b{re.escape(name)}\s*\(",
+        )
+
+    @staticmethod
+    def compile_function_signature(name: str) -> re.Pattern[str]:
+        r"""Compile ``def\s+<name>\s*\(([^)]*)\)`` (DOTALL) for signature capture."""
+        return re.compile(
+            rf"def\s+{re.escape(name)}\s*\(([^)]*)\)",
+            re.DOTALL,
+        )
+
+    @staticmethod
+    def compile_class_header_with_bases_for(name: str) -> re.Pattern[str]:
+        r"""Compile ``^(\s*class\s+<name>)\s*\([^)]*\)\s*:`` (MULTILINE) header capture."""
+        return re.compile(
+            rf"^(\s*class\s+{re.escape(name)})\s*\([^)]*\)\s*:",
+            re.MULTILINE,
+        )
+
+    FLEXT_CORE_DIRECT_SUBMODULE_RE: Final[re.Pattern[str]] = re.compile(
+        r"^from\s+(flext_core\.\S+)\s+import",
+    )
+    "Regex: ``from flext_core.<sub> import`` direct-submodule import (captures full path)."
+
+    @staticmethod
+    def escape(literal: str) -> str:
+        """Escape ``literal`` for inclusion in a regex (centralized re.escape)."""
+        return re.escape(literal)
+
+    @staticmethod
+    def compile_from_module_paren_open(module_name: str) -> re.Pattern[str]:
+        """Compile ``^from <module_name> import (`` for parenthesized-import detection."""
+        return re.compile(rf"^from\s+{re.escape(module_name)}\s+import\s+\(")
+
+    @staticmethod
+    def compile_from_module_import_line(module_name: str) -> re.Pattern[str]:
+        """Compile ``^from <module_name> import .+$`` (MULTILINE) for whole-line replace."""
+        return re.compile(
+            rf"^from\s+{re.escape(module_name)}\s+import\s+.+$",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_class_header_match(class_name: str) -> re.Pattern[str]:
+        r"""Compile ``^class <class_name>\b`` for header equality check."""
+        return re.compile(rf"^class\s+{re.escape(class_name)}\b")
+
+    @staticmethod
+    def compile_class_header_search(class_name: str) -> re.Pattern[str]:
+        r"""Compile ``^class <class_name>\b`` (MULTILINE) for full-source search."""
+        return re.compile(rf"^class\s+{re.escape(class_name)}\b", re.MULTILINE)
+
+    @staticmethod
+    def compile_attr_access(name: str) -> re.Pattern[str]:
+        r"""Compile ``\b<name>\.(\w+)`` for one-level attribute access detection."""
+        return re.compile(rf"\b{re.escape(name)}\.(\w+)")
+
+    @staticmethod
+    def compile_double_attr_access(name: str) -> re.Pattern[str]:
+        r"""Compile ``\b<name>\.(\w+)\.(\w+)`` for two-level attribute access."""
+        return re.compile(rf"\b{re.escape(name)}\.(\w+)\.(\w+)")
+
+    @staticmethod
+    def compile_from_import_paren_open(module_name: str) -> re.Pattern[str]:
+        """Compile ``from <module_name> import (`` (no anchor) — used on stripped lines."""
+        return re.compile(rf"from\s+{re.escape(module_name)}\s+import\s*\(")
+
+    FROM_IMPORT_CAPTURE_PAREN_OPEN_RE: Final[re.Pattern[str]] = re.compile(
+        r"from\s+([\w.]+)\s+import\s*\(",
+    )
+    "Regex: ``from <module> import (`` capturing the module name."
+
+    @staticmethod
+    def compile_mro_import_rewrite(
+        module_name: str,
+        old_symbol: str,
+    ) -> re.Pattern[str]:
+        r"""Compile ``(from <module> import )(\b<old>\b)`` — captures both groups."""
+        return re.compile(
+            rf"(from\s+{re.escape(module_name)}\s+import\s+)"
+            rf"(\b{re.escape(old_symbol)}\b)"
+        )
+
+    @staticmethod
+    def compile_mro_bare_qualify(old_symbol: str) -> re.Pattern[str]:
+        """Compile bare-symbol qualification pattern for MRO propagator (excludes def/class/import/dot/assign/call)."""
+        escaped = re.escape(old_symbol)
+        return re.compile(
+            rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
+            rf"\b{escaped}\b"
+            rf"(?!\s*[=:](?!=))(?!\s*\()"
+        )
+
+    @staticmethod
+    def compile_mro_prefixed_annotation(
+        prefix: str,
+        old_symbol: str,
+    ) -> re.Pattern[str]:
+        r"""Compile ``(<prefix>[ \t]*)\b<old>\b`` for annotation-prefixed qualification."""
+        escaped_prefix = re.escape(prefix)
+        return re.compile(rf"({escaped_prefix}[ \t]*)\b{re.escape(old_symbol)}\b")
+
+    @staticmethod
+    def compile_import_namespace_rewrite(old_name: str) -> re.Pattern[str]:
+        r"""Compile ``(from <mod> import (?:.*?,\s*)?)\b<old>\b((?:\s*,.*)?)`` for namespace import rewrite."""
+        return re.compile(
+            rf"(from\s+\S+\s+import\s+(?:.*?,\s*)?)"
+            rf"\b{re.escape(old_name)}\b"
+            rf"((?:\s*,.*)?)",
+        )
+
+    @staticmethod
+    def compile_import_alias_finder(old_name: str) -> re.Pattern[str]:
+        r"""Compile ``from <mod> import [^\n]*\b<old>\b\s+as\s+(\w+)`` to find alias bindings."""
+        return re.compile(
+            rf"from\s+\S+\s+import\s+[^\n]*\b{re.escape(old_name)}\b\s+as\s+"
+            rf"([A-Za-z_]\w*)",
+        )
+
+    @staticmethod
+    def compile_bare_qualify_allowing_call(old_name: str) -> re.Pattern[str]:
+        r"""Compile bare-symbol qualification pattern allowing call sites (no ``(?!\s*\()``)."""
+        escaped = re.escape(old_name)
+        return re.compile(
+            rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
+            rf"\b{escaped}\b"
+            rf"(?!\s*[=:](?!=))",
+        )
+
+    @staticmethod
+    def compile_alias_qualify(alias_name: str) -> re.Pattern[str]:
+        """Compile bare-alias qualification pattern (excludes def/class/import/dot/assign and ``as``)."""
+        escaped = re.escape(alias_name)
+        return re.compile(
+            rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)(?<!as\s)"
+            rf"\b{escaped}\b"
+            rf"(?!\s*[=:](?!=))",
+        )
+
+    @staticmethod
+    def compile_assign_or_annotation_start(name: str) -> re.Pattern[str]:
+        r"""Compile ``^<name>\s*(:|==?)\s*`` for line-start annotation/assignment match."""
+        return re.compile(rf"^{re.escape(name)}\s*(:|==?)\s*")
+
+    @staticmethod
+    def compile_facade_alias_assignment(
+        family_alias: str,
+        class_suffix: str,
+    ) -> re.Pattern[str]:
+        r"""Compile ``^<alias>\s*=\s*([A-Za-z_]\w*<suffix>)\b`` (MULTILINE) for facade-alias detection."""
+        return re.compile(
+            rf"^{re.escape(family_alias)}\s*=\s*([A-Za-z_]\w*{re.escape(class_suffix)})\b",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_class_with_suffix(class_suffix: str) -> re.Pattern[str]:
+        r"""Compile ``^class\s+([A-Za-z_]\w*<suffix>)\b`` (MULTILINE) for class-header detection."""
+        return re.compile(
+            rf"^class\s+([A-Za-z_]\w*{re.escape(class_suffix)})\b",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_class_header_with_bases(name: str) -> re.Pattern[str]:
+        r"""Compile ``^class\s+<name>(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:`` to capture bases."""
+        return re.compile(
+            rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:",
+        )
+
+    @staticmethod
+    def compile_attribute_qualify(old_name: str) -> re.Pattern[str]:
+        r"""Compile ``(\w+)\.\b<old>\b`` to qualify attribute-style references."""
+        return re.compile(rf"(\w+)\.\b{re.escape(old_name)}\b")
+
+    @staticmethod
+    def compile_function_def_block(name: str) -> re.Pattern[str]:
+        """Compile a regex matching the full def block of ``name`` (with decorators)."""
+        return re.compile(
+            rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
+            rf"def\s+{re.escape(name)}\s*\([^)]*\)[^\n]*\n"
+            rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_class_def_block(name: str) -> re.Pattern[str]:
+        """Compile a regex matching the full class block of ``name`` (with decorators)."""
+        return re.compile(
+            rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
+            rf"class\s+{re.escape(name)}\b[^\n]*\n"
+            rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_function_def_remove(name: str) -> re.Pattern[str]:
+        """Compile a regex matching the def block of ``name`` for removal (no outer capture)."""
+        return re.compile(
+            rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
+            rf"def\s+{re.escape(name)}\s*\([^)]*\)[^\n]*\n"
+            rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*",
+            re.MULTILINE,
+        )
+
+    @staticmethod
+    def compile_class_def_remove(name: str) -> re.Pattern[str]:
+        """Compile a regex matching the class block of ``name`` for removal (no outer capture)."""
+        return re.compile(
+            rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
+            rf"class\s+{re.escape(name)}\b[^\n]*\n"
+            rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*",
+            re.MULTILINE,
+        )
+
+    # --- Single-line patterns shared across consumers ---
+    CLASS_HEADER_ANY_RE: Final[re.Pattern[str]] = re.compile(r"^class\s+\w+")
+    "Regex: any class header at start of line (no MULTILINE — matches single line)."
+    DUNDER_ALL_DECL_RE: Final[re.Pattern[str]] = re.compile(r"^__all__\s*:")
+    "Regex: ``__all__: ...`` declaration line."
+    MODULE_ALIAS_RE: Final[re.Pattern[str]] = re.compile(
+        r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$",
+    )
+    "Regex: module-level ``X = Y`` identity-alias line."
+    MODULE_ASSIGNMENT_RE: Final[re.Pattern[str]] = re.compile(
+        r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$",
+    )
+    "Regex: module-level ``X [: T] = value`` assignment (captures name, value)."
+    CAST_CALL_RE: Final[re.Pattern[str]] = re.compile(
+        r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)",
+    )
+    "Regex: ``cast(Type, value)`` call — captures the value to retain."
+    AS_KEYWORD_RE: Final[re.Pattern[str]] = re.compile(r"\s+as\s+")
+    "Regex: ``<sp>as<sp>`` keyword for splitting import-as forms."
+    FROM_IMPORT_SIMPLE_RE: Final[re.Pattern[str]] = re.compile(
+        r"^from\s+([\w.]+)\s+import\s+(.+?)$",
+        re.MULTILINE,
+    )
+    "Regex: simple from-import line (no trailing-comment strip)."
+    FROM_IMPORT_LINE_TRIM_RE: Final[re.Pattern[str]] = re.compile(
+        r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$",
+    )
+    "Regex: from-import line with optional trailing comment (no anchor)."
+
+    # --- Pytest log parsing patterns ---
+    PYTEST_SLOWEST_HEADER_RE: Final[re.Pattern[str]] = re.compile(
+        r"^=+ slowest durations =+",
+    )
+    "Regex: pytest 'slowest durations' section header."
+    PYTEST_SECTION_DIVIDER_RE: Final[re.Pattern[str]] = re.compile(r"^=+")
+    "Regex: pytest section divider line (``===...``)."
+    PYTEST_WARNINGS_HEADER_RE: Final[re.Pattern[str]] = re.compile(
+        r"^=+ warnings summary =+",
+    )
+    "Regex: pytest 'warnings summary' section header."
+    PYTEST_DOCS_FOOTER_RE: Final[re.Pattern[str]] = re.compile(
+        r"^-- Docs: https://docs.pytest.org/",
+    )
+    "Regex: pytest warnings-section docs footer."
+    PYTEST_KNOWN_WARNINGS_RE: Final[re.Pattern[str]] = re.compile(
+        r"CoverageWarning|PytestCollectionWarning|DeprecationWarning|UserWarning|RuntimeWarning",
+    )
+    "Regex: known pytest warning class names."
+    PYTEST_FAILED_LINE_RE: Final[re.Pattern[str]] = re.compile(
+        r"(^FAILED |::.* FAILED( |$))",
+    )
+    "Regex: pytest FAILED status line."
+    PYTEST_SKIPPED_LINE_RE: Final[re.Pattern[str]] = re.compile(
+        r"(^SKIPPED |::.* SKIPPED( |$))",
+    )
+    "Regex: pytest SKIPPED status line."
+    PYTEST_FAILURES_OR_ERRORS_RE: Final[re.Pattern[str]] = re.compile(
+        r"^=+ (FAILURES|ERRORS) =+",
+    )
+    "Regex: pytest FAILURES/ERRORS section header."
+    PYTEST_BLOCK_END_RE: Final[re.Pattern[str]] = re.compile(
+        r"^=+ (short test summary info|warnings summary|.+ in [0-9.]+s) =+",
+    )
+    "Regex: pytest block-end markers (summary/warnings/timing)."
 
     DEFAULT_CHECK_DIRS: Final[t.StrSequence] = (
         "src",

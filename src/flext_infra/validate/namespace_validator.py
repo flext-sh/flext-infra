@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from flext_infra import (
@@ -114,7 +113,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         self,
         rope_project: t.Infra.RopeProject,
         path: Path,
-    ) -> p.Result[ast.Module]:
+    ) -> p.Result[object]:
         """Return the AST module for ``path`` via rope.
 
         ``r.ok(module)`` on success. ``r.fail(reason)`` when the resource
@@ -125,19 +124,19 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         try:
             resource = u.Infra.fetch_python_resource(rope_project, path)
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.Module].fail(f"fetch_python_resource raised: {exc!s}")
+            return r[object].fail(f"fetch_python_resource raised: {exc!s}")
         if resource is None:
-            return r[ast.Module].fail(f"no rope resource for {path}")
+            return r[object].fail(f"no rope resource for {path}")
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.Module].fail(f"get_pymodule raised: {exc!s}")
+            return r[object].fail(f"get_pymodule raised: {exc!s}")
         if pymodule is None:
-            return r[ast.Module].fail(f"rope returned no pymodule for {path}")
+            return r[object].fail(f"rope returned no pymodule for {path}")
         ast_module = pymodule.get_ast()
         if ast_module is None:
-            return r[ast.Module].fail(f"pymodule has no AST for {path}")
-        return r[ast.Module].ok(ast_module)
+            return r[object].fail(f"pymodule has no AST for {path}")
+        return r[object].ok(ast_module)
 
     def _is_namespace_governed_file(self, rel_path: Path) -> bool:
         """Return whether NS-000/001/002 structural rules apply to this file."""

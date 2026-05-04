@@ -7,6 +7,9 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        ".test_infra_refactor_census_preview_cache": (
+            "TestsFlextInfraRefactorCensusPreviewCache",
+        ),
         ".test_infra_refactor_class_and_propagation": (
             "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
         ),

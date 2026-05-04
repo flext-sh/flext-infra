@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import (
     Mapping,
 )
@@ -10,6 +9,7 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeHelpers,
     c,
@@ -89,77 +89,31 @@ class FlextInfraUtilitiesDocsApi:
         exports: t.StrSequence,
     ) -> t.StrMapping:
         """Resolve exported symbols to their defining import modules when possible."""
-        export_names = {name for name in exports if name}
-        target_map: dict[str, str] = dict.fromkeys(export_names, package_name)
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            return target_map
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.ImportFrom) or not node.module:
-                continue
-            if node.names[0].name == "*":
-                continue
-            module_name = node.module
-            if node.level:
-                module_name = f"{package_name}.{module_name}"
-            for alias in node.names:
-                export_name = alias.asname or alias.name
-                if export_name in export_names:
-                    target_map[export_name] = module_name
-        return target_map
+        return FlextInfraUtilitiesRopeAnalysis.export_target_modules_source(
+            source,
+            package_name,
+            exports,
+        )
 
     @staticmethod
     def _has_module_docstring(source: str) -> bool:
         """Return whether source starts with a module docstring."""
-        try:
-            return ast.get_docstring(ast.parse(source)) is not None
-        except SyntaxError:
-            return False
+        return FlextInfraUtilitiesRopeAnalysis.module_has_docstring_source(source)
 
     @staticmethod
     def _assignment_docstrings(source: str) -> set[str]:
         """Return assignment names followed by a literal docstring expression."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return set()
-        documented: set[str] = set()
-        body = module.body
-        for index, node in enumerate(body[:-1]):
-            next_node = body[index + 1]
-            if not (
-                isinstance(next_node, ast.Expr)
-                and isinstance(next_node.value, ast.Constant)
-                and isinstance(next_node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name):
-                        documented.add(target.id)
-                continue
-            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                documented.add(node.target.id)
-                continue
-            if isinstance(node, ast.TypeAlias):
-                documented.add(node.name.id)
-        return documented
+        return set(
+            FlextInfraUtilitiesRopeAnalysis.assignment_docstrings_source(source),
+        )
 
     @staticmethod
     def _has_symbol_docstring(source: str, symbol_name: str) -> bool:
         """Return whether one exported class/function starts with a docstring."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return False
-        for node in module.body:
-            if (
-                isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
-                and node.name == symbol_name
-            ):
-                return ast.get_docstring(node) is not None
-        return symbol_name in FlextInfraUtilitiesDocsApi._assignment_docstrings(source)
+        return FlextInfraUtilitiesRopeAnalysis.symbol_has_docstring_source(
+            source,
+            symbol_name,
+        )
 
     @staticmethod
     def _project_keywords(

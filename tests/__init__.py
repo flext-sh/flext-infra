@@ -12,9 +12,8 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import td, tf, tk, tm, tv
+    from flext_tests import d, e, h, r, s, td, tf, tk, tm, tv, x
 
-    from flext_infra import d, e, h, r, s, x
     from tests.constants import TestsFlextInfraConstants, c
     from tests.integration.test_infra_integration import (
         TestsFlextInfraIntegrationInfraIntegration,
@@ -271,6 +270,9 @@ if _t.TYPE_CHECKING:
     from tests.unit.io.test_infra_terminal_detection import (
         TestsFlextInfraIoInfraTerminalDetection,
     )
+    from tests.unit.refactor.test_infra_refactor_census_preview_cache import (
+        TestsFlextInfraRefactorCensusPreviewCache,
+    )
     from tests.unit.refactor.test_infra_refactor_class_and_propagation import (
         TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
     )
@@ -346,6 +348,7 @@ if _t.TYPE_CHECKING:
     )
     from tests.unit.test_infra_reporting_core import TestsFlextInfraInfraReportingCore
     from tests.unit.test_infra_reporting_extra import TestsFlextInfraInfraReportingExtra
+    from tests.unit.test_infra_rope_imports import TestsFlextInfraRopeImports
     from tests.unit.test_infra_rope_service import TestsFlextInfraInfraRopeService
     from tests.unit.test_infra_selection import TestsFlextInfraInfraSelection
     from tests.unit.test_infra_typings import TestsFlextInfraInfraTypings
@@ -673,6 +676,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.io.test_infra_terminal_detection": (
                 "TestsFlextInfraIoInfraTerminalDetection",
             ),
+            ".unit.refactor.test_infra_refactor_census_preview_cache": (
+                "TestsFlextInfraRefactorCensusPreviewCache",
+            ),
             ".unit.refactor.test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
             ),
@@ -748,6 +754,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".unit.test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
             ".unit.test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
+            ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
             ".unit.test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
             ".unit.test_infra_selection": ("TestsFlextInfraInfraSelection",),
             ".unit.test_infra_typings": ("TestsFlextInfraInfraTypings",),
@@ -799,20 +806,18 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_infra": (
+            "flext_tests": (
                 "d",
                 "e",
                 "h",
                 "r",
                 "s",
-                "x",
-            ),
-            "flext_tests": (
                 "td",
                 "tf",
                 "tk",
                 "tm",
                 "tv",
+                "x",
             ),
         },
     ),
@@ -983,6 +988,7 @@ __all__: list[str] = [
     "TestsFlextInfraModels",
     "TestsFlextInfraModernizerPyrefly",
     "TestsFlextInfraProtocols",
+    "TestsFlextInfraRefactorCensusPreviewCache",
     "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
     "TestsFlextInfraRefactorInfraRefactorClassPlacement",
     "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
@@ -1003,6 +1009,7 @@ __all__: list[str] = [
     "TestsFlextInfraRefactorRopeSemantic",
     "TestsFlextInfraRefactorRopeStubs",
     "TestsFlextInfraReleaseDag",
+    "TestsFlextInfraRopeImports",
     "TestsFlextInfraTransformersInfraTransformerClassNesting",
     "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",

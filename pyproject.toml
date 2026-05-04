@@ -192,7 +192,7 @@ disable_error_code = [
   "prop-decorator",
   "valid-type",
 ]
-exclude = "^tests/fixtures(?:/|$)"
+exclude = "^(?:tests/fixtures|tmp_flow_test)(?:/|$)"
 explicit_package_bases = true
 extra_checks = true
 follow_imports = "normal"

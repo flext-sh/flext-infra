@@ -27,7 +27,7 @@ knew about these nodes:
 
 from __future__ import annotations
 
-import ast
+import ast  # Why: documented SSOT — this module patches rope internals that take ast.AST nodes as parameters; ast import is intrinsic to the patch's purpose.
 from typing import TYPE_CHECKING, ClassVar
 
 from rope.refactor import patchedast

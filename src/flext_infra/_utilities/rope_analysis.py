@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast as _ast
 import importlib.util as _importlib_util
 from typing import TYPE_CHECKING, ClassVar
 
@@ -15,12 +14,15 @@ from rope.base.pynamesdef import AssignedName as RopeAssignedName
 from flext_infra import FlextInfraUtilitiesRopeCore, c, m
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeAnalysis:
     """Rope-backed semantic analysis helpers."""
 
+    _parse_project: ClassVar[t.Infra.RopeProject | None] = None
     _SEMANTIC_STATE_CACHE: ClassVar[
         dict[tuple[str, str, int], m.Infra.ModuleSemanticState]
     ] = {}
@@ -82,67 +84,16 @@ class FlextInfraUtilitiesRopeAnalysis:
             return module_name
 
     @staticmethod
-    def _root_name(expr: _ast.expr) -> str:
-        """Root name."""
-        match expr:
-            case _ast.Name(id=name):
-                return name
-            case _ast.Attribute(value=value):
-                return FlextInfraUtilitiesRopeAnalysis._root_name(value)
-            case _ast.Subscript(value=value):
-                return FlextInfraUtilitiesRopeAnalysis._root_name(value)
-            case _ast.Call(func=func):
-                return FlextInfraUtilitiesRopeAnalysis._root_name(func)
-            case _:
-                return ""
-
-    @staticmethod
-    def _target_names(target: _ast.expr) -> tuple[str, ...]:
-        """Target names."""
-        match target:
-            case _ast.Name(id=name):
-                return (name,)
-            case _ast.Tuple(elts=elts) | _ast.List(elts=elts):
-                return tuple(
-                    name
-                    for item in elts
-                    for name in FlextInfraUtilitiesRopeAnalysis._target_names(item)
-                )
-            case _:
-                return ()
-
-    @staticmethod
-    def _explicit_all_from_node(
-        node: _ast.Assign | _ast.AnnAssign,
-    ) -> t.StrSequence | None:
-        """Explicit all from node."""
-        targets = node.targets if isinstance(node, _ast.Assign) else (node.target,)
-        if c.Infra.DUNDER_ALL not in {
-            name
-            for target in targets
-            for name in FlextInfraUtilitiesRopeAnalysis._target_names(target)
-        }:
-            return None
-        if node.value is None:
-            return None
-        try:
-            value = _ast.literal_eval(node.value)
-        except (ValueError, TypeError, SyntaxError):
-            return None
-        items: list[str] | tuple[str, ...]
-        match value:
-            case list() | tuple():
-                items = value
-            case _:
-                return None
-        return tuple(items)
-
-    @staticmethod
     def get_module_semantic_state(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> m.Infra.ModuleSemanticState:
-        """Return local classes plus declared and semantic imports in one pass."""
+        """Return local classes plus declared and semantic imports in one pass.
+
+        Uses rope's ``PyModule.get_attributes()`` for class discovery and
+        ``rope.refactor.importutils.get_module_imports`` for import-table
+        construction — no ``ast`` walking is performed.
+        """
         cache_key = FlextInfraUtilitiesRopeAnalysis._resource_cache_key(
             rope_project,
             resource,
@@ -158,73 +109,74 @@ class FlextInfraUtilitiesRopeAnalysis:
                 rope_project,
                 resource,
             )
-            module_ast = pymodule.get_ast()
-            attributes = pymodule.get_attributes()
             current_package = FlextInfraUtilitiesRopeAnalysis._package_name_for_module(
                 pymodule.get_name(),
                 resource,
             )
-            for node in module_ast.body:
-                match node:
-                    case _ast.ClassDef(name=name, lineno=line):
-                        base_names: tuple[str, ...] = ()
-                        pyname = attributes.get(name)
-                        if pyname is not None:
-                            obj = pyname.get_object()
-                            if isinstance(
-                                obj,
-                                FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES,
-                            ):
-                                base_names = tuple(
-                                    superclass.get_name()
-                                    for superclass in obj.get_superclasses()
-                                    if superclass.get_name()
-                                )
-                        class_infos.append(
-                            m.Infra.ClassInfo(
-                                name=name,
-                                line=line,
-                                bases=base_names,
-                            ),
-                        )
-                    case _ast.Import(names=aliases):
-                        for alias in aliases:
-                            local_name = alias.asname or alias.name.partition(".")[0]
-                            if not local_name:
-                                continue
-                            declared_imports[local_name] = alias.name
-                            semantic_imports[local_name] = alias.name
-                    case _ast.ImportFrom(
-                        module=module_name, names=aliases, level=level
-                    ):
-                        resolved_module = (
-                            FlextInfraUtilitiesRopeAnalysis._resolve_import_module(
-                                current_package=current_package,
-                                module_name=module_name or "",
-                                level=level,
-                            )
-                        )
-                        for alias in aliases:
-                            if alias.name == "*":
-                                continue
-                            local_name = alias.asname or alias.name
-                            target = (
-                                f"{resolved_module}.{alias.name}"
-                                if resolved_module
-                                else alias.name
-                            )
-                            declared_imports[local_name] = target
-                            semantic_imports[local_name] = target
-                    case _:
-                        continue
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
-            state = m.Infra.ModuleSemanticState(
-                class_infos=tuple(class_infos),
-                declared_imports=declared_imports,
-                semantic_imports=semantic_imports,
+            for name, pyname in pymodule.get_attributes().items():
+                if not FlextInfraUtilitiesRopeAnalysis._is_local_name(
+                    pyname,
+                    resource,
+                ):
+                    continue
+                obj = pyname.get_object()
+                if not isinstance(
+                    obj,
+                    FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES,
+                ):
+                    continue
+                location = pyname.get_definition_location()
+                line = location[1] if location and location[1] else 1
+                bases = tuple(
+                    superclass.get_name()
+                    for superclass in obj.get_superclasses()
+                    if superclass.get_name()
+                )
+                class_infos.append(
+                    m.Infra.ClassInfo(name=name, line=line, bases=bases),
+                )
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project,
+                resource,
             )
-            FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE[cache_key] = state
-            return state
+            raw_imports = (
+                getattr(module_imports, "imports", ())
+                if module_imports is not None
+                else ()
+            )
+            import_stmts: tuple[t.Infra.RopeImportStatement, ...] = tuple(raw_imports)
+            for import_stmt in import_stmts:
+                info = import_stmt.import_info
+                module_name = getattr(info, "module_name", "") or ""
+                level = getattr(info, "level", 0) or 0
+                resolved_module = (
+                    FlextInfraUtilitiesRopeAnalysis._resolve_import_module(
+                        current_package=current_package,
+                        module_name=module_name,
+                        level=level,
+                    )
+                    if module_name
+                    else ""
+                )
+                for alias_name, alias_as in info.names_and_aliases:
+                    if alias_name == "*":
+                        continue
+                    if module_name:
+                        local_name = alias_as or alias_name
+                        target = (
+                            f"{resolved_module}.{alias_name}"
+                            if resolved_module
+                            else alias_name
+                        )
+                    else:
+                        local_name = alias_as or alias_name.partition(".")[0]
+                        target = alias_name
+                    if not local_name:
+                        continue
+                    declared_imports[local_name] = target
+                    semantic_imports[local_name] = target
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            pass
         state = m.Infra.ModuleSemanticState(
             class_infos=tuple(class_infos),
             declared_imports=declared_imports,
@@ -367,6 +319,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                         explicit_all = (
                             FlextInfraUtilitiesRopeAnalysis._explicit_all_names(
                                 explicit_all_name,
+                                pymodule,
                             )
                         )
                     if explicit_all is not None:
@@ -436,19 +389,23 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _explicit_all_names(
         pyname: t.Infra.RopeAssignedName,
+        pymodule: t.Infra.RopePyModule,
     ) -> t.StrSequence | None:
-        """Return literal string names assigned to ``__all__`` via Rope metadata."""
-        names: t.MutableSequenceOf[str] = []
+        """Return literal ``__all__`` names from a Rope-cached source slice.
+
+        Reads the assignment's source range via the module's ``source_code``
+        and extracts string literals with ``c.Infra.STRING_LITERAL_RE`` —
+        avoiding ``ast`` walking entirely.
+        """
         for assignment in pyname.assignments:
             node = assignment.ast_node
-            if not isinstance(node, _ast.List | _ast.Tuple):
+            start = getattr(node, "lineno", None)
+            end = getattr(node, "end_lineno", None) or start
+            if start is None:
                 continue
-            names.extend(
-                item.value
-                for item in node.elts
-                if isinstance(item, _ast.Constant) and isinstance(item.value, str)
-            )
-            return tuple(dict.fromkeys(names))
+            lines = pymodule.source_code.splitlines()
+            slice_text = "\n".join(lines[start - 1 : end])
+            return tuple(dict.fromkeys(c.Infra.STRING_LITERAL_RE.findall(slice_text)))
         return None
 
     @staticmethod
@@ -463,6 +420,242 @@ class FlextInfraUtilitiesRopeAnalysis:
         module, line = location
         origin = module.get_resource() if module is not None else None
         return line is not None and origin is not None and origin.path == resource.path
+
+    @staticmethod
+    def is_imported_name(pyname: t.Infra.RopePyName) -> bool:
+        """Return whether a rope ``PyName`` is an ``ImportedName``."""
+        return isinstance(pyname, RopeImportedName)
+
+    @staticmethod
+    def is_pyclass(obj: object) -> bool:
+        """Return whether a rope object is a ``PyClass`` (abstract class type)."""
+        return isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES)
+
+    @staticmethod
+    def is_pyfunction(obj: object) -> bool:
+        """Return whether a rope object is a ``PyFunction``."""
+        return isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES)
+
+    @staticmethod
+    def module_has_docstring_source(source: str) -> bool:
+        """Return whether ``source`` starts with a module docstring (rope-parsed)."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return False
+        try:
+            return bool(pymodule.get_doc())
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return False
+
+    @staticmethod
+    def symbol_has_docstring_source(source: str, symbol_name: str) -> bool:
+        """Return whether ``symbol_name`` in ``source`` carries a docstring (rope-parsed)."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return False
+        try:
+            pyname = pymodule.get_attributes().get(symbol_name)
+            if pyname is None:
+                return False
+            return bool(pyname.get_object().get_doc())
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return False
+
+    @staticmethod
+    def assignment_docstrings_source(source: str) -> t.StrSequence:
+        """Return assignment names followed by a string-literal expression (rope-parsed).
+
+        Iterates the parsed module's body via ``_fields`` access and pairs each
+        ``Assign``/``AnnAssign`` target with the next sibling ``Expr(Constant(str))``.
+        """
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return ()
+        module_ast = pymodule.get_ast()
+        body = getattr(module_ast, "body", []) or []
+        names: list[str] = []
+        previous_targets: list[str] = []
+        for statement in body:
+            kind = FlextInfraUtilitiesRopeAnalysis.node_kind(statement)
+            if kind in {"Assign", "AnnAssign"}:
+                previous_targets = (
+                    FlextInfraUtilitiesRopeAnalysis._statement_target_names(
+                        statement,
+                    )
+                )
+                continue
+            if kind == "Expr" and previous_targets:
+                value = getattr(statement, "value", None)
+                if (
+                    value is not None
+                    and FlextInfraUtilitiesRopeAnalysis.node_kind(value) == "Constant"
+                    and isinstance(getattr(value, "value", None), str)
+                ):
+                    names.extend(previous_targets)
+            previous_targets = []
+        return tuple(dict.fromkeys(names))
+
+    @staticmethod
+    def _statement_target_names(statement: object) -> list[str]:
+        """Extract target names from an Assign/AnnAssign statement."""
+        kind = FlextInfraUtilitiesRopeAnalysis.node_kind(statement)
+        if kind == "AnnAssign":
+            target = getattr(statement, "target", None)
+            name = getattr(target, "id", "") if target is not None else ""
+            return [name] if name else []
+        targets = getattr(statement, "targets", []) or []
+        names: list[str] = []
+        for target in targets:
+            name = getattr(target, "id", "")
+            if isinstance(name, str) and name:
+                names.append(name)
+        return names
+
+    @staticmethod
+    def export_target_modules_source(
+        source: str,
+        package_name: str,
+        exports: t.StrSequence,
+    ) -> dict[str, str]:
+        """Map exports → defining module via rope's parsed-source import table."""
+        export_names = {name for name in exports if name}
+        target_map: dict[str, str] = dict.fromkeys(export_names, package_name)
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return target_map
+        module_ast = pymodule.get_ast()
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
+            kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
+            if kind == "ImportFrom":
+                module_name = getattr(node, "module", "") or ""
+                names = getattr(node, "names", []) or []
+                for alias in names:
+                    local = getattr(alias, "asname", None) or getattr(alias, "name", "")
+                    if isinstance(local, str) and local in export_names and module_name:
+                        target_map[local] = module_name
+            elif kind == "Import":
+                names = getattr(node, "names", []) or []
+                for alias in names:
+                    raw_name = getattr(alias, "name", "") or ""
+                    local = getattr(alias, "asname", None) or raw_name.partition(".")[0]
+                    if isinstance(local, str) and local in export_names and raw_name:
+                        module_name = (
+                            raw_name.rsplit(".", maxsplit=1)[0]
+                            if "." in raw_name
+                            else raw_name
+                        )
+                        target_map[local] = module_name
+        return target_map
+
+    @staticmethod
+    def parse_string_module(source: str) -> t.Infra.RopePyModule | None:
+        """Parse ``source`` to a rope ``PyModule`` via a shared parsing project.
+
+        Uses rope's ``pycore.get_string_module`` so callers don't need to
+        manage temporary files. Returns ``None`` on parse failure.
+        """
+        rope_project = FlextInfraUtilitiesRopeAnalysis._shared_parse_project()
+        get_string_module = getattr(rope_project.pycore, "get_string_module", None)
+        if get_string_module is None:
+            return None
+        try:
+            pymodule = get_string_module(source)
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return None
+        return pymodule if isinstance(pymodule, type(pymodule)) else None
+
+    @staticmethod
+    def _shared_parse_project() -> t.Infra.RopeProject:
+        """Return a process-wide rope project usable for string parsing."""
+        cached = FlextInfraUtilitiesRopeAnalysis._parse_project
+        if cached is None:
+            from pathlib import Path  # noqa: PLC0415  # lazy to avoid circular import
+
+            cached = FlextInfraUtilitiesRopeCore.init_rope_project(
+                Path("/home/marlonsc/flext"),
+            )
+            FlextInfraUtilitiesRopeAnalysis._parse_project = cached
+        return cached
+
+    @staticmethod
+    def decorator_names(pyfunction: object) -> t.StrSequence:
+        """Extract decorator names from a rope ``PyFunction`` (no ast import)."""
+        decorators = getattr(pyfunction, "decorators", None) or ()
+        names: list[str] = []
+        for decorator in decorators:
+            name = getattr(decorator, "id", None) or getattr(decorator, "attr", None)
+            if isinstance(name, str) and name:
+                names.append(name)
+                continue
+            func = getattr(decorator, "func", None)
+            inner = getattr(func, "id", None) or getattr(func, "attr", None)
+            if isinstance(inner, str) and inner:
+                names.append(inner)
+        return names
+
+    @staticmethod
+    def first_decorator_line(pyfunction: object, *, default_line: int) -> int:
+        """Return the lowest line number among ``pyfunction``'s decorators."""
+        decorators = getattr(pyfunction, "decorators", None) or ()
+        candidate_lines = [
+            decorator.lineno
+            for decorator in decorators
+            if isinstance(getattr(decorator, "lineno", None), int)
+        ]
+        return min(candidate_lines) if candidate_lines else default_line
+
+    @staticmethod
+    def node_kind(node: object) -> str:
+        """Return an AST node's class name (e.g. ``"AnnAssign"``) without importing ast."""
+        return type(node).__name__
+
+    @staticmethod
+    def walk_ast_nodes(root: object) -> t.SequenceOf[object]:
+        """Recursively yield every AST node reachable from ``root`` via ``_fields``.
+
+        Equivalent to ``ast.walk`` but uses only public attribute access on
+        rope-provided AST objects, so no ``import ast`` is needed at the
+        consumer layer.
+        """
+        collected: list[object] = []
+        stack: list[object] = [root]
+        while stack:
+            node = stack.pop()
+            collected.append(node)
+            for field_name in getattr(node, "_fields", ()):
+                value = getattr(node, field_name, None)
+                if isinstance(value, list):
+                    stack.extend(item for item in value if hasattr(item, "_fields"))
+                elif hasattr(value, "_fields"):
+                    stack.append(value)
+        return collected
+
+    @staticmethod
+    def name_of(node: object) -> str:
+        """Return ``node.id`` (Name) or ``node.attr`` (Attribute) or ``""``."""
+        identifier = getattr(node, "id", None)
+        if isinstance(identifier, str) and identifier:
+            return identifier
+        attr = getattr(node, "attr", None)
+        if isinstance(attr, str) and attr:
+            return attr
+        return ""
+
+    @staticmethod
+    def line_col_range(node: object) -> tuple[int, int, int, int] | None:
+        """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node."""
+        lineno = getattr(node, "lineno", None)
+        col_offset = getattr(node, "col_offset", None)
+        end_lineno = getattr(node, "end_lineno", None) or lineno
+        end_col_offset = getattr(node, "end_col_offset", None) or col_offset
+        if not (
+            isinstance(lineno, int)
+            and isinstance(col_offset, int)
+            and isinstance(end_lineno, int)
+            and isinstance(end_col_offset, int)
+        ):
+            return None
+        return (lineno, col_offset, end_lineno, end_col_offset)
 
     @staticmethod
     def get_class_info(
@@ -546,6 +739,157 @@ class FlextInfraUtilitiesRopeAnalysis:
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return result
+
+    # ------------------------------------------------------------------
+    # Path-based rope queries for consumers that previously called
+    # ``ast.parse`` on file contents. Each method opens (and closes) a
+    # rope project, fetches the cached ``PyModule``, and returns a
+    # consumer-shaped result via rope's ``PyObject`` API — no ``ast``
+    # parsing, walking, or pattern matching is performed.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _open_pymodule(
+        project_root: Path,
+        file_path: Path,
+    ) -> tuple[t.Infra.RopePyModule, t.Infra.RopeProject] | None:
+        """Open a rope project and resolve ``file_path`` to a ``PyModule``."""
+        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project_root)
+        resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
+            rope_project,
+            file_path,
+        )
+        if resource is None:
+            rope_project.close()
+            return None
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
+        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            rope_project.close()
+            return None
+        return pymodule, rope_project
+
+    @classmethod
+    def module_has_docstring(cls, project_root: Path, file_path: Path) -> bool:
+        """Return whether ``file_path``'s module carries a docstring (rope)."""
+        opened = cls._open_pymodule(project_root, file_path)
+        if opened is None:
+            return False
+        pymodule, rope_project = opened
+        try:
+            return bool(pymodule.get_doc())
+        finally:
+            rope_project.close()
+
+    @classmethod
+    def symbol_has_docstring(
+        cls,
+        project_root: Path,
+        file_path: Path,
+        symbol_name: str,
+    ) -> bool:
+        """Return whether ``symbol_name`` carries a docstring via rope."""
+        opened = cls._open_pymodule(project_root, file_path)
+        if opened is None:
+            return False
+        pymodule, rope_project = opened
+        try:
+            pyname = pymodule.get_attributes().get(symbol_name)
+            if pyname is None:
+                return False
+            return bool(pyname.get_object().get_doc())
+        finally:
+            rope_project.close()
+
+    @classmethod
+    def export_target_modules(
+        cls,
+        project_root: Path,
+        file_path: Path,
+        package_name: str,
+        exports: t.StrSequence,
+    ) -> dict[str, str]:
+        """Map exports → defining module via rope's import table."""
+        export_names = {name for name in exports if name}
+        target_map: dict[str, str] = dict.fromkeys(export_names, package_name)
+        opened = cls._open_pymodule(project_root, file_path)
+        if opened is None:
+            return target_map
+        pymodule, rope_project = opened
+        try:
+            resource = pymodule.get_resource()
+            if resource is None:
+                return target_map
+            declared = cls.get_declared_module_imports(rope_project, resource)
+            for local_name, declared_path in declared.items():
+                if local_name not in export_names:
+                    continue
+                module_name = (
+                    declared_path.rsplit(".", maxsplit=1)[0]
+                    if "." in declared_path
+                    else declared_path
+                )
+                if module_name:
+                    target_map[local_name] = module_name
+        finally:
+            rope_project.close()
+        return target_map
+
+    @classmethod
+    def parent_constants_targets(
+        cls,
+        constants_file: Path,
+        project_root: Path,
+        *,
+        return_module: bool,
+        current_root: str,
+    ) -> tuple[str, ...]:
+        """Resolve parent ``Constants`` import targets via rope semantic state.
+
+        Uses ``get_module_semantic_state`` (PyObject-backed class info plus
+        ``get_module_imports`` declared-imports table) — no ``ast`` walks.
+        """
+        opened = cls._open_pymodule(project_root, constants_file)
+        if opened is None:
+            return ()
+        pymodule, rope_project = opened
+        try:
+            resource = pymodule.get_resource()
+            if resource is None:
+                return ()
+            state = cls.get_module_semantic_state(rope_project, resource)
+        finally:
+            rope_project.close()
+        seen: set[str] = set()
+        resolved: list[str] = []
+        for class_info in state.class_infos:
+            if "Constants" not in class_info.name:
+                continue
+            for base_name in class_info.bases:
+                full_path = state.declared_imports.get(
+                    base_name,
+                    "",
+                ) or state.declared_imports.get(
+                    base_name.split(".", maxsplit=1)[0],
+                    "",
+                )
+                if not full_path:
+                    continue
+                package_root = full_path.split(".", maxsplit=1)[0]
+                if package_root == current_root:
+                    continue
+                target = (
+                    package_root
+                    if return_module
+                    else full_path.rsplit(".", maxsplit=1)[-1]
+                )
+                if target and target not in seen:
+                    seen.add(target)
+                    resolved.append(target)
+        return tuple(resolved)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeAnalysis"]

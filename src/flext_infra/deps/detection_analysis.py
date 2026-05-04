@@ -217,7 +217,7 @@ class FlextInfraDependencyDetectionAnalysis:
     ) -> str | None:
         """Map a module name to its corresponding types-* package."""
         root = module_name.split(".", 1)[0]
-        if root.startswith(u.Infra.INTERNAL_PREFIXES):
+        if root.startswith(c.Infra.INTERNAL_PREFIXES):
             return None
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if isinstance(typing_libraries, Mapping):
@@ -326,12 +326,12 @@ class FlextInfraDependencyDetectionAnalysis:
         output = f"{command_output.stdout}\n{command_output.stderr}"
         hinted = {
             match.group(1).strip()
-            for match in u.Infra.MYPY_HINT_RE.finditer(output)
+            for match in c.Infra.MYPY_HINT_RE.finditer(output)
             if match.group(1).strip()
         }
         missing = {
             match.group(1).strip()
-            for match in u.Infra.MYPY_STUB_RE.finditer(output)
+            for match in c.Infra.MYPY_STUB_RE.finditer(output)
             if match.group(1).strip()
         }
         return r[t.Pair[t.StrSequence, t.StrSequence]].ok((

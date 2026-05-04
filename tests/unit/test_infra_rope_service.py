@@ -8,7 +8,8 @@ import pytest
 from rope.base.exceptions import RopeError
 
 import flext_infra
-from flext_infra._utilities.rope_inventory import (
+from flext_infra import (
+    FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeInventory,
 )
 from tests import c, m, p, t, u
@@ -264,9 +265,7 @@ class TestsFlextInfraInfraRopeService:
         )
         module_path = package_root / "service.py"
         original_source = (
-            "from __future__ import annotations\n\n"
-            "def first() -> int:\n"
-            "    return 1\n"
+            "from __future__ import annotations\n\ndef first() -> int:\n    return 1\n"
         )
         changed_source = (
             "from __future__ import annotations\n\n"
@@ -492,12 +491,12 @@ class TestsFlextInfraInfraRopeService:
                 TypeError,
                 match=r"rope import_dependents returned non-tuple for demo",
             ):
-                FlextInfraUtilitiesRopeInventory._search_resources_from_index(
+                FlextInfraUtilitiesRopeImports.indexed_search_resources(
                     _BrokenWorkspace(),
                     resource=resource,
                     name="helper",
                     definition_path=example_path,
-                    module_name="demo",
+                    dependent_import_targets=("demo", "demo.helper"),
                 )
 
     def test_workspace_dsl_classifies_test_only_references(
@@ -680,11 +679,7 @@ class TestsFlextInfraInfraRopeService:
         producer_path = examples_dir / "producer.py"
         consumer_path = examples_dir / "consumer.py"
         producer_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "def run() -> int:\n"
-                "    return 1\n"
-            ),
+            ("from __future__ import annotations\n\ndef run() -> int:\n    return 1\n"),
             encoding="utf-8",
         )
         consumer_path.write_text(
@@ -715,3 +710,103 @@ class TestsFlextInfraInfraRopeService:
             str(consumer_path)
         }
         assert sorted(site.line for site in candidate.example_reference_sites) == [3, 5]
+
+    def test_workspace_dsl_tracks_example_base_class_references(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Example facade subclassing keeps shared base classes out of unused candidates."""
+        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        examples_dir = workspace_root / c.Infra.DIR_EXAMPLES
+        models_dir = examples_dir / "_models"
+        models_dir.mkdir(parents=True, exist_ok=True)
+        (examples_dir / c.Infra.INIT_PY).write_text(
+            "from __future__ import annotations\n",
+            encoding="utf-8",
+        )
+        (models_dir / c.Infra.INIT_PY).write_text(
+            "from __future__ import annotations\n",
+            encoding="utf-8",
+        )
+        shared_path = models_dir / "shared.py"
+        shared_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "class ExampleSharedPerson:\n"
+                "    pass\n"
+            ),
+            encoding="utf-8",
+        )
+        facade_path = examples_dir / "models.py"
+        facade_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "from examples._models.shared import ExampleSharedPerson\n\n"
+                "class ExamplesModels:\n"
+                "    class Person(ExampleSharedPerson):\n"
+                "        pass\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            objects = {
+                item.scope_path: item
+                for item in rope.objects(
+                    shared_path,
+                    include_local_scopes=False,
+                )
+            }
+
+        candidate = objects["ExampleSharedPerson"]
+        assert candidate.references_count == 2
+        assert candidate.runtime_references_count == 0
+        assert candidate.test_references_count == 0
+        assert candidate.example_references_count == 2
+        assert candidate.script_references_count == 0
+        assert {site.file_path for site in candidate.example_reference_sites} == {
+            str(facade_path)
+        }
+        assert sorted(site.line for site in candidate.example_reference_sites) == [3, 6]
+
+    def test_workspace_dsl_tracks_same_file_references(self, tmp_path: Path) -> None:
+        """Same-file uses must block the unused fast-path shortcut."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "class ExampleService:\n"
+                "    pass\n\n"
+                "DEFAULT_SERVICE = ExampleService()\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with flext_infra.infra.rope_workspace(workspace_root) as rope:
+            objects = {
+                item.scope_path: item
+                for item in rope.objects(
+                    module_path,
+                    include_local_scopes=False,
+                )
+            }
+
+        candidate = objects["ExampleService"]
+        assert candidate.references_count == 1
+        assert candidate.runtime_references_count == 1
+        assert candidate.test_references_count == 0
+        assert candidate.example_references_count == 0
+        assert candidate.script_references_count == 0
+        assert {site.file_path for site in candidate.runtime_reference_sites} == {
+            str(module_path)
+        }
+        assert [site.line for site in candidate.runtime_reference_sites] == [6]

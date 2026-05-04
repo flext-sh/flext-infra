@@ -1,17 +1,45 @@
-"""Unify inline typing unions and TypeAlias declarations to canonical forms via rope."""
+"""Unify inline typing unions and TypeAlias declarations to canonical forms.
+
+All transformations are syntactic and driven by ``c.Infra.*_RE`` regex
+constants — no ``ast`` parsing or tree walking is required:
+
+- **Inline-union canonicalization**: replaces permutations like
+  ``int | str`` with the canonical ``t.<Alias>`` (configured via
+  ``canonical_map``).
+- **Built-in annotation canonicalization**: rewrites ``dict[K, V]`` →
+  ``t.MappingKV[K, V]``, ``list[X]`` → ``t.SequenceOf[X]``, and bare
+  ``Any``/``object`` / ``typing.Any`` → ``t.JsonValue``. The bracket
+  forms guard against false positives by requiring an immediate ``[``.
+- **PEP 695 TypeAlias modernization**: rewrites ``X: TypeAlias = expr``
+  into ``type X = expr``.
+- **Canonical ``t`` import injection**: adds ``from <pkg> import t``
+  after the last import line when ``t.`` is used but the import is
+  missing.
+"""
 
 from __future__ import annotations
 
-import ast
-import re
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
 from flext_infra import FlextInfraRopeTransformer, c, t, u
 
+_CONTAINER_REWRITES: tuple[tuple[str, str], ...] = (
+    ("dict[", "t.MutableMappingKV"),
+    ("Dict[", "t.MutableMappingKV"),
+    ("list[", "t.MutableSequenceOf"),
+    ("List[", "t.MutableSequenceOf"),
+)
+_VARIADIC_TUPLE_PARTS = 2
+_FIXED_TUPLE_ALIASES: t.MappingKV[int, str] = {
+    2: "Pair",
+    3: "Triple",
+    4: "Quad",
+}
+
 
 class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
-    """Unify inline type unions into canonical t.* alias references via regex."""
+    """Unify inline type unions and modernize TypeAlias to PEP 695."""
 
     _description = "canonicalize types and modernize TypeAlias"
 
@@ -29,290 +57,67 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
-        """Apply union canonicalization and TypeAlias modernization."""
+        """Apply unions, built-in canonicalization, TypeAlias and t import."""
         if self._is_definition_file:
             return source, list(self.changes)
-
         for member_set, canonical in sorted(
-            self._canonical_map.items(), key=lambda i: len(i[0]), reverse=True
+            self._canonical_map.items(),
+            key=lambda i: len(i[0]),
+            reverse=True,
         ):
             pattern = self._union_pattern(member_set)
-            if pattern is not None:
+            if pattern is None:
+                continue
 
-                def replacer(
-                    match: t.Infra.RegexMatch, canonical: str = canonical
-                ) -> str:
-                    """Replacer."""
-                    # Capture exact matched text for accurate reporting.
-                    matched_text = match.group(0)
-                    self._record_change(
-                        f"Canonicalized inline union {matched_text} -> {canonical}"
-                    )
-                    return canonical
+            def replacer(
+                match: t.Infra.RegexMatch,
+                canonical: str = canonical,
+            ) -> str:
+                """Replace one matched union with the canonical alias."""
+                self._record_change(
+                    f"Canonicalized inline union {match.group(0)} -> {canonical}",
+                )
+                return canonical
 
-                source, _count = pattern.subn(replacer, source)
-
+            source, _count = pattern.subn(replacer, source)
         source = self._canonicalize_annotation_builtins(source)
         source = self._modernize_typealias(source)
         source = self._ensure_t_import(source)
         return source, list(self.changes)
 
     def _canonicalize_annotation_builtins(self, source: str) -> str:
-        """Canonicalize annotation builtins."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return source
-        line_offsets = self._line_offsets(source)
-        edits: list[tuple[int, int, str]] = []
-        for annotation in self._annotation_nodes(module):
-            rewritten = self._rewrite_annotation(annotation)
-            if rewritten is None:
-                continue
-            replacement = ast.unparse(rewritten)
-            start = self._offset(line_offsets, annotation.lineno, annotation.col_offset)
-            end_lineno = annotation.end_lineno or annotation.lineno
-            end_col_offset = annotation.end_col_offset or annotation.col_offset
-            end = self._offset(
-                line_offsets,
-                end_lineno,
-                end_col_offset,
-            )
-            if source[start:end] == replacement:
-                continue
-            edits.append((start, end, replacement))
-        if not edits:
-            return source
-        updated = source
-        for start, end, replacement in sorted(edits, reverse=True):
-            updated = f"{updated[:start]}{replacement}{updated[end:]}"
-        return updated
-
-    @staticmethod
-    def _line_offsets(source: str) -> list[int]:
-        """Line offsets."""
-        offsets = [0]
-        total = 0
-        for line in source.splitlines(keepends=True):
-            total += len(line)
-            offsets.append(total)
-        return offsets
-
-    @staticmethod
-    def _offset(line_offsets: list[int], lineno: int, col: int) -> int:
-        """Offset."""
-        return line_offsets[lineno - 1] + col
-
-    @classmethod
-    def _annotation_nodes(cls, module: ast.Module) -> list[ast.expr]:
-        """Annotation nodes."""
-        annotations: list[ast.expr] = []
-        for node in ast.walk(module):
-            match node:
-                case ast.AnnAssign(annotation=ann):
-                    annotations.append(ann)
-                case ast.FunctionDef() | ast.AsyncFunctionDef():
-                    annotations.extend(
-                        arg.annotation
-                        for arg in (
-                            *node.args.posonlyargs,
-                            *node.args.args,
-                            *node.args.kwonlyargs,
-                        )
-                        if arg.annotation is not None
-                    )
-                    if node.args.vararg and node.args.vararg.annotation is not None:
-                        annotations.append(node.args.vararg.annotation)
-                    if node.args.kwarg and node.args.kwarg.annotation is not None:
-                        annotations.append(node.args.kwarg.annotation)
-                    if node.returns is not None:
-                        annotations.append(node.returns)
-                case ast.TypeAlias(value=value):
-                    annotations.append(value)
-                case _:
-                    pass
-        return annotations
-
-    def _rewrite_annotation(self, annotation: ast.expr) -> ast.expr | None:
-        """Rewrite annotation."""
-        original = ast.unparse(annotation)
-        rewritten: ast.expr = self._AnnotationRewriter().visit(annotation)
-        if ast.dump(rewritten) == ast.dump(annotation):
-            return None
-        self._record_change(
-            f"Canonicalized built-in annotation {original} -> {ast.unparse(rewritten)}"
-        )
+        """Rewrite built-in generic annotations to canonical ``t.*`` aliases."""
+        rewritten, changes = self._rewrite_annotation_text(source)
+        for change in changes:
+            self._record_change(change)
         return rewritten
-
-    class _AnnotationRewriter(ast.NodeTransformer):
-        """Annotation rewriter."""
-
-        PAIR_ARITY: ClassVar[int] = 2
-        _TUPLE_NAMES: ClassVar[t.MappingKV[int, str]] = {
-            2: "Pair",
-            3: "Triple",
-            4: "Quad",
-            5: "Quint",
-        }
-
-        @override
-        def visit_Name(self, node: ast.Name) -> ast.expr:
-            """Visit name."""
-            if node.id in {"Any", "object"}:
-                return ast.copy_location(
-                    ast.Attribute(
-                        value=ast.Name(id="t", ctx=ast.Load()),
-                        attr="JsonValue",
-                        ctx=ast.Load(),
-                    ),
-                    node,
-                )
-            return node
-
-        @override
-        def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
-            """Visit attribute."""
-            self.generic_visit(node)
-            if (
-                node.attr == "Any"
-                and isinstance(node.value, ast.Name)
-                and node.value.id == "typing"
-            ):
-                return ast.copy_location(
-                    ast.Attribute(
-                        value=ast.Name(id="t", ctx=ast.Load()),
-                        attr="JsonValue",
-                        ctx=ast.Load(),
-                    ),
-                    node,
-                )
-            return node
-
-        @override
-        def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
-            """Visit subscript."""
-            self.generic_visit(node)
-            name = self.name(node.value)
-            if name == "dict":
-                key_node, value_node = self._mapping_args(node.slice)
-                if key_node is None or value_node is None:
-                    return node
-                return ast.copy_location(
-                    ast.Subscript(
-                        value=self._t_attr("MutableMappingKV"),
-                        slice=ast.Tuple(elts=[key_node, value_node], ctx=ast.Load()),
-                        ctx=ast.Load(),
-                    ),
-                    node,
-                )
-            if name == "list":
-                return ast.copy_location(
-                    ast.Subscript(
-                        value=self._t_attr("MutableSequenceOf"),
-                        slice=self._sequence_arg(node.slice),
-                        ctx=ast.Load(),
-                    ),
-                    node,
-                )
-            if name == "tuple":
-                return self._rewrite_tuple(node)
-            return node
-
-        def _rewrite_tuple(self, node: ast.Subscript) -> ast.expr:
-            """Rewrite tuple."""
-            items = self._tuple_items(node.slice)
-            if (
-                len(items) == self.PAIR_ARITY
-                and isinstance(items[1], ast.Constant)
-                and items[1].value is Ellipsis
-            ):
-                return ast.copy_location(
-                    ast.Subscript(
-                        value=self._t_attr("VariadicTuple"),
-                        slice=items[0],
-                        ctx=ast.Load(),
-                    ),
-                    node,
-                )
-            tuple_name = self._TUPLE_NAMES.get(len(items))
-            if tuple_name is None:
-                return node
-            return ast.copy_location(
-                ast.Subscript(
-                    value=self._t_attr(tuple_name),
-                    slice=ast.Tuple(elts=items, ctx=ast.Load()),
-                    ctx=ast.Load(),
-                ),
-                node,
-            )
-
-        @staticmethod
-        def name(node: ast.expr) -> str:
-            """Name."""
-            if isinstance(node, ast.Name):
-                return node.id
-            if isinstance(node, ast.Attribute):
-                return node.attr
-            return ""
-
-        @staticmethod
-        def _mapping_args(
-            slice_node: ast.expr,
-        ) -> tuple[ast.expr | None, ast.expr | None]:
-            """Mapping args."""
-            if (
-                isinstance(slice_node, ast.Tuple)
-                and len(slice_node.elts)
-                == FlextInfraRefactorTypingUnifier._AnnotationRewriter.PAIR_ARITY
-            ):
-                return slice_node.elts[0], slice_node.elts[1]
-            return None, None
-
-        @staticmethod
-        def _sequence_arg(slice_node: ast.expr) -> ast.expr:
-            """Sequence arg."""
-            if isinstance(slice_node, ast.Tuple) and len(slice_node.elts) == 1:
-                return slice_node.elts[0]
-            return slice_node
-
-        @staticmethod
-        def _tuple_items(slice_node: ast.expr) -> list[ast.expr]:
-            """Tuple items."""
-            if isinstance(slice_node, ast.Tuple):
-                return list(slice_node.elts)
-            return [slice_node]
-
-        @staticmethod
-        def _t_attr(name: str) -> ast.Attribute:
-            """T attr."""
-            return ast.Attribute(
-                value=ast.Name(id="t", ctx=ast.Load()),
-                attr=name,
-                ctx=ast.Load(),
-            )
 
     @staticmethod
     def _union_pattern(members: frozenset[str]) -> t.Infra.RegexPattern | None:
         """Build regex matching any permutation of a ``A | B | C`` union."""
         if len(members) < c.Infra.MIN_UNION_MEMBERS:
             return None
-        escaped = [re.escape(m) for m in sorted(members)]
+        escaped = [c.Infra.escape(m) for m in sorted(members)]
         part = rf"(?:{'|'.join(escaped)})"
-        return re.compile(rf"\b{part}(?:\s*\|\s*{part}){{{len(members) - 1}}}\b")
+        return c.Infra.compile(
+            rf"\b{part}(?:\s*\|\s*{part}){{{len(members) - 1}}}\b",
+        )
 
     def _modernize_typealias(self, source: str) -> str:
         """Convert ``X: TypeAlias = expr`` to ``type X = expr`` (PEP 695)."""
-        pattern = re.compile(r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$", re.MULTILINE)
-        for match in pattern.finditer(source):
+        for match in c.Infra.LEGACY_TYPEALIAS_RE.finditer(source):
             self._record_change(
-                f"Converted legacy TypeAlias assignment: {match.group(1)}"
+                f"Converted legacy TypeAlias assignment: {match.group(1)}",
             )
-        new_source, _count = pattern.subn(r"type \1 = \2", source)
+        new_source: str = c.Infra.LEGACY_TYPEALIAS_RE.sub(
+            r"type \1 = \2",
+            source,
+        )
         return new_source
 
     @staticmethod
     def _is_typing_definition_file(file_path: Path | None) -> bool:
-        """Is typing definition file."""
+        """Return whether ``file_path`` is one of the typing definition files."""
         if file_path is None:
             return False
         if file_path.name in c.Infra.TYPING_DEFINITION_FILES:
@@ -320,7 +125,7 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return any(part in c.Infra.TYPING_DEFINITION_FILES for part in file_path.parts)
 
     def _ensure_t_import(self, source: str) -> str:
-        """Ensure t import."""
+        """Inject ``from <pkg> import t`` when ``t.`` is used without import."""
         if "t." not in source or self._has_t_import(source):
             return source
         module_name = self._canonical_import_module()
@@ -333,50 +138,219 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         self._record_change(f"Added canonical t import from {module_name}")
         return updated
 
-    @staticmethod
-    def _has_t_import(source: str) -> bool:
-        """Has t import."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return bool(
-                re.search(
-                    r"^from\s+\S+\s+import\s+.*\bt\b",
-                    source,
-                    re.MULTILINE,
-                )
-            )
-        for node in module.body:
-            if not isinstance(node, ast.ImportFrom):
-                continue
-            if any(alias.name == "t" for alias in node.names):
-                return True
-        return False
-
     def _canonical_import_module(self) -> str:
-        """Canonical import module."""
+        """Return the root package name for the file under transformation."""
         if self._file_path is None:
             return ""
         package_name: str = u.Infra.package_name(self._file_path)
         return package_name.split(".", maxsplit=1)[0]
 
     @staticmethod
+    def _has_t_import(source: str) -> bool:
+        """Return whether the source already imports ``t`` on one or multiple lines."""
+        if c.Infra.T_IMPORT_RE.search(source) is not None:
+            return True
+        lines = source.splitlines()
+        index = 0
+        while index < len(lines):
+            stripped = lines[index].strip()
+            if stripped.startswith("from ") and stripped.endswith("import ("):
+                index += 1
+                while index < len(lines):
+                    current = lines[index].strip().rstrip(",")
+                    if current == ")":
+                        break
+                    if current == "t":
+                        return True
+                    index += 1
+            index += 1
+        return False
+
+    def _rewrite_annotation_text(self, text: str) -> tuple[str, list[str]]:
+        """Rewrite built-in container annotations found within ``text``."""
+        result: list[str] = []
+        changes: list[str] = []
+        index = 0
+        while index < len(text):
+            container = self._match_container_prefix(text, index)
+            if container is None:
+                result.append(text[index])
+                index += 1
+                continue
+            prefix, alias_name = container
+            content, end_index = self._extract_square_bracket_content(
+                text,
+                index + len(prefix) - 1,
+            )
+            rewritten_content, nested_changes = self._rewrite_type_expression(content)
+            if prefix.lower().startswith("tuple["):
+                replacement = self._rewrite_tuple_annotation(
+                    original_prefix=prefix,
+                    rewritten_content=rewritten_content,
+                )
+            else:
+                replacement = f"{alias_name}[{rewritten_content}]"
+            original = text[index:end_index]
+            result.append(replacement)
+            changes.extend(nested_changes)
+            if original != replacement:
+                changes.append(
+                    f"Canonicalized built-in annotation {original} -> {replacement}",
+                )
+            index = end_index
+        return "".join(result), changes
+
+    def _rewrite_type_expression(self, text: str) -> tuple[str, list[str]]:
+        """Rewrite one nested type-expression fragment recursively."""
+        result: list[str] = []
+        changes: list[str] = []
+        index = 0
+        while index < len(text):
+            container = self._match_container_prefix(text, index)
+            if container is not None:
+                prefix, alias_name = container
+                content, end_index = self._extract_square_bracket_content(
+                    text,
+                    index + len(prefix) - 1,
+                )
+                rewritten_content, nested_changes = self._rewrite_type_expression(
+                    content,
+                )
+                if prefix.lower().startswith("tuple["):
+                    replacement = self._rewrite_tuple_annotation(
+                        original_prefix=prefix,
+                        rewritten_content=rewritten_content,
+                    )
+                else:
+                    replacement = f"{alias_name}[{rewritten_content}]"
+                original = text[index:end_index]
+                result.append(replacement)
+                changes.extend(nested_changes)
+                if original != replacement:
+                    changes.append(
+                        f"Canonicalized built-in annotation {original} -> {replacement}",
+                    )
+                index = end_index
+                continue
+            token_rewrite = self._match_simple_type_alias(text, index)
+            if token_rewrite is not None:
+                original, replacement, end_index = token_rewrite
+                result.append(replacement)
+                if original != replacement:
+                    changes.append(
+                        f"Canonicalized built-in annotation {original} -> {replacement}",
+                    )
+                index = end_index
+                continue
+            result.append(text[index])
+            index += 1
+        return "".join(result), changes
+
+    @staticmethod
+    def _match_container_prefix(text: str, index: int) -> tuple[str, str] | None:
+        """Return the matching built-in container prefix at ``index``, if any."""
+        for prefix, alias_name in _CONTAINER_REWRITES:
+            if FlextInfraRefactorTypingUnifier._matches_type_token(text, index, prefix):
+                return prefix, alias_name
+        if FlextInfraRefactorTypingUnifier._matches_type_token(text, index, "tuple["):
+            return "tuple[", ""
+        if FlextInfraRefactorTypingUnifier._matches_type_token(text, index, "Tuple["):
+            return "Tuple[", ""
+        return None
+
+    @staticmethod
+    def _matches_type_token(text: str, index: int, token: str) -> bool:
+        """Return whether ``token`` starts at ``index`` with identifier boundaries."""
+        if not text.startswith(token, index):
+            return False
+        before = text[index - 1] if index > 0 else ""
+        return not before or not (before.isalnum() or before == "_")
+
+    @staticmethod
+    def _match_simple_type_alias(
+        text: str,
+        index: int,
+    ) -> tuple[str, str, int] | None:
+        """Return a leaf-type rewrite for ``Any``/``typing.Any``/``object``."""
+        for token in ("typing.Any", "Any", "object"):
+            if not text.startswith(token, index):
+                continue
+            before = text[index - 1] if index > 0 else ""
+            after_index = index + len(token)
+            after = text[after_index] if after_index < len(text) else ""
+            before_is_identifier = bool(before) and (before.isalnum() or before == "_")
+            after_is_identifier = bool(after) and (
+                after.isalnum() or after in {"_", "."}
+            )
+            if before_is_identifier or after_is_identifier:
+                continue
+            return token, "t.JsonValue", after_index
+        return None
+
+    @staticmethod
+    def _extract_square_bracket_content(text: str, open_index: int) -> tuple[str, int]:
+        """Return the content and end offset for a square-bracket type expression."""
+        depth = 0
+        cursor = open_index
+        while cursor < len(text):
+            char = text[cursor]
+            if char == "[":
+                depth += 1
+            elif char == "]":
+                depth -= 1
+                if depth == 0:
+                    return text[open_index + 1 : cursor], cursor + 1
+            cursor += 1
+        return text[open_index + 1 :], len(text)
+
+    def _rewrite_tuple_annotation(
+        self,
+        *,
+        original_prefix: str,
+        rewritten_content: str,
+    ) -> str:
+        """Rewrite one ``tuple[...]`` annotation into the canonical ``t.*`` alias."""
+        parts = self._split_top_level_items(rewritten_content)
+        if len(parts) == _VARIADIC_TUPLE_PARTS and parts[1] == "...":
+            return f"t.VariadicTuple[{parts[0]}]"
+        alias_name = _FIXED_TUPLE_ALIASES.get(len(parts))
+        if alias_name is not None:
+            return f"t.{alias_name}[{', '.join(parts)}]"
+        prefix = "Tuple" if original_prefix.startswith("Tuple[") else "tuple"
+        return f"{prefix}[{', '.join(parts)}]"
+
+    @staticmethod
+    def _split_top_level_items(text: str) -> list[str]:
+        """Split a generic type-parameter list on top-level commas only."""
+        items: list[str] = []
+        start = 0
+        depth = 0
+        for index, char in enumerate(text):
+            if char in "([{":
+                depth += 1
+            elif char in ")]}":
+                if depth > 0:
+                    depth -= 1
+            elif char == "," and depth == 0:
+                items.append(text[start:index].strip())
+                start = index + 1
+        items.append(text[start:].strip())
+        return [item for item in items if item]
+
+    @staticmethod
     def _import_insertion_offset(source: str) -> int:
-        """Import insertion offset."""
-        pattern = re.compile(
-            r"^(?:from\s+\S+\s+import\s+.+|import\s+.+)$",
-            re.MULTILINE,
-        )
-        last_match = None
-        for match in pattern.finditer(source):
+        """Return the byte offset where a new import line should be inserted."""
+        last_match: t.Infra.RegexMatch | None = None
+        for match in c.Infra.IMPORT_LINE_ANCHORED_RE.finditer(source):
             last_match = match
         if last_match is None:
             return 0
         matched_line = source[last_match.start() : last_match.end()]
         if matched_line.rstrip().endswith("("):
             tail = source[last_match.end() :]
-            if (close_match := re.search(r"^\)\s*$", tail, re.MULTILINE)) is not None:
-                close_offset = last_match.end() + close_match.end()
+            close_match = c.Infra.IMPORT_PAREN_CLOSE_RE.search(tail)
+            if close_match is not None:
+                close_offset: int = last_match.end() + close_match.end()
                 if close_offset < len(source) and source[close_offset] == "\n":
                     close_offset += 1
                 return close_offset

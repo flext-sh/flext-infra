@@ -44,7 +44,6 @@ from flext_infra._utilities.namespace_facades import (
 from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
-from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
@@ -115,7 +114,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesGithubPr,
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
-        FlextInfraUtilitiesPatterns,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRefactorCensus,

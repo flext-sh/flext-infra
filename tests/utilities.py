@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import shutil
 import subprocess
 from collections.abc import (
@@ -26,13 +25,9 @@ from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRuntimeDevDependencyDetector,
     FlextInfraWorkspaceChecker,
-    r,
     u,
 )
-from tests.constants import c
-from tests.models import m
-from tests.protocols import p
-from tests.typings import t
+from tests import c, m, p, r, t
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):
@@ -897,7 +892,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if name == c.Infra.DUNDER_ALL:
                     return (
                         True,
-                        tuple(re.findall(r'["\']([^"\']+)["\']', value_str)),
+                        tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(value_str)),
                     )
             return (False, ())
 

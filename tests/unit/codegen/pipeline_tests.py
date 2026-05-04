@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from flext_tests import tm
@@ -180,8 +179,8 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     tm.that(after_total, lte=before_total)
     for py_file in tmp_path.rglob("*.py"):
         source = py_file.read_text(encoding="utf-8")
-        tree = ast.parse(source)
-        tm.that(type(tree).__name__, eq="Module")
+        compiled = compile(source, str(py_file), "exec")
+        assert compiled is not None
     tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
 
 

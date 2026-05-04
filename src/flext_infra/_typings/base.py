@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import argparse as _argparse
-import ast as _ast
 import re as _re
 from collections.abc import (
     Callable,
@@ -27,10 +25,10 @@ from flext_cli import m, t
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
-    type CliNamespace = _argparse.Namespace
-    "argparse Namespace for parsed CLI arguments."
     type RegexPattern = _re.Pattern[str]
     "Compiled regex pattern for string matching."
+    type RegexMatch = _re.Match[str]
+    "Regex match object for string patterns."
     type JinjaEnvironment = _JinjaEnvironment
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate
@@ -43,22 +41,6 @@ class FlextInfraTypesBase:
     "Tomlkit item (value or table)."
     type TomlTable = Table
     "Tomlkit table."
-    type RegexMatch = _re.Match[str]
-    "Compiled regex match result."
-    type AstClassDef = _ast.ClassDef
-    "AST class definition node."
-    type AstFunctionDef = _ast.FunctionDef
-    "AST function definition node."
-    type AstAsyncFunctionDef = _ast.AsyncFunctionDef
-    "AST async function definition node."
-    type AstExpr = _ast.expr
-    "AST expression node."
-    type AstStmt = _ast.stmt
-    "AST statement node."
-    type AstCall = _ast.Call
-    "AST function call node."
-    type AstKeyword = _ast.keyword
-    "AST keyword argument node."
 
     type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
@@ -94,10 +76,6 @@ class FlextInfraTypesBase:
     "Mutable string set (supports .update/.intersection/etc)."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
-    type AstMethodNode = _ast.FunctionDef | _ast.AsyncFunctionDef
-    "AST node for a method definition (sync or async)."
-    type AstModule = _ast.Module
-    "AST module node from ast.parse()."
 
     type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."

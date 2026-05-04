@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import FlextInfraUtilitiesDocs, FlextInfraUtilitiesPatterns, c, m, t
+from flext_infra import FlextInfraUtilitiesDocs, c, m, t
 
 
 class FlextInfraUtilitiesDocsFix:
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesDocsFix:
             link_count += 1
             return f"[{text}]({fixed})"
 
-        updated = FlextInfraUtilitiesPatterns.MARKDOWN_LINK_RE.sub(
+        updated = c.Infra.MARKDOWN_LINK_RE.sub(
             replace_link,
             original,
         )

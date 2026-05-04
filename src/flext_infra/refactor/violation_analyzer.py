@@ -5,7 +5,6 @@ Uses rope-based analysis and regex source scanning instead of CST visitors.
 
 from __future__ import annotations
 
-import re
 import sys
 from collections import Counter
 from collections.abc import (
@@ -109,13 +108,13 @@ class FlextInfraRefactorViolationAnalyzer:
         for match in c.Infra.FUNCTION_DEF_SIMPLE_RE.finditer(content):
             func_name = match.group(1)
             func_body = cls._extract_function_body(content, match.start())
-            used_names = set(re.findall(r"\b([A-Za-z_]\w*)\b", func_body))
+            used_names = set(c.Infra.IDENTIFIER_RE.findall(func_body))
             dependencies: t.Infra.StrSet = set()
             for name in used_names:
                 imported = local_to_import.get(name)
                 if imported is not None:
                     dependencies.add(imported)
-            has_decorators = bool(re.search(r"@\w+", func_body))
+            has_decorators = bool(c.Infra.DECORATOR_RE.search(func_body))
             matched_categories = cls._match_categories(
                 dependencies=dependencies,
                 has_decorators=has_decorators,

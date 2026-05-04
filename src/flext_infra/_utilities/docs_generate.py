@@ -10,7 +10,6 @@ from flext_infra import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsRender,
-    FlextInfraUtilitiesPatterns,
     c,
     m,
     t,
@@ -369,7 +368,7 @@ class FlextInfraUtilitiesDocsGenerate:
         title = Path(guide_name).stem.replace("_", " ").replace("-", " ").strip()
         body_lines = lines
         for index, line in enumerate(lines):
-            match = FlextInfraUtilitiesPatterns.HEADING_RE.match(line)
+            match = c.Infra.HEADING_RE.match(line)
             if match is None:
                 continue
             title = match.group(1).strip() or title
@@ -382,7 +381,7 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_sanitize_internal_anchor_links(content: str) -> str:
         """Replace local markdown links with plain text while preserving externals."""
-        sanitized: str = FlextInfraUtilitiesPatterns.MARKDOWN_LINK_RE.sub(
+        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(
             lambda match: (
                 match.group(0)
                 if match.group(2).startswith(("http://", "https://", "#", "mailto:"))

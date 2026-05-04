@@ -114,7 +114,6 @@ if _t.TYPE_CHECKING:
     from flext_infra._utilities.namespace_moves import (
         FlextInfraUtilitiesRefactorNamespaceMoves,
     )
-    from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
     from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
     from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
     from flext_infra._utilities.protected_edit_apply import (
@@ -522,7 +521,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._utilities.namespace_moves": (
                 "FlextInfraUtilitiesRefactorNamespaceMoves",
             ),
-            "._utilities.patterns": ("FlextInfraUtilitiesPatterns",),
             "._utilities.policy": ("FlextInfraUtilitiesRefactorPolicy",),
             "._utilities.protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
             "._utilities.protected_edit_apply": (
@@ -1016,7 +1014,6 @@ __all__: list[str] = [
     "FlextInfraUtilitiesGithubPr",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
-    "FlextInfraUtilitiesPatterns",
     "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesProtectedEditApply",
     "FlextInfraUtilitiesProtectedEditLinting",

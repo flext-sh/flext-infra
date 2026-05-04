@@ -15,6 +15,43 @@ from tests import u
 class TestsFlextInfraRopeImports:
     """Validate fail-fast behavior for Rope import utility wrappers."""
 
+    def test_normalize_imports_removes_orphaned_imports_and_formats(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Centralized import cleanup should leave one lint-clean module."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "import tempfile\n"
+                "import os\n\n"
+                "def keep() -> str:\n"
+                "    return os.getcwd()\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+            result = FlextInfraUtilitiesRopeImports.normalize_imports(
+                rope.rope_project,
+                file_paths=(module_path,),
+            )
+
+        assert result.success
+        assert module_path.read_text(encoding="utf-8") == (
+            "from __future__ import annotations\n\n"
+            "import os\n\n"
+            "\n"
+            "def keep() -> str:\n"
+            "    return os.getcwd()\n"
+        )
+
     def test_organize_imports_treats_none_as_noop(
         self,
         tmp_path: Path,
@@ -28,11 +65,7 @@ class TestsFlextInfraRopeImports:
         )
         module_path = package_root / "service.py"
         module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "import os\n"
-                "import pathlib\n"
-            ),
+            ("from __future__ import annotations\n\nimport os\nimport pathlib\n"),
             encoding="utf-8",
         )
 
@@ -73,11 +106,7 @@ class TestsFlextInfraRopeImports:
         )
         module_path = package_root / "service.py"
         module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "import os\n"
-                "import pathlib\n"
-            ),
+            ("from __future__ import annotations\n\nimport os\nimport pathlib\n"),
             encoding="utf-8",
         )
 

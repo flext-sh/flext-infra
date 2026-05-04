@@ -9,7 +9,6 @@ from flext_infra import (
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesPatterns,
     c,
     m,
     t,
@@ -79,10 +78,8 @@ class FlextInfraUtilitiesDocsAudit:
                     continue
                 if in_fenced_code:
                     continue
-                clean_line = FlextInfraUtilitiesPatterns.INLINE_CODE_RE.sub("", line)
-                for raw in FlextInfraUtilitiesPatterns.MARKDOWN_LINK_URL_RE.findall(
-                    clean_line
-                ):
+                clean_line = c.Infra.INLINE_CODE_RE.sub("", line)
+                for raw in c.Infra.MARKDOWN_LINK_URL_RE.findall(clean_line):
                     target = FlextInfraUtilitiesDocsAudit.docs_normalize_link(raw)
                     if (
                         not target

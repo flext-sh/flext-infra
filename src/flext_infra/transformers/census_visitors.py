@@ -6,7 +6,6 @@ and regex-based attribute access detection for usage collection.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from flext_infra import c, m, t
@@ -33,11 +32,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
 
     def scan_source(self, source: str) -> None:
         """Scan source text to discover imports matching family/facade patterns."""
-        import_re = re.compile(
-            r"^from\s+([\w.]+)\s+import\s+(.+?)$",
-            re.MULTILINE,
-        )
-        for match in import_re.finditer(source):
+        for match in c.Infra.FROM_IMPORT_SIMPLE_RE.finditer(source):
             module_str = match.group(1)
             if (
                 c.Infra.PKG_CORE_UNDERSCORE not in module_str
@@ -49,7 +44,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
                 name_entry = name_entry.strip()
                 if not name_entry:
                     continue
-                parts = re.split(r"\s+as\s+", name_entry, maxsplit=1)
+                parts = c.Infra.AS_KEYWORD_RE.split(name_entry, maxsplit=1)
                 imported_name = parts[0].strip()
                 local_name = parts[1].strip() if len(parts) > 1 else imported_name
                 if imported_name in {self.family_alias, self.facade_class_prefix}:
@@ -99,7 +94,7 @@ class FlextInfraCensusUsageCollector:
 
     def _scan_flat_aliases(self, source: str, alias: str) -> None:
         """Detect alias.method_name patterns."""
-        pattern = re.compile(rf"\b{re.escape(alias)}\.(\w+)")
+        pattern = c.Infra.compile_attr_access(alias)
         for match in pattern.finditer(source):
             method_name = match.group(1)
             if method_name in self.flat_aliases:
@@ -108,7 +103,7 @@ class FlextInfraCensusUsageCollector:
 
     def _scan_namespaced_aliases(self, source: str, alias: str) -> None:
         """Detect alias.ClassName.method_name patterns."""
-        pattern = re.compile(rf"\b{re.escape(alias)}\.(\w+)\.(\w+)")
+        pattern = c.Infra.compile_double_attr_access(alias)
         for match in pattern.finditer(source):
             inner_name = match.group(1)
             method_name = match.group(2)
@@ -122,7 +117,7 @@ class FlextInfraCensusUsageCollector:
     def _scan_direct_references(self, source: str) -> None:
         """Detect DirectClass.method_name patterns."""
         for local_name, actual in self.direct_imports.items():
-            pattern = re.compile(rf"\b{re.escape(local_name)}\.(\w+)")
+            pattern = c.Infra.compile_attr_access(local_name)
             for match in pattern.finditer(source):
                 method_name = match.group(1)
                 if (

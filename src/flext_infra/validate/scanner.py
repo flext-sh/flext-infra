@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Annotated, override
 
@@ -87,7 +86,7 @@ class FlextInfraTextPatternScanner(s[bool]):
         if error is not None:
             return r[t.ScalarMapping].fail(error)
         try:
-            regex = re.compile(pattern, flags=re.MULTILINE)
+            regex = c.Infra.compile_multiline(pattern)
             files = u.Infra.iter_matching_files(
                 scan_root,
                 includes=includes,
@@ -107,7 +106,7 @@ class FlextInfraTextPatternScanner(s[bool]):
                 "files_scanned": len(files),
             }
             return r[t.ScalarMapping].ok(result)
-        except re.error as exc:
+        except c.Infra.REGEX_ERROR as exc:
             return r[t.ScalarMapping].fail(f"invalid regex pattern: {exc}")
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[t.ScalarMapping].fail_op("text pattern scan", exc)

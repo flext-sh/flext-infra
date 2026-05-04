@@ -1,11 +1,20 @@
-"""Direct legacy-removal execution for the refactor engine."""
+"""Direct legacy-removal execution for the refactor engine.
+
+Pure rope + ``c.Infra.*_RE`` constants — no direct ``import ast`` or
+``import re``. Wrapper detection uses rope's
+``parse_string_module`` + ``walk_ast_nodes`` to locate passthrough
+function definitions; pattern matching of node shapes uses
+``node_kind`` and plain attribute access.
+"""
 
 from __future__ import annotations
 
-import ast
-import re
-
-from flext_infra import c, t, u
+from flext_infra import (
+    FlextInfraUtilitiesRopeAnalysis,
+    c,
+    t,
+    u,
+)
 
 
 class FlextInfraRefactorLegacyTextOps:
@@ -44,21 +53,20 @@ class FlextInfraRefactorLegacyTextOps:
         settings: t.MappingKV[str, t.Infra.InfraValue],
         source: str,
     ) -> t.Infra.TransformResult:
-        """Remove aliases."""
+        """Remove module-level ``X = Y`` aliases unless allow-listed."""
         allow_aliases = set(
-            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_ALIASES, []))
+            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_ALIASES, [])),
         )
         allow_target_suffixes = tuple(
-            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_TARGET_SUFFIXES, []))
+            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_TARGET_SUFFIXES, [])),
         )
-        alias_pattern = re.compile(r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$")
         changes: t.MutableSequenceOf[str] = []
         kept: t.MutableSequenceOf[str] = []
         for line in source.splitlines(keepends=True):
             if line != line.lstrip():
                 kept.append(line)
                 continue
-            match = alias_pattern.match(line.strip())
+            match = c.Infra.BARE_ALIAS_LINE_RE.match(line.strip())
             if match is None:
                 kept.append(line)
                 continue
@@ -75,49 +83,55 @@ class FlextInfraRefactorLegacyTextOps:
 
     @staticmethod
     def _remove_deprecated(source: str) -> t.Infra.TransformResult:
-        """Remove deprecated."""
-        deprecated_re = re.compile(
-            r"^@deprecated.*\n(?:class|def)\s+(\w+).*?(?=\n(?:class |def |@|\Z))",
-            re.MULTILINE | re.DOTALL,
-        )
+        """Strip ``@deprecated``-decorated class/function blocks via constants regex."""
         changes = [
             f"Removed deprecated: {match.group(1)}"
-            for match in deprecated_re.finditer(source)
+            for match in c.Infra.DEPRECATED_RE.finditer(source)
         ]
         return (
-            (deprecated_re.sub("", source), changes)
+            (c.Infra.DEPRECATED_RE.sub("", source), changes)
             if changes
             else (source, list[str]())
         )
 
     @classmethod
     def _remove_wrappers(cls, source: str) -> t.Infra.TransformResult:
-        """Remove wrappers."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
+        """Inline passthrough function wrappers via rope-located ranges."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
             return (source, list[str]())
+        ast_root = pymodule.get_ast()
+        body = getattr(ast_root, "body", []) or []
         lines = source.splitlines(keepends=True)
         changes: t.MutableSequenceOf[str] = []
-        replacements: t.MutableSequenceOf[tuple[int, int, str]] = []
-        for node in module.body:
-            if not isinstance(node, ast.FunctionDef):
+        replacements: list[tuple[int, int, str]] = []
+        for node in body:
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "FunctionDef":
                 continue
-            if len(node.body) != 1 or not isinstance(node.body[0], ast.Return):
+            node_body = getattr(node, "body", []) or []
+            if len(node_body) != 1:
                 continue
-            returned = node.body[0].value
-            if not isinstance(returned, ast.Call) or not isinstance(
-                returned.func, ast.Name
-            ):
+            return_stmt = node_body[0]
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(return_stmt) != "Return":
+                continue
+            returned = getattr(return_stmt, "value", None)
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(returned) != "Call":
+                continue
+            call_func = getattr(returned, "func", None)
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(call_func) != "Name":
                 continue
             if not cls._is_passthrough_wrapper(node, returned):
                 continue
+            target_name = getattr(call_func, "id", "")
+            node_name = getattr(node, "name", "")
+            lineno = getattr(node, "lineno", 0)
+            end_lineno = getattr(node, "end_lineno", None) or lineno
             replacements.append((
-                node.lineno - 1,
-                node.end_lineno or node.lineno,
-                f"{node.name} = {returned.func.id}\n",
+                lineno - 1,
+                end_lineno,
+                f"{node_name} = {target_name}\n",
             ))
-            changes.append(f"Inlined wrapper: {node.name} -> {returned.func.id}")
+            changes.append(f"Inlined wrapper: {node_name} -> {target_name}")
         for start, end, replacement in reversed(replacements):
             lines[start:end] = [replacement]
         if not changes:
@@ -125,67 +139,87 @@ class FlextInfraRefactorLegacyTextOps:
         return ("".join(lines).rstrip("\n") + "\n", changes)
 
     @staticmethod
-    def _is_passthrough_wrapper(
-        func: t.Infra.AstFunctionDef,
-        call: t.Infra.AstCall,
-    ) -> bool:
-        """Is passthrough wrapper."""
-        param_names = [arg.arg for arg in (*func.args.posonlyargs, *func.args.args)]
-        keyword_names = [arg.arg for arg in func.args.kwonlyargs]
+    def _is_passthrough_wrapper(func: object, call: object) -> bool:
+        """Whether ``func``'s body is exactly ``return call(*args, **kwargs)`` over its params."""
+        args_obj = getattr(func, "args", None)
+        if args_obj is None:
+            return False
+        param_names = [
+            arg.arg
+            for arg in (
+                *(getattr(args_obj, "posonlyargs", []) or []),
+                *(getattr(args_obj, "args", []) or []),
+            )
+        ]
+        keyword_names = [arg.arg for arg in (getattr(args_obj, "kwonlyargs", []) or [])]
+        call_keywords = getattr(call, "keywords", []) or []
         named_keywords = {
-            kw.arg: kw.value for kw in call.keywords if kw.arg is not None
+            kw.arg: kw.value for kw in call_keywords if getattr(kw, "arg", None)
         }
-        keyword_unpack = [kw.value for kw in call.keywords if kw.arg is None]
+        keyword_unpack = [
+            kw.value for kw in call_keywords if getattr(kw, "arg", None) is None
+        ]
+        call_args = list(getattr(call, "args", []) or [])
         pos_index = 0
-
-        def _is_name(node: t.Infra.AstExpr, name: str) -> bool:
-            """Is name."""
-            return isinstance(node, ast.Name) and node.id == name
-
         for name in param_names:
-            if pos_index < len(call.args) and _is_name(call.args[pos_index], name):
+            if pos_index < len(call_args) and FlextInfraRefactorLegacyTextOps._is_name(
+                call_args[pos_index],
+                name,
+            ):
                 pos_index += 1
                 continue
-            if name in named_keywords and _is_name(named_keywords[name], name):
+            if name in named_keywords and FlextInfraRefactorLegacyTextOps._is_name(
+                named_keywords[name],
+                name,
+            ):
                 continue
             return False
-        remaining_args = call.args[pos_index:]
-
-        vararg_ok = (
-            not remaining_args
-            if func.args.vararg is None
-            else (
+        remaining_args = call_args[pos_index:]
+        vararg = getattr(args_obj, "vararg", None)
+        if vararg is None:
+            vararg_ok = not remaining_args
+        else:
+            vararg_ok = (
                 len(remaining_args) == 1
-                and isinstance(remaining_args[0], ast.Starred)
-                and _is_name(remaining_args[0].value, func.args.vararg.arg)
+                and FlextInfraUtilitiesRopeAnalysis.node_kind(remaining_args[0])
+                == "Starred"
+                and FlextInfraRefactorLegacyTextOps._is_name(
+                    getattr(remaining_args[0], "value", None),
+                    vararg.arg,
+                )
             )
-        )
         keywords_ok = all(
-            name in named_keywords and _is_name(named_keywords[name], name)
+            name in named_keywords
+            and FlextInfraRefactorLegacyTextOps._is_name(named_keywords[name], name)
             for name in keyword_names
         )
-        kwarg_ok = (
-            not keyword_unpack
-            if func.args.kwarg is None
-            else len(keyword_unpack) == 1
-            and _is_name(keyword_unpack[0], func.args.kwarg.arg)
-        )
+        kwarg = getattr(args_obj, "kwarg", None)
+        if kwarg is None:
+            kwarg_ok = not keyword_unpack
+        else:
+            kwarg_ok = len(keyword_unpack) == 1 and (
+                FlextInfraRefactorLegacyTextOps._is_name(keyword_unpack[0], kwarg.arg)
+            )
         return vararg_ok and keywords_ok and kwarg_ok
 
     @staticmethod
-    def _remove_import_bypasses(source: str) -> t.Infra.TransformResult:
-        """Remove import bypasses."""
-        bypass_re = re.compile(
-            r"^try:\s*\n"
-            r"(?P<primary>\s+from\s+\S+\s+import\s+\S+[^\n]*)\n"
-            r"except\s+ImportError:\s*\n"
-            r"\s+from\s+\S+\s+import\s+\S+[^\n]*\n?",
-            re.MULTILINE,
+    def _is_name(node: object | None, name: str) -> bool:
+        """Whether ``node`` is an ``ast.Name`` whose ``id`` is ``name``."""
+        return (
+            FlextInfraUtilitiesRopeAnalysis.node_kind(node) == "Name"
+            and getattr(node, "id", None) == name
         )
-        changes = ["Removed import bypass block" for _ in bypass_re.finditer(source)]
+
+    @staticmethod
+    def _remove_import_bypasses(source: str) -> t.Infra.TransformResult:
+        """Strip ``try/except ImportError`` import bypass blocks via constants regex."""
+        changes = [
+            "Removed import bypass block"
+            for _ in c.Infra.IMPORT_BYPASS_RE.finditer(source)
+        ]
         if not changes:
             return (source, list[str]())
-        return (bypass_re.sub(r"\g<primary>\n", source), changes)
+        return (c.Infra.IMPORT_BYPASS_RE.sub(r"\1", source), changes)
 
 
 __all__: list[str] = ["FlextInfraRefactorLegacyTextOps"]

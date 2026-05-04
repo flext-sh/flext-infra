@@ -14,7 +14,7 @@ from flext_tests import FlextTestsModels
 from flext_infra import m
 
 
-class TestsFlextInfraModels(m, FlextTestsModels):
+class TestsFlextInfraModels(FlextTestsModels, m):
     """Infra test models extending flext-tests and production models."""
 
     class Tests(FlextTestsModels.Tests):

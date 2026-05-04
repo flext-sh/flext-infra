@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import (
     Callable,
 )
@@ -10,6 +9,7 @@ from typing import override
 
 from flext_infra import (
     FlextInfraRopeTransformer,
+    c,
     t,
 )
 
@@ -108,8 +108,8 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         return self._apply_symbol_rewrites(
             source,
             symbol_paths,
-            pattern_fn=lambda old, _: re.compile(
-                rf"(from\s+{re.escape(module_name)}\s+import\s+)(\b{re.escape(old)}\b)",
+            pattern_fn=lambda old, _: c.Infra.compile_mro_import_rewrite(
+                module_name, old
             ),
             replacement_fn=lambda _, __: rf"\1{facade_alias}",
             message_fn=lambda old, tp: (
@@ -128,9 +128,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         return self._apply_symbol_rewrites(
             source,
             symbol_paths,
-            pattern_fn=lambda old, _: re.compile(
-                rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)\b{re.escape(old)}\b(?!\s*[=:](?!=))(?!\s*\()",
-            ),
+            pattern_fn=lambda old, _: c.Infra.compile_mro_bare_qualify(old),
             replacement_fn=lambda _, tp: f"{facade_alias}.{tp}",
             message_fn=lambda old, tp: (
                 f"Qualified reference: {old} -> {facade_alias}.{tp}"
@@ -147,12 +145,11 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         message_prefix: str,
     ) -> str:
         """Replace prefixed annotations with qualified facade paths."""
-        escaped_prefix = re.escape(prefix)
         return self._apply_symbol_rewrites(
             source,
             symbol_paths,
-            pattern_fn=lambda old, _: re.compile(
-                rf"({escaped_prefix}[ \t]*)\b{re.escape(old)}\b",
+            pattern_fn=lambda old, _: c.Infra.compile_mro_prefixed_annotation(
+                prefix, old
             ),
             replacement_fn=lambda _, tp: rf"\1{facade_alias}.{tp}",
             message_fn=lambda old, tp: (

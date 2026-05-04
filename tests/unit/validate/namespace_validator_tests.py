@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraNamespaceValidator
-from tests import m, u
+from tests import c, m, u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -505,7 +504,10 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(len(result.value.violations), gt=0)
         first = result.value.violations[0]
-        tm.that(re.search(r"^\[NS-\d{3}-\d{3}\] .+\.py:\d+ — .+$", first), none=False)
+        tm.that(
+            c.Infra.VIOLATION_PATTERN.search(first),
+            none=False,
+        )
 
     def test_rule0_allows_type_checking_block(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()

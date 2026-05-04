@@ -6,7 +6,6 @@ Replaces CST visitor with regex-based detection for governance violations
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from flext_infra import c, t
@@ -60,10 +59,7 @@ class FlextInfraViolationCensusVisitor:
     def _check_imports(self, source: str) -> None:
         """Check imports."""
         for hit in c.Infra.CensusPatterns.DIRECT_SUBMODULE_RE.finditer(source):
-            module_match = re.search(
-                r"^from\s+(flext_core\.\S+)\s+import",
-                hit.group(0),
-            )
+            module_match = c.Infra.FLEXT_CORE_DIRECT_SUBMODULE_RE.search(hit.group(0))
             module_name = module_match.group(1) if module_match else "flext_core.*"
             self._add_record(
                 kind="direct_submodule_import",

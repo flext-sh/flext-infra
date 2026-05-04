@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 import pytest
@@ -9,18 +8,16 @@ from rope.base.exceptions import RopeError
 from flext_infra import (
     FlextInfraRefactorCensus,
     FlextInfraRopeWorkspace,
-    m,
+    FlextInfraUtilitiesRefactorCensus,
+    FlextInfraUtilitiesRopeInventory,
     main as infra_main,
-    p,
 )
-from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
-from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
-from tests import t, u
+from tests import m, p, t, u
 
 
-def _parse_source_ast(source: str) -> ast.Module | None:
+def _parse_source_ast(source: str) -> object | None:
     try:
-        return ast.parse(source)
+        return compile(source, "<refactor-test-source>", "exec")
     except SyntaxError:
         return None
 
@@ -1134,9 +1131,7 @@ class TestsFlextInfraRefactorMainCli:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = self._build_test_only_workspace(tmp_path)
-        original_build = (
-            FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
-        )
+        original_build = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
 
         def _broken_build(
             rope: p.Infra.RopeWorkspaceDsl,
@@ -1173,9 +1168,7 @@ class TestsFlextInfraRefactorMainCli:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = self._build_test_only_workspace(tmp_path)
-        original_build = (
-            FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
-        )
+        original_build = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
 
         def _broken_build(
             rope: p.Infra.RopeWorkspaceDsl,

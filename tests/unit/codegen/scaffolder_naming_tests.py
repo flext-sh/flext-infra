@@ -9,33 +9,31 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra import FlextInfraCodegenScaffolder
-from tests import m, t, u
+from tests import c, m, t, u
 
 
 def _parse_class_names(source: str) -> t.StrSequence:
-    """Extract all class names from Python source code via AST.
+    """Extract all class names from Python source via the codegen regex authority.
 
-    Single Responsibility: parse and extract class definitions only.
+    Single Responsibility: detect class definitions only.
     """
-    tree = ast.parse(source)
-    return [node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
+    return c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
 
 
 def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
-    """Validate that all modules in base_dir parse as valid Python AST.
+    """Validate that all modules in base_dir compile as valid Python.
 
-    Utility: eliminates duplicate parse validation logic.
+    Utility: eliminates duplicate syntax validation logic.
     """
     for mod in modules:
         source = (base_dir / mod).read_text(encoding="utf-8")
-        tree = ast.parse(source)
-        tm.that(type(tree).__name__, eq="Module")
+        compiled = compile(source, str(base_dir / mod), "exec")
+        assert compiled is not None
 
 
 def _validate_class_names(

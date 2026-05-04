@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from flext_infra import (
@@ -312,11 +311,12 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         _ = rope_project
         source = resource.read()
         total = 0
-        alias_pattern = re.compile(r"\b(?:dict|Dict)\[str,\s*t\.JsonValue\]")
-        source, alias_count = alias_pattern.subn("t.JsonMapping", source)
+        source, alias_count = c.Infra.DICT_STR_JSONVALUE_RE.subn(
+            "t.JsonMapping",
+            source,
+        )
         total += alias_count
-        generic_pattern = re.compile(r"\b(?:dict|Dict)\[")
-        source, generic_count = generic_pattern.subn("t.MappingKV[", source)
+        source, generic_count = c.Infra.DICT_GENERIC_RE.subn("t.MappingKV[", source)
         total += generic_count
         if total > 0 and source != resource.read():
             resource.write(source)

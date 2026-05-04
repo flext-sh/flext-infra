@@ -331,6 +331,40 @@ class TestRunnerPublicBehavior:
         assert command_args[0:4] == ["src", "tests", "conftest.py", "--config-file"]
         assert Path(command_args[4]).name == "pyproject.toml"
 
+    def test_run_mypy_skips_tmp_flow_test_fixture_roots(self, tmp_path: Path) -> None:
+        _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        fixture_pkg = (
+            proj_dir
+            / "tmp_flow_test"
+            / "scenario-a"
+            / "workspace"
+            / "flext-a"
+            / "src"
+            / "flext_a"
+        )
+        fixture_pkg.mkdir(parents=True)
+        (fixture_pkg / "__init__.py").write_text("", encoding="utf-8")
+        log_file = tmp_path / "mypy-command.txt"
+        original_pythonpath = self._install_fake_mypy(
+            tmp_path,
+            stdout="",
+            exit_code=0,
+            log_file=log_file,
+        )
+        try:
+            result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
+        finally:
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
+
+        assert result.result.passed
+        command_args = log_file.read_text(encoding="utf-8").splitlines()
+        assert "src" in command_args
+        assert "tmp_flow_test" not in command_args
+
     def test_run_mypy_reports_command_failures_without_json(
         self,
         tmp_path: Path,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from functools import cache
 from pathlib import Path
 from typing import ClassVar
@@ -10,6 +9,7 @@ from typing import ClassVar
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesRopeAnalysis,
     c,
     p,
     r,
@@ -21,118 +21,6 @@ class FlextInfraUtilitiesDiscovery:
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
     _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], tuple[str, ...]]] = {}
-
-    @classmethod
-    def _ast_base_candidates(cls, base_node: ast.expr) -> tuple[str, ...]:
-        """Return candidate base tokens that can match declared imports."""
-        match base_node:
-            case ast.Name(id=name):
-                return (name,)
-            case ast.Attribute(value=value, attr=attr):
-                parent_candidates = cls._ast_base_candidates(value)
-                chained = tuple(
-                    f"{candidate}.{attr}"
-                    for candidate in parent_candidates
-                    if candidate
-                )
-                return tuple(dict.fromkeys((*chained, *parent_candidates, attr)))
-            case ast.Subscript(value=value):
-                return cls._ast_base_candidates(value)
-            case _:
-                return ()
-
-    @staticmethod
-    def _declared_imports_ast(syntax_tree: ast.Module) -> dict[str, str]:
-        """Map imported names and aliases declared in one module AST."""
-        declared_imports_ast: dict[str, str] = {
-            (
-                imported_name.asname or imported_name.name
-            ): f"{node.module}.{imported_name.name}"
-            for node in syntax_tree.body
-            if isinstance(node, ast.ImportFrom) and node.module
-            for imported_name in node.names
-            if imported_name.name != "*"
-        }
-        declared_imports_ast.update({
-            (
-                imported_name.asname
-                or imported_name.name.split(
-                    ".",
-                    maxsplit=1,
-                )[0]
-            ): imported_name.name
-            for node in syntax_tree.body
-            if isinstance(node, ast.Import)
-            for imported_name in node.names
-        })
-        return declared_imports_ast
-
-    @staticmethod
-    def _resolve_imported_base_target(
-        base_candidates: tuple[str, ...],
-        declared_imports_ast: t.MappingKV[str, str],
-    ) -> str:
-        """Return the imported target path matching one base candidate set."""
-        return next(
-            (
-                imported_path
-                for base_name in base_candidates
-                for imported_path in (
-                    declared_imports_ast.get(base_name, ""),
-                    declared_imports_ast.get(
-                        base_name.split(".", maxsplit=1)[0],
-                        "",
-                    ),
-                )
-                if imported_path
-            ),
-            "",
-        )
-
-    @staticmethod
-    def _resolved_parent_constants_targets(
-        discovered_classes: t.SequenceOf[ast.ClassDef],
-        declared_imports_ast: t.MappingKV[str, str],
-        *,
-        current_root: str,
-        return_module: bool,
-    ) -> tuple[str, ...]:
-        """Resolve unique imported parent constant targets from discovered classes."""
-        resolved: list[str] = []
-        resolved_seen: set[str] = set()
-        for class_node in discovered_classes:
-            for base_candidates in (
-                candidates
-                for base_node in class_node.bases
-                if (
-                    candidates := FlextInfraUtilitiesDiscovery._ast_base_candidates(
-                        base_node,
-                    )
-                )
-            ):
-                target_name = (
-                    FlextInfraUtilitiesDiscovery._resolve_imported_base_target(
-                        base_candidates,
-                        declared_imports_ast,
-                    )
-                )
-                if not target_name:
-                    continue
-                package_root = target_name.split(".", maxsplit=1)[0]
-                target = (
-                    package_root
-                    if return_module
-                    else target_name.rsplit(".", maxsplit=1)[-1]
-                )
-                if (
-                    not target
-                    or package_root == current_root
-                    or target in resolved_seen
-                ):
-                    continue
-                resolved_seen.add(target)
-                resolved.append(target)
-        return tuple(resolved)
 
     @staticmethod
     @cache
@@ -311,38 +199,6 @@ class FlextInfraUtilitiesDiscovery:
         return None
 
     @staticmethod
-    def package_export_names(
-        workspace_root: Path,
-        package_name: str,
-    ) -> frozenset[str]:
-        """Return literal ``__all__`` names for a resolved public package."""
-        init_path = FlextInfraUtilitiesDiscovery.package_init_path(
-            workspace_root,
-            package_name,
-        )
-        if init_path is None:
-            return frozenset()
-        try:
-            module = ast.parse(init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
-        except c.EXC_OS_SYNTAX:
-            return frozenset()
-        for node in module.body:
-            if not isinstance(node, ast.Assign):
-                continue
-            if not any(
-                isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
-                for target in node.targets
-            ):
-                continue
-            try:
-                value = ast.literal_eval(node.value)
-            except (TypeError, ValueError, SyntaxError):
-                return frozenset()
-            if isinstance(value, (list, tuple)):
-                return frozenset(item for item in value if isinstance(item, str))
-        return frozenset()
-
-    @staticmethod
     def package_source_priority(package_names: t.StrSequence) -> t.StrSequence:
         """Return package sources ordered so later duplicates keep priority."""
         ordered: list[str] = []
@@ -450,7 +306,7 @@ class FlextInfraUtilitiesDiscovery:
         *,
         return_module: bool = False,
     ) -> tuple[str, ...]:
-        """Resolve imported parent constants through AST and declared imports."""
+        """Resolve imported parent ``Constants`` targets through Rope semantics."""
         constants_file = (
             pkg_dir_or_file
             if pkg_dir_or_file.name == c.Infra.CONSTANTS_PY
@@ -458,38 +314,20 @@ class FlextInfraUtilitiesDiscovery:
         )
         if not constants_file.is_file():
             return ()
-        project_root = FlextInfraUtilitiesDiscovery.project_root(
-            constants_file,
-        )
+        project_root = FlextInfraUtilitiesDiscovery.project_root(constants_file)
         if project_root is None:
             return ()
-        current_module = FlextInfraUtilitiesDiscovery.package_name(
-            constants_file,
-        )
         cache_key = (str(constants_file.resolve()), return_module)
-        cached = cls._PARENT_CONSTANTS_MRO_CACHE.get(cache_key)
-        if cached is not None:
+        if (cached := cls._PARENT_CONSTANTS_MRO_CACHE.get(cache_key)) is not None:
             return cached
-        try:
-            syntax_tree = ast.parse(
-                constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            )
-        except c.EXC_OS_SYNTAX:
-            syntax_tree = ast.Module(body=[], type_ignores=[])
-        declared_imports_ast = cls._declared_imports_ast(syntax_tree)
-        discovered_classes = [
-            node
-            for node in syntax_tree.body
-            if isinstance(node, ast.ClassDef) and "Constants" in node.name
-        ]
-        current_root = (
-            current_module.split(".", maxsplit=1)[0] if current_module else ""
-        )
-        result = cls._resolved_parent_constants_targets(
-            discovered_classes,
-            declared_imports_ast,
-            current_root=current_root,
+        current_module = FlextInfraUtilitiesDiscovery.package_name(constants_file)
+        result = FlextInfraUtilitiesRopeAnalysis.parent_constants_targets(
+            constants_file,
+            project_root,
             return_module=return_module,
+            current_root=current_module.split(".", maxsplit=1)[0]
+            if current_module
+            else "",
         )
         cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
         return result

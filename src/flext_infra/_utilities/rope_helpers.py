@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import re
 import tokenize
 from pathlib import Path
 from typing import ClassVar
@@ -56,9 +55,7 @@ class FlextInfraUtilitiesRopeHelpers:
         source: str,
     ) -> t.SequenceOf[t.Infra.StrPair]:
         """Return (name, value_str) for module-level simple assignments."""
-        assignment_pattern = re.compile(
-            r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$",
-        )
+        assignment_pattern = c.Infra.MODULE_ASSIGNMENT_RE
         results: list[t.Infra.StrPair] = []
         scope_depth = 0
         in_multiline_assignment = False
@@ -125,19 +122,9 @@ class FlextInfraUtilitiesRopeHelpers:
         through any unclosed bracket groups.
         """
         if kind == "function":
-            pattern = re.compile(
-                rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"def\s+{re.escape(name)}\s*\([^)]*\)[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_function_def_block(name)
         elif kind == "class":
-            pattern = re.compile(
-                rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"class\s+{re.escape(name)}\b[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_class_def_block(name)
         else:
             return None
         match = pattern.search(source)
@@ -159,22 +146,13 @@ class FlextInfraUtilitiesRopeHelpers:
     ) -> str:
         """Remove a top-level def/class from source."""
         if kind == "function":
-            pattern = re.compile(
-                rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"def\s+{re.escape(name)}\s*\([^)]*\)[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_function_def_remove(name)
         elif kind == "class":
-            pattern = re.compile(
-                rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"class\s+{re.escape(name)}\b[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_class_def_remove(name)
         else:
             return source
-        return pattern.sub("", source, count=1)
+        updated_source: str = pattern.sub("", source, count=1)
+        return updated_source
 
     @staticmethod
     def _extend_block_through_open_brackets(
@@ -274,11 +252,7 @@ class FlextInfraUtilitiesRopeHelpers:
         block: str,
     ) -> str:
         """Append a block of code to an existing class body."""
-        if not re.search(
-            rf"^class\s+{re.escape(class_name)}\b",
-            source,
-            re.MULTILINE,
-        ):
+        if not c.Infra.compile_class_header_search(class_name).search(source):
             return source.rstrip("\n") + f"\n\nclass {class_name}:\n{block}\n"
         lines = source.splitlines(keepends=True)
         in_class = False
@@ -346,7 +320,7 @@ class FlextInfraUtilitiesRopeHelpers:
         excluded = bool(excludes and decorators.intersection(excludes))
         patterns = rule.patterns
         patterns_match = not patterns or any(
-            re.match(pattern, method.name) for pattern in patterns
+            c.Infra.compile(pattern).match(method.name) for pattern in patterns
         )
         return (
             visibility_matches and decorators_match and patterns_match and not excluded

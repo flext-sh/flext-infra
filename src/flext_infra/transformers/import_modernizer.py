@@ -6,7 +6,6 @@ and adds missing runtime alias imports to the module header.
 
 from __future__ import annotations
 
-import re
 from typing import override
 
 from flext_infra import (
@@ -115,8 +114,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         stripped_line: str,
     ) -> tuple[int, str | None, bool]:
         """Consume one forbidden parenthesized import statement when present."""
-        from_match = re.match(
-            r"from\s+([\w.]+)\s+import\s*\(",
+        from_match = c.Infra.FROM_IMPORT_CAPTURE_PAREN_OPEN_RE.match(
             stripped_line,
         )
         if from_match is None:
@@ -138,10 +136,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         stripped_line: str,
     ) -> str | None:
         """Rewrite one forbidden single-line import or return the original line."""
-        from_single = re.match(
-            r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$",
-            stripped_line,
-        )
+        from_single = c.Infra.FROM_IMPORT_LINE_TRIM_RE.match(stripped_line)
         if from_single is None:
             return original_line
         module = from_single.group(1)
@@ -189,7 +184,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
     def _replace_symbol_usages(self, source: str) -> str:
         """Replace migrated symbol references with runtime-alias paths."""
         for local_name, alias_path in self.active_symbol_replacements.items():
-            new_source = re.sub(rf"\b{re.escape(local_name)}\b", alias_path, source)
+            new_source = c.Infra.compile_word(local_name).sub(alias_path, source)
             if new_source != source:
                 self._record_change(f"Replaced: {local_name} -> {alias_path}")
                 source = new_source

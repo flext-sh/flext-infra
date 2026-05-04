@@ -26,7 +26,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         match this module's migration scenarios; scaffold logic is centralized
         in ``u.Tests.create_migrator_dir_layout`` (no duplication).
         """
-        return u.Tests.create_migrator_dir_layout(
+        project_dir: Path = u.Tests.create_migrator_dir_layout(
             tmp_path,
             name=name,
             base_mk="base",
@@ -34,6 +34,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             pyproject=pyproject,
             gitignore=gitignore,
         )
+        return project_dir
 
     @staticmethod
     def _make_read_only(path: Path) -> None:
