@@ -7,7 +7,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, u
 from flext_infra import FlextInfraModelsMixins as mm, c, t
 
 
@@ -98,6 +98,16 @@ class FlextInfraModelsWorkspace:
                 description="Execution timestamp in UTC",
             ),
         ] = m.Field(default_factory=lambda: datetime.now(UTC))
+
+        @u.field_serializer("source", "target", when_used="json")
+        def serialize_paths(self, value: Path) -> str:
+            """Serialize sync paths for JSON result boundaries."""
+            return str(value)
+
+        @u.field_serializer("timestamp", when_used="json")
+        def serialize_timestamp(self, value: datetime) -> str:
+            """Serialize execution timestamp for JSON result boundaries."""
+            return value.isoformat()
 
     class MigrationResult(
         mm.ProjectNameMixin,

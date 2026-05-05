@@ -44,20 +44,6 @@ class FlextInfraProjectMigrator(
         return r[str].ok("")
 
     @staticmethod
-    def _append_result(
-        result: p.Result[str],
-        changes: t.MutableSequenceOf[str],
-        errors: t.MutableSequenceOf[str],
-    ) -> None:
-        """Append result."""
-        if result.failure:
-            errors.append(result.error or "migration action failed")
-            return
-        val: str = result.value
-        if val:
-            changes.append(val)
-
-    @staticmethod
     def _workspace_root_project(
         workspace_root: Path,
     ) -> m.Infra.ProjectInfo | None:
@@ -86,15 +72,12 @@ class FlextInfraProjectMigrator(
         if result.failure:
             return result
         migrations: t.SequenceOf[m.Infra.MigrationResult] = result.value
-        failed_projects = 0
         for migration in migrations:
             u.Cli.info(f"{migration.project}:")
             for change in migration.changes:
                 u.Cli.info(f"  + {change}")
             for error in migration.errors:
                 u.Cli.error(f"  ! {error}")
-            if migration.errors:
-                failed_projects += 1
         total_changes = sum(len(migration.changes) for migration in migrations)
         total_errors = sum(len(migration.errors) for migration in migrations)
         u.Cli.info(
@@ -140,7 +123,6 @@ class FlextInfraProjectMigrator(
             self._migrate_project(
                 project=project,
                 dry_run=dry_run,
-                workspace_root=resolved_root,
             )
             for project in projects
         ]
@@ -151,10 +133,8 @@ class FlextInfraProjectMigrator(
         project_root: Path,
         *,
         dry_run: bool,
-        is_workspace_root: bool = False,
     ) -> p.Result[str]:
         """Migrate basemk."""
-        _ = is_workspace_root
         target = project_root / c.Infra.BASE_MK
         generator = self._get_generator()
         generated = generator.generate_basemk()
@@ -165,11 +145,10 @@ class FlextInfraProjectMigrator(
             target.read_text(encoding=c.Cli.ENCODING_DEFAULT) if target.exists() else ""
         )
         if u.Cli.sha256_content(current) == u.Cli.sha256_content(generated_text):
-            if dry_run:
-                return r[str].ok(
-                    self._action_text("base.mk already up-to-date", dry_run=True),
-                )
-            return r[str].ok("")
+            return self._no_change_result(
+                "base.mk already up-to-date",
+                dry_run=dry_run,
+            )
         if not dry_run:
             try:
                 u.write_file(target, generated_text, encoding=c.Cli.ENCODING_DEFAULT)
@@ -205,11 +184,10 @@ class FlextInfraProjectMigrator(
             if pattern not in existing_patterns
         ]
         if not missing and len(filtered) == len(existing_lines):
-            if dry_run:
-                return r[str].ok(
-                    self._action_text(".gitignore already normalized", dry_run=True),
-                )
-            return r[str].ok("")
+            return self._no_change_result(
+                ".gitignore already normalized",
+                dry_run=dry_run,
+            )
         next_lines = list(filtered)
         if missing:
             if next_lines and next_lines[-1].strip():
@@ -243,7 +221,12 @@ class FlextInfraProjectMigrator(
         updated = original
         for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
             updated = updated.replace(before, after)
-        updated = self._apply_bootstrap_include(updated)
+        include_result = self._apply_bootstrap_include(updated)
+        if include_result.failure:
+            return r[str].fail(
+                include_result.error or "Makefile bootstrap include render failed",
+            )
+        updated = include_result.value
         if updated == original:
             return self._no_change_result("Makefile already migrated", dry_run=dry_run)
         if not dry_run:
@@ -258,16 +241,20 @@ class FlextInfraProjectMigrator(
             ),
         )
 
-    def _apply_bootstrap_include(self, content: str) -> str:
+    def _apply_bootstrap_include(self, content: str) -> p.Result[str]:
         """Apply bootstrap include."""
         if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
-            return content
+            return r[str].ok(content)
         bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
         if bootstrap_result.failure:
-            return content
-        return content.replace(
-            c.Infra.MAKEFILE_INCLUDE_OLD,
-            bootstrap_result.value,
+            return r[str].fail(
+                bootstrap_result.error or "Makefile bootstrap include render failed",
+            )
+        return r[str].ok(
+            content.replace(
+                c.Infra.MAKEFILE_INCLUDE_OLD,
+                bootstrap_result.value,
+            ),
         )
 
     def _migrate_project(
@@ -275,17 +262,14 @@ class FlextInfraProjectMigrator(
         *,
         project: p.Infra.ProjectInfo,
         dry_run: bool,
-        workspace_root: Path,
     ) -> m.Infra.MigrationResult:
         """Migrate project."""
-        is_root = project.path.resolve() == workspace_root.resolve()
         changes: t.MutableSequenceOf[str] = []
         errors: t.MutableSequenceOf[str] = []
         for step_result in (
             self._migrate_basemk(
                 project.path,
                 dry_run=dry_run,
-                is_workspace_root=is_root,
             ),
             self._migrate_makefile(project.path, dry_run=dry_run),
             self._migrate_pyproject(
@@ -295,7 +279,10 @@ class FlextInfraProjectMigrator(
             ),
             self._migrate_gitignore(project.path, dry_run=dry_run),
         ):
-            self._append_result(step_result, changes, errors)
+            if step_result.failure:
+                errors.append(step_result.error or "migration action failed")
+            elif step_result.value:
+                changes.append(step_result.value)
         if not changes and not errors:
             changes.append("no changes needed")
         return m.Infra.MigrationResult(

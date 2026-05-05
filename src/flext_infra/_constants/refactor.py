@@ -277,7 +277,7 @@ class FlextInfraConstantsRefactor:
     "Fallback constants class name when none exists in module."
     CONSTANTS_CLASS_SUFFIX: Final[str] = "Constants"
     "Class-name suffix used to identify constants facades."
-    CONSTANT_PATTERN: Final[re.Pattern[str]] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
+    CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
     "Compiled naming pattern for module-level constant candidates."
     FAMILY_SUFFIXES: Final[t.StrMapping] = MappingProxyType({
         "c": "Constants",
@@ -361,7 +361,7 @@ class FlextInfraConstantsRefactor:
         "CircuitBreakerManager",
     )
     "Class names always required in scanner output."
-    CLASS_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9]+")
+    CLASS_PATTERN: Final[t.RegexPattern] = re.compile(r"[^A-Za-z0-9]+")
     "Pattern to split class name fragments."
     MAPPINGS_RELATIVE_PATH: Final[Path] = Path("rules") / "class-nesting-mappings.yml"
     "Relative path from the refactor package to the nesting mappings YAML."
@@ -399,7 +399,7 @@ class FlextInfraConstantsRefactor:
     "Priority order for violation classification."
     MIN_PATH_DEPTH: int = 2
     "Minimum relative path depth for module prefix detection."
-    NAMESPACE_CONSTANT_PATTERN: Final[re.Pattern[str]] = re.compile(
+    NAMESPACE_CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(
         r"^_?[A-Z][A-Z0-9_]+$",
     )
     NAMESPACE_SETTINGS_FILE_NAMES: Final[frozenset[str]] = frozenset({
@@ -427,46 +427,46 @@ class FlextInfraConstantsRefactor:
     NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS: Final[int] = 10
     NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: Final[int] = 5
     NAMESPACE_NO_RENDER_LIMIT: Final[int] = 10_000
-    FACADE_ALIAS_RE: Final[re.Pattern[str]] = re.compile(
+    FACADE_ALIAS_RE: Final[t.RegexPattern] = re.compile(
         r"^(\w)\s*=\s*(\w+)",
         re.MULTILINE,
     )
     "Matches ``m = FlextFooModels`` alias assignments in facade files."
 
     # --- Detector regex constants ---
-    FUNC_DEF_RE: Final[re.Pattern[str]] = re.compile(
+    FUNC_DEF_RE: Final[t.RegexPattern] = re.compile(
         r"^(def\s+(\w+)\s*\()",
         re.MULTILINE,
     )
     "Matches top-level function definitions for loose object detection."
-    ASSIGN_RE: Final[re.Pattern[str]] = re.compile(
+    ASSIGN_RE: Final[t.RegexPattern] = re.compile(
         r"^([A-Z_]\w*)\s*[:=]",
         re.MULTILINE,
     )
     "Matches top-level UPPER_CASE assignments for loose constant detection."
-    LOGGER_ASSIGN_RE: Final[re.Pattern[str]] = re.compile(
+    LOGGER_ASSIGN_RE: Final[t.RegexPattern] = re.compile(
         r"^([A-Za-z_]\w*)\s*[:=]\s*(?:(?:\w+\.)*)?"
         r"(?:fetch_logger|create_module_logger|get_logger|logging\.getLogger)\s*\(",
         re.IGNORECASE | re.MULTILINE,
     )
     "Matches top-level logger assignments created outside namespace classes."
-    PEP695_RE: Final[re.Pattern[str]] = re.compile(
+    PEP695_RE: Final[t.RegexPattern] = re.compile(
         r"^type\s+(\w+)\s*=",
         re.MULTILINE,
     )
     "Matches PEP 695 type alias definitions."
-    TYPEALIAS_ANNOT_RE: Final[re.Pattern[str]] = re.compile(
+    TYPEALIAS_ANNOT_RE: Final[t.RegexPattern] = re.compile(
         r"^(\w+)\s*:\s*(?:\w+\.)*TypeAlias\s*=",
         re.MULTILINE,
     )
     "Matches TypeAlias annotation syntax for typing alias detection."
-    TYPING_FACTORY_ASSIGN_RE: Final[re.Pattern[str]] = re.compile(
+    TYPING_FACTORY_ASSIGN_RE: Final[t.RegexPattern] = re.compile(
         r"^(\w+)\s*=\s*(?:(?:\w+\.)*)?"
         r"(?:TypeVar|ParamSpec|TypeVarTuple|NewType)\s*\(",
         re.MULTILINE,
     )
     "Matches TypeVar/ParamSpec/TypeVarTuple/NewType assignments."
-    COMPAT_ALIAS_RE: Final[re.Pattern[str]] = re.compile(
+    COMPAT_ALIAS_RE: Final[t.RegexPattern] = re.compile(
         r"^([A-Z]\w+)\s*=\s*([A-Z]\w+)\s*$",
         re.MULTILINE,
     )
@@ -477,12 +477,12 @@ class FlextInfraConstantsRefactor:
         "__version_info__",
     })
     "Names to skip during compatibility alias detection."
-    FUTURE_ANNOTATIONS_RE: Final[re.Pattern[str]] = re.compile(
+    FUTURE_ANNOTATIONS_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+__future__\s+import\s+annotations\b",
         re.MULTILINE,
     )
     "Matches 'from __future__ import annotations' import statement."
-    ONLY_DOCSTRING_RE: Final[re.Pattern[str]] = re.compile(
+    ONLY_DOCSTRING_RE: Final[t.RegexPattern] = re.compile(
         r'^("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*$',
     )
     "Matches files that contain only a module docstring."
@@ -559,21 +559,21 @@ class FlextInfraConstantsRefactor:
     "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
 
     # --- MRO scan patterns ---
-    MRO_SCAN_TYPE_PATTERN: Final[re.Pattern[str]] = re.compile(
+    MRO_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
         r"^_?[A-Za-z][A-Za-z0-9_]*$"
     )
     "Regex: valid Python identifier (used for MRO type/class name validation)."
-    MRO_SCAN_PROTOCOL_BASE_PATTERN: Final[re.Pattern[str]] = re.compile(
+    MRO_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
         r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])",
     )
     "Regex: Protocol base in class definition (with optional namespace prefix)."
 
     # --- Symbol/identifier patterns ---
-    IDENTIFIER_PATTERN: Final[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
+    IDENTIFIER_PATTERN: Final[t.RegexPattern] = re.compile(r"\b[A-Za-z_]\w*\b")
     "Regex: Python identifier word boundary match."
 
     # --- Import bypass pattern (for transformer matching) ---
-    IMPORT_BYPASS_RE: Final[re.Pattern[str]] = re.compile(
+    IMPORT_BYPASS_RE: Final[t.RegexPattern] = re.compile(
         r"^try:\n"
         r"(    from .+\n)"
         r"except ImportError:\n"
@@ -583,16 +583,16 @@ class FlextInfraConstantsRefactor:
     "Regex: try/except ImportError import bypass block (strict form)."
 
     # --- Deprecated class pattern ---
-    CLASS_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
+    CLASS_BLOCK_RE: Final[t.RegexPattern] = re.compile(
         r"^(class\s+(\w+)\b[^\n]*:\n(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
         re.MULTILINE,
     )
     "Regex: full class block including body lines."
-    DEPRECATION_WARN_RE: Final[re.Pattern[str]] = re.compile(r"\.warn\s*\(")
+    DEPRECATION_WARN_RE: Final[t.RegexPattern] = re.compile(r"\.warn\s*\(")
     "Regex: deprecation warning call site (.warn())."
 
     # --- Lazy import fixer ---
-    DEF_ASYNC_CLASS_RE: Final[re.Pattern[str]] = re.compile(
+    DEF_ASYNC_CLASS_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:def |async def |class )", re.MULTILINE
     )
     "Regex: top-level def/async def/class keyword (for lazy import detection)."

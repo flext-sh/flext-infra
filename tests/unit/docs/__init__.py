@@ -9,6 +9,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".auditor_budgets_tests": ("TestLoadAuditBudgets",),
         ".auditor_cli_tests": ("auditor_cli_tests",),
+        ".auditor_codeblocks_tests": ("auditor_codeblocks_tests",),
         ".auditor_links_tests": (
             "TestAuditorBrokenLinks",
             "TestAuditorToMarkdown",

@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraProjectMigrator
-from tests import m, t, u
+from flext_infra import FlextInfraBaseMkTemplateEngine, FlextInfraProjectMigrator, r
+from tests import c, m, t, u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
@@ -63,6 +63,39 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("Makefile update failed" in err for err in migration[0].errors),
+            eq=True,
+        )
+
+    def test_makefile_bootstrap_render_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        root = u.Tests.create_migrator_dir_layout(
+            tmp_path,
+            base_mk="base",
+            makefile=c.Infra.MAKEFILE_INCLUDE_OLD,
+        )
+        monkeypatch.setattr(
+            FlextInfraBaseMkTemplateEngine,
+            "render_bootstrap_include",
+            staticmethod(
+                lambda: r[str].fail("bootstrap include render failed"),
+            ),
+        )
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=False,
+        )
+
+        result = migrator.execute()
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        tm.that(
+            any(
+                "bootstrap include render failed" in err for err in migration[0].errors
+            ),
             eq=True,
         )
 

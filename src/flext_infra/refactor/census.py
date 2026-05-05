@@ -184,9 +184,13 @@ class FlextInfraRefactorCensus(
         """Render the canonical workspace census report."""
         return FlextInfraRefactorCensus._render_workspace_report(report)
 
-    @override
-    def execute(self) -> p.Result[m.Infra.Census.WorkspaceReport]:
-        """Execute the census with one shared Rope session."""
+    def _execution_reports(
+        self,
+    ) -> tuple[
+        m.Infra.Census.WorkspaceReport,
+        m.Infra.Census.WorkspaceReport | None,
+    ]:
+        """Collect the final report and the pre-apply impact-map report."""
         started = time.monotonic()
         applied = frozenset[str]()
         impact_map_report: m.Infra.Census.WorkspaceReport | None = None
@@ -214,9 +218,20 @@ class FlextInfraRefactorCensus(
                         include_local_scopes=self.include_local_scopes,
                         applied=applied,
                     )
-        report = report.model_copy(
+        finalized_report = report.model_copy(
             update={"scan_duration_seconds": time.monotonic() - started}
         )
+        return finalized_report, impact_map_report
+
+    def build_report(self) -> m.Infra.Census.WorkspaceReport:
+        """Build the canonical workspace census report without CLI side effects."""
+        report, _ = self._execution_reports()
+        return report
+
+    @override
+    def execute(self) -> p.Result[m.Infra.Census.WorkspaceReport]:
+        """Execute the census with one shared Rope session."""
+        report, impact_map_report = self._execution_reports()
         cli.display_text(self.render_text(report))
         if self.json_output_path is not None:
             u.Infra.export_pydantic_json(report, self.json_output_path)

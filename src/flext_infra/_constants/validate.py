@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 import re
+from enum import IntEnum, unique
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraConstantsSharedInfra:
     """Shared infrastructure constants consumed by flext_infra.constants."""
+
+    @unique
+    class ScriptExitCode(IntEnum):
+        """Canonical exit codes for infra-owned validation scripts."""
+
+        PASS = 0
+        FAIL = 1
+        USAGE = 2
+        INFRA = 3
 
     EXEMPT_FILENAMES: Final[frozenset[str]] = frozenset({
         "__init__.py",
@@ -47,15 +60,59 @@ class FlextInfraConstantsSharedInfra:
     REPORT_DEFAULT: Final[str] = ".agents/skills/{skill}/report.json"
     BASELINE_DEFAULT: Final[str] = ".agents/skills/{skill}/baseline.json"
     CACHE_TTL_SECONDS: Final[int] = 300
-    MISSING_IMPORT_RE: Final[re.Pattern[str]] = re.compile(
+    SCRIPT_EXIT_CODE_VALUES: Final[frozenset[int]] = frozenset(
+        int(item) for item in ScriptExitCode
+    )
+    SCRIPT_HEADER_MAX_LINES: Final[int] = 10
+    SCRIPT_MIN_CODE_LINES: Final[int] = 20
+    SKILL_REPORT_VALIDATED_TOP_DIRS: Final[frozenset[str]] = frozenset({"."})
+    SKILL_REPORT_SKIPPED_TOP_DIRS: Final[frozenset[str]] = frozenset({
+        "evidence",
+        "plans",
+        "drafts",
+        "validation",
+        "dependencies",
+    })
+    SKILL_REPORT_SKIPPED_FILES: Final[frozenset[str]] = frozenset({".gitkeep"})
+    SKILL_OWNER_MARKER_RE: Final[t.RegexPattern] = re.compile(
+        r"^# Owner-Skill:\s+(.agents/skills/([a-z0-9][-a-z0-9]*)/SKILL\.md)\s*$",
+    )
+    SKILL_REPORT_ARTIFACT_NAME_RE: Final[t.RegexPattern] = re.compile(
+        r"^[a-z][-a-z0-9]*--[a-z]+--[a-z][-a-z0-9]*\.[a-z]+$",
+    )
+    SKILL_REPORT_ARTIFACT_SKILL_RE: Final[t.RegexPattern] = re.compile(
+        r"^[a-z][-a-z0-9]*$",
+    )
+    SKILL_REPORT_ARTIFACT_SLUG_INVALID_RE: Final[t.RegexPattern] = re.compile(
+        r"[^a-z0-9-]+",
+    )
+    SKILL_REPORT_ARTIFACT_MULTI_DASH_RE: Final[t.RegexPattern] = re.compile(
+        r"-+",
+    )
+    SKILL_REPORTS_PATH_RE: Final[t.RegexPattern] = re.compile(
+        r"\.reports/([^\s\"']+)",
+    )
+    SKILL_BASH_EXIT_RE: Final[t.RegexPattern] = re.compile(r"^\s*exit\s+(\d+)")
+    SKILL_INTERACTIVE_PY_RE: Final[t.RegexPattern] = re.compile(r"\binput\s*\(")
+    SKILL_INTERACTIVE_SH_RE: Final[t.RegexPattern] = re.compile(
+        r"\bread\s+-p\b|\bselect\s+\w+\s+in\b|\bdialog\b|\bwhiptail\b",
+    )
+    SKILL_INTERACTIVE_GATE_RE: Final[t.RegexPattern] = re.compile(r"--interactive")
+    SKILL_VALIDATOR_NAME_RE: Final[t.RegexPattern] = re.compile(
+        r"^(enforce|check|validate|test|verify|audit|lint|scan)[-_]",
+    )
+    SKILL_FIXER_NAME_RE: Final[t.RegexPattern] = re.compile(
+        r"^(fix|autofix|repair|correct|reorder|refactor|standardize)[-_]",
+    )
+    MISSING_IMPORT_RE: Final[t.RegexPattern] = re.compile(
         r"Cannot find module `([^`]+)` \[missing-import\]",
     )
-    MYPY_HINT_RE: Final[re.Pattern[str]] = re.compile(
+    MYPY_HINT_RE: Final[t.RegexPattern] = re.compile(
         r'note:\s+(?:hint|note):\s+(?:["`].*?\bpip\s+install\s+|install\s+stub\s+package\s+["`]?)'
         r'([A-Za-z0-9][A-Za-z0-9_.-]*)["`]?',
         re.IGNORECASE,
     )
-    MYPY_STUB_RE: Final[re.Pattern[str]] = re.compile(
+    MYPY_STUB_RE: Final[t.RegexPattern] = re.compile(
         r"Library stubs not installed for ['\"](\S+?)['\"]",
     )
     INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")

@@ -272,6 +272,9 @@ class FlextInfraUtilitiesDocsAudit:
                     [
                         c.Infra.RUFF,
                         c.Infra.VERB_CHECK,
+                        "--no-fix",
+                        "--extend-ignore",
+                        ",".join(c.Infra.PYTHON_FENCE_RUFF_EXTEND_IGNORE),
                         "--stdin-filename",
                         f"{rel}#block{index}.py",
                         "-",

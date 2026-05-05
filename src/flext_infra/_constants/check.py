@@ -45,13 +45,13 @@ class FlextInfraConstantsCheck:
         "**/*_pb2*.py",
         "**/*_pb2_grpc*.py",
     )
-    RUFF_FORMAT_FILE_RE: Final[re.Pattern[str]] = re.compile(
+    RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )
-    MARKDOWN_RE: Final[re.Pattern[str]] = re.compile(
+    MARKDOWN_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<file>.*?):(?P<line>\d+)(?::(?P<col>\d+))?\s+error\s+(?P<code>MD\d+)(?:/[^\s]+)?\s+(?P<msg>.*)$",
     )
-    GO_VET_RE: Final[re.Pattern[str]] = re.compile(
+    GO_VET_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<file>[^:\n]+\.go):(?P<line>\d+)(?::(?P<col>\d+))?:\s*(?P<msg>.*)$",
     )
     MAX_DISPLAY_ISSUES: Final[int] = 50

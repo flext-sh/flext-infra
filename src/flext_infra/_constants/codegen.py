@@ -37,7 +37,7 @@ class FlextInfraConstantsCodegen:
         ("utilities.py", "Utilities", "TestsFlextUtilities", "Test utilities"),
     )
     "Base module definitions for tests/: (filename, class_suffix, base_class, docstring)."
-    VIOLATION_PATTERN: Final[re.Pattern[str]] = re.compile(
+    VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
         r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",
     )
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
@@ -53,7 +53,7 @@ class FlextInfraConstantsCodegen:
     )
     "Glob patterns for all directories the lazy-init generator scans."
 
-    BARE_IMPORT_FROM_RE: Final[re.Pattern[str]] = re.compile(
+    BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s",
         re.MULTILINE,
     )
@@ -130,11 +130,21 @@ class FlextInfraConstantsCodegen:
         })
     )
     "Mapping of single-letter aliases to flext-core runtime targets."
+    TEST_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.Infra.StrPair]] = (
+        MappingProxyType({
+            "td": ("flext_tests", "td"),
+            "tf": ("flext_tests", "tf"),
+            "tk": ("flext_tests", "tk"),
+            "tm": ("flext_tests", "tm"),
+            "tv": ("flext_tests", "tv"),
+        })
+    )
+    "Mapping of test-only aliases to flext-tests runtime targets."
 
     # --- Constant detection constants (was: class Detection) ---
     DETECTION_MIN_QUOTED_LITERAL_LEN: Final[int] = 2
     "Minimum length for a quoted string to be considered a literal."
-    DETECTION_TYPEVAR_ASSIGN_RE: Final[re.Pattern[str]] = re.compile(
+    DETECTION_TYPEVAR_ASSIGN_RE: Final[t.RegexPattern] = re.compile(
         r"^(\w+)\s*=\s*(?:TypeVar|ParamSpec|TypeVarTuple)\s*\(",
         re.MULTILINE,
     )
@@ -161,27 +171,27 @@ class FlextInfraConstantsCodegen:
         "()",
     })
     "Literal values considered trivial for constant detection heuristics."
-    DETECTION_FINAL_DECL_RE: Final[re.Pattern[str]] = re.compile(
+    DETECTION_FINAL_DECL_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<indent>\s*)(?P<name>[A-Z_][A-Z0-9_]*)"
         r"\s*:\s*(?P<ann>Final\[.*?\])\s*=\s*(?P<value>.+?)\s*(?:#.*)?$",
         re.MULTILINE,
     )
     "Regex: NAME: Final[TYPE] = VALUE (with optional inline comment)."
-    DETECTION_CLASS_DECL_RE: Final[re.Pattern[str]] = re.compile(
+    DETECTION_CLASS_DECL_RE: Final[t.RegexPattern] = re.compile(
         r"class\s+(\w+)",
     )
     "Regex: class ClassName (captures class name)."
-    DETECTION_DIRECT_USAGE_RE: Final[re.Pattern[str]] = re.compile(
+    DETECTION_DIRECT_USAGE_RE: Final[t.RegexPattern] = re.compile(
         r"\bFlext\w*Constants\.([A-Z_][A-Z0-9_]*)",
     )
     "Regex: FlextXxxConstants.CONSTANT_NAME (captures constant name)."
-    DETECTION_ALIAS_USAGE_RE: Final[re.Pattern[str]] = re.compile(
+    DETECTION_ALIAS_USAGE_RE: Final[t.RegexPattern] = re.compile(
         r"\bc\.\w*\.([A-Z_][A-Z0-9_]*)",
     )
     "Regex: c.Namespace.CONSTANT_NAME (captures constant name)."
-    DETECTION_C_ALIAS_RE: Final[re.Pattern[str]] = re.compile(r"\bc\.([A-Za-z_]\w*)")
+    DETECTION_C_ALIAS_RE: Final[t.RegexPattern] = re.compile(r"\bc\.([A-Za-z_]\w*)")
     "Regex: c.ATTR (captures ATTR after literal ``c.``)."
-    DETECTION_DIRECT_REF_RE: Final[re.Pattern[str]] = re.compile(
+    DETECTION_DIRECT_REF_RE: Final[t.RegexPattern] = re.compile(
         r"\b(Flext\w*Constants(?:\.[A-Za-z_]\w*)+)",
     )
     "Regex: FlextXxxConstants.ATTR.SUBATTR... (captures full dotted chain)."

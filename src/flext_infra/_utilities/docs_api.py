@@ -110,10 +110,12 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _has_symbol_docstring(source: str, symbol_name: str) -> bool:
         """Return whether one exported class/function starts with a docstring."""
-        return FlextInfraUtilitiesRopeAnalysis.symbol_has_docstring_source(
+        if FlextInfraUtilitiesRopeAnalysis.symbol_has_docstring_source(
             source,
             symbol_name,
-        )
+        ):
+            return True
+        return symbol_name in FlextInfraUtilitiesDocsApi._assignment_docstrings(source)
 
     @staticmethod
     def _project_keywords(

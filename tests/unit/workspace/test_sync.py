@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
@@ -63,6 +64,27 @@ def _error_text[ValueT](result: p.Result[ValueT]) -> str:
 
 class TestsFlextInfraWorkspaceSync:
     """Behavior contract for test_sync."""
+
+    def test_sync_result_serializes_json_safe_metadata(self) -> None:
+        payload = m.Infra.SyncResult(
+            files_changed=2,
+            source=Path("/tmp/source"),
+            target=Path("/tmp/target"),
+            timestamp=datetime(2026, 5, 4, tzinfo=UTC),
+        )
+
+        assert payload.model_dump(mode="json") == {
+            "files_changed": 2,
+            "source": "/tmp/source",
+            "target": "/tmp/target",
+            "timestamp": "2026-05-04T00:00:00+00:00",
+        }
+        assert u.normalize_to_json_value(payload) == {
+            "files_changed": 2,
+            "source": "/tmp/source",
+            "target": "/tmp/target",
+            "timestamp": "2026-05-04T00:00:00+00:00",
+        }
 
     def test_sync_generates_basemk_gitignore_and_makefile(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraConstantsRelease:
@@ -38,7 +41,7 @@ class FlextInfraConstantsRelease:
         VersionBump.MINOR,
         VersionBump.PATCH,
     })
-    VERSION_RE: Final[re.Pattern[str]] = re.compile(
+    VERSION_RE: Final[t.RegexPattern] = re.compile(
         r"^version\s*=\s*['\"](.+?)['\"]",
         re.MULTILINE,
     )

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import shutil
 import sys
-from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
 from flext_infra import (
-    FlextInfraCodegenCensus,
     FlextInfraCodegenLazyInit,
+    FlextInfraRefactorCensus,
     c,
     m,
     p,
@@ -39,13 +38,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
         FlextInfraCodegenLazyInit.model_validate(
             {"workspace_root": self.workspace_root},
         ).generate_inits()
-        census_reports = FlextInfraCodegenCensus.model_validate(
-            {"workspace_root": self.workspace_root},
-        ).run()
-        duplicate_groups = self.detect_duplicate_constant_groups(
-            self.workspace_root,
-            census_reports,
-        )
+        census_report = FlextInfraRefactorCensus(
+            workspace=self.workspace_root,
+            include_local_scopes=False,
+            kinds=("constant",),
+        ).build_report()
         modified_files = self.modified_python_files(
             self.workspace_root,
         )
@@ -60,8 +57,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             c.Infra.RUFF,
         )
         after_metrics = self.after_metrics(
-            census_reports=census_reports,
-            duplicate_groups=len(duplicate_groups),
+            census_report=census_report,
             modified_files=modified_files,
         )
         checks = self.build_checks(
@@ -79,11 +75,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ],
             "after": after_metrics,
             "duplicate_constant_groups": [
-                group.model_dump() for group in duplicate_groups
+                group.model_dump(mode="json") for group in census_report.duplicates
             ],
             "projects": [
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project)
-                for project in self.project_findings(census_reports)
+                for project in self.project_findings(census_report)
             ],
         }
         report = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
@@ -180,28 +176,27 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def after_metrics(
         *,
-        census_reports: t.SequenceOf[m.Infra.CensusReport],
-        duplicate_groups: int,
+        census_report: m.Infra.Census.WorkspaceReport,
         modified_files: t.StrSequence,
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Build post-run metrics summary used by quality checks."""
-        by_rule: t.MutableIntMapping = dict.fromkeys(c.Infra.QG_RULE_KEYS, 0)
-        total_violations = 0
-        for report in census_reports:
-            violations = tuple(report.violations)
-            total_violations += len(violations)
-            for raw in violations:
-                parsed = m.Infra.CensusViolation.model_validate(raw)
-                if parsed.rule in by_rule:
-                    by_rule[parsed.rule] += 1
-        total = len(census_reports)
-        passed = u.count(census_reports, lambda report: report.total == 0)
+        by_kind: t.MutableIntMapping = {}
+        for project in census_report.projects:
+            for parsed in project.violations:
+                by_kind[parsed.kind] = by_kind.get(parsed.kind, 0) + 1
+        total = len(census_report.projects)
+        passed = u.count(
+            census_report.projects,
+            lambda project: project.violations_total == 0,
+        )
         modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
-        violations_by_rule: dict[str, t.Infra.InfraValue] = dict(by_rule)
+        violations_by_rule: dict[str, t.Infra.InfraValue] = dict(
+            sorted(by_kind.items())
+        )
         summary: dict[str, t.Infra.InfraValue] = {
-            "total_violations": total_violations,
+            "total_violations": census_report.total_violations,
             "violations_by_rule": violations_by_rule,
-            "duplicate_groups": duplicate_groups,
+            "duplicate_groups": len(census_report.duplicates),
             "projects_total": total,
             "projects_passed": passed,
             "projects_failed": total - passed,
@@ -287,108 +282,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
 
     @staticmethod
-    def constants_file_path(workspace_root: Path, project: str) -> Path:
-        """Build the canonical constants.py path for a project."""
-        src_dir = c.Infra.DEFAULT_SRC_DIR
-        constants_py = c.Infra.CONSTANTS_PY
-        return Path(
-            workspace_root
-            / project
-            / src_dir
-            / project.replace("-", "_")
-            / constants_py
-        )
-
-    @staticmethod
-    def parse_constant_definitions(
-        *,
-        source: str,
-        constants_file: Path,
-        project: str,
-    ) -> t.SequenceOf[m.Infra.ConstantDefinition]:
-        """Parse constant declarations from a constants.py source blob."""
-        return [
-            m.Infra.ConstantDefinition(
-                name=name,
-                value_repr=value_repr,
-                type_annotation=annotation,
-                file_path=str(constants_file),
-                class_path=class_path,
-                project=project,
-                line=line_number,
-            )
-            for name, annotation, value_repr, class_path, line_number in (
-                u.Infra.parse_final_constant_definitions(source.splitlines())
-            )
-        ]
-
-    @staticmethod
-    def build_duplicate_groups(
-        definitions: t.SequenceOf[m.Infra.ConstantDefinition],
-    ) -> t.SequenceOf[m.Infra.DuplicateConstantGroup]:
-        """Build duplicate groups keyed by constant name and by raw value."""
-        by_name: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
-        by_value: defaultdict[str, list[m.Infra.ConstantDefinition]] = defaultdict(list)
-        for definition in definitions:
-            by_name[definition.name].append(definition)
-            by_value[definition.value_repr].append(definition)
-
-        duplicates: t.MutableSequenceOf[m.Infra.DuplicateConstantGroup] = []
-        duplicates.extend(
-            m.Infra.DuplicateConstantGroup(
-                constant_name=name,
-                definitions=defs,
-                is_value_identical=len({item.value_repr for item in defs}) == 1,
-                canonical_ref="",
-            )
-            for name, defs in by_name.items()
-            if len(defs) > 1
-        )
-        duplicates.extend(
-            m.Infra.DuplicateConstantGroup(
-                constant_name=f"[value: {value_key}]",
-                definitions=defs,
-                is_value_identical=True,
-                canonical_ref="",
-            )
-            for value_key, defs in by_value.items()
-            if len(defs) > 1 and len({item.name for item in defs}) > 1
-        )
-        return [
-            group
-            for group in duplicates
-            if len({definition.project for definition in group.definitions})
-            >= c.Infra.MIN_DUPLICATE_PROJECT_COUNT
-        ]
-
-    @staticmethod
-    def detect_duplicate_constant_groups(
-        workspace_root: Path,
-        census_reports: t.SequenceOf[m.Infra.CensusReport],
-    ) -> t.SequenceOf[m.Infra.DuplicateConstantGroup]:
-        """Collect duplicate constants across projects using Rope resource reads."""
-        definitions: t.MutableSequenceOf[m.Infra.ConstantDefinition] = []
-        with u.Infra.open_project(workspace_root) as rope_project:
-            for report in census_reports:
-                constants_file = FlextInfraCodegenQualityGate.constants_file_path(
-                    workspace_root,
-                    report.project,
-                )
-                resource = u.Infra.get_resource_from_path(rope_project, constants_file)
-                if resource is None:
-                    continue
-                definitions.extend(
-                    FlextInfraCodegenQualityGate.parse_constant_definitions(
-                        source=resource.read(),
-                        constants_file=constants_file,
-                        project=report.project,
-                    )
-                )
-        return FlextInfraCodegenQualityGate.build_duplicate_groups(definitions)
-
-    @staticmethod
     def project_findings(
-        census_reports: t.SequenceOf[m.Infra.CensusReport],
+        census_report: m.Infra.Census.WorkspaceReport,
     ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
         """Convert census reports into sorted per-project findings."""
         return [
@@ -397,14 +292,14 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 (
                     m.Infra.QualityGateProjectFinding(
                         project=report.project,
-                        violations_total=len(tuple(report.violations)),
-                        fixable_violations=report.fixable,
-                        validator_passed=report.total == 0,
+                        violations_total=report.violations_total,
+                        fixable_violations=len(report.fixes),
+                        validator_passed=report.violations_total == 0,
                         mro_failures=0,
                         layer_violations=0,
                         cross_project_reference_violations=0,
                     )
-                    for report in census_reports
+                    for report in census_report.projects
                 ),
                 key=lambda entry: entry.project,
             )
@@ -462,16 +357,16 @@ class FlextInfraCodegenQualityGate(s[bool]):
         if duplicate_groups:
             lines.extend(["", "Duplicate Groups:"])
         for group in duplicate_groups:
-            parsed_group = m.Infra.DuplicateConstantGroup.model_validate(group)
+            parsed_group = m.Infra.Census.DuplicateGroup.model_validate(group)
             projects = sorted({
                 definition.project for definition in parsed_group.definitions
             })
             lines.append(
                 "- "
-                f"{parsed_group.constant_name}: "
+                f"{parsed_group.name}: "
                 f"projects={len(projects)}, "
                 f"definitions={len(parsed_group.definitions)}, "
-                f"values_identical={parsed_group.is_value_identical}",
+                f"values_identical={parsed_group.value_identical}",
             )
             if projects:
                 lines.append(f"  projects: {', '.join(projects)}")
