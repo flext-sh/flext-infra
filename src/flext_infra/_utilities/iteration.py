@@ -780,9 +780,9 @@ class FlextInfraUtilitiesIteration:
           2. Enumerate ``.gitmodules``-tracked submodules of the workspace
           3. Surface external sub-repos that opt-in via
              ``[tool.flext.workspace] attached = true`` in their pyproject
-             (covers external git repos like ``algar-oud-mig`` /
-             ``gruponos-meltano-native`` that import flext-core but live
-             outside the workspace's submodule registry)
+             (covers any external git repo that imports flext-core but lives
+             outside the workspace's submodule registry — name-agnostic,
+             discovered purely by directory layout and pyproject content)
           4. Return sorted list including the workspace root itself
 
         Args:
@@ -909,9 +909,10 @@ class FlextInfraUtilitiesIteration:
 
         When ``include_attached`` is True, external sub-repos at workspace
         top-level (git repos with their own ``pyproject.toml`` not registered
-        in the workspace submodule index — e.g. ``algar-oud-mig``) are
-        surfaced alongside the git-tracked dirs of ``workspace_root``.
-        Default (False) preserves workspace-submodule-only enumeration.
+        in the workspace submodule index) are surfaced alongside the
+        git-tracked dirs of ``workspace_root``. Discovery is purely structural
+        — no name patterns or hardcoded project lists. Default (False)
+        preserves workspace-submodule-only enumeration.
         """
         roots: t.MutableSequenceOf[Path] = []
         effective_scan_dirs = scan_dirs or frozenset()

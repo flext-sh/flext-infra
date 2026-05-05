@@ -84,8 +84,9 @@ class FlextInfraUtilitiesDocsScope:
         ``include_attached`` is forwarded to
         :meth:`FlextInfraUtilitiesDocsScope.discover_projects` so external
         sub-repos at workspace top-level (git repos with their own
-        ``pyproject.toml`` not registered in the workspace submodule index —
-        e.g. ``algar-oud-mig``) are surfaced when explicitly requested.
+        ``pyproject.toml`` not registered in the workspace submodule index)
+        are surfaced when explicitly requested. Discovery is structural and
+        name-agnostic.
         """
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root,
