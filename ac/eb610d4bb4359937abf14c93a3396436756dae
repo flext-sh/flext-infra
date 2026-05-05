@@ -1,0 +1,27 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "aceb610d4bb4359937abf14c93a3396436756dae",
+  "prompts": {
+    "31ee9137f8909d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbeb61c6-cd2e-4000-9bed-dcd82a916aec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 18,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/f93699f97c97e9ac8e5f642cecd89353173f70f144195829f9f48ffdd57d6114"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
