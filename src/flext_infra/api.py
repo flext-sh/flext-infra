@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, Self, override
+from typing import ClassVar, override
 
 from flext_core import r
 from flext_infra import (
@@ -21,15 +21,6 @@ class FlextInfra(
     """Thin public MRO facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
-    _instance: ClassVar[Self | None] = None
-
-    @override
-    @classmethod
-    def fetch_global(cls) -> Self:
-        """Return the shared infra facade instance (canonical domain verb)."""
-        if cls._instance is None:
-            cls._instance = cls.model_validate({})
-        return cls._instance
 
     def rope_workspace(
         self,
