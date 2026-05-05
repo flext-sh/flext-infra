@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
+from flext_cli import u as cli_u
 from flext_infra import FlextInfraReleaseOrchestrator
 from tests.constants import c
 from tests.models import m
@@ -197,8 +197,13 @@ def test_run_release_build_deduplicates_duplicate_project_selectors(
         / c.Tests.RELEASE_TAG_TARGET
         / "build-report.json"
     )
-    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report = cli_u.Cli.json_loads(report_path.read_text(encoding="utf-8")).unwrap()
 
     assert result.success
+    assert isinstance(report, dict)
     assert report["total"] == 2
-    assert [record["project"] for record in report["records"]] == ["root", "flext-a"]
+    records = report["records"]
+    assert isinstance(records, list)
+    assert [
+        record["project"] for record in records if isinstance(record, dict)
+    ] == ["root", "flext-a"]

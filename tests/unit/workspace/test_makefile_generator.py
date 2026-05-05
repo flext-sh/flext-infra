@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
-import subprocess
 from pathlib import Path
 
+from flext_cli import cli
+from flext_core import FlextTypes as t
 from flext_infra import FlextInfraWorkspaceMakefileGenerator
 
 
@@ -142,14 +142,11 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         assert result.success, result.error
-        process = subprocess.run(
+        outcome = cli.run_raw(
             ["make", "-C", str(workspace_root), "--dry-run", "help"],
-            capture_output=True,
-            check=False,
-            text=True,
         )
 
-        assert process.returncode == 0
+        assert outcome.success and outcome.value.exit_code == 0
 
     def test_workspace_makefile_generator_discovers_external_projects_outside_docs_scope(
         self,
@@ -170,19 +167,18 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         )
         docs_dir = workspace_root / "docs"
         docs_dir.mkdir()
-        (docs_dir / "docs_config.json").write_text(
-            json.dumps(
-                {
-                    "scope": {
-                        "exclude_roots": [
-                            "algar-oud-mig",
-                            "gruponos-meltano-native",
-                        ],
-                    },
-                },
-            ),
-            encoding="utf-8",
-        )
+        docs_config: dict[str, t.JsonValue] = {
+            "scope": {
+                "exclude_roots": [
+                    "algar-oud-mig",
+                    "gruponos-meltano-native",
+                ],
+            },
+        }
+        cli.write_json_file(
+            docs_dir / "docs_config.json",
+            docs_config,
+        ).unwrap()
         for project_name in ("flext-core", "algar-oud-mig", "gruponos-meltano-native"):
             project_dir = workspace_root / project_name
             project_dir.mkdir()
@@ -199,26 +195,18 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         assert result.success, result.error
-        process = subprocess.run(
-            [
-                "make",
-                "-C",
-                str(workspace_root),
-                "-pn",
-            ],
-            capture_output=True,
-            check=False,
-            text=True,
+        outcome = cli.run_raw(
+            ["make", "-C", str(workspace_root), "-pn"],
         )
 
-        assert process.returncode == 0
+        assert outcome.success and outcome.value.exit_code == 0
+        stdout = outcome.value.stdout
         assert (
             "INDEPENDENT_PROJECTS := algar-oud-mig gruponos-meltano-native"
-            in process.stdout
+            in stdout
         )
         assert (
-            "ATTACHABLE_PROJECTS := algar-oud-mig gruponos-meltano-native"
-            in process.stdout
+            "ATTACHABLE_PROJECTS := algar-oud-mig gruponos-meltano-native" in stdout
         )
 
     def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation(

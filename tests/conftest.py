@@ -3,18 +3,33 @@
 from __future__ import annotations
 
 from collections.abc import (
+    Generator,
     Iterator,
 )
 from pathlib import Path
 
 import pytest
 
+from flext_infra import FlextInfraSettings
 from tests import t, u
 
 pytest_plugins = [
     "tests.unit.fixtures",
     "tests.unit.fixtures_git",
 ]
+
+
+@pytest.fixture(autouse=True)
+def reset_flext_infra_settings_singleton() -> Generator[None]:
+    """Reset FlextInfraSettings singleton around each test.
+
+    Prevents cached env state from leaking between env-dependent tests
+    that previously relied on ``FlextInfraSettings()`` returning fresh
+    instances per call.
+    """
+    FlextInfraSettings.reset_for_testing()
+    yield
+    FlextInfraSettings.reset_for_testing()
 
 
 def _is_collectable_test_module(collection_path: Path) -> bool:

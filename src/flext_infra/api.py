@@ -23,6 +23,7 @@ class FlextInfra(
     app_name: ClassVar[str] = "flext-infra"
     _instance: ClassVar[Self | None] = None
 
+    @override
     @classmethod
     def fetch_global(cls) -> Self:
         """Return the shared infra facade instance (canonical domain verb)."""

@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from importlib import import_module
 
+from flext_cli import cli
+
 
 def main() -> int:
     """Run dependency path sync through canonical CLI routing."""
@@ -14,7 +16,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    cli.exit(code=main())
 
 
 __all__: list[str] = ["main"]
