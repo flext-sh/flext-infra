@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+import sys
 from pathlib import Path
 
 import pytest
@@ -429,9 +431,20 @@ class TestProcessDirectory:
         assert result == 0
         content = (package_root / "__init__.py").read_text(encoding="utf-8")
         assert f"from {package_root.name}.__version__ import *" not in content
-        assert '".__version__": (' in content
-        assert '"__version__"' in content
-        assert '"__version_info__"' in content
+        assert (
+            f"from {package_root.name}.__version__ import __version__, __version_info__"
+            in content
+        )
+
+        src_root = workspace_root / c.Infra.DEFAULT_SRC_DIR
+        sys.path.insert(0, str(src_root))
+        try:
+            generated_package = importlib.import_module(package_root.name)
+            assert generated_package.__version__ == "0.1.0"
+            assert generated_package.__version_info__ == (0, 1, 0)
+        finally:
+            _ = sys.modules.pop(package_root.name, None)
+            sys.path.pop(0)
 
     def test_root_settings_without_explicit_all_still_exports_class(
         self,

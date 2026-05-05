@@ -423,7 +423,7 @@ root = "tmp_flow_test"
 [tool.pytest.ini_options]
 addopts = [
   "--cov-report=term-missing:skip-covered",
-  "--cov=.",
+  "--cov=src/flext_infra",
   "--durations=10",
   "--ignore-glob=*/tests/_constants/*",
   "--ignore-glob=*/tests/_models/*",

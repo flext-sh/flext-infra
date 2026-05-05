@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import flext_infra as infra_pkg
-from flext_infra.__version__ import FlextInfraVersion
+from flext_infra import u
 
 
 def test_version_full_import() -> None:
-    if "__version__" in infra_pkg.__dict__:
-        del infra_pkg.__dict__["__version__"]
-    version_value: str = infra_pkg.__version__
-    assert version_value == FlextInfraVersion.__version__
+    project_root = Path(__file__).resolve().parents[2]
+    metadata = u.read_project_metadata(project_root)
+
+    assert infra_pkg.__title__ == metadata.name
