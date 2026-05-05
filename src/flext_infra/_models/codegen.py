@@ -221,6 +221,16 @@ class FlextInfraModelsCodegen:
             default_factory=lambda: MappingProxyType({}),
             description="Lazy import map: export name to module/attribute target.",
         )
+        eager_dunders: t.Infra.LazyImportMap = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description=(
+                "Dunder exports that must be eagerly imported at __init__.py "
+                "load time. Required for the ``__version__.py`` submodule case "
+                "where the submodule name collides with the dunder string it "
+                "exports — eager binding pins the canonical string in the "
+                "package dict before any submodule re-import can shadow it."
+            ),
+        )
         inline_constants: t.StrMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Inline constants emitted directly into __init__.py.",

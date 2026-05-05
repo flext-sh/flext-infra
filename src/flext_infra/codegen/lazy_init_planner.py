@@ -74,8 +74,15 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         child_lazy, child_tc = self._merge_children(
             context.pkg_dir, lazy_map, dir_exports
         )
-        for name, target in version_map.items():
-            lazy_map.setdefault(name, target)
+        # Version-submodule dunders are emitted as eager imports rather than
+        # lazy. The submodule shares its name (``__version__``) with the dunder
+        # string it exports; lazy resolution would let Python's import
+        # machinery shadow the dunder with the submodule object on first
+        # access. Eager binding at __init__.py load time pins the canonical
+        # strings in the package dict permanently.
+        eager_dunders = dict(version_map)
+        for name in eager_dunders:
+            lazy_map.pop(name, None)
         self._resolve_aliases(
             lazy_map,
             current_pkg=context.current_pkg,
@@ -84,17 +91,20 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         )
         for name in c.Infra.INFRA_ONLY_EXPORTS:
             lazy_map.pop(name, None)
-        if not lazy_map:
+            eager_dunders.pop(name, None)
+        if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
+        all_export_names = tuple(sorted({*lazy_map, *eager_dunders}))
         return m.Infra.LazyInitPlan(
             context=context,
             action=c.Infra.LazyInitAction.WRITE,
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,
-                export_names=tuple(sorted(lazy_map)),
+                export_names=all_export_names,
             ),
             lazy_map=dict(lazy_map),
+            eager_dunders=eager_dunders,
             wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
             child_packages_for_tc=child_tc,

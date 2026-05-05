@@ -269,6 +269,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 plan.lazy_map,
                 plan.inline_constants,
                 plan.context.current_pkg,
+                eager_imports=plan.eager_dunders,
                 wildcard_runtime_modules=plan.wildcard_runtime_modules,
                 child_packages_for_lazy=plan.child_packages_for_lazy,
                 child_packages_for_tc=plan.child_packages_for_tc,
