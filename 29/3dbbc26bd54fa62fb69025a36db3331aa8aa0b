@@ -1,0 +1,29 @@
+src/flext_infra/codegen/lazy_init_planner.py
+  31ee9137f8909d3e 77-85,94-95,97,104,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "293dbbc26bd54fa62fb69025a36db3331aa8aa0b",
+  "prompts": {
+    "31ee9137f8909d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbeb61c6-cd2e-4000-9bed-dcd82a916aec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot",
+      "messages": [],
+      "total_additions": 1246,
+      "total_deletions": 1159,
+      "accepted_lines": 1246,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/193be55dca0904dccde42d216d8f6a611e33e83f2e2470eb44c71f5ae974304a"
+    }
+  },
+  "humans": {
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  }
+}
