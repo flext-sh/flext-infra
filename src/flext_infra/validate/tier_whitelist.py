@@ -47,6 +47,10 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
         c.Infra.DIR_SCRIPTS,
     })
 
+    SETTINGS_MODULE_LIBRARIES: ClassVar[frozenset[str]] = frozenset({
+        "pydantic_settings",
+    })
+
     @override
     def _is_allowlisted(self, file_path: Path, module_name: str) -> bool:
         """Return True iff ``file_path`` owns ``module_name`` per OWNERS SSOT.
@@ -56,10 +60,22 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
         and the entire ``<owner>/src/<package>/`` tree is allowed to import
         that library. ``tests/``, ``examples/``, ``scripts/`` are runtime-
         exempt globally.
+
+        Settings modules (``*/settings.py``) are additionally allowed to
+        import ``pydantic_settings`` — the canonical pattern for project
+        configuration is ``class Foo(FlextSettingsBase, BaseSettings)`` per
+        ``flext_core._settings.base`` docstring, and that base name only
+        lives in ``pydantic_settings``.
         """
         if any(part in self.NON_RUNTIME_DIR_PARTS for part in file_path.parts):
             return True
-        owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(self._top_module(module_name))
+        top = self._top_module(module_name)
+        if (
+            top in self.SETTINGS_MODULE_LIBRARIES
+            and file_path.name == "settings.py"
+        ):
+            return True
+        owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
         if owner is None:
             return False
         return f"/{owner}/src/" in file_path.as_posix()
