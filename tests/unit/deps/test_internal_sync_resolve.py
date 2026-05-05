@@ -57,7 +57,7 @@ class TestsFlextInfraDepsInternalSyncResolve:
             GITHUB_HEAD_REF="feature/test",
             GITHUB_REF_NAME="main",
         ):
-            FlextInfraSettings._reset_instance()
+            FlextInfraSettings.reset_instance()
             result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
 
         assert result == "feature/test"
