@@ -70,10 +70,7 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
         if any(part in self.NON_RUNTIME_DIR_PARTS for part in file_path.parts):
             return True
         top = self._top_module(module_name)
-        if (
-            top in self.SETTINGS_MODULE_LIBRARIES
-            and file_path.name == "settings.py"
-        ):
+        if top in self.SETTINGS_MODULE_LIBRARIES and file_path.name == "settings.py":
             return True
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
         if owner is None:

@@ -479,7 +479,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         )
         canonical_target = c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
         if canonical_target is not None:
-            canonical_package = canonical_target[0]
+            canonical_package: str = canonical_target[0]
             if canonical_package in candidate_packages and (
                 canonical_package
                 not in self.rope_workspace.workspace_index.package_dir_by_name
