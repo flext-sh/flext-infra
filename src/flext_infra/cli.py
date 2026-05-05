@@ -6,8 +6,7 @@ import sys
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_cli import FlextCli, FlextCliSettings
-from flext_core import FlextSettings
+from flext_cli import cli as cli_facade, p as cli_p
 from flext_infra import (
     FlextInfraAccessorMigrationOrchestrator,
     FlextInfraBaseMkGenerator,
@@ -63,7 +62,7 @@ from flext_infra.refactor.wrapper_root_namespace import (
 )
 
 
-class FlextInfraCli(FlextCli):
+class FlextInfraCli(type(cli_facade)):
     """Single CLI entry surface for every flext-infra command group."""
 
     app_name: ClassVar[str] = "flext-infra"
@@ -496,9 +495,9 @@ class FlextInfraCli(FlextCli):
     }
 
     @staticmethod
-    def _cli_settings() -> FlextCliSettings:
-        """Cli settings."""
-        return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
+    def _cli_settings() -> cli_p.Cli.Settings:
+        """Cli settings via the canonical cli facade."""
+        return cli_facade.settings
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""

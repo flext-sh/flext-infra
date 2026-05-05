@@ -192,7 +192,7 @@ disable_error_code = [
   "prop-decorator",
   "valid-type",
 ]
-exclude = "^(?:tests/fixtures|tmp_flow_test)(?:/|$)"
+exclude = "^tests/fixtures(?:/|$)"
 explicit_package_bases = true
 extra_checks = true
 follow_imports = "normal"
@@ -747,3 +747,17 @@ line_length = 88
 preserve_quotes = true
 section_whitelines = 1
 whitelines = 1
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"argparse" = {msg = "Use cli.register_result_command + Pydantic model from flext_cli."}
+"click" = {msg = "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."}
+"colorama" = {msg = "Use cli.print with c.Cli.MessageStyles."}
+"getpass" = {msg = "Use cli.prompt_password from flext_cli."}
+"orjson" = {msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps from flext_cli."}
+"prompt_toolkit" = {msg = "Use cli.prompt / cli.confirm / cli.prompt_choice / cli.prompt_password."}
+"rich" = {msg = "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."}
+"simplejson" = {msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."}
+"tabulate" = {msg = "Use cli.format_table / cli.show_table from flext_cli."}
+"tqdm" = {msg = "Use cli.display_progress from flext_cli."}
+"typer" = {msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."}
+"ujson" = {msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."}

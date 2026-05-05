@@ -204,6 +204,7 @@ def test_run_release_build_deduplicates_duplicate_project_selectors(
     assert report["total"] == 2
     records = report["records"]
     assert isinstance(records, list)
-    assert [
-        record["project"] for record in records if isinstance(record, dict)
-    ] == ["root", "flext-a"]
+    assert [record["project"] for record in records if isinstance(record, dict)] == [
+        "root",
+        "flext-a",
+    ]

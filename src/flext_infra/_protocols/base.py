@@ -415,6 +415,25 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class RefactorCliArgs(Protocol):
+        """Structural protocol for the parsed refactor CLI argument bag.
+
+        Replaces the prior ``argparse.Namespace`` annotation: the orchestrator
+        and engine consume only attribute access, so a structural protocol
+        captures the contract without binding to argparse.
+        """
+
+        project: Path | None
+        workspace: Path | None
+        file: Path | None
+        files: t.SequenceOf[Path] | None
+        pattern: str
+        dry_run: bool
+        show_diff: bool
+        analysis_output: Path | None
+        impact_map_output: Path | None
+
+    @runtime_checkable
     class GithubCliHandlers(Protocol):
         """Protocol for GitHub CLI handler mixins."""
 

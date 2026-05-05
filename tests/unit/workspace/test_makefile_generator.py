@@ -201,13 +201,8 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
 
         assert outcome.success and outcome.value.exit_code == 0
         stdout = outcome.value.stdout
-        assert (
-            "INDEPENDENT_PROJECTS := algar-oud-mig gruponos-meltano-native"
-            in stdout
-        )
-        assert (
-            "ATTACHABLE_PROJECTS := algar-oud-mig gruponos-meltano-native" in stdout
-        )
+        assert "INDEPENDENT_PROJECTS := algar-oud-mig gruponos-meltano-native" in stdout
+        assert "ATTACHABLE_PROJECTS := algar-oud-mig gruponos-meltano-native" in stdout
 
     def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation(
         self,

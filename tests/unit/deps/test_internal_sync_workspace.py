@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from collections.abc import (
     Generator,
 )
 from contextlib import contextmanager
 from pathlib import Path
 
+from flext_cli import cli
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests import u
 
@@ -41,7 +41,7 @@ def create_git_repo(tmp_path: Path, name: str) -> Path:
 def create_workspace_with_submodule(tmp_path: Path) -> tuple[Path, Path]:
     child = create_git_repo(tmp_path, "child")
     workspace = create_git_repo(tmp_path, "workspace")
-    subprocess.run(
+    cli.run_checked(
         [
             "git",
             "-c",
@@ -52,24 +52,9 @@ def create_workspace_with_submodule(tmp_path: Path) -> tuple[Path, Path]:
             "deps/child",
         ],
         cwd=workspace,
-        check=True,
-        capture_output=True,
-        text=True,
     )
-    subprocess.run(
-        ["git", "add", "-A"],
-        cwd=workspace,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        ["git", "commit", "-m", "add submodule"],
-        cwd=workspace,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    cli.run_checked(["git", "add", "-A"], cwd=workspace)
+    cli.run_checked(["git", "commit", "-m", "add submodule"], cwd=workspace)
     return workspace, workspace / "deps" / "child"
 
 

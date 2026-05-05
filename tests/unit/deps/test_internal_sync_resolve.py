@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from collections.abc import (
     Generator,
 )
 from contextlib import contextmanager
 from pathlib import Path
 
+from flext_cli import cli
 from flext_infra import FlextInfraInternalDependencySyncService, FlextInfraSettings
 from tests import u
 
@@ -39,12 +39,9 @@ def create_git_repo(tmp_path: Path, name: str) -> Path:
 
 
 def add_origin(repo_root: Path, remote_url: str) -> None:
-    subprocess.run(
+    cli.run_checked(
         ["git", "remote", "add", "origin", remote_url],
         cwd=repo_root,
-        check=True,
-        capture_output=True,
-        text=True,
     )
 
 

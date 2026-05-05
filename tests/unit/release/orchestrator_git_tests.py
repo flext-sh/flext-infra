@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
+from flext_cli import cli
 from flext_infra import FlextInfraReleaseOrchestrator
 from tests.constants import c
 from tests.models import m
@@ -60,25 +60,14 @@ def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
 
 def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
     bare_remote = remote_root / "origin.git"
-    subprocess.run(
-        [c.Infra.GIT, "init", "--bare", str(bare_remote)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
+    cli.run_checked([c.Infra.GIT, "init", "--bare", str(bare_remote)])
+    cli.run_checked(
         [c.Infra.GIT, "remote", "add", c.Infra.GIT_ORIGIN, str(bare_remote)],
         cwd=repo_root,
-        check=True,
-        capture_output=True,
-        text=True,
     )
-    subprocess.run(
+    cli.run_checked(
         [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
         cwd=repo_root,
-        check=True,
-        capture_output=True,
-        text=True,
     )
     return bare_remote
 

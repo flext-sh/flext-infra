@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from collections.abc import (
     Generator,
 )
@@ -9,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Final
 
+from flext_cli import cli
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests import u
 
@@ -44,28 +44,22 @@ def create_git_repo(tmp_path: Path, name: str) -> Path:
 def create_bare_remote(source_repo: Path, remote_root: Path, name: str) -> Path:
     remote_root.mkdir(parents=True, exist_ok=True)
     remote_repo = remote_root / name
-    subprocess.run(
+    cli.run_checked(
         ["git", "clone", "--bare", str(source_repo), str(remote_repo)],
-        check=True,
-        capture_output=True,
-        text=True,
     )
     return remote_repo
 
 
 def add_origin(repo_root: Path, remote_repo: Path) -> None:
-    subprocess.run(
+    cli.run_checked(
         ["git", "remote", "add", "origin", str(remote_repo)],
         cwd=repo_root,
-        check=True,
-        capture_output=True,
-        text=True,
     )
 
 
 def configure_github_rewrite(home_root: Path, remote_parent: Path) -> None:
     home_root.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
+    cli.run_checked(
         [
             "git",
             "config",
@@ -73,9 +67,6 @@ def configure_github_rewrite(home_root: Path, remote_parent: Path) -> None:
             f"url.file://{remote_parent}/.insteadOf",
             "https://github.com/flext-sh/",
         ],
-        check=True,
-        capture_output=True,
-        text=True,
         env={**os.environ, "HOME": str(home_root)},
     )
 

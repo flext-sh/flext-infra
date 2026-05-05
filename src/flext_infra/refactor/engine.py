@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
 from flext_infra import (
@@ -56,11 +55,11 @@ class FlextInfraRefactorEngine:
         """Delegate table rendering to the dedicated loader."""
         FlextInfraRefactorRuleLoader.print_rules_table(rows)
 
-    def run_analyze_violations(self, args: argparse.Namespace) -> int:
+    def run_analyze_violations(self, args: p.Infra.RefactorCliArgs) -> int:
         """Delegate violation analysis to the dedicated orchestrator."""
         return self.orchestrator.run_analyze_violations(args)
 
-    def run_refactor(self, args: argparse.Namespace) -> int:
+    def run_refactor(self, args: p.Infra.RefactorCliArgs) -> int:
         """Delegate CLI refactor execution to the dedicated orchestrator."""
         return self.orchestrator.run_refactor(args)
 

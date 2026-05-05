@@ -8,8 +8,8 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
-from flext_cli import FlextCliSettings
-from flext_core import FlextSettings, s
+from flext_cli import cli, p as cli_p
+from flext_core import s
 from flext_infra import (
     c,
     m,
@@ -61,9 +61,9 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
 
     @property
     @override
-    def settings(self) -> FlextCliSettings:
-        """Return the typed CLI settings namespace."""
-        return FlextSettings.fetch_global().fetch_namespace("cli", FlextCliSettings)
+    def settings(self) -> cli_p.Cli.Settings:
+        """Return the typed CLI settings via the canonical cli facade."""
+        return cli.settings
 
     @property
     def log(self) -> p.Logger:
@@ -73,7 +73,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""
-        return m.RuntimeBootstrapOptions(settings_type=FlextCliSettings)
+        return m.RuntimeBootstrapOptions(settings_type=type(cli.settings))
 
     workspace_root: Annotated[
         Path,

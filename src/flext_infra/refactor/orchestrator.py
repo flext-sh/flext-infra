@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import difflib
 from pathlib import Path
 
@@ -15,6 +14,7 @@ from flext_infra import (
     FlextInfraRefactorViolationAnalyzer,
     c,
     m,
+    p,
     t,
     u,
 )
@@ -231,7 +231,7 @@ class FlextInfraRefactorOrchestrator(
                 u.Cli.error(f"Failed: {file_path.name} - {result.error}")
         return results
 
-    def run_analyze_violations(self, args: argparse.Namespace) -> int:
+    def run_analyze_violations(self, args: p.Infra.RefactorCliArgs) -> int:
         """Analyze violations across the selected file set."""
         files = self._collect_files(args)
         if files is None:
@@ -247,7 +247,7 @@ class FlextInfraRefactorOrchestrator(
         return 0
 
     def _collect_files(
-        self, args: argparse.Namespace
+        self, args: p.Infra.RefactorCliArgs
     ) -> t.MutableSequenceOf[Path] | None:
         """Collect files."""
         result: t.MutableSequenceOf[Path] | None
@@ -278,7 +278,7 @@ class FlextInfraRefactorOrchestrator(
             result = []
         return result
 
-    def run_refactor(self, args: argparse.Namespace) -> int:
+    def run_refactor(self, args: p.Infra.RefactorCliArgs) -> int:
         """Run refactor CLI dispatch for the selected scope."""
         if args.project:
             results = list(

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 from collections.abc import (
     MutableMapping,
     MutableSequence,
@@ -15,6 +14,7 @@ from typing import ClassVar, override
 from flext_tests import FlextTestsUtilities
 from tomlkit import TOMLDocument
 
+from flext_cli import cli as cli_facade
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraCodegenConsolidator,
@@ -615,13 +615,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (c.Infra.GIT, "commit", "-m", "init"),
             )
             for command in commands:
-                _ = subprocess.run(
-                    command,
-                    cwd=repo_root,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
+                _ = cli_facade.run_checked(list(command), cwd=repo_root)
 
         @staticmethod
         def to_pascal(snake: str) -> str:

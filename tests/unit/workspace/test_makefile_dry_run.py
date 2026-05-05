@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from pathlib import Path
 
+from flext_cli import cli, m as cli_m
 from flext_infra import FlextInfraWorkspaceMakefileGenerator
 
 
@@ -39,7 +39,7 @@ def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:
 def _run_workspace_make_dry_run(
     workspace_root: Path,
     *args: str,
-) -> subprocess.CompletedProcess[str]:
+) -> cli_m.Cli.CommandOutput:
     env = os.environ.copy()
     for key in (
         "CHANGED_ONLY",
@@ -58,13 +58,14 @@ def _run_workspace_make_dry_run(
         "VERBOSE",
     ):
         env.pop(key, None)
-    return subprocess.run(
+    outcome = cli.run_raw(
         ["make", "-C", str(workspace_root), "--dry-run", *args],
-        capture_output=True,
-        check=False,
         env=env,
-        text=True,
     )
+    if outcome.failure:
+        msg = f"make dry-run invocation failed: {outcome.error}"
+        raise RuntimeError(msg)
+    return outcome.value
 
 
 class TestsFlextInfraWorkspaceMakefileDryRun:
@@ -78,7 +79,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         process = _run_workspace_make_dry_run(workspace_root, "mod", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert "--projects demo-a" in output
         assert (
             f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
@@ -96,7 +97,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         process = _run_workspace_make_dry_run(workspace_root, "mod")
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert "modernize --apply" in output
         assert "path-sync --mode auto --apply" in output
         assert (
@@ -115,7 +116,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         process = _run_workspace_make_dry_run(workspace_root, "fmt", "PROJECT=demo-b")
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert '_fmt_target="demo-b"' in output
         assert "ruff format $_fmt_target --quiet" in output
         assert "find demo-b -type f -name '*.go'" in output
@@ -131,7 +132,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         process = _run_workspace_make_dry_run(workspace_root, "up", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert 'make mod PROJECT="demo-a"' in output
         assert (
             "modernize --apply --rewrite-constraints --constraint-policy floor"
@@ -155,7 +156,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         process = _run_workspace_make_dry_run(workspace_root, "types")
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert "detect --typings --quiet --no-fail" in output
         assert (
             f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
@@ -174,7 +175,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         )
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert (
             "modernize --apply --rewrite-constraints --constraint-policy floor"
             in output
@@ -194,7 +195,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         process = _run_workspace_make_dry_run(workspace_root, "gen", "PROJECT=demo-b")
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert '--no-print-directory mod PROJECT="demo-b"' in output
         assert '--no-print-directory sync PROJECT="demo-b"' in output
 
@@ -206,7 +207,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         process = _run_workspace_make_dry_run(workspace_root, "sync", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
-        assert process.returncode == 0
+        assert process.exit_code == 0
         assert "workspace sync \\" in output
         assert f'--workspace "{workspace_root}/$proj"' in output
         assert f'--canonical-root "{workspace_root}"' in output
