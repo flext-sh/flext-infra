@@ -5,12 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import FlextSettings, m, u
+from flext_core import FlextSettingsBase, m, u
 from flext_infra import c
 
 
-@FlextSettings.auto_register("infra")
-class FlextInfraSettings(FlextSettings):
+class FlextInfraSettings(FlextSettingsBase):
     """Environment-backed settings for infra workspace and dependency flows."""
 
     model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(
