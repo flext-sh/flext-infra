@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import time
 from collections.abc import (
-    Callable,
     MutableMapping,
 )
 from pathlib import Path
 from typing import ClassVar
 
+from flext_cli import cli
 from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraGate,
@@ -226,8 +226,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
             if gate_instance is None:
                 continue
             stages.append(
-                m.Cli.PipelineStageSpec(
-                    stage_id=gate_id,
+                cli.stage(
+                    gate_id,
                     handler=self._make_gate_handler(
                         gate_instance,
                         project_dir,
@@ -240,12 +240,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
         if not stages:
             return result
 
-        pipeline_ctx = m.Cli.PipelineStageContext(
-            workspace_root=project_dir,
-        )
-        u.Cli.execute_pipeline(
+        cli.pipeline(
             stages,
-            pipeline_ctx,
+            workspace_root=project_dir,
             fail_fast=ctx.fail_fast,
             logger=self._gate_logger,
         )
@@ -261,7 +258,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         ctx: m.Infra.GateContext,
         gates_sink: MutableMapping[str, m.Infra.GateExecution],
-    ) -> Callable[[m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]]:
+    ) -> t.Cli.PipelineHandler:
         """Build a pipeline stage handler that executes a single gate.
 
         The handler writes GateExecution into *gates_sink* as a side-effect
@@ -294,8 +291,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 else c.Cli.PipelineStageStatus.FAILED
             )
             return r[m.Cli.PipelineStageResult].ok(
-                m.Cli.PipelineStageResult(
-                    stage_id=gate_id,
+                cli.stage_result(
+                    gate_id,
                     status=status,
                     output={"issues": len(execution.issues)},
                 ),

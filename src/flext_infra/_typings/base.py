@@ -14,9 +14,6 @@ from pathlib import Path as _Path
 from typing import Literal
 
 from jinja2 import Environment as _JinjaEnvironment, Template as _JinjaTemplate
-from tomlkit import TOMLDocument
-from tomlkit.container import Container as _TOMLContainer
-from tomlkit.items import Item as _TOMLItem, Table
 
 from flext_cli import m, t
 
@@ -32,14 +29,6 @@ class FlextInfraTypesBase:
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
-    type TomlDocument = TOMLDocument
-    "Tomlkit TOML document."
-    type TomlContainer = _TOMLContainer
-    "Tomlkit container (mutable TOML section)."
-    type TomlItem = _TOMLItem
-    "Tomlkit item (value or table)."
-    type TomlTable = Table
-    "Tomlkit table."
 
     type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
@@ -59,8 +48,6 @@ class FlextInfraTypesBase:
     "Ordered pair of strings."
     type StrIntPair = tuple[str, int]
     "Ordered pair of (str, int)."
-    type IntPair = tuple[int, int]
-    "Ordered pair of (int, int)."
     type StrPairSequence = t.SequenceOf[StrPair]
     "Read-only sequence of string pairs."
     type LazyImportMap = t.MappingKV[str, StrPair]

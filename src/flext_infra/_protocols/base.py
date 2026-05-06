@@ -50,7 +50,7 @@ class FlextInfraProtocolsBase(Protocol):
                 | t.SequenceOf[tuple[str, str]]
                 | t.SequenceOf[tuple[str, t.StrSequence]]
                 | t.SequenceOf[tuple[str, t.SequenceOf[tuple[str, str]]]]
-                | t.MappingKV[str, t.JsonValue]
+                | t.JsonMapping
                 | type
             ),
         ) -> str:

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
@@ -181,7 +178,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
             m.Field(description="Original TOML source text"),
         ] = ""
         payload: Annotated[
-            MutableMapping[str, t.JsonValue],
+            t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict)
 

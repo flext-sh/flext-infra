@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
+from collections.abc import Callable
 from typing import override
 
+from flext_cli import cli
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenFixer,
@@ -36,19 +35,14 @@ class FlextInfraCodegenPipeline(s[str]):
     def execute(self) -> p.Result[str]:
         """Execute the end-to-end codegen pipeline via DAG engine."""
         self._state = m.Infra.CodegenPipelineState()
-        ctx = m.Cli.PipelineStageContext(
+        stages = self._build_codegen_stages()
+
+        pipeline_result = cli.pipeline(
+            stages,
             workspace_root=self.workspace_root,
-            shared={},
             settings={
                 c.Infra.PIPELINE_KEY_DRY_RUN: self.dry_run or not self.apply_changes,
             },
-        )
-
-        stages = self._build_codegen_stages()
-
-        pipeline_result = u.Cli.execute_pipeline(
-            stages,
-            ctx,
             fail_fast=True,
             logger=_log,
         )
@@ -69,10 +63,7 @@ class FlextInfraCodegenPipeline(s[str]):
 
     def _build_codegen_stages(self) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
         """Build DAG stage specs with linear dependency chain."""
-        handlers: t.MappingKV[
-            str,
-            Callable[[m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]],
-        ] = {
+        handlers: t.Cli.PipelineHandlerMap = {
             c.Infra.PipelineStage.DISCOVER: self._stage_discover,
             c.Infra.PipelineStage.PY_TYPED: self._stage_py_typed,
             c.Infra.PipelineStage.CENSUS_BEFORE: self._stage_census_before,
@@ -81,24 +72,14 @@ class FlextInfraCodegenPipeline(s[str]):
             c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }
-        stage_list: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
-        prev: str | None = None
-        for stage_id in c.Infra.PIPELINE_STAGE_ORDER:
-            handler = handlers[stage_id]
-            deps: frozenset[str] = (
-                frozenset((prev,)) if prev is not None else frozenset()
-            )
-            retry = 1 if stage_id == c.Infra.PipelineStage.AUTO_FIX else 0
-            stage_list.append(
-                m.Cli.PipelineStageSpec(
-                    stage_id=stage_id,
-                    depends_on=deps,
-                    handler=handler,
-                    retry=retry,
-                ),
-            )
-            prev = stage_id
-        return stage_list
+        retry_by_stage: t.Cli.PipelineRetryMap = {
+            c.Infra.PipelineStage.AUTO_FIX: 1,
+        }
+        return cli.linear_pipeline(
+            c.Infra.PIPELINE_STAGE_ORDER,
+            handlers,
+            retry_by_stage=retry_by_stage,
+        )
 
     # ------------------------------------------------------------------
     # Stage harness — single fail-fast boundary, no per-stage duplication
@@ -118,9 +99,8 @@ class FlextInfraCodegenPipeline(s[str]):
         so the DAG engine can fail-fast — never silenced, never demoted.
         """
         return r[m.Cli.PipelineStageResult].create_from_callable(
-            lambda: m.Cli.PipelineStageResult(
-                stage_id=stage_id,
-                status=c.Cli.PipelineStageStatus.OK,
+            lambda: cli.stage_result(
+                stage_id,
                 output=emit(action()),
             ),
             error_code=stage_id,

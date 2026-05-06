@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from flext_cli import cli, m as cli_m
@@ -40,27 +39,24 @@ def _run_workspace_make_dry_run(
     workspace_root: Path,
     *args: str,
 ) -> cli_m.Cli.CommandOutput:
-    env = os.environ.copy()
-    for key in (
-        "CHANGED_ONLY",
-        "CHECK_GATES",
-        "FAIL_FAST",
-        "FILE",
-        "FILES",
-        "MAKEFLAGS",
-        "MATCH",
-        "PROJECT",
-        "PROJECTS",
-        "PYRIGHT_ARGS",
-        "PYTEST_ARGS",
-        "RUFF_ARGS",
-        "VALIDATE_GATES",
-        "VERBOSE",
-    ):
-        env.pop(key, None)
     outcome = cli.run_raw(
         ["make", "-C", str(workspace_root), "--dry-run", *args],
-        env=env,
+        remove_env_keys=(
+            "CHANGED_ONLY",
+            "CHECK_GATES",
+            "FAIL_FAST",
+            "FILE",
+            "FILES",
+            "MAKEFLAGS",
+            "MATCH",
+            "PROJECT",
+            "PROJECTS",
+            "PYRIGHT_ARGS",
+            "PYTEST_ARGS",
+            "RUFF_ARGS",
+            "VALIDATE_GATES",
+            "VERBOSE",
+        ),
     )
     if outcome.failure:
         msg = f"make dry-run invocation failed: {outcome.error}"

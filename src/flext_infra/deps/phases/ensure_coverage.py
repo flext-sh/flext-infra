@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
-
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraPhaseEngine, m, t
@@ -67,7 +63,7 @@ class FlextInfraEnsureCoverageConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         project_kind: str = "core",
     ) -> t.StrSequence:

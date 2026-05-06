@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
-
 from tomlkit.items import Table
 from tomlkit.toml_document import TOMLDocument
 
@@ -88,7 +84,7 @@ class FlextInfraConsolidateGroupsPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         """Merge legacy groups into one canonical dev group in one plain payload."""
@@ -120,7 +116,7 @@ class FlextInfraConsolidateGroupsPhase:
             payload,
             (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
         )
-        poetry_dev_table: MutableMapping[str, t.JsonValue] | None = None
+        poetry_dev_table: t.MutableJsonMapping | None = None
         for old_group in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
             old_group_table = (
                 u.Cli.toml_mapping_child(poetry_group, old_group)

@@ -10,9 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from typing import Annotated, override
 
 from tomlkit.items import Table
@@ -49,7 +46,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     @classmethod
     def apply_payload_phases(
         cls,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *phases: m.Infra.TomlPhaseConfig,
     ) -> t.StrSequence:
         """Apply one declarative phase set to one plain TOML payload."""
@@ -86,7 +83,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     @classmethod
     def _apply_payload_phase(
         cls,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         phase: m.Infra.TomlPhaseConfig,
         *,
         parent_path: tuple[str, ...],
@@ -189,7 +186,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _apply_payload_operation(
-        tbl: MutableMapping[str, t.JsonValue],
+        tbl: t.MutableJsonMapping,
         operation: m.Infra.TomlOperation,
         out: t.MutableSequenceOf[str],
         pfx: str,
@@ -248,7 +245,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _remove_payload_operation(
-        tbl: MutableMapping[str, t.JsonValue],
+        tbl: t.MutableJsonMapping,
         operation: m.Infra.TomlRemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,

@@ -423,6 +423,7 @@ root = "tmp_flow_test"
 [tool.pytest.ini_options]
 addopts = [
   "--cov-report=term-missing:skip-covered",
+  "--cov=.",
   "--cov=src/flext_infra",
   "--durations=10",
   "--ignore-glob=*/tests/_constants/*",
@@ -556,6 +557,42 @@ ignore = [
   "W293",
 ]
 select = [ "ALL" ]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.argparse]
+msg = "Use cli.register_result_command + Pydantic model from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.click]
+msg = "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.colorama]
+msg = "Use cli.print with c.Cli.MessageStyles."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.getpass]
+msg = "Use cli.prompt_password from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.orjson]
+msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.prompt_toolkit]
+msg = "Use cli.prompt / cli.confirm / cli.prompt_choice / cli.prompt_password."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.rich]
+msg = "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.simplejson]
+msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.tabulate]
+msg = "Use cli.format_table / cli.show_table from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.tqdm]
+msg = "Use cli.display_progress from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.typer]
+msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.ujson]
+msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -747,17 +784,3 @@ line_length = 88
 preserve_quotes = true
 section_whitelines = 1
 whitelines = 1
-
-[tool.ruff.lint.flake8-tidy-imports.banned-api]
-"argparse" = {msg = "Use cli.register_result_command + Pydantic model from flext_cli."}
-"click" = {msg = "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."}
-"colorama" = {msg = "Use cli.print with c.Cli.MessageStyles."}
-"getpass" = {msg = "Use cli.prompt_password from flext_cli."}
-"orjson" = {msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps from flext_cli."}
-"prompt_toolkit" = {msg = "Use cli.prompt / cli.confirm / cli.prompt_choice / cli.prompt_password."}
-"rich" = {msg = "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."}
-"simplejson" = {msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."}
-"tabulate" = {msg = "Use cli.format_table / cli.show_table from flext_cli."}
-"tqdm" = {msg = "Use cli.display_progress from flext_cli."}
-"typer" = {msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."}
-"ujson" = {msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."}

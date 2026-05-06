@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
 
 from tomlkit.toml_document import TOMLDocument
@@ -50,7 +47,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     @staticmethod
     def _remove_stale_lint_section_payload(
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Remove the stale top-level ``[lint]`` table from one plain payload."""
         if u.Cli.toml_mapping_remove_key_if_present(payload, c.Infra.LINT_SECTION):
@@ -171,7 +168,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         path: Path,
     ) -> t.StrSequence:

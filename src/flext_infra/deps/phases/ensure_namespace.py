@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
 
 from tomlkit.toml_document import TOMLDocument
@@ -39,7 +36,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         path: Path,
     ) -> t.StrSequence:

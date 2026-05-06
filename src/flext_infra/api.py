@@ -16,7 +16,7 @@ from flext_infra import (
 
 
 class FlextInfra(
-    s[dict[str, t.JsonValue]],
+    s[t.JsonDict],
 ):
     """Thin public MRO facade over infra services."""
 
@@ -42,15 +42,15 @@ class FlextInfra(
         )
 
     @override
-    def execute(self) -> p.Result[dict[str, t.JsonValue]]:
+    def execute(self) -> p.Result[t.JsonDict]:
         """Execute a lightweight facade health report."""
-        report: dict[str, t.JsonValue] = {
+        report: t.JsonDict = {
             "service": "flext-infra",
             "status": "ok",
             "workspace_root": str(self.workspace_root),
             "apply_changes": self.apply_changes,
         }
-        return r[dict[str, t.JsonValue]].ok(report)
+        return r[t.JsonDict].ok(report)
 
 
 infra = FlextInfra.fetch_global()

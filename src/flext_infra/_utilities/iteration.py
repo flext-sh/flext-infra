@@ -177,7 +177,7 @@ class FlextInfraUtilitiesIteration:
                 elif isinstance(raw_value, Mapping) and not any(
                     key in raw_value for key in (c.Infra.PATH, "git", "url")
                 ):
-                    updated: MutableMapping[str, t.JsonValue] = dict(raw_value)
+                    updated: t.MutableJsonMapping = dict(raw_value)
                     if updated.get(c.Infra.VERSION) != rewritten_specifier:
                         updated[c.Infra.VERSION] = rewritten_specifier
                         result = dict(updated)

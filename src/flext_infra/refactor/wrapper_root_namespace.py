@@ -303,10 +303,10 @@ class FlextInfraWrapperRootNamespaceRefactor(
             if self.effective_dry_run
             else "apply"
         )
-        per_project_changes_payload: dict[str, t.JsonValue] = dict(
+        per_project_changes_payload: t.JsonDict = dict(
             accumulator.per_project_changes.items()
         )
-        per_project_replacements_payload: dict[str, t.JsonValue] = dict(
+        per_project_replacements_payload: t.JsonDict = dict(
             accumulator.per_project_replacements.items()
         )
         changed_files_preview: list[t.JsonValue] = list(accumulator.changed_files[:200])

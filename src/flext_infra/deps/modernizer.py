@@ -280,7 +280,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
 
     @staticmethod
     def _rewrite_poetry_dependency_table(
-        dependencies: MutableMapping[str, t.JsonValue],
+        dependencies: t.MutableJsonMapping,
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
@@ -308,7 +308,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
 
     def _rewrite_dependency_constraints_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
@@ -416,7 +416,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
 
     def _ensure_build_system_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements in one plain payload."""
         changes: t.MutableSequenceOf[str] = []
@@ -450,7 +450,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
 
     @staticmethod
     def _remove_empty_poetry_groups_payload(
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Remove empty Poetry group tables from one normalized payload."""
         poetry_groups = u.Cli.toml_mapping_path(

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from collections.abc import (
     Mapping,
-    MutableMapping,
 )
 from pathlib import Path
 from typing import override
@@ -184,7 +183,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
 
     def sync_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         project_dir: Path,
         is_root: bool,

@@ -293,7 +293,7 @@ class FlextInfraDependencyDetectorRuntime:
             c.Infra.DEPENDENCIES,
             "detect-runtime-dev-latest.json",
         )
-        report_payload: dict[str, t.JsonValue] = {
+        report_payload: t.JsonDict = {
             key: u.normalize_to_json_value(value)
             for key, value in report_model.model_dump().items()
         }

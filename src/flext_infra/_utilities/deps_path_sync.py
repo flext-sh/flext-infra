@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
 
 from flext_cli import u
@@ -28,7 +25,7 @@ class FlextInfraUtilitiesDependencyPathSync:
 
     def _rewrite_pep621(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         internal_names: t.Infra.StrSet,
     ) -> t.Pair[t.StrSequence, t.Infra.StrSet]:
@@ -72,7 +69,7 @@ class FlextInfraUtilitiesDependencyPathSync:
 
     def _rewrite_uv_sources(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         is_root: bool,
         mode: c.Infra.PathSyncMode,
@@ -116,7 +113,7 @@ class FlextInfraUtilitiesDependencyPathSync:
 
     def _rewrite_uv_workspace(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         is_root: bool,
         members: t.StrSequence,
@@ -140,7 +137,7 @@ class FlextInfraUtilitiesDependencyPathSync:
     @classmethod
     def _rewrite_poetry(
         cls,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         is_root: bool,
         mode: c.Infra.PathSyncMode,

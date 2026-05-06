@@ -302,6 +302,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".test_infra_patterns_core": ("TestsFlextInfraInfraPatternsCore",),
             ".test_infra_patterns_extra": ("TestsFlextInfraInfraPatternsExtra",),
             ".test_infra_protocols": ("TestsFlextInfraInfraProtocols",),
+            ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
             ".test_infra_refactor_rope_migrations": (
                 "TestsFlextInfraInfraRefactorRopeMigrations",
             ),

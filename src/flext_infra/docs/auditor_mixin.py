@@ -121,7 +121,7 @@ class FlextInfraDocAuditorMixin:
         """Persist JSON summary and markdown report to the scope report directory."""
         validated_checks = t.json_list_adapter().validate_python(sorted(checks))
         sorted_checks: list[t.JsonValue] = list(validated_checks)
-        summary: dict[str, t.JsonValue] = {
+        summary: t.JsonDict = {
             c.Infra.RK_SCOPE: scope.name,
             "issues": len(issues),
             c.Infra.VERB_CHECKS: sorted_checks,
@@ -137,7 +137,7 @@ class FlextInfraDocAuditorMixin:
             }
             for issue in issues
         ]
-        summary_payload: dict[str, t.JsonValue] = {
+        summary_payload: t.JsonDict = {
             c.Infra.RK_SUMMARY: summary,
             "issues": issues_payload,
         }

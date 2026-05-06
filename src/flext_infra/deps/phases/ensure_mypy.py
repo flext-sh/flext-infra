@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
-
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraPhaseEngine, c, m, t, u
@@ -21,7 +17,7 @@ class FlextInfraEnsureMypyConfigPhase:
     def _phase(self) -> m.Infra.TomlPhaseConfig:
         """Build the canonical mypy phase definition."""
         configured = self._tool_config.tools.mypy.overrides
-        expected_overrides: t.SequenceOf[dict[str, t.JsonValue]] = [
+        expected_overrides: t.SequenceOf[t.JsonDict] = [
             {
                 "module": u.normalize_to_json_value(list(entry.modules)),
                 "disable_error_code": u.normalize_to_json_value(
@@ -68,7 +64,7 @@ class FlextInfraEnsureMypyConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Apply canonical mypy settings directly to one normalized payload."""
         return FlextInfraPhaseEngine.apply_payload_phases(payload, self._phase())

@@ -343,6 +343,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.test_infra_patterns_core import TestsFlextInfraInfraPatternsCore
     from tests.unit.test_infra_patterns_extra import TestsFlextInfraInfraPatternsExtra
     from tests.unit.test_infra_protocols import TestsFlextInfraInfraProtocols
+    from tests.unit.test_infra_public_api import TestsFlextInfraPublicApi
     from tests.unit.test_infra_refactor_rope_migrations import (
         TestsFlextInfraInfraRefactorRopeMigrations,
     )
@@ -749,6 +750,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.test_infra_patterns_core": ("TestsFlextInfraInfraPatternsCore",),
             ".unit.test_infra_patterns_extra": ("TestsFlextInfraInfraPatternsExtra",),
             ".unit.test_infra_protocols": ("TestsFlextInfraInfraProtocols",),
+            ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
             ".unit.test_infra_refactor_rope_migrations": (
                 "TestsFlextInfraInfraRefactorRopeMigrations",
             ),
@@ -988,6 +990,7 @@ __all__: list[str] = [
     "TestsFlextInfraModels",
     "TestsFlextInfraModernizerPyrefly",
     "TestsFlextInfraProtocols",
+    "TestsFlextInfraPublicApi",
     "TestsFlextInfraRefactorCensusPreviewCache",
     "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
     "TestsFlextInfraRefactorInfraRefactorClassPlacement",

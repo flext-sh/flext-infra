@@ -7,10 +7,16 @@ from pathlib import Path
 import pytest
 
 import flext_infra
-import flext_infra.refactor.census as census_module
-from flext_infra import FlextInfraRefactorCensus, c, m, p, r
-from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra import (
+    FlextInfraRefactorCensus,
+    FlextInfraUtilitiesProtectedEdit,
+    FlextInfraUtilitiesRefactorCensus,
+    c,
+    m,
+    p,
+    r,
+    u as infra_u,
+)
 from tests import u
 
 
@@ -338,7 +344,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
-            census_module.u.Infra,
+            infra_u.Infra,
             "preview_simple_removal_candidate",
             staticmethod(_preview_candidate),
         )
@@ -444,7 +450,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             return r[bool].fail("preview broke")
 
         monkeypatch.setattr(
-            census_module.u.Infra,
+            infra_u.Infra,
             "preview_simple_removal_candidate",
             staticmethod(_preview_candidate),
         )

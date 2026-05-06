@@ -10,12 +10,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
 from pathlib import Path
 from typing import Annotated, override
 
+from flext_cli import cli
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
     FlextInfraReleaseOrchestratorPhases,
@@ -192,21 +190,17 @@ class FlextInfraReleaseOrchestrator(
                 dev_suffix=dev_suffix,
             )
 
-            pipeline_ctx = m.Cli.PipelineStageContext(
+            active_stages = self._build_release_stages(phases, dispatch_cfg)
+            pipeline_result = cli.pipeline(
+                active_stages,
                 workspace_root=workspace_root,
-                shared={},
                 settings={
                     "dry_run": dry_run,
                     "push": push,
                     "dev_suffix": dev_suffix,
                 },
-            )
-
-            active_stages = self._build_release_stages(phases, dispatch_cfg)
-            pipeline_result = u.Cli.execute_pipeline(
-                active_stages,
-                pipeline_ctx,
                 fail_fast=True,
+                logger=self.logger,
             )
             if pipeline_result.failure:
                 final_result = r[bool].fail(
@@ -245,29 +239,20 @@ class FlextInfraReleaseOrchestrator(
             c.Infra.DIR_BUILD,
             c.Infra.VERB_PUBLISH,
         ]
-        stage_list: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
-        prev: str | None = None
+        active_stage_order: t.MutableSequenceOf[str] = []
+        handlers: dict[str, t.Cli.PipelineHandler] = {}
         for phase_name in phase_order:
             if phase_name not in active:
                 continue
-            deps: frozenset[str] = (
-                frozenset((prev,)) if prev is not None else frozenset()
-            )
-            stage_list.append(
-                m.Cli.PipelineStageSpec(
-                    stage_id=phase_name,
-                    depends_on=deps,
-                    handler=self._make_phase_handler(phase_name, dispatch_cfg),
-                ),
-            )
-            prev = phase_name
-        return stage_list
+            active_stage_order.append(phase_name)
+            handlers[phase_name] = self._make_phase_handler(phase_name, dispatch_cfg)
+        return cli.linear_pipeline(active_stage_order, handlers)
 
     def _make_phase_handler(
         self,
         phase_name: str,
         dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> Callable[[m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]]:
+    ) -> t.Cli.PipelineHandler:
         """Create a handler closure that adapts r[bool] to r[PipelineStageResult]."""
 
         def handler(
@@ -280,12 +265,7 @@ class FlextInfraReleaseOrchestrator(
                 return r[m.Cli.PipelineStageResult].fail(
                     phase_result.error or f"{phase_name} failed",
                 )
-            return r[m.Cli.PipelineStageResult].ok(
-                m.Cli.PipelineStageResult(
-                    stage_id=phase_name,
-                    status=c.Cli.PipelineStageStatus.OK,
-                ),
-            )
+            return cli.ok_stage(phase_name)
 
         return handler
 

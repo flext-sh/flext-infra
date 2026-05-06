@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -102,7 +99,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
         *,
         is_root: bool,
         project_dir: Path | None = None,

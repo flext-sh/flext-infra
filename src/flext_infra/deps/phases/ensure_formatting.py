@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
-
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraPhaseEngine, m, t, u
@@ -86,7 +82,7 @@ class FlextInfraEnsureFormattingToolingPhase:
 
     @staticmethod
     def _remove_codespell_skip_payload(
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Remove the stale hardcoded codespell skip entry from one plain payload."""
         codespell_table = u.Cli.toml_mapping_path(payload, ("tool", "codespell"))
@@ -104,7 +100,7 @@ class FlextInfraEnsureFormattingToolingPhase:
 
     def apply_payload(
         self,
-        payload: MutableMapping[str, t.JsonValue],
+        payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Apply formatting defaults directly to one normalized payload."""
         changes = list(
