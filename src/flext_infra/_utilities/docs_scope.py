@@ -340,7 +340,7 @@ class FlextInfraUtilitiesDocsScope:
             for item in packages:
                 package_path = Path(str(item).strip())
                 if package_path.parts:
-                    package_parts: tuple[str, ...] = package_path.parts
+                    package_parts: t.StrSequence = package_path.parts
                     return package_parts[-1]
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if src_dir.is_dir():

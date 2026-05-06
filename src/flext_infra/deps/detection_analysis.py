@@ -100,7 +100,7 @@ class FlextInfraDependencyDetectionAnalysis:
             if converted_item is None or not isinstance(converted_item, scalar_types):
                 return None
             converted_map[key] = converted_item
-        return dict(t.Cli.JSON_MAPPING_ADAPTER.validate_python(converted_map))
+        return t.json_dict_adapter().validate_python(converted_map)
 
     @staticmethod
     def _mapping_from_value(

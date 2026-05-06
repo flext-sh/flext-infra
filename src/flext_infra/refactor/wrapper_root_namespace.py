@@ -44,7 +44,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
 ):
     """Refactor wrapper alias imports and deprecated ``*.Core.Tests`` paths."""
 
-    _WRAPPER_PACKAGES: ClassVar[tuple[str, ...]] = tuple(
+    _WRAPPER_PACKAGES: ClassVar[t.StrSequence] = tuple(
         segment
         for segment in c.Infra.ROOT_WRAPPER_SEGMENTS
         if segment != c.Infra.DEFAULT_SRC_DIR

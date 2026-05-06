@@ -101,7 +101,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         package_dir: Path,
         package_name: str,
         export_names: t.StrSequence,
-    ) -> tuple[str, ...]:
+    ) -> t.StrSequence:
         """Order root-package exports with alias hierarchy preserved."""
         ordered_unique = tuple(dict.fromkeys(export_names))
         export_set = set(ordered_unique)
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
-    def _runtime_aliases(cls, package_dir: Path) -> tuple[str, ...]:
+    def _runtime_aliases(cls, package_dir: Path) -> t.StrSequence:
         """Return the runtime aliases actually published by one package root."""
         return tuple(
             alias
@@ -190,7 +190,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         file_path: Path,
         settings: m.Infra.LazyInitConfig,
-    ) -> tuple[str | None, str | None, str | None, tuple[str, ...]]:
+    ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
             (
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if family_alias is not None
             else settings.public_file_aliases.get(file_path.name)
         )
-        family_tokens: tuple[str, ...] = (
+        family_tokens: t.StrSequence = (
             tuple(settings.private_family_tokens.get(family_alias, ()))
             if family_alias is not None
             else (expected_family,)
@@ -224,7 +224,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         file_path: Path,
         resolved_rel_path: Path,
-        package_parts: tuple[str, ...],
+        package_parts: t.StrSequence,
         family_alias: str | None,
         expected_alias: str | None,
         expected_family: str | None,

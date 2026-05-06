@@ -14,7 +14,7 @@ class FlextInfraConstantsDocs:
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
-    PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[tuple[str, ...]] = (
+    PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[t.StrSequence] = (
         "D100",
         "D101",
         "D102",

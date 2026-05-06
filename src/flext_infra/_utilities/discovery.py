@@ -20,7 +20,7 @@ from flext_infra import (
 class FlextInfraUtilitiesDiscovery:
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
-    _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], tuple[str, ...]]] = {}
+    _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
     @cache
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesDiscovery:
     def _relative_path_parts(
         resolved: Path,
         project_root: Path | None,
-    ) -> tuple[str, ...]:
+    ) -> t.StrTuple:
         """Return path parts relative to project root when possible."""
         if project_root is None:
             return ()
@@ -58,9 +58,9 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def _normalized_python_parts(
         resolved: Path,
-        path_parts: tuple[str, ...],
-    ) -> tuple[str, ...]:
-        """Normalize file-system parts into package/module parts."""
+        path_parts: t.StrTuple,
+    ) -> t.StrTuple:
+        """Normalize filesystem parts into package/module parts."""
         if path_parts and path_parts[-1] == c.Infra.INIT_PY:
             return path_parts[:-1]
         if resolved.suffix == c.Infra.EXT_PYTHON and path_parts:
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesDiscovery:
         return path_parts
 
     @staticmethod
-    def _package_name_from_wrapper_parts(path_parts: tuple[str, ...]) -> str:
+    def _package_name_from_wrapper_parts(path_parts: t.StrSequence) -> str:
         """Return package name when path parts start with a known wrapper."""
         if not path_parts:
             return ""
@@ -305,7 +305,7 @@ class FlextInfraUtilitiesDiscovery:
         pkg_dir_or_file: Path,
         *,
         return_module: bool = False,
-    ) -> tuple[str, ...]:
+    ) -> t.StrSequence:
         """Resolve imported parent ``Constants`` targets through Rope semantics."""
         constants_file = (
             pkg_dir_or_file
@@ -336,7 +336,7 @@ class FlextInfraUtilitiesDiscovery:
     def resolve_transitive_parent_packages(
         workspace_root: Path,
         package_names: t.StrSequence,
-    ) -> tuple[str, ...]:
+    ) -> t.StrSequence:
         """Resolve parent packages transitively with ancestors ordered before children."""
         resolved: list[str] = []
         visited: set[str] = set()

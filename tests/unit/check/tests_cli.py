@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorkspaceChecker, main
-from tests import u
+from tests import t, u
 
 
 class TestWorkspaceCheckCli:
@@ -18,7 +18,7 @@ class TestWorkspaceCheckCli:
     def _create_workspace(
         tmp_path: Path,
         *,
-        project_names: tuple[str, ...] = ("flext-core",),
+        project_names: t.StrSequence = ("flext-core",),
     ) -> Path:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)

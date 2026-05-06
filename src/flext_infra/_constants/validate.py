@@ -117,14 +117,14 @@ class FlextInfraConstantsSharedInfra:
     )
     INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
-    METADATA_ALLOWLIST_PATH_MARKERS: Final[tuple[str, ...]] = (
+    METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
         "flext-core/src/flext_core/_utilities/project_metadata.py",
         "flext-infra/src/flext_infra/_utilities/iteration.py",
         "flext-infra/src/flext_infra/workspace/project_makefile.py",
         "flext-infra/src/flext_infra/workspace/workspace_makefile.py",
         "flext-infra/src/flext_infra/__version__.py",
     )
-    METADATA_TARGET_SCOPE_MARKERS: Final[tuple[str, ...]] = (
+    METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (
         "flext-infra/src/flext_infra/",
     )
 

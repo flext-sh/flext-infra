@@ -41,7 +41,7 @@ class FlextInfraConstantsCheck:
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
-    REQUIRED_EXCLUDES: Final[tuple[str, ...]] = (
+    REQUIRED_EXCLUDES: Final[t.StrSequence] = (
         "**/*_pb2*.py",
         "**/*_pb2_grpc*.py",
     )

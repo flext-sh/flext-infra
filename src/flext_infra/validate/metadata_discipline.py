@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, t
+from flext_infra import c
 from flext_infra.validate._rope_import_boundary import _RopeImportBoundaryBase
 
 
@@ -52,4 +52,4 @@ class FlextInfraValidateMetadataDiscipline(_RopeImportBoundaryBase):
         )
 
 
-__all__: t.StrSequence = ["FlextInfraValidateMetadataDiscipline"]
+__all__: tuple[str, ...] = ("FlextInfraValidateMetadataDiscipline",)

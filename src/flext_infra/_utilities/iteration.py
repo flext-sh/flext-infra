@@ -598,7 +598,7 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     @cache
-    def _git_tracked_repo_relative_paths(repo_root: str) -> tuple[str, ...] | None:
+    def _git_tracked_repo_relative_paths(repo_root: str) -> t.StrSequence | None:
         """Return tracked and dirty paths relative to one Git repo root."""
         resolved_root = Path(repo_root).resolve()
         try:
@@ -636,7 +636,7 @@ class FlextInfraUtilitiesIteration:
 
     @staticmethod
     @cache
-    def _git_tracked_scope_relative_paths(scope_root: str) -> tuple[str, ...] | None:
+    def _git_tracked_scope_relative_paths(scope_root: str) -> t.StrSequence | None:
         """Return tracked file paths relative to ``scope_root`` or ``None`` outside Git.
 
         ``git ls-files <scope_prefix>`` emits paths relative to the **repo root**.

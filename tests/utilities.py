@@ -206,7 +206,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             ) -> None:
                 self._results = list(results)
                 self._index = 0
-                self.commands: MutableSequence[tuple[str, ...]] = []
+                self.commands: MutableSequence[t.StrSequence] = []
 
             def _next_result(self) -> p.Result[m.Cli.CommandOutput]:
                 current = self._index
@@ -647,7 +647,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return "".join(part.title() for part in snake.split("_"))
 
         @staticmethod
-        def src_module_files() -> tuple[str, ...]:
+        def src_module_files() -> t.StrSequence:
             return (
                 "constants.py",
                 "typings.py",

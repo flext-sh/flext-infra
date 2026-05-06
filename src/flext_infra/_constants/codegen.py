@@ -59,7 +59,7 @@ class FlextInfraConstantsCodegen:
     )
     "Regex: malformed ``from import`` statement (missing module name)."
 
-    LINT_TOOLS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (
+    LINT_TOOLS: Final[tuple[tuple[str, t.StrSequence], ...]] = (
         ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
         ("pyright", ("pyright", "{file}")),
         ("mypy", ("mypy", "{file}", "--no-error-summary")),
@@ -257,7 +257,7 @@ class FlextInfraConstantsCodegen:
     # --- Quality gate constants (was: class QualityGate) ---
     QG_REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
     "Report directory for constants quality gate."
-    QG_RULE_KEYS: Final[tuple[str, ...]] = (
+    QG_RULE_KEYS: Final[t.StrSequence] = (
         "NS-000",
         "NS-001",
         "NS-002",

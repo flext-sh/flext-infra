@@ -355,7 +355,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     def _resolve_transitive_parent_packages(
         self,
         package_names: t.StrSequence,
-    ) -> tuple[str, ...]:
+    ) -> t.StrSequence:
         """Resolve transitive parent packages."""
         ordered: list[str] = []
         for package_name in package_names:
@@ -474,7 +474,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         alias_name: str,
     ) -> str:
         """Resolve inherited alias source."""
-        candidate_packages: tuple[str, ...] = tuple(
+        candidate_packages: t.StrSequence = tuple(
             name for name in package_names if name
         )
         canonical_target = c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)

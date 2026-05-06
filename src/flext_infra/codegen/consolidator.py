@@ -20,7 +20,7 @@ from flext_infra import (
 class FlextInfraCodegenConsolidator(s[str]):
     """Consolidate inline constants into canonical ``c.*`` references."""
 
-    _ALL_LINT_GATES: ClassVar[tuple[str, ...]] = tuple(
+    _ALL_LINT_GATES: ClassVar[t.StrSequence] = tuple(
         tool for tool, _ in c.Infra.LINT_TOOLS
     )
 

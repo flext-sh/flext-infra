@@ -22,7 +22,7 @@ from flext_infra import (
 class FlextInfraUtilitiesDocsApi:
     """Extract public package metadata, exports, modules, and docstring issues."""
 
-    _ALIAS_EXPORTS: tuple[str, ...] = (
+    _ALIAS_EXPORTS: t.StrSequence = (
         "c",
         "d",
         "e",

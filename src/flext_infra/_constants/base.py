@@ -392,7 +392,7 @@ class FlextInfraConstantsBase(
         RK_POST_CHECKS,
     })
 
-    CLI_APPLY_OPTION_DECLS: Final[tuple[str, ...]] = ("--apply/--dry-run",)
+    CLI_APPLY_OPTION_DECLS: Final[t.StrSequence] = ("--apply/--dry-run",)
     "Typer dual-flag declarations for --apply/--dry-run option."
 
     @unique

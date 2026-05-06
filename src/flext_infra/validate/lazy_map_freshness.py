@@ -82,4 +82,4 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
 
-__all__: t.StrSequence = ["FlextInfraValidateLazyMapFreshness"]
+__all__: t.StrSequence = ("FlextInfraValidateLazyMapFreshness",)

@@ -50,7 +50,7 @@ class FlextInfraModelsRope:
         """Semantic class info from rope — name, line, bases in one shot."""
 
         name: Annotated[str, m.Field(description="Class name")]
-        bases: Annotated[tuple[str, ...], m.Field(description="Base class names")] = ()
+        bases: Annotated[t.StrSequence, m.Field(description="Base class names")] = ()
 
     class ConstantInfo(
         mm.NonNegativeLineMixin,
@@ -253,7 +253,7 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package __init__.py path"),
         ]
         runtime_aliases: Annotated[
-            tuple[str, ...],
+            t.StrSequence,
             m.Field(
                 description="Canonical runtime aliases published by the package root",
             ),
@@ -333,11 +333,11 @@ class FlextInfraModelsRope:
             m.Field(description="Module convention metadata for tier/facade checks"),
         ]
         scope_chain: Annotated[
-            tuple[str, ...],
+            t.StrSequence,
             m.Field(description="Nested scope path leading to the symbol"),
         ] = ()
         class_chain: Annotated[
-            tuple[str, ...],
+            t.StrSequence,
             m.Field(description="Nested class path leading to the symbol"),
         ] = ()
         child_scope: Annotated[
@@ -369,7 +369,7 @@ class FlextInfraModelsRope:
             m.Field(description="Primary source directory hint for Rope bootstrap"),
         ]
         ignored_resources: Annotated[
-            tuple[str, ...],
+            t.StrSequence,
             m.Field(description="Ignored Rope resource patterns"),
         ] = ()
         workspace_index: Annotated[

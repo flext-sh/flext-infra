@@ -21,7 +21,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _workspace_tool_command(
         workspace: Path,
         tool_name: str,
-    ) -> tuple[str, ...]:
+    ) -> t.StrSequence:
         """Resolve one tool against the workspace venv before falling back to PATH."""
         tool_path = (workspace.resolve() / c.Infra.VENV_BIN_REL / tool_name).resolve()
         if tool_path.is_file():
@@ -47,7 +47,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def _selected_lint_tools(
         gates: t.StrSequence | None = None,
-    ) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    ) -> tuple[tuple[str, t.StrSequence], ...]:
         """Selected lint tools."""
         resolved_gates = gates or tuple(
             gate.strip()
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 py_file.unlink()
 
     _snapshot_cache: ClassVar[
-        MutableMapping[tuple[str, str, tuple[str, ...]], t.Infra.LintSnapshot]
+        MutableMapping[tuple[str, str, t.StrSequence], t.Infra.LintSnapshot]
     ] = {}
 
     @classmethod
@@ -130,8 +130,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def _lint_snapshot_cache_key(
         py_file: Path,
-        gate_key: tuple[str, ...],
-    ) -> tuple[str, str, tuple[str, ...]] | None:
+        gate_key: t.StrSequence,
+    ) -> tuple[str, str, t.StrSequence] | None:
         """Lint snapshot cache key."""
         try:
             raw_bytes = py_file.read_bytes()
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         py_file: Path,
         workspace: Path,
-        selected_tools: tuple[tuple[str, tuple[str, ...]], ...],
+        selected_tools: tuple[tuple[str, t.StrSequence], ...],
     ) -> t.Infra.LintSnapshot:
         """Execute selected lint tools."""
         command_cwd = cls._command_cwd(py_file, workspace)
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         def _run_gate(
             tool_name: str,
-            tmpl: tuple[str, ...],
+            tmpl: t.StrSequence,
         ) -> tuple[str, t.StrSequence]:
             """Run gate."""
             cmd = [

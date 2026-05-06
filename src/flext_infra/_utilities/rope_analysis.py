@@ -846,7 +846,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         *,
         return_module: bool,
         current_root: str,
-    ) -> tuple[str, ...]:
+    ) -> t.StrSequence:
         """Resolve parent ``Constants`` import targets via rope semantic state.
 
         Uses ``get_module_semantic_state`` (PyObject-backed class info plus

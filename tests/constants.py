@@ -35,21 +35,21 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         RELEASE_PHASE_BUILD: Final[str] = c.Infra.DIR_BUILD
         RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.VERB_PUBLISH
 
-        ALL_PHASES: Final[tuple[str, ...]] = (
+        ALL_PHASES: Final[t.StrSequence] = (
             RELEASE_PHASE_VALIDATE,
             RELEASE_PHASE_VERSION,
             RELEASE_PHASE_BUILD,
             RELEASE_PHASE_PUBLISH,
         )
 
-        LOG_NOISE_LINES: Final[tuple[str, ...]] = (
+        LOG_NOISE_LINES: Final[t.StrSequence] = (
             "make[1]: Nothing to be done",
             "INFO: running tests",
             "warning: ignoring duplicate",
             "Success: 5 passed",
             "make[2]: Entering directory",
         )
-        LOG_ERROR_LINES: Final[tuple[str, ...]] = (
+        LOG_ERROR_LINES: Final[t.StrSequence] = (
             "ERROR: something went wrong",
             "FAIL: test_foo failed",
             "error: compilation failed",
@@ -67,7 +67,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
             r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)",
         )
-        LOG_MIXED_SCENARIO_LINES: Final[tuple[str, ...]] = (
+        LOG_MIXED_SCENARIO_LINES: Final[t.StrSequence] = (
             "make[1]: running",
             "ERROR: build failed",
             "INFO: post-build",
@@ -87,7 +87,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         PROJECT_A_NAME: Final[str] = "proj-a"
         PROJECT_B_NAME: Final[str] = "proj-b"
         PROJECT_NO_SRC_NAME: Final[str] = "no-src"
-        PROJECT_MEMBERS_BY_SCENARIO: ClassVar[t.MappingKV[str, tuple[str, ...]]] = (
+        PROJECT_MEMBERS_BY_SCENARIO: ClassVar[t.MappingKV[str, t.StrSequence]] = (
             MappingProxyType({
                 "single": (DEMO_PROJECT_NAME,),
                 "filtered": (PROJECT_A_NAME, PROJECT_B_NAME),
@@ -122,7 +122,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         RELEASE_NOTES_CHANGE_LINE: Final[str] = "- abc123 fix release flow"
         RELEASE_INITIAL_CHANGE_LINE: Final[str] = "- Initial tagged release"
         RELEASE_CHANGELOG_HEADER: Final[str] = "# Changelog\n\n"
-        RELEASE_VERIFICATION_LINES: Final[tuple[str, ...]] = (
+        RELEASE_VERIFICATION_LINES: Final[t.StrSequence] = (
             "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all",
             "- make val VALIDATE_SCOPE=workspace",
             "- make build",

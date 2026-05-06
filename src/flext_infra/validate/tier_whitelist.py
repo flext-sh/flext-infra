@@ -86,4 +86,4 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
         )
 
 
-__all__: t.StrSequence = ["FlextInfraValidateTierWhitelist"]
+__all__: t.StrSequence = ("FlextInfraValidateTierWhitelist",)

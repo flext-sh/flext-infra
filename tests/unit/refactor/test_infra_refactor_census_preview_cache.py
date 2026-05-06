@@ -17,7 +17,7 @@ from flext_infra import (
     r,
     u as infra_u,
 )
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraRefactorCensusPreviewCache:
@@ -334,7 +334,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             workspace: Path,
             candidate: m.Infra.Census.RemovalCandidate,
             *,
-            gates: tuple[str, ...],
+            gates: t.StrSequence,
             source_cache: dict[Path, str] | None = None,
         ) -> p.Result[bool]:
             """Capture the source cache instance reused across candidates."""
@@ -442,7 +442,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             workspace: Path,
             candidate: m.Infra.Census.RemovalCandidate,
             *,
-            gates: tuple[str, ...],
+            gates: t.StrSequence,
             source_cache: dict[Path, str] | None = None,
         ) -> p.Result[bool]:
             """Return one explicit preview failure for the candidate."""

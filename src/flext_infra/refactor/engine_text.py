@@ -431,9 +431,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     def _tuple_setting(
         settings: t.MappingKV[str, t.Infra.InfraValue],
         key: str,
-        default: t.StrSequence,
-    ) -> tuple[str, ...]:
-        """Tuple setting."""
+        default: t.StrTuple,
+    ) -> t.StrTuple:
+        """Return tuple-valued setting."""
         value = settings.get(key, list(default))
         return (
             tuple(str(item) for item in value)

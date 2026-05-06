@@ -8,12 +8,13 @@ from pathlib import Path
 from types import ModuleType
 
 import flext_infra as infra_pkg
+from tests import t
 
 
 class TestsFlextInfraPublicApi:
     """Exercise the root public facades as real importable contracts."""
 
-    _ROOT_EXPORTS: tuple[str, ...] = (
+    _ROOT_EXPORTS: t.StrSequence = (
         "FlextInfra",
         "c",
         "infra",
@@ -24,7 +25,7 @@ class TestsFlextInfraPublicApi:
         "t",
         "u",
     )
-    _WRAPPER_MODULES: tuple[str, ...] = (
+    _WRAPPER_MODULES: t.StrSequence = (
         "flext_infra.__version__",
         "flext_infra.constants",
         "flext_infra.models",

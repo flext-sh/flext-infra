@@ -63,7 +63,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         if payload is None:
             return {}
         dep_names = FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
-            dict(payload.items())
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         )
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:

@@ -28,7 +28,7 @@ class FlextInfra(
         *,
         project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
         src_dir: str = c.Infra.DEFAULT_SRC_DIR,
-        ignored_resources: tuple[str, ...] = c.Infra.ROPE_IGNORED_RESOURCES,
+        ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
     ) -> p.Infra.RopeWorkspaceDsl:
         """Open the public Rope workspace DSL directly from the facade."""
         resolved_root = (

@@ -46,7 +46,7 @@ class FlextInfraConstantsRefactor:
     RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
     CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
     CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
-    ENGINE_CONFIG_KEYS: Final[tuple[str, ...]] = (
+    ENGINE_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
         RK_IGNORE_PATTERNS,
         RK_FILE_EXTENSIONS,
@@ -222,7 +222,7 @@ class FlextInfraConstantsRefactor:
             (frozenset({"nest_classes"}), frozenset(), frozenset(), frozenset()),
         ),
     })
-    RULE_TABLE_HEADERS: Final[tuple[str, ...]] = (
+    RULE_TABLE_HEADERS: Final[t.StrSequence] = (
         cb.RK_ID,
         cb.NAME,
         cb.RK_DESCRIPTION,
@@ -500,7 +500,7 @@ class FlextInfraConstantsRefactor:
     "Minimum method count before class method reordering is attempted."
 
     # --- Class nesting refactor constants (was: class ClassNesting) ---
-    NESTING_COERCE_KEYS: Final[tuple[str, ...]] = (
+    NESTING_COERCE_KEYS: Final[t.StrSequence] = (
         cb.RK_LOOSE_NAME,
         RK_HELPER_NAME,
         cb.RK_TARGET_NAMESPACE,
@@ -509,7 +509,7 @@ class FlextInfraConstantsRefactor:
         cb.RK_CONFIDENCE,
     )
     "Keys to coerce from string to typed values in nesting mappings."
-    NESTING_SECTION_KEYS: Final[tuple[str, ...]] = (
+    NESTING_SECTION_KEYS: Final[t.StrSequence] = (
         cb.RK_CLASS_NESTING,
         cb.RK_HELPER_CONSOLIDATION,
     )

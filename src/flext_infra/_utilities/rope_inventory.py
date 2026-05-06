@@ -354,8 +354,8 @@ class FlextInfraUtilitiesRopeInventory:
     def _kind_for(
         pyname: t.Infra.RopePyName,
         *,
-        class_chain: tuple[str, ...],
-        scope_chain: tuple[str, ...],
+        class_chain: t.StrSequence,
+        scope_chain: t.StrSequence,
         name: str,
     ) -> str:
         """Kind for."""
@@ -836,7 +836,7 @@ class FlextInfraUtilitiesRopeInventory:
         convention: m.Infra.RopeModuleConvention,
         *,
         name: str,
-        scope_chain: tuple[str, ...],
+        scope_chain: t.StrSequence,
     ) -> bool:
         """Is facade member."""
         if scope_chain:

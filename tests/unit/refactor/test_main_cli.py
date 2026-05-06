@@ -586,8 +586,8 @@ class TestsFlextInfraRefactorMainCli:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         builder_name: str,
-        kinds: tuple[str, ...],
-        rules: tuple[str, ...],
+        kinds: t.StrSequence,
+        rules: t.StrSequence,
         expected_kind: str,
     ) -> None:
         builder = getattr(self, builder_name)

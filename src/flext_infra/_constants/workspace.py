@@ -61,7 +61,7 @@ class FlextInfraConstantsWorkspace:
         "scripts/",
         "/scripts/",
     })
-    REQUIRED_GITIGNORE_ENTRIES: Final[tuple[str, ...]] = (
+    REQUIRED_GITIGNORE_ENTRIES: Final[t.StrSequence] = (
         ".reports/",
         ".venv/",
         "__pycache__/",

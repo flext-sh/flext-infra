@@ -31,13 +31,13 @@ class FlextInfraUtilitiesDocsContract:
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
         project_meta: t.Infra.ContainerDict = (
-            dict(project_meta_value.items())
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_meta_value)
             if isinstance(project_meta_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
         project_urls_value = project_meta.get("urls")
         project_urls: t.Infra.ContainerDict = (
-            dict(project_urls_value.items())
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_urls_value)
             if isinstance(project_urls_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )

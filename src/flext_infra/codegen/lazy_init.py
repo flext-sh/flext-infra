@@ -120,7 +120,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
     @staticmethod
     def _detect_duplicate_class_names(
         rope: FlextInfraRopeWorkspace,
-    ) -> t.MappingKV[str, tuple[str, ...]]:
+    ) -> t.MappingKV[str, t.StrSequence]:
         """Return class-name collisions.
 
         Scope rules:

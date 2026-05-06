@@ -8,9 +8,7 @@ import pytest
 
 from flext_cli import u as cli_u
 from flext_infra import FlextInfraReleaseOrchestrator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import c, m, t, u
 
 
 def make_config(
@@ -45,7 +43,7 @@ def make_config(
 )
 def test_resolve_phase_names(
     phase: str,
-    expected: tuple[str, ...],
+    expected: t.StrSequence,
 ) -> None:
     assert tuple(u.Infra.resolve_phase_names(phase)) == expected
 

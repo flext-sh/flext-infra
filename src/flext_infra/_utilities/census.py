@@ -366,7 +366,7 @@ class FlextInfraUtilitiesRefactorCensus:
         *,
         target_name: str,
         removed_ranges: t.SequenceOf[t.IntPair],
-    ) -> tuple[str, ...]:
+    ) -> t.StrSequence:
         """Return simple alias names removed together with ``target_name``."""
         if not removed_ranges:
             return ()

@@ -32,7 +32,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
             description="Ordered TOML transformation phases to apply.",
         ),
     ]
-    _table_cache: dict[tuple[str, ...], Table] = u.PrivateAttr(default_factory=dict)
+    _table_cache: dict[t.StrSequence, Table] = u.PrivateAttr(default_factory=dict)
 
     @classmethod
     def apply_phases(
@@ -86,7 +86,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
         payload: t.MutableJsonMapping,
         phase: m.Infra.TomlPhaseConfig,
         *,
-        parent_path: tuple[str, ...],
+        parent_path: t.StrSequence,
     ) -> t.StrSequence:
         """Apply one phase recursively against one normalized payload."""
         if phase.custom_handler is not None:
@@ -108,7 +108,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
             )
         return out
 
-    def _resolve_phase_table(self, phase_path: tuple[str, ...]) -> Table:
+    def _resolve_phase_table(self, phase_path: t.StrSequence) -> Table:
         """Resolve and cache one TOML table path for the current document."""
         cached_table = self._table_cache.get(phase_path)
         if cached_table is not None:
@@ -121,7 +121,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
         self,
         phase: m.Infra.TomlPhaseConfig,
         *,
-        parent_path: tuple[str, ...],
+        parent_path: t.StrSequence,
     ) -> t.StrSequence:
         """Apply one phase recursively using cached path resolution."""
         out: t.MutableSequenceOf[str] = []

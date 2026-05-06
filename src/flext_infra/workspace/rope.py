@@ -32,7 +32,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         ),
     ] = c.Infra.DEFAULT_SRC_DIR
     ignored_resources: Annotated[
-        tuple[str, ...],
+        t.StrSequence,
         m.Field(
             description="Ignored Rope resource patterns for this session",
         ),
@@ -87,7 +87,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         *,
         project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
         src_dir: str = c.Infra.DEFAULT_SRC_DIR,
-        ignored_resources: tuple[str, ...] = c.Infra.ROPE_IGNORED_RESOURCES,
+        ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
     ) -> Self:
         """Create one ready-to-use Rope workspace session."""
         workspace = cls(
@@ -304,7 +304,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         }
         return self._name_index
 
-    _SURFACE_DIRS: ClassVar[tuple[str, ...]] = (
+    _SURFACE_DIRS: ClassVar[t.StrSequence] = (
         c.Infra.DIR_TESTS,
         c.Infra.DIR_EXAMPLES,
         c.Infra.DIR_SCRIPTS,
@@ -548,4 +548,4 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         raise ValueError(msg)
 
 
-__all__: tuple[str, ...] = ("FlextInfraRopeWorkspace",)
+__all__: t.StrSequence = ("FlextInfraRopeWorkspace",)

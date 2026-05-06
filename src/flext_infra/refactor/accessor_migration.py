@@ -217,9 +217,9 @@ class FlextInfraAccessorMigrationOrchestrator(
         include_preview: bool,
     ) -> m.Infra.AccessorMigrationFile:
         """Process file."""
-        lint_before: dict[str, tuple[str, ...]] = {}
-        lint_after: dict[str, tuple[str, ...]] = {}
-        new_lint_errors: dict[str, tuple[str, ...]] = {}
+        lint_before: dict[str, t.StrSequence] = {}
+        lint_after: dict[str, t.StrSequence] = {}
+        new_lint_errors: dict[str, t.StrSequence] = {}
         before: t.Infra.LintSnapshot = {}
         after: t.Infra.LintSnapshot = {}
         if automated_changes:
@@ -442,7 +442,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         return warnings
 
     @staticmethod
-    def _freeze_lints(snapshot: t.Infra.LintSnapshot) -> dict[str, tuple[str, ...]]:
+    def _freeze_lints(snapshot: t.Infra.LintSnapshot) -> dict[str, t.StrSequence]:
         """Freeze lints."""
         return {tool: tuple(lines) for tool, lines in snapshot.items()}
 
