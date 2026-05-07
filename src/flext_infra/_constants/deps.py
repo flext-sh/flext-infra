@@ -68,7 +68,7 @@ class FlextInfraConstantsDeps:
     LEGACY_AUTO_BANNER_LINE: Final[str] = (
         "# Sections with [AUTO] are derived from workspace layout and dependencies."
     )
-    COMMENT_MARKERS: Final[tuple[tuple[str, str], ...]] = (
+    COMMENT_MARKERS: Final[t.StrPairTuple] = (
         ("[build-system]", "# [MANAGED] build system"),
         ("[project]", "# [CUSTOM] project metadata"),
         ("[tool.poetry.group.dev.dependencies]", "# [CUSTOM] poetry dev extensions"),

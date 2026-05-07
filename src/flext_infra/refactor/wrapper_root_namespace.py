@@ -309,7 +309,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         per_project_replacements_payload: t.JsonDict = dict(
             accumulator.per_project_replacements.items()
         )
-        changed_files_preview: list[t.JsonValue] = list(accumulator.changed_files[:200])
+        changed_files_preview: t.JsonValueList = list(accumulator.changed_files[:200])
         report_payload: t.MutableJsonMapping = {
             "files_scanned": files_scanned,
             "files_changed": len(accumulator.changed_files),

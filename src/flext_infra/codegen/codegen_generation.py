@@ -104,7 +104,7 @@ class FlextInfraCodegenGeneration:
     def _reject_non_absolute_import(
         mod: str,
         local_package_root: str | None,
-        items: t.Infra.StrPairSequence,
+        items: t.StrPairSequence,
     ) -> None:
         """Abort gen init if a TYPE_CHECKING import is not fully-qualified.
 
@@ -202,10 +202,10 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _group_imports(
-        import_map: t.Infra.LazyImportMap,
-    ) -> t.MappingKV[str, t.MutableSequenceOf[t.Infra.StrPair]]:
+        import_map: t.LazyAliasMap,
+    ) -> t.MappingKV[str, t.MutableSequenceOf[t.StrPair]]:
         """Group imports."""
-        groups: dict[str, list[t.Infra.StrPair]] = defaultdict(list)
+        groups: dict[str, list[t.StrPair]] = defaultdict(list)
         for export_name in sorted(import_map):
             mod, attr = import_map[export_name]
             groups[mod].append((export_name, attr))
@@ -213,16 +213,16 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _collapse_to_children(
-        groups: t.MappingKV[str, t.Infra.StrPairSequence],
+        groups: t.MappingKV[str, t.StrPairSequence],
         child_packages: t.StrSequence | None,
-    ) -> t.MappingKV[str, t.MutableSequenceOf[t.Infra.StrPair]]:
+    ) -> t.MappingKV[str, t.MutableSequenceOf[t.StrPair]]:
         """Collapse to children."""
         sorted_children: list[str] = sorted(
             set(child_packages or []),
             key=len,
             reverse=True,
         )
-        collapsed: dict[str, list[t.Infra.StrPair]] = defaultdict(list)
+        collapsed: dict[str, list[t.StrPair]] = defaultdict(list)
         for mod, items in groups.items():
             target = mod
             for cp in sorted_children:
@@ -234,7 +234,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _has_flext_types(
-        collapsed: t.MappingKV[str, t.Infra.StrPairSequence],
+        collapsed: t.MappingKV[str, t.StrPairSequence],
     ) -> bool:
         """Has flext types."""
         return any(
@@ -247,7 +247,7 @@ class FlextInfraCodegenGeneration:
     def _type_checking_sort_key(
         mod: str,
         local_package_root: str | None,
-    ) -> t.Infra.StrPair:
+    ) -> t.StrPair:
         """Type checking sort key."""
         top = mod.split(".", maxsplit=1)[0]
         if local_package_root == "tests":
@@ -277,7 +277,7 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def _emit_type_checking_module(
         mod: str,
-        items: t.Infra.StrPairSequence,
+        items: t.StrPairSequence,
         root_name: str,
         lines: t.MutableSequenceOf[str],
     ) -> None:
@@ -332,7 +332,7 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def _build_lazy_entries(
         exports: t.StrSequence,
-        lazy_filtered: t.Infra.LazyImportMap,
+        lazy_filtered: t.LazyAliasMap,
         context: _LazyEntryContext,
     ) -> t.SequenceOf[tuple[str, str, str]]:
         """Build lazy entries."""
@@ -362,12 +362,12 @@ class FlextInfraCodegenGeneration:
     def _group_lazy_entries(
         lazy_entries: t.SequenceOf[tuple[str, str, str]],
     ) -> tuple[
-        t.SequenceOf[tuple[str, t.StrSequence]],
-        t.SequenceOf[tuple[str, t.Infra.StrPairSequence]],
+        t.SequenceOf[t.StrSequencePair],
+        t.SequenceOf[t.StrPairSequencePair],
     ]:
         """Group lazy entries."""
         module_groups: dict[str, list[str]] = defaultdict(list)
-        alias_groups: dict[str, list[t.Infra.StrPair]] = defaultdict(list)
+        alias_groups: dict[str, list[t.StrPair]] = defaultdict(list)
         for export_name, mod, attr_name in lazy_entries:
             if not attr_name or attr_name == export_name:
                 module_groups[mod].append(export_name)
@@ -390,7 +390,7 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def _build_published_exports(
         exports: t.StrSequence,
-        lazy_filtered: t.Infra.LazyImportMap,
+        lazy_filtered: t.LazyAliasMap,
     ) -> t.StrSequence:
         """Build published exports."""
         return tuple(
@@ -441,7 +441,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _generate_import_lines(
-        groups: t.MappingKV[str, t.Infra.StrPairSequence],
+        groups: t.MappingKV[str, t.StrPairSequence],
         *,
         indent: str = "",
     ) -> t.StrSequence:
@@ -490,7 +490,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def generate_type_checking(
-        groups: t.MappingKV[str, t.Infra.StrPairSequence],
+        groups: t.MappingKV[str, t.StrPairSequence],
         *,
         include_flext_types: bool = True,
         child_packages: t.StrSequence | None = None,
@@ -516,7 +516,7 @@ class FlextInfraCodegenGeneration:
         if not groups and include_flext_types:
             return ("if _t.TYPE_CHECKING:", "    from flext_core import FlextTypes")
 
-        normalized_groups: dict[str, t.Infra.StrPairSequence] = {}
+        normalized_groups: dict[str, t.StrPairSequence] = {}
         for mod, items in groups.items():
             resolved = FlextInfraCodegenGeneration._normalize_type_checking_module_path(
                 mod,
@@ -568,10 +568,10 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def generate_file(
         exports: t.StrSequence,
-        filtered: t.Infra.LazyImportMap,
+        filtered: t.LazyAliasMap,
         inline_constants: t.StrMapping,
         current_pkg: str,
-        eager_imports: t.Infra.LazyImportMap | None = None,
+        eager_imports: t.LazyAliasMap | None = None,
         wildcard_runtime_modules: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
         child_packages_for_tc: t.StrSequence | None = None,
@@ -591,8 +591,8 @@ class FlextInfraCodegenGeneration:
             Complete Python module file as a single string.
 
         """
-        runtime_imports: t.Infra.LazyImportMap = eager_imports or {}
-        lazy_filtered: t.Infra.LazyImportMap = dict(filtered)
+        runtime_imports: t.LazyAliasMap = eager_imports or {}
+        lazy_filtered: t.LazyAliasMap = dict(filtered)
         wildcard_runtime_module_set = frozenset(wildcard_runtime_modules or ())
         publish_all = FlextInfraCodegenGeneration._is_root_namespace_package(
             current_pkg
@@ -605,7 +605,7 @@ class FlextInfraCodegenGeneration:
             if publish_all
             else tuple(sorted(exports))
         )
-        type_checking_filtered: t.Infra.LazyImportMap = {
+        type_checking_filtered: t.LazyAliasMap = {
             name: val
             for name, val in lazy_filtered.items()
             if val[0] not in wildcard_runtime_module_set

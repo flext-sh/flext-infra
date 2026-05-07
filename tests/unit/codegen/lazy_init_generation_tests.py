@@ -25,14 +25,14 @@ class TestGenerateTypeChecking:
 
     def test_with_empty_groups(self) -> None:
         """Test with no imports returns header + FlextTypes only."""
-        groups: t.MappingKV[str, t.SequenceOf[tuple[str, str]]] = {}
+        groups: t.MappingKV[str, t.StrPairSequence] = {}
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
         tm.that(lines, contains="if _t.TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
         """Test with no imports and no FlextTypes returns empty list."""
-        groups: t.MappingKV[str, t.SequenceOf[tuple[str, str]]] = {}
+        groups: t.MappingKV[str, t.StrPairSequence] = {}
         lines = FlextInfraCodegenGeneration.generate_type_checking(
             groups,
             include_flext_types=False,
@@ -56,7 +56,7 @@ class TestGenerateTypeChecking:
 
     def test_with_long_import_line(self) -> None:
         """Test wraps long import lines."""
-        groups: MutableMapping[str, t.SequenceOf[tuple[str, str]]] = defaultdict(list)
+        groups: MutableMapping[str, t.StrPairSequence] = defaultdict(list)
         groups["module"] = [
             ("VeryLongClassName1", "VeryLongClassName1"),
             ("VeryLongClassName2", "VeryLongClassName2"),
@@ -67,7 +67,7 @@ class TestGenerateTypeChecking:
 
     def test_with_multiple_modules(self) -> None:
         """Test multiple type-checking imports are emitted."""
-        groups: MutableMapping[str, t.SequenceOf[tuple[str, str]]] = defaultdict(list)
+        groups: MutableMapping[str, t.StrPairSequence] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
@@ -145,9 +145,9 @@ class TestGenerateFile:
     def test_with_eager_runtime_imports(self) -> None:
         """Test version-like exports are imported eagerly at runtime."""
         exports = ["FlextVersion", "__version__"]
-        filtered: t.Infra.LazyImportMap = {}
+        filtered: t.LazyAliasMap = {}
         inline_constants: t.StrMapping = {}
-        eager_imports: t.Infra.LazyImportMap = {
+        eager_imports: t.LazyAliasMap = {
             "FlextVersion": ("test_pkg.__version__", "FlextVersion"),
             "__version__": ("test_pkg.__version__", "__version__"),
         }
@@ -171,7 +171,7 @@ class TestGenerateFile:
     def test_skips_wildcard_runtime_modules_in_type_checking(self) -> None:
         """Test wildcard runtime imports are not duplicated in TYPE_CHECKING."""
         exports = ["VERSION", "__version__", "Test"]
-        filtered: t.Infra.LazyImportMap = {
+        filtered: t.LazyAliasMap = {
             "VERSION": ("test_pkg.__version__", "VERSION"),
             "__version__": ("test_pkg.__version__", "__version__"),
             "Test": ("test_pkg.models", "Test"),

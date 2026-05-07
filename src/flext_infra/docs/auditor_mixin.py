@@ -47,10 +47,10 @@ class FlextInfraDocAuditorMixin:
                 by_scope_raw = {}
         by_scope: t.MutableIntMapping = {}
         for name, value in by_scope_raw.items():
-            if isinstance(value, (int, float)):
+            if isinstance(value, t.NUMERIC_TYPES):
                 by_scope[name] = int(value)
         resolved_default = (
-            int(default_budget) if isinstance(default_budget, (int, float)) else None
+            int(default_budget) if isinstance(default_budget, t.NUMERIC_TYPES) else None
         )
         return (resolved_default, by_scope)
 
@@ -120,7 +120,7 @@ class FlextInfraDocAuditorMixin:
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""
         validated_checks = t.json_list_adapter().validate_python(sorted(checks))
-        sorted_checks: list[t.JsonValue] = list(validated_checks)
+        sorted_checks: t.JsonValueList = list(validated_checks)
         summary: t.JsonDict = {
             c.Infra.RK_SCOPE: scope.name,
             "issues": len(issues),

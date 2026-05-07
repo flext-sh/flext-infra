@@ -59,7 +59,7 @@ class FlextInfraConstantsMake:
         "test",
         "val",
     )
-    PROJECT_VARIABLE_DEFAULTS: Final[t.Infra.StrPairSequence] = (
+    PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
         ("DIAG", "0"),
         ("CHECK_GATES", ""),
@@ -92,7 +92,7 @@ class FlextInfraConstantsMake:
         ("FAIL_FAST", ""),
         ("VERBOSE", ""),
     )
-    WORKSPACE_VARIABLE_DEFAULTS: Final[t.Infra.StrPairSequence] = (
+    WORKSPACE_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PROJECT", ""),
         ("PROJECTS", ""),
         ("PYTEST_ARGS", ""),
@@ -143,7 +143,7 @@ class FlextInfraConstantsMake:
         ("DEPS_REPORT", "1"),
         ("VERBOSE", ""),
     )
-    PROJECT_CORE_VERBS: Final[t.Infra.StrPairSequence] = (
+    PROJECT_CORE_VERBS: Final[t.StrPairSequence] = (
         ("boot", "Install dependencies and hooks"),
         ("build", "Build distributable artifacts"),
         ("check", "Run lint gates (CHECK_GATES= to select)"),
@@ -154,7 +154,7 @@ class FlextInfraConstantsMake:
         ("val", "Run validate gates (FIX=1 to auto-fix)"),
         ("clean", "Clean build/test/type artifacts"),
     )
-    PROJECT_DAEMON_VERBS: Final[t.Infra.StrPairSequence] = (
+    PROJECT_DAEMON_VERBS: Final[t.StrPairSequence] = (
         ("daemon-start", "Start all daemons (mypy + pyright)"),
         ("daemon-stop", "Stop all daemons"),
         ("daemon-status", "Show status of all daemons"),
@@ -185,7 +185,7 @@ class FlextInfraConstantsMake:
         "PR_DELETE_BRANCH=0|1  PR_CHECKS_STRICT=0|1",
         "PR_RELEASE_ON_MERGE=0|1",
     )
-    WORKSPACE_CORE_VERBS: Final[t.Infra.StrPairSequence] = (
+    WORKSPACE_CORE_VERBS: Final[t.StrPairSequence] = (
         (
             "boot",
             "Install all projects into workspace .venv, then run val VALIDATE_SCOPE=workspace",
@@ -221,7 +221,7 @@ class FlextInfraConstantsMake:
         ),
         ("clean", "Clean all projects"),
     )
-    WORKSPACE_GIT_VERBS: Final[t.Infra.StrPairSequence] = (
+    WORKSPACE_GIT_VERBS: Final[t.StrPairSequence] = (
         (
             "save",
             "Commit all changes in selected projects (MESSAGE=)",
@@ -297,7 +297,7 @@ class FlextInfraConstantsMake:
         "make pr PROJECT=flext-core PR_ACTION=status",
         "make pr PROJECT=flext-core PR_ACTION=create PR_TITLE='release: 0.11.0-dev'",
     )
-    STANDALONE_BOOTSTRAP_VERBS: Final[t.Infra.StrPairSequence] = (
+    STANDALONE_BOOTSTRAP_VERBS: Final[t.StrPairSequence] = (
         ("venv", "Create virtual environment"),
         ("setup", "Full standalone setup"),
         ("help", "Show this help"),
@@ -320,7 +320,7 @@ class FlextInfraConstantsMake:
     SAVE_USAGE: Final[str] = "make save MESSAGE='chore: your message'"
     FORWARD_MODE_VALUE: Final[str] = "value"
     FORWARD_MODE_ENABLED: Final[str] = "enabled"
-    CHECK_FORWARD_ARGS: Final[t.Infra.StrPairSequence] = (
+    CHECK_FORWARD_ARGS: Final[t.StrPairSequence] = (
         ("CHECK_GATES", FORWARD_MODE_VALUE),
         ("FILE", FORWARD_MODE_VALUE),
         ("FILES", FORWARD_MODE_VALUE),
@@ -330,18 +330,18 @@ class FlextInfraConstantsMake:
         ("PYRIGHT_ARGS", FORWARD_MODE_VALUE),
         ("CHECK_ONLY", FORWARD_MODE_ENABLED),
     )
-    DOCS_FORWARD_ARGS: Final[t.Infra.StrPairSequence] = (
+    DOCS_FORWARD_ARGS: Final[t.StrPairSequence] = (
         ("DOCS_PHASE", FORWARD_MODE_VALUE),
         ("FIX", FORWARD_MODE_ENABLED),
     )
-    TEST_FORWARD_ARGS: Final[t.Infra.StrPairSequence] = (
+    TEST_FORWARD_ARGS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", FORWARD_MODE_VALUE),
         ("FILE", FORWARD_MODE_VALUE),
         ("FILES", FORWARD_MODE_VALUE),
         ("MATCH", FORWARD_MODE_VALUE),
         ("VERBOSE", FORWARD_MODE_ENABLED),
     )
-    VALIDATE_FORWARD_ARGS: Final[t.Infra.StrPairSequence] = (
+    VALIDATE_FORWARD_ARGS: Final[t.StrPairSequence] = (
         ("FIX", FORWARD_MODE_ENABLED),
         ("VALIDATE_GATES", FORWARD_MODE_VALUE),
     )

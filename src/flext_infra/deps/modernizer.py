@@ -257,7 +257,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         internal_names: t.StrSequence,
         policy: c.Infra.DependencyConstraintPolicy,
         location: str,
-    ) -> tuple[list[t.JsonValue] | None, t.StrSequence]:
+    ) -> tuple[t.JsonValueList | None, t.StrSequence]:
         """Rewrite one sequence of PEP 621 requirement strings in place."""
         if not isinstance(raw_requirements, list):
             return (None, [])
@@ -435,7 +435,7 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
             str(item) for item in u.Cli.json_as_sequence(requires_value)
         )
         if current_requires != expected_requires:
-            requires_list: list[t.JsonValue] = list(expected_requires)
+            requires_list: t.JsonValueList = list(expected_requires)
             build_system["requires"] = requires_list
             changes.append("build-system.requires set to ['hatchling']")
         metadata_table = u.Cli.toml_mapping_ensure_path(

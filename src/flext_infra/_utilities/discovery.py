@@ -142,7 +142,8 @@ class FlextInfraUtilitiesDiscovery:
             )
             match top_level_parts:
                 case (_, package_name):
-                    return package_name
+                    resolved_package: str = package_name
+                    return resolved_package
                 case _:
                     pass
         return (

@@ -53,10 +53,10 @@ class FlextInfraUtilitiesRopeHelpers:
     @staticmethod
     def get_module_level_assignments(
         source: str,
-    ) -> t.SequenceOf[t.Infra.StrPair]:
+    ) -> t.StrPairSequence:
         """Return (name, value_str) for module-level simple assignments."""
         assignment_pattern = c.Infra.MODULE_ASSIGNMENT_RE
-        results: list[t.Infra.StrPair] = []
+        results: list[t.StrPair] = []
         scope_depth = 0
         in_multiline_assignment = False
         current_name = ""
@@ -288,7 +288,7 @@ class FlextInfraUtilitiesRopeHelpers:
         lines.insert(insert_idx, block.rstrip("\n") + "\n\n")
         return "".join(lines)
 
-    _DECORATOR_TO_CATEGORY: ClassVar[t.SequenceOf[t.Infra.StrPair]] = [
+    _DECORATOR_TO_CATEGORY: ClassVar[t.StrPairSequence] = [
         ("staticmethod", "static"),
         ("classmethod", "class"),
     ]

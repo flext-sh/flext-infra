@@ -47,7 +47,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def _selected_lint_tools(
         gates: t.StrSequence | None = None,
-    ) -> tuple[tuple[str, t.StrSequence], ...]:
+    ) -> t.StrSequencePairTuple:
         """Selected lint tools."""
         resolved_gates = gates or tuple(
             gate.strip()
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         py_file: Path,
         workspace: Path,
-        selected_tools: tuple[tuple[str, t.StrSequence], ...],
+        selected_tools: t.StrSequencePairTuple,
     ) -> t.Infra.LintSnapshot:
         """Execute selected lint tools."""
         command_cwd = cls._command_cwd(py_file, workspace)
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         def _run_gate(
             tool_name: str,
             tmpl: t.StrSequence,
-        ) -> tuple[str, t.StrSequence]:
+        ) -> t.StrSequencePair:
             """Run gate."""
             cmd = [
                 *cls._workspace_tool_command(workspace, tmpl[0]),

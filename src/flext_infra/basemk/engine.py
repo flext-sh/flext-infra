@@ -83,7 +83,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             return r[m.Infra.BaseMkConfig].ok(settings)
         try:
             normalized = m.Infra.BaseMkConfig.model_validate(
-                dict(settings),
+                settings,
             )
             return r[m.Infra.BaseMkConfig].ok(normalized)
         except c.EXC_TYPE_VALIDATION as exc:

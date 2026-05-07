@@ -42,7 +42,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             )
         scanner = FlextInfraRefactorLooseClassScanner()
         mapping_result = cls._load_mapping_index()
-        mapping_index: t.MappingKV[t.Infra.StrPair, m.Infra.ClassNestingMapping] = (
+        mapping_index: t.MappingKV[t.StrPair, m.Infra.ClassNestingMapping] = (
             mapping_result.unwrap() if mapping_result.success else {}
         )
         confidence_counts: Counter[str] = Counter()
@@ -132,7 +132,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _load_mapping_index(
         cls,
-    ) -> p.Result[t.MappingKV[t.Infra.StrPair, m.Infra.ClassNestingMapping]]:
+    ) -> p.Result[t.MappingKV[t.StrPair, m.Infra.ClassNestingMapping]]:
         """Load mapping index."""
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
@@ -155,7 +155,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
-        index: MutableMapping[t.Infra.StrPair, m.Infra.ClassNestingMapping] = {}
+        index: MutableMapping[t.StrPair, m.Infra.ClassNestingMapping] = {}
         for entry in entries:
             scope = cls._normalize_rewrite_scope(entry.rewrite_scope)
             norm = u.Infra.normalize_module_path(entry.current_file)

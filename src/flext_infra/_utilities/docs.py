@@ -244,7 +244,7 @@ class FlextInfraUtilitiesDocs:
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
-    def update_toc(content: str) -> t.Infra.StrIntPair:
+    def update_toc(content: str) -> t.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
         toc = FlextInfraUtilitiesDocs.build_toc(content)
         if c.Infra.TOC_START in content and c.Infra.TOC_END in content:

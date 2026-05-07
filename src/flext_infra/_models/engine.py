@@ -70,7 +70,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 cls,
                 *,
                 values: t.SequenceOf[tuple[str, t.JsonValue]] = (),
-                lists: t.SequenceOf[tuple[str, t.StrSequence]] = (),
+                lists: t.SequenceOf[t.StrSequencePair] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> tuple[FlextInfraModelsEngine.TomlOperation, ...]:
                 """Nested operations."""
@@ -161,7 +161,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 self,
                 *path: str,
                 values: t.SequenceOf[tuple[str, t.JsonValue]] = (),
-                lists: t.SequenceOf[tuple[str, t.StrSequence]] = (),
+                lists: t.SequenceOf[t.StrSequencePair] = (),
                 deprecated_keys: t.StrSequence = (),
             ) -> Self:
                 """Nested."""

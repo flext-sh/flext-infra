@@ -20,28 +20,27 @@ constants — no ``ast`` parsing or tree walking is required:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 from flext_infra import FlextInfraRopeTransformer, c, t, u
-
-_CONTAINER_REWRITES: tuple[tuple[str, str], ...] = (
-    ("dict[", "t.MutableMappingKV"),
-    ("Dict[", "t.MutableMappingKV"),
-    ("list[", "t.MutableSequenceOf"),
-    ("List[", "t.MutableSequenceOf"),
-)
-_VARIADIC_TUPLE_PARTS = 2
-_FIXED_TUPLE_ALIASES: t.MappingKV[int, str] = {
-    2: "Pair",
-    3: "Triple",
-    4: "Quad",
-}
 
 
 class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
     """Unify inline type unions and modernize TypeAlias to PEP 695."""
 
     _description = "canonicalize types and modernize TypeAlias"
+    _CONTAINER_REWRITES: ClassVar[t.StrPairTuple] = (
+        ("dict[", "t.MutableMappingKV"),
+        ("Dict[", "t.MutableMappingKV"),
+        ("list[", "t.MutableSequenceOf"),
+        ("List[", "t.MutableSequenceOf"),
+    )
+    _VARIADIC_TUPLE_PARTS: ClassVar[int] = 2
+    _FIXED_TUPLE_ALIASES: ClassVar[t.MappingKV[int, str]] = {
+        2: "Pair",
+        3: "Triple",
+        4: "Quad",
+    }
 
     def __init__(
         self,
@@ -247,9 +246,9 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
         return "".join(result), changes
 
     @staticmethod
-    def _match_container_prefix(text: str, index: int) -> tuple[str, str] | None:
+    def _match_container_prefix(text: str, index: int) -> t.StrPair | None:
         """Return the matching built-in container prefix at ``index``, if any."""
-        for prefix, alias_name in _CONTAINER_REWRITES:
+        for prefix, alias_name in FlextInfraRefactorTypingUnifier._CONTAINER_REWRITES:
             if FlextInfraRefactorTypingUnifier._matches_type_token(text, index, prefix):
                 return prefix, alias_name
         if FlextInfraRefactorTypingUnifier._matches_type_token(text, index, "tuple["):
@@ -311,9 +310,14 @@ class FlextInfraRefactorTypingUnifier(FlextInfraRopeTransformer):
     ) -> str:
         """Rewrite one ``tuple[...]`` annotation into the canonical ``t.*`` alias."""
         parts = self._split_top_level_items(rewritten_content)
-        if len(parts) == _VARIADIC_TUPLE_PARTS and parts[1] == "...":
+        if (
+            len(parts) == FlextInfraRefactorTypingUnifier._VARIADIC_TUPLE_PARTS
+            and parts[1] == "..."
+        ):
             return f"t.VariadicTuple[{parts[0]}]"
-        alias_name = _FIXED_TUPLE_ALIASES.get(len(parts))
+        alias_name = FlextInfraRefactorTypingUnifier._FIXED_TUPLE_ALIASES.get(
+            len(parts)
+        )
         if alias_name is not None:
             return f"t.{alias_name}[{', '.join(parts)}]"
         prefix = "Tuple" if original_prefix.startswith("Tuple[") else "tuple"

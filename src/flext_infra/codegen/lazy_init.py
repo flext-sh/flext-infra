@@ -128,7 +128,7 @@ class FlextInfraCodegenLazyInit(s[bool]):
         - ``tests/``/``scripts/``/``examples/``/``docs/`` modules: duplicates
           forbidden only within the same owning project (they do not escape).
         """
-        scoped_modules: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
+        scoped_modules: defaultdict[t.StrPair, set[str]] = defaultdict(set)
         for entry in rope.workspace_index.modules_by_path.values():
             if entry.is_package_init or not entry.module_name:
                 continue
@@ -166,10 +166,10 @@ class FlextInfraCodegenLazyInit(s[bool]):
         *,
         check_only: bool,
         planner: FlextInfraCodegenLazyInitPlanner,
-    ) -> tuple[int, int, int, MutableMapping[str, t.Infra.LazyImportMap]]:
+    ) -> tuple[int, int, int, MutableMapping[str, t.LazyAliasMap]]:
         """Generate all inits."""
         total = ok = errors = 0
-        dir_exports: MutableMapping[str, t.Infra.LazyImportMap] = {}
+        dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
         progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
         for idx, pkg_dir in enumerate(pkg_dirs, start=1):
             total += 1
@@ -203,12 +203,12 @@ class FlextInfraCodegenLazyInit(s[bool]):
         pkg_dir: Path,
         *,
         check_only: bool,
-        dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
         planner: FlextInfraCodegenLazyInitPlanner,
     ) -> t.Infra.LazyInitProcessResult:
         """Process directory."""
         result: t.Infra.LazyInitProcessResult
-        failed_lazy_map: t.Infra.MutableLazyImportMap
+        failed_lazy_map: t.MutableLazyAliasMap
         try:
             plan = planner.build_plan(
                 pkg_dir,

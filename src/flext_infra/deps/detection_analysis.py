@@ -63,9 +63,9 @@ class FlextInfraDependencyDetectionAnalysis:
         """Convert container value to namespaced infra value."""
         if value is None:
             return None
-        if isinstance(value, (str, int, float, bool)):
+        if isinstance(value, t.PRIMITIVES_TYPES):
             return value
-        scalar_types = (str, int, float, bool)
+        scalar_types = t.PRIMITIVES_TYPES
         if isinstance(value, list):
             try:
                 sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)

@@ -22,7 +22,7 @@ from flext_infra import (
 class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
 
-    _DOCSTRING_QUOTES: ClassVar[tuple[str, str]] = ('"""', "'''")
+    _DOCSTRING_QUOTES: ClassVar[t.StrPair] = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT: ClassVar[int] = 2
 
     @staticmethod
@@ -127,9 +127,9 @@ class FlextInfraUtilitiesRopeSource:
         return 1
 
     @staticmethod
-    def parse_import_names(names_str: str) -> t.SequenceOf[t.Infra.StrPair]:
+    def parse_import_names(names_str: str) -> t.StrPairSequence:
         """Parse ``A, B as C`` into ``[(name, bound), ...]``."""
-        result: t.MutableSequenceOf[t.Infra.StrPair] = []
+        result: t.MutableSequenceOf[t.StrPair] = []
         for part in names_str.split(","):
             candidate = part.strip().rstrip("\\").strip()
             if not candidate or candidate.startswith(("(", ")")):
@@ -308,7 +308,7 @@ class FlextInfraUtilitiesRopeSource:
         *,
         allow: t.Infra.StrSet | None = None,
         apply: bool = True,
-    ) -> tuple[str, t.StrSequence]:
+    ) -> t.StrSequencePair:
         """Remove module-level ``X = Y`` identity aliases."""
         _ = rope_project
         allow_set = allow or set()
@@ -355,7 +355,7 @@ class FlextInfraUtilitiesRopeSource:
         replacements: t.StrMapping,
         *,
         apply: bool = True,
-    ) -> t.Infra.StrIntPair:
+    ) -> t.StrIntPair:
         """Apply multiple annotation replacements in one pass."""
         _ = rope_project
         source = resource.read()
@@ -374,7 +374,7 @@ class FlextInfraUtilitiesRopeSource:
         resource: t.Infra.RopeResource,
         *,
         apply: bool = True,
-    ) -> t.Infra.StrIntPair:
+    ) -> t.StrIntPair:
         """Remove ``cast(Type, value)`` calls, replacing with just ``value``."""
         _ = rope_project
         source = resource.read()
@@ -601,7 +601,7 @@ class FlextInfraUtilitiesRopeSource:
         source: str,
         file_path: Path,
         transformer_fn: t.Infra.RopeTransformFn,
-    ) -> tuple[str, t.StrSequence]:
+    ) -> t.StrSequencePair:
         """Run a rope transformer against source text via a temporary context."""
         workspace_root = FlextInfraUtilitiesDiscovery.project_root(
             file_path,

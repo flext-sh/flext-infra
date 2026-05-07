@@ -217,11 +217,11 @@ class FlextInfraModelsCodegen:
             default_factory=tuple,
             description="Public exports for generated __init__.py.",
         )
-        lazy_map: t.Infra.LazyImportMap = m.Field(
+        lazy_map: t.LazyAliasMap = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Lazy import map: export name to module/attribute target.",
         )
-        eager_dunders: t.Infra.LazyImportMap = m.Field(
+        eager_dunders: t.LazyAliasMap = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description=(
                 "Dunder exports that must be eagerly imported at __init__.py "

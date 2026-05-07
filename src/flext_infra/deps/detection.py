@@ -67,7 +67,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
                 if raw_value is None:
                     normalized_item[key] = ""
                     continue
-                if isinstance(raw_value, (str, int, float, bool)):
+                if isinstance(raw_value, t.PRIMITIVES_TYPES):
                     normalized_item[key] = raw_value
             error_obj = item.get(c.Infra.ERROR)
             if not isinstance(error_obj, Mapping):

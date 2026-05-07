@@ -22,7 +22,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     _module_exports_cache: dict[
         tuple[str, bool, bool, bool, bool, bool],
-        t.Infra.LazyImportMap,
+        t.LazyAliasMap,
     ] = u.PrivateAttr(default_factory=dict)
     _package_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
         default_factory=dict
@@ -52,7 +52,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         pkg_dir: Path,
         *,
-        dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
@@ -117,7 +117,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     def _package_exports(
         self,
         context: m.Infra.LazyInitPackageContext,
-    ) -> t.Infra.MutableLazyImportMap:
+    ) -> t.MutableLazyAliasMap:
         """Package exports."""
         if self._is_private_test_fixture_package(
             context.pkg_dir,
@@ -127,7 +127,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         package_entry = self._package_entry(context.pkg_dir)
         if package_entry is None:
             return {}
-        index: t.Infra.MutableLazyImportMap = {}
+        index: t.MutableLazyAliasMap = {}
         skip_names = {c.Infra.INIT_PY, "__main__.py", self._version_module_name}
         for module_entry in package_entry.modules:
             py_file = module_entry.file_path
@@ -185,7 +185,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 self._add(index, py_file.stem, (module_entry.module_name, ""))
                 continue
             for name, target in targets.items():
-                self._add(index, name, target)
+                if isinstance(target, tuple):
+                    self._add(index, name, target)
         return index
 
     def _module_exports(
@@ -194,7 +195,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         module_path: str,
         *,
         export_options: m.Infra.ExportOptions | None = None,
-    ) -> t.Infra.MutableLazyImportMap:
+    ) -> t.MutableLazyAliasMap:
         """Module exports."""
         resolved_export_options = export_options or m.Infra.ExportOptions()
         cache_key = (
@@ -233,8 +234,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     def _merge_children(
         self,
         pkg_dir: Path,
-        lazy_map: t.Infra.MutableLazyImportMap,
-        dir_exports: t.MappingKV[str, t.Infra.LazyImportMap],
+        lazy_map: t.MutableLazyAliasMap,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
     ) -> tuple[t.StrSequence, t.StrSequence]:
         """Merge children."""
         package_entry = self._package_entry(pkg_dir)
@@ -280,7 +281,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     def _resolve_aliases(
         self,
-        lazy_map: t.Infra.MutableLazyImportMap,
+        lazy_map: t.MutableLazyAliasMap,
         *,
         current_pkg: str,
         pkg_dir: Path,
@@ -314,7 +315,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     def _resolve_local_aliases(
         self,
-        lazy_map: t.Infra.MutableLazyImportMap,
+        lazy_map: t.MutableLazyAliasMap,
         *,
         current_pkg: str,
         pkg_dir: Path,
@@ -485,10 +486,10 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 not in self.rope_workspace.workspace_index.package_dir_by_name
                 or alias_name in self._export_names_for_package(canonical_package)
             ):
-                return canonical_package
+                return f"{canonical_package}"
         for package_name in reversed(candidate_packages):
             if alias_name in self._export_names_for_package(package_name):
-                return package_name
+                return f"{package_name}"
         # Project-scoped generation only indexes the selected project.
         # When parent packages live outside that Rope workspace, fall back to
         # the nearest declared parent facade instead of dropping the alias.
@@ -497,7 +498,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 package_name
                 not in self.rope_workspace.workspace_index.package_dir_by_name
             ):
-                return package_name
+                return f"{package_name}"
         return ""
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -613,7 +614,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             resolved = self._module_file_by_name.get(module_path)
         return resolved
 
-    def _target_score(self, name: str, target: t.Infra.StrPair) -> int:
+    def _target_score(self, name: str, target: t.StrPair) -> int:
         """Target score."""
         module_path, attr = target
         score = 0
@@ -654,9 +655,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     def _pick_preferred_target(
         self,
         name: str,
-        existing: t.Infra.StrPair,
-        target: t.Infra.StrPair,
-    ) -> t.Infra.StrPair:
+        existing: t.StrPair,
+        target: t.StrPair,
+    ) -> t.StrPair:
         """Pick preferred target."""
         existing_score = self._target_score(name, existing)
         target_score = self._target_score(name, target)
@@ -678,13 +679,16 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     def _add(
         self,
-        index: t.Infra.MutableLazyImportMap,
+        index: t.MutableLazyAliasMap,
         name: str,
-        target: t.Infra.StrPair,
+        target: t.StrPair,
     ) -> None:
         """Add."""
         existing = index.get(name)
         if existing is None or existing == target:
+            index[name] = target
+            return
+        if not isinstance(existing, tuple):
             index[name] = target
             return
         winner = self._pick_preferred_target(name, existing, target)
@@ -700,8 +704,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
 
     @staticmethod
     def _is_intentional_reexport(
-        a: t.Infra.StrPair,
-        b: t.Infra.StrPair,
+        a: t.StrPair,
+        b: t.StrPair,
     ) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):

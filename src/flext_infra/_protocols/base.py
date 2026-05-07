@@ -47,9 +47,9 @@ class FlextInfraProtocolsBase(Protocol):
             **kwargs: (
                 t.JsonPayload
                 | t.SequenceOf[t.JsonValue]
-                | t.SequenceOf[tuple[str, str]]
-                | t.SequenceOf[tuple[str, t.StrSequence]]
-                | t.SequenceOf[tuple[str, t.SequenceOf[tuple[str, str]]]]
+                | t.StrPairSequence
+                | t.SequenceOf[t.StrSequencePair]
+                | t.SequenceOf[t.StrPairSequencePair]
                 | t.JsonMapping
                 | type
             ),

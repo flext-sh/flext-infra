@@ -44,19 +44,9 @@ class FlextInfraTypesBase:
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."
-    type StrPair = tuple[str, str]
-    "Ordered pair of strings."
-    type StrIntPair = tuple[str, int]
-    "Ordered pair of (str, int)."
-    type StrPairSequence = t.SequenceOf[StrPair]
-    "Read-only sequence of string pairs."
-    type LazyImportMap = t.MappingKV[str, StrPair]
-    "Lazy import table: export -> (module, attr)."
-    type MutableLazyImportMap = MutableMapping[str, StrPair]
-    "Mutable lazy import table."
-    type LazyInitProcessResult = tuple[int | None, LazyImportMap]
+    type LazyInitProcessResult = tuple[int | None, t.LazyAliasMap]
     "Result for per-directory lazy init processing."
-    type LazyInitWriteResult = tuple[int, LazyImportMap]
+    type LazyInitWriteResult = tuple[int, t.LazyAliasMap]
     "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
@@ -75,8 +65,8 @@ class FlextInfraTypesBase:
     type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
     type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
-        t.SequenceOf[tuple[RuleKindT, t.JsonMapping]],
-        t.SequenceOf[tuple[FileRuleKindT, t.JsonMapping]],
+        t.SequenceOf[RuleSelection[RuleKindT]],
+        t.SequenceOf[RuleSelection[FileRuleKindT]],
     ]
     "Loaded text-rule + file-rule selections from one declarative rules directory."
     type DomainResult = m.BaseModel | InfraValue
@@ -86,7 +76,7 @@ class FlextInfraTypesBase:
 
     # ── Transformer / edit result types ──────────────────────────────
 
-    type TransformResult = tuple[str, t.StrSequence]
+    type TransformResult = t.StrSequencePair
     "Canonical (new_source, change_descriptions) from any source transformer."
     type EditResult = tuple[bool, t.StrSequence]
     "Validated edit outcome: (success, report_lines)."

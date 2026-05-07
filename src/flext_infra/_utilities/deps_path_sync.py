@@ -61,7 +61,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             if item != new_entry:
                 changes.append(f"  PEP621: {item} -> {new_entry}")
         if changes:
-            updated_dependencies: list[t.JsonValue] = list(updated_deps)
+            updated_dependencies: t.JsonValueList = list(updated_deps)
             u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)[
                 c.Infra.DEPENDENCIES
             ] = updated_dependencies

@@ -59,7 +59,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             class_suffix="Utilities",
         ),
     )
-    _TARGET_MAP: ClassVar[tuple[tuple[str, str], ...]] = (
+    _TARGET_MAP: ClassVar[t.StrPairTuple] = (
         ("constants", "c"),
         ("typings", "t"),
         ("protocols", "p"),

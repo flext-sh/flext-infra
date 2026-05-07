@@ -489,7 +489,7 @@ class FlextInfraConstantsRefactor:
     NAMESPACE_FILE_TO_FAMILY: Final[t.StrMapping] = MappingProxyType({
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     })
-    NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[t.MappingKV[str, tuple[str, str]]] = (
+    NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[t.MappingKV[str, t.StrPair]] = (
         MappingProxyType({
             f"{suffix.lower()}.py": (alias, suffix)
             for alias, suffix in FAMILY_SUFFIXES.items()

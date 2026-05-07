@@ -59,7 +59,7 @@ class FlextInfraConstantsCodegen:
     )
     "Regex: malformed ``from import`` statement (missing module name)."
 
-    LINT_TOOLS: Final[tuple[tuple[str, t.StrSequence], ...]] = (
+    LINT_TOOLS: Final[t.StrSequencePairTuple] = (
         ("ruff", ("ruff", "check", "{file}", "--no-fix", "--select", "E,F")),
         ("pyright", ("pyright", "{file}")),
         ("mypy", ("mypy", "{file}", "--no-error-summary")),
@@ -119,26 +119,22 @@ class FlextInfraConstantsCodegen:
     "Directory segments recognized as project-root wrapper paths."
     DUPLICATE_CLASS_MIN_LEN: Final[int] = 8
     "Minimum class-name length for workspace-wide duplicate detection."
-    CORE_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.Infra.StrPair]] = (
-        MappingProxyType({
-            "d": ("flext_core", "d"),
-            "e": ("flext_core", "e"),
-            "h": ("flext_core", "h"),
-            "r": ("flext_core", "r"),
-            "s": ("flext_core", "s"),
-            "x": ("flext_core", "x"),
-        })
-    )
+    CORE_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
+        "d": ("flext_core", "d"),
+        "e": ("flext_core", "e"),
+        "h": ("flext_core", "h"),
+        "r": ("flext_core", "r"),
+        "s": ("flext_core", "s"),
+        "x": ("flext_core", "x"),
+    })
     "Mapping of single-letter aliases to flext-core runtime targets."
-    TEST_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.Infra.StrPair]] = (
-        MappingProxyType({
-            "td": ("flext_tests", "td"),
-            "tf": ("flext_tests", "tf"),
-            "tk": ("flext_tests", "tk"),
-            "tm": ("flext_tests", "tm"),
-            "tv": ("flext_tests", "tv"),
-        })
-    )
+    TEST_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
+        "td": ("flext_tests", "td"),
+        "tf": ("flext_tests", "tf"),
+        "tk": ("flext_tests", "tk"),
+        "tm": ("flext_tests", "tm"),
+        "tv": ("flext_tests", "tv"),
+    })
     "Mapping of test-only aliases to flext-tests runtime targets."
 
     # --- Constant detection constants (was: class Detection) ---

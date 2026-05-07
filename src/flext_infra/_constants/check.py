@@ -22,7 +22,7 @@ class FlextInfraConstantsCheck:
         WARNING = "warning"
         NOTE = "note"
 
-    SARIF_TOOL_INFO: Final[t.MappingKV[str, t.Infra.StrPair]] = MappingProxyType({
+    SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
         "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),

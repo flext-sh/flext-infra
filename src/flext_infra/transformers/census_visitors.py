@@ -68,7 +68,7 @@ class FlextInfraCensusUsageCollector:
         self,
         *,
         method_index: t.MappingKV[str, t.Infra.StrSet],
-        flat_aliases: t.MappingKV[str, t.Infra.StrPair],
+        flat_aliases: t.MappingKV[str, t.StrPair],
         inner_class_map: t.StrMapping,
         alias_locals: t.Infra.StrSet,
         direct_imports: t.StrMapping,
