@@ -1,0 +1,121 @@
+src/flext_infra/_utilities/rope_helpers.py
+  s_5a9c2b140a8456::t_56976be562912b 56,291
+  s_5a9c2b140a8456::t_6eacb34f9f89df 59
+src/flext_infra/_utilities/discovery.py
+  s_0290f35b98ef0c::t_710ff429357c43 145-146
+src/flext_infra/_utilities/deps_path_sync.py
+  s_5a9c2b140a8456::t_ac103e30834999 64
+src/flext_infra/codegen/codegen_generation.py
+  s_5a9c2b140a8456::t_6eacb34f9f89df 206,208,218,225,250,370
+  s_5a9c2b140a8456::t_335c8117530285 107,216,237,280,444,493,519
+src/flext_infra/_utilities/protected_edit_linting.py
+  s_5a9c2b140a8456::t_58d780bd12819e 50,151,161
+src/flext_infra/templates/models-facade.py.j2
+  s_5a9c2b140a8456::t_15c8d66cda9012 8
+src/flext_infra/refactor/wrapper_root_namespace.py
+  s_5a9c2b140a8456::t_ac103e30834999 312
+src/flext_infra/_utilities/docs_scope.py
+  s_0290f35b98ef0c::t_710ff429357c43 343
+src/flext_infra/deps/detection.py
+  s_b15aa8dbf80823::t_38048d730094a0 70
+src/flext_infra/deps/modernizer.py
+  s_5a9c2b140a8456::t_ac103e30834999 260,438
+src/flext_infra/basemk/engine.py
+  h_5cf852cc46bf92 86
+src/flext_infra/deps/phases/ensure_mypy.py
+  s_5a9c2b140a8456::t_ac103e30834999 53
+tests/unit/codegen/lazy_init_generation_tests.py
+  s_5a9c2b140a8456::t_52af22e457e4d1 28,35,59,70,148,150,174
+src/flext_infra/codegen/lazy_init.py
+  s_5a9c2b140a8456::t_58d780bd12819e 131
+  s_5a9c2b140a8456::t_0aeab0c5d08522 211
+src/flext_infra/transformers/census_visitors.py
+  s_5a9c2b140a8456::t_6eacb34f9f89df 71
+src/flext_infra/deps/detection_analysis.py
+  s_b15aa8dbf80823::t_8b6e9d9310480d 68
+  s_b15aa8dbf80823::t_38048d730094a0 66
+src/flext_infra/_typings/base.py
+  s_5a9c2b140a8456::t_6d663c44b94e25 68-69,79
+src/flext_infra/_utilities/mro_scan.py
+  s_5a9c2b140a8456::t_58d780bd12819e 62
+src/flext_infra/docs/auditor_mixin.py
+  s_5a9c2b140a8456::t_ac103e30834999 123
+  s_b15aa8dbf80823::t_e831ff4d9c605f 50,53
+src/flext_infra/refactor/class_nesting_analyzer.py
+  s_5a9c2b140a8456::t_6eacb34f9f89df 45,135,158
+src/flext_infra/_utilities/docs.py
+  s_5a9c2b140a8456::t_335c8117530285 247
+src/flext_infra/_constants/workspace.py
+  s_5a9c2b140a8456::t_6eacb34f9f89df 28
+src/flext_infra/_constants/make.py
+  s_5a9c2b140a8456::t_335c8117530285 62,95,146,157,188,224,300,323,333,337,344
+src/flext_infra/deps/detector.py
+  s_5a9c2b140a8456::t_ac103e30834999 98
+src/flext_infra/gates/ruff_lint.py
+  s_5a9c2b140a8456::t_ac103e30834999 63
+src/flext_infra/_protocols/base.py
+  s_5a9c2b140a8456::t_56976be562912b 50
+src/flext_infra/_constants/deps.py
+  s_5a9c2b140a8456::t_58d780bd12819e 71
+src/flext_infra/validate/inventory.py
+  s_5a9c2b140a8456::t_ac103e30834999 58
+src/flext_infra/transformers/typing_unifier.py
+  s_5a9c2b140a8456::t_0c8197fe33a290 23,32-43,249,251,313-316,318-320
+src/flext_infra/_constants/refactor.py
+  s_5a9c2b140a8456::t_60ff90e3324e92 492
+src/flext_infra/_constants/check.py
+  s_5a9c2b140a8456::t_6eacb34f9f89df 25
+src/flext_infra/_utilities/rope_source.py
+  s_5a9c2b140a8456::t_56976be562912b 130
+  s_5a9c2b140a8456::t_58d780bd12819e 25,311,604
+  s_5a9c2b140a8456::t_6eacb34f9f89df 132
+  s_5a9c2b140a8456::t_335c8117530285 358,377
+src/flext_infra/_constants/codegen.py
+  s_5a9c2b140a8456::t_ade687b10d1657 62
+src/flext_infra/codegen/lazy_init_planner.py
+  s_0290f35b98ef0c::t_ffc5f69b34ae60 489,492
+  s_5a9c2b140a8456::t_6eacb34f9f89df 617,658-660,682,684,707-708
+  h_5cf852cc46bf92 501
+  s_b15aa8dbf80823::t_debc90a9542bc8 691-693
+  s_b15aa8dbf80823::t_cd945aed6fb6ba 188-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "b01291e53a42fa66d797dd1ae49e148cc5168474",
+  "prompts": {},
+  "humans": {
+    "h_5cf852cc46bf92": {
+      "author": "FLEXT Bot <team@flext.sh>"
+    },
+    "h_9db9d35f50cf33": {
+      "author": "FLEXT Bot"
+    }
+  },
+  "sessions": {
+    "s_0290f35b98ef0c": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "0c4cc853-563f-48ad-a39a-f49b587090b8",
+        "model": "unknown"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>"
+    },
+    "s_5a9c2b140a8456": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dfddc-86ee-79a0-b5bf-0433a8110b6a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>"
+    },
+    "s_b15aa8dbf80823": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d896ab0f-dd16-4dca-9ad4-b3d924a501e7",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>"
+    }
+  }
+}
