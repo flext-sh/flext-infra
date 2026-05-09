@@ -23,34 +23,14 @@ def builder() -> FlextInfraDocBuilder:
 class TestBuilderCore:
     """Core build invocation tests."""
 
-    def test_build_returns_flext_result(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
-    ) -> None:
-        """Test that build returns r."""
-        result = builder.build(tmp_path)
-        tm.that(result.success or result.failure, eq=True)
-
     def test_build_with_valid_scope_returns_success(
         self,
         builder: FlextInfraDocBuilder,
         tmp_path: Path,
     ) -> None:
         """Test build with valid scope returns success."""
-        result = builder.build(tmp_path)
-        tm.ok(result)
-        tm.that(len(result.value), gte=0)
-
-    def test_build_report_structure(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
-    ) -> None:
-        """Test BuildReport has required fields."""
-        result = builder.build(tmp_path)
-        if result.success and result.value:
-            result.value[0]
+        reports = tm.ok(builder.build(tmp_path))
+        tm.that(len(reports), gte=0)
 
     def test_build_report_frozen(self) -> None:
         """Test BuildReport is frozen (immutable)."""
@@ -70,18 +50,15 @@ class TestBuilderCore:
         tmp_path: Path,
         kwargs: dict[str, str | list[str]],
     ) -> None:
+        """Build runs with each option variant and returns a railway result."""
         if "output_dir" in kwargs:
             output_dir = kwargs["output_dir"]
             assert isinstance(output_dir, str)
-            result = builder.build(
-                tmp_path,
-                output_dir=str(tmp_path / output_dir),
-            )
+            tm.ok(builder.build(tmp_path, output_dir=str(tmp_path / output_dir)))
         else:
             projects = kwargs.get("projects")
             assert isinstance(projects, list)
-            result = builder.build(tmp_path, projects=projects)
-        tm.that(result.success or result.failure, eq=True)
+            tm.ok(builder.build(tmp_path, projects=projects))
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
     def test_build_report_result_field_values(self, status: str) -> None:

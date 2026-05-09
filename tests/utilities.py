@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from collections.abc import (
+    Mapping,
     MutableMapping,
     MutableSequence,
     Sequence,
@@ -17,7 +18,6 @@ from tomlkit import TOMLDocument
 from flext_cli import cli as cli_facade
 from flext_infra import (
     FlextInfraBaseMkGenerator,
-    FlextInfraCodegenConsolidator,
     FlextInfraCodegenLazyInit,
     FlextInfraDependencyDetectionService,
     FlextInfraGate,
@@ -27,6 +27,7 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
     u,
 )
+from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from tests import c, m, p, r, t
 
 
@@ -278,27 +279,31 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
-            return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                u.normalize_to_json_value(doc.unwrap()),
-            )
+            normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
+            assert isinstance(normalized, Mapping)
+            result: dict[str, t.JsonValue] = dict(normalized)
+            return result
 
         @staticmethod
         def toml_mapping(value: t.JsonPayload | None) -> t.JsonMapping:
-            return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                u.normalize_to_json_value(value),
-            )
+            normalized: t.JsonValue = u.normalize_to_json_value(value)
+            assert isinstance(normalized, Mapping)
+            result: dict[str, t.JsonValue] = dict(normalized)
+            return result
 
         @staticmethod
         def toml_list(value: t.JsonPayload | None) -> t.JsonList:
-            return t.Cli.JSON_LIST_ADAPTER.validate_python(
-                u.normalize_to_json_value(value),
-            )
+            normalized: t.JsonValue = u.normalize_to_json_value(value)
+            assert isinstance(normalized, list)
+            result: list[t.JsonValue] = []
+            result.extend(normalized)
+            return tuple(result)
 
         @staticmethod
         def toml_strings(value: t.JsonPayload | None) -> t.StrSequence:
-            return t.Infra.STR_SEQ_ADAPTER.validate_python(
-                u.normalize_to_json_value(value),
-            )
+            normalized: t.JsonValue = u.normalize_to_json_value(value)
+            assert isinstance(normalized, list)
+            return tuple(str(item) for item in normalized)
 
         @staticmethod
         def command_runner(
@@ -922,16 +927,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project: str | None = None,
             dry_run: bool = True,
         ) -> p.Result[str]:
-            if project is None:
-                return FlextInfraCodegenConsolidator(
-                    workspace=workspace_root,
-                    dry_run=dry_run,
-                ).execute()
-            return FlextInfraCodegenConsolidator(
+            service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
                 workspace=workspace_root,
                 dry_run=dry_run,
                 project_name=project,
-            ).execute()
+            )
+            result: p.Result[str] = service.execute()
+            return result
 
         @staticmethod
         def build_mro_import_workspace(

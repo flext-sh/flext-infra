@@ -3,95 +3,90 @@
 from __future__ import annotations
 
 import importlib
-import sys
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 import flext_infra as infra_pkg
-from tests import t
+from tests import c, m, s
 
 
 class TestsFlextInfraPublicApi:
     """Exercise the root public facades as real importable contracts."""
 
-    _ROOT_EXPORTS: t.StrSequence = (
-        "FlextInfra",
-        "c",
-        "infra",
-        "m",
-        "main",
-        "p",
-        "s",
-        "t",
-        "u",
-    )
-    _WRAPPER_MODULES: t.StrSequence = (
-        "flext_infra.__version__",
-        "flext_infra.constants",
-        "flext_infra.models",
-        "flext_infra.protocols",
-        "flext_infra.typings",
-        "flext_infra.utilities",
-    )
-
-    def _reload_public_root(self) -> ModuleType:
-        for export_name in self._ROOT_EXPORTS:
-            _ = infra_pkg.__dict__.pop(export_name, None)
-        for module_name in self._WRAPPER_MODULES:
-            _ = sys.modules.pop(module_name, None)
-        return importlib.reload(infra_pkg)
-
     @staticmethod
     def _project_root() -> Path:
         return Path(__file__).resolve().parents[2]
 
-    def test_root_public_facades_reload_cleanly(self) -> None:
-        root = self._reload_public_root()
+    def test_root_public_facades_reload_cleanly(
+        self,
+        infra_public_root: ModuleType,
+    ) -> None:
+        root = infra_public_root
 
         assert root.__title__ == "flext-infra"
         assert root.__version__
-        assert root.c.__name__ == "FlextInfraConstants"
-        assert root.m.__name__ == "FlextInfraModels"
-        assert root.p.__name__ == "FlextInfraProtocols"
-        assert root.t.__name__ == "FlextInfraTypes"
-        assert root.u.__name__ == "FlextInfraUtilities"
-        assert root.s.__name__ == "FlextInfraServiceBase"
         assert root.infra.__class__ is root.FlextInfra
         assert callable(root.main)
 
-    def test_public_facades_expose_infra_namespace(self) -> None:
-        root = self._reload_public_root()
+    @pytest.mark.parametrize(
+        ("alias_name", "class_name"),
+        c.Tests.INFRA_PUBLIC_ROOT_ALIAS_EXPECTATIONS,
+    )
+    def test_root_public_facades_export_expected_aliases(
+        self,
+        infra_public_root: ModuleType,
+        alias_name: str,
+        class_name: str,
+    ) -> None:
+        assert getattr(infra_public_root, alias_name).__name__ == class_name
 
-        assert hasattr(root.c, "Infra")
-        assert hasattr(root.m, "Infra")
-        assert hasattr(root.p, "Infra")
-        assert hasattr(root.t, "Infra")
-        assert hasattr(root.u, "Infra")
-        assert hasattr(root.u.Infra, "current_workspace_version")
-        assert hasattr(root.u.Infra, "parse_semver")
+    @pytest.mark.parametrize("alias_name", c.Tests.INFRA_PUBLIC_NAMESPACE_ALIAS_NAMES)
+    def test_public_facades_expose_infra_namespace(
+        self,
+        infra_public_root: ModuleType,
+        alias_name: str,
+    ) -> None:
+        assert hasattr(getattr(infra_public_root, alias_name), "Infra")
 
-    def test_public_wrapper_modules_export_expected_aliases(self) -> None:
-        wrapper_expectations = (
-            ("flext_infra.constants", "c", "FlextInfraConstants"),
-            ("flext_infra.models", "m", "FlextInfraModels"),
-            ("flext_infra.protocols", "p", "FlextInfraProtocols"),
-            ("flext_infra.typings", "t", "FlextInfraTypes"),
-            ("flext_infra.utilities", "u", "FlextInfraUtilities"),
-        )
+    @pytest.mark.parametrize(
+        "method_name",
+        c.Tests.INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS,
+    )
+    def test_public_utilities_expose_expected_infra_methods(
+        self,
+        infra_public_root: ModuleType,
+        method_name: str,
+    ) -> None:
+        assert hasattr(infra_public_root.u.Infra, method_name)
 
-        for module_name, alias_name, class_name in wrapper_expectations:
-            module = importlib.reload(importlib.import_module(module_name))
-            alias = getattr(module, alias_name)
+    @pytest.mark.parametrize(
+        ("module_name", "alias_name", "class_name"),
+        c.Tests.INFRA_PUBLIC_WRAPPER_ALIAS_EXPECTATIONS,
+    )
+    def test_public_wrapper_modules_export_expected_aliases(
+        self,
+        module_name: str,
+        alias_name: str,
+        class_name: str,
+    ) -> None:
+        module = importlib.reload(importlib.import_module(module_name))
+        alias = getattr(module, alias_name)
 
-            assert alias.__name__ == class_name
+        assert alias.__name__ == class_name
 
+    def test_public_version_module_matches_package_version(self) -> None:
         version_module = importlib.reload(
             importlib.import_module("flext_infra.__version__")
         )
         assert version_module.__version__ == infra_pkg.__version__
 
-    def test_public_runtime_metadata_matches_public_constants(self) -> None:
-        root = self._reload_public_root()
+    def test_public_runtime_metadata_matches_public_constants(
+        self,
+        infra_public_root: ModuleType,
+    ) -> None:
+        root = infra_public_root
         constants = root.u.read_project_constants(
             root.__title__,
             root=self._project_root(),
@@ -101,3 +96,6 @@ class TestsFlextInfraPublicApi:
         assert root.__license__ == constants.PACKAGE_LICENSE
         assert root.__url__ == constants.PACKAGE_URL
         assert root.__author__ == constants.PACKAGE_AUTHORS[0]
+
+    def test_test_service_settings_expose_tests_namespace(self) -> None:
+        assert isinstance(s.fetch_settings().Tests, m.SettingsValue)

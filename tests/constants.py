@@ -81,6 +81,53 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = re.compile(
             r'["\']([^"\']+)["\']',
         )
+        INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (
+            "FlextInfra",
+            "c",
+            "infra",
+            "m",
+            "main",
+            "p",
+            "s",
+            "t",
+            "u",
+        )
+        INFRA_PUBLIC_WRAPPER_MODULES: Final[t.StrSequence] = (
+            "flext_infra.__version__",
+            "flext_infra.constants",
+            "flext_infra.models",
+            "flext_infra.protocols",
+            "flext_infra.typings",
+            "flext_infra.utilities",
+        )
+        INFRA_PUBLIC_ROOT_ALIAS_EXPECTATIONS: ClassVar[tuple[tuple[str, str], ...]] = (
+            ("c", "FlextInfraConstants"),
+            ("m", "FlextInfraModels"),
+            ("p", "FlextInfraProtocols"),
+            ("s", "FlextInfraServiceBase"),
+            ("t", "FlextInfraTypes"),
+            ("u", "FlextInfraUtilities"),
+        )
+        INFRA_PUBLIC_WRAPPER_ALIAS_EXPECTATIONS: ClassVar[
+            tuple[tuple[str, str, str], ...]
+        ] = (
+            ("flext_infra.constants", "c", "FlextInfraConstants"),
+            ("flext_infra.models", "m", "FlextInfraModels"),
+            ("flext_infra.protocols", "p", "FlextInfraProtocols"),
+            ("flext_infra.typings", "t", "FlextInfraTypes"),
+            ("flext_infra.utilities", "u", "FlextInfraUtilities"),
+        )
+        INFRA_PUBLIC_NAMESPACE_ALIAS_NAMES: Final[t.StrSequence] = (
+            "c",
+            "m",
+            "p",
+            "t",
+            "u",
+        )
+        INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
+            "current_workspace_version",
+            "parse_semver",
+        )
 
         WORKSPACE_PROJECT_NAME: Final[str] = "workspace"
         DEMO_PROJECT_NAME: Final[str] = "demo-project"

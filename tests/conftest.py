@@ -2,16 +2,26 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Generator,
-    Iterator,
-)
+import importlib
+import sys
+from collections.abc import Iterator
 from pathlib import Path
+from types import ModuleType
 
 import pytest
+from flext_tests import (
+    reset_settings as _shared_reset_settings,
+    settings as _shared_settings,
+    settings_factory as _shared_settings_factory,
+)
 
+import flext_infra as infra_pkg
 from flext_infra import FlextInfraSettings
-from tests import t, u
+from tests import c, t, u
+
+reset_settings = _shared_reset_settings
+settings = _shared_settings
+settings_factory = _shared_settings_factory
 
 pytest_plugins = [
     "tests.unit.fixtures",
@@ -20,16 +30,22 @@ pytest_plugins = [
 
 
 @pytest.fixture(autouse=True)
-def reset_flext_infra_settings_singleton() -> Generator[None]:
-    """Reset FlextInfraSettings singleton around each test.
-
-    Prevents cached env state from leaking between env-dependent tests
-    that previously relied on ``FlextInfraSettings()`` returning fresh
-    instances per call.
-    """
+def reset_infra_settings(reset_settings: None) -> Iterator[None]:
+    """Reset project-specific infra settings around each test."""
+    del reset_settings
     FlextInfraSettings.reset_for_testing()
     yield
     FlextInfraSettings.reset_for_testing()
+
+
+@pytest.fixture
+def infra_public_root() -> ModuleType:
+    """Reload the root public package after clearing lazy-export caches."""
+    for export_name in c.Tests.INFRA_PUBLIC_ROOT_EXPORTS:
+        _ = infra_pkg.__dict__.pop(export_name, None)
+    for module_name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
+        _ = sys.modules.pop(module_name, None)
+    return importlib.reload(infra_pkg)
 
 
 def _is_collectable_test_module(collection_path: Path) -> bool:
@@ -72,48 +88,6 @@ def pytest_collection_modifyitems(
     if deselected_items:
         config.hook.pytest_deselected(items=deselected_items)
         items[:] = kept_items
-
-
-def _modernizer_pyproject(name: str) -> str:
-    return f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
-
-
-def _modernizer_workspace_pyproject(*members: str) -> str:
-    base = _modernizer_pyproject("workspace")
-    if not members:
-        return base
-    members_text = ", ".join(f'"{member}"' for member in members)
-    return f"{base}\n[tool.uv.workspace]\nmembers = [{members_text}]\n"
-
-
-@pytest.fixture
-def modernizer_workspace(tmp_path: Path) -> Path:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir(parents=True, exist_ok=True)
-    (workspace / "pyproject.toml").write_text(
-        _modernizer_workspace_pyproject(),
-        encoding="utf-8",
-    )
-    return workspace
-
-
-@pytest.fixture
-def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
-    (modernizer_workspace / "pyproject.toml").write_text(
-        _modernizer_workspace_pyproject("selected", "ignored"),
-        encoding="utf-8",
-    )
-    _ = u.Tests.mk_project(
-        modernizer_workspace,
-        "selected",
-        pyproject=_modernizer_pyproject("selected"),
-    )
-    _ = u.Tests.mk_project(
-        modernizer_workspace,
-        "ignored",
-        pyproject=_modernizer_pyproject("ignored"),
-    )
-    return modernizer_workspace
 
 
 @pytest.fixture

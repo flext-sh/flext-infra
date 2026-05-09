@@ -12,8 +12,9 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import d, e, h, r, s, td, tf, tk, tm, tv, x
+    from flext_tests import d, e, h, r, td, tf, tk, tm, tv, x
 
+    from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.integration.test_infra_integration import (
         TestsFlextInfraIntegrationInfraIntegration,
@@ -40,6 +41,7 @@ if _t.TYPE_CHECKING:
     from tests.protocols import TestsFlextInfraProtocols, p
     from tests.refactor.test_rope_semantic import TestsFlextInfraRefactorRopeSemantic
     from tests.refactor.test_rope_stubs import TestsFlextInfraRefactorRopeStubs
+    from tests.settings import TestsFlextInfraSettings
     from tests.typings import TestsFlextInfraTypes, t
     from tests.unit._utilities.test_discovery_consolidated import (
         TestsFlextInfraUtilitiesdiscoveryconsolidated,
@@ -406,6 +408,10 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     build_lazy_import_map(
         {
+            ".base": (
+                "TestsFlextInfraServiceBase",
+                "s",
+            ),
             ".constants": (
                 "TestsFlextInfraConstants",
                 "c",
@@ -441,6 +447,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
             ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
+            ".settings": ("TestsFlextInfraSettings",),
             ".typings": (
                 "TestsFlextInfraTypes",
                 "t",
@@ -813,7 +820,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "e",
                 "h",
                 "r",
-                "s",
                 "td",
                 "tf",
                 "tk",
@@ -1013,6 +1019,8 @@ __all__: list[str] = [
     "TestsFlextInfraRefactorRopeStubs",
     "TestsFlextInfraReleaseDag",
     "TestsFlextInfraRopeImports",
+    "TestsFlextInfraServiceBase",
+    "TestsFlextInfraSettings",
     "TestsFlextInfraTransformersInfraTransformerClassNesting",
     "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
