@@ -16,10 +16,9 @@ rendered canonical template.
 
 from __future__ import annotations
 
-import re
 import shlex
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
 from flext_infra import c, p, r, s, t
 
@@ -29,22 +28,6 @@ _TEMPLATE = Path(__file__).parent.parent / "templates" / "pre_commit_config.yaml
 class FlextInfraManualCommandValidator(s[bool]):
     """Block bare tool invocations in automation and gate pre-commit drift."""
 
-    _BLOCKED_TOOLS: ClassVar[frozenset[str]] = frozenset(
-        {"ruff", "pytest", "pyrefly", "mypy", "pyright"},
-    )
-    _BLOCKED_GIT: ClassVar[frozenset[str]] = frozenset(
-        {"commit", "add", "push", "tag"},
-    )
-    _REWRITE_TOOLS: ClassVar[frozenset[str]] = frozenset({"ast-grep", "sg"})
-    _RUNNERS: ClassVar[frozenset[str]] = frozenset({"python", "python3"})
-    _WRAPPERS: ClassVar[frozenset[str]] = frozenset(
-        {"env", "time", "nohup", "xargs", "sudo", "command", "nice", "ionice", "stdbuf"},
-    )
-    _REWRITE_FLAGS: ClassVar[frozenset[str]] = frozenset(
-        {"--rewrite", "-U", "--update-all"},
-    )
-    _SEGMENT_RE: ClassVar[re.Pattern[str]] = re.compile(r"&&|\|\||;|\||\n|`|\$\(")
-
     @classmethod
     def is_blocked(cls, command: str) -> bool:
         """True if any shell segment runs a managed tool outside make/flext_infra."""
@@ -53,7 +36,7 @@ class FlextInfraManualCommandValidator(s[bool]):
             return False
         return any(
             cls._segment_blocked(segment.strip())
-            for segment in cls._SEGMENT_RE.split(stripped)
+            for segment in c.Infra.MANUAL_CMD_SEGMENT_RE.split(stripped)
         )
 
     @classmethod
@@ -69,16 +52,17 @@ class FlextInfraManualCommandValidator(s[bool]):
             return False
         head = Path(tokens[0]).name
         rest = tokens[1:]
-        if head in cls._BLOCKED_TOOLS:
+        blocked_tools = c.Infra.MANUAL_CMD_BLOCKED_TOOLS
+        if head in blocked_tools:
             return True
-        if head in cls._RUNNERS and cls._module_after_m(rest) in cls._BLOCKED_TOOLS:
+        if head in c.Infra.MANUAL_CMD_RUNNERS and cls._module_after_m(rest) in blocked_tools:
             return True
-        if head == "git" and rest and rest[0] in cls._BLOCKED_GIT:
+        if head == "git" and rest and rest[0] in c.Infra.MANUAL_CMD_BLOCKED_GIT:
             return True
         if head == "sed" and any(cls._is_sed_inplace(arg) for arg in rest):
             return True
-        return head in cls._REWRITE_TOOLS and any(
-            arg in cls._REWRITE_FLAGS or arg.startswith("--rewrite=")
+        return head in c.Infra.MANUAL_CMD_REWRITE_TOOLS and any(
+            arg in c.Infra.MANUAL_CMD_REWRITE_FLAGS or arg.startswith("--rewrite=")
             for arg in rest
         )
 
@@ -93,7 +77,7 @@ class FlextInfraManualCommandValidator(s[bool]):
                 while out and "=" in out[0] and not out[0].startswith("-"):
                     out = out[1:]
                 continue
-            if name in cls._WRAPPERS:
+            if name in c.Infra.MANUAL_CMD_WRAPPERS:
                 out = out[1:]
                 continue
             break

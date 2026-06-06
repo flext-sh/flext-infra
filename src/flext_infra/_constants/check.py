@@ -143,5 +143,22 @@ class FlextInfraConstantsCheck:
     TOKEI_BINARY: Final[str] = "tokei"
     TOKEI_TOTAL_KEY: Final[str] = "Total"
 
+    # --- Manual-command blocker (§5 Make Contract) SSOT ---
+    MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset(
+        {"ruff", "pytest", "pyrefly", "mypy", "pyright"},
+    )
+    MANUAL_CMD_BLOCKED_GIT: Final[frozenset[str]] = frozenset(
+        {"commit", "add", "push", "tag"},
+    )
+    MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep", "sg"})
+    MANUAL_CMD_RUNNERS: Final[frozenset[str]] = frozenset({"python", "python3"})
+    MANUAL_CMD_WRAPPERS: Final[frozenset[str]] = frozenset(
+        {"env", "time", "nohup", "xargs", "sudo", "command", "nice", "ionice", "stdbuf"},
+    )
+    MANUAL_CMD_REWRITE_FLAGS: Final[frozenset[str]] = frozenset(
+        {"--rewrite", "-U", "--update-all"},
+    )
+    MANUAL_CMD_SEGMENT_RE: Final[t.RegexPattern] = re.compile(r"&&|\|\||;|\||\n|`|\$\(")
+
 
 __all__: list[str] = ["FlextInfraConstantsCheck"]
