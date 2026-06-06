@@ -1,0 +1,23 @@
+src/flext_infra/validate/manual_command.py
+  s_9942ef7a89ba9a::t_f86c0473608c5d 1-83
+tests/unit/validate/manual_command_tests.py
+  s_9942ef7a89ba9a::t_6ac1fc4f1bee78 1-46
+src/flext_infra/templates/pre_commit_config.yaml.j2
+  s_9942ef7a89ba9a::t_71d61ec2ad3187 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "7e0cd870e66bab0ec657c41af870cddd0f4e5f37",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
