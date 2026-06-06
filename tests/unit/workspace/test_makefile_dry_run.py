@@ -210,3 +210,14 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         assert "for proj in demo-a; do" in output
         assert f'init --workspace "{workspace_root}/$proj" --apply' in output
         assert f'workspace sync --workspace "{workspace_root}" --apply' not in output
+
+    def test_workspace_makefile_dry_run_ship_save_dispatches_to_private(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "ship", "WHAT=save")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "--no-print-directory _save" in output

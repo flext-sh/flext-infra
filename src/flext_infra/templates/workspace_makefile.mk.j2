@@ -245,7 +245,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot up mod constraints build check cqrs scan fmt docs test val types pyre stubs pol clean rel pr save tag push gen sync imp stat
+.PHONY: help boot up mod constraints build check cqrs scan fmt docs test val types pyre stubs pol clean ship _rel _pr _save _tag _push gen sync imp stat
 
 help: ## Show simple workspace verbs
 	$(Q)echo "FLEXT Workspace"
@@ -539,7 +539,18 @@ build: ## Build/package all selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
-rel: ## Interactive workspace release orchestration
+ship: ## Release workflow (WHAT=save|tag|push|pr|rel)
+	$(Q)case "$(WHAT)" in \
+	save) $(MAKE) --no-print-directory _save $(MAKE_SELECTION_ARGS) ;; \
+	tag) $(MAKE) --no-print-directory _tag $(MAKE_SELECTION_ARGS) ;; \
+	push) $(MAKE) --no-print-directory _push $(MAKE_SELECTION_ARGS) ;; \
+	pr) $(MAKE) --no-print-directory _pr $(MAKE_SELECTION_ARGS) ;; \
+	rel) $(MAKE) --no-print-directory _rel $(MAKE_SELECTION_ARGS) ;; \
+	"") echo "ship requires WHAT=save|tag|push|pr|rel" >&2; exit 2 ;; \
+	*) echo "invalid WHAT '$(WHAT)' for ship (valid: save tag push pr rel)" >&2; exit 2 ;; \
+	esac
+
+_rel: ## Interactive workspace release orchestration
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(WORKSPACE_INFRA_RELEASE) \
 		--workspace "$(CURDIR)" \
@@ -556,7 +567,7 @@ rel: ## Interactive workspace release orchestration
 		$(if $(TAG),--tag "$(TAG)",) \
 		$(if $(BUMP),--bump "$(BUMP)",)
 
-pr: ## Manage pull requests for selected projects
+_pr: ## Manage pull requests for selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(WORKSPACE_INFRA_GITHUB) pr-workspace \
 		--workspace "$(CURDIR)" \
@@ -870,7 +881,7 @@ clean: ## Clean all projects
 	$(Q)$(ORCHESTRATOR) --verb clean $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 	$(Q)rm -rf .pytest_cache/ htmlcov/ .coverage* .mypy_cache/ .ruff_cache/
 
-save: ## Commit all changes in selected projects (MESSAGE=)
+_save: ## Commit all changes in selected projects (MESSAGE=)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)if [ -z "$(MESSAGE)" ]; then \
 		echo "ERROR: MESSAGE is required. Usage: {{ make.SAVE_USAGE }}"; \
@@ -925,7 +936,7 @@ stat: ## Show git status for all workspace projects (submodules + external + roo
 		echo "  ✓ root (clean)"; \
 	fi
 
-tag: ## Create git tags for selected projects (TAG= optional, DRY_RUN=1)
+_tag: ## Create git tags for selected projects (TAG= optional, DRY_RUN=1)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)tagged=0; skipped=0; failed=0; \
 	for proj in $(GIT_SELECTED_PROJECTS); do \
@@ -974,7 +985,7 @@ tag: ## Create git tags for selected projects (TAG= optional, DRY_RUN=1)
 	fi; \
 	echo "Tag: $$tagged tagged, $$skipped skipped, $$failed failed"
 
-push: ## Push branches and tags for selected projects
+_push: ## Push branches and tags for selected projects
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)pushed=0; failed=0; \
 	for proj in $(GIT_SELECTED_PROJECTS); do \
