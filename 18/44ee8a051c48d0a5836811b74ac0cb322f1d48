@@ -1,0 +1,21 @@
+src/flext_infra/workspace/migrator.py
+  s_9942ef7a89ba9a::t_39463919044e96 170-175
+  s_9942ef7a89ba9a::t_5a4d5c22f10d2a 144-149
+  s_9942ef7a89ba9a::t_8f715def03ab75 218-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "1844ee8a051c48d0a5836811b74ac0cb322f1d48",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
