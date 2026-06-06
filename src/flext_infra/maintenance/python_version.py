@@ -187,7 +187,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return 13
-        content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        content = u.Cli.files_read_text(pyproject).unwrap()
         match = c.Infra.REQUIRES_PYTHON_RE.search(content)
         if match is None:
             return 13
