@@ -23,8 +23,8 @@ _RETIRED_VERBS = frozenset({
 
 class TestMakeConstants:
     def test_core_verbs_are_canonical_eight(self) -> None:
-        verbs = {verb for verb, _ in c.Infra.WORKSPACE_CORE_VERBS}
-        tm.that(verbs, eq=set(_CANONICAL_VERBS))
+        verbs = frozenset(verb for verb, _ in c.Infra.WORKSPACE_CORE_VERBS)
+        tm.that(verbs == _CANONICAL_VERBS, eq=True)
 
     def test_retired_verbs_absent_from_surface(self) -> None:
         surface = {verb for verb, _ in c.Infra.WORKSPACE_CORE_VERBS}
