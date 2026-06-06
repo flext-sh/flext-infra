@@ -22,8 +22,6 @@ from typing import override
 
 from flext_infra import c, p, r, s, t
 
-_TEMPLATE = Path(__file__).parent.parent / "templates" / "pre_commit_config.yaml.j2"
-
 
 class FlextInfraManualCommandValidator(s[bool]):
     """Block bare tool invocations in automation and gate pre-commit drift."""
@@ -103,7 +101,7 @@ class FlextInfraManualCommandValidator(s[bool]):
     @classmethod
     def render_pre_commit_config(cls) -> str:
         """Return the canonical generated ``.pre-commit-config.yaml`` content."""
-        return _TEMPLATE.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        return c.Infra.PRE_COMMIT_CONFIG
 
     @override
     def execute(self) -> p.Result[bool]:
