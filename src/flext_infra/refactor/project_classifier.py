@@ -248,10 +248,7 @@ class FlextInfraProjectClassifier:
         suffix: str,
     ) -> t.Pair[t.Infra.StrSet, t.Infra.StrSet]:
         """Parse family file."""
-        try:
-            source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except c.EXC_OS_DECODING:
-            return (set(), set())
+        source = u.Cli.files_read_text(file_path).unwrap()
         base_names: t.Infra.StrSet = set()
         class_names: t.Infra.StrSet = set()
         for match in self._CLASS_DEF_RE.finditer(source):
