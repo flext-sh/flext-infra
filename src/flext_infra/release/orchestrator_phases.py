@@ -192,7 +192,7 @@ class FlextInfraReleaseOrchestratorPhases:
         for path in files:
             if not path.exists():
                 continue
-            content = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            content = u.Cli.files_read_text(path).unwrap()
             match = c.Infra.VERSION_RE.search(content)
             if match and match.group(1) == target:
                 continue
