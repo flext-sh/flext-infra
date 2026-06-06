@@ -97,7 +97,7 @@ class FlextInfraTransformerTier0ImportFixer:
                     package_name="",
                     file_path=self._file_path,
                 )
-            source = self._file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            source = u.Cli.files_read_text(self._file_path).unwrap()
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
             alias_map: dict[str, str] = {
