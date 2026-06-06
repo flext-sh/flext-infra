@@ -121,7 +121,13 @@ class FlextInfraRefactorOrchestrator(
                 result = self._skip_result(file_path)
             else:
                 workspace_root = u.Infra.project_root(file_path) or file_path.parent
-                original = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                read = u.Cli.files_read_text(file_path)
+                if read.failure:
+                    return self._error_result(
+                        file_path,
+                        read.error or f"failed to read {file_path}",
+                    )
+                original = read.value
                 current, all_changes = original, list[str]()
                 error_result: m.Infra.Result | None = None
                 if self.loader.file_rules:
@@ -300,7 +306,11 @@ class FlextInfraRefactorOrchestrator(
             if not args.file.exists():
                 u.Cli.error(f"File not found: {args.file}")
                 return 1
-            original = args.file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            read = u.Cli.files_read_text(args.file)
+            if read.failure:
+                u.Cli.error(read.error or f"failed to read {args.file}")
+                return 1
+            original = read.value
             result = self.refactor_file(args.file, dry_run=args.dry_run)
             if args.show_diff and result.modified:
                 self._print_diff(
