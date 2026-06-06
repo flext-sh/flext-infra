@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -186,53 +187,30 @@ class FlextInfraConstantsMake:
         "PR_RELEASE_ON_MERGE=0|1",
     )
     WORKSPACE_CORE_VERBS: Final[t.StrPairSequence] = (
-        (
-            "boot",
-            "Install all projects into workspace .venv, then run val VALIDATE_SCOPE=workspace",
-        ),
-        (
-            "up",
-            "Refresh lock/install + modernize + dependency report (.reports/dependencies/)",
-        ),
-        ("mod", "Modernize pyproject.toml configs only (no lock/install)"),
-        (
-            "constraints",
-            "Rewrite pyproject dependency constraints from uv.lock (policy=floor)",
-        ),
-        ("build", "Build/package all selected projects"),
-        ("check", "Run the lint gates in all projects"),
-        ("scan", "Run all security checks in all projects"),
-        ("fmt", "Run all formatting in all projects"),
-        ("docs", "Build docs in all projects"),
-        ("test", "Run tests only in all projects"),
-        (
-            "val",
-            "Run validate gates (FIX=1 auto-fix, VALIDATE_SCOPE=workspace for repo-level)",
-        ),
-        ("rel", "Interactive workspace release orchestration"),
-        ("pr", "Manage PRs for selected projects"),
-        ("types", "Stub supply-chain + typing report (PROJECT/PROJECTS to scope)"),
-        ("pyre", "Run authoritative repo-wide pyrefly report"),
-        ("stubs", "Validate typing stub supply-chain (repo-wide)"),
-        ("pol", "Enforce no Any/t.JsonValue/type: ignore (repo-wide)"),
-        (
-            "cqrs",
-            "Enforce strict CQRS/FlextModels patterns across ecosystem",
-        ),
-        ("clean", "Clean all projects"),
+        ("boot", "Bootstrap .venv + submodules (WHAT=venv|submodules|sync|stat|imp)"),
+        ("build", "Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)"),
+        ("check", "Quality gates (WHAT=lint|format|pol|pyre|scan|loc-cap|boundary)"),
+        ("test", "Run tests (WHAT=unit|integration|diag)"),
+        ("val", "Validation gates (WHAT=loc-cap|loc-delta|boundary|manual-cmd)"),
+        ("ship", "Release workflow (WHAT=save|tag|push|pr|rel; APPLY=Y)"),
+        ("clean", "Clean build/test/type artifacts"),
+        ("help", "Show workspace verbs"),
     )
-    WORKSPACE_GIT_VERBS: Final[t.StrPairSequence] = (
-        (
-            "save",
-            "Commit all changes in selected projects (MESSAGE=)",
-        ),
-        ("tag", "Create git tags for selected projects (TAG=, DRY_RUN=1)"),
-        ("push", "Push branches and tags for selected projects"),
-        (
-            "gen",
-            "Recreate standardized pyproject.toml, base.mk, Makefile and __init__.py",
-        ),
-    )
+    WORKSPACE_GIT_VERBS: Final[t.StrPairSequence] = ()
+    WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
+        "boot": frozenset({"venv", "submodules", "sync", "stat", "imp"}),
+        "build": frozenset({"gen", "mod", "up", "constraints", "sync", "docs", "stubs"}),
+        "check": frozenset({
+            "lint", "format", "types", "pyrefly", "mypy", "pyright", "pol", "cqrs",
+            "pyre", "scan", "markdown", "go", "silent-failure", "loc-cap", "boundary",
+        }),
+        "test": frozenset({"unit", "integration", "diag"}),
+        "val": frozenset({
+            "loc-cap", "loc-delta", "boundary", "manual-cmd", "complexity",
+            "docstring", "silent-failure",
+        }),
+        "ship": frozenset({"save", "tag", "push", "pr", "rel"}),
+    })
     WORKSPACE_SELECTOR_LINES: Final[t.StrSequence] = (
         "PROJECT=<name>             Single project",
         'PROJECTS="proj-a proj-b"        Multi-project',
