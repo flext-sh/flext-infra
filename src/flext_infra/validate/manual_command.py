@@ -4,7 +4,9 @@ Two responsibilities:
 
 - ``is_blocked`` — predicate flagging a bare tool invocation (ruff/pytest/git/…)
   that bypasses the ``make`` / ``python -m flext_infra`` monopoly. Backs both the
-  pre-commit hook and the Claude PreToolUse guard.
+  pre-commit hook and the Claude PreToolUse guard. Deny rules are evaluated
+  FIRST, per shell segment, after stripping wrappers and path components — an
+  allow-list substring can never short-circuit a deny.
 - ``render_pre_commit_config`` — the canonical ``.pre-commit-config.yaml`` content
   (hooks call ``python -m flext_infra``, never standalone scripts).
 
@@ -14,10 +16,12 @@ rendered canonical template.
 
 from __future__ import annotations
 
+import re
+import shlex
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, p, r, s
+from flext_infra import c, p, r, s, t
 
 _TEMPLATE = Path(__file__).parent.parent / "templates" / "pre_commit_config.yaml.j2"
 
@@ -32,29 +36,85 @@ class FlextInfraManualCommandValidator(s[bool]):
         {"commit", "add", "push", "tag"},
     )
     _REWRITE_TOOLS: ClassVar[frozenset[str]] = frozenset({"ast-grep", "sg"})
-    _ALLOWED_PREFIX: ClassVar[str] = "make "
-    _MONOPOLY_MARKER: ClassVar[str] = "flext_infra"
+    _RUNNERS: ClassVar[frozenset[str]] = frozenset({"python", "python3"})
+    _WRAPPERS: ClassVar[frozenset[str]] = frozenset(
+        {"env", "time", "nohup", "xargs", "sudo", "command", "nice", "ionice", "stdbuf"},
+    )
+    _REWRITE_FLAGS: ClassVar[frozenset[str]] = frozenset(
+        {"--rewrite", "-U", "--update-all"},
+    )
+    _SEGMENT_RE: ClassVar[re.Pattern[str]] = re.compile(r"&&|\|\||;|\||\n|`|\$\(")
 
     @classmethod
     def is_blocked(cls, command: str) -> bool:
-        """True if ``command`` runs a managed tool outside the make/flext_infra path."""
+        """True if any shell segment runs a managed tool outside make/flext_infra."""
         stripped = command.strip()
-        if (
-            not stripped
-            or stripped.startswith(cls._ALLOWED_PREFIX)
-            or cls._MONOPOLY_MARKER in stripped
-        ):
+        if not stripped:
             return False
-        tokens = stripped.split()
-        head = tokens[0]
+        return any(
+            cls._segment_blocked(segment.strip())
+            for segment in cls._SEGMENT_RE.split(stripped)
+        )
+
+    @classmethod
+    def _segment_blocked(cls, segment: str) -> bool:
+        """Apply deny rules to a single shell segment after normalisation."""
+        if not segment:
+            return False
+        try:
+            tokens = cls._strip_wrappers(shlex.split(segment))
+        except ValueError:
+            tokens = cls._strip_wrappers(segment.split())
+        if not tokens:
+            return False
+        head = Path(tokens[0]).name
         rest = tokens[1:]
         if head in cls._BLOCKED_TOOLS:
             return True
+        if head in cls._RUNNERS and cls._module_after_m(rest) in cls._BLOCKED_TOOLS:
+            return True
         if head == "git" and rest and rest[0] in cls._BLOCKED_GIT:
             return True
-        if head == "sed" and "-i" in rest:
+        if head == "sed" and any(cls._is_sed_inplace(arg) for arg in rest):
             return True
-        return head in cls._REWRITE_TOOLS and "--rewrite" in rest
+        return head in cls._REWRITE_TOOLS and any(
+            arg in cls._REWRITE_FLAGS or arg.startswith("--rewrite=")
+            for arg in rest
+        )
+
+    @classmethod
+    def _strip_wrappers(cls, tokens: t.StrSequence) -> t.MutableSequenceOf[str]:
+        """Drop leading wrapper commands and ``env VAR=val`` assignments."""
+        out = list(tokens)
+        while out:
+            name = Path(out[0]).name
+            if name == "env":
+                out = out[1:]
+                while out and "=" in out[0] and not out[0].startswith("-"):
+                    out = out[1:]
+                continue
+            if name in cls._WRAPPERS:
+                out = out[1:]
+                continue
+            break
+        return out
+
+    @staticmethod
+    def _module_after_m(rest: t.StrSequence) -> str:
+        """Return the module name following ``-m`` (``python -m <module>``)."""
+        for index, arg in enumerate(rest):
+            if arg == "-m" and index + 1 < len(rest):
+                return rest[index + 1]
+        return ""
+
+    @staticmethod
+    def _is_sed_inplace(arg: str) -> bool:
+        """True for any GNU/BSD in-place edit flag (``-i``, ``-i.bak``, ``--in-place``)."""
+        return (
+            arg == "--in-place"
+            or arg.startswith("--in-place=")
+            or (arg.startswith("-i") and not arg.startswith("--"))
+        )
 
     @classmethod
     def render_pre_commit_config(cls) -> str:

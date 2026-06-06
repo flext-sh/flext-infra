@@ -28,6 +28,23 @@ class TestManualCommandValidator:
     def test_sed_inplace_blocked(self) -> None:
         tm.that(_V.is_blocked("sed -i s/a/b/ file.py"), eq=True)
 
+    def test_sed_inplace_suffix_blocked(self) -> None:
+        tm.that(_V.is_blocked("sed -i.bak s/a/b/ file.py"), eq=True)
+
+    def test_shell_composition_bypass_blocked(self) -> None:
+        tm.that(_V.is_blocked("make x && ruff check"), eq=True)
+        tm.that(_V.is_blocked("echo ok; ruff check src/"), eq=True)
+
+    def test_wrapper_bypass_blocked(self) -> None:
+        tm.that(_V.is_blocked("env ruff check"), eq=True)
+        tm.that(_V.is_blocked("xargs pytest"), eq=True)
+
+    def test_python_m_blocked_module_blocked(self) -> None:
+        tm.that(_V.is_blocked("python -m ruff check"), eq=True)
+
+    def test_path_prefixed_tool_blocked(self) -> None:
+        tm.that(_V.is_blocked("/usr/bin/ruff check src/"), eq=True)
+
     def test_git_status_allowed(self) -> None:
         tm.that(_V.is_blocked("git status"), eq=False)
 
