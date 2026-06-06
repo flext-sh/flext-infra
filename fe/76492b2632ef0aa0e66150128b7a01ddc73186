@@ -1,0 +1,41 @@
+src/flext_infra/templates/workspace_makefile.mk.j2
+  s_9942ef7a89ba9a::t_3f447d30b06a58 1038
+  s_9942ef7a89ba9a::t_367d6d1cfbe3b6 495
+  s_9942ef7a89ba9a::t_69fc510bf6276a 1040
+  s_9942ef7a89ba9a::t_233c1fcc067c35 1043
+  s_9942ef7a89ba9a::t_5531c0fb96c325 514
+  s_9942ef7a89ba9a::t_f6d49b8537dbc5 434
+  s_9942ef7a89ba9a::t_dc69792bc84210 661
+  s_9942ef7a89ba9a::t_203d15a5158034 444
+  s_9942ef7a89ba9a::t_b15cb8e5b2c7b7 826
+  s_9942ef7a89ba9a::t_74760cd8fae727 538-551
+  s_9942ef7a89ba9a::t_158cfa2ac17a59 248
+  s_9942ef7a89ba9a::t_826c3fd1940e24 1034
+tests/unit/workspace/test_makefile_generator.py
+  s_9942ef7a89ba9a::t_b62cd6a31aa564 87
+tests/unit/workspace/test_makefile_dry_run.py
+  s_9942ef7a89ba9a::t_4b1659f5e17839 203
+  s_9942ef7a89ba9a::t_0b52d2f553701b 132
+  s_9942ef7a89ba9a::t_8c2e6e810358f1 224-245
+  s_9942ef7a89ba9a::t_6eeb81a8ff399c 191,195-196
+  s_9942ef7a89ba9a::t_e75b2a024cdc0b 75
+  s_9942ef7a89ba9a::t_348b71d168c6f5 93
+  s_9942ef7a89ba9a::t_49bd07851828f9 128
+  s_9942ef7a89ba9a::t_3e4329368bb5d1 169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "fe76492b2632ef0aa0e66150128b7a01ddc73186",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
