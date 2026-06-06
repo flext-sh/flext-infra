@@ -116,10 +116,12 @@ class FlextInfraPyprojectModernizer(FlextInfraProjectSelectionServiceBase[bool])
         self, path: Path
     ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Read one pyproject once and keep one validated plain payload state."""
-        try:
-            original_rendered = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError:
-            return r[m.Infra.PyprojectDocumentState].fail(f"failed to read {path}")
+        read = u.Cli.files_read_text(path)
+        if read.failure:
+            return r[m.Infra.PyprojectDocumentState].fail(
+                read.error or f"failed to read {path}",
+            )
+        original_rendered = read.value
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
             return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
