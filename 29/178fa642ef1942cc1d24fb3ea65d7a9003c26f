@@ -1,0 +1,19 @@
+src/flext_infra/refactor/engine_file.py
+  s_9942ef7a89ba9a::t_0ce42b4d70f962 53-54,56,70-71,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "29178fa642ef1942cc1d24fb3ea65d7a9003c26f",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
