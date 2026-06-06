@@ -45,12 +45,18 @@ class FlextInfraTextPatternScanner(s[bool]):
     ] = c.Infra.MatchMode.PRESENT
 
     @staticmethod
-    def _count_matches(files: t.SequenceOf[Path], regex: t.Infra.RegexPattern) -> int:
-        """Count regex matches across files."""
-        return sum(
-            sum(1 for _ in regex.finditer(u.Cli.files_read_text(file_path).unwrap_or("")))
-            for file_path in files
-        )
+    def _count_matches(
+        files: t.SequenceOf[Path],
+        regex: t.Infra.RegexPattern,
+    ) -> p.Result[int]:
+        """Count regex matches across files; surface any unreadable file as failure."""
+        total = 0
+        for file_path in files:
+            read = u.Cli.files_read_text(file_path)
+            if read.failure:
+                return r[int].fail(read.error or f"unreadable file: {file_path}")
+            total += sum(1 for _ in regex.finditer(read.value))
+        return r[int].ok(total)
 
     def scan(
         self,
@@ -85,7 +91,12 @@ class FlextInfraTextPatternScanner(s[bool]):
                 includes=includes,
                 excludes=excludes or [],
             )
-            matches = self._count_matches(files, regex)
+            matches_result = self._count_matches(files, regex)
+            if matches_result.failure:
+                return r[t.ScalarMapping].fail(
+                    matches_result.error or "text pattern scan read failed",
+                )
+            matches = matches_result.value
             violation_count = (
                 matches
                 if match_mode == c.Infra.MatchMode.PRESENT

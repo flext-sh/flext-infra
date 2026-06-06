@@ -134,8 +134,8 @@ class TestScannerMultiFile:
         tm.ok(result)
         tm.that(result.value["files_scanned"], eq=1)
 
-    def test_scan_unreadable_file_skips(self, tmp_path: Path) -> None:
-        """Unreadable files are skipped gracefully."""
+    def test_scan_unreadable_file_surfaces_failure(self, tmp_path: Path) -> None:
+        """An unreadable file surfaces as a scan failure — never silently skipped."""
         f = tmp_path / "test.txt"
         f.write_text("hello")
         f.chmod(0o000)
@@ -145,7 +145,7 @@ class TestScannerMultiFile:
                 pattern="hello",
                 includes=["*.txt"],
             )
-            tm.that(result.success, eq=True)
+            tm.that(result.failure, eq=True)
         finally:
             f.chmod(0o644)
 
@@ -211,13 +211,13 @@ class TestScannerHelpers:
         f = tmp_path / "test.txt"
         f.write_text("hello hello hello")
         regex = c.Tests.SCANNER_HELLO_RE
-        tm.that(FlextInfraTextPatternScanner._count_matches([f], regex), eq=3)
+        tm.that(FlextInfraTextPatternScanner._count_matches([f], regex).value, eq=3)
         empty = tmp_path / "empty.txt"
         empty.write_text("")
-        tm.that(FlextInfraTextPatternScanner._count_matches([empty], regex), eq=0)
+        tm.that(FlextInfraTextPatternScanner._count_matches([empty], regex).value, eq=0)
 
     def test_count_matches_unreadable_file(self, tmp_path: Path) -> None:
-        """_count_matches skips unreadable files."""
+        """_count_matches surfaces an unreadable file as a failure — never skipped."""
         f = tmp_path / "test.txt"
         f.write_text("hello")
         f.chmod(0o000)
@@ -226,8 +226,8 @@ class TestScannerHelpers:
                 FlextInfraTextPatternScanner._count_matches(
                     [f],
                     c.Tests.SCANNER_HELLO_RE,
-                ),
-                eq=0,
+                ).failure,
+                eq=True,
             )
         finally:
             f.chmod(0o644)
