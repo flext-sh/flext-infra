@@ -57,9 +57,7 @@ class FlextInfraConstantsSharedInfra:
         "list",
     })
     SKILLS_DIR: Final[Path] = Path(".agents/skills")
-    REPORT_DEFAULT: Final[str] = ".agents/skills/{skill}/report.json"
     BASELINE_DEFAULT: Final[str] = ".agents/skills/{skill}/baseline.json"
-    CACHE_TTL_SECONDS: Final[int] = 300
     SCRIPT_EXIT_CODE_VALUES: Final[frozenset[int]] = frozenset(
         int(item) for item in ScriptExitCode
     )
@@ -143,7 +141,6 @@ class FlextInfraConstantsSharedInfra:
     UTILITIES_PY: Final[str] = "utilities.py"
     TYPINGS_PY: Final[str] = "typings.py"
     PROTOCOLS_PY: Final[str] = "protocols.py"
-    CONFTEST_PY: Final[str] = "conftest.py"
     PY_TYPED: Final[str] = "py.typed"
 
     # --- Git constants (was: class Git) ---
@@ -163,19 +160,11 @@ class FlextInfraConstantsSharedInfra:
     DUNDER_ALL: Final[str] = "__all__"
     DUNDER_VERSION: Final[str] = "__version__"
     DUNDER_INIT: Final[str] = "__init__"
-    DUNDER_FUTURE: Final[str] = "__future__"
-    DUNDER_NAME: Final[str] = "__name__"
-    DUNDER_FILE: Final[str] = "__file__"
     DUNDER_PYCACHE: Final[str] = "__pycache__"
 
     # --- File extensions (was: class Extensions) ---
     EXT_PYTHON: Final[str] = ".py"
     EXT_PYTHON_GLOB: Final[str] = "*.py"
-    EXT_STUB: Final[str] = ".pyi"
-    EXT_STUB_GLOB: Final[str] = "*.pyi"
-    EXT_TOML: Final[str] = ".toml"
-    EXT_YAML: Final[str] = ".yml"
-    EXT_MARKDOWN: Final[str] = ".md"
 
     # --- Directory names (was: class Directories) ---
     DIR_TESTS: Final[str] = "tests"
@@ -184,7 +173,6 @@ class FlextInfraConstantsSharedInfra:
     DIR_TYPINGS: Final[str] = "typings"
     DIR_DOCS: Final[str] = "docs"
     DIR_BUILD: Final[str] = "build"
-    DIR_DIST: Final[str] = "dist"
     DIR_SITE: Final[str] = "site"
 
     # --- Timeout values in seconds (was: class Timeouts) ---
@@ -195,11 +183,6 @@ class FlextInfraConstantsSharedInfra:
     TIMEOUT_CI: Final[int] = 900
 
     # --- Path constants (was: class Paths) ---
-    WORKSPACE_MARKERS: Final[frozenset[str]] = frozenset({
-        ".git",
-        "Makefile",
-        "pyproject.toml",
-    })
     VENV_BIN_REL: Final[str] = ".venv/bin"
     DEFAULT_SRC_DIR: Final[str] = "src"
 
