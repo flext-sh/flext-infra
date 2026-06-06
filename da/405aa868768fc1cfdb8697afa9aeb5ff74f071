@@ -1,0 +1,24 @@
+src/flext_infra/templates/workspace_makefile.mk.j2
+  s_9942ef7a89ba9a::t_7f514801ccc22c 954
+  s_9942ef7a89ba9a::t_dbd65d836346d2 277-286
+  s_9942ef7a89ba9a::t_2bfef498fdfc56 1093
+  s_9942ef7a89ba9a::t_91740f5e9b0f14 248
+tests/unit/workspace/test_makefile_dry_run.py
+  s_9942ef7a89ba9a::t_0249abf793db10 268-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "da405aa868768fc1cfdb8697afa9aeb5ff74f071",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
