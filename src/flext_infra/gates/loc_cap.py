@@ -22,9 +22,6 @@ class FlextInfraLocCapGate(FlextInfraGate):
     can_fix: ClassVar[bool] = False
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][1]
-    loc_cap: ClassVar[int] = 200
-    _BINARY: ClassVar[str] = "tokei"
-    _TOTAL_KEY: ClassVar[str] = "Total"
 
     @override
     def _build_check_command(
@@ -35,7 +32,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Run tokei over the project's Python directories, emitting JSON."""
         _ = project_dir, ctx
-        return [self._BINARY, "--output", "json", *check_dirs]
+        return [c.Infra.TOKEI_BINARY, "--output", "json", *check_dirs]
 
     @override
     def _parse_check_output(
@@ -46,7 +43,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
-        issues = self._files_over_cap(result.stdout or "{}", self.loc_cap)
+        issues = self._files_over_cap(result.stdout or "{}", c.Infra.LOC_CAP_MAX)
         return len(issues) == 0, issues
 
     @classmethod
@@ -63,7 +60,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
             return ()
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for language, payload in data.items():
-            if language == cls._TOTAL_KEY or not isinstance(payload, Mapping):
+            if language == c.Infra.TOKEI_TOTAL_KEY or not isinstance(payload, Mapping):
                 continue
             reports = payload.get("reports")
             if not isinstance(reports, list):

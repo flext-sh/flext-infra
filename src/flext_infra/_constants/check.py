@@ -137,5 +137,11 @@ class FlextInfraConstantsCheck:
     )
     BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(r"\bFlextCli[A-Z]\w*")
 
+    # --- 200-LOC SUPREME LAW (§3.1) gate SSOT ---
+    LOC_CAP_MAX: Final[int] = 200
+    "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
+    TOKEI_BINARY: Final[str] = "tokei"
+    TOKEI_TOTAL_KEY: Final[str] = "Total"
+
 
 __all__: list[str] = ["FlextInfraConstantsCheck"]
