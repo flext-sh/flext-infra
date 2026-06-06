@@ -264,9 +264,13 @@ if _t.TYPE_CHECKING:
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
+    from flext_infra.gates.abstraction_boundary import (
+        FlextInfraAbstractionBoundaryGate,
+    )
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.base_gate import FlextInfraGate
     from flext_infra.gates.go import FlextInfraGoGate
+    from flext_infra.gates.loc_cap import FlextInfraLocCapGate
     from flext_infra.gates.markdown import FlextInfraMarkdownGate
     from flext_infra.gates.mypy import FlextInfraMypyGate
     from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
@@ -642,9 +646,11 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".docs.fixer": ("FlextInfraDocFixer",),
             ".docs.generator": ("FlextInfraDocGenerator",),
             ".docs.validator": ("FlextInfraDocValidator",),
+            ".gates.abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".gates.bandit": ("FlextInfraBanditGate",),
             ".gates.base_gate": ("FlextInfraGate",),
             ".gates.go": ("FlextInfraGoGate",),
+            ".gates.loc_cap": ("FlextInfraLocCapGate",),
             ".gates.markdown": ("FlextInfraMarkdownGate",),
             ".gates.mypy": ("FlextInfraMypyGate",),
             ".gates.pyrefly": ("FlextInfraPyreflyGate",),
@@ -821,6 +827,7 @@ install_lazy_exports(
 
 __all__: list[str] = [
     "FlextInfra",
+    "FlextInfraAbstractionBoundaryGate",
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
     "FlextInfraBaseMkGenerator",
@@ -895,6 +902,7 @@ __all__: list[str] = [
     "FlextInfraInternalImportDetector",
     "FlextInfraInternalSyncRepoMixin",
     "FlextInfraInventoryService",
+    "FlextInfraLocCapGate",
     "FlextInfraLooseObjectDetector",
     "FlextInfraMROCompletenessDetector",
     "FlextInfraManualProtocolDetector",

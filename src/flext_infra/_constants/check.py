@@ -38,6 +38,11 @@ class FlextInfraConstantsCheck:
             "https://github.com/DavidAnson/markdownlint",
         ),
         "go": ("Go Vet", "https://pkg.go.dev/cmd/vet"),
+        "loc-cap": ("Tokei", "https://github.com/XAMPPRocky/tokei"),
+        "boundary": (
+            "Flext Abstraction Boundary Auditor",
+            "internal://flext-infra/abstraction-boundary",
+        ),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."

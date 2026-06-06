@@ -11,9 +11,11 @@ from typing import ClassVar
 
 from flext_cli import cli
 from flext_infra import (
+    FlextInfraAbstractionBoundaryGate,
     FlextInfraBanditGate,
     FlextInfraGate,
     FlextInfraGoGate,
+    FlextInfraLocCapGate,
     FlextInfraMarkdownGate,
     FlextInfraMypyGate,
     FlextInfraPyreflyGate,
@@ -43,6 +45,8 @@ class FlextInfraGateRegistry:
         FlextInfraBanditGate,
         FlextInfraMarkdownGate,
         FlextInfraGoGate,
+        FlextInfraLocCapGate,
+        FlextInfraAbstractionBoundaryGate,
     )
 
     def __init__(self) -> None:

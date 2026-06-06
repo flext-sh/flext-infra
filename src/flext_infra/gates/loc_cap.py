@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, m, t, u
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
@@ -20,9 +20,10 @@ class FlextInfraLocCapGate(FlextInfraGate):
     gate_id: ClassVar[str] = "loc-cap"
     gate_name: ClassVar[str] = "200-LOC SUPREME LAW"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = "tokei"
-    tool_url: ClassVar[str] = "https://github.com/XAMPPRocky/tokei"
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][1]
     loc_cap: ClassVar[int] = 200
+    _BINARY: ClassVar[str] = "tokei"
     _TOTAL_KEY: ClassVar[str] = "Total"
 
     @override
@@ -34,7 +35,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Run tokei over the project's Python directories, emitting JSON."""
         _ = project_dir, ctx
-        return [self.tool_name, "--output", "json", *check_dirs]
+        return [self._BINARY, "--output", "json", *check_dirs]
 
     @override
     def _parse_check_output(

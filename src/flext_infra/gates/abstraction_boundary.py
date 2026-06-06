@@ -18,7 +18,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, m, t, u
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
@@ -27,8 +27,8 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
     gate_id: ClassVar[str] = "boundary"
     gate_name: ClassVar[str] = "Abstraction Boundary"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = "Flext Abstraction Boundary Auditor"
-    tool_url: ClassVar[str] = "internal://flext-infra/abstraction-boundary"
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["boundary"][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["boundary"][1]
 
     _SKIP_PROJECTS: ClassVar[frozenset[str]] = frozenset({"flext-cli", "flext-core"})
     _TOML_ALLOWED: ClassVar[frozenset[str]] = frozenset({"flext-infra"})
