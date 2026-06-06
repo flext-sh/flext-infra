@@ -1,0 +1,21 @@
+tests/unit/workspace/make_constants_tests.py
+  s_9942ef7a89ba9a::t_bed6bf953e8c16 43-46
+src/flext_infra/_constants/make.py
+  s_9942ef7a89ba9a::t_46bf2e88bf8aab 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "aa1055703661cbac5a169c1e136940d9e86719f3",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
