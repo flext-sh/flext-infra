@@ -157,7 +157,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             return
         if file_path.name == c.Infra.INIT_PY and (not self.include_init):
             return
-        source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = u.Cli.files_read_text(file_path).unwrap()
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         if pymodule is None:
             return
