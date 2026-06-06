@@ -245,7 +245,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot up mod constraints build check cqrs scan fmt docs test val types pyre stubs pol clean ship _rel _pr _save _tag _push gen sync imp stat
+.PHONY: help boot build _build_default _up _mod _constraints _docs _stubs _gen _sync check cqrs scan fmt test val types pyre pol clean ship _rel _pr _save _tag _push imp stat
 
 help: ## Show simple workspace verbs
 	$(Q)echo "FLEXT Workspace"
@@ -431,7 +431,7 @@ boot: ## Install all projects into workspace .venv
 		echo "Skipping workspace validation (no managed workspace projects selected)."; \
 	fi
 
-up: ## Refresh workspace lock/install + rewrite dependency constraints + dependency report
+_up: ## Refresh workspace lock/install + rewrite dependency constraints + dependency report
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
@@ -441,7 +441,7 @@ up: ## Refresh workspace lock/install + rewrite dependency constraints + depende
 	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)echo "Standardizing project metadata (make mod)..."
-	$(Q)$(MAKE) mod $(MAKE_SELECTION_ARGS)
+	$(Q)$(MAKE) _mod $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Upgrading workspace dependencies (uv workspace mode)..."; \
 	log_file="/tmp/flext-upgrade-workspace.log"; \
 	start_ts=$$(date +%s); \
@@ -492,7 +492,7 @@ up: ## Refresh workspace lock/install + rewrite dependency constraints + depende
 	$(Q)echo "Syncing GitHub workflow templates..."
 	$(Q)$(WORKSPACE_INFRA_GITHUB) workflows --workspace "$(CURDIR)" --apply --prune --report .reports/workflows/sync.json
 
-mod: ## Modernize pyproject.toml files (standardize configs without lock/install)
+_mod: ## Modernize pyproject.toml files (standardize configs without lock/install)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
@@ -511,7 +511,7 @@ mod: ## Modernize pyproject.toml files (standardize configs without lock/install
 	$(Q)ruff format $(WORKSPACE_SELECTED_ROOTS) --quiet
 	$(Q)echo "Modernization complete."
 
-constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use PROJECT= or PROJECTS= to scope.
+_constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use PROJECT= or PROJECTS= to scope.
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
@@ -535,7 +535,20 @@ check: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATE
 cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
 
-build: ## Build/package all selected projects
+build: ## Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)
+	$(Q)case "$(WHAT)" in \
+	"") $(MAKE) --no-print-directory _build_default $(MAKE_SELECTION_ARGS) ;; \
+	gen) $(MAKE) --no-print-directory _gen $(MAKE_SELECTION_ARGS) ;; \
+	mod) $(MAKE) --no-print-directory _mod $(MAKE_SELECTION_ARGS) ;; \
+	up) $(MAKE) --no-print-directory _up $(MAKE_SELECTION_ARGS) ;; \
+	constraints) $(MAKE) --no-print-directory _constraints $(MAKE_SELECTION_ARGS) ;; \
+	sync) $(MAKE) --no-print-directory _sync $(MAKE_SELECTION_ARGS) ;; \
+	docs) $(MAKE) --no-print-directory _docs $(MAKE_SELECTION_ARGS) ;; \
+	stubs) $(MAKE) --no-print-directory _stubs $(MAKE_SELECTION_ARGS) ;; \
+	*) echo "invalid WHAT '$(WHAT)' for build (valid: gen mod up constraints sync docs stubs)" >&2; exit 2 ;; \
+	esac
+
+_build_default: ## Build/package all selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
@@ -645,7 +658,7 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 	fi
 	$(Q)echo "Format complete."
 
-docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
+_docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 	$(Q)$(PREPARE_RUNTIME_DOCS_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb docs \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
@@ -810,7 +823,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 	echo ""; \
 	echo "OK: pyrefly + type policy gate passed"
 
-stubs: ## Repo-wide stub supply-chain validation -> .sisyphus/evidence
+_stubs: ## Repo-wide stub supply-chain validation -> .sisyphus/evidence
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .sisyphus/evidence
@@ -1018,16 +1031,16 @@ _push: ## Push branches and tags for selected projects
 	fi; \
 	echo "Push: $$pushed pushed, $$failed failed"
 
-gen: ## Recreate standardized pyproject.toml, base.mk, Makefile and __init__.py
+_gen: ## Recreate standardized pyproject.toml, base.mk, Makefile and __init__.py
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)echo "Recreating standardized pyproject.toml..."
-	$(Q)$(MAKE) --no-print-directory mod $(MAKE_SELECTION_ARGS)
+	$(Q)$(MAKE) --no-print-directory _mod $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Recreating standardized base.mk/Makefile/__init__.py..."
-	$(Q)$(MAKE) --no-print-directory sync $(MAKE_SELECTION_ARGS)
+	$(Q)$(MAKE) --no-print-directory _sync $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Generation complete."
 
-sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy imports
+_sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy imports
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)

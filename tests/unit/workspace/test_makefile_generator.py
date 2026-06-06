@@ -84,7 +84,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         assert result.success, result.error
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        assert makefile_text.count("$(MAKE) mod") == 1
+        assert makefile_text.count("$(MAKE) _mod") == 1
         _assert_contains_all(
             makefile_text,
             [

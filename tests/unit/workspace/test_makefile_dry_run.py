@@ -72,7 +72,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tmp_path: Path,
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
-        process = _run_workspace_make_dry_run(workspace_root, "mod", "PROJECT=demo-a")
+        process = _run_workspace_make_dry_run(workspace_root, "_mod", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
@@ -90,7 +90,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tmp_path: Path,
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
-        process = _run_workspace_make_dry_run(workspace_root, "mod")
+        process = _run_workspace_make_dry_run(workspace_root, "_mod")
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
@@ -125,11 +125,11 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tmp_path: Path,
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
-        process = _run_workspace_make_dry_run(workspace_root, "up", "PROJECT=demo-a")
+        process = _run_workspace_make_dry_run(workspace_root, "_up", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert 'make mod PROJECT="demo-a"' in output
+        assert 'make _mod PROJECT="demo-a"' in output
         assert (
             "modernize --apply --rewrite-constraints --constraint-policy floor"
             in output
@@ -166,7 +166,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(
             workspace_root,
-            "constraints",
+            "_constraints",
             "PROJECT=demo-a",
         )
         output = process.stdout + process.stderr
@@ -188,19 +188,19 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tmp_path: Path,
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
-        process = _run_workspace_make_dry_run(workspace_root, "gen", "PROJECT=demo-b")
+        process = _run_workspace_make_dry_run(workspace_root, "_gen", "PROJECT=demo-b")
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert '--no-print-directory mod PROJECT="demo-b"' in output
-        assert '--no-print-directory sync PROJECT="demo-b"' in output
+        assert '--no-print-directory _mod PROJECT="demo-b"' in output
+        assert '--no-print-directory _sync PROJECT="demo-b"' in output
 
     def test_workspace_makefile_dry_run_sync_respects_project_selection(
         self,
         tmp_path: Path,
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
-        process = _run_workspace_make_dry_run(workspace_root, "sync", "PROJECT=demo-a")
+        process = _run_workspace_make_dry_run(workspace_root, "_sync", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
@@ -221,3 +221,25 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
 
         assert process.exit_code == 0
         assert "--no-print-directory _save" in output
+
+    def test_workspace_makefile_dry_run_build_what_mod_dispatches_to_private(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "build", "WHAT=mod")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "--no-print-directory _mod" in output
+
+    def test_workspace_makefile_dry_run_build_default_runs_orchestrator(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "build")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "--no-print-directory _build_default" in output
