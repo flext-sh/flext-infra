@@ -109,7 +109,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tmp_path: Path,
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
-        process = _run_workspace_make_dry_run(workspace_root, "fmt", "PROJECT=demo-b")
+        process = _run_workspace_make_dry_run(workspace_root, "_fmt", "PROJECT=demo-b")
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
@@ -149,7 +149,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tmp_path: Path,
     ) -> None:
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
-        process = _run_workspace_make_dry_run(workspace_root, "types")
+        process = _run_workspace_make_dry_run(workspace_root, "_types")
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
@@ -243,3 +243,25 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
 
         assert process.exit_code == 0
         assert "--no-print-directory _build_default" in output
+
+    def test_workspace_makefile_dry_run_check_what_pol_dispatches_to_private(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "check", "WHAT=pol")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "--no-print-directory _pol" in output
+
+    def test_workspace_makefile_dry_run_check_what_gate_forwards_check_gates(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "check", "WHAT=loc-cap")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert '_check_default CHECK_GATES="loc-cap"' in output

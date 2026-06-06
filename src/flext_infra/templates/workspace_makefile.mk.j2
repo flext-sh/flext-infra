@@ -245,7 +245,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot build _build_default _up _mod _constraints _docs _stubs _gen _sync check cqrs scan fmt test val types pyre pol clean ship _rel _pr _save _tag _push imp stat
+.PHONY: help boot build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs test val clean ship _rel _pr _save _tag _push imp stat
 
 help: ## Show simple workspace verbs
 	$(Q)echo "FLEXT Workspace"
@@ -525,14 +525,27 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	echo ""
 	$(Q)echo "Dependency constraint rewrite complete."
 
-check: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
+check: ## Quality gates (WHAT=scan|fmt|types|pyre|pol|cqrs|lint|pyrefly|loc-cap|boundary)
+	$(Q)case "$(WHAT)" in \
+	"") $(MAKE) --no-print-directory _check_default $(MAKE_SELECTION_ARGS) ;; \
+	scan) $(MAKE) --no-print-directory _scan $(MAKE_SELECTION_ARGS) ;; \
+	fmt|format) $(MAKE) --no-print-directory _fmt $(MAKE_SELECTION_ARGS) ;; \
+	types) $(MAKE) --no-print-directory _types $(MAKE_SELECTION_ARGS) ;; \
+	pyre) $(MAKE) --no-print-directory _pyre $(MAKE_SELECTION_ARGS) ;; \
+	pol) $(MAKE) --no-print-directory _pol $(MAKE_SELECTION_ARGS) ;; \
+	cqrs) $(MAKE) --no-print-directory _cqrs $(MAKE_SELECTION_ARGS) ;; \
+	lint|pyrefly|mypy|pyright|markdown|go|silent-failure|loc-cap|boundary) $(MAKE) --no-print-directory _check_default CHECK_GATES="$(WHAT)" $(MAKE_SELECTION_ARGS) ;; \
+	*) echo "invalid WHAT '$(WHAT)' for check (valid: scan fmt format types pyre pol cqrs lint pyrefly mypy pyright markdown go silent-failure loc-cap boundary)" >&2; exit 2 ;; \
+	esac
+
+_check_default: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb check \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
 {{ forward_make_args(make.CHECK_FORWARD_ARGS) | trim }}
 		$(ORCHESTRATOR_PROJECTS)
 
-cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
+_cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
 
 build: ## Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)
@@ -602,11 +615,11 @@ _pr: ## Manage pull requests for selected projects
 		--pr-checks-strict "$(PR_CHECKS_STRICT)" \
 		--pr-release-on-merge "$(PR_RELEASE_ON_MERGE)"
 
-scan: ## Run all security checks in all projects
+_scan: ## Run all security checks in all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb scan $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
-fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdownlint)
+_fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdownlint)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)echo "Formatting Python files (ruff)..."
@@ -707,7 +720,7 @@ else
 		$(ORCHESTRATOR_PROJECTS)
 endif
 
-types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency report). Use PROJECT= or PROJECTS= to scope.
+_types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency report). Use PROJECT= or PROJECTS= to scope.
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)echo "Regenerating typings/generated/ via stubgen (PEP 561 pre-check)..."
 	$(Q)gen_dir="$(CURDIR)/typings/generated"; \
@@ -758,7 +771,7 @@ types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency rep
 		fi; \
 	fi
 
-pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefly + evidence
+_pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefly + evidence
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .sisyphus/evidence .reports/pyrefly
@@ -834,7 +847,7 @@ _stubs: ## Repo-wide stub supply-chain validation -> .sisyphus/evidence
 	printf "exit_code: %s\n" "$$stub_status" >> .sisyphus/evidence/pyrefly-stub-validate.txt; \
 	exit $$stub_status
 
-pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
+_pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .sisyphus/evidence .reports/pyrefly
