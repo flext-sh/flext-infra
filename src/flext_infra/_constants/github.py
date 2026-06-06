@@ -25,7 +25,6 @@ class FlextInfraConstantsGithub:
         FAIL = "fail"
 
     MANAGED_FILES: Final[frozenset[str]] = frozenset({"ci.yml"})
-    MIN_ARGV: Final[int] = 2
 
 
 __all__: list[str] = ["FlextInfraConstantsGithub"]
