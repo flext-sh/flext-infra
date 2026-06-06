@@ -39,7 +39,6 @@ class FlextInfraConstantsRefactor:
     RK_CONFIDENCE_THRESHOLD: Final[str] = "confidence_threshold"
     RK_ALLOW_ALIASES: Final[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
-    RK_INCLUDE_RETURN_ANNOTATIONS: Final[str] = "include_return_annotations"
     RK_TARGET_NAME: Final[str] = "target_name"
     RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
     RK_MRO_VALID: Final[str] = "mro_valid"
@@ -424,9 +423,6 @@ class FlextInfraConstantsRefactor:
     })
     "Canonical alias module stems exempt from strict single-class enforcement."
     NAMESPACE_MIN_ALIAS_LENGTH: Final[int] = 2
-    NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS: Final[int] = 10
-    NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: Final[int] = 5
-    NAMESPACE_NO_RENDER_LIMIT: Final[int] = 10_000
     FACADE_ALIAS_RE: Final[t.RegexPattern] = re.compile(
         r"^(\w)\s*=\s*(\w+)",
         re.MULTILINE,
@@ -434,11 +430,6 @@ class FlextInfraConstantsRefactor:
     "Matches ``m = FlextFooModels`` alias assignments in facade files."
 
     # --- Detector regex constants ---
-    FUNC_DEF_RE: Final[t.RegexPattern] = re.compile(
-        r"^(def\s+(\w+)\s*\()",
-        re.MULTILINE,
-    )
-    "Matches top-level function definitions for loose object detection."
     ASSIGN_RE: Final[t.RegexPattern] = re.compile(
         r"^([A-Z_]\w*)\s*[:=]",
         re.MULTILINE,
@@ -547,9 +538,6 @@ class FlextInfraConstantsRefactor:
         "Usage via u.ClassName.method_name (namespaced)."
         DIRECT = "direct"
         "Usage via FlextUtilitiesXxx.method_name (direct)."
-
-    CENSUS_DEFAULT_FAMILY: Final[str] = "u"
-    "Default census family."
 
     ACCESSOR_WARNING_PREFIXES: Final[frozenset[str]] = frozenset({
         "get_",
