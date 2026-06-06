@@ -81,7 +81,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
 
     def _scan_file(self, path: Path, project: str) -> t.SequenceOf[m.Infra.Issue]:
         """Return boundary violations for a single file via the c.Infra catalog."""
-        text = path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="ignore")
+        text = u.Cli.files_read_text(path).unwrap_or("")
         posix = str(path).replace("\\", "/")
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         click_ok = any(frag in posix for frag in c.Infra.BOUNDARY_CLICK_FILES)
