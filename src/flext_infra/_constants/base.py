@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from types import MappingProxyType
 from typing import Final
 
 from flext_infra import (
@@ -45,32 +44,6 @@ class FlextInfraConstantsBase(
         PROJECTS = "projects"
         FILES = "files"
         WORKSPACE = "workspace"
-
-    NAMESPACE_TO_CANONICAL_FILENAME: Final[t.MappingKV[str, str]] = MappingProxyType({
-        "c": "constants.py",
-        "m": "models.py",
-        "p": "protocols.py",
-        "t": "typings.py",
-        "u": "utilities.py",
-    })
-    """SSOT mapping from canonical alias (c/m/p/t/u) to its facade filename.
-
-    Used by ``FlextInfraUtilitiesScopeSelector`` (NAMESPACE-level resolution)
-    and any future tooling that needs to translate ``--namespace m`` into the
-    on-disk ``models.py`` plus ``_models/`` subtree per AGENTS.md §2.2.
-    """
-
-    KNOWN_VERBS: Final[frozenset[str]] = frozenset({
-        "build",
-        "check",
-        "dependencies",
-        "docs",
-        "preflight",
-        "release",
-        "tests",
-        "validate",
-        "workspace",
-    })
 
     # TOML section/key names for pyproject.toml parsing
 
@@ -116,12 +89,8 @@ class FlextInfraConstantsBase(
     "Pyrefly project-excludes settings key."
     SUB_CONFIG: Final[str] = "sub-settings"
     "Pyrefly sub-settings key."
-    EXECUTION_ENVIRONMENTS: Final[str] = "executionEnvironments"
-    "Pyright execution environments settings key."
     EXTRA_PATHS: Final[str] = "extraPaths"
     "Pyright extra paths settings key."
-    STUB_PATH: Final[str] = "stubPath"
-    "Pyright stub path settings key."
     REPORT_PRIVATE_USAGE: Final[str] = "reportPrivateUsage"
     "Pyright execution-environment private-usage settings key."
     VENV_PATH: Final[str] = "venvPath"
@@ -225,8 +194,6 @@ class FlextInfraConstantsBase(
     "Common CLI output format flag value."
     PR: Final[str] = "pr"
     "GitHub pull request subcommand."
-    SQUASH: Final[str] = "squash"
-    "GitHub squash merge method."
     SCAN: Final[str] = "scan"
     "ast-grep scan subcommand."
     GOVET: Final[str] = "go"
@@ -355,42 +322,6 @@ class FlextInfraConstantsBase(
     RK_SUGGESTED_FIX: Final[str] = "suggested_fix"
     RK_HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
     RK_POST_CHECKS: Final[str] = "post_checks"
-
-    REPORT_KEYS: Final[frozenset[str]] = frozenset({
-        RK_STATUS,
-        RK_FILE,
-        RK_MESSAGE,
-        RK_SUMMARY,
-        RK_TOTAL,
-        RK_RULES,
-        RK_RELEASE,
-        RK_ACTION,
-        RK_SCOPE,
-        RK_VIOLATIONS,
-        RK_VIOLATIONS_COUNT,
-        RK_RULE_ID,
-        RK_OK,
-        RK_ENABLED,
-        RK_PROJECTS,
-        RK_WORKSPACE,
-        RK_ROOT,
-        RK_ID,
-        RK_URL,
-        RK_CLASS_NESTING,
-        RK_TARGET_NAMESPACE,
-        RK_SOURCE_SYMBOL,
-        RK_LOOSE_NAME,
-        RK_REWRITE_SCOPE,
-        RK_CONFIDENCE,
-        RK_FIX_ACTION,
-        RK_CURRENT_FILE,
-        RK_DESCRIPTION,
-        RK_SEVERITY,
-        RK_VIOLATION_TYPE,
-        RK_SUGGESTED_FIX,
-        RK_HELPER_CONSOLIDATION,
-        RK_POST_CHECKS,
-    })
 
     CLI_APPLY_OPTION_DECLS: Final[t.StrSequence] = ("--apply/--dry-run",)
     "Typer dual-flag declarations for --apply/--dry-run option."
