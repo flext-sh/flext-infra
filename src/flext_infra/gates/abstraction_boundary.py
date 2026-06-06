@@ -1,21 +1,19 @@
 """Abstraction-boundary quality gate (AGENTS.md §2.7).
 
 Single SSOT replacing the two standalone scripts ``audit_banned_cli_libs.py``
-and ``audit_flext_cli_concrete_imports.py``. For every project except
+and ``audit_flext_cli_concrete_imports.py``. All detection data (banned libs,
+regex catalog, exemptions) lives in ``c.Infra.BOUNDARY_*`` (CONSTANTS-FIRST);
+this class is the thin, data-driven scanner. For every project except
 ``flext-cli``/``flext-core`` it flags CLI-domain lib imports (``click`` exempt
 in Singer-SDK boundary files), ``subprocess``, ``tomllib``/``tomlkit`` outside
 ``flext-infra``, direct ``json.``/``yaml.``/``csv.`` use, top-level ``print(``/
 ``sys.exit(``, and concrete ``FlextCli<X>`` imports outside src extension files.
-Core-abstracted libs (pydantic, structlog, …) are NOT yet banned here — that
-extension needs an owner catalogue + workspace cleanup first (plan §F).
 """
 
 from __future__ import annotations
 
-import re
 import time
 from pathlib import Path
-from types import MappingProxyType
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraGate, c, m, t, u
@@ -30,55 +28,6 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["boundary"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["boundary"][1]
 
-    _SKIP_PROJECTS: ClassVar[frozenset[str]] = frozenset({"flext-cli", "flext-core"})
-    _TOML_ALLOWED: ClassVar[frozenset[str]] = frozenset({"flext-infra"})
-    _CLICK_BOUNDARY: ClassVar[tuple[str, ...]] = (
-        "/flext-tap-",
-        "/flext-target-",
-        "/flext-meltano/src/flext_meltano/services/executor_base.py",
-        "/flext-meltano/src/flext_meltano/_protocols/singer.py",
-        "/flext-meltano/tests/unit/test_singer_sdk_adapter.py",
-    )
-    _EXTENSION_FILES: ClassVar[frozenset[str]] = frozenset({
-        "constants.py",
-        "models.py",
-        "protocols.py",
-        "typings.py",
-        "utilities.py",
-        "settings.py",
-    })
-    _BANNED_LIBS: ClassVar[MappingProxyType[str, str]] = MappingProxyType({
-        "typer": "cli.create_app_with_common_params / cli.register_command",
-        "click": "flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)",
-        "argparse": "cli.register_result_command + Pydantic model",
-        "rich": "cli.print / cli.display_message / cli.render_panel / cli.create_tree",
-        "tabulate": "cli.format_table / cli.show_table",
-        "colorama": "cli.print with c.Cli.MessageStyles",
-        "prompt_toolkit": "cli.prompt / cli.confirm / cli.prompt_password",
-        "tqdm": "cli.display_progress",
-        "getpass": "cli.prompt_password",
-        "orjson": "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps",
-        "ujson": "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps",
-        "simplejson": "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps",
-    })
-    _PROC_RE: ClassVar[re.Pattern[str]] = re.compile(
-        rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE
-    )
-    _TOML_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
-    )
-    _JSON_RE: ClassVar[re.Pattern[str]] = re.compile(r"\bjson\.(load|dump|loads|dumps)\b")
-    _YAML_RE: ClassVar[re.Pattern[str]] = re.compile(r"\byaml\.(safe_load|dump|load)\b")
-    _CSV_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"\bcsv\.(reader|writer|DictReader|DictWriter)\b"
-    )
-    _PRINT_RE: ClassVar[re.Pattern[str]] = re.compile(r"^\s*print\(", re.MULTILINE)
-    _SYSEXIT_RE: ClassVar[re.Pattern[str]] = re.compile(r"^\s*sys\.exit\(", re.MULTILINE)
-    _CONCRETE_IMPORT_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$", re.MULTILINE
-    )
-    _FLEXT_CLI_CONCRETE_RE: ClassVar[re.Pattern[str]] = re.compile(r"\bFlextCli[A-Z]\w*")
-
     @override
     def check(
         self,
@@ -88,7 +37,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         """Scan one project's Python sources for abstraction-boundary breaches."""
         _ = ctx
         started = time.monotonic()
-        if project_dir.name in self._SKIP_PROJECTS:
+        if project_dir.name in c.Infra.BOUNDARY_SKIP_PROJECTS:
             return self._skip_result(project_dir, started)
         files_result = u.Infra.iter_python_files(
             project_dir,
@@ -131,30 +80,24 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         )
 
     def _scan_file(self, path: Path, project: str) -> t.SequenceOf[m.Infra.Issue]:
-        """Return boundary violations for a single Python file."""
-        text = path.read_text(encoding="utf-8", errors="ignore")
+        """Return boundary violations for a single file via the c.Infra catalog."""
+        text = path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="ignore")
         posix = str(path).replace("\\", "/")
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        click_ok = any(fragment in posix for fragment in self._CLICK_BOUNDARY)
-        for lib, replacement in self._BANNED_LIBS.items():
+        click_ok = any(frag in posix for frag in c.Infra.BOUNDARY_CLICK_FILES)
+        for lib, regex, replacement in c.Infra.BOUNDARY_BANNED_RULES:
             if lib == "click" and click_ok:
                 continue
-            if re.search(rf"^\s*(import|from)\s+{lib}(\s|$|\.)", text, re.MULTILINE):
+            if regex.search(text):
                 issues.append(self._issue(path, f"imports `{lib}` — use {replacement}"))
-        if self._PROC_RE.search(text):
-            issues.append(self._issue(path, "imports subprocess — use cli.run / cli.capture"))
-        if self._TOML_RE.search(text) and project not in self._TOML_ALLOWED:
+        for regex, message in c.Infra.BOUNDARY_SIMPLE_RULES:
+            if regex.search(text):
+                issues.append(self._issue(path, message))
+        if (
+            c.Infra.BOUNDARY_TOML_RE.search(text)
+            and project not in c.Infra.BOUNDARY_TOML_ALLOWED
+        ):
             issues.append(self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file"))
-        if self._JSON_RE.search(text):
-            issues.append(self._issue(path, "uses json.load/dump — use cli.*_json_file"))
-        if self._YAML_RE.search(text):
-            issues.append(self._issue(path, "uses yaml.safe_load/dump — use cli.*_yaml_file"))
-        if self._CSV_RE.search(text):
-            issues.append(self._issue(path, "uses csv.reader/writer — use cli.*_csv_file"))
-        if self._PRINT_RE.search(text):
-            issues.append(self._issue(path, "uses print() — use cli.print / cli.display_message"))
-        if self._SYSEXIT_RE.search(text):
-            issues.append(self._issue(path, "uses sys.exit() — use cli.exit()"))
         issues.extend(self._concrete_cli_issues(path, text, posix))
         return issues
 
@@ -162,12 +105,11 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         self, path: Path, text: str, posix: str
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Flag concrete FlextCli<X> imports outside src extension files."""
-        extension_ok = "/src/" in posix and path.name in self._EXTENSION_FILES
-        if extension_ok:
+        if "/src/" in posix and path.name in c.Infra.BOUNDARY_EXTENSION_FILES:
             return ()
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        for match in self._CONCRETE_IMPORT_RE.finditer(text):
-            for name in self._FLEXT_CLI_CONCRETE_RE.findall(match.group("imports")):
+        for match in c.Infra.BOUNDARY_CONCRETE_IMPORT_RE.finditer(text):
+            for name in c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.findall(match.group("imports")):
                 issues.append(
                     self._issue(path, f"imports concrete `{name}` (use cli/c/m/p/t/u/s)")
                 )
