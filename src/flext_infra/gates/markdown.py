@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m, t
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
@@ -21,7 +21,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         """Collect markdown files."""
         return [
             path
-            for path in project_dir.rglob("*.md")
+            for path in u.Infra.iter_matching_files(project_dir, includes=["*.md"])
             if not any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in path.parts)
         ]
 
