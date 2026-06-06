@@ -160,5 +160,10 @@ class FlextInfraConstantsCheck:
     )
     MANUAL_CMD_SEGMENT_RE: Final[t.RegexPattern] = re.compile(r"&&|\|\||;|\||\n|`|\$\(")
 
+    # --- Net-LOC-delta validator (§3.5) SSOT ---
+    REFACTOR_COMMIT_LABELS: Final[frozenset[str]] = frozenset(
+        {"refactor", "deduplicate", "cleanup", "yagni", "simplify"},
+    )
+
 
 __all__: list[str] = ["FlextInfraConstantsCheck"]

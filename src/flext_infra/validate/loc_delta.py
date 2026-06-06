@@ -7,23 +7,19 @@ commits (feat/fix/docs/…) are exempt — they may legitimately add lines.
 
 from __future__ import annotations
 
-from typing import ClassVar, override
+from typing import override
 
-from flext_infra import p, r, s, u
+from flext_infra import c, p, r, s, u
 
 
 class FlextInfraLocDeltaValidator(s[bool]):
     """Fail refactor/cleanup commits that grow the codebase (net positive LOC)."""
 
-    _LABELS: ClassVar[frozenset[str]] = frozenset(
-        {"refactor", "deduplicate", "cleanup", "yagni", "simplify"},
-    )
-
     @classmethod
     def evaluate(cls, *, subject: str, insertions: int, deletions: int) -> r[None]:
         """Pure rule: net positive delta on a labelled commit is a violation."""
         lowered = subject.lower()
-        if not any(label in lowered for label in cls._LABELS):
+        if not any(label in lowered for label in c.Infra.REFACTOR_COMMIT_LABELS):
             return r[None].ok(None)
         delta = insertions - deletions
         if delta > 0:
