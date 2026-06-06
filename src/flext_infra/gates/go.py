@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m, t
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraGoGate(FlextInfraGate):
@@ -75,7 +75,7 @@ class FlextInfraGoGate(FlextInfraGate):
                     message=match.group("msg"),
                 ),
             )
-        go_files = list(project_dir.rglob("*.go"))
+        go_files = u.Infra.iter_matching_files(project_dir, includes=["*.go"])
         if go_files:
             fmt_result = self._run(
                 [
