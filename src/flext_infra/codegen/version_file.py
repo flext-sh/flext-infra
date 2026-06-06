@@ -69,7 +69,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 + "\n"
             )
 
-            if target.is_file() and target.read_text(encoding="utf-8") == content:
+            if u.Cli.files_read_text(target).unwrap_or("") == content:
                 continue
 
             if self.check_only or self.dry_run:
