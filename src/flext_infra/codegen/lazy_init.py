@@ -274,11 +274,13 @@ class FlextInfraCodegenLazyInit(s[bool]):
                 child_packages_for_lazy=plan.child_packages_for_lazy,
                 child_packages_for_tc=plan.child_packages_for_tc,
             )
-            previous = (
-                init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                if init_path.exists()
-                else None
-            )
+            previous: str | None = None
+            if init_path.exists():
+                read = u.Cli.files_read_text(init_path)
+                if read.failure:
+                    u.Cli.error(f"reading {init_path}: {read.error}")
+                    return (-1, dict(plan.lazy_map))
+                previous = read.value
             if previous != generated:
                 write_result = u.Cli.atomic_write_text_file(init_path, generated)
                 if write_result.failure:
