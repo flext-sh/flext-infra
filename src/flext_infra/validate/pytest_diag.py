@@ -213,11 +213,7 @@ class FlextInfraPytestDiagExtractor(s[bool]):
 
         """
         try:
-            log_text = (
-                log_path.read_text(encoding=c.Cli.ENCODING_DEFAULT, errors="replace")
-                if log_path.exists()
-                else ""
-            )
+            log_text = u.Cli.files_read_text(log_path).unwrap_or("")
             lines = log_text.splitlines()
             diag = _DiagResult()
             xml_parsed = self._parse_xml(junit_path, diag)
