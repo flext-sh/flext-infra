@@ -22,14 +22,6 @@ from flext_infra import (
 class FlextInfraClassNestingPostCheckGate:
     """Run post-transform validation gates for direct class-nesting execution."""
 
-    @staticmethod
-    def _read_source_safe(file_path: Path) -> str | None:
-        """Read source safe."""
-        try:
-            return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except c.EXC_OS_DECODING:
-            return None
-
     def validate(
         self,
         result: m.Infra.Result,
@@ -58,9 +50,10 @@ class FlextInfraClassNestingPostCheckGate:
 
     def _validate_imports(self, file_path: Path) -> t.StrSequence:
         """Validate imports."""
-        source = self._read_source_safe(file_path)
-        if source is None:
+        read = u.Cli.files_read_text(file_path)
+        if read.failure:
             return [f"parse_error:{file_path}:parse_failed"]
+        source = read.value
         return [
             f"line_{lineno}:invalid_import_from"
             for lineno, line in enumerate(source.splitlines(), start=1)
@@ -74,10 +67,10 @@ class FlextInfraClassNestingPostCheckGate:
         expected_bases: t.StrSequence,
     ) -> t.StrSequence:
         """Validate mro."""
-        source = self._read_source_safe(file_path)
-        if source is None:
+        read = u.Cli.files_read_text(file_path)
+        if read.failure:
             return [f"mro_parse_error:{file_path}:parse_failed"]
-        actual_clean = list(u.Infra.parse_class_bases(source, class_name))
+        actual_clean = list(u.Infra.parse_class_bases(read.value, class_name))
         if not actual_clean:
             return [f"class_not_found:{class_name}"]
         expected_prefix = list(expected_bases)[: len(actual_clean)]
