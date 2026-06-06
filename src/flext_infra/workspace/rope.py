@@ -280,14 +280,11 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         index: dict[str, list[tuple[Path, str, list[int]]]] = {}
         for entry in self.workspace_index.modules_by_path.values():
             py_file = entry.file_path
-            try:
-                source_text = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                msg = (
-                    "rope name index failed to read "
-                    f"{py_file}: {type(exc).__name__}: {exc!s}"
-                )
-                raise RuntimeError(msg) from exc
+            read = u.Cli.files_read_text(py_file)
+            if read.failure:
+                msg = f"rope name index failed to read {py_file}: {read.error}"
+                raise RuntimeError(msg)
+            source_text = read.value
             surface = self._reference_surface_for(py_file)
             lines_by_name: dict[str, list[int]] = {}
             for lineno, source_line in enumerate(source_text.splitlines(), start=1):
@@ -395,9 +392,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         package_entry = self.package(resolved_dir)
         init_path = resolved_dir / c.Infra.INIT_PY
         current_pkg = package_entry.package_name if package_entry is not None else ""
-        generated_init = init_path.is_file() and init_path.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        ).startswith(c.Infra.AUTOGEN_HEADER)
+        generated_init = init_path.is_file() and (
+            u.Cli.files_read_text(init_path).unwrap().startswith(c.Infra.AUTOGEN_HEADER)
+        )
         context = m.Infra.LazyInitPackageContext(
             pkg_dir=resolved_dir,
             init_path=init_path,
