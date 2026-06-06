@@ -156,10 +156,14 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
                 {"extension": extension, "path": script, "role": role},
             )
 
-        content = u.Cli.files_read_text(root / script_path).unwrap_or("")
-        if not content:
+        read = u.Cli.files_read_text(root / script_path)
+        if read.failure:
             unreadable = FlextInfraGateContractModels.Violation.create(
-                {"check": "readable", "message": "could not read file", "script": script},
+                {
+                    "check": "readable",
+                    "message": read.error or "could not read file",
+                    "script": script,
+                },
             )
             return FlextInfraGateContractModels.ScriptInfo.model_validate(
                 {
@@ -169,6 +173,7 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
                     "violations": (unreadable,),
                 },
             )
+        content = read.value
 
         header = self._read_header(content)
         violations: list[FlextInfraGateContractModels.Violation] = [
