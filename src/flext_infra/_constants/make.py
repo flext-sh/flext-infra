@@ -198,19 +198,75 @@ class FlextInfraConstantsMake:
         ("help", "Show workspace verbs"),
     )
     WORKSPACE_GIT_VERBS: Final[t.StrPairSequence] = ()
-    WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
-        "boot": frozenset({"venv", "submodules", "sync", "stat", "imp"}),
-        "build": frozenset({"gen", "mod", "up", "constraints", "sync", "docs", "stubs"}),
-        "check": frozenset({
-            "lint", "format", "types", "pyrefly", "mypy", "pyright", "pol", "cqrs",
-            "pyre", "scan", "markdown", "go", "silent-failure", "loc-cap", "boundary",
+    # SSOT: verb -> phase -> make target. Template derives the case arms; nothing
+    # else hardcodes phase names. WHAT_PHASES (below) derives its sets from this.
+    WHAT_DISPATCH: Final[t.MappingKV[str, t.MappingKV[str, str]]] = MappingProxyType({
+        "boot": MappingProxyType({
+            "": "_boot_default",
+            "venv": "_boot_default",
+            "submodules": "_boot_default",
+            "sync": "_sync",
+            "stat": "_stat",
+            "imp": "_imp",
         }),
+        "build": MappingProxyType({
+            "": "_build_default",
+            "gen": "_gen",
+            "mod": "_mod",
+            "up": "_up",
+            "constraints": "_constraints",
+            "sync": "_sync",
+            "docs": "_docs",
+            "stubs": "_stubs",
+        }),
+        "check": MappingProxyType({
+            "": "_check_default",
+            "scan": "_scan",
+            "fmt": "_fmt",
+            "format": "_fmt",
+            "types": "_types",
+            "pyre": "_pyre",
+            "pol": "_pol",
+            "cqrs": "_cqrs",
+            **{
+                gate: f'_check_default CHECK_GATES="{gate}"'
+                for gate in (
+                    "lint",
+                    "pyrefly",
+                    "mypy",
+                    "pyright",
+                    "markdown",
+                    "go",
+                    "silent-failure",
+                    "loc-cap",
+                    "boundary",
+                )
+            },
+        }),
+        "ship": MappingProxyType({
+            "save": "_save",
+            "tag": "_tag",
+            "push": "_push",
+            "pr": "_pr",
+            "rel": "_rel",
+        }),
+    })
+    # Phase-set per verb (CLI resolve_what); make verbs derived from WHAT_DISPATCH.
+    WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
+        **{
+            verb: frozenset(phase for phase in targets if phase)
+            for verb, targets in WHAT_DISPATCH.items()
+        },
         "test": frozenset({"unit", "integration", "diag"}),
         "val": frozenset({
-            "loc-cap", "loc-delta", "boundary", "manual-cmd", "complexity",
-            "docstring", "silent-failure",
+            "loc-cap",
+            "loc-delta",
+            "boundary",
+            "manual-cmd",
+            "complexity",
+            "docstring",
+            "silent-failure",
         }),
-        "ship": frozenset({"save", "tag", "push", "pr", "rel"}),
     })
     WORKSPACE_SELECTOR_LINES: Final[t.StrSequence] = (
         "PROJECT=<name>             Single project",

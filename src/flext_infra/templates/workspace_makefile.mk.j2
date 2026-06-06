@@ -18,6 +18,14 @@
 {%- endfor %}
 {%- endmacro %}
 
+{% macro what_dispatch(verb) -%}
+{%- for phase, target in make.WHAT_DISPATCH[verb].items() %}
+	{{ '""' if phase == '' else phase }}) $(MAKE) --no-print-directory {{ target }} $(MAKE_SELECTION_ARGS) ;; \
+{%- endfor %}
+	*) echo "invalid WHAT '$(WHAT)' for {{ verb }} (valid: {{ make.WHAT_DISPATCH[verb].keys() | reject('equalto', '') | join(' ') }})" >&2; exit 2 ;; \
+	esac
+{%- endmacro %}
+
 SHELL := /usr/bin/bash
 .DEFAULT_GOAL := help
 
@@ -276,12 +284,7 @@ help: ## Show simple workspace verbs
 
 boot: ## Bootstrap .venv + submodules (WHAT=venv|submodules|sync|stat|imp)
 	$(Q)case "$(WHAT)" in \
-	""|venv|submodules) $(MAKE) --no-print-directory _boot_default $(MAKE_SELECTION_ARGS) ;; \
-	sync) $(MAKE) --no-print-directory _sync $(MAKE_SELECTION_ARGS) ;; \
-	stat) $(MAKE) --no-print-directory _stat ;; \
-	imp) $(MAKE) --no-print-directory _imp ;; \
-	*) echo "invalid WHAT '$(WHAT)' for boot (valid: venv submodules sync stat imp)" >&2; exit 2 ;; \
-	esac
+{{ what_dispatch('boot') | trim }}
 
 _boot_default: ## Install all projects into workspace .venv
 	$(Q)$(PREFLIGHT_CHECK)
@@ -536,16 +539,7 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 
 check: ## Quality gates (WHAT=scan|fmt|types|pyre|pol|cqrs|lint|pyrefly|loc-cap|boundary)
 	$(Q)case "$(WHAT)" in \
-	"") $(MAKE) --no-print-directory _check_default $(MAKE_SELECTION_ARGS) ;; \
-	scan) $(MAKE) --no-print-directory _scan $(MAKE_SELECTION_ARGS) ;; \
-	fmt|format) $(MAKE) --no-print-directory _fmt $(MAKE_SELECTION_ARGS) ;; \
-	types) $(MAKE) --no-print-directory _types $(MAKE_SELECTION_ARGS) ;; \
-	pyre) $(MAKE) --no-print-directory _pyre $(MAKE_SELECTION_ARGS) ;; \
-	pol) $(MAKE) --no-print-directory _pol $(MAKE_SELECTION_ARGS) ;; \
-	cqrs) $(MAKE) --no-print-directory _cqrs $(MAKE_SELECTION_ARGS) ;; \
-	lint|pyrefly|mypy|pyright|markdown|go|silent-failure|loc-cap|boundary) $(MAKE) --no-print-directory _check_default CHECK_GATES="$(WHAT)" $(MAKE_SELECTION_ARGS) ;; \
-	*) echo "invalid WHAT '$(WHAT)' for check (valid: scan fmt format types pyre pol cqrs lint pyrefly mypy pyright markdown go silent-failure loc-cap boundary)" >&2; exit 2 ;; \
-	esac
+{{ what_dispatch('check') | trim }}
 
 _check_default: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -559,16 +553,7 @@ _cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 
 build: ## Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)
 	$(Q)case "$(WHAT)" in \
-	"") $(MAKE) --no-print-directory _build_default $(MAKE_SELECTION_ARGS) ;; \
-	gen) $(MAKE) --no-print-directory _gen $(MAKE_SELECTION_ARGS) ;; \
-	mod) $(MAKE) --no-print-directory _mod $(MAKE_SELECTION_ARGS) ;; \
-	up) $(MAKE) --no-print-directory _up $(MAKE_SELECTION_ARGS) ;; \
-	constraints) $(MAKE) --no-print-directory _constraints $(MAKE_SELECTION_ARGS) ;; \
-	sync) $(MAKE) --no-print-directory _sync $(MAKE_SELECTION_ARGS) ;; \
-	docs) $(MAKE) --no-print-directory _docs $(MAKE_SELECTION_ARGS) ;; \
-	stubs) $(MAKE) --no-print-directory _stubs $(MAKE_SELECTION_ARGS) ;; \
-	*) echo "invalid WHAT '$(WHAT)' for build (valid: gen mod up constraints sync docs stubs)" >&2; exit 2 ;; \
-	esac
+{{ what_dispatch('build') | trim }}
 
 _build_default: ## Build/package all selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -576,14 +561,7 @@ _build_default: ## Build/package all selected projects
 
 ship: ## Release workflow (WHAT=save|tag|push|pr|rel)
 	$(Q)case "$(WHAT)" in \
-	save) $(MAKE) --no-print-directory _save $(MAKE_SELECTION_ARGS) ;; \
-	tag) $(MAKE) --no-print-directory _tag $(MAKE_SELECTION_ARGS) ;; \
-	push) $(MAKE) --no-print-directory _push $(MAKE_SELECTION_ARGS) ;; \
-	pr) $(MAKE) --no-print-directory _pr $(MAKE_SELECTION_ARGS) ;; \
-	rel) $(MAKE) --no-print-directory _rel $(MAKE_SELECTION_ARGS) ;; \
-	"") echo "ship requires WHAT=save|tag|push|pr|rel" >&2; exit 2 ;; \
-	*) echo "invalid WHAT '$(WHAT)' for ship (valid: save tag push pr rel)" >&2; exit 2 ;; \
-	esac
+{{ what_dispatch('ship') | trim }}
 
 _rel: ## Interactive workspace release orchestration
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
