@@ -73,10 +73,21 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if json_file.exists():
+            read = u.Cli.files_read_json(json_file)
+            if read.failure:
+                issues.append(
+                    m.Infra.Issue(
+                        file="<pyrefly-output>",
+                        line=0,
+                        column=0,
+                        code="PARSE_ERROR",
+                        message=f"pyrefly output unreadable/invalid: {read.error}",
+                        severity="ERROR",
+                    )
+                )
+                return False, issues
+            parsed_value = read.value
             try:
-                raw_text = json_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                parsed_result = u.Cli.json_parse(raw_text)
-                parsed_value = parsed_result.unwrap() if parsed_result.success else None
                 error_items: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]] = []
                 if isinstance(parsed_value, Mapping):
                     try:
