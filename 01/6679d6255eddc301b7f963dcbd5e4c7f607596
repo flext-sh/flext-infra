@@ -1,0 +1,23 @@
+src/flext_infra/_constants/check.py
+  s_9942ef7a89ba9a::t_c0c8cd10b5f80a 146-162
+src/flext_infra/validate/manual_command.py
+  s_9942ef7a89ba9a::t_4d304801d2bbeb 80
+  s_9942ef7a89ba9a::t_47878dfef13696 21,39
+  s_9942ef7a89ba9a::t_c087333cc468d8 55-56,58,60,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "016679d6255eddc301b7f963dcbd5e4c7f607596",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
