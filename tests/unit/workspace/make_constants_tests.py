@@ -40,5 +40,9 @@ class TestMakeConstants:
         tm.that("save" in phases["ship"], eq=True)
         tm.that("loc-delta" in phases["val"], eq=True)
 
+    def test_what_variable_default_declared(self) -> None:
+        names = {name for name, _ in c.Infra.WORKSPACE_VARIABLE_DEFAULTS}
+        tm.that("WHAT" in names, eq=True)
+
 
 __all__: t.StrSequence = []

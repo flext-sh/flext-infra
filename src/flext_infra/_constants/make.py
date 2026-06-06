@@ -96,6 +96,7 @@ class FlextInfraConstantsMake:
     WORKSPACE_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PROJECT", ""),
         ("PROJECTS", ""),
+        ("WHAT", ""),
         ("PYTEST_ARGS", ""),
         ("VALIDATE_SCOPE", "project"),
         ("DOCS_PHASE", "all"),
