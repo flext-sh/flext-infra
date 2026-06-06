@@ -38,10 +38,10 @@ class FlextInfraRefactorViolationAnalyzer:
         helper_totals: Counter[str] = Counter()
         helper_manual_review: t.MutableSequenceOf[m.Infra.HelperClassification] = []
         for file_path in files:
-            try:
-                content = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except c.EXC_OS_DECODING:
+            read = u.Cli.files_read_text(file_path)
+            if read.failure:
                 continue
+            content = read.value
             helper_analysis = cls._analyze_file_helpers(
                 file_path=file_path,
                 content=content,
