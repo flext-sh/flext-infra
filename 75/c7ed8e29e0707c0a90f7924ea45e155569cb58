@@ -1,0 +1,30 @@
+src/flext_infra/templates/workspace_makefile.mk.j2
+  s_9942ef7a89ba9a::t_6cfa45ce4ade54 528-541
+  s_9942ef7a89ba9a::t_aa06615667627c 248
+  s_9942ef7a89ba9a::t_01d83fdd2d6231 622
+  s_9942ef7a89ba9a::t_d5c1ee75f0af16 548
+  s_9942ef7a89ba9a::t_fb468c157aa22a 850
+  s_9942ef7a89ba9a::t_30d92e309ea6fd 723
+  s_9942ef7a89ba9a::t_f2b92e7785170a 774
+  s_9942ef7a89ba9a::t_7e753ff5d7e687 618
+tests/unit/workspace/test_makefile_dry_run.py
+  s_9942ef7a89ba9a::t_54ddebe369108b 112
+  s_9942ef7a89ba9a::t_c81762dbac606b 152
+  s_9942ef7a89ba9a::t_00dc5f3f000fd5 246-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "75c7ed8e29e0707c0a90f7924ea45e155569cb58",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
