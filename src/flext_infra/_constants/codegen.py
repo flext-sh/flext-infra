@@ -66,11 +66,6 @@ class FlextInfraConstantsCodegen:
         ("pyrefly", ("pyrefly", "check", "{file}")),
     )
     "Lint tool names and their CLI command templates for validation."
-    DEFAULT_EXCLUDE: Final[frozenset[str]] = frozenset({
-        ".mypy_cache",
-        "__pycache__",
-    })
-    "Directories excluded from codegen file scanning."
     LOCAL_INFERRED_SEGMENTS: Final[frozenset[str]] = frozenset({
         "_constants",
         "_exceptions",
@@ -119,15 +114,6 @@ class FlextInfraConstantsCodegen:
     "Directory segments recognized as project-root wrapper paths."
     DUPLICATE_CLASS_MIN_LEN: Final[int] = 8
     "Minimum class-name length for workspace-wide duplicate detection."
-    CORE_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
-        "d": ("flext_core", "d"),
-        "e": ("flext_core", "e"),
-        "h": ("flext_core", "h"),
-        "r": ("flext_core", "r"),
-        "s": ("flext_core", "s"),
-        "x": ("flext_core", "x"),
-    })
-    "Mapping of single-letter aliases to flext-core runtime targets."
     TEST_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "td": ("flext_tests", "td"),
         "tf": ("flext_tests", "tf"),
@@ -140,15 +126,6 @@ class FlextInfraConstantsCodegen:
     # --- Constant detection constants (was: class Detection) ---
     DETECTION_MIN_QUOTED_LITERAL_LEN: Final[int] = 2
     "Minimum length for a quoted string to be considered a literal."
-    DETECTION_TYPEVAR_ASSIGN_RE: Final[t.RegexPattern] = re.compile(
-        r"^(\w+)\s*=\s*(?:TypeVar|ParamSpec|TypeVarTuple)\s*\(",
-        re.MULTILINE,
-    )
-    "Regex: TypeVar/ParamSpec/TypeVarTuple assignments."
-    DETECTION_MIN_ATTRIBUTE_CHAIN: Final[int] = 2
-    "Minimum dotted-chain length for direct constant references."
-    DETECTION_MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
-    "Minimum chain length for FlextXxxConstants.ATTR references."
     DETECTION_TRIVIAL_VALUES: Final[frozenset[str]] = frozenset({
         "True",
         "False",
@@ -177,20 +154,6 @@ class FlextInfraConstantsCodegen:
         r"class\s+(\w+)",
     )
     "Regex: class ClassName (captures class name)."
-    DETECTION_DIRECT_USAGE_RE: Final[t.RegexPattern] = re.compile(
-        r"\bFlext\w*Constants\.([A-Z_][A-Z0-9_]*)",
-    )
-    "Regex: FlextXxxConstants.CONSTANT_NAME (captures constant name)."
-    DETECTION_ALIAS_USAGE_RE: Final[t.RegexPattern] = re.compile(
-        r"\bc\.\w*\.([A-Z_][A-Z0-9_]*)",
-    )
-    "Regex: c.Namespace.CONSTANT_NAME (captures constant name)."
-    DETECTION_C_ALIAS_RE: Final[t.RegexPattern] = re.compile(r"\bc\.([A-Za-z_]\w*)")
-    "Regex: c.ATTR (captures ATTR after literal ``c.``)."
-    DETECTION_DIRECT_REF_RE: Final[t.RegexPattern] = re.compile(
-        r"\b(Flext\w*Constants(?:\.[A-Za-z_]\w*)+)",
-    )
-    "Regex: FlextXxxConstants.ATTR.SUBATTR... (captures full dotted chain)."
     DETECTION_CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
         "c",
         "m",
@@ -253,15 +216,6 @@ class FlextInfraConstantsCodegen:
     # --- Quality gate constants (was: class QualityGate) ---
     QG_REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
     "Report directory for constants quality gate."
-    QG_RULE_KEYS: Final[t.StrSequence] = (
-        "NS-000",
-        "NS-001",
-        "NS-002",
-        "NS-003",
-        "NS-004",
-        "NS-005",
-    )
-    "Canonical rule key identifiers for quality gate reporting."
     QG_CHECK_NAMESPACE_COMPLIANCE: Final[str] = "namespace_compliance"
     QG_CHECK_MRO_VALIDITY: Final[str] = "mro_validity"
     QG_CHECK_IMPORT_RESOLUTION: Final[str] = "import_resolution"
