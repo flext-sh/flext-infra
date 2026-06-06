@@ -1,0 +1,21 @@
+src/flext_infra/refactor/namespace_enforcer_phases.py
+  s_9942ef7a89ba9a::t_6345cd9211d717 298
+  s_9942ef7a89ba9a::t_61628aca27fcc1 314
+  s_9942ef7a89ba9a::t_bc34727001d4db 290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "516373aa2031eeb64b2cfde615176d64b0393d09",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
