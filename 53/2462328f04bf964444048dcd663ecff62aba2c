@@ -1,0 +1,28 @@
+src/flext_infra/_constants/make.py
+  s_9942ef7a89ba9a::t_45fe576ea53361 205-210,213-219,223-230,234-242,247-251,262-268
+  s_9942ef7a89ba9a::t_4acbcb4e33228c 203-204,211-212,220-222,231-233,243-244,246,252-253,255-259
+  s_9942ef7a89ba9a::t_cb2d151f85bfc5 201-202
+  s_9942ef7a89ba9a::t_634ab9e95bbee2 254
+src/flext_infra/templates/workspace_makefile.mk.j2
+  s_9942ef7a89ba9a::t_69c872d912bee8 287
+  s_9942ef7a89ba9a::t_b3a695dfd2f6df 542
+  s_9942ef7a89ba9a::t_e329757182f864 21-28
+  s_9942ef7a89ba9a::t_486de82cabff18 556
+  s_9942ef7a89ba9a::t_9d64c5cee3e038 564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "532462328f04bf964444048dcd663ecff62aba2c",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
