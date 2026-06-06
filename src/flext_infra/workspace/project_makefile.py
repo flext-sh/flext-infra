@@ -70,21 +70,17 @@ class FlextInfraProjectMakefileUpdater:
                     makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
 
                     if makefile_path.exists():
-                        try:
-                            existing = makefile_path.read_text(
-                                encoding=c.Cli.ENCODING_DEFAULT
-                            )
-                        except OSError as exc:
-                            result = r[bool].fail_op("Makefile read", exc)
+                        read = u.Cli.files_read_text(makefile_path)
+                        if read.failure:
+                            result = r[bool].fail(read.error or "Makefile read failed")
+                        elif u.Cli.sha256_content(read.value) == u.Cli.sha256_content(
+                            new_content
+                        ):
+                            result = r[bool].ok(False)
                         else:
-                            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(
-                                new_content
-                            ):
-                                result = r[bool].ok(False)
-                            else:
-                                result = u.Cli.atomic_write_text_file(
-                                    makefile_path, new_content
-                                )
+                            result = u.Cli.atomic_write_text_file(
+                                makefile_path, new_content
+                            )
                     else:
                         result = u.Cli.atomic_write_text_file(
                             makefile_path, new_content
