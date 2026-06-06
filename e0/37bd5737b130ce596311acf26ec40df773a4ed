@@ -1,0 +1,19 @@
+src/flext_infra/codegen/lazy_init.py
+  s_9942ef7a89ba9a::t_458507d428ac52 277-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "e037bd5737b130ce596311acf26ec40df773a4ed",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
