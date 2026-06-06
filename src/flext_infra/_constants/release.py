@@ -36,11 +36,6 @@ class FlextInfraConstantsRelease:
         ReleasePhase.BUILD,
         ReleasePhase.PUBLISH,
     })
-    VALID_BUMP_TYPES: Final[frozenset[VersionBump]] = frozenset({
-        VersionBump.MAJOR,
-        VersionBump.MINOR,
-        VersionBump.PATCH,
-    })
     VERSION_RE: Final[t.RegexPattern] = re.compile(
         r"^version\s*=\s*['\"](.+?)['\"]",
         re.MULTILINE,
