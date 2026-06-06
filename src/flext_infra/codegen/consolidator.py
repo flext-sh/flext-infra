@@ -53,7 +53,12 @@ class FlextInfraCodegenConsolidator(s[str]):
                     continue
 
                 constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
-                value_map = self._build_value_map_from_constants_file(constants_file)
+                value_map_result = self._build_value_map_from_constants_file(constants_file)
+                if value_map_result.failure:
+                    return r[str].fail(
+                        value_map_result.error or "constants file read failed",
+                    )
+                value_map = value_map_result.value
                 if not value_map:
                     continue
 
@@ -258,16 +263,25 @@ class FlextInfraCodegenConsolidator(s[str]):
         return (False, list(descs), report)
 
     @classmethod
-    def _build_value_map_from_constants_file(cls, constants_file: Path) -> t.StrMapping:
-        """Build value map from constants file."""
-        value_map: t.MutableStrMapping = {}
-        try:
-            source = constants_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except c.EXC_OS_DECODING:
-            return value_map
+    def _build_value_map_from_constants_file(
+        cls,
+        constants_file: Path,
+    ) -> p.Result[t.StrMapping]:
+        """Build value map from a constants file.
 
+        Missing file → empty map (nothing to consolidate); an existing-but-unreadable
+        file is surfaced as a failure (never silently treated as empty).
+        """
+        if not constants_file.is_file():
+            return r[t.StrMapping].ok({})
+        read = u.Cli.files_read_text(constants_file)
+        if read.failure:
+            return r[t.StrMapping].fail(
+                read.error or f"unreadable constants file: {constants_file}",
+            )
+        value_map: t.MutableStrMapping = {}
         for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
-            source.splitlines(),
+            read.value.splitlines(),
         ):
             if not raw:
                 continue
@@ -281,7 +295,7 @@ class FlextInfraCodegenConsolidator(s[str]):
                 inner = raw[1:-1]
                 value_map[f"'{inner}'"] = canonical
                 value_map[f'"{inner}"'] = canonical
-        return value_map
+        return r[t.StrMapping].ok(value_map)
 
 
 __all__: list[str] = ["FlextInfraCodegenConsolidator"]
