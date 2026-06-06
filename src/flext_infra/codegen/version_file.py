@@ -77,7 +77,11 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 generated += 1
                 continue
 
-            target.write_text(content, encoding="utf-8")
+            write_result = u.Cli.atomic_write_text_file(target, content)
+            if write_result.failure:
+                return r[bool].fail(
+                    write_result.error or f"version-file: cannot write {target}",
+                )
             generated += 1
             u.Cli.info(
                 f"  generated: {target.relative_to(self.workspace_root)}",
