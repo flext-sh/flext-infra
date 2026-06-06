@@ -1,0 +1,21 @@
+src/flext_infra/_utilities/base.py
+  s_9942ef7a89ba9a::t_1c68182cc941ab 111-129
+tests/unit/workspace/resolve_what_tests.py
+  s_9942ef7a89ba9a::t_3ef4ab9ab8cfce 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "fe822583e226a34570c92b773da87ff70448ac58",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
