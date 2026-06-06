@@ -20,7 +20,7 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, p, r, s, t
+from flext_infra import c, p, r, s, t, u
 
 
 class FlextInfraManualCommandValidator(s[bool]):
@@ -111,11 +111,10 @@ class FlextInfraManualCommandValidator(s[bool]):
             return r[bool].fail(
                 ".pre-commit-config.yaml missing — run `make gen` to generate it",
             )
-        try:
-            actual = config_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError as exc:
-            return r[bool].fail_op("pre-commit config read", exc)
-        if actual.strip() != self.render_pre_commit_config().strip():
+        read = u.Cli.files_read_text(config_path)
+        if read.failure:
+            return r[bool].fail(read.error or "pre-commit config read failed")
+        if read.value.strip() != self.render_pre_commit_config().strip():
             return r[bool].fail(
                 ".pre-commit-config.yaml drifted from canonical template — run `make gen`",
             )
