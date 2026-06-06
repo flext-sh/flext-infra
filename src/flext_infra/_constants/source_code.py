@@ -71,11 +71,6 @@ class FlextInfraConstantsSourceCode:
     "Header for shell auto-generated content."
     FUTURE_ANNOTATIONS: Final[str] = "from __future__ import annotations"
     "Standard future annotations import line."
-    IMPORT_FROM_STRICT_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+([\w.]+)\s+import\s+(.+)",
-        re.MULTILINE,
-    )
-    "Regex: ``from <module> import <names>`` — anchored at col 0, no comment strip."
     IMPORT_RE: Final[t.RegexPattern] = re.compile(
         r"^import\s+(.+)",
         re.MULTILINE,
@@ -86,11 +81,6 @@ class FlextInfraConstantsSourceCode:
         re.MULTILINE,
     )
     "Regex: ``def/async def/class <name>``."
-    FUNCTION_DEF_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:async\s+)?def\s+(\w+)",
-        re.MULTILINE,
-    )
-    "Regex: ``def/async def <name>`` — captures function name only."
     CLASS_NAME_RE: Final[t.RegexPattern] = re.compile(
         r"^class\s+(\w+)",
         re.MULTILINE,
@@ -153,18 +143,6 @@ class FlextInfraConstantsSourceCode:
         re.MULTILINE | re.DOTALL,
     )
     "Regex: @deprecated decorated class/function block."
-    WRAPPER_RE: Final[t.RegexPattern] = re.compile(
-        r"^def\s+(\w+)\s*\([^)]*\)[^:]*:\s*\n"
-        r"\s+return\s+(\w+)\s*\([^)]*\)\s*$",
-        re.MULTILINE,
-    )
-    "Regex: thin wrapper function (def f(): return g())."
-    BYPASS_RE: Final[t.RegexPattern] = re.compile(
-        r"^try:\s*\n\s+from\s+\S+\s+import\s+\S+.*?\n"
-        r"except\s+ImportError.*?(?=\n(?:class |def |@|try:|\Z))",
-        re.MULTILINE | re.DOTALL,
-    )
-    "Regex: try/except ImportError bypass pattern."
     REQUIRES_PYTHON_RE: Final[t.RegexPattern] = re.compile(
         r'requires-python\s*=\s*"[>!=]*(\d+)\.(\d+)',
     )
@@ -230,28 +208,6 @@ class FlextInfraConstantsSourceCode:
         re.MULTILINE,
     )
     "Regex: closing ``)`` of a parenthesized import block, anchored at line start."
-
-    # ── Annotation canonicalization (built-in → t.* alias) ──
-    ANNOTATION_DICT_BRACKET_RE: Final[t.RegexPattern] = re.compile(
-        r"\b(?:dict|Dict)\[",
-    )
-    "Regex: ``dict[`` or ``Dict[`` annotation prefix (rewrite target ``t.MappingKV[``)."
-    ANNOTATION_LIST_BRACKET_RE: Final[t.RegexPattern] = re.compile(
-        r"\b(?:list|List)\[",
-    )
-    "Regex: ``list[`` or ``List[`` annotation prefix (rewrite target ``t.SequenceOf[``)."
-    ANNOTATION_TYPING_ANY_RE: Final[t.RegexPattern] = re.compile(
-        r"\btyping\.Any\b",
-    )
-    "Regex: ``typing.Any`` (rewrite target ``t.JsonValue``)."
-    ANNOTATION_BARE_ANY_RE: Final[t.RegexPattern] = re.compile(
-        r"(?<![\w.])Any(?![\w(])",
-    )
-    "Regex: bare ``Any`` (not preceded by word/dot, not followed by word/call paren)."
-    ANNOTATION_BARE_OBJECT_RE: Final[t.RegexPattern] = re.compile(
-        r"(?<=[:[, ])object(?=[\s\],|=)])",
-    )
-    "Regex: ``object`` only when in annotation position (after ``:``, ``[``, ``,``, space)."
 
     @staticmethod
     def compile_multiline(pattern: str) -> t.RegexPattern:
@@ -633,12 +589,6 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex patterns for identifying noise lines in logs."
 
-    # --- Module tier classification (was: class Tier) ---
-    TIER_UNKNOWN: Final[int] = 99
-    "Tier value for unclassifiable modules."
-    TIER_DEFAULT_SUBDIR: Final[int] = 4
-    "Default tier for subpackage/subdirectory modules."
-
     # --- Class placement detection (was: class ClassPlacement) ---
     PLACEMENT_PYDANTIC_BASE_NAMES: Final[frozenset[str]] = frozenset({
         "BaseModel",
@@ -657,12 +607,6 @@ class FlextInfraConstantsSourceCode:
     # --- Shared threshold constants (was: class Thresholds) ---
     MIN_UNION_MEMBERS: Final[int] = 2
     "Minimum members for a union type to be normalizable."
-    DICT_KEY_VALUE_ARITY: Final[int] = 2
-    "Expected arity for dict key-value subscript."
-    MIN_DUPLICATE_PROJECT_COUNT: Final[int] = 2
-    "Minimum number of projects with same constant to flag as duplicate."
-    SINGLE_LINE_DOCSTRING_QUOTE_COUNT: Final[int] = 2
-    "Minimum quote count to detect single-line docstring."
 
     # --- Combined import detection (from + bare import) ---
     COMBINED_IMPORT_RE: Final[t.RegexPattern] = re.compile(
