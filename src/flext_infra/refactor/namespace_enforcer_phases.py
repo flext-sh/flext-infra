@@ -287,9 +287,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         snapshots: MutableMapping[Path, str] = {}
         for py_file in all_py_files:
             if py_file.is_file():
-                snapshots[py_file] = py_file.read_text(
-                    encoding=c.Cli.ENCODING_DEFAULT,
-                )
+                snapshots[py_file] = u.Cli.files_read_text(py_file).unwrap()
         try:
             self.enforce(apply=True, project_names=project_names)
         finally:
@@ -297,7 +295,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             for py_file, original in snapshots.items():
                 if not py_file.is_file():
                     continue
-                modified = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                modified = u.Cli.files_read_text(py_file).unwrap()
                 if modified != original:
                     rel = py_file.relative_to(self._workspace_root)
                     diff_lines.extend(
@@ -313,7 +311,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                 for py_file in self._collect_py_files(project_root=project_root):
                     if py_file not in snapshots and py_file.is_file():
                         rel = py_file.relative_to(self._workspace_root)
-                        content = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                        content = u.Cli.files_read_text(py_file).unwrap()
                         diff_lines.extend(
                             difflib.unified_diff(
                                 [],
