@@ -141,9 +141,12 @@ class FlextInfraProjectMigrator(
         if generated.failure:
             return r[str].fail(generated.error or "base.mk generation failed")
         generated_text: str = generated.value
-        current = (
-            target.read_text(encoding=c.Cli.ENCODING_DEFAULT) if target.exists() else ""
-        )
+        current = ""
+        if target.exists():
+            read = u.Cli.files_read_text(target)
+            if read.failure:
+                return r[str].fail(read.error or "base.mk read failed")
+            current = read.value
         if u.Cli.sha256_content(current) == u.Cli.sha256_content(generated_text):
             return self._no_change_result(
                 "base.mk already up-to-date",
@@ -164,14 +167,12 @@ class FlextInfraProjectMigrator(
     def _migrate_gitignore(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
         """Migrate gitignore."""
         gitignore_path = project_root / c.Infra.GITIGNORE
-        try:
-            existing_lines = (
-                gitignore_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).splitlines()
-                if gitignore_path.exists()
-                else list[str]()
-            )
-        except OSError as exc:
-            return r[str].fail_op(".gitignore read", exc)
+        existing_lines: t.StrSequence = list[str]()
+        if gitignore_path.exists():
+            read = u.Cli.files_read_text(gitignore_path)
+            if read.failure:
+                return r[str].fail(read.error or ".gitignore read failed")
+            existing_lines = read.value.splitlines()
         filtered = [
             line
             for line in existing_lines
@@ -214,10 +215,10 @@ class FlextInfraProjectMigrator(
         makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
         if not makefile_path.exists():
             return self._no_change_result("Makefile not found", dry_run=dry_run)
-        try:
-            original = makefile_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError as exc:
-            return r[str].fail_op("Makefile read", exc)
+        read = u.Cli.files_read_text(makefile_path)
+        if read.failure:
+            return r[str].fail(read.error or "Makefile read failed")
+        original = read.value
         updated = original
         for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
             updated = updated.replace(before, after)
