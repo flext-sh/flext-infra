@@ -69,11 +69,10 @@ class FlextInfraWorkspaceMakefileGenerator:
         content = render_result.value
 
         if makefile.exists():
-            try:
-                existing = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[bool].fail_op("Makefile read", exc)
-            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
+            read = u.Cli.files_read_text(makefile)
+            if read.failure:
+                return r[bool].fail(read.error or "Makefile read failed")
+            if u.Cli.sha256_content(read.value) == u.Cli.sha256_content(content):
                 return r[bool].ok(False)
 
         return u.Cli.atomic_write_text_file(makefile, content)
@@ -116,11 +115,11 @@ class FlextInfraWorkspaceMakefileGenerator:
         if not makefile.exists():
             result = r[bool].ok(False)
         else:
-            try:
-                content = makefile.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                result = r[bool].fail_op("Makefile read", exc)
+            read = u.Cli.files_read_text(makefile)
+            if read.failure:
+                result = r[bool].fail(read.error or "Makefile read failed")
             else:
+                content = read.value
                 if c.Infra.MAKEFILE_GENERATED_MARKER in content:
                     result = r[bool].ok(False)
                 else:
