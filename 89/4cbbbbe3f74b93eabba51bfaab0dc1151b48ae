@@ -1,0 +1,20 @@
+src/flext_infra/workspace/workspace_makefile.py
+  s_9942ef7a89ba9a::t_c3d887560c3c30 72-75
+  s_9942ef7a89ba9a::t_c7ca6c848b03e5 118-120,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "894cbbbbe3f74b93eabba51bfaab0dc1151b48ae",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
