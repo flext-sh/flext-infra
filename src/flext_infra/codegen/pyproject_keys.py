@@ -41,8 +41,13 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
                 continue
 
             pyproject_path = project_info.path / c.Infra.PYPROJECT_FILENAME
-            original_text = pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            doc = tomlkit.parse(original_text)
+            doc_result = u.Cli.toml_read_document(pyproject_path)
+            if doc_result.failure:
+                return r[bool].fail(
+                    doc_result.error or f"pyproject-keys: cannot read {pyproject_path}",
+                )
+            doc = doc_result.value
+            original_text = tomlkit.dumps(doc)
 
             tool_flext_config = u.read_tool_flext_config(project_info.path)
             dumped = tool_flext_config.model_dump(exclude_none=True)
@@ -74,7 +79,11 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
                 generated += 1
                 continue
 
-            pyproject_path.write_text(rendered, encoding=c.Cli.ENCODING_DEFAULT)
+            write_result = u.Cli.atomic_write_text_file(pyproject_path, rendered)
+            if write_result.failure:
+                return r[bool].fail(
+                    write_result.error or f"pyproject-keys: cannot write {pyproject_path}",
+                )
             generated += 1
             u.Cli.info(
                 f"  generated: {pyproject_path.relative_to(self.workspace_root)}",
