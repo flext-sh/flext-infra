@@ -108,5 +108,24 @@ class FlextInfraUtilitiesBase:
         """Return trimmed make arguments without blank entries."""
         return tuple(item.strip() for item in values if item.strip())
 
+    @staticmethod
+    def resolve_what(verb: str, phase: str) -> p.Result[t.StrSequence]:
+        """Resolve a ``WHAT=`` phase against ``c.Infra.WHAT_PHASES`` (single SSOT).
+
+        Empty ``phase`` expands to every phase of ``verb`` (sorted); a non-empty
+        unknown phase is a usage failure listing the valid phases. Shared by the
+        orchestrator, check and validate groups so WHAT resolution lives in one
+        place.
+        """
+        phases = c.Infra.WHAT_PHASES.get(verb, frozenset())
+        if not phase:
+            return r[t.StrSequence].ok(tuple(sorted(phases)))
+        if phase not in phases:
+            valid = ", ".join(sorted(phases)) or "(none)"
+            return r[t.StrSequence].fail(
+                f"unknown WHAT '{phase}' for verb '{verb}' (valid: {valid})",
+            )
+        return r[t.StrSequence].ok((phase,))
+
 
 __all__: list[str] = ["FlextInfraUtilitiesBase"]
