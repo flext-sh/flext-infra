@@ -245,7 +245,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs test val clean ship _rel _pr _save _tag _push imp stat
+.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs test val clean ship _rel _pr _save _tag _push _imp _stat
 
 help: ## Show simple workspace verbs
 	$(Q)echo "FLEXT Workspace"
@@ -274,7 +274,16 @@ help: ## Show simple workspace verbs
 {% endfor %}
 	$(Q)echo " NOTE: Attached projects are discovered from top-level pyproject.toml files that declare flext-core."
 
-boot: ## Install all projects into workspace .venv
+boot: ## Bootstrap .venv + submodules (WHAT=venv|submodules|sync|stat|imp)
+	$(Q)case "$(WHAT)" in \
+	""|venv|submodules) $(MAKE) --no-print-directory _boot_default $(MAKE_SELECTION_ARGS) ;; \
+	sync) $(MAKE) --no-print-directory _sync $(MAKE_SELECTION_ARGS) ;; \
+	stat) $(MAKE) --no-print-directory _stat ;; \
+	imp) $(MAKE) --no-print-directory _imp ;; \
+	*) echo "invalid WHAT '$(WHAT)' for boot (valid: venv submodules sync stat imp)" >&2; exit 2 ;; \
+	esac
+
+_boot_default: ## Install all projects into workspace .venv
 	$(Q)$(PREFLIGHT_CHECK)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)if [ -f .gitmodules ]; then \
@@ -942,7 +951,7 @@ _save: ## Commit all changes in selected projects (MESSAGE=)
 	fi; \
 	echo "Commit: $$committed committed, $$skipped clean, $$failed failed"
 
-stat: ## Show git status for all workspace projects (submodules + external + root)
+_stat: ## Show git status for all workspace projects (submodules + external + root)
 	$(Q)for proj in $(ALL_PROJECTS); do \
 		if [ -e "$$proj/.git" ]; then \
 			changes=$$(cd "$$proj" && git status --porcelain 2>/dev/null); \
@@ -1081,7 +1090,7 @@ else
 endif
 	$(Q)echo "==> Sync complete."
 
-imp: ## Detect and fix import violations across workspace (CST-based)
+_imp: ## Detect and fix import violations across workspace (CST-based)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(WORKSPACE_INFRA_REFACTOR) imports \

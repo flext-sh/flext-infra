@@ -265,3 +265,14 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
 
         assert process.exit_code == 0
         assert '_check_default CHECK_GATES="loc-cap"' in output
+
+    def test_workspace_makefile_dry_run_boot_what_stat_dispatches_to_private(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "boot", "WHAT=stat")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "--no-print-directory _stat" in output
