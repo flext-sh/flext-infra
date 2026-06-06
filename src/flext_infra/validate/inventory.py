@@ -51,8 +51,10 @@ class FlextInfraInventoryService(s[bool]):
             if scripts_dir.exists():
                 scripts = sorted(
                     path.relative_to(root).as_posix()
-                    for path in scripts_dir.rglob("*")
-                    if path.is_file() and path.suffix in {c.Infra.EXT_PYTHON, ".sh"}
+                    for path in u.Infra.iter_matching_files(
+                        scripts_dir,
+                        includes=[c.Infra.EXT_PYTHON_GLOB, "*.sh"],
+                    )
                 )
             now = datetime.now(UTC).isoformat()
             scripts_infra: t.JsonValueList = list(scripts)
