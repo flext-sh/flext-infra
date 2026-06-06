@@ -22,8 +22,11 @@ class FlextInfraManualTypingAliasDetector:
             or c.Infra.MRO_TYPINGS_DIRECTORY in ctx.file_path.parts
         ):
             return []
+        resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
+        if resource is None:
+            return []
         file_path = ctx.file_path
-        lines = u.Cli.files_read_text(file_path).unwrap_or("").splitlines()
+        lines = resource.read().splitlines()
         violations: t.MutableSequenceOf[m.Infra.ManualTypingAliasViolation] = []
         for line_number, line in enumerate(lines, start=1):
             if not line or line[0].isspace():
