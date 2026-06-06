@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 
 
 class FlextInfraManualTypingAliasDetector:
@@ -23,7 +23,7 @@ class FlextInfraManualTypingAliasDetector:
         ):
             return []
         file_path = ctx.file_path
-        lines = file_path.read_text(encoding="utf-8").splitlines()
+        lines = u.Cli.files_read_text(file_path).unwrap_or("").splitlines()
         violations: t.MutableSequenceOf[m.Infra.ManualTypingAliasViolation] = []
         for line_number, line in enumerate(lines, start=1):
             if not line or line[0].isspace():
