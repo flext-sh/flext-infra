@@ -1,0 +1,46 @@
+"""Tests for the manual-command blocker (AGENTS.md §5).
+
+``is_blocked`` flags bare tool invocations that bypass make / flext_infra and
+allows monopoly-routed commands; ``render_pre_commit_config`` emits hooks that
+call ``python -m flext_infra`` (never the retired audit scripts).
+"""
+
+from __future__ import annotations
+
+from flext_tests import tm
+
+from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
+from tests import t
+
+_V = FlextInfraManualCommandValidator
+
+
+class TestManualCommandValidator:
+    def test_bare_ruff_blocked(self) -> None:
+        tm.that(_V.is_blocked("ruff check src/"), eq=True)
+
+    def test_bare_pytest_blocked(self) -> None:
+        tm.that(_V.is_blocked("pytest -q tests/"), eq=True)
+
+    def test_git_commit_blocked(self) -> None:
+        tm.that(_V.is_blocked("git commit -am wip"), eq=True)
+
+    def test_sed_inplace_blocked(self) -> None:
+        tm.that(_V.is_blocked("sed -i s/a/b/ file.py"), eq=True)
+
+    def test_git_status_allowed(self) -> None:
+        tm.that(_V.is_blocked("git status"), eq=False)
+
+    def test_make_allowed(self) -> None:
+        tm.that(_V.is_blocked("make check WHAT=lint"), eq=False)
+
+    def test_flext_infra_allowed(self) -> None:
+        tm.that(_V.is_blocked("python -m flext_infra check --what boundary"), eq=False)
+
+    def test_render_uses_flext_infra_and_drops_scripts(self) -> None:
+        rendered = _V.render_pre_commit_config()
+        tm.that("python -m flext_infra check --what boundary" in rendered, eq=True)
+        tm.that("audit_banned_cli_libs.py" not in rendered, eq=True)
+
+
+__all__: t.StrSequence = []
