@@ -10,7 +10,6 @@ from typing import ClassVar
 
 from flext_infra import (
     FlextInfraRefactorMROSymbolPropagator,
-    c,
     m,
     t,
     u,
@@ -289,10 +288,11 @@ class FlextInfraRefactorMROImportRewriter:
         for file_path in sorted(request.file_moves):
             source = request.pending_sources.get(file_path)
             if source is None:
-                try:
-                    source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                except OSError:
+                read = u.Cli.files_read_text(file_path)
+                if read.failure:
+                    errors.append(read.error or f"failed to read {file_path}")
                     continue
+                source = read.value
             transformer = FlextInfraRefactorMROSymbolPropagator(
                 module_moves=request.file_moves[file_path],
             )
