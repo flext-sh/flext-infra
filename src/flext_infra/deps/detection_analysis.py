@@ -267,13 +267,12 @@ class FlextInfraDependencyDetectionAnalysis:
             )
         issues: t.SequenceOf[t.Infra.ContainerDict] = []
         if out_file.exists():
-            raw = out_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            loaded_result = u.Cli.json_parse(raw) if raw.strip() else None
-            if (
-                loaded_result is not None
-                and loaded_result.success
-                and isinstance(loaded_result.value, list)
-            ):
+            loaded_result = u.Cli.files_read_json(out_file)
+            if loaded_result.failure:
+                return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
+                    loaded_result.error or "deptry JSON output unreadable/invalid",
+                )
+            if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.Infra.ContainerDict] = []
                 for item in loaded_result.value:
                     if not isinstance(item, Mapping):

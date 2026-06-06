@@ -98,7 +98,12 @@ class TestsFlextInfraDepsDetectionDeptry:
 
         tm.fail(service.run_deptry(project, venv_bin))
 
-    def test_invalid_and_empty_json_output(self, tmp_path: Path) -> None:
+    def test_invalid_and_empty_json_output_surfaces_failure(self, tmp_path: Path) -> None:
+        """Unparseable deptry output (deptry exited 0) surfaces as a failure.
+
+        deptry writes ``[]`` for a clean run; invalid/empty output is an anomaly
+        that must never be silently swallowed as "no issues" (SUPREME RULE).
+        """
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output(),
         )
@@ -116,8 +121,7 @@ class TestsFlextInfraDepsDetectionDeptry:
 
             result = service.run_deptry(project, venv_bin, json_output_path=out_file)
 
-            tm.ok(result)
-            tm.that(result.value, eq=([], 0))
+            tm.that(result.failure, eq=True)
 
     def test_with_extend_exclude_and_cleanup(self, tmp_path: Path) -> None:
         service = u.Tests.create_deptry_service(
