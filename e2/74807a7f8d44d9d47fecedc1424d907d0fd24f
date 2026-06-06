@@ -1,0 +1,36 @@
+src/flext_infra/_constants/check.py
+  s_9942ef7a89ba9a::t_77e73eb653cb25 41-45
+src/flext_infra/__init__.py
+  s_9942ef7a89ba9a::t_7b9a816697963b 649,653
+  s_9942ef7a89ba9a::t_109559fdb1e35c 830
+  s_9942ef7a89ba9a::t_5122b9314322f1 905
+  s_9942ef7a89ba9a::t_d1323a4d45d463 267-269,273
+src/flext_infra/check/workspace_check_gates.py
+  s_9942ef7a89ba9a::t_8624ac745f02be 48-49
+  s_9942ef7a89ba9a::t_6f1e38e87f35d9 14,18
+src/flext_infra/gates/abstraction_boundary.py
+  s_9942ef7a89ba9a::t_450a4d4513c020 21
+  s_9942ef7a89ba9a::t_3b8f478a32036b 30-31
+src/flext_infra/gates/loc_cap.py
+  s_9942ef7a89ba9a::t_594f54e70ce56f 23-24,26
+  s_9942ef7a89ba9a::t_c6e9d035cfcd10 38
+  s_9942ef7a89ba9a::t_9467be53b270fb 14
+tests/unit/check/gate_registry_tests.py
+  s_9942ef7a89ba9a::t_e3b03877c1c14d 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "e274807a7f8d44d9d47fecedc1424d907d0fd24f",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
