@@ -46,10 +46,6 @@ class FlextInfraConstantsCheck:
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
-    REQUIRED_EXCLUDES: Final[t.StrSequence] = (
-        "**/*_pb2*.py",
-        "**/*_pb2_grpc*.py",
-    )
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )
@@ -59,7 +55,6 @@ class FlextInfraConstantsCheck:
     GO_VET_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<file>[^:\n]+\.go):(?P<line>\d+)(?::(?P<col>\d+))?:\s*(?P<msg>.*)$",
     )
-    MAX_DISPLAY_ISSUES: Final[int] = 50
 
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
