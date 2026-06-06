@@ -1,0 +1,22 @@
+src/flext_infra/gates/abstraction_boundary.py
+  s_9942ef7a89ba9a::t_0e00c5a0d6c612 3-10
+  s_9942ef7a89ba9a::t_c1849eaf54ed47 1-2,11-210
+tests/unit/check/abstraction_boundary_gate_tests.py
+  s_9942ef7a89ba9a::t_34649bb5a56381 1-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "1116a7b8f09e6b66a300bd5dd6ee27197ab4d0dc",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
