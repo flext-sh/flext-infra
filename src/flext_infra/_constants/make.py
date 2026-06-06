@@ -47,9 +47,6 @@ class FlextInfraConstantsMake:
     PROJECT_FAST_PATH_CHECK_GATES: Final[str] = "lint,format,pyrefly,mypy,pyright"
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
     DOCS_PHASES_ALLOWED: Final[str] = "all|generate|fix|audit|build|validate"
-    RELEASE_PHASES_ALLOWED: Final[str] = "validate,version,build,publish|all"
-    PR_ACTIONS_ALLOWED: Final[str] = "status|create|view|checks|merge|close"
-    PR_MERGE_METHODS_ALLOWED: Final[str] = "squash|merge|rebase"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
         "build",
         "check",
@@ -307,7 +304,6 @@ class FlextInfraConstantsMake:
         'Use PROJECT=<name> or PROJECTS="proj-a proj-b"'
     )
     WORKSPACE_BOOT_HINT: Final[str] = "make boot"
-    STANDALONE_BOOT_HINT: Final[str] = "make setup"
     SAVE_USAGE: Final[str] = "make save MESSAGE='chore: your message'"
     FORWARD_MODE_VALUE: Final[str] = "value"
     FORWARD_MODE_ENABLED: Final[str] = "enabled"
