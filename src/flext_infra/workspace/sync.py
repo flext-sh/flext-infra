@@ -240,9 +240,10 @@ class FlextInfraSyncService(
         try:
             existing_lines: t.StrSequence = []
             if gitignore.exists():
-                existing_lines = gitignore.read_text(
-                    encoding=c.Cli.ENCODING_DEFAULT,
-                ).splitlines()
+                read = u.Cli.files_read_text(gitignore)
+                if read.failure:
+                    return r[bool].fail(read.error or ".gitignore read failed")
+                existing_lines = read.value.splitlines()
             existing_patterns = {
                 line.strip() for line in existing_lines if line.strip()
             }

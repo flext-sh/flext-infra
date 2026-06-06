@@ -148,7 +148,7 @@ class TestsFlextInfraWorkspaceSync:
         ).execute()
 
         assert result.failure
-        assert ".gitignore update failed" in _error_text(result)
+        assert ".gitignore" in _error_text(result)
 
     def test_sync_workspace_root_also_syncs_child_projects(
         self, tmp_path: Path
