@@ -1,0 +1,19 @@
+src/flext_infra/codegen/consolidator.py
+  s_9942ef7a89ba9a::t_a769ad091e8839 56-61,266-270,272-282,284,298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "aaf9326aedb4740fc39cbb3a3f420ef9ba11deb7",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
