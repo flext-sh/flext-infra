@@ -27,13 +27,15 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the quality gate and return its CLI success/failure status."""
-        report = self.build_report()
-        verdict = u.Cli.json_pick_str(report, "verdict", "FAIL")
+        report_result = self.build_report()
+        if report_result.failure:
+            return r[bool].fail(report_result.error or "quality gate build failed")
+        verdict = u.Cli.json_pick_str(report_result.value, "verdict", "FAIL")
         if self.successful_verdict(verdict):
             return r[bool].ok(True)
         return r[bool].fail(f"quality gate verdict: {verdict}")
 
-    def build_report(self) -> t.Infra.ContainerDict:
+    def build_report(self) -> p.Result[t.Infra.ContainerDict]:
         """Execute quality gate and return structured report payload."""
         FlextInfraCodegenLazyInit.model_validate(
             {"workspace_root": self.workspace_root},
@@ -83,12 +85,19 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ],
         }
         report = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
-        report_data["artifacts"] = self.write_artifacts(
+        artifacts = self.write_artifacts(
             workspace_root=self.workspace_root,
             report=report,
             render_text=self.render_text(report),
         )
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
+        if artifacts.failure:
+            return r[t.Infra.ContainerDict].fail(
+                artifacts.error or "quality gate artifact write failed",
+            )
+        report_data["artifacts"] = artifacts.value
+        return r[t.Infra.ContainerDict].ok(
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data),
+        )
 
     @staticmethod
     def modified_python_files(workspace_root: Path) -> t.StrSequence:
@@ -310,20 +319,30 @@ class FlextInfraCodegenQualityGate(s[bool]):
         workspace_root: Path,
         report: t.Infra.ContainerDict,
         render_text: str,
-    ) -> t.Infra.ContainerDict:
+    ) -> p.Result[t.Infra.ContainerDict]:
         """Persist quality gate artifacts to the report directory."""
         report_dir = workspace_root / c.Infra.QG_REPORT_DIR
         report_dir.mkdir(parents=True, exist_ok=True)
         report_json = report_dir / "latest.json"
         report_txt = report_dir / "latest.txt"
-        report_json.write_text(
+        json_write = u.Cli.atomic_write_text_file(
+            report_json,
             t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
                 c.Cli.ENCODING_DEFAULT,
             ),
-            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        report_txt.write_text(render_text, encoding=c.Cli.ENCODING_DEFAULT)
-        return {"report_json": str(report_json), "report_text": str(report_txt)}
+        if json_write.failure:
+            return r[t.Infra.ContainerDict].fail(
+                json_write.error or f"cannot write {report_json}",
+            )
+        txt_write = u.Cli.atomic_write_text_file(report_txt, render_text)
+        if txt_write.failure:
+            return r[t.Infra.ContainerDict].fail(
+                txt_write.error or f"cannot write {report_txt}",
+            )
+        return r[t.Infra.ContainerDict].ok(
+            {"report_json": str(report_json), "report_text": str(report_txt)},
+        )
 
     @classmethod
     def render_text(cls, report: t.Infra.ContainerDict) -> str:

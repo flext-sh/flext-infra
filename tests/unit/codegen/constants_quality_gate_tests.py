@@ -89,9 +89,9 @@ class TestConstantsQualityGateVerdict:
     def test_real_workspace_run_returns_report(self, tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
         gate = FlextInfraCodegenQualityGate(workspace=tmp_path)
-        report = gate.build_report()
-        assert isinstance(report, dict)
-        assert "verdict" in report
+        report_result = gate.build_report()
+        tm.ok(report_result)
+        assert "verdict" in report_result.value
 
     def test_build_report_uses_canonical_census_duplicates(
         self,
@@ -139,7 +139,9 @@ class TestConstantsQualityGateVerdict:
         )
 
         gate = FlextInfraCodegenQualityGate(workspace=tmp_path)
-        report = gate.build_report()
+        report_result = gate.build_report()
+        tm.ok(report_result)
+        report = report_result.value
         after = u.Cli.json_deep_mapping(report, "after")
         duplicate_groups = u.Cli.json_deep_mapping_list(
             report,
