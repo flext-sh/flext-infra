@@ -1,0 +1,21 @@
+src/flext_infra/release/orchestrator_phases.py
+  s_9942ef7a89ba9a::t_840581ac92d6df 12-14,19-22
+src/flext_infra/release/_orchestrator_publish.py
+  s_9942ef7a89ba9a::t_e25ad86527ea12 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "4b4ec02ff1a6c81cbff507a889a9f31d0583bb1b",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
