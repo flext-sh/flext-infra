@@ -27,7 +27,7 @@ class TestResolveWhat:
     def test_unknown_phase_is_usage_failure(self) -> None:
         result = u.Infra.resolve_what("check", "bogus")
         tm.fail(result)
-        tm.that("bogus" in result.error, eq=True)
+        tm.that("bogus" in (result.error or ""), eq=True)
 
     def test_verb_without_phases_is_empty(self) -> None:
         result = u.Infra.resolve_what("clean", "")
