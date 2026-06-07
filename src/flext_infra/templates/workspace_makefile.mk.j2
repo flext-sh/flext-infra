@@ -253,7 +253,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs test val clean ship _rel _pr _save _tag _push _imp _stat
+.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination test val clean ship _rel _pr _save _tag _push _imp _stat
 
 help: ## Show simple workspace verbs
 	$(Q)echo "FLEXT Workspace"
@@ -537,7 +537,7 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	echo ""
 	$(Q)echo "Dependency constraint rewrite complete."
 
-check: ## Quality gates (WHAT=scan|fmt|types|pyre|pol|cqrs|lint|pyrefly|loc-cap|boundary)
+check: ## Quality gates (WHAT=scan|fmt|types|pyre|pol|cqrs|lint|pyrefly|loc-cap|boundary|coordination)
 	$(Q)case "$(WHAT)" in \
 {{ what_dispatch('check') | trim }}
 
@@ -547,6 +547,16 @@ _check_default: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_C
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
 {{ forward_make_args(make.CHECK_FORWARD_ARGS) | trim }}
 		$(ORCHESTRATOR_PROJECTS)
+
+_coordination: ## Run Beads coordination reports
+	$(Q)bd status --json
+	$(Q)bd dolt show
+	$(Q)bd backup status --json
+	$(Q)bd hooks list --json
+	$(Q)bash .github/scripts/check-beads-policy.sh
+	$(Q)bd dep cycles --json
+	$(Q)bd stale --status in_progress --days 1 --limit 25 --json
+	$(Q)bd graph --all --compact >/dev/null
 
 _cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
