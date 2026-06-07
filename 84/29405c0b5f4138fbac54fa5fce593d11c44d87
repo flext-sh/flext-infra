@@ -1,0 +1,23 @@
+src/flext_infra/refactor/_census_collect_helpers.py
+  s_9942ef7a89ba9a::t_6e1f32fcca0a4a 1-103
+src/flext_infra/refactor/census.py
+  s_9942ef7a89ba9a::t_473ff8e61e3440 30-32
+  s_9942ef7a89ba9a::t_b9cd079aa10a44 63
+  s_9942ef7a89ba9a::t_6e1f32fcca0a4a 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "8429405c0b5f4138fbac54fa5fce593d11c44d87",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
