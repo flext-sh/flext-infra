@@ -1,0 +1,29 @@
+src/flext_infra/deps/detection_analysis.py
+  s_9942ef7a89ba9a::t_258a1c1660e7aa 10,23
+  s_9942ef7a89ba9a::t_9535094cf74636 63
+  s_9942ef7a89ba9a::t_6502e66a28d46c 60-61
+  s_9942ef7a89ba9a::t_26ad2886e39c1a 1,21
+  s_9942ef7a89ba9a::t_0b21ee78e3c80a 74-75,77
+  s_9942ef7a89ba9a::t_ae62348309b25d 12-15,18-20
+src/flext_infra/deps/_detection_runners.py
+  s_9942ef7a89ba9a::t_9045d11c82e179 17,20-21,25,32-43
+  s_9942ef7a89ba9a::t_d5b275a148d5ac 1,6,8,12-13,16,18-19,22-24
+  s_9942ef7a89ba9a::t_1544ce6b8e02e5 2-5,7,9-11,14-15,44-179
+  s_9942ef7a89ba9a::t_a8110b10eb956d 26-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "f7c6649efc9279bab8b021ca0694a88254d67536",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
