@@ -1,0 +1,25 @@
+src/flext_infra/refactor/engine_text.py
+  s_9942ef7a89ba9a::t_c21cb7879ff95f 6
+  s_9942ef7a89ba9a::t_8927dad5c89ca3 16-21,24-28
+  s_9942ef7a89ba9a::t_93a8466b8a6944 71
+src/flext_infra/refactor/_engine_text_typing.py
+  s_9942ef7a89ba9a::t_1b0582d18f8b63 1-199
+src/flext_infra/refactor/_engine_text_propagate.py
+  s_9942ef7a89ba9a::t_274da5b204a446 1-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "a004ab5a0c2140c5a322beb5219c0e727e68054a",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
