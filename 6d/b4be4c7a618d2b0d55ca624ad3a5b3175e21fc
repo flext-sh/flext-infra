@@ -1,0 +1,23 @@
+src/flext_infra/workspace/_migrator_artifacts.py
+  s_9942ef7a89ba9a::t_724b9f5901f39f 1-175
+src/flext_infra/workspace/_migrator_pyproject.py
+  s_9942ef7a89ba9a::t_64d6ef0042a54d 1-90
+src/flext_infra/workspace/migrator.py
+  s_9942ef7a89ba9a::t_e2a54d4ab3e4c9 17-22,29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6db4be4c7a618d2b0d55ca624ad3a5b3175e21fc",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
