@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, override
 
@@ -56,7 +55,7 @@ class FlextInfraInventoryService(s[bool]):
                         includes=[c.Infra.EXT_PYTHON_GLOB, "*.sh"],
                     )
                 )
-            now = datetime.now(UTC).isoformat()
+            now = u.now().isoformat()
             scripts_infra: t.JsonValueList = list(scripts)
             inventory: t.JsonMapping = {
                 "generated_at": now,
