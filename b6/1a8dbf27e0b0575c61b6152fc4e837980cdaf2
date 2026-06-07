@@ -1,0 +1,24 @@
+src/flext_infra/deps/phase_engine.py
+  s_9942ef7a89ba9a::t_75bb2e8eca6f3d 156,226
+  s_9942ef7a89ba9a::t_d9e191ce094ec1 39
+  s_9942ef7a89ba9a::t_3a31b67c10360d 22
+  s_9942ef7a89ba9a::t_17421bbb2f041b 115
+  s_9942ef7a89ba9a::t_b0aae10480b91b 110
+  s_9942ef7a89ba9a::t_00fccf2f8bf8cf 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "b61a8dbf27e0b0575c61b6152fc4e837980cdaf2",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
