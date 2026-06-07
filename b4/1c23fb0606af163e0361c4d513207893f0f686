@@ -1,0 +1,21 @@
+src/flext_infra/refactor/violation_analyzer.py
+  s_9942ef7a89ba9a::t_701e75427df5b8 23-25,28-30
+src/flext_infra/refactor/_violation_helper_classifier.py
+  s_9942ef7a89ba9a::t_fc486a9c996363 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "b41c23fb0606af163e0361c4d513207893f0f686",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
