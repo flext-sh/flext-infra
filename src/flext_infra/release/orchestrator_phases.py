@@ -9,12 +9,17 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra.release._orchestrator_publish import (
+    FlextInfraReleaseOrchestratorPublishMixin,
+)
 
 logger = u.fetch_logger(__name__)
 
 
-class FlextInfraReleaseOrchestratorPhases:
-    """Build, publish, and version phase implementations."""
+class FlextInfraReleaseOrchestratorPhases(
+    FlextInfraReleaseOrchestratorPublishMixin,
+):
+    """Build and version phase implementations (publish via the mixin)."""
 
     @staticmethod
     def _run_make(project_path: Path, verb: str) -> p.Result[t.Pair[int, str]]:
@@ -97,73 +102,6 @@ class FlextInfraReleaseOrchestratorPhases:
             return r[bool].fail(f"build failed: {failures} project(s)")
         return r[bool].ok(True)
 
-    def phase_publish(
-        self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> p.Result[bool]:
-        """Execute publish phase: notes, changelog, tag, optional push."""
-        workspace_root = ctx.workspace_root
-        tag = ctx.tag
-        notes_dir = (
-            u.Cli.resolve_report_dir(
-                workspace_root,
-                c.Infra.PROJECT,
-                c.Infra.RK_RELEASE,
-            )
-            / tag
-        )
-        try:
-            notes_dir.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            return r[bool].fail_op("report dir creation", exc)
-        notes_path = notes_dir / "RELEASE_NOTES.md"
-        notes_result = self._generate_notes(ctx, notes_path)
-        if notes_result.failure:
-            return notes_result
-        if not notes_path.exists():
-            return r[bool].fail(
-                f"release notes generation did not create {notes_path}",
-            )
-        if not ctx.dry_run:
-            apply_result = self._publish_apply(
-                workspace_root=workspace_root,
-                version=ctx.version,
-                tag=tag,
-                notes_path=notes_path,
-                push=ctx.push,
-            )
-            if apply_result.failure:
-                return apply_result
-        logger.info("release_phase_publish", tag=tag, dry_run=ctx.dry_run)
-        return r[bool].ok(True)
-
-    def _publish_apply(
-        self,
-        *,
-        workspace_root: Path,
-        version: str,
-        tag: str,
-        notes_path: Path,
-        push: bool,
-    ) -> p.Result[bool]:
-        """Apply changelog, tag, and optional push for publish phase."""
-        changelog_result = u.Infra.update_changelog(
-            workspace_root,
-            version,
-            tag,
-            notes_path,
-        )
-        if changelog_result.failure:
-            return changelog_result
-        tag_result = self._create_tag(workspace_root, tag)
-        if tag_result.failure:
-            return tag_result
-        if push:
-            push_result = self._push_release(workspace_root, tag)
-            if push_result.failure:
-                return push_result
-        return r[bool].ok(True)
-
     def phase_version(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
@@ -214,22 +152,6 @@ class FlextInfraReleaseOrchestratorPhases:
         project_names: t.StrSequence,
     ) -> t.SequenceOf[t.Pair[str, Path]]:
         """Build targets."""
-        raise NotImplementedError
-
-    def _generate_notes(
-        self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        output_path: Path,
-    ) -> p.Result[bool]:
-        """Generate notes."""
-        raise NotImplementedError
-
-    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-        """Create tag."""
-        raise NotImplementedError
-
-    def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-        """Push release."""
         raise NotImplementedError
 
     def _version_files(
