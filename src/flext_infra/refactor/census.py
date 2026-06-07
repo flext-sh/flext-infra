@@ -24,6 +24,9 @@ from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.refactor._census_apply import (
     FlextInfraRefactorCensusApplyMixin,
 )
+from flext_infra.refactor._census_collect import (
+    FlextInfraRefactorCensusCollectMixin,
+)
 from flext_infra.refactor._census_collect_helpers import (
     FlextInfraRefactorCensusCollectHelpersMixin,
 )
@@ -67,6 +70,7 @@ _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 class FlextInfraRefactorCensus(
     FlextInfraProjectSelectionServiceBase[m.Infra.Census.WorkspaceReport],
     FlextInfraRefactorCensusApplyMixin,
+    FlextInfraRefactorCensusCollectMixin,
     FlextInfraRefactorCensusCollectHelpersMixin,
     FlextInfraRefactorCensusFiltersMixin,
     FlextInfraRefactorCensusInventoryMixin,
@@ -227,20 +231,23 @@ class FlextInfraRefactorCensus(
         include_local_scopes: bool,
         applied: frozenset[str],
     ) -> m.Infra.Census.WorkspaceReport:
-        """Collect report."""
+        """Scan selected modules then assemble the workspace census report."""
         selected_families = self._selected_families(family_names)
-        selected_kinds: frozenset[str] | None = (
-            frozenset(kind_names) if kind_names else None
-        )
         selected_rules: frozenset[str] | None = (
             frozenset(rule_names) if rule_names else None
         )
-        collect_object_inventory = self._should_collect_object_inventory(
-            rule_names,
+        config = m.Infra.Census.ScanConfig(
+            kind_names=kind_names,
+            rule_names=rule_names,
+            selected_families=selected_families,
+            selected_kinds=frozenset(kind_names) if kind_names else None,
             selected_rules=selected_rules,
-        )
-        include_object_references = self._should_collect_object_references(
-            rule_names,
+            collect_object_inventory=self._should_collect_object_inventory(
+                rule_names, selected_rules=selected_rules
+            ),
+            include_object_references=self._should_collect_object_references(rule_names),
+            include_local_scopes=include_local_scopes,
+            applied=applied,
         )
         project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
         project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
@@ -254,122 +261,26 @@ class FlextInfraRefactorCensus(
             selected_families=selected_families,
             rule_names=rule_names,
         ):
-            convention = rope.convention(module.file_path)
-            project = self._project_name_for_module(module, convention)
-            if not project:
-                continue
-            module_objects: tuple[m.Infra.Census.Object, ...] | None = None
-            objects: tuple[m.Infra.Census.Object, ...] = ()
-            if collect_object_inventory:
-                try:
-                    module_objects = tuple(
-                        rope.objects(
-                            module.file_path,
-                            include_local_scopes=include_local_scopes,
-                            include_references=include_object_references,
-                        )
-                    )
-                except _ROPE_SAFE_EXCEPTIONS as exc:
-                    self._handle_rope_stage_failure(
-                        file_path=module.file_path,
-                        stage="inventory",
-                        exc=exc,
-                    )
-                    continue
-                objects = tuple(
-                    item
-                    for item in module_objects
-                    if self._include_object(
-                        item,
-                        kind_names=kind_names,
-                        selected_families=selected_families,
-                        selected_kinds=selected_kinds,
-                    )
-                )
-                if objects:
-                    project_objects[project].extend(objects)
-            if objects:
-                report_projects.add(project)
-            try:
-                violations, fixes = self._module_rules(
-                    rope,
-                    module.file_path,
-                    objects=module_objects,
-                    project_name=project,
-                    applied=applied,
-                    kind_names=kind_names,
-                    rule_names=rule_names,
-                    selected_kinds=selected_kinds,
-                    selected_rules=selected_rules,
-                    convention=convention,
-                )
-            except _ROPE_SAFE_EXCEPTIONS as exc:
-                self._handle_rope_stage_failure(
-                    file_path=module.file_path,
-                    stage="rules",
-                    exc=exc,
-                )
-                continue
-            report_projects.add(project)
-            if not objects and not violations and not fixes:
-                continue
-            project_violations[project].extend(violations)
-            project_fixes[project].extend(fixes)
-        duplicates = self._duplicate_groups(tuple(project_objects.values()))
-        duplicate_keys = frozenset(
-            self._object_key(item)
-            for group in duplicates
-            for item in group.definitions[1:]
-        )
-        report_project_names = tuple(
-            sorted(
-                report_projects
-                | set(project_objects)
-                | set(project_violations)
-                | set(project_fixes),
-            )
-        )
-        project_reports = tuple(
-            self._project_report(
-                project,
-                objects=tuple(project_objects[project]),
-                seed_violations=tuple(project_violations[project]),
-                fixes=tuple(project_fixes[project]),
-                duplicate_keys=duplicate_keys,
-                rule_names=rule_names,
-                selected_rules=selected_rules,
-            )
-            for project in report_project_names
-        )
-        if self.effective_dry_run:
-            project_reports = self._validated_project_reports(
+            self._scan_module(
                 rope,
-                project_reports,
+                module,
+                config,
+                project_objects=project_objects,
+                project_violations=project_violations,
+                project_fixes=project_fixes,
+                report_projects=report_projects,
             )
-        return m.Infra.Census.WorkspaceReport(
-            projects=project_reports,
-            total_objects=sum(report.objects_total for report in project_reports),
-            total_violations=sum(report.violations_total for report in project_reports),
-            total_fixable=sum(
-                1
-                for report in project_reports
-                for violation in report.violations
-                if violation.fixable
-            ),
-            fixes_total=sum(len(report.fixes) for report in project_reports),
-            duplicates=duplicates,
-            unused_count=sum(report.unused_count for report in project_reports),
-            test_only_count=sum(report.test_only_count for report in project_reports),
-            removal_candidate_count=sum(
-                report.removal_candidate_count for report in project_reports
-            ),
-            removal_candidates=tuple(
-                candidate
-                for report in project_reports
-                for candidate in report.removal_candidates
-            ),
+        return self._assemble_report(
+            rope,
+            project_objects=project_objects,
+            project_violations=project_violations,
+            project_fixes=project_fixes,
+            report_projects=report_projects,
+            rule_names=rule_names,
+            selected_rules=selected_rules,
         )
 
+    @override
     def _validated_project_reports(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
@@ -439,6 +350,7 @@ class FlextInfraRefactorCensus(
             )
         return tuple(validated_reports)
 
+    @override
     def _module_rules(
         self,
         rope: p.Infra.RopeWorkspaceDsl,

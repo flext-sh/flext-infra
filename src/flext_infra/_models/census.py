@@ -274,6 +274,39 @@ class FlextInfraModelsCensus:
                 str, m.Field(description="Unified diff preview (dry-run mode)")
             ] = ""
 
+        class ScanConfig(m.ArbitraryTypesModel):
+            """Resolved per-collect scan configuration shared across modules."""
+
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+            kind_names: Annotated[
+                t.StrSequence | None, m.Field(description="Symbol-kind filters")
+            ]
+            rule_names: Annotated[
+                t.StrSequence | None, m.Field(description="Violation-rule filters")
+            ]
+            selected_families: Annotated[
+                frozenset[str], m.Field(description="Resolved namespace families")
+            ]
+            selected_kinds: Annotated[
+                frozenset[str] | None, m.Field(description="Precomputed kind set")
+            ]
+            selected_rules: Annotated[
+                frozenset[str] | None, m.Field(description="Precomputed rule set")
+            ]
+            collect_object_inventory: Annotated[
+                bool, m.Field(description="Whether to collect the full object inventory")
+            ]
+            include_object_references: Annotated[
+                bool, m.Field(description="Whether to resolve object references")
+            ]
+            include_local_scopes: Annotated[
+                bool, m.Field(description="Whether to include local/nested scopes")
+            ]
+            applied: Annotated[
+                frozenset[str], m.Field(description="Fix keys already applied")
+            ]
+
         class DuplicateGroup(m.ArbitraryTypesModel):
             """Cross-project duplicate object cluster."""
 
