@@ -1,0 +1,21 @@
+src/flext_infra/validate/skill_validator.py
+  s_9942ef7a89ba9a::t_337e4428c365df 16-18,21
+src/flext_infra/validate/_skill_rule_engine.py
+  s_9942ef7a89ba9a::t_b901be344fd11b 1-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "99f3c52b9907cac9a003e64b1526d15189165ca7",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
