@@ -30,7 +30,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         )
 
         assert result.failure
-        assert "base.mk write failed" in (result.error or "")
+        assert result.error
 
     def test_generator_write_to_stream_handles_oserror(self) -> None:
         result = FlextInfraBaseMkGenerator().write(

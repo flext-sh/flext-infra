@@ -94,15 +94,7 @@ class FlextInfraBaseMkGenerator(s[str]):
                 return r[bool].ok(True)
             except c.EXC_OS_VALUE as exc:
                 return r[bool].fail_op("base.mk stdout write", exc)
-        try:
-            output.parent.mkdir(parents=True, exist_ok=True)
-            _ = output.write_text(
-                content,
-                encoding=c.Infra.ENCODING_DEFAULT,
-            )
-            return r[bool].ok(True)
-        except OSError as exc:
-            return r[bool].fail_op("base.mk write", exc)
+        return u.Cli.atomic_write_text_file(output, content)
 
     def _validate_generated_output(self, content: str) -> p.Result[str]:
         """Validate generated base.mk by running make --dry-run."""
@@ -111,14 +103,15 @@ class FlextInfraBaseMkGenerator(s[str]):
                 temp_dir = Path(temp_dir_name)
                 base_mk_path = temp_dir / c.Infra.BASE_MK
                 makefile_path = temp_dir / c.Infra.MAKEFILE_FILENAME
-                _ = base_mk_path.write_text(
-                    content,
-                    encoding=c.Infra.ENCODING_DEFAULT,
-                )
-                _ = makefile_path.write_text(
+                base_write = u.Cli.atomic_write_text_file(base_mk_path, content)
+                if base_write.failure:
+                    return r[str].fail(base_write.error or "temp base.mk write failed")
+                mk_write = u.Cli.atomic_write_text_file(
+                    makefile_path,
                     "include base.mk\n",
-                    encoding=c.Infra.ENCODING_DEFAULT,
                 )
+                if mk_write.failure:
+                    return r[str].fail(mk_write.error or "temp Makefile write failed")
                 process_result = self._get_runner.run([
                     c.Infra.MAKE,
                     "-C",
