@@ -1,0 +1,20 @@
+src/flext_infra/deps/phases/ensure_formatting.py
+  s_9942ef7a89ba9a::t_0fe95c189b4f78 93
+  s_9942ef7a89ba9a::t_e9ec4eee79ce90 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "4ef7bf17cd6db7e7f9844c5af53d6c801dfe88a7",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
