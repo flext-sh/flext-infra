@@ -1,0 +1,21 @@
+src/flext_infra/transformers/tier0_import_fixer.py
+  s_9942ef7a89ba9a::t_08c38376ebafcb 14-16,19
+src/flext_infra/transformers/_tier0_transformer.py
+  s_9942ef7a89ba9a::t_009a6d99a9f86e 1-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "768961e22eaaf83ce47e305e16a8e4697b74bcca",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
