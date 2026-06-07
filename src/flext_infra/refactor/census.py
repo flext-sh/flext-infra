@@ -30,8 +30,14 @@ from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.refactor._census_filters import (
     FlextInfraRefactorCensusFiltersMixin,
 )
+from flext_infra.refactor._census_inventory import (
+    FlextInfraRefactorCensusInventoryMixin,
+)
 from flext_infra.refactor._census_objects import (
     FlextInfraRefactorCensusObjectsMixin,
+)
+from flext_infra.refactor._census_render import (
+    FlextInfraRefactorCensusRenderMixin,
 )
 from flext_infra.refactor._census_symbols import (
     FlextInfraRefactorCensusSymbolsMixin,
@@ -52,7 +58,9 @@ _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 class FlextInfraRefactorCensus(
     FlextInfraProjectSelectionServiceBase[m.Infra.Census.WorkspaceReport],
     FlextInfraRefactorCensusFiltersMixin,
+    FlextInfraRefactorCensusInventoryMixin,
     FlextInfraRefactorCensusObjectsMixin,
+    FlextInfraRefactorCensusRenderMixin,
     FlextInfraRefactorCensusSymbolsMixin,
 ):
     """Generalized Rope-only census service for Python objects across the workspace."""
@@ -135,63 +143,6 @@ class FlextInfraRefactorCensus(
         consistency afterwards.
         """
         return (c.Infra.LINT, c.Infra.PYREFLY)
-
-    @staticmethod
-    def _render_workspace_report(report: m.Infra.Census.WorkspaceReport) -> str:
-        """Render workspace census report from typed model fields."""
-        lines = [
-            "Workspace Census Report",
-            f"Objects: {report.total_objects}",
-            f"Violations: {report.total_violations}",
-            f"Fixable: {report.total_fixable}",
-            f"Fixes: {report.fixes_total}",
-            f"Unused: {report.unused_count}",
-            f"Test-only: {report.test_only_count}",
-            f"Removal candidates: {report.removal_candidate_count}",
-            f"Duplicate groups: {len(report.duplicates)}",
-            f"Duration: {report.scan_duration_seconds:.2f}s",
-            "",
-        ]
-        lines.extend(
-            "- "
-            f"{project.project}: "
-            f"objects={project.objects_total} "
-            f"violations={project.violations_total} "
-            f"unused={project.unused_count} "
-            f"test-only={project.test_only_count} "
-            f"candidates={project.removal_candidate_count}"
-            for project in report.projects
-        )
-        if report.removal_candidates:
-            lines.extend(("", "Candidate preview:"))
-            for candidate in report.removal_candidates[:10]:
-                reference_groups = (
-                    candidate.test_reference_sites,
-                    candidate.runtime_reference_sites,
-                    candidate.example_reference_sites,
-                    candidate.script_reference_sites,
-                )
-                reference_preview = next(
-                    (
-                        ", ".join(f"{site.file_path}:{site.line}" for site in group[:3])
-                        for group in reference_groups
-                        if group
-                    ),
-                    "",
-                )
-                lines.append(
-                    "- "
-                    f"{candidate.reason} "
-                    f"{candidate.object_name} "
-                    f"@ {candidate.file_path}:{candidate.line}"
-                    + (f" refs={reference_preview}" if reference_preview else "")
-                )
-        return "\n".join(lines)
-
-    @staticmethod
-    def render_text(report: m.Infra.Census.WorkspaceReport) -> str:
-        """Render the canonical workspace census report."""
-        return FlextInfraRefactorCensus._render_workspace_report(report)
 
     def _execution_reports(
         self,
@@ -1123,115 +1074,6 @@ class FlextInfraRefactorCensus(
         FlextInfraCodegenLazyInit(workspace=workspace).generate_inits(
             check_only=False,
         )
-
-    @classmethod
-    def _build_parent_inventory(
-        cls,
-        workspace_root: Path,
-    ) -> t.MappingKV[str, t.StrSequence]:
-        """Inventory governed-package alias top-level facade names.
-
-        Discovers governed projects via ``u.Infra.projects(workspace_root)``
-        (canonical workspace project discovery — SSOT). For each project
-        whose hyphenated name converts to a Python package, imports the
-        package and walks dynamic facade aliases at depth 1
-        (top-level facade attributes such as ``flext_core.c.Result``).
-
-        Returns ``{symbol_name: (parent_path, ...)}`` so a consumer-defined
-        symbol with the same name can be cross-referenced against every
-        parent that declares it.
-
-        Only ``type`` instances (classes) are inventoried; method names
-        inherited from ABCs (``clear``, ``get``, …) are skipped — every
-        mapping class shares them, so they are not collision candidates.
-
-        Filters out attributes whose values' ``__module__`` is not in the
-        flext package tree.
-
-        Read-only runtime introspection — NO Rope, NO source-tree walking,
-        NO subprocess. Skips packages that fail to import (sub-repo
-        environments may not have every flext-* installed).
-        """
-        projects_result = u.Infra.projects(workspace_root)
-        if projects_result.failure:
-            return {}
-        inventory: dict[str, list[str]] = defaultdict(list)
-        for project in projects_result.unwrap():
-            pkg_name = project.name.replace("-", "_")
-            try:
-                module = __import__(pkg_name)
-            except ImportError:
-                continue
-            for alias_name in u.read_project_constants(pkg_name).FACADE_ALIAS_NAMES:
-                alias = getattr(module, alias_name, None)
-                if alias is None:
-                    continue
-                for attr in dir(alias):
-                    if attr.startswith("_"):
-                        continue
-                    nested = getattr(alias, attr, None)
-                    if (
-                        nested is None
-                        or not isinstance(nested, p.ModuleOwned)
-                        or not cls._is_flext_owned(nested)
-                    ):
-                        continue
-                    if not isinstance(nested, type):
-                        continue
-                    inventory[attr].append(f"{pkg_name}.{alias_name}.{attr}")
-        return {name: tuple(paths) for name, paths in inventory.items()}
-
-    @classmethod
-    def parent_alias_collisions(
-        cls,
-        report: m.Infra.Census.WorkspaceReport,
-        *,
-        workspace_root: Path,
-    ) -> tuple[tuple[m.Infra.Census.Object, t.StrSequence], ...]:
-        """Cross-reference workspace objects against upstream parent inventory.
-
-        Returns ``(symbol, parent_paths)`` pairs where the consumer's
-        public symbol name appears on at least one governed parent
-        package's dynamically derived facade aliases. Sorted descending by the number of
-        matching parent paths (broadest collision surface first).
-
-        Self-references are filtered: a symbol in project ``flext-core``
-        whose name matches a symbol on ``flext_core.<alias>.<name>`` is
-        the canonical owner, not a duplicate.
-
-        Args:
-            report: A ``WorkspaceReport`` produced by ``execute()`` or
-                ``_collect_report(...)``. Reusing the existing report
-                avoids a second Rope-walk; the inventory is the only new
-                I/O.
-            workspace_root: Workspace root used to discover governed
-                projects (parent packages).
-
-        Returns:
-            Tuple of ``(symbol, parent_paths)`` pairs. Empty tuple if
-            no collisions are found.
-
-        """
-        inventory = cls._build_parent_inventory(workspace_root)
-        collisions: list[tuple[m.Infra.Census.Object, t.StrSequence]] = []
-        for project_report in report.projects:
-            self_pkg_prefix = f"{project_report.project.replace('-', '_')}."
-            for obj in project_report.objects:
-                if obj.name.startswith("_"):
-                    continue
-                parent_paths = inventory.get(obj.name)
-                if not parent_paths:
-                    continue
-                foreign_paths = tuple(
-                    path
-                    for path in parent_paths
-                    if not path.startswith(self_pkg_prefix)
-                )
-                if not foreign_paths:
-                    continue
-                collisions.append((obj, foreign_paths))
-        collisions.sort(key=lambda entry: -len(entry[1]))
-        return tuple(collisions)
 
 
 __all__: list[str] = ["FlextInfraRefactorCensus"]
