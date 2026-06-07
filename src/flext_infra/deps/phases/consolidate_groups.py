@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from tomlkit.items import Table
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import c, t, u
 
 
@@ -13,7 +10,7 @@ class FlextInfraConsolidateGroupsPhase:
 
     def apply(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         """Merge all legacy optional groups into canonical ``project.optional-dependencies.dev``."""
@@ -45,15 +42,15 @@ class FlextInfraConsolidateGroupsPhase:
         tool = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
         poetry = u.Cli.toml_ensure_table(tool, c.Infra.POETRY)
         poetry_group = u.Cli.toml_ensure_table(poetry, c.Infra.GROUP)
-        poetry_dev_table: Table | None = None
+        poetry_dev_table: t.Cli.TomlTable | None = None
         for old_group in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
             if old_group not in poetry_group:
                 continue
             old_group_table = poetry_group[old_group]
-            if not isinstance(old_group_table, Table):
+            if not u.Cli.toml_is_table(old_group_table):
                 continue
             old_deps = old_group_table.get(c.Infra.DEPENDENCIES)
-            if isinstance(old_deps, Table):
+            if u.Cli.toml_is_table(old_deps):
                 if poetry_dev_table is None:
                     poetry_dev_table = u.Cli.toml_ensure_table(
                         u.Cli.toml_ensure_table(
@@ -62,7 +59,7 @@ class FlextInfraConsolidateGroupsPhase:
                         ),
                         c.Infra.DEPENDENCIES,
                     )
-                current_dev_table: Table = poetry_dev_table
+                current_dev_table: t.Cli.TomlTable = poetry_dev_table
                 for dep_name_raw in old_deps:
                     dep_name = dep_name_raw
                     dep_value = old_deps[dep_name_raw]
