@@ -84,7 +84,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
     def _lightweight_symbol_kind(
         *,
         name: str,
-        obj: object,
+        obj: t.Infra.RopePyObject | None,
         object_kinds: dict[int, str],
     ) -> str:
         """Infer a detector-only symbol kind from Rope metadata."""
