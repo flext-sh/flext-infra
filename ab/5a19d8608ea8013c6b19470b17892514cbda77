@@ -1,0 +1,23 @@
+src/flext_infra/workspace/_orchestrator_run.py
+  s_9942ef7a89ba9a::t_41027125290da9 1-141
+src/flext_infra/workspace/orchestrator.py
+  s_9942ef7a89ba9a::t_e84aca467145c8 25-30,35-39
+src/flext_infra/workspace/_orchestrator_loop.py
+  s_9942ef7a89ba9a::t_c3414c7865507c 1-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "ab5a19d8608ea8013c6b19470b17892514cbda77",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
