@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import FlextInfraPhaseEngine, c, m, t, u
 
 
@@ -22,7 +20,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
             .build()
         )
 
-    def apply(self, doc: TOMLDocument, *, path: Path) -> t.StrSequence:
+    def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:
         """Apply detected first-party namespaces to dependency tooling tables."""
         detected = sorted(
             {
