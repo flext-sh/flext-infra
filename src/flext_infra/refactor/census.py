@@ -7,8 +7,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, override
 
-from rope.base.exceptions import RopeError
-
 from flext_cli import cli
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
@@ -20,7 +18,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.refactor._census_apply import (
     FlextInfraRefactorCensusApplyMixin,
 )
@@ -54,16 +51,8 @@ from flext_infra.refactor._census_rules_struct import (
 from flext_infra.refactor._census_symbols import (
     FlextInfraRefactorCensusSymbolsMixin,
 )
-
-_log = u.fetch_logger(__name__)
-
-_ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
-    *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
-    RopeError,
-    RecursionError,
-    SyntaxError,
-    ValueError,
-    RuntimeError,
+from flext_infra.refactor._census_validate import (
+    FlextInfraRefactorCensusValidateMixin,
 )
 
 
@@ -80,6 +69,7 @@ class FlextInfraRefactorCensus(
     FlextInfraRefactorCensusRulesAliasMixin,
     FlextInfraRefactorCensusRulesStructMixin,
     FlextInfraRefactorCensusSymbolsMixin,
+    FlextInfraRefactorCensusValidateMixin,
 ):
     """Generalized Rope-only census service for Python objects across the workspace."""
 
@@ -279,76 +269,6 @@ class FlextInfraRefactorCensus(
             rule_names=rule_names,
             selected_rules=selected_rules,
         )
-
-    @override
-    def _validated_project_reports(
-        self,
-        rope: p.Infra.RopeWorkspaceDsl,
-        project_reports: tuple[m.Infra.Census.ProjectReport, ...],
-    ) -> tuple[m.Infra.Census.ProjectReport, ...]:
-        """Keep only removal candidates that pass the configured dry-run gates.
-
-        Gate rejections are surfaced as explicit ``preview_rejected``
-        violations so the census still completes with actionable output
-        instead of aborting on the first rejected candidate.
-        """
-        validated_reports: list[m.Infra.Census.ProjectReport] = []
-        # Preview writes are restored before the next candidate, so one shared
-        # source cache stays valid for the entire dry-run validation pass.
-        source_cache: dict[Path, str] = {}
-        for report in project_reports:
-            if not report.removal_candidates:
-                validated_reports.append(report)
-                continue
-            validated_candidates_list: list[m.Infra.Census.RemovalCandidate] = []
-            validated_violations = list(report.violations)
-            for candidate in report.removal_candidates:
-                preview_result = u.Infra.preview_simple_removal_candidate(
-                    rope,
-                    self.root,
-                    candidate,
-                    gates=self.dry_run_gate_names,
-                    source_cache=source_cache,
-                )
-                if preview_result.failure:
-                    msg = preview_result.error or (
-                        "simple removal preview failed for "
-                        f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
-                    )
-                    if self.dry_run or self.fail_fast:
-                        raise RuntimeError(msg)
-                    _log.warning(
-                        "census_preview_candidate_rejected",
-                        candidate=candidate.file_path,
-                        object_name=candidate.object_name,
-                        error=msg,
-                    )
-                    validated_violations.append(
-                        self._raw_violation(
-                            project=report.project,
-                            object_name=candidate.object_name,
-                            object_kind=candidate.object_kind,
-                            kind="preview_rejected",
-                            file_path=Path(candidate.file_path),
-                            line=candidate.line,
-                            description=msg,
-                        )
-                    )
-                    continue
-                if preview_result.unwrap_or(False):
-                    validated_candidates_list.append(candidate)
-            validated_candidates = tuple(validated_candidates_list)
-            validated_reports.append(
-                report.model_copy(
-                    update={
-                        "violations": tuple(validated_violations),
-                        "violations_total": len(validated_violations),
-                        "removal_candidate_count": len(validated_candidates),
-                        "removal_candidates": validated_candidates,
-                    }
-                )
-            )
-        return tuple(validated_reports)
 
     @override
     def _module_rules(

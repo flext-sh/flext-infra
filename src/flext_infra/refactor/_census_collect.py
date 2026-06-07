@@ -9,6 +9,9 @@ from rope.base.exceptions import RopeError
 
 from flext_infra import m, p, t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.refactor._census_validate import (
+    FlextInfraRefactorCensusValidateMixin,
+)
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
@@ -16,7 +19,7 @@ _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 )
 
 
-class FlextInfraRefactorCensusCollectMixin:
+class FlextInfraRefactorCensusCollectMixin(FlextInfraRefactorCensusValidateMixin):
     """Scan one module (inventory + rules) and assemble the WorkspaceReport."""
 
     if TYPE_CHECKING:
@@ -71,11 +74,6 @@ class FlextInfraRefactorCensusCollectMixin:
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None = None,
         ) -> m.Infra.Census.ProjectReport: ...
-        def _validated_project_reports(
-            self,
-            rope: p.Infra.RopeWorkspaceDsl,
-            project_reports: tuple[m.Infra.Census.ProjectReport, ...],
-        ) -> tuple[m.Infra.Census.ProjectReport, ...]: ...
 
     def _scan_module(
         self,
