@@ -1,0 +1,25 @@
+src/flext_infra/deps/modernizer.py
+  s_9942ef7a89ba9a::t_7623212eea490a 500-502,504-508
+  s_9942ef7a89ba9a::t_26f4a3285c3ce0 530-532
+  s_9942ef7a89ba9a::t_7bde4b1537b767 541
+  s_9942ef7a89ba9a::t_797be5920ed3ba 549
+  s_9942ef7a89ba9a::t_771d2ba61d9269 536
+  s_9942ef7a89ba9a::t_6eb20217daf209 235
+  s_9942ef7a89ba9a::t_930415a449fc1e 513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "9593303603c33c1ed67f85d43dfae178ecb2dbaf",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
