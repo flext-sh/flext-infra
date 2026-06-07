@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -95,7 +94,7 @@ class FlextInfraUtilitiesRelease:
                 if changelog_path.exists()
                 else "# Changelog\n\n"
             )
-            date = datetime.now(UTC).date().isoformat()
+            date = u.now().date().isoformat()
             heading = f"## {version} - "
             section = f"{heading}{date}\n\n- Workspace release tag: `{tag}`\n- Status: Alpha, non-production\n\nFull notes: `docs/releases/{tag}.md`\n\n"
             if heading not in existing:
