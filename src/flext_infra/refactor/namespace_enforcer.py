@@ -17,9 +17,15 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.refactor._namespace_enforcer_project import (
+    FlextInfraNamespaceEnforcerProjectMixin,
+)
 
 
-class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerPhasesMixin):
+class FlextInfraNamespaceEnforcer(
+    FlextInfraNamespaceEnforcerPhasesMixin,
+    FlextInfraNamespaceEnforcerProjectMixin,
+):
     """Orchestrate namespace enforcement across a workspace."""
 
     def __init__(self, *, workspace_root: Path) -> None:
