@@ -4,14 +4,23 @@ from __future__ import annotations
 
 from collections.abc import (
     Mapping,
-    MutableMapping,
 )
 from pathlib import Path
+from typing import override
 
 from flext_infra import c, m, t, u
+from flext_infra.refactor._project_classifier_deps import (
+    FlextInfraProjectClassifierDepsMixin,
+)
+from flext_infra.refactor._project_classifier_family import (
+    FlextInfraProjectClassifierFamilyMixin,
+)
 
 
-class FlextInfraProjectClassifier:
+class FlextInfraProjectClassifier(
+    FlextInfraProjectClassifierDepsMixin,
+    FlextInfraProjectClassifierFamilyMixin,
+):
     """Classify a project by kind and discover MRO family chains."""
 
     def __init__(
@@ -83,6 +92,7 @@ class FlextInfraProjectClassifier:
         )
         return (project_name, dependencies)
 
+    @override
     def _as_mapping(
         self,
         raw_value: t.Infra.InfraValue | None,
@@ -104,262 +114,6 @@ class FlextInfraProjectClassifier:
         if isinstance(raw_name, str):
             return self._normalize_dependency_name(raw_name)
         return ""
-
-    def _append_project_dependencies(
-        self,
-        *,
-        raw_project: t.MappingKV[str, t.Infra.InfraValue],
-        dependencies: t.MutableSequenceOf[str],
-    ) -> None:
-        """Append project dependencies."""
-        raw_dependencies = raw_project.get(c.Infra.DEPENDENCIES)
-        if not isinstance(raw_dependencies, list):
-            return
-        for raw_dependency in raw_dependencies:
-            if not isinstance(raw_dependency, str):
-                continue
-            dependency_name = self._extract_dependency_name(raw_dependency)
-            self._append_unique_dependency(
-                dependency_name=dependency_name,
-                dependencies=dependencies,
-            )
-
-    def _append_poetry_dependencies(
-        self,
-        *,
-        raw_poetry: t.MappingKV[str, t.Infra.InfraValue],
-        dependencies: t.MutableSequenceOf[str],
-    ) -> None:
-        """Append poetry dependencies."""
-        self._append_poetry_dependency_mapping(
-            raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.DEPENDENCIES)),
-            dependencies=dependencies,
-        )
-        raw_group = self._as_mapping(raw_poetry.get(c.Infra.GROUP))
-        raw_test_group = self._as_mapping(raw_group.get(c.Infra.TEST))
-        self._append_poetry_dependency_mapping(
-            raw_mapping=self._as_mapping(raw_test_group.get(c.Infra.DEPENDENCIES)),
-            dependencies=dependencies,
-        )
-
-    def _append_poetry_dependency_mapping(
-        self,
-        *,
-        raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
-        dependencies: t.MutableSequenceOf[str],
-    ) -> None:
-        """Append poetry dependency mapping."""
-        dependency_keys = self._ordered_mapping_keys(raw_mapping)
-        for dependency_key in dependency_keys:
-            dependency_name = self._extract_dependency_name(dependency_key)
-            if dependency_name == "python":
-                continue
-            self._append_unique_dependency(
-                dependency_name=dependency_name,
-                dependencies=dependencies,
-            )
-
-    def _ordered_mapping_keys(
-        self,
-        raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> t.StrSequence:
-        """Ordered mapping keys."""
-        keys = list(raw_mapping.keys())
-        if self._mapping_order_is_trusted(raw_mapping):
-            return keys
-        return sorted(keys)
-
-    def _mapping_order_is_trusted(
-        self,
-        raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> bool:
-        """Mapping order is trusted."""
-        return isinstance(raw_mapping, dict)
-
-    def _append_unique_dependency(
-        self,
-        *,
-        dependency_name: str,
-        dependencies: t.MutableSequenceOf[str],
-    ) -> None:
-        """Append unique dependency."""
-        if (not dependency_name) or (dependency_name in dependencies):
-            return
-        dependencies.append(dependency_name)
-
-    def _internal_dependencies(
-        self,
-        *,
-        dependencies: t.StrSequence,
-        project_name: str,
-    ) -> t.StrSequence:
-        """Internal dependencies."""
-        return [
-            dependency
-            for dependency in dependencies
-            if dependency.startswith(c.Infra.PKG_PREFIX_HYPHEN)
-            and dependency != project_name
-        ]
-
-    def _extract_dependency_name(self, raw_dependency: str) -> str:
-        """Extract dependency name."""
-        cleaned = raw_dependency.strip().split(";", maxsplit=1)[0].strip()
-        if not cleaned:
-            return ""
-        left_side = cleaned.split(" @ ", maxsplit=1)[0].strip()
-        base_token = left_side.split()[0]
-        base_token = base_token.split("[", maxsplit=1)[0]
-        base_token = c.Infra.DEPENDENCY_VERSION_OP_RE.split(base_token, maxsplit=1)[0]
-        if "/" in base_token:
-            path = Path(base_token)
-            base_token = path.name
-        return self._normalize_dependency_name(base_token)
-
-    def _normalize_dependency_name(self, raw_name: str) -> str:
-        """Normalize dependency name."""
-        normalized = u.norm_str(raw_name, case="lower").replace("_", "-")
-        return normalized.strip("./")
-
-    def _discover_facade_inheritance(
-        self,
-    ) -> t.Pair[t.MappingKV[str, t.Infra.StrSet], t.Infra.StrSet]:
-        """Discover facade inheritance."""
-        family_bases: t.MappingKV[str, t.Infra.StrSet] = {
-            family: set() for family in c.Infra.FAMILY_SUFFIXES
-        }
-        local_facade_classes: t.Infra.StrSet = set()
-        if not self._src_path.is_dir():
-            return (family_bases, local_facade_classes)
-        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
-            file_pattern = c.Infra.FAMILY_FILES[family]
-            for file_path in u.Infra.iter_matching_files(
-                self._src_path, includes=[file_pattern]
-            ):
-                class_bases, class_names = self._parse_family_file(file_path, suffix)
-                family_bases[family].update(class_bases)
-                local_facade_classes.update(class_names)
-        return (family_bases, local_facade_classes)
-
-    _CLASS_DEF_RE: t.Infra.RegexPattern = c.Infra.CLASS_WITH_BASES_RE
-
-    def _parse_family_file(
-        self,
-        file_path: Path,
-        suffix: str,
-    ) -> t.Pair[t.Infra.StrSet, t.Infra.StrSet]:
-        """Parse family file."""
-        source = u.Cli.files_read_text(file_path).unwrap()
-        base_names: t.Infra.StrSet = set()
-        class_names: t.Infra.StrSet = set()
-        for match in self._CLASS_DEF_RE.finditer(source):
-            name = match.group(1)
-            if not name.endswith(suffix):
-                continue
-            class_names.add(name)
-            bases_str = match.group(2)
-            for base_part in bases_str.split(","):
-                base_part = base_part.strip()
-                if not base_part:
-                    continue
-                base_name = base_part.split("[")[0].rsplit(".", maxsplit=1)[-1].strip()
-                if base_name:
-                    base_names.add(base_name)
-        return (base_names, class_names)
-
-    def _build_confirmed_family_chains(
-        self,
-        *,
-        internal_dependencies: t.StrSequence,
-        family_bases: t.MappingKV[str, t.Infra.StrSet],
-    ) -> t.MappingKV[str, t.StrSequence]:
-        """Build confirmed family chains."""
-        family_chains: MutableMapping[str, t.StrSequence] = {}
-        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
-            expected_parents = self._expected_parents_for_family(
-                family_suffix=suffix,
-                internal_dependencies=internal_dependencies,
-            )
-            confirmed_bases = family_bases.get(family, set())
-            confirmed_expected = [
-                parent for parent in expected_parents if parent in confirmed_bases
-            ]
-            extra_confirmed = sorted(
-                base for base in confirmed_bases if base not in set(confirmed_expected)
-            )
-            family_chains[family] = [*confirmed_expected, *extra_confirmed]
-        return family_chains
-
-    def _expected_parents_for_family(
-        self,
-        *,
-        family_suffix: str,
-        internal_dependencies: t.StrSequence,
-    ) -> t.StrSequence:
-        """Expected parents for family."""
-        expected: t.MutableSequenceOf[str] = []
-        for dependency in internal_dependencies:
-            stem = self._dependency_to_class_stem(dependency)
-            if not stem:
-                continue
-            candidate = f"{stem}{family_suffix}"
-            if candidate not in expected:
-                expected.append(candidate)
-        return expected
-
-    def _dependency_to_class_stem(self, dependency: str) -> str:
-        """Dependency to class stem."""
-        normalized = self._normalize_dependency_name(dependency)
-        if normalized == c.Infra.PKG_CORE:
-            return "Flext"
-        if normalized.startswith(c.Infra.PKG_PREFIX_HYPHEN):
-            tail = normalized.removeprefix(c.Infra.PKG_PREFIX_HYPHEN)
-            parts = [part for part in tail.split("-") if part]
-            if not parts:
-                return ""
-            return "Flext" + "".join(part.capitalize() for part in parts)
-        parts = [part for part in normalized.split("-") if part]
-        if not parts:
-            return ""
-        return "".join(part.capitalize() for part in parts)
-
-    def _infer_project_kind(
-        self,
-        *,
-        internal_dependencies: t.StrSequence,
-        local_facade_classes: t.Infra.StrSet,
-    ) -> str:
-        """Infer project kind."""
-        if not internal_dependencies:
-            return "core"
-        has_domain_dependency = any(
-            dependency in c.Infra.DOMAIN_PACKAGES
-            for dependency in internal_dependencies
-        )
-        has_platform_dependency = any(
-            dependency in c.Infra.PLATFORM_PACKAGES
-            for dependency in internal_dependencies
-        )
-        dependency_kind = "app"
-        if has_domain_dependency and has_platform_dependency:
-            dependency_kind = "integration"
-        elif has_domain_dependency:
-            dependency_kind = "domain"
-        elif has_platform_dependency:
-            dependency_kind = "platform"
-        has_integration_facade = any(
-            class_name.startswith(c.Infra.INTEGRATION_CLASS_PREFIXES)
-            for class_name in local_facade_classes
-        )
-        if dependency_kind == "integration" and (not has_integration_facade):
-            return "app"
-        if (
-            dependency_kind == "app"
-            and has_domain_dependency
-            and has_platform_dependency
-            and has_integration_facade
-        ):
-            return "integration"
-        return dependency_kind
 
 
 __all__: list[str] = ["FlextInfraProjectClassifier"]
