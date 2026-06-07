@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
@@ -95,9 +95,9 @@ class FlextInfraModelsWorkspace:
         timestamp: Annotated[
             datetime,
             m.Field(
-                description="Execution timestamp in UTC",
+                description="Execution timestamp in the configured timezone",
             ),
-        ] = m.Field(default_factory=lambda: datetime.now(UTC))
+        ] = m.Field(default_factory=lambda: u.now())
 
         @u.field_serializer("source", "target", when_used="json")
         def serialize_paths(self, value: Path) -> str:
