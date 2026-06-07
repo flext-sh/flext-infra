@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
-import io
-import tokenize
 from pathlib import Path
 from typing import ClassVar
 
 import flext_infra as infra_package
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope_bracket_balance import (
+    FlextInfraUtilitiesRopeBracketBalanceMixin,
+)
+from flext_infra._utilities._rope_method_order import (
+    FlextInfraUtilitiesRopeMethodOrderMixin,
+)
 
 
-class FlextInfraUtilitiesRopeHelpers:
+class FlextInfraUtilitiesRopeHelpers(
+    FlextInfraUtilitiesRopeBracketBalanceMixin,
+    FlextInfraUtilitiesRopeMethodOrderMixin,
+):
     """Generic text, import-placement, and method-order helpers."""
 
     _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
@@ -155,97 +162,6 @@ class FlextInfraUtilitiesRopeHelpers:
         return updated_source
 
     @staticmethod
-    def _extend_block_through_open_brackets(
-        source: str,
-        block: str,
-        *,
-        match_end: int,
-    ) -> str:
-        r"""Extend ``block`` when its regex capture ends mid-bracket-group.
-
-        The existing regex terminates on the first column-0 non-empty line; a
-        multi-line signature like ``-> tuple[\n    A,\n]:`` therefore cuts
-        off at the unindented ``]:`` line. When the captured block has
-        unbalanced brackets, consume further lines until balance reaches 0.
-        """
-        balance = FlextInfraUtilitiesRopeHelpers._bracket_balance_total(block)
-        if balance <= 0:
-            return block
-        remaining = source[match_end:]
-        additional = 0
-        for line in remaining.splitlines(keepends=True):
-            additional += len(line)
-            balance += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(line)
-            if balance <= 0:
-                break
-        extended = block + source[match_end : match_end + additional]
-        tail_start = match_end + additional
-        tail = source[tail_start:]
-        for line in tail.splitlines(keepends=True):
-            stripped = line.strip()
-            if not stripped or line.startswith((" ", "\t")):
-                extended += line
-                continue
-            break
-        return extended
-
-    @staticmethod
-    def _bracket_balance_total(text: str) -> int:
-        """Bracket balance total."""
-        total = 0
-        for line in text.splitlines():
-            total += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(line)
-        return total
-
-    @staticmethod
-    def bracket_balance_line(line: str) -> int:
-        """Return net bracket depth delta of one line (strings + ``#`` comments ignored)."""
-        try:
-            return sum(
-                1 if token.string in "([{" else -1
-                for token in tokenize.generate_tokens(io.StringIO(line).readline)
-                if token.type == tokenize.OP and token.string in "()[]{}"
-            )
-        except tokenize.TokenError:
-            return FlextInfraUtilitiesRopeHelpers._fallback_bracket_balance_line(line)
-
-    @staticmethod
-    def _fallback_bracket_balance_line(line: str) -> int:
-        """Approximate bracket balance for incomplete lines that ``tokenize`` rejects."""
-        balance = 0
-        in_single_quote = False
-        in_double_quote = False
-        escaped = False
-        for char in line:
-            if escaped:
-                escaped = False
-                continue
-            if char == "\\" and (in_single_quote or in_double_quote):
-                escaped = True
-                continue
-            if in_single_quote:
-                if char == "'":
-                    in_single_quote = False
-                continue
-            if in_double_quote:
-                if char == '"':
-                    in_double_quote = False
-                continue
-            if char == "#":
-                break
-            if char == "'":
-                in_single_quote = True
-                continue
-            if char == '"':
-                in_double_quote = True
-                continue
-            if char in "([{":
-                balance += 1
-            elif char in ")]}":
-                balance -= 1
-        return balance
-
-    @staticmethod
     def append_to_class_body(
         source: str,
         class_name: str,
@@ -287,89 +203,6 @@ class FlextInfraUtilitiesRopeHelpers:
                 insert_idx -= 1
         lines.insert(insert_idx, block.rstrip("\n") + "\n\n")
         return "".join(lines)
-
-    _DECORATOR_TO_CATEGORY: ClassVar[t.StrPairSequence] = [
-        ("staticmethod", "static"),
-        ("classmethod", "class"),
-    ]
-
-    @staticmethod
-    def matches_method_rule(
-        method: m.Infra.MethodInfo,
-        rule: m.Infra.MethodOrderRule,
-    ) -> bool:
-        """Check if a method matches an ordering rule."""
-        decorators = set(method.decorators)
-        excludes = set(rule.exclude_decorators)
-        match rule.visibility:
-            case "public":
-                visibility_matches = not method.name.startswith("_")
-            case "protected":
-                visibility_matches = method.name.startswith(
-                    "_"
-                ) and not method.name.startswith("__")
-            case "private":
-                visibility_matches = method.name.startswith(
-                    "__"
-                ) and not method.name.endswith("__")
-            case _:
-                visibility_matches = True
-        decorators_match = not rule.decorators or bool(
-            decorators.intersection(rule.decorators)
-        )
-        excluded = bool(excludes and decorators.intersection(excludes))
-        patterns = rule.patterns
-        patterns_match = not patterns or any(
-            c.Infra.compile(pattern).match(method.name) for pattern in patterns
-        )
-        return (
-            visibility_matches and decorators_match and patterns_match and not excluded
-        )
-
-    @staticmethod
-    def build_method_sort_key(
-        method: m.Infra.MethodInfo,
-        order_config: t.SequenceOf[m.Infra.MethodOrderRule],
-    ) -> tuple[int, int, str]:
-        """Build a sort key tuple for method ordering."""
-        for index, rule in enumerate(order_config):
-            if rule.category == "class_attributes":
-                continue
-            if not FlextInfraUtilitiesRopeHelpers.matches_method_rule(method, rule):
-                continue
-            explicit_order = rule.order
-            if explicit_order:
-                if method.name in explicit_order:
-                    return (index, explicit_order.index(method.name), method.name)
-                if "*" in explicit_order:
-                    return (index, explicit_order.index("*") + 1, method.name)
-            return (index, 0, method.name)
-        return (len(order_config), 0, method.name)
-
-    @staticmethod
-    def categorize_method(name: str, decorators: t.StrSequence) -> str:
-        """Categorize a method by its decorators and name pattern."""
-        result: str
-        if c.Infra.PROPERTY_DECORATORS.intersection(decorators):
-            result = c.Infra.MethodCategory.PROPERTY
-        else:
-            for (
-                decorator_name,
-                category,
-            ) in FlextInfraUtilitiesRopeHelpers._DECORATOR_TO_CATEGORY:
-                if decorator_name in decorators:
-                    result = category
-                    break
-            else:
-                if name.startswith("__") and name.endswith("__"):
-                    result = c.Infra.MethodCategory.MAGIC
-                elif name.startswith("__"):
-                    result = c.Infra.MethodCategory.PRIVATE
-                elif name.startswith("_"):
-                    result = c.Infra.MethodCategory.PROTECTED
-                else:
-                    result = c.Infra.MethodCategory.PUBLIC
-        return result
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeHelpers"]
