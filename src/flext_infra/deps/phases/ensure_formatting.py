@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import FlextInfraPhaseEngine, m, t, u
 
 
@@ -69,7 +67,7 @@ class FlextInfraEnsureFormattingToolingPhase:
         return (codespell_phase, tomlsort_phase, yamlfix_phase)
 
     @staticmethod
-    def _remove_codespell_skip_doc(doc: TOMLDocument) -> t.StrSequence:
+    def _remove_codespell_skip_doc(doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Remove the stale hardcoded codespell skip entry from one TOML document."""
         tool_table = u.Cli.toml_table_child(doc, "tool")
         if tool_table is None:
@@ -92,7 +90,7 @@ class FlextInfraEnsureFormattingToolingPhase:
             return ["removed codespell.skip hardcode"]
         return []
 
-    def apply(self, doc: TOMLDocument) -> t.StrSequence:
+    def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply canonical codespell, tomlsort, and yamlfix configuration."""
         changes = list(FlextInfraPhaseEngine.apply_phases(doc, *self._phases()))
         changes.extend(self._remove_codespell_skip_doc(doc))
