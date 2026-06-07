@@ -1,0 +1,25 @@
+src/flext_infra/refactor/_project_classifier_deps.py
+  s_9942ef7a89ba9a::t_83cbf2c932f705 1-141
+src/flext_infra/refactor/_project_classifier_family.py
+  s_9942ef7a89ba9a::t_ee5a1d7e295fb0 1-8,10-167
+src/flext_infra/refactor/project_classifier.py
+  s_9942ef7a89ba9a::t_05b3bf38a82e94 9
+  s_9942ef7a89ba9a::t_f05ff6da65c696 95
+  s_9942ef7a89ba9a::t_5247693b5e70c0 12-17,20-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "70018518f0e907f300334b2ae7fe3dd375465d0c",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
