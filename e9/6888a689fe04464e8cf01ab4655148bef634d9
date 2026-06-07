@@ -1,0 +1,21 @@
+src/flext_infra/_utilities/rope_core.py
+  s_9942ef7a89ba9a::t_200a36f82d2582 20,24-26,32
+src/flext_infra/_utilities/_rope_core_pymodule.py
+  s_9942ef7a89ba9a::t_60ad7eedf10726 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "e96888a689fe04464e8cf01ab4655148bef634d9",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
