@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 from collections import Counter, defaultdict
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Annotated, override
 
@@ -12,10 +11,6 @@ from rope.base.exceptions import RopeError
 
 from flext_cli import cli
 from flext_infra import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraCompatibilityAliasDetector,
-    FlextInfraManualTypingAliasDetector,
-    FlextInfraMROCompletenessDetector,
     FlextInfraProjectSelectionServiceBase,
     FlextInfraRopeWorkspace,
     c,
@@ -26,6 +21,9 @@ from flext_infra import (
     u,
 )
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.refactor._census_apply import (
+    FlextInfraRefactorCensusApplyMixin,
+)
 from flext_infra.refactor._census_collect_helpers import (
     FlextInfraRefactorCensusCollectHelpersMixin,
 )
@@ -65,6 +63,7 @@ _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 
 class FlextInfraRefactorCensus(
     FlextInfraProjectSelectionServiceBase[m.Infra.Census.WorkspaceReport],
+    FlextInfraRefactorCensusApplyMixin,
     FlextInfraRefactorCensusCollectHelpersMixin,
     FlextInfraRefactorCensusFiltersMixin,
     FlextInfraRefactorCensusInventoryMixin,
@@ -133,6 +132,7 @@ class FlextInfraRefactorCensus(
         return u.Infra.normalize_sequence_values(self.families)
 
     @property
+    @override
     def dry_run_gate_names(self) -> t.StrSequence:
         """Return the per-candidate gate set (``lint`` + ``pyrefly``).
 
@@ -630,184 +630,6 @@ class FlextInfraRefactorCensus(
             violations.extend(v)
             fixes.extend(f)
         return (tuple(violations), tuple(fixes))
-
-    def _apply_supported_fixes(
-        self,
-        rope: p.Infra.RopeWorkspaceDsl,
-        report: m.Infra.Census.WorkspaceReport,
-    ) -> frozenset[str]:
-        """Apply supported fixes."""
-        applied: set[str] = set()
-        touched_paths: set[Path] = set()
-        requested_fixes: dict[tuple[Path, str], set[str]] = defaultdict(set)
-        for project in report.projects:
-            for fix in project.fixes:
-                requested_fixes[Path(fix.source_file), fix.action].add(
-                    fix.object_name,
-                )
-        for (file_path, action), object_names in requested_fixes.items():
-            parse_failures: list[m.Infra.ParseFailureViolation] = []
-            ctx = self._detector_context(
-                rope,
-                file_path,
-                parse_failures=parse_failures,
-            )
-            changed = False
-            if action == "rewrite_runtime_alias":
-                convention = rope.convention(file_path)
-                alias = convention.module_policy.expected_alias or ""
-                target_name = next(iter(sorted(object_names)), "")
-                if not alias or not target_name:
-                    continue
-                source = rope.source(file_path)
-                updated = self._rewrite_runtime_alias_source(
-                    source,
-                    alias=alias,
-                    target_name=target_name,
-                )
-                if updated == source:
-                    continue
-                resource = rope.resource(file_path)
-                if resource is None:
-                    continue
-                resource.write(updated)
-                changed = True
-            elif action == "rewrite_manual_typing_alias":
-                if ctx.project_root is None:
-                    continue
-                violations = tuple(
-                    violation
-                    for violation in FlextInfraManualTypingAliasDetector.detect_file(
-                        ctx,
-                    )
-                    if violation.name in object_names
-                )
-                if not violations:
-                    continue
-                u.Infra.rewrite_manual_typing_alias_violations(
-                    project_root=ctx.project_root,
-                    violations=violations,
-                    parse_failures=parse_failures,
-                )
-                changed = True
-            elif action == "rewrite_compatibility_alias":
-                violations = tuple(
-                    violation
-                    for violation in FlextInfraCompatibilityAliasDetector.detect_file(
-                        ctx,
-                    )
-                    if violation.alias_name in object_names
-                )
-                if not violations:
-                    continue
-                u.Infra.rewrite_compatibility_alias_violations(
-                    violations=violations,
-                    parse_failures=parse_failures,
-                )
-                changed = True
-            elif action == "rewrite_mro_completeness":
-                violations = tuple(
-                    violation
-                    for violation in FlextInfraMROCompletenessDetector.detect_file(
-                        ctx,
-                    )
-                    if violation.facade_class in object_names
-                )
-                if not violations:
-                    continue
-                u.Infra.rewrite_mro_completeness_violations(
-                    violations=violations,
-                    parse_failures=parse_failures,
-                )
-                changed = True
-            if not changed:
-                continue
-            touched_paths.add(file_path.resolve())
-            applied.update(
-                self._fix_key(file_path, object_name, action)
-                for object_name in object_names
-            )
-        for candidate in report.removal_candidates:
-            apply_result = u.Infra.apply_simple_removal_candidate(
-                rope,
-                self.root,
-                candidate,
-                gates=self.dry_run_gate_names,
-            )
-            if apply_result.failure:
-                msg = apply_result.error or (
-                    "simple removal apply failed for "
-                    f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
-                )
-                raise RuntimeError(msg)
-            if apply_result.unwrap_or(False):
-                applied.add(
-                    self._fix_key(Path(candidate.file_path), candidate.object_name)
-                )
-                touched_paths.add(Path(candidate.file_path).resolve())
-                touched_paths.update(
-                    Path(site.file_path).resolve()
-                    for site in (
-                        *candidate.test_reference_sites,
-                        *candidate.example_reference_sites,
-                        *candidate.script_reference_sites,
-                    )
-                )
-        if applied:
-            self._regenerate_inits_via_codegen()
-            self._ruff_fix_touched_files(touched_paths)
-            rope.reload()
-        return frozenset(applied)
-
-    @staticmethod
-    def _ruff_fix_touched_files(paths: Iterable[Path]) -> None:
-        """Run ``ruff format`` + ``ruff check --fix`` on cascade/cosmetic rules only.
-
-        Normalises trailing newlines (W391) and import sort (I001) left
-        behind after candidate removal. Scope is deliberately narrow:
-        ``--select I,W`` — not ``F`` or ``E`` — so that unused-import
-        removal does not fight the lazy-init ``TYPE_CHECKING`` re-exports
-        produced by ``FlextInfraCodegenLazyInit``. Cosmetic-only failures
-        are surfaced through the standard ``r[T]`` channel (``u.Cli.run_raw``
-        already returns ``r[CommandResult]``); they are logged but never
-        suppressed, so the next maintenance run can act on them.
-        """
-        existing = sorted({str(path) for path in paths if path.is_file()})
-        if not existing:
-            return
-        check_result = u.Cli.run_raw(
-            ["ruff", "check", "--fix", "--select", "I,W", *existing],
-            timeout=c.Infra.TIMEOUT_SHORT,
-        )
-        if check_result.failure:
-            _log.warning(
-                "ruff_check_fix_cosmetic_failed",
-                error=check_result.error or "ruff check --fix failed",
-                files=len(existing),
-            )
-        format_result = u.Cli.run_raw(
-            ["ruff", "format", *existing],
-            timeout=c.Infra.TIMEOUT_SHORT,
-        )
-        if format_result.failure:
-            _log.warning(
-                "ruff_format_cosmetic_failed",
-                error=format_result.error or "ruff format failed",
-                files=len(existing),
-            )
-
-    def _regenerate_inits_via_codegen(self) -> None:
-        """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
-        FlextInfraCodegenLazyInit(workspace=self.root).generate_inits(
-            check_only=False,
-        )
-
-    @staticmethod
-    def _regenerate_inits_for_workspace(workspace: Path) -> None:
-        """Post-apply hook that regenerates ``__init__.py`` for ``workspace``."""
-        FlextInfraCodegenLazyInit(workspace=workspace).generate_inits(
-            check_only=False,
-        )
 
 
 __all__: list[str] = ["FlextInfraRefactorCensus"]
