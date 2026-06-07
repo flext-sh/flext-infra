@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shlex
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
@@ -223,7 +222,7 @@ class FlextInfraWorkspaceChecker(s[bool], FlextInfraWorkspaceCheckGatesMixin):
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        timestamp = u.now().strftime("%Y-%m-%d %H:%M:%S %Z")
         md_path = report_base / "check-report.md"
         md_write_result = u.Cli.atomic_write_text_file(
             md_path,
