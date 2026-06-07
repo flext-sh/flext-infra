@@ -1,0 +1,81 @@
+src/flext_infra/refactor/mro_import_rewriter.py
+  s_9942ef7a89ba9a::t_558f4b3adcfebf 17,19,22,24
+  s_9942ef7a89ba9a::t_6eeaf7388b2f96 18,23
+tests/unit/workspace/__init__.py
+  s_fec2050ea607c1::t_d68dee28320b24 10-11
+tests/unit/_utilities/test_discovery_consolidated.py
+  s_fec2050ea607c1::t_79bf714b1e7c77 225
+src/flext_infra/refactor/_mro_import_collect.py
+  s_9942ef7a89ba9a::t_5789d7eeda498d 2-7,9-10,13-164,181
+  s_9942ef7a89ba9a::t_11bd8d2cf8d108 165-180,182-205
+  s_9942ef7a89ba9a::t_47a65f7d910b31 1,8,11-12
+tests/unit/__init__.py
+  s_73cbfc60e45e37::t_4f7d65e7ed40ac 80
+tests/unit/test_infra_constants_core.py
+  s_fec2050ea607c1::t_79bf714b1e7c77 120
+src/flext_infra/_constants/make.py
+  s_65f02658bb707e::t_a1ebcd6c876279 189-192,230,286
+tests/unit/check/__init__.py
+  s_5ac57cf3ed4559::t_43c763d9e577d7 10,39,41
+src/flext_infra/codegen/_pipeline_stages.py
+  s_73cbfc60e45e37::t_68d3c967d1152f 21
+src/flext_infra/validate/__init__.py
+  s_5ac57cf3ed4559::t_524f742f3c69af 12-17,21
+src/flext_infra/__init__.py
+  s_73cbfc60e45e37::t_4f7d65e7ed40ac 267,379-390,396,771-776,780,916-921,932
+src/flext_infra/templates/workspace_makefile.mk.j2
+  s_fec2050ea607c1::t_7044c74c238140 710,775,778,784,786,799,812,825,840,843,846,848,854,867,881,895,903
+  s_65f02658bb707e::t_ff7f2867ae310d 46,48-50
+tests/unit/workspace/test_makefile_generator.py
+  s_fec2050ea607c1::t_2e931e4aac5460 235
+src/flext_infra/deps/tool_config.yml
+  s_fec2050ea607c1::t_79bf714b1e7c77 484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "ee55c96b2482e92000510fbcf9f58da79caf4e5d",
+  "prompts": {},
+  "sessions": {
+    "s_5ac57cf3ed4559": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "019ea2cd-580d-7e50-9f28-e9adbe7acc8a",
+        "model": "unknown"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    },
+    "s_65f02658bb707e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea2f9-e5b7-7de1-980f-d38ae5985123",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    },
+    "s_73cbfc60e45e37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80f2c44c-f1f2-49a0-8035-ccac60ac602b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    },
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    },
+    "s_fec2050ea607c1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea2cd-580d-7e50-9f28-e9adbe7acc8a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
