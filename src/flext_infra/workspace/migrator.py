@@ -143,7 +143,7 @@ class FlextInfraProjectMigrator(
         if target.exists():
             read = u.Cli.files_read_text(target)
             if read.failure:
-                return r[str].fail(read.error or "base.mk read failed")
+                return r[str].fail(f"base.mk read failed: {read.error}")
             current = read.value
         if u.Cli.sha256_content(current) == u.Cli.sha256_content(generated_text):
             return self._no_change_result(
@@ -169,7 +169,7 @@ class FlextInfraProjectMigrator(
         if gitignore_path.exists():
             read = u.Cli.files_read_text(gitignore_path)
             if read.failure:
-                return r[str].fail(read.error or ".gitignore read failed")
+                return r[str].fail(f".gitignore read failed: {read.error}")
             existing_lines = read.value.splitlines()
         filtered = [
             line
@@ -215,7 +215,7 @@ class FlextInfraProjectMigrator(
             return self._no_change_result("Makefile not found", dry_run=dry_run)
         read = u.Cli.files_read_text(makefile_path)
         if read.failure:
-            return r[str].fail(read.error or "Makefile read failed")
+            return r[str].fail(f"Makefile read failed: {read.error}")
         original = read.value
         updated = original
         for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
