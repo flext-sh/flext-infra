@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t
 
@@ -12,7 +13,8 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     """Decide what to collect + select modules for the requested rule set.
 
     Composed into FlextInfraRefactorCensus via inheritance; owns the
-    lightweight-rule set and the static/cls collection-gate helpers.
+    lightweight-rule set, the collection-gate helpers, and the top-level
+    ``_collect_report`` orchestrator (scan selected modules → assemble).
     """
 
     _LIGHTWEIGHT_MODULE_RULES: ClassVar[frozenset[str]] = frozenset({
@@ -21,6 +23,35 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         "compatibility_alias",
         "mro_completeness",
     })
+
+    if TYPE_CHECKING:
+
+        @staticmethod
+        def _selected_families(
+            family_names: t.StrSequence | None,
+        ) -> frozenset[str]: ...
+        def _scan_module(
+            self,
+            rope: p.Infra.RopeWorkspaceDsl,
+            module: m.Infra.RopeModuleIndexEntry,
+            config: m.Infra.Census.ScanConfig,
+            *,
+            project_objects: dict[str, list[m.Infra.Census.Object]],
+            project_violations: dict[str, list[m.Infra.Census.Violation]],
+            project_fixes: dict[str, list[m.Infra.Census.Fix]],
+            report_projects: set[str],
+        ) -> None: ...
+        def _assemble_report(
+            self,
+            rope: p.Infra.RopeWorkspaceDsl,
+            *,
+            project_objects: dict[str, list[m.Infra.Census.Object]],
+            project_violations: dict[str, list[m.Infra.Census.Violation]],
+            project_fixes: dict[str, list[m.Infra.Census.Fix]],
+            report_projects: set[str],
+            rule_names: t.StrSequence | None,
+            selected_rules: frozenset[str] | None,
+        ) -> m.Infra.Census.WorkspaceReport: ...
 
     @staticmethod
     def _should_collect_object_references(
@@ -97,6 +128,66 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             if module.module_name
             and module.module_name.count(".") == 1
             and module.file_path.name in facade_module_names
+        )
+
+    def _collect_report(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        *,
+        project_names: t.StrSequence | None,
+        kind_names: t.StrSequence | None,
+        family_names: t.StrSequence | None,
+        rule_names: t.StrSequence | None,
+        include_local_scopes: bool,
+        applied: frozenset[str],
+    ) -> m.Infra.Census.WorkspaceReport:
+        """Scan selected modules then assemble the workspace census report."""
+        selected_families = self._selected_families(family_names)
+        selected_rules: frozenset[str] | None = (
+            frozenset(rule_names) if rule_names else None
+        )
+        config = m.Infra.Census.ScanConfig(
+            kind_names=kind_names,
+            rule_names=rule_names,
+            selected_families=selected_families,
+            selected_kinds=frozenset(kind_names) if kind_names else None,
+            selected_rules=selected_rules,
+            collect_object_inventory=self._should_collect_object_inventory(
+                rule_names, selected_rules=selected_rules
+            ),
+            include_object_references=self._should_collect_object_references(rule_names),
+            include_local_scopes=include_local_scopes,
+            applied=applied,
+        )
+        project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
+        project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
+            list
+        )
+        project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
+        report_projects: set[str] = set()
+        for module in self._modules_for_rules(
+            rope,
+            project_names=project_names,
+            selected_families=selected_families,
+            rule_names=rule_names,
+        ):
+            self._scan_module(
+                rope,
+                module,
+                config,
+                project_objects=project_objects,
+                project_violations=project_violations,
+                project_fixes=project_fixes,
+                report_projects=report_projects,
+            )
+        return self._assemble_report(
+            rope,
+            project_objects=project_objects,
+            project_violations=project_violations,
+            project_fixes=project_fixes,
+            report_projects=report_projects,
+            rule_names=rule_names,
+            selected_rules=selected_rules,
         )
 
 

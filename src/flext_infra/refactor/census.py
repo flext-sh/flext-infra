@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, override
 
@@ -161,29 +160,25 @@ class FlextInfraRefactorCensus(
         applied = frozenset[str]()
         impact_map_report: m.Infra.Census.WorkspaceReport | None = None
         with FlextInfraRopeWorkspace.open_workspace(self.root) as rope:
-            report = self._collect_report(
-                rope,
-                project_names=self.project_names,
-                kind_names=self.kind_names,
-                family_names=self.family_names,
-                rule_names=self.rule_names,
-                include_local_scopes=self.include_local_scopes,
-                applied=applied,
-            )
+
+            def collect(applied: frozenset[str]) -> m.Infra.Census.WorkspaceReport:
+                return self._collect_report(
+                    rope,
+                    project_names=self.project_names,
+                    kind_names=self.kind_names,
+                    family_names=self.family_names,
+                    rule_names=self.rule_names,
+                    include_local_scopes=self.include_local_scopes,
+                    applied=applied,
+                )
+
+            report = collect(applied)
             impact_map_report = report
             if self.apply_changes and not self.effective_dry_run:
                 applied = self._apply_supported_fixes(rope, report)
                 if applied:
                     rope.reload()
-                    report = self._collect_report(
-                        rope,
-                        project_names=self.project_names,
-                        kind_names=self.kind_names,
-                        family_names=self.family_names,
-                        rule_names=self.rule_names,
-                        include_local_scopes=self.include_local_scopes,
-                        applied=applied,
-                    )
+                    report = collect(applied)
         finalized_report = report.model_copy(
             update={"scan_duration_seconds": time.monotonic() - started}
         )
@@ -213,66 +208,6 @@ class FlextInfraRefactorCensus(
                 )
             u.Cli.info(f"Impact map exported to: {self.impact_map_output_path}")
         return r[m.Infra.Census.WorkspaceReport].ok(report)
-
-    def _collect_report(
-        self,
-        rope: p.Infra.RopeWorkspaceDsl,
-        *,
-        project_names: t.StrSequence | None,
-        kind_names: t.StrSequence | None,
-        family_names: t.StrSequence | None,
-        rule_names: t.StrSequence | None,
-        include_local_scopes: bool,
-        applied: frozenset[str],
-    ) -> m.Infra.Census.WorkspaceReport:
-        """Scan selected modules then assemble the workspace census report."""
-        selected_families = self._selected_families(family_names)
-        selected_rules: frozenset[str] | None = (
-            frozenset(rule_names) if rule_names else None
-        )
-        config = m.Infra.Census.ScanConfig(
-            kind_names=kind_names,
-            rule_names=rule_names,
-            selected_families=selected_families,
-            selected_kinds=frozenset(kind_names) if kind_names else None,
-            selected_rules=selected_rules,
-            collect_object_inventory=self._should_collect_object_inventory(
-                rule_names, selected_rules=selected_rules
-            ),
-            include_object_references=self._should_collect_object_references(rule_names),
-            include_local_scopes=include_local_scopes,
-            applied=applied,
-        )
-        project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
-        project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
-            list
-        )
-        project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
-        report_projects: set[str] = set()
-        for module in self._modules_for_rules(
-            rope,
-            project_names=project_names,
-            selected_families=selected_families,
-            rule_names=rule_names,
-        ):
-            self._scan_module(
-                rope,
-                module,
-                config,
-                project_objects=project_objects,
-                project_violations=project_violations,
-                project_fixes=project_fixes,
-                report_projects=report_projects,
-            )
-        return self._assemble_report(
-            rope,
-            project_objects=project_objects,
-            project_violations=project_violations,
-            project_fixes=project_fixes,
-            report_projects=report_projects,
-            rule_names=rule_names,
-            selected_rules=selected_rules,
-        )
 
 
 __all__: list[str] = ["FlextInfraRefactorCensus"]
