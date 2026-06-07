@@ -9,17 +9,6 @@ Runtime version checking is handled automatically by
 This service only manages the static ``.python-version`` files used by
 pyenv / asdf / mise for interpreter selection.
 
-Usage::
-
-    from flext_infra import (
-        FlextInfraPythonVersionEnforcer,
-    )
-
-    service = FlextInfraPythonVersionEnforcer()
-    result = service.execute(check_only=True, verbose=True)
-    if result.success:
-        logger.info("Python version check passed")
-
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -61,16 +50,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         check_only: bool | None = None,
         verbose: bool | None = None,
     ) -> p.Result[int]:
-        """Execute Python version enforcement.
-
-        Args:
-            check_only: If True, only verify without making changes.
-            verbose: If True, print detailed output.
-
-        Returns:
-            r[int]: Exit code (0 for success, 1 for failure).
-
-        """
+        """Execute Python version enforcement; returns r[int] exit code."""
         if check_only is not None:
             self.check_only = check_only
         if verbose is not None:
@@ -119,21 +99,11 @@ class FlextInfraPythonVersionEnforcer(s[int]):
     def _resolve_workspace_root(self) -> Path:
         """Prefer the validated CLI workspace when provided, otherwise auto-detect."""
         if "workspace_root" in self.model_fields_set:
-            resolved: Path = self.workspace_root.resolve()
-            return resolved
+            return self.workspace_root.resolve()
         return self._workspace_root_from_file(__file__)
 
     def _ensure_python_version_file(self, project: Path, required_minor: int) -> bool:
-        """Ensure pyproject.toml requires-python matches required minor version.
-
-        Args:
-            project: Path to project.
-            required_minor: Required Python minor version.
-
-        Returns:
-            bool: True if validation passed, False otherwise.
-
-        """
+        """Return True when project pyproject + runtime match required_minor."""
         local_minor = self._read_required_minor(project)
         if local_minor != required_minor:
             if self.check_only:
@@ -173,17 +143,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         return True
 
     def _read_required_minor(self, workspace_root: Path) -> int:
-        """Read the required Python minor version from workspace pyproject.toml.
-
-        Falls back to 13 if the field cannot be parsed.
-
-        Args:
-            workspace_root: Path to workspace root.
-
-        Returns:
-            int: Required Python minor version.
-
-        """
+        """Read requires-python minor from pyproject; default 13 when absent."""
         pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return 13
@@ -194,19 +154,9 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         return int(match.group(2))
 
     def _workspace_root_from_file(self, file: str | Path) -> Path:
-        """Resolve workspace root by walking up from file location.
+        """Walk up from ``file`` to the first dir with .git+Makefile+pyproject.
 
-        Finds the first directory containing .git, Makefile, and pyproject.toml.
-
-        Args:
-            file: Path to a file (usually __file__).
-
-        Returns:
-            Absolute Path to the workspace root.
-
-        Raises:
-            RuntimeError: If workspace root cannot be found.
-
+        Raises RuntimeError when no such workspace root exists (fail-loud).
         """
         current = Path(file).resolve()
         if current.is_file():
