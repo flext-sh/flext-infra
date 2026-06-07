@@ -159,8 +159,8 @@ class FlextInfraConstantsMake:
         ("daemon-restart", "Restart all daemons"),
     )
     PROJECT_OPTION_LINES: Final[t.StrSequence] = (
-        "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,go,type",
-        "VALIDATE_GATES=complexity,docstring",
+        f"CHECK_GATES={PROJECT_CHECK_GATES_ALLOWED}",
+        f"VALIDATE_GATES={PROJECT_VALIDATE_GATES_ALLOWED}",
         "FILE=src/foo.py             Single file for check/fmt/test",
         'FILES="a.py b.py"          Multiple files for check/fmt/test',
         "CHANGED_ONLY=1              Git-changed Python files for check",
