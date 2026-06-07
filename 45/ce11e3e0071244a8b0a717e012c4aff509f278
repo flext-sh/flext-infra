@@ -1,0 +1,26 @@
+src/flext_infra/refactor/_orchestrator_scope.py
+  s_9942ef7a89ba9a::t_74bef7af259c83 1-214
+src/flext_infra/refactor/orchestrator.py
+  s_9942ef7a89ba9a::t_b72ff2150373ce 6
+  s_9942ef7a89ba9a::t_b58aedb66d3898 19-24,32-33
+  s_9942ef7a89ba9a::t_b5b776dbf0b7e9 52
+  s_9942ef7a89ba9a::t_46e616e9cefa76 155
+src/flext_infra/refactor/_orchestrator_dispatch.py
+  s_9942ef7a89ba9a::t_f0dfcf90435edb 1-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "45ce11e3e0071244a8b0a717e012c4aff509f278",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
