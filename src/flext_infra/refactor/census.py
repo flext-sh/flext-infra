@@ -18,7 +18,6 @@ from flext_infra import (
     FlextInfraMROCompletenessDetector,
     FlextInfraProjectSelectionServiceBase,
     FlextInfraRopeWorkspace,
-    FlextInfraRuntimeAliasDetector,
     c,
     m,
     p,
@@ -41,6 +40,12 @@ from flext_infra.refactor._census_objects import (
 )
 from flext_infra.refactor._census_render import (
     FlextInfraRefactorCensusRenderMixin,
+)
+from flext_infra.refactor._census_rules_alias import (
+    FlextInfraRefactorCensusRulesAliasMixin,
+)
+from flext_infra.refactor._census_rules_struct import (
+    FlextInfraRefactorCensusRulesStructMixin,
 )
 from flext_infra.refactor._census_symbols import (
     FlextInfraRefactorCensusSymbolsMixin,
@@ -65,6 +70,8 @@ class FlextInfraRefactorCensus(
     FlextInfraRefactorCensusInventoryMixin,
     FlextInfraRefactorCensusObjectsMixin,
     FlextInfraRefactorCensusRenderMixin,
+    FlextInfraRefactorCensusRulesAliasMixin,
+    FlextInfraRefactorCensusRulesStructMixin,
     FlextInfraRefactorCensusSymbolsMixin,
 ):
     """Generalized Rope-only census service for Python objects across the workspace."""
@@ -555,266 +562,73 @@ class FlextInfraRefactorCensus(
         selected_rules: frozenset[str] | None = None,
         convention: m.Infra.RopeModuleConvention | None = None,
     ) -> tuple[tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]]:
-        """Module rules."""
+        """Run every selected alias/MRO rule for one module and collect outcomes."""
         resolved_convention = convention or rope.convention(file_path)
-        if selected_kinds is None:
-            selected_kinds = frozenset(kind_names) if kind_names else frozenset()
-        ctx: m.Infra.DetectorContext | None = None
-        symbol_index: dict[str, tuple[str, int]] = self._lightweight_symbol_index(
-            rope,
-            file_path,
+        resolved_kinds = (
+            selected_kinds
+            if selected_kinds is not None
+            else (frozenset(kind_names) if kind_names else frozenset())
         )
+        symbol_index = self._lightweight_symbol_index(rope, file_path)
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
 
-        if self._include_rule(
-            "runtime_alias", rule_names=rule_names, selected_rules=selected_rules
-        ):
-            if ctx is None:
-                ctx = self._detector_context(
-                    rope,
-                    file_path,
-                    convention=resolved_convention,
-                )
-            runtime_target = (
-                self._runtime_alias_target(resolved_convention, objects)
-                if objects is not None
-                else None
+        def selected(rule_name: str) -> bool:
+            return self._include_rule(
+                rule_name, rule_names=rule_names, selected_rules=selected_rules
             )
-            runtime_target_name = ""
-            runtime_target_kind = "assignment"
-            runtime_target_line = 0
-            if runtime_target is not None:
-                runtime_target_name = runtime_target.name
-                runtime_target_kind = runtime_target.kind
-                runtime_target_line = runtime_target.line
-            else:
-                expected_name = self._runtime_alias_target_name(resolved_convention)
-                expected_symbol = symbol_index.get(expected_name)
-                if expected_symbol is not None:
-                    runtime_target_name = expected_name
-                    runtime_target_kind, runtime_target_line = expected_symbol
-            fixable = runtime_target is not None or runtime_target_kind == "class"
-            for detector_violation in FlextInfraRuntimeAliasDetector.detect_file(ctx):
-                object_name = (
-                    runtime_target_name if fixable else detector_violation.alias
-                )
-                object_kind = runtime_target_kind if fixable else "assignment"
-                if selected_kinds and object_kind not in selected_kinds:
-                    continue
-                line = detector_violation.line or (
-                    runtime_target_line if fixable else 0
-                )
-                action = "rewrite_runtime_alias" if fixable else ""
-                violations.append(
-                    self._raw_violation(
-                        project=project_name,
-                        object_name=object_name,
-                        object_kind=object_kind,
-                        kind="runtime_alias",
-                        file_path=file_path,
-                        line=line,
-                        description=detector_violation.detail,
-                        fixable=fixable,
-                        fix_action=action,
-                    )
-                )
-                if fixable:
-                    fixes.append(
-                        m.Infra.Census.Fix(
-                            object_name=object_name,
-                            action=action,
-                            source_file=str(file_path),
-                            files_changed=1,
-                            applied=self._fix_key(file_path, object_name, action)
-                            in applied,
-                        )
-                    )
 
-        if self._include_rule(
-            "manual_typing_alias",
-            rule_names=rule_names,
-            selected_rules=selected_rules,
-        ):
-            if ctx is None:
-                ctx = self._detector_context(
-                    rope,
-                    file_path,
-                    convention=resolved_convention,
-                )
-            manual_ctx = ctx
-            if manual_ctx is None:
-                msg = f"manual typing detector context unavailable for {file_path}"
-                raise RuntimeError(msg)
-            for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
-                manual_ctx,
-            ):
-                matched = (
-                    self._named_object(objects, detector_violation.name)
-                    if objects is not None
-                    else None
-                )
-                object_kind = matched.kind if matched is not None else "assignment"
-                if selected_kinds and object_kind not in selected_kinds:
-                    continue
-                action = (
-                    "rewrite_manual_typing_alias"
-                    if manual_ctx.project_root is not None
-                    else ""
-                )
-                violations.append(
-                    self._raw_violation(
-                        project=project_name,
-                        object_name=detector_violation.name,
-                        object_kind=object_kind,
-                        kind="manual_typing_alias",
-                        file_path=file_path,
-                        line=detector_violation.line,
-                        description=detector_violation.detail,
-                        fixable=bool(action),
-                        fix_action=action,
-                    )
-                )
-                if action:
-                    fixes.append(
-                        m.Infra.Census.Fix(
-                            object_name=detector_violation.name,
-                            action=action,
-                            source_file=str(file_path),
-                            target_file=str(
-                                resolved_convention.package_dir / c.Infra.TYPINGS_PY
-                            ),
-                            files_changed=2,
-                            applied=self._fix_key(
-                                file_path,
-                                detector_violation.name,
-                                action,
-                            )
-                            in applied,
-                        )
-                    )
-
-        if self._include_rule(
-            "compatibility_alias",
-            rule_names=rule_names,
-            selected_rules=selected_rules,
-        ):
-            if ctx is None:
-                ctx = self._detector_context(
-                    rope,
-                    file_path,
-                    convention=resolved_convention,
-                )
-            for detector_violation in FlextInfraCompatibilityAliasDetector.detect_file(
-                ctx,
-            ):
-                matched = (
-                    self._named_object(objects, detector_violation.alias_name)
-                    if objects is not None
-                    else None
-                )
-                object_kind = matched.kind if matched is not None else "assignment"
-                if matched is None:
-                    target_symbol = symbol_index.get(detector_violation.target_name)
-                    if target_symbol is not None and target_symbol[0] in {
-                        "class",
-                        "function",
-                    }:
-                        object_kind = target_symbol[0]
-                if selected_kinds and object_kind not in selected_kinds:
-                    continue
-                action = "rewrite_compatibility_alias"
-                violations.append(
-                    self._raw_violation(
-                        project=project_name,
-                        object_name=detector_violation.alias_name,
-                        object_kind=object_kind,
-                        kind="compatibility_alias",
-                        file_path=file_path,
-                        line=detector_violation.line,
-                        description=(
-                            "Compatibility alias "
-                            f"'{detector_violation.alias_name}' should use "
-                            f"'{detector_violation.target_name}' directly"
-                        ),
-                        fixable=True,
-                        fix_action=action,
-                    )
-                )
-                fixes.append(
-                    m.Infra.Census.Fix(
-                        object_name=detector_violation.alias_name,
-                        action=action,
-                        source_file=str(file_path),
-                        files_changed=1,
-                        applied=self._fix_key(
-                            file_path,
-                            detector_violation.alias_name,
-                            action,
-                        )
-                        in applied,
-                    )
-                )
-
-        if self._include_rule(
-            "mro_completeness",
-            rule_names=rule_names,
-            selected_rules=selected_rules,
-        ):
-            parse_failures: list[m.Infra.ParseFailureViolation] = []
-            mro_ctx = self._detector_context(
+        if selected("runtime_alias"):
+            v, f = self._rule_runtime_alias(
                 rope,
                 file_path,
-                parse_failures=parse_failures,
+                project_name=project_name,
+                objects=objects,
+                applied=applied,
+                selected_kinds=resolved_kinds,
+                symbol_index=symbol_index,
                 convention=resolved_convention,
             )
-            for detector_violation in FlextInfraMROCompletenessDetector.detect_file(
-                mro_ctx,
-            ):
-                matched = (
-                    self._named_object(objects, detector_violation.facade_class)
-                    if objects is not None
-                    else None
-                )
-                object_kind = matched.kind if matched is not None else "class"
-                if selected_kinds and object_kind not in selected_kinds:
-                    continue
-                symbol = symbol_index.get(detector_violation.facade_class)
-                action = "rewrite_mro_completeness"
-                violations.append(
-                    self._raw_violation(
-                        project=project_name,
-                        object_name=detector_violation.facade_class,
-                        object_kind=object_kind,
-                        kind="mro_completeness",
-                        file_path=file_path,
-                        line=(
-                            matched.line
-                            if matched is not None
-                            else symbol[1]
-                            if symbol is not None
-                            else detector_violation.line
-                        ),
-                        description=detector_violation.suggestion,
-                        fixable=True,
-                        fix_action=action,
-                    )
-                )
-                fixes.append(
-                    m.Infra.Census.Fix(
-                        object_name=detector_violation.facade_class,
-                        action=action,
-                        source_file=str(file_path),
-                        files_changed=1,
-                        applied=self._fix_key(
-                            file_path,
-                            detector_violation.facade_class,
-                            action,
-                        )
-                        in applied,
-                    )
-                )
-
+            violations.extend(v)
+            fixes.extend(f)
+        if selected("manual_typing_alias"):
+            v, f = self._rule_manual_typing_alias(
+                rope,
+                file_path,
+                project_name=project_name,
+                objects=objects,
+                applied=applied,
+                selected_kinds=resolved_kinds,
+                convention=resolved_convention,
+            )
+            violations.extend(v)
+            fixes.extend(f)
+        if selected("compatibility_alias"):
+            v, f = self._rule_compatibility_alias(
+                rope,
+                file_path,
+                project_name=project_name,
+                objects=objects,
+                applied=applied,
+                selected_kinds=resolved_kinds,
+                symbol_index=symbol_index,
+                convention=resolved_convention,
+            )
+            violations.extend(v)
+            fixes.extend(f)
+        if selected("mro_completeness"):
+            v, f = self._rule_mro_completeness(
+                rope,
+                file_path,
+                project_name=project_name,
+                objects=objects,
+                applied=applied,
+                selected_kinds=resolved_kinds,
+                symbol_index=symbol_index,
+                convention=resolved_convention,
+            )
+            violations.extend(v)
+            fixes.extend(f)
         return (tuple(violations), tuple(fixes))
 
     def _apply_supported_fixes(
