@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, override
 
@@ -35,6 +35,9 @@ from flext_infra.refactor._census_inventory import (
 )
 from flext_infra.refactor._census_objects import (
     FlextInfraRefactorCensusObjectsMixin,
+)
+from flext_infra.refactor._census_project import (
+    FlextInfraRefactorCensusProjectMixin,
 )
 from flext_infra.refactor._census_render import (
     FlextInfraRefactorCensusRenderMixin,
@@ -68,6 +71,7 @@ class FlextInfraRefactorCensus(
     FlextInfraRefactorCensusFiltersMixin,
     FlextInfraRefactorCensusInventoryMixin,
     FlextInfraRefactorCensusObjectsMixin,
+    FlextInfraRefactorCensusProjectMixin,
     FlextInfraRefactorCensusRenderMixin,
     FlextInfraRefactorCensusRulesAliasMixin,
     FlextInfraRefactorCensusRulesStructMixin,
@@ -364,119 +368,6 @@ class FlextInfraRefactorCensus(
                 for report in project_reports
                 for candidate in report.removal_candidates
             ),
-        )
-
-    def _handle_rope_stage_failure(
-        self,
-        *,
-        file_path: Path,
-        stage: str,
-        exc: BaseException,
-    ) -> None:
-        """Handle rope stage failure."""
-        error = f"{type(exc).__name__}: {exc}"
-        _log.warning(
-            "census_rope_stage_failed",
-            stage=stage,
-            file_path=str(file_path),
-            error=error,
-        )
-        if self.fail_fast:
-            msg = f"census rope {stage} failed for {file_path}: {error}"
-            raise RuntimeError(msg) from exc
-
-    def _project_report(
-        self,
-        project: str,
-        *,
-        objects: tuple[m.Infra.Census.Object, ...],
-        seed_violations: tuple[m.Infra.Census.Violation, ...],
-        fixes: tuple[m.Infra.Census.Fix, ...],
-        duplicate_keys: frozenset[str],
-        rule_names: t.StrSequence | None,
-        selected_rules: frozenset[str] | None = None,
-    ) -> m.Infra.Census.ProjectReport:
-        """Project report."""
-        violations = list(seed_violations)
-        if selected_rules is None and rule_names:
-            selected_rules = frozenset(rule_names)
-        include_unused = self._include_rule(
-            "unused", rule_names=rule_names, selected_rules=selected_rules
-        )
-        include_test_only = self._include_rule(
-            "test_only", rule_names=rule_names, selected_rules=selected_rules
-        )
-        include_duplicate = self._include_rule(
-            "duplicate", rule_names=rule_names, selected_rules=selected_rules
-        )
-        include_wrong_tier = self._include_rule(
-            "wrong_tier", rule_names=rule_names, selected_rules=selected_rules
-        )
-        unused_count = 0
-        test_only_count = 0
-        removal_candidates: list[m.Infra.Census.RemovalCandidate] = []
-        for item in objects:
-            is_unused = self._is_unused(item)
-            is_test_only = self._is_test_only(item)
-            if include_duplicate and self._object_key(item) in duplicate_keys:
-                violations.append(
-                    self._violation(
-                        item,
-                        kind="duplicate",
-                        description="Duplicate definition in workspace",
-                    )
-                )
-            if is_unused and include_unused:
-                unused_count += 1
-                violations.append(
-                    self._violation(
-                        item,
-                        kind="unused",
-                        description="Object has no non-definition references",
-                    )
-                )
-            if is_test_only and include_test_only:
-                test_only_count += 1
-                violations.append(
-                    self._violation(
-                        item,
-                        kind="test_only",
-                        description="Object is referenced only from tests/",
-                    )
-                )
-            if (
-                include_wrong_tier
-                and item.expected_tier
-                and item.actual_tier
-                and item.expected_tier != item.actual_tier
-            ):
-                violations.append(
-                    self._violation(
-                        item,
-                        kind="wrong_tier",
-                        description=f"Expected tier '{item.expected_tier}' but found '{item.actual_tier}'",
-                    )
-                )
-            candidate = self._removal_candidate(
-                item,
-                include_unused=include_unused,
-                include_test_only=include_test_only,
-            )
-            if candidate is not None:
-                removal_candidates.append(candidate)
-        return m.Infra.Census.ProjectReport(
-            project=project,
-            objects=objects,
-            objects_total=len(objects),
-            objects_by_kind=dict(Counter(item.kind for item in objects)),
-            violations=tuple(violations),
-            fixes=fixes,
-            violations_total=len(violations),
-            fixes_applied=sum(1 for fix in fixes if fix.applied),
-            unused_count=unused_count,
-            test_only_count=test_only_count,
-            removal_candidate_count=len(removal_candidates),
-            removal_candidates=tuple(removal_candidates),
         )
 
     def _validated_project_reports(
