@@ -1,0 +1,20 @@
+src/flext_infra/_models/refactor.py
+  s_9942ef7a89ba9a::t_0ccbec166b34a1 19
+  s_9942ef7a89ba9a::t_9102a0340c65a2 162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "e61ad38c31e717c2364b0307fd090f5febec1c32",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
