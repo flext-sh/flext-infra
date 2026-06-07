@@ -1,0 +1,25 @@
+src/flext_infra/deps/extra_paths.py
+  s_9942ef7a89ba9a::t_adcbe4fd60e249 21,24-27
+  s_9942ef7a89ba9a::t_90bcee1a54cd5f 86
+  s_9942ef7a89ba9a::t_8401c26373f887 8
+src/flext_infra/deps/_extra_paths_sync.py
+  s_9942ef7a89ba9a::t_ba5f422c697446 1,15,21,23-57
+  s_9942ef7a89ba9a::t_c1cc9a63441c80 2-5,7-9,12,14,16,58-192
+  s_9942ef7a89ba9a::t_53b85f1921519b 6,10-11,13,17-20,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "cf5f25d6f353adf637b8cd30b49f41bc7d52dc7a",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
