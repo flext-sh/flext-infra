@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import (
     MutableSet,
 )
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -17,6 +16,7 @@ from flext_infra import (
     FlextInfraModelsRefactorGrep,
     FlextInfraModelsRefactorViolations,
     t,
+    u,
 )
 
 
@@ -159,7 +159,7 @@ class FlextInfraModelsRefactor(
         updated_at: Annotated[
             str,
             m.Field(description="ISO 8601 timestamp of last update"),
-        ] = m.Field(default_factory=lambda: datetime.now(UTC).isoformat())
+        ] = m.Field(default_factory=lambda: u.now().isoformat())
 
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
