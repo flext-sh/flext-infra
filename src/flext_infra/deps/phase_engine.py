@@ -12,9 +12,6 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from tomlkit.items import Table
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import c, m, p, r, s, t, u
 
 
@@ -22,7 +19,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
     """Apply ``m.Infra.TomlPhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
-        TOMLDocument,
+        t.Cli.TomlDocument,
         m.Field(exclude=True, description="Target TOML document"),
     ]
     phases: Annotated[
@@ -32,12 +29,14 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
             description="Ordered TOML transformation phases to apply.",
         ),
     ]
-    _table_cache: dict[t.StrSequence, Table] = u.PrivateAttr(default_factory=dict)
+    _table_cache: dict[t.StrSequence, t.Cli.TomlTable] = u.PrivateAttr(
+        default_factory=dict
+    )
 
     @classmethod
     def apply_phases(
         cls,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *phases: m.Infra.TomlPhaseConfig,
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
@@ -108,12 +107,12 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
             )
         return out
 
-    def _resolve_phase_table(self, phase_path: t.StrSequence) -> Table:
+    def _resolve_phase_table(self, phase_path: t.StrSequence) -> t.Cli.TomlTable:
         """Resolve and cache one TOML table path for the current document."""
         cached_table = self._table_cache.get(phase_path)
         if cached_table is not None:
             return cached_table
-        table: Table = u.Cli.toml_ensure_path(self.doc, phase_path)
+        table: t.Cli.TomlTable = u.Cli.toml_ensure_path(self.doc, phase_path)
         self._table_cache[phase_path] = table
         return table
 
@@ -154,7 +153,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _apply_operation(
-        tbl: Table,
+        tbl: t.Cli.TomlTable,
         operation: m.Infra.TomlOperation,
         out: t.MutableSequenceOf[str],
         pfx: str,
@@ -224,7 +223,7 @@ class FlextInfraPhaseEngine(s[t.StrSequence]):
 
     @staticmethod
     def _remove_operation(
-        tbl: Table,
+        tbl: t.Cli.TomlTable,
         operation: m.Infra.TomlRemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,
