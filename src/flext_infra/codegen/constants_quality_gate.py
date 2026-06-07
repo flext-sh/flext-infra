@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import shutil
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
@@ -70,7 +69,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         verdict = self.compute_verdict(checks)
         report_data = {
             "workspace": str(self.workspace_root),
-            "generated_at": datetime.now(UTC).isoformat(),
+            "generated_at": u.now().isoformat(),
             "verdict": verdict,
             "checks": [
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(check) for check in checks
