@@ -1,0 +1,19 @@
+src/flext_infra/_constants/make.py
+  s_9942ef7a89ba9a::t_eee69d82c25534 162-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "a8accb31e59e05e8c05ae54fd775c6b7a5389716",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
