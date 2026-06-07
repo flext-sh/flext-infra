@@ -1,0 +1,23 @@
+src/flext_infra/deps/_modernizer_constraints.py
+  s_9942ef7a89ba9a::t_2fe83b336eb162 1-181
+src/flext_infra/deps/_modernizer_payload.py
+  s_9942ef7a89ba9a::t_6ee23b0163684c 1-167
+src/flext_infra/deps/modernizer.py
+  s_9942ef7a89ba9a::t_bd63e58dad7098 33-38,41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "de834889c90d1f39bbd9573b60828013a3cb3611",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
