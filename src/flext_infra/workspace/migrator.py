@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
     c,
@@ -313,7 +311,7 @@ class FlextInfraProjectMigrator(
             return r[str].fail(
                 document_result.error or "pyproject parse failed",
             )
-        document: TOMLDocument = document_result.value
+        document: t.Cli.TomlDocument = document_result.value
         if c.Infra.PKG_CORE in u.Infra.declared_dependency_names(document):
             return self._no_change_result(
                 "pyproject.toml already includes flext-core dependency",
@@ -325,7 +323,7 @@ class FlextInfraProjectMigrator(
 
     def _apply_flext_core_dependency(
         self,
-        document: TOMLDocument,
+        document: t.Cli.TomlDocument,
         pyproject_path: Path,
         *,
         dry_run: bool,
