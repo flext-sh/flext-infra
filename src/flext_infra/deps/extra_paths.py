@@ -11,8 +11,6 @@ from collections.abc import (
 from pathlib import Path
 from typing import override
 
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import (
     FlextInfraProjectSelectionServiceBase,
     c,
@@ -142,7 +140,7 @@ class FlextInfraExtraPathsManager(FlextInfraProjectSelectionServiceBase[bool]):
 
     def sync_doc(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         project_dir: Path,
         is_root: bool,
