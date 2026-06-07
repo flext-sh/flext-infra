@@ -1,7 +1,7 @@
 """Auto-generate standardized ``[tool.flext.*]`` tables in each project's pyproject.toml.
 
-Uses ``tomlkit`` round-trip parsing to preserve existing formatting, comments,
-and ordering. Project discovery uses ``u.Infra.discover_projects`` — the
+Uses the ``u.Cli`` TOML helpers (round-trip preserving formatting, comments,
+and ordering). Project discovery uses ``u.Infra.discover_projects`` — the
 canonical workspace member list.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import override
 
-import tomlkit
 from tomlkit.items import Table
 
 from flext_infra import c, p, r, s, u
@@ -21,7 +20,7 @@ from flext_infra import c, p, r, s, u
 class FlextInfraCodegenPyprojectKeys(s[bool]):
     """Ensure every workspace project has standardized ``[tool.flext.*]`` tables.
 
-    Reads each ``pyproject.toml`` via ``tomlkit`` (round-trip preserving),
+    Reads each ``pyproject.toml`` via ``u.Cli`` TOML helpers (round-trip preserving),
     inserts or updates ``[tool.flext.project]``, ``[tool.flext.namespace]``,
     ``[tool.flext.docs]``, ``[tool.flext.aliases]`` sections with SSOT defaults,
     and writes back only if the content changed.
@@ -47,18 +46,18 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
                     doc_result.error or f"pyproject-keys: cannot read {pyproject_path}",
                 )
             doc = doc_result.value
-            original_text = tomlkit.dumps(doc)
+            original_text = u.Cli.toml_dumps(doc)
 
             tool_flext_config = u.read_tool_flext_config(project_info.path)
             dumped = tool_flext_config.model_dump(exclude_none=True)
 
-            tool: Table = doc.setdefault("tool", tomlkit.table(is_super_table=True))
-            flext: Table = tool.setdefault("flext", tomlkit.table(is_super_table=True))
+            tool: Table = doc.setdefault("tool", u.Cli.toml_table(super_table=True))
+            flext: Table = tool.setdefault("flext", u.Cli.toml_table(super_table=True))
 
             for section_key in ("project", "namespace", "docs", "aliases"):
                 section_data = dumped.get(section_key, {})
                 if section_key not in flext:
-                    flext[section_key] = tomlkit.table()
+                    flext[section_key] = u.Cli.toml_table()
                 raw_item = flext[section_key]
                 if not isinstance(raw_item, Table):
                     msg = f"{project_info.name}: [tool.flext.{section_key}] is not a table"
@@ -68,7 +67,7 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
                     if k not in section_table:
                         section_table[k] = v
 
-            rendered = tomlkit.dumps(doc)
+            rendered = u.Cli.toml_dumps(doc)
             if rendered == original_text:
                 continue
 
