@@ -12,9 +12,7 @@ from __future__ import annotations
 
 from typing import override
 
-from tomlkit.items import Table
-
-from flext_infra import c, p, r, s, u
+from flext_infra import c, p, r, s, t, u
 
 
 class FlextInfraCodegenPyprojectKeys(s[bool]):
@@ -51,18 +49,22 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
             tool_flext_config = u.read_tool_flext_config(project_info.path)
             dumped = tool_flext_config.model_dump(exclude_none=True)
 
-            tool: Table = doc.setdefault("tool", u.Cli.toml_table(super_table=True))
-            flext: Table = tool.setdefault("flext", u.Cli.toml_table(super_table=True))
+            tool: t.Cli.TomlTable = doc.setdefault(
+                "tool", u.Cli.toml_table(super_table=True)
+            )
+            flext: t.Cli.TomlTable = tool.setdefault(
+                "flext", u.Cli.toml_table(super_table=True)
+            )
 
             for section_key in ("project", "namespace", "docs", "aliases"):
                 section_data = dumped.get(section_key, {})
                 if section_key not in flext:
                     flext[section_key] = u.Cli.toml_table()
                 raw_item = flext[section_key]
-                if not isinstance(raw_item, Table):
+                if not u.Cli.toml_is_table(raw_item):
                     msg = f"{project_info.name}: [tool.flext.{section_key}] is not a table"
                     raise TypeError(msg)
-                section_table: Table = raw_item
+                section_table: t.Cli.TomlTable = raw_item
                 for k, v in section_data.items():
                     if k not in section_table:
                         section_table[k] = v
