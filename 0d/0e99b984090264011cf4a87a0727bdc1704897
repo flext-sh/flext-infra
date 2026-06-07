@@ -1,0 +1,21 @@
+src/flext_infra/deps/phases/consolidate_groups.py
+  s_9942ef7a89ba9a::t_adf373caf0589d 45,50,53
+  s_9942ef7a89ba9a::t_4946eeaf8d38ee 13
+  s_9942ef7a89ba9a::t_3560ead83d8c7e 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "0d0e99b984090264011cf4a87a0727bdc1704897",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
