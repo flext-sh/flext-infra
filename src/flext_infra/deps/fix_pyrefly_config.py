@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
-    FlextInfraExtraPathsManager,
     c,
     m,
     p,
@@ -23,11 +22,12 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
 
 logger = u.fetch_logger(__name__)
 
 
-class FlextInfraConfigFixer(s[bool]):
+class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
     def __init__(
@@ -97,73 +97,22 @@ class FlextInfraConfigFixer(s[bool]):
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root
-        search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
-        if isinstance(search_raw, list):
-            current_paths: t.JsonList = []
-            try:
-                current_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
-                    list(search_raw)
-                )
-            except c.ValidationError as err:
-                return r[t.StrSequence].fail_op("validate-search-path", err)
-            current_search = [
-                path_item for path_item in current_paths if isinstance(path_item, str)
-            ]
-            expected_search = FlextInfraExtraPathsManager(
-                workspace=self._workspace_root
-            ).pyrefly_search_paths(
-                project_dir=project_dir,
-                is_root=is_root,
-            )
-            if current_search != expected_search:
-                pyrefly[c.Infra.SEARCH_PATH] = u.Cli.toml_array(expected_search)
-                all_fixes.append("synchronized search-path from YAML rules")
-        removed_ignore = False
-        sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
-        if isinstance(sub_configs, list):
-            new_configs: t.MutableSequenceOf[t.Infra.InfraValue] = []
-            configs: t.SequenceOf[t.Infra.InfraValue] = []
-            try:
-                configs = t.Infra.INFRA_SEQ_ADAPTER.validate_python(sub_configs)
-            except c.ValidationError as err:
-                return r[t.StrSequence].fail_op("validate-sub-configs", err)
-            for conf in configs:
-                conf_out: t.Infra.InfraValue = conf
-                conf_map: t.Infra.ContainerDict = {}
-                if isinstance(conf, Mapping):
-                    try:
-                        conf_map = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(conf)
-                        conf_out = dict(conf_map)
-                    except c.ValidationError:
-                        conf_map = {}
-                if conf_map.get(c.Infra.IGNORE) is True:
-                    removed_ignore = True
-                    matches = conf_map.get("matches", c.Infra.DEFAULT_UNKNOWN)
-                    all_fixes.append(
-                        f"removed ignore=true sub-settings for '{matches}'"
-                    )
-                    continue
-                new_configs.append(conf_out)
-            if len(new_configs) != len(configs):
-                pyrefly[c.Infra.SUB_CONFIG] = list(
-                    t.Cli.JSON_LIST_ADAPTER.validate_python(new_configs)
-                )
+        search_result = self._sync_search_path(
+            pyrefly, project_dir, is_root=is_root
+        )
+        if search_result.failure:
+            return search_result
+        all_fixes.extend(search_result.value)
+        sub_result = self._strip_ignored_sub_configs(pyrefly)
+        if sub_result.failure:
+            return r[t.StrSequence].fail(sub_result.error or "validate-sub-configs")
+        sub_fixes, removed_ignore = sub_result.value
+        all_fixes.extend(sub_fixes)
         if removed_ignore or is_root:
-            current_excludes: t.StrSequence = []
-            excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
-            if isinstance(excludes, list):
-                exclude_items: t.JsonList = []
-                try:
-                    exclude_items = t.Cli.JSON_LIST_ADAPTER.validate_python([*excludes])
-                except c.ValidationError as err:
-                    return r[t.StrSequence].fail_op("validate-project-excludes", err)
-                current_excludes = [str(value) for value in exclude_items]
-            expected_excludes = sorted(
-                set(self._tool_config.tools.pyrefly.project_exclude_globs)
-            )
-            if current_excludes != expected_excludes:
-                pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Cli.toml_array(expected_excludes)
-                all_fixes.append("synchronized project-excludes from YAML rules")
+            excludes_result = self._sync_project_excludes(pyrefly)
+            if excludes_result.failure:
+                return excludes_result
+            all_fixes.extend(excludes_result.value)
         if all_fixes and (not dry_run):
             typed_tool_data[c.Infra.PYREFLY] = dict(pyrefly)
             doc_data[c.Infra.TOOL] = typed_tool_data
