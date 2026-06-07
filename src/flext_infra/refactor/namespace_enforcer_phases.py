@@ -23,7 +23,6 @@ from flext_infra import (
     FlextInfraNamespaceSourceDetector,
     FlextInfraRuntimeAliasDetector,
     FlextInfraScanner,
-    c,
     m,
     t,
     u,
@@ -306,7 +305,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
                             tofile=f"b/{rel}",
                         ),
                     )
-                _ = py_file.write_text(original, encoding=c.Cli.ENCODING_DEFAULT)
+                _ = u.Cli.atomic_write_text_file(py_file, original).unwrap()
             for project_root in project_roots:
                 for py_file in self._collect_py_files(project_root=project_root):
                     if py_file not in snapshots and py_file.is_file():
