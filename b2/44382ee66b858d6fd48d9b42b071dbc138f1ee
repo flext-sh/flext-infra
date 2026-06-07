@@ -1,0 +1,21 @@
+src/flext_infra/_constants/check.py
+  s_9942ef7a89ba9a::t_91f3eef0b85862 147-149
+src/flext_infra/gates/loc_cap.py
+  s_9942ef7a89ba9a::t_cd82cdd9387cc6 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "b244382ee66b858d6fd48d9b42b071dbc138f1ee",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
