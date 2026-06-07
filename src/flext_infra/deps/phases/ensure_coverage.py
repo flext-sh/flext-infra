@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from tomlkit.toml_document import TOMLDocument
-
 from flext_infra import FlextInfraPhaseEngine, m, t
 
 
@@ -51,7 +49,7 @@ class FlextInfraEnsureCoverageConfigPhase:
 
     def apply(
         self,
-        doc: TOMLDocument,
+        doc: t.Cli.TomlDocument,
         *,
         project_kind: str = "core",
     ) -> t.StrSequence:
