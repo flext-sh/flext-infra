@@ -9,6 +9,9 @@ from rope.base.exceptions import RopeError
 
 from flext_infra import m, p, t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.refactor._census_rules_dispatch import (
+    FlextInfraRefactorCensusRulesDispatchMixin,
+)
 from flext_infra.refactor._census_validate import (
     FlextInfraRefactorCensusValidateMixin,
 )
@@ -19,7 +22,10 @@ _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 )
 
 
-class FlextInfraRefactorCensusCollectMixin(FlextInfraRefactorCensusValidateMixin):
+class FlextInfraRefactorCensusCollectMixin(
+    FlextInfraRefactorCensusRulesDispatchMixin,
+    FlextInfraRefactorCensusValidateMixin,
+):
     """Scan one module (inventory + rules) and assemble the WorkspaceReport."""
 
     if TYPE_CHECKING:
@@ -41,22 +47,6 @@ class FlextInfraRefactorCensusCollectMixin(FlextInfraRefactorCensusValidateMixin
             selected_families: frozenset[str],
             selected_kinds: frozenset[str] | None = None,
         ) -> bool: ...
-        def _module_rules(
-            self,
-            rope: p.Infra.RopeWorkspaceDsl,
-            file_path: Path,
-            *,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
-            project_name: str,
-            applied: frozenset[str],
-            kind_names: t.StrSequence | None,
-            rule_names: t.StrSequence | None,
-            selected_kinds: frozenset[str] | None = None,
-            selected_rules: frozenset[str] | None = None,
-            convention: m.Infra.RopeModuleConvention | None = None,
-        ) -> tuple[
-            tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]
-        ]: ...
         @staticmethod
         def _duplicate_groups(
             project_objects: tuple[list[m.Infra.Census.Object], ...],
