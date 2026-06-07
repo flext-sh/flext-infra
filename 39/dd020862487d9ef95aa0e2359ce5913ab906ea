@@ -1,0 +1,23 @@
+src/flext_infra/_utilities/_rope_method_order.py
+  s_9942ef7a89ba9a::t_046fa21dddcb91 1-102
+src/flext_infra/_utilities/_rope_bracket_balance.py
+  s_9942ef7a89ba9a::t_006ea1c9733965 1-115
+src/flext_infra/_utilities/rope_helpers.py
+  s_9942ef7a89ba9a::t_14f5a421b7dfbc 10-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "39dd020862487d9ef95aa0e2359ce5913ab906ea",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
