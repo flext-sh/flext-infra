@@ -1,0 +1,19 @@
+tests/unit/workspace/resolve_what_tests.py
+  s_73cbfc60e45e37::t_0adb5909f6d3da 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "1414a1f512db4a1569376e15bf8e9c12369994c5",
+  "prompts": {},
+  "sessions": {
+    "s_73cbfc60e45e37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80f2c44c-f1f2-49a0-8035-ccac60ac602b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
