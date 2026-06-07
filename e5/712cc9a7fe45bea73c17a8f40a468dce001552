@@ -1,0 +1,25 @@
+src/flext_infra/codegen/constants_quality_gate.py
+  s_9942ef7a89ba9a::t_e261a3b0c03af3 38
+  s_9942ef7a89ba9a::t_d21e7ad8fff09a 88,93-100
+  s_9942ef7a89ba9a::t_da7b7cfd4ed5a8 30-33
+  s_9942ef7a89ba9a::t_616bbcbfef541d 322,328-329,334-345
+tests/unit/codegen/constants_quality_gate_tests.py
+  s_9942ef7a89ba9a::t_35013decaedacb 142-144
+  s_9942ef7a89ba9a::t_f117101cdf06b4 92-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "e5712cc9a7fe45bea73c17a8f40a468dce001552",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
