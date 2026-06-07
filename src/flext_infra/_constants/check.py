@@ -144,6 +144,9 @@ class FlextInfraConstantsCheck:
     "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
     TOKEI_BINARY: Final[str] = "tokei"
     TOKEI_TOTAL_KEY: Final[str] = "Total"
+    TOKEI_PYTHON_LANG: Final[str] = "Python"
+    "tokei language key the 200-LOC cap enforces — §3.1 is a Python-module law; "
+    "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- Manual-command blocker (§5 Make Contract) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset(

@@ -60,7 +60,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
             return ()
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for language, payload in data.items():
-            if language == c.Infra.TOKEI_TOTAL_KEY or not isinstance(payload, Mapping):
+            if language != c.Infra.TOKEI_PYTHON_LANG or not isinstance(payload, Mapping):
                 continue
             reports = payload.get("reports")
             if not isinstance(reports, list):
