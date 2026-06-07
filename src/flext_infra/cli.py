@@ -30,6 +30,7 @@ from flext_infra import (
     FlextInfraExtraPathsManager,
     FlextInfraInternalDependencySyncService,
     FlextInfraInventoryService,
+    FlextInfraManualCommandValidator,
     FlextInfraNamespaceEnforcer,
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
@@ -54,6 +55,8 @@ from flext_infra import (
     FlextInfraWorkspaceDetector,
     c,
     m,
+    p,
+    r,
     t,
     u,
 )
@@ -94,6 +97,7 @@ class FlextInfraCli(type(cli_facade)):
         "--module",
         "--namespace",
         "--gates",
+        "--what",
         "--format",
         "--output",
         "--report",
@@ -460,6 +464,11 @@ class FlextInfraCli(type(cli_facade)):
                     "Guard 8: centralized metadata parser discipline",
                     FlextInfraValidateMetadataDiscipline,
                 ),
+                (
+                    "manual-cmd",
+                    "Manual-command blocker (§5): pre-commit config drift gate",
+                    FlextInfraManualCommandValidator,
+                ),
             )
         ),
         c.Infra.CLI_GROUP_WORKSPACE: tuple(
@@ -545,6 +554,55 @@ class FlextInfraCli(type(cli_facade)):
         """Register group commands."""
         self.register_result_routes(app, self._GROUP_COMMANDS[group])
 
+    @staticmethod
+    def _split_what(args: t.StrSequence) -> tuple[str | None, list[str]]:
+        """Extract the ``--what`` value and return remaining args without it."""
+        remaining: list[str] = []
+        what: str | None = None
+        index = 0
+        items = list(args)
+        while index < len(items):
+            arg = items[index]
+            if arg == "--what" and index + 1 < len(items):
+                what = items[index + 1]
+                index += 2
+                continue
+            if arg.startswith("--what="):
+                what = arg.split("=", 1)[1]
+                index += 1
+                continue
+            remaining.append(arg)
+            index += 1
+        return what, remaining
+
+    def _translate_what(self, group: str, args: t.StrSequence) -> p.Result[list[str]]:
+        """Map ``--what <phase>`` onto the existing gate/validator selectors.
+
+        ``check --what <gate>`` reuses ``resolve_gates`` and feeds the gate
+        through the canonical ``run --gates`` path. ``validate --what <name>``
+        selects the matching validator subcommand. Unknown phases yield a
+        usage failure so the caller returns ``ScriptExitCode.USAGE``.
+        """
+        what, remaining = self._split_what(args)
+        if what is None:
+            return r[list[str]].ok(list(args))
+        if group == c.Infra.CLI_GROUP_CHECK:
+            gate_check = FlextInfraWorkspaceChecker.resolve_gates([what])
+            if gate_check.failure:
+                return r[list[str]].fail(gate_check.error or f"unknown gate '{what}'")
+            check_routes = {route.name for route in self._GROUP_COMMANDS[group]}
+            has_subcommand = bool(remaining) and remaining[0] in check_routes
+            prefix = list(remaining) if has_subcommand else [c.Infra.VERB_RUN, *remaining]
+            return r[list[str]].ok([*prefix, "--gates", what])
+        if group == c.Infra.CLI_GROUP_VALIDATE:
+            valid_names = {
+                route.name for route in self._GROUP_COMMANDS[group]
+            }
+            if what not in valid_names:
+                return r[list[str]].fail(f"unknown validator '{what}'")
+            return r[list[str]].ok([what, *remaining])
+        return r[list[str]].fail(f"--what is not supported for group '{group}'")
+
     def _run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute a registered flext-cli group."""
         app = self.create_app_with_common_params(
@@ -553,7 +611,14 @@ class FlextInfraCli(type(cli_facade)):
             settings=self._cli_settings(),
         )
         self._register_group_commands(group, app)
-        normalized_args = self._normalize_group_args(args)
+        what_result = self._translate_what(group, args)
+        if what_result.failure:
+            self.display_message(
+                what_result.error or "invalid --what phase",
+                c.Cli.MessageTypes.ERROR,
+            )
+            return int(c.Infra.ScriptExitCode.USAGE)
+        normalized_args = self._normalize_group_args(what_result.value)
         if not normalized_args:
             _ = self.execute_app(
                 app,

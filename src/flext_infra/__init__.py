@@ -383,6 +383,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.validate.lazy_map_freshness import (
         FlextInfraValidateLazyMapFreshness,
     )
+    from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
     from flext_infra.validate.metadata_discipline import (
         FlextInfraValidateMetadataDiscipline,
     )
@@ -759,6 +760,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".validate.import_cycles": ("FlextInfraValidateImportCycles",),
             ".validate.inventory": ("FlextInfraInventoryService",),
             ".validate.lazy_map_freshness": ("FlextInfraValidateLazyMapFreshness",),
+            ".validate.manual_command": ("FlextInfraManualCommandValidator",),
             ".validate.metadata_discipline": ("FlextInfraValidateMetadataDiscipline",),
             ".validate.namespace_rules": ("FlextInfraNamespaceRules",),
             ".validate.namespace_validator": ("FlextInfraNamespaceValidator",),
@@ -905,6 +907,7 @@ __all__: list[str] = [
     "FlextInfraLocCapGate",
     "FlextInfraLooseObjectDetector",
     "FlextInfraMROCompletenessDetector",
+    "FlextInfraManualCommandValidator",
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
