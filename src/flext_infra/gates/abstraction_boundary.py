@@ -86,6 +86,8 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             return [self._issue(path, read.error or "unreadable source file")]
         text = read.value
         posix = str(path).replace("\\", "/")
+        if any(frag in posix for frag in c.Infra.BOUNDARY_SELF_FILES):
+            return []
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         click_ok = any(frag in posix for frag in c.Infra.BOUNDARY_CLICK_FILES)
         for lib, regex, replacement in c.Infra.BOUNDARY_BANNED_RULES:

@@ -122,6 +122,13 @@ class FlextInfraConstantsCheck:
         (re.compile(r"^\s*print\(", re.MULTILINE), "uses print() — use cli.print"),
         (re.compile(r"^\s*sys\.exit\(", re.MULTILINE), "uses sys.exit() — use cli.exit()"),
     )
+    # The boundary gate's own rule-definition source files legitimately contain the
+    # forbidden-pattern strings as DETECTION RULES (not as usage); exempt them from
+    # self-scanning so the detector does not flag its own catalog.
+    BOUNDARY_SELF_FILES: Final[frozenset[str]] = frozenset({
+        "flext_infra/_constants/check.py",
+        "flext_infra/gates/abstraction_boundary.py",
+    })
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)",
         re.MULTILINE,
