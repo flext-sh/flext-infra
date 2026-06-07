@@ -1,0 +1,23 @@
+src/flext_infra/maintenance/python_version.py
+  s_9942ef7a89ba9a::t_765a8b1d575181 157,159
+  s_9942ef7a89ba9a::t_95abb4b949b030 102
+  s_9942ef7a89ba9a::t_629e89dc0b9580 106
+  s_9942ef7a89ba9a::t_652a1fc5fde1a1 53
+  s_9942ef7a89ba9a::t_151ee715384a83 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "fc5406f905d64aa2996b39343b4a57158f5f5de6",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
