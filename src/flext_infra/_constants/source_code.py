@@ -35,7 +35,6 @@ class FlextInfraConstantsSourceCode:
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         ".flext-deps",
-        ".sisyphus",
     }
     "Directories to skip when scanning pyproject.toml files."
     CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {

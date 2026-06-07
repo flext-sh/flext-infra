@@ -222,7 +222,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
     def test_find_all_pyproject_files_skips_excluded_dirs(self, tmp_path: Path) -> None:
         included = tmp_path / "project"
-        skipped = tmp_path / ".sisyphus"
+        skipped = tmp_path / ".flext-deps"
         included.mkdir()
         skipped.mkdir()
         included_file = included / c.Infra.PYPROJECT_FILENAME

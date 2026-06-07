@@ -186,7 +186,10 @@ class FlextInfraConstantsMake:
     WORKSPACE_CORE_VERBS: Final[t.StrPairSequence] = (
         ("boot", "Bootstrap .venv + submodules (WHAT=venv|submodules|sync|stat|imp)"),
         ("build", "Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)"),
-        ("check", "Quality gates (WHAT=lint|format|pol|pyre|scan|loc-cap|boundary)"),
+        (
+            "check",
+            "Quality gates (WHAT=lint|format|pol|pyre|scan|loc-cap|boundary|coordination)",
+        ),
         ("test", "Run tests (WHAT=unit|integration|diag)"),
         ("val", "Validation gates (WHAT=loc-cap|loc-delta|boundary|manual-cmd)"),
         ("ship", "Release workflow (WHAT=save|tag|push|pr|rel; APPLY=Y)"),
@@ -224,6 +227,7 @@ class FlextInfraConstantsMake:
             "pyre": "_pyre",
             "pol": "_pol",
             "cqrs": "_cqrs",
+            "coordination": "_coordination",
             **{
                 gate: f'_check_default CHECK_GATES="{gate}"'
                 for gate in (
@@ -279,6 +283,7 @@ class FlextInfraConstantsMake:
         "make check PROJECT=flext-core",
         "make check WHAT=lint FIX=1 CHANGED_ONLY=1",
         "make check WHAT=loc-cap",
+        "make check WHAT=coordination",
         "make build WHAT=mod PROJECT=flext-core",
         "make test PROJECT=flext-core MATCH=test_x FAIL_FAST=1",
         "make val WHAT=loc-delta",

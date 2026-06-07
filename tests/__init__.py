@@ -95,6 +95,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.check.pyrefly_tests import TestFlextInfraConfigFixer
     from tests.unit.check.tests_cli import TestWorkspaceCheckCli
     from tests.unit.check.workspace_tests import TestFlextInfraWorkspaceChecker
+    from tests.unit.cli_what_selector_tests import TestsFlextInfraCliWhatSelector
     from tests.unit.codegen.lazy_init_generation_tests import (
         TestGenerateFile,
         TestGenerateTypeChecking,
@@ -504,6 +505,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.check.pyrefly_tests": ("TestFlextInfraConfigFixer",),
             ".unit.check.tests_cli": ("TestWorkspaceCheckCli",),
             ".unit.check.workspace_tests": ("TestFlextInfraWorkspaceChecker",),
+            ".unit.cli_what_selector_tests": ("TestsFlextInfraCliWhatSelector",),
             ".unit.codegen.lazy_init_generation_tests": (
                 "TestGenerateFile",
                 "TestGenerateTypeChecking",
@@ -905,6 +907,7 @@ __all__: list[str] = [
     "TestsFlextInfraBasemkInit",
     "TestsFlextInfraBasemkMain",
     "TestsFlextInfraBasemkMakeContract",
+    "TestsFlextInfraCliWhatSelector",
     "TestsFlextInfraConstants",
     "TestsFlextInfraContainerInfraContainer",
     "TestsFlextInfraDepsDetectionClassify",

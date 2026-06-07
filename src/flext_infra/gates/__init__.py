@@ -7,9 +7,11 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        ".abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
         ".bandit": ("FlextInfraBanditGate",),
         ".base_gate": ("FlextInfraGate",),
         ".go": ("FlextInfraGoGate",),
+        ".loc_cap": ("FlextInfraLocCapGate",),
         ".markdown": ("FlextInfraMarkdownGate",),
         ".mypy": ("FlextInfraMypyGate",),
         ".pyrefly": ("FlextInfraPyreflyGate",),

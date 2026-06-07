@@ -77,6 +77,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".check.pyrefly_tests": ("TestFlextInfraConfigFixer",),
             ".check.tests_cli": ("TestWorkspaceCheckCli",),
             ".check.workspace_tests": ("TestFlextInfraWorkspaceChecker",),
+            ".cli_what_selector_tests": ("TestsFlextInfraCliWhatSelector",),
             ".codegen.lazy_init_generation_tests": (
                 "TestGenerateFile",
                 "TestGenerateTypeChecking",

@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        ".abstraction_boundary_gate_tests": ("abstraction_boundary_gate_tests",),
         ".extended_cli_entry_tests": ("TestWorkspaceCheckCLI",),
         ".extended_config_fixer_errors_tests": ("TestConfigFixerPublicBehavior",),
         ".extended_config_fixer_tests": (
@@ -35,7 +36,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".extended_runners_tests": ("TestRunnerPublicBehavior",),
         ".extended_workspace_init_tests": ("extended_workspace_init_tests",),
         ".fix_pyrefly_config_tests": ("fix_pyrefly_config_tests",),
+        ".gate_registry_tests": ("gate_registry_tests",),
         ".init_tests": ("TestFlextInfraCheck",),
+        ".loc_cap_gate_tests": ("loc_cap_gate_tests",),
         ".main_tests": ("main_tests",),
         ".pyrefly_tests": ("TestFlextInfraConfigFixer",),
         ".silent_failure_gate_tests": ("silent_failure_gate_tests",),

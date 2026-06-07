@@ -18,6 +18,7 @@ from flext_infra import (
     u,
 )
 
+
 class FlextInfraCodegenPipelineStagesMixin:
     """Seven linear codegen stage handlers, each a single fail-fast boundary.
 

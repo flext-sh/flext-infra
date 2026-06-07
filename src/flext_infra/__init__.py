@@ -264,9 +264,7 @@ if _t.TYPE_CHECKING:
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
-    from flext_infra.gates.abstraction_boundary import (
-        FlextInfraAbstractionBoundaryGate,
-    )
+    from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.base_gate import FlextInfraGate
     from flext_infra.gates.go import FlextInfraGoGate
@@ -378,11 +376,24 @@ if _t.TYPE_CHECKING:
     from flext_infra.utilities import FlextInfraUtilities, u
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
     from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+    from flext_infra.validate.gate_contract import FlextInfraGateContractValidator
+    from flext_infra.validate.gate_contract_checks import (
+        FlextInfraGateContractChecksMixin,
+    )
+    from flext_infra.validate.gate_contract_content import (
+        FlextInfraGateContractContentMixin,
+    )
+    from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
+    from flext_infra.validate.gate_contract_report import (
+        FlextInfraGateContractReportMixin,
+    )
+    from flext_infra.validate.gate_contract_scan import FlextInfraGateContractScanMixin
     from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
     from flext_infra.validate.inventory import FlextInfraInventoryService
     from flext_infra.validate.lazy_map_freshness import (
         FlextInfraValidateLazyMapFreshness,
     )
+    from flext_infra.validate.loc_delta import FlextInfraLocDeltaValidator
     from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
     from flext_infra.validate.metadata_discipline import (
         FlextInfraValidateMetadataDiscipline,
@@ -757,9 +768,16 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".validate.basemk_validator": ("FlextInfraBaseMkValidator",),
             ".validate.fresh_import": ("FlextInfraValidateFreshImport",),
+            ".validate.gate_contract": ("FlextInfraGateContractValidator",),
+            ".validate.gate_contract_checks": ("FlextInfraGateContractChecksMixin",),
+            ".validate.gate_contract_content": ("FlextInfraGateContractContentMixin",),
+            ".validate.gate_contract_models": ("FlextInfraGateContractModels",),
+            ".validate.gate_contract_report": ("FlextInfraGateContractReportMixin",),
+            ".validate.gate_contract_scan": ("FlextInfraGateContractScanMixin",),
             ".validate.import_cycles": ("FlextInfraValidateImportCycles",),
             ".validate.inventory": ("FlextInfraInventoryService",),
             ".validate.lazy_map_freshness": ("FlextInfraValidateLazyMapFreshness",),
+            ".validate.loc_delta": ("FlextInfraLocDeltaValidator",),
             ".validate.manual_command": ("FlextInfraManualCommandValidator",),
             ".validate.metadata_discipline": ("FlextInfraValidateMetadataDiscipline",),
             ".validate.namespace_rules": ("FlextInfraNamespaceRules",),
@@ -895,6 +913,12 @@ __all__: list[str] = [
     "FlextInfraExtraPathsManager",
     "FlextInfraFutureAnnotationsDetector",
     "FlextInfraGate",
+    "FlextInfraGateContractChecksMixin",
+    "FlextInfraGateContractContentMixin",
+    "FlextInfraGateContractModels",
+    "FlextInfraGateContractReportMixin",
+    "FlextInfraGateContractScanMixin",
+    "FlextInfraGateContractValidator",
     "FlextInfraGateRegistry",
     "FlextInfraGoGate",
     "FlextInfraHelperConsolidationTransformer",
@@ -905,6 +929,7 @@ __all__: list[str] = [
     "FlextInfraInternalSyncRepoMixin",
     "FlextInfraInventoryService",
     "FlextInfraLocCapGate",
+    "FlextInfraLocDeltaValidator",
     "FlextInfraLooseObjectDetector",
     "FlextInfraMROCompletenessDetector",
     "FlextInfraManualCommandValidator",

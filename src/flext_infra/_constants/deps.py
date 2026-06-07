@@ -35,7 +35,6 @@ class FlextInfraConstantsDeps:
         ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
-        ".sisyphus",
         ".venv",
         "__pycache__",
         "build",

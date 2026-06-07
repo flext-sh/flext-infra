@@ -43,7 +43,11 @@ UV_PROJECT_ENVIRONMENT ?= $(WORKSPACE_VENV)
 export UV_CACHE_DIR
 export UV_PROJECT_ENVIRONMENT
 {% for variable_name, default_value in make.WORKSPACE_VARIABLE_DEFAULTS -%}
+{% if default_value -%}
 {{ variable_name }} ?= {{ default_value }}
+{% else -%}
+{{ variable_name }} ?=
+{% endif -%}
 {% endfor %}
 PR_BRANCH ?= {{ pr_branch }}
 
@@ -703,7 +707,7 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) tier-whitelist
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) metadata-discipline
 	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --audit
-	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.planning/**' ':!.reports/**' ':!.sisyphus/**' ':!docs/**'; then \
+	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.reports/**' ':!**/*.bak' ':!docs/**'; then \
 		echo "ERROR: absolute workspace paths detected in tracked sources/settings"; \
 		exit 1; \
 	fi
@@ -768,18 +772,18 @@ _types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency re
 		fi; \
 	fi
 
-_pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefly + evidence
+_pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefly
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)mkdir -p .sisyphus/evidence .reports/pyrefly
+	$(Q)mkdir -p .reports/pyrefly
 	$(Q)set -o pipefail; \
 	$(WORKSPACE_INFRA_CHECK) run \
 		--gates pyrefly \
 		--reports-dir "$(CURDIR)/.reports/pyrefly" \
 		--projects "." \
-		2>&1 | tee .sisyphus/evidence/pyrefly-repo-before.txt; \
+		2>&1 | tee .reports/pyrefly/pyrefly-repo-before.txt; \
 	pyre_status=$${PIPESTATUS[0]}; \
-	printf "exit_code: %s\n" "$$pyre_status" >> .sisyphus/evidence/pyrefly-repo-before.txt; \
+	printf "exit_code: %s\n" "$$pyre_status" >> .reports/pyrefly/pyrefly-repo-before.txt; \
 	if [ "$$pyre_status" -ne 0 ]; then \
 		echo "WARNING: pyrefly reported $$pyre_status (see .reports/pyrefly/ for details)"; \
 	fi; \
@@ -792,7 +796,7 @@ _pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyref
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
 		--exclude "**/*.pyc" --exclude "**/*.pyo" \
-		--exclude ".reports/**" --exclude ".sisyphus/**" \
+		--exclude ".reports/**" --exclude "**/*.bak" \
 		--exclude "**/_constants/enforcement.py" \
 		--exclude "**/_utilities/_beartype/**" \
 		--exclude "**/typings.py" --exclude "**/typings/**" \
@@ -805,7 +809,7 @@ _pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyref
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
 		--exclude "**/*.pyc" --exclude "**/*.pyo" \
-		--exclude ".reports/**" --exclude ".sisyphus/**" \
+		--exclude ".reports/**" --exclude "**/*.bak" \
 		--exclude "**/_constants/enforcement.py" \
 		--exclude "**/_utilities/_beartype/**" \
 		--exclude "**/typings.py" --exclude "**/typings/**" \
@@ -818,7 +822,7 @@ _pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyref
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
 		--exclude "**/*.pyc" --exclude "**/*.pyo" \
-		--exclude ".reports/**" --exclude ".sisyphus/**" \
+		--exclude ".reports/**" --exclude "**/*.bak" \
 		--exclude "**/_constants/enforcement.py" \
 		--exclude "**/_utilities/_beartype/**" \
 		--exclude "**/typings.py" --exclude "**/typings/**" \
@@ -833,21 +837,21 @@ _pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyref
 	echo ""; \
 	echo "OK: pyrefly + type policy gate passed"
 
-_stubs: ## Repo-wide stub supply-chain validation -> .sisyphus/evidence
+_stubs: ## Repo-wide stub supply-chain validation -> .reports/pyrefly
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)mkdir -p .sisyphus/evidence
+	$(Q)mkdir -p .reports/pyrefly
 	$(Q)set -o pipefail; \
 	$(WORKSPACE_INFRA_VALIDATE) stub-validate --all \
-		2>&1 | tee .sisyphus/evidence/pyrefly-stub-validate.txt; \
+		2>&1 | tee .reports/pyrefly/pyrefly-stub-validate.txt; \
 	stub_status=$${PIPESTATUS[0]}; \
-	printf "exit_code: %s\n" "$$stub_status" >> .sisyphus/evidence/pyrefly-stub-validate.txt; \
+	printf "exit_code: %s\n" "$$stub_status" >> .reports/pyrefly/pyrefly-stub-validate.txt; \
 	exit $$stub_status
 
 _pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)mkdir -p .sisyphus/evidence .reports/pyrefly
+	$(Q)mkdir -p .reports/pyrefly
 	$(Q)set -o pipefail; \
 	status=0; \
 	: > .reports/pyrefly/type-policy.txt; \
@@ -860,7 +864,7 @@ _pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
 		--exclude "**/*.pyc" --exclude "**/*.pyo" \
-		--exclude ".reports/**" --exclude ".sisyphus/**" \
+		--exclude ".reports/**" --exclude "**/*.bak" \
 		--exclude "**/_constants/enforcement.py" \
 		--exclude "**/_utilities/_beartype/**" \
 		--exclude "**/typings.py" --exclude "**/typings/**" \
@@ -874,7 +878,7 @@ _pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
 		--exclude "**/*.pyc" --exclude "**/*.pyo" \
-		--exclude ".reports/**" --exclude ".sisyphus/**" \
+		--exclude ".reports/**" --exclude "**/*.bak" \
 		--exclude "**/_constants/enforcement.py" \
 		--exclude "**/_utilities/_beartype/**" \
 		--exclude "**/typings.py" --exclude "**/typings/**" \
@@ -888,7 +892,7 @@ _pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
 		--exclude "**/*.pyc" --exclude "**/*.pyo" \
-		--exclude ".reports/**" --exclude ".sisyphus/**" \
+		--exclude ".reports/**" --exclude "**/*.bak" \
 		--exclude "**/_constants/enforcement.py" \
 		--exclude "**/_utilities/_beartype/**" \
 		--exclude "**/typings.py" --exclude "**/typings/**" \
@@ -896,7 +900,7 @@ _pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
 		--match absent \
 		2>&1 | tee -a .reports/pyrefly/type-policy.txt || status=$$?; \
 	printf "\nexit_code: %s\n" "$$status" >> .reports/pyrefly/type-policy.txt; \
-	cp .reports/pyrefly/type-policy.txt .sisyphus/evidence/type-policy-before.txt; \
+	cp .reports/pyrefly/type-policy.txt .reports/pyrefly/type-policy-before.txt; \
 	exit $$status
 
 clean: ## Clean all projects

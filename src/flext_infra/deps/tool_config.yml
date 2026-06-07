@@ -481,7 +481,7 @@ tools:
         - "**/dist-packages/**"
       dynamic-exclude-dirs:
         - .git
-        - .sisyphus
+        - .reports
         - vendor
       root-typings-paths:
         - typings
