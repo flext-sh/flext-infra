@@ -213,7 +213,15 @@ class FlextInfraPytestDiagExtractor(s[bool]):
 
         """
         try:
-            log_text = u.Cli.files_read_text(log_path).unwrap_or("")
+            if log_path.exists():
+                log_read = u.Cli.files_read_text(log_path)
+                if log_read.failure:
+                    return r[m.Infra.PytestDiagnostics].fail(
+                        log_read.error or f"Failed to read pytest log: {log_path}",
+                    )
+                log_text = log_read.value
+            else:
+                log_text = ""
             lines = log_text.splitlines()
             diag = _DiagResult()
             xml_parsed = self._parse_xml(junit_path, diag)

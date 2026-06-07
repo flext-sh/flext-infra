@@ -143,6 +143,17 @@ class TestPytestDiagExtractorBehavior:
 
         tm.that(report.warning_count, eq=0)
 
+    def test_extract_unreadable_log_surfaces_failure(self, tmp_path: Path) -> None:
+        junit = tmp_path / "junit.xml"
+        junit.write_text(
+            '<?xml version="1.0"?><testsuites>'
+            '<testsuite name="t" tests="0"/></testsuites>',
+        )
+        log_is_dir = tmp_path / "log_is_dir"
+        log_is_dir.mkdir()
+
+        tm.fail(_extractor(junit, log_is_dir).extract(junit, log_is_dir))
+
     def test_extract_warnings_and_error_block_from_log(self, tmp_path: Path) -> None:
         junit = tmp_path / "missing.xml"
         log = tmp_path / "log.txt"
