@@ -1,0 +1,21 @@
+src/flext_infra/validate/pytest_diag.py
+  s_9942ef7a89ba9a::t_93fd74e0737132 14,17-20,23
+src/flext_infra/validate/_pytest_diag_xml.py
+  s_9942ef7a89ba9a::t_b1d4508891c381 1-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "f1ff21fbe913e48b73fd5593e17f3fd9d3411cd8",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
