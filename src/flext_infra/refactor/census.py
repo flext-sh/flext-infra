@@ -5,7 +5,6 @@ from __future__ import annotations
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from operator import itemgetter
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -27,8 +26,10 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.refactor._census_symbols import (
+    FlextInfraRefactorCensusSymbolsMixin,
+)
 
 _log = u.fetch_logger(__name__)
 
@@ -44,6 +45,7 @@ _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 
 class FlextInfraRefactorCensus(
     FlextInfraProjectSelectionServiceBase[m.Infra.Census.WorkspaceReport],
+    FlextInfraRefactorCensusSymbolsMixin,
 ):
     """Generalized Rope-only census service for Python objects across the workspace."""
 
@@ -1201,121 +1203,6 @@ class FlextInfraRefactorCensus(
         return next(
             (item for item in objects if name in {item.scope_path, item.name}),
             None,
-        )
-
-    @classmethod
-    def _lightweight_symbol_index(
-        cls,
-        rope: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
-    ) -> dict[str, tuple[str, int]]:
-        """Top-level symbol index for detector-only rule sets."""
-        resource = rope.resource(file_path)
-        if resource is None:
-            return {}
-        try:
-            attributes = u.Infra.get_pymodule(
-                rope.rope_project,
-                resource,
-            ).get_attributes()
-        except (
-            *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
-            RecursionError,
-            SyntaxError,
-            ValueError,
-        ) as exc:
-            msg = (
-                "census lightweight symbol discovery failed for "
-                f"{file_path}: {type(exc).__name__}: {exc!s}"
-            )
-            raise RuntimeError(msg) from exc
-        symbols: dict[str, tuple[str, int]] = {}
-        object_kinds: dict[int, str] = {}
-        candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
-        for name, pyname in attributes.items():
-            if FlextInfraUtilitiesRopeAnalysis.is_imported_name(pyname):
-                continue
-            line = cls._lightweight_symbol_line(pyname, resource)
-            if line is None:
-                continue
-            candidates.append((line, name, pyname))
-        for line, name, pyname in sorted(candidates, key=itemgetter(0)):
-            obj = pyname.get_object()
-            kind = cls._lightweight_symbol_kind(
-                name=name,
-                obj=obj,
-                object_kinds=object_kinds,
-            )
-            symbols.setdefault(name, (kind, line))
-            if kind in {"class", "function"}:
-                object_kinds[id(obj)] = kind
-        return symbols
-
-    @staticmethod
-    def _lightweight_symbol_line(
-        pyname: t.Infra.RopePyName,
-        resource: t.Infra.RopeResource,
-    ) -> int | None:
-        """Return the local definition line for one top-level Rope symbol."""
-        location = pyname.get_definition_location()
-        if location is None:
-            return None
-        module, line = location
-        origin = module.get_resource() if module is not None else None
-        if not isinstance(line, int) or line < 1 or origin is None:
-            return None
-        return line if origin.path == resource.path else None
-
-    @staticmethod
-    def _lightweight_symbol_kind(
-        *,
-        name: str,
-        obj: object,
-        object_kinds: dict[int, str],
-    ) -> str:
-        """Infer a detector-only symbol kind from Rope metadata."""
-        inherited_kind = object_kinds.get(id(obj))
-        if inherited_kind in {"class", "function"}:
-            return inherited_kind
-        if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
-            return "class"
-        if isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
-            return "function"
-        return "constant" if name.isupper() else "assignment"
-
-    @staticmethod
-    def _detector_context(
-        rope: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
-        *,
-        convention: m.Infra.RopeModuleConvention | None = None,
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
-        | None = None,
-    ) -> m.Infra.DetectorContext:
-        """Detector context."""
-        resolved_convention = convention or rope.convention(file_path)
-        layout = resolved_convention.project_layout
-        module_entry = rope.module(file_path)
-        project_root = (
-            layout.project_root
-            if layout is not None
-            else module_entry.project_root
-            if module_entry is not None
-            else None
-        )
-        project_name = (
-            layout.project_name
-            if layout is not None
-            else project_root.name
-            if project_root is not None
-            else ""
-        )
-        return m.Infra.DetectorContext(
-            file_path=file_path,
-            rope_project=rope.rope_project,
-            parse_failures=parse_failures,
-            project_name=project_name,
-            project_root=project_root,
         )
 
     @staticmethod
