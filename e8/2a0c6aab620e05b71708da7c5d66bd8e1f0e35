@@ -1,0 +1,23 @@
+src/flext_infra/templates/workspace_makefile.mk.j2
+  s_65f02658bb707e::t_af51107a292d55 256
+  s_65f02658bb707e::t_a1ebcd6c876279 540,551
+  s_65f02658bb707e::t_0ef0ce2fd4efc6 552-554,557-559
+  s_65f02658bb707e::t_cb10003cd18fbf 555
+  s_65f02658bb707e::t_0561294b9194af 556
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "e82a0c6aab620e05b71708da7c5d66bd8e1f0e35",
+  "prompts": {},
+  "sessions": {
+    "s_65f02658bb707e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea2f9-e5b7-7de1-980f-d38ae5985123",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
