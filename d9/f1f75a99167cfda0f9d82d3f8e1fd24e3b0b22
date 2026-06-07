@@ -1,0 +1,21 @@
+src/flext_infra/refactor/_wrapper_rewrite_engine.py
+  s_9942ef7a89ba9a::t_cda08e5884f54f 1-197
+src/flext_infra/refactor/wrapper_root_namespace.py
+  s_9942ef7a89ba9a::t_3727b5450bb556 18-21,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "d9f1f75a99167cfda0f9d82d3f8e1fd24e3b0b22",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
