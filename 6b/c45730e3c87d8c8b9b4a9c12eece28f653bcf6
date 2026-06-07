@@ -1,0 +1,21 @@
+src/flext_infra/deps/_internal_sync_collect.py
+  s_9942ef7a89ba9a::t_e8ad2aaebc4c7b 1-117
+src/flext_infra/deps/internal_sync.py
+  s_9942ef7a89ba9a::t_8745bf3816ee3b 20,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6bc45730e3c87d8c8b9b4a9c12eece28f653bcf6",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
