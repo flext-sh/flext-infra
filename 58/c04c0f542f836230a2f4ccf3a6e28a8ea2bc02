@@ -1,0 +1,22 @@
+src/flext_infra/validate/gate_contract.py
+  s_9942ef7a89ba9a::t_a8008416401fe3 48-52
+src/flext_infra/validate/gate_contract_report.py
+  s_9942ef7a89ba9a::t_faef694f56c40d 8
+  s_9942ef7a89ba9a::t_516f8833b989db 141-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "58c04c0f542f836230a2f4ccf3a6e28a8ea2bc02",
+  "prompts": {},
+  "sessions": {
+    "s_9942ef7a89ba9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84fb5cb9-a1bd-4654-9339-7a49b63e96d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
