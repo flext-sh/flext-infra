@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
 from time import perf_counter
 from typing import ClassVar
@@ -21,9 +18,12 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.refactor._migrate_mro_report import (
+    FlextInfraRefactorMigrateMroReportMixin,
+)
 
 
-class FlextInfraRefactorMigrateToClassMRO:
+class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixin):
     """Orchestrate scan, migration, rewrite, and validation phases."""
 
     _DEFAULT_TARGET: ClassVar[str] = "all"
@@ -152,40 +152,6 @@ class FlextInfraRefactorMigrateToClassMRO:
             return r[m.Infra.MROMigrationReport].fail("MRO migration had errors")
         return r[m.Infra.MROMigrationReport].ok(report)
 
-    @staticmethod
-    def render_text(report: m.Infra.MROMigrationReport) -> str:
-        """Render migration report in CLI-friendly plain text."""
-        lines = [
-            f"Workspace: {report.workspace}",
-            f"Target: {report.target}",
-            (
-                "Projects: " + ", ".join(report.selected_projects)
-                if report.selected_projects
-                else "Projects: all"
-            ),
-            f"Mode: {('dry-run' if report.dry_run else 'apply')}",
-            f"Validation mode: {report.validation_mode}",
-            f"Files scanned: {report.files_scanned}",
-            f"Files with candidates: {report.files_with_candidates}",
-            f"Migrations: {len(report.migrations)}",
-            f"Rewrites: {len(report.rewrites)}",
-            f"Remaining violations: {report.remaining_violations}",
-            f"MRO failures: {report.mro_failures}",
-            f"Scan time: {report.scan_duration_seconds:.3f}s",
-            f"Rewrite time: {report.rewrite_duration_seconds:.3f}s",
-            f"Validation time: {report.validation_duration_seconds:.3f}s",
-            f"Total time: {report.total_duration_seconds:.3f}s",
-        ]
-        if report.stash_ref:
-            lines.append(f"Rollback stash: {report.stash_ref}")
-        if report.warnings:
-            lines.append("Warnings:")
-            lines.extend(f"- {warning}" for warning in report.warnings)
-        if report.errors:
-            lines.append("Errors:")
-            lines.extend(f"- {error}" for error in report.errors)
-        return "\n".join(lines) + "\n"
-
     @classmethod
     def run_as_hook(
         cls,
@@ -205,44 +171,6 @@ class FlextInfraRefactorMigrateToClassMRO:
         ):
             return []
         return cls._report_to_results(report=report, dry_run=dry_run)
-
-    @staticmethod
-    def _report_to_results(
-        *,
-        report: m.Infra.MROMigrationReport,
-        dry_run: bool,
-    ) -> t.SequenceOf[m.Infra.Result]:
-        """Convert MRO migration report into rope-compatible Result sequence."""
-        per_file_changes: MutableMapping[Path, t.MutableSequenceOf[str]] = {}
-        for migration in report.migrations:
-            file_path = Path(migration.file)
-            changes = per_file_changes.setdefault(file_path, [])
-            changes.extend([
-                ("planned MRO migration" if dry_run else "applied MRO migration")
-                + f": {symbol}"
-                for symbol in migration.moved_symbols
-            ])
-        for rewrite in report.rewrites:
-            file_path = Path(rewrite.file)
-            changes = per_file_changes.setdefault(file_path, [])
-            action = "planned" if dry_run else "rewrote"
-            changes.append(
-                f"{action} {rewrite.replacements} consumer references after MRO migration",
-            )
-        return [
-            m.Infra.Result(
-                file_path=file_path,
-                success=True,
-                modified=(not dry_run),
-                error=None,
-                changes=list(changes),
-                refactored_code=None,
-            )
-            for file_path, changes in sorted(
-                per_file_changes.items(),
-                key=lambda item: str(item[0]),
-            )
-        ]
 
     @staticmethod
     def _normalize_target(*, target: str) -> str:
