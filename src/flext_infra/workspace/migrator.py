@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import (
-    FlextInfraBaseMkTemplateEngine,
     c,
     m,
     p,
@@ -15,12 +14,20 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.workspace._migrator_artifacts import (
+    FlextInfraProjectMigratorArtifactsMixin,
+)
+from flext_infra.workspace._migrator_pyproject import (
+    FlextInfraProjectMigratorPyprojectMixin,
+)
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 
 
 class FlextInfraProjectMigrator(
     s[t.SequenceOf[m.Infra.MigrationResult]],
     FlextInfraWorkspaceGeneratorBase,
+    FlextInfraProjectMigratorArtifactsMixin,
+    FlextInfraProjectMigratorPyprojectMixin,
 ):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 
@@ -28,18 +35,6 @@ class FlextInfraProjectMigrator(
         p.Infra.Discovery | None,
         m.Field(exclude=True, description="Optional custom discovery service"),
     ] = None
-
-    @staticmethod
-    def _action_text(action: str, *, dry_run: bool) -> str:
-        """Action text."""
-        return f"[DRY-RUN] {action}" if dry_run else action
-
-    @staticmethod
-    def _no_change_result(message: str, *, dry_run: bool) -> p.Result[str]:
-        """Return a no-op result: dry-run shows message, normal returns empty."""
-        if dry_run:
-            return r[str].ok(f"[DRY-RUN] {message}")
-        return r[str].ok("")
 
     @staticmethod
     def _workspace_root_project(
@@ -126,136 +121,6 @@ class FlextInfraProjectMigrator(
         ]
         return r[t.SequenceOf[m.Infra.MigrationResult]].ok(migrations)
 
-    def _migrate_basemk(
-        self,
-        project_root: Path,
-        *,
-        dry_run: bool,
-    ) -> p.Result[str]:
-        """Migrate basemk."""
-        target = project_root / c.Infra.BASE_MK
-        generator = self._get_generator()
-        generated = generator.generate_basemk()
-        if generated.failure:
-            return r[str].fail(generated.error or "base.mk generation failed")
-        generated_text: str = generated.value
-        current = ""
-        if target.exists():
-            read = u.Cli.files_read_text(target)
-            if read.failure:
-                return r[str].fail(f"base.mk read failed: {read.error}")
-            current = read.value
-        if u.Cli.sha256_content(current) == u.Cli.sha256_content(generated_text):
-            return self._no_change_result(
-                "base.mk already up-to-date",
-                dry_run=dry_run,
-            )
-        if not dry_run:
-            try:
-                u.write_file(target, generated_text, encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[str].fail_op("base.mk update", exc)
-        return r[str].ok(
-            self._action_text(
-                "base.mk regenerated via BaseMkGenerator",
-                dry_run=dry_run,
-            ),
-        )
-
-    def _migrate_gitignore(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
-        """Migrate gitignore."""
-        gitignore_path = project_root / c.Infra.GITIGNORE
-        existing_lines: t.StrSequence = list[str]()
-        if gitignore_path.exists():
-            read = u.Cli.files_read_text(gitignore_path)
-            if read.failure:
-                return r[str].fail(f".gitignore read failed: {read.error}")
-            existing_lines = read.value.splitlines()
-        filtered = [
-            line
-            for line in existing_lines
-            if line.strip() not in c.Infra.GITIGNORE_REMOVE_EXACT
-        ]
-        existing_patterns = {line.strip() for line in filtered if line.strip()}
-        missing = [
-            pattern
-            for pattern in c.Infra.REQUIRED_GITIGNORE_ENTRIES
-            if pattern not in existing_patterns
-        ]
-        if not missing and len(filtered) == len(existing_lines):
-            return self._no_change_result(
-                ".gitignore already normalized",
-                dry_run=dry_run,
-            )
-        next_lines = list(filtered)
-        if missing:
-            if next_lines and next_lines[-1].strip():
-                next_lines.append("")
-            next_lines.append(
-                "# --- workspace-migrate: required ignores (auto-managed) ---",
-            )
-            next_lines.extend(missing)
-        if not dry_run:
-            body = "\n".join(next_lines).rstrip("\n") + "\n"
-            try:
-                u.write_file(gitignore_path, body, encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[str].fail_op(".gitignore update", exc)
-        return r[str].ok(
-            self._action_text(
-                ".gitignore cleaned from scripts/ and normalized",
-                dry_run=dry_run,
-            ),
-        )
-
-    def _migrate_makefile(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
-        """Migrate makefile."""
-        makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
-        if not makefile_path.exists():
-            return self._no_change_result("Makefile not found", dry_run=dry_run)
-        read = u.Cli.files_read_text(makefile_path)
-        if read.failure:
-            return r[str].fail(f"Makefile read failed: {read.error}")
-        original = read.value
-        updated = original
-        for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
-            updated = updated.replace(before, after)
-        include_result = self._apply_bootstrap_include(updated)
-        if include_result.failure:
-            return r[str].fail(
-                include_result.error or "Makefile bootstrap include render failed",
-            )
-        updated = include_result.value
-        if updated == original:
-            return self._no_change_result("Makefile already migrated", dry_run=dry_run)
-        if not dry_run:
-            try:
-                u.write_file(makefile_path, updated, encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[str].fail_op("Makefile update", exc)
-        return r[str].ok(
-            self._action_text(
-                "Makefile migrated to bootstrap include",
-                dry_run=dry_run,
-            ),
-        )
-
-    def _apply_bootstrap_include(self, content: str) -> p.Result[str]:
-        """Apply bootstrap include."""
-        if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
-            return r[str].ok(content)
-        bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
-        if bootstrap_result.failure:
-            return r[str].fail(
-                bootstrap_result.error or "Makefile bootstrap include render failed",
-            )
-        return r[str].ok(
-            content.replace(
-                c.Infra.MAKEFILE_INCLUDE_OLD,
-                bootstrap_result.value,
-            ),
-        )
-
     def _migrate_project(
         self,
         *,
@@ -288,69 +153,6 @@ class FlextInfraProjectMigrator(
             project=project.name,
             changes=changes,
             errors=errors,
-        )
-
-    def _migrate_pyproject(
-        self,
-        project_root: Path,
-        *,
-        project_name: str,
-        dry_run: bool,
-    ) -> p.Result[str]:
-        """Migrate pyproject."""
-        pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject_path.exists():
-            return self._no_change_result("pyproject.toml not found", dry_run=dry_run)
-        if project_name == c.Infra.PKG_CORE:
-            return self._no_change_result(
-                "pyproject.toml dependency unchanged for flext-core",
-                dry_run=dry_run,
-            )
-        document_result = u.Cli.toml_read_document(pyproject_path)
-        if document_result.failure:
-            return r[str].fail(
-                document_result.error or "pyproject parse failed",
-            )
-        document: t.Cli.TomlDocument = document_result.value
-        if c.Infra.PKG_CORE in u.Infra.declared_dependency_names(document):
-            return self._no_change_result(
-                "pyproject.toml already includes flext-core dependency",
-                dry_run=dry_run,
-            )
-        return self._apply_flext_core_dependency(
-            document, pyproject_path, dry_run=dry_run
-        )
-
-    def _apply_flext_core_dependency(
-        self,
-        document: t.Cli.TomlDocument,
-        pyproject_path: Path,
-        *,
-        dry_run: bool,
-    ) -> p.Result[str]:
-        """Add flext-core dependency to the pyproject document and write if not dry-run."""
-        project_table = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
-        dependencies_item = u.Cli.toml_item_child(project_table, c.Infra.DEPENDENCIES)
-        dependencies = list(
-            u.Cli.toml_as_string_list(
-                dependencies_item if dependencies_item is not None else [],
-            ),
-        )
-        dependency_spec = c.Infra.PKG_CORE
-        if dependency_spec not in dependencies:
-            dependencies.append(dependency_spec)
-        project_table[c.Infra.DEPENDENCIES] = dependencies
-        if not dry_run:
-            write_result = u.Cli.toml_write_document(pyproject_path, document)
-            if write_result.failure:
-                return r[str].fail(
-                    write_result.error or "pyproject update failed",
-                )
-        return r[str].ok(
-            self._action_text(
-                "pyproject.toml adds flext-core dependency",
-                dry_run=dry_run,
-            ),
         )
 
 
