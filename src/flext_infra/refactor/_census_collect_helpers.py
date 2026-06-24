@@ -155,7 +155,9 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             collect_object_inventory=self._should_collect_object_inventory(
                 rule_names, selected_rules=selected_rules
             ),
-            include_object_references=self._should_collect_object_references(rule_names),
+            include_object_references=self._should_collect_object_references(
+                rule_names
+            ),
             include_local_scopes=include_local_scopes,
             applied=applied,
         )

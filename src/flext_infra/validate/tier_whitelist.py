@@ -52,7 +52,7 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
     })
 
     @override
-    def _is_allowlisted(self, file_path: Path, module_name: str) -> bool:
+    def _is_allowlisted(self, _file_path: Path, _module_name: str) -> bool:
         """Return True iff ``file_path`` owns ``module_name`` per OWNERS SSOT.
 
         Ownership comes directly from ``c.ENFORCEMENT_LIBRARY_OWNERS``
@@ -67,15 +67,15 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
         """
-        if any(part in self.NON_RUNTIME_DIR_PARTS for part in file_path.parts):
+        if any(part in self.NON_RUNTIME_DIR_PARTS for part in _file_path.parts):
             return True
-        top = self._top_module(module_name)
-        if top in self.SETTINGS_MODULE_LIBRARIES and file_path.name == "settings.py":
+        top = self._top_module(_module_name)
+        if top in self.SETTINGS_MODULE_LIBRARIES and _file_path.name == "settings.py":
             return True
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
         if owner is None:
             return False
-        return f"/{owner}/src/" in file_path.as_posix()
+        return f"/{owner}/src/" in _file_path.as_posix()
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:

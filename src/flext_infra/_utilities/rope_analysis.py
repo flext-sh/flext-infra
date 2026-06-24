@@ -147,6 +147,8 @@ class FlextInfraUtilitiesRopeAnalysis:
             import_stmts: tuple[t.Infra.RopeImportStatement, ...] = tuple(raw_imports)
             for import_stmt in import_stmts:
                 info = import_stmt.import_info
+                if info is None:
+                    continue
                 module_name = getattr(info, "module_name", "") or ""
                 level = getattr(info, "level", 0) or 0
                 resolved_module = (
@@ -158,7 +160,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                     if module_name
                     else ""
                 )
-                for alias_name, alias_as in info.names_and_aliases:
+                for alias_name, alias_as in info.names_and_aliases or ():
                     if alias_name == "*":
                         continue
                     if module_name:

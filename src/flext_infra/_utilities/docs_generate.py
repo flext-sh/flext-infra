@@ -205,6 +205,9 @@ class FlextInfraUtilitiesDocsGenerate:
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             workspace_root
         )
+        exclude_docs = FlextInfraUtilitiesDocsRender._string_list(
+            workspace_contract, "exclude_docs"
+        )
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root,
             projects,
@@ -255,7 +258,8 @@ class FlextInfraUtilitiesDocsGenerate:
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 workspace_root / "docs/projects/generated/catalog.md",
                 FlextInfraUtilitiesDocsRender.docs_project_catalog_page(
-                    catalog_entries
+                    catalog_entries,
+                    exclude_docs=exclude_docs,
                 ),
                 apply=apply,
             ),

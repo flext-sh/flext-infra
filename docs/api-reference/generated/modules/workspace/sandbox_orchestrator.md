@@ -1,8 +1,8 @@
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-# flext_infra
+# flext_infra.workspace.sandbox_orchestrator
 
-::: flext_infra
+::: flext_infra.workspace.sandbox_orchestrator
     options:
       show_root_heading: true
       show_root_full_path: false

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 from typing import ClassVar
 
 from flext_infra import c, m, t
@@ -90,7 +91,7 @@ class FlextInfraUtilitiesDocsRender:
             ],
         )
 
-    _LINK_PREFIX_DOCS_INDEX: ClassVar[str] = "../../.."
+    _LINK_PREFIX_DOCS_INDEX: ClassVar[str] = "../.."
     """Relative path from ``<project>/docs/index.md`` to workspace root."""
 
     _LINK_PREFIX_README: ClassVar[str] = ".."
@@ -522,8 +523,13 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_project_catalog_page(entries: t.SequenceOf[t.StrMapping]) -> str:
+    def docs_project_catalog_page(
+        entries: t.SequenceOf[t.StrMapping],
+        *,
+        exclude_docs: t.SequenceOf[str] | None = None,
+    ) -> str:
         """Return the generated workspace project catalog page."""
+        exclude_docs = exclude_docs or []
         rows = [
             "| "
             + " | ".join([
@@ -538,6 +544,13 @@ class FlextInfraUtilitiesDocsRender:
             ])
             + " |"
             for entry in entries
+            if not any(
+                fnmatch.fnmatch(
+                    str(entry.get("api_page", "")).removeprefix("../../"),
+                    pattern,
+                )
+                for pattern in exclude_docs
+            )
         ]
         return "\n".join([
             c.Infra.GENERATED_HEADER,

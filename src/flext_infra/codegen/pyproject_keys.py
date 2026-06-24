@@ -83,7 +83,8 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
             write_result = u.Cli.atomic_write_text_file(pyproject_path, rendered)
             if write_result.failure:
                 return r[bool].fail(
-                    write_result.error or f"pyproject-keys: cannot write {pyproject_path}",
+                    write_result.error
+                    or f"pyproject-keys: cannot write {pyproject_path}",
                 )
             generated += 1
             u.Cli.info(

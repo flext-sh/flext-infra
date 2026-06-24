@@ -137,12 +137,12 @@ class FlextInfraCli(type(cli_facade)):
                 return r[list[str]].fail(gate_check.error or f"unknown gate '{what}'")
             check_routes = {route.name for route in self._GROUP_COMMANDS[group]}
             has_subcommand = bool(remaining) and remaining[0] in check_routes
-            prefix = list(remaining) if has_subcommand else [c.Infra.VERB_RUN, *remaining]
+            prefix = (
+                list(remaining) if has_subcommand else [c.Infra.VERB_RUN, *remaining]
+            )
             return r[list[str]].ok([*prefix, "--gates", what])
         if group == c.Infra.CLI_GROUP_VALIDATE:
-            valid_names = {
-                route.name for route in self._GROUP_COMMANDS[group]
-            }
+            valid_names = {route.name for route in self._GROUP_COMMANDS[group]}
             if what not in valid_names:
                 return r[list[str]].fail(f"unknown validator '{what}'")
             return r[list[str]].ok([what, *remaining])

@@ -2,7 +2,7 @@
 
 Two responsibilities:
 
-- ``is_blocked`` — predicate flagging a bare tool invocation (ruff/pytest/git/…)
+- ``command_blocked`` — predicate flagging a bare tool invocation (ruff/pytest/git/…)
   that bypasses the ``make`` / ``python -m flext_infra`` monopoly. Backs both the
   pre-commit hook and the Claude PreToolUse guard. Deny rules are evaluated
   FIRST, per shell segment, after stripping wrappers and path components — an
@@ -27,7 +27,7 @@ class FlextInfraManualCommandValidator(s[bool]):
     """Block bare tool invocations in automation and gate pre-commit drift."""
 
     @classmethod
-    def is_blocked(cls, command: str) -> bool:
+    def command_blocked(cls, command: str) -> bool:
         """True if any shell segment runs a managed tool outside make/flext_infra."""
         stripped = command.strip()
         if not stripped:
@@ -53,7 +53,10 @@ class FlextInfraManualCommandValidator(s[bool]):
         blocked_tools = c.Infra.MANUAL_CMD_BLOCKED_TOOLS
         if head in blocked_tools:
             return True
-        if head in c.Infra.MANUAL_CMD_RUNNERS and cls._module_after_m(rest) in blocked_tools:
+        if (
+            head in c.Infra.MANUAL_CMD_RUNNERS
+            and cls._module_after_m(rest) in blocked_tools
+        ):
             return True
         if head == "git" and rest and rest[0] in c.Infra.MANUAL_CMD_BLOCKED_GIT:
             return True

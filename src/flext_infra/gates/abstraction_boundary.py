@@ -102,7 +102,9 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             c.Infra.BOUNDARY_TOML_RE.search(text)
             and project not in c.Infra.BOUNDARY_TOML_ALLOWED
         ):
-            issues.append(self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file"))
+            issues.append(
+                self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file")
+            )
         issues.extend(self._concrete_cli_issues(path, text, posix))
         return issues
 
@@ -114,9 +116,13 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             return ()
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for match in c.Infra.BOUNDARY_CONCRETE_IMPORT_RE.finditer(text):
-            for name in c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.findall(match.group("imports")):
+            for name in c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.findall(
+                match.group("imports")
+            ):
                 issues.append(
-                    self._issue(path, f"imports concrete `{name}` (use cli/c/m/p/t/u/s)")
+                    self._issue(
+                        path, f"imports concrete `{name}` (use cli/c/m/p/t/u/s)"
+                    )
                 )
         return issues
 

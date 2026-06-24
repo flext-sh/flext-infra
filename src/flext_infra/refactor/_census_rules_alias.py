@@ -23,6 +23,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
     """
 
     if TYPE_CHECKING:
+
         @staticmethod
         def _detector_context(
             rope: p.Infra.RopeWorkspaceDsl,
@@ -46,9 +47,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
             fix_action: str = "",
         ) -> m.Infra.Census.Violation: ...
         @staticmethod
-        def _fix_key(
-            file_path: Path, object_name: str, action: str = ""
-        ) -> str: ...
+        def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _named_object(
             objects: tuple[m.Infra.Census.Object, ...], name: str
@@ -143,9 +142,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect + plan fixes for manual typing-alias violations."""
-        manual_ctx = self._detector_context(
-            rope, file_path, convention=convention
-        )
+        manual_ctx = self._detector_context(rope, file_path, convention=convention)
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
         for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
@@ -183,9 +180,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
                         object_name=detector_violation.name,
                         action=action,
                         source_file=str(file_path),
-                        target_file=str(
-                            convention.package_dir / c.Infra.TYPINGS_PY
-                        ),
+                        target_file=str(convention.package_dir / c.Infra.TYPINGS_PY),
                         files_changed=2,
                         applied=self._fix_key(
                             file_path,

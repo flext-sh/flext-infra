@@ -17,6 +17,7 @@ class FlextInfraRefactorCensusInventoryMixin:
     """
 
     if TYPE_CHECKING:
+
         @staticmethod
         def _is_flext_owned(value: p.ModuleOwned) -> bool: ...
 
