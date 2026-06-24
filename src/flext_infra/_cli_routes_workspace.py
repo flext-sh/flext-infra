@@ -28,17 +28,15 @@ ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name="migrate-mro",
             help_text="Migrate loose declarations into MRO facade classes",
             model_cls=m.Infra.RefactorMigrateMroInput,
-            handler=lambda params: (
-                FlextInfraRefactorMigrateToClassMRO.execute_command(params)
+            handler=lambda params: FlextInfraRefactorMigrateToClassMRO.execute_command(
+                params
             ),
         ),
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
-            handler=lambda params: FlextInfraNamespaceEnforcer.execute_command(
-                params
-            ),
+            handler=lambda params: FlextInfraNamespaceEnforcer.execute_command(params),
         ),
         *(
             m.Cli.ResultCommandRoute(

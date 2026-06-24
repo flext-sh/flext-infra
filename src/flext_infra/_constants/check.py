@@ -64,7 +64,10 @@ class FlextInfraConstantsCheck:
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
 
     # --- Abstraction-boundary gate (§2.7) detection SSOT ---
-    BOUNDARY_SKIP_PROJECTS: Final[frozenset[str]] = frozenset({"flext-cli", "flext-core"})
+    BOUNDARY_SKIP_PROJECTS: Final[frozenset[str]] = frozenset({
+        "flext-cli",
+        "flext-core",
+    })
     BOUNDARY_TOML_ALLOWED: Final[frozenset[str]] = frozenset({"flext-infra"})
     BOUNDARY_CLICK_FILES: Final[t.StrSequence] = (
         "/flext-tap-",
@@ -104,7 +107,9 @@ class FlextInfraConstantsCheck:
     # Unconditional (regex, message) catalog — one data-driven loop in the gate.
     BOUNDARY_SIMPLE_RULES: Final[tuple[tuple[t.RegexPattern, str], ...]] = (
         (
-            re.compile(rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE),
+            re.compile(
+                rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE
+            ),
             "imports subprocess — use cli.run / cli.capture",
         ),
         (
@@ -120,7 +125,10 @@ class FlextInfraConstantsCheck:
             "uses csv.reader/writer — use cli.*_csv_file",
         ),
         (re.compile(r"^\s*print\(", re.MULTILINE), "uses print() — use cli.print"),
-        (re.compile(r"^\s*sys\.exit\(", re.MULTILINE), "uses sys.exit() — use cli.exit()"),
+        (
+            re.compile(r"^\s*sys\.exit\(", re.MULTILINE),
+            "uses sys.exit() — use cli.exit()",
+        ),
     )
     # The boundary gate's own rule-definition source files legitimately contain the
     # forbidden-pattern strings as DETECTION RULES (not as usage); exempt them from
@@ -137,7 +145,9 @@ class FlextInfraConstantsCheck:
         r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$",
         re.MULTILINE,
     )
-    BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(r"\bFlextCli[A-Z]\w*")
+    BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(
+        r"\bFlextCli[A-Z]\w*"
+    )
 
     # --- 200-LOC SUPREME LAW (§3.1) gate SSOT ---
     LOC_CAP_MAX: Final[int] = 200
@@ -158,7 +168,17 @@ class FlextInfraConstantsCheck:
     MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep", "sg"})
     MANUAL_CMD_RUNNERS: Final[frozenset[str]] = frozenset({"python", "python3"})
     MANUAL_CMD_WRAPPERS: Final[frozenset[str]] = frozenset(
-        {"env", "time", "nohup", "xargs", "sudo", "command", "nice", "ionice", "stdbuf"},
+        {
+            "env",
+            "time",
+            "nohup",
+            "xargs",
+            "sudo",
+            "command",
+            "nice",
+            "ionice",
+            "stdbuf",
+        },
     )
     MANUAL_CMD_REWRITE_FLAGS: Final[frozenset[str]] = frozenset(
         {"--rewrite", "-U", "--update-all"},

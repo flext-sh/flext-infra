@@ -40,9 +40,7 @@ ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=c.Infra.VERB_RUN,
             help_text="Run workspace quality gates",
             model_cls=m.Infra.RunCommand,
-            handler=lambda params: FlextInfraWorkspaceChecker.execute_command(
-                params
-            ),
+            handler=lambda params: FlextInfraWorkspaceChecker.execute_command(params),
         ),
         m.Cli.ResultCommandRoute(
             name="fix-pyrefly-settings",

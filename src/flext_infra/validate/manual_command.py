@@ -53,7 +53,10 @@ class FlextInfraManualCommandValidator(s[bool]):
         blocked_tools = c.Infra.MANUAL_CMD_BLOCKED_TOOLS
         if head in blocked_tools:
             return True
-        if head in c.Infra.MANUAL_CMD_RUNNERS and cls._module_after_m(rest) in blocked_tools:
+        if (
+            head in c.Infra.MANUAL_CMD_RUNNERS
+            and cls._module_after_m(rest) in blocked_tools
+        ):
             return True
         if head == "git" and rest and rest[0] in c.Infra.MANUAL_CMD_BLOCKED_GIT:
             return True

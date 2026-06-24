@@ -25,7 +25,9 @@ class FlextInfraGateContractReportMixin:
         script: FlextInfraGateContractModels.ScriptInfo,
         severity: str,
     ) -> int:
-        return sum(1 for violation in script.violations if violation.severity == severity)
+        return sum(
+            1 for violation in script.violations if violation.severity == severity
+        )
 
     @staticmethod
     def _visible_scripts(
@@ -41,7 +43,9 @@ class FlextInfraGateContractReportMixin:
     def _gate_scripts(
         scripts: t.SequenceOf[FlextInfraGateContractModels.ScriptInfo],
     ) -> t.SequenceOf[FlextInfraGateContractModels.ScriptInfo]:
-        return tuple(script for script in scripts if script.role in {"validator", "fixer"})
+        return tuple(
+            script for script in scripts if script.role in {"validator", "fixer"}
+        )
 
     @staticmethod
     def _status_for(errors: int, warnings: int) -> str:
@@ -78,7 +82,9 @@ class FlextInfraGateContractReportMixin:
                 if violation.severity == c.Infra.GateSeverity.ERROR.value
                 else ansi.YELLOW
             )
-            self._eprint(f"  {color}[{violation.check}]{ansi.RESET} {violation.message}")
+            self._eprint(
+                f"  {color}[{violation.check}]{ansi.RESET} {violation.message}"
+            )
 
     def _print_results(
         self,
@@ -86,7 +92,9 @@ class FlextInfraGateContractReportMixin:
     ) -> None:
         ansi = FlextInfraGateContractModels.Ansi
         self._eprint(f"{ansi.CYAN}Gate Contract Validation{ansi.RESET}")
-        self._eprint(f"{ansi.CYAN}{'SCRIPT':<60} {'ROLE':<10} {'STATUS':<10} DETAILS{ansi.RESET}")
+        self._eprint(
+            f"{ansi.CYAN}{'SCRIPT':<60} {'ROLE':<10} {'STATUS':<10} DETAILS{ansi.RESET}"
+        )
         for script in self._visible_scripts(scripts):
             self._print_script_result(script)
 

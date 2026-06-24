@@ -69,10 +69,8 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
                 if token.type == tokenize.OP and token.string in "()[]{}"
             )
         except tokenize.TokenError:
-            return (
-                FlextInfraUtilitiesRopeBracketBalanceMixin._fallback_bracket_balance_line(
-                    line
-                )
+            return FlextInfraUtilitiesRopeBracketBalanceMixin._fallback_bracket_balance_line(
+                line
             )
 
     @staticmethod

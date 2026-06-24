@@ -98,7 +98,9 @@ class TestsFlextInfraDepsDetectionDeptry:
 
         tm.fail(service.run_deptry(project, venv_bin))
 
-    def test_invalid_and_empty_json_output_surfaces_failure(self, tmp_path: Path) -> None:
+    def test_invalid_and_empty_json_output_surfaces_failure(
+        self, tmp_path: Path
+    ) -> None:
         """Unparseable deptry output (deptry exited 0) surfaces as a failure.
 
         deptry writes ``[]`` for a clean run; invalid/empty output is an anomaly

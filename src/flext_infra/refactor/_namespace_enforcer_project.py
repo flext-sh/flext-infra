@@ -172,7 +172,9 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         )
         compatibility_alias_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraCompatibilityAliasDetector.detect_file(ctx(f)),
+            detect_fn=lambda f: FlextInfraCompatibilityAliasDetector.detect_file(
+                ctx(f)
+            ),
             rewrite_fn=lambda vs: u.Infra.rewrite_compatibility_alias_violations(
                 violations=vs,
                 parse_failures=parse_failures,

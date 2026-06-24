@@ -54,7 +54,9 @@ class FlextInfraCodegenConsolidator(
                     continue
 
                 constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
-                value_map_result = self._build_value_map_from_constants_file(constants_file)
+                value_map_result = self._build_value_map_from_constants_file(
+                    constants_file
+                )
                 if value_map_result.failure:
                     return r[str].fail(
                         value_map_result.error or "constants file read failed",

@@ -41,12 +41,11 @@ class FlextInfraRefactorCensusApplyMixin:
             file_path: Path,
             *,
             convention: m.Infra.RopeModuleConvention | None = None,
-            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation] | None = None,
+            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
+            | None = None,
         ) -> m.Infra.DetectorContext: ...
         @staticmethod
-        def _fix_key(
-            file_path: Path, object_name: str, action: str = ""
-        ) -> str: ...
+        def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _rewrite_runtime_alias_source(
             source: str, *, alias: str, target_name: str
@@ -92,7 +91,9 @@ class FlextInfraRefactorCensusApplyMixin:
                     continue
                 violations = tuple(
                     violation
-                    for violation in FlextInfraManualTypingAliasDetector.detect_file(ctx)
+                    for violation in FlextInfraManualTypingAliasDetector.detect_file(
+                        ctx
+                    )
                     if violation.name in object_names
                 )
                 if not violations:

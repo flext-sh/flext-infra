@@ -18,7 +18,11 @@ from flext_infra.refactor._census_validate import (
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
-    RopeError, RecursionError, SyntaxError, ValueError, RuntimeError,
+    RopeError,
+    RecursionError,
+    SyntaxError,
+    ValueError,
+    RuntimeError,
 )
 
 
@@ -85,11 +89,13 @@ class FlextInfraRefactorCensusCollectMixin(
         objects: tuple[m.Infra.Census.Object, ...] = ()
         if config.collect_object_inventory:
             try:
-                module_objects = tuple(rope.objects(
-                    module.file_path,
-                    include_local_scopes=config.include_local_scopes,
-                    include_references=config.include_object_references,
-                ))
+                module_objects = tuple(
+                    rope.objects(
+                        module.file_path,
+                        include_local_scopes=config.include_local_scopes,
+                        include_references=config.include_object_references,
+                    )
+                )
             except _ROPE_SAFE_EXCEPTIONS as exc:
                 self._handle_rope_stage_failure(
                     file_path=module.file_path, stage="inventory", exc=exc
@@ -153,8 +159,10 @@ class FlextInfraRefactorCensusCollectMixin(
         )
         report_project_names = tuple(
             sorted(
-                report_projects | set(project_objects)
-                | set(project_violations) | set(project_fixes),
+                report_projects
+                | set(project_objects)
+                | set(project_violations)
+                | set(project_fixes),
             )
         )
         project_reports = tuple(

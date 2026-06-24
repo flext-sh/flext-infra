@@ -22,6 +22,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
     """
 
     if TYPE_CHECKING:
+
         @staticmethod
         def _detector_context(
             rope: p.Infra.RopeWorkspaceDsl,
@@ -45,9 +46,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             fix_action: str = "",
         ) -> m.Infra.Census.Violation: ...
         @staticmethod
-        def _fix_key(
-            file_path: Path, object_name: str, action: str = ""
-        ) -> str: ...
+        def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _named_object(
             objects: tuple[m.Infra.Census.Object, ...], name: str
