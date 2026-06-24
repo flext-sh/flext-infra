@@ -272,7 +272,6 @@ tools:
           - INP001
           - N999
           - PLC2701
-          - RUF067
           - TC004
         "**/_utilities/parser.py":
           - ARG004
