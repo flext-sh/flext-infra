@@ -107,9 +107,9 @@ class FlextInfraConfigFixerSteps:
         excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
         if isinstance(excludes, list):
             try:
-                exclude_items: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
-                    [*excludes]
-                )
+                exclude_items: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python([
+                    *excludes
+                ])
             except c.ValidationError as err:
                 return r[t.StrSequence].fail_op("validate-project-excludes", err)
             current_excludes = [str(value) for value in exclude_items]
@@ -118,7 +118,9 @@ class FlextInfraConfigFixerSteps:
         )
         if current_excludes != expected_excludes:
             pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Cli.toml_array(expected_excludes)
-            return r[t.StrSequence].ok(["synchronized project-excludes from YAML rules"])
+            return r[t.StrSequence].ok([
+                "synchronized project-excludes from YAML rules"
+            ])
         return r[t.StrSequence].ok([])
 
 

@@ -97,9 +97,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root
-        search_result = self._sync_search_path(
-            pyrefly, project_dir, is_root=is_root
-        )
+        search_result = self._sync_search_path(pyrefly, project_dir, is_root=is_root)
         if search_result.failure:
             return search_result
         all_fixes.extend(search_result.value)

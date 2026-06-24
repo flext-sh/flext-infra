@@ -53,7 +53,10 @@ class FlextInfraManualCommandValidator(s[bool]):
         blocked_tools = c.Infra.MANUAL_CMD_BLOCKED_TOOLS
         if head in blocked_tools:
             return True
-        if head in c.Infra.MANUAL_CMD_RUNNERS and cls._module_after_m(rest) in blocked_tools:
+        if (
+            head in c.Infra.MANUAL_CMD_RUNNERS
+            and cls._module_after_m(rest) in blocked_tools
+        ):
             return True
         if head == "git" and rest and rest[0] in c.Infra.MANUAL_CMD_BLOCKED_GIT:
             return True
@@ -86,7 +89,10 @@ class FlextInfraManualCommandValidator(s[bool]):
         """Return the module name following ``-m`` (``python -m <module>``)."""
         for index, arg in enumerate(rest):
             if arg == "-m" and index + 1 < len(rest):
-                return rest[index + 1]
+                value = rest[index + 1]
+                if isinstance(value, str):
+                    return value
+                return ""
         return ""
 
     @staticmethod
@@ -101,7 +107,8 @@ class FlextInfraManualCommandValidator(s[bool]):
     @classmethod
     def render_pre_commit_config(cls) -> str:
         """Return the canonical generated ``.pre-commit-config.yaml`` content."""
-        return c.Infra.PRE_COMMIT_CONFIG
+        config: str = c.Infra.PRE_COMMIT_CONFIG
+        return config
 
     @override
     def execute(self) -> p.Result[bool]:

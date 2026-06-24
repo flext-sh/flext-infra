@@ -42,9 +42,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[
-            list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]
-        ]: ...
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
         def _rule_manual_typing_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -55,9 +53,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[
-            list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]
-        ]: ...
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
         def _rule_compatibility_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -69,9 +65,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[
-            list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]
-        ]: ...
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
         def _rule_mro_completeness(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -83,9 +77,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[
-            list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]
-        ]: ...
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
 
     def _module_rules(
         self,

@@ -15,9 +15,26 @@ _CANONICAL_VERBS = frozenset(
     {"boot", "build", "check", "test", "val", "ship", "clean", "help"},
 )
 _RETIRED_VERBS = frozenset({
-    "scan", "fmt", "types", "pol", "cqrs", "pyre", "stubs", "gen", "mod",
-    "up", "constraints", "sync", "docs", "save", "tag", "push", "pr", "rel",
-    "stat", "imp",
+    "scan",
+    "fmt",
+    "types",
+    "pol",
+    "cqrs",
+    "pyre",
+    "stubs",
+    "gen",
+    "mod",
+    "up",
+    "constraints",
+    "sync",
+    "docs",
+    "save",
+    "tag",
+    "push",
+    "pr",
+    "rel",
+    "stat",
+    "imp",
 })
 
 

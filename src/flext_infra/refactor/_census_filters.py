@@ -31,7 +31,10 @@ class FlextInfraRefactorCensusFiltersMixin:
         duplicates: list[m.Infra.Census.DuplicateGroup] = []
         for key in sorted(groups):
             definitions = groups[key]
-            if len(definitions) < FlextInfraRefactorCensusFiltersMixin._MIN_DUPLICATE_DEFINITIONS:
+            if (
+                len(definitions)
+                < FlextInfraRefactorCensusFiltersMixin._MIN_DUPLICATE_DEFINITIONS
+            ):
                 continue
             canonical = min(
                 definitions,
@@ -111,7 +114,9 @@ class FlextInfraRefactorCensusFiltersMixin:
         objects: tuple[m.Infra.Census.Object, ...],
     ) -> m.Infra.Census.Object | None:
         """Runtime alias target."""
-        target_name = FlextInfraRefactorCensusFiltersMixin._runtime_alias_target_name(convention)
+        target_name = FlextInfraRefactorCensusFiltersMixin._runtime_alias_target_name(
+            convention
+        )
         if not target_name:
             return None
         return FlextInfraRefactorCensusFiltersMixin._named_object(

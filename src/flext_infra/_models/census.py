@@ -295,7 +295,8 @@ class FlextInfraModelsCensus:
                 frozenset[str] | None, m.Field(description="Precomputed rule set")
             ]
             collect_object_inventory: Annotated[
-                bool, m.Field(description="Whether to collect the full object inventory")
+                bool,
+                m.Field(description="Whether to collect the full object inventory"),
             ]
             include_object_references: Annotated[
                 bool, m.Field(description="Whether to resolve object references")
