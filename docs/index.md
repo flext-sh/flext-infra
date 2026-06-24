@@ -2,7 +2,7 @@
 
 # flext-infra Documentation
 
-- Version: `unknown`
+- Version: `0.12.0-dev`
 - Project class: `infra`
 - Package: `flext_infra`
 - Description: FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management

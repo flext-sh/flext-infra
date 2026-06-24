@@ -19,7 +19,7 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfraModelsRefactorCensus`, `FlextInfraFutureAnnotationsDetector`, `FlextInfraConstantsWorkspace`, `FlextInfraUtilitiesRefactorPolicy`, `FlextInfraSilentFailureGate`, `FlextInfraModelsEngineOperation` (+226 more)
-- Generated module pages: `137`
+- Primary facades: `FlextInfraModelsCensus`, `FlextInfraWorkspaceMakefileGenerator`, `FlextInfraCodegenLazyInit`, `FlextInfraConfigFixer`, `FlextInfraGoGate`, `FlextInfraModelsDepsToolSettings` (+243 more)
+- Generated module pages: `149`
 
 - [Back to project docs](../index.md)
