@@ -29,6 +29,18 @@ class FlextInfraConstantsDocs:
     )
     """Regex matching ``python`` fenced blocks; ``body`` group yields contents."""
 
+    FENCE_NOTEST_RE: Final[t.RegexPattern] = re.compile(
+        r"^```(\S+)\s+notest\s*$",
+        re.MULTILINE,
+    )
+    """Regex matching fenced code blocks with a ``notest`` info qualifier."""
+
+    MANUAL_TOC_RE: Final[t.RegexPattern] = re.compile(
+        r"<!--\s*TOC\s+START\s*-->.*?<!--\s*TOC\s+END\s*-->",
+        re.DOTALL,
+    )
+    """Regex matching a manually inserted table-of-contents block."""
+
     # --- Markdown link/heading patterns ---
     MARKDOWN_LINK_RE: Final[t.RegexPattern] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
     """Match markdown links capturing text (group 1) and URL (group 2)."""

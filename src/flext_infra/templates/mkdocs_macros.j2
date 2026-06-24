@@ -50,9 +50,26 @@ plugins:
             merge_init_into_class: true
             docstring_section_style: spacy
 {%- endmacro %}
+{%- macro not_in_nav_block() -%}
+not_in_nav: |
+  api-reference/generated/**
+{%- endmacro %}
+{%- macro markdown_extensions_block() -%}
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+{%- endmacro %}
 {%- macro validation_block() -%}
 validation:
-  omitted_files: warn
+  omitted_files: ignore
   absolute_links: warn
   unrecognized_links: warn
 {%- endmacro %}

@@ -19,7 +19,7 @@ class FlextInfraUtilitiesDocsRender:
         return isinstance(value, list)
 
     @staticmethod
-    def _string_list(
+    def as_string_sequence(
         data: t.Infra.ContainerDict,
         key: str,
     ) -> t.SequenceOf[str]:
@@ -54,9 +54,27 @@ class FlextInfraUtilitiesDocsRender:
         return f"{relative}.md"
 
     @staticmethod
+    def _resolve_governance_link(
+        prefix: str,
+        path: str,
+        *,
+        is_dir: bool = False,
+    ) -> str:
+        """Return a resolvable governance link for README or project docs.
+
+        READMEs render on GitHub and can use relative paths; generated
+        ``docs/index.md`` pages are built by MkDocs with ``docs_dir`` isolation,
+        so governance pointers must be absolute GitHub URLs.
+        """
+        if prefix.startswith(("http://", "https://")):
+            kind = "tree" if is_dir else "blob"
+            return f"{prefix}/{kind}/main/{path}"
+        return f"{prefix}/{path}"
+
+    @staticmethod
     def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
-        patterns = FlextInfraUtilitiesDocsRender._string_list(data, "exclude_docs")
+        patterns = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs")
         if not patterns:
             return []
         return [
@@ -67,10 +85,13 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def _exclude_docs_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
-        """Render optional native ``exclude_docs`` lines for early MkDocs filtering."""
-        patterns = FlextInfraUtilitiesDocsRender._string_list(data, "exclude_docs")
-        if not patterns:
-            return []
+        """Render native ``exclude_docs`` lines for early MkDocs filtering."""
+        patterns = list(
+            dict.fromkeys([
+                *FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs"),
+                "README.md",
+            ])
+        )
         return [
             "exclude_docs: |",
             *[f"  {pattern}" for pattern in patterns],
@@ -91,8 +112,13 @@ class FlextInfraUtilitiesDocsRender:
             ],
         )
 
-    _LINK_PREFIX_DOCS_INDEX: ClassVar[str] = "../.."
-    """Relative path from ``<project>/docs/index.md`` to workspace root."""
+    _LINK_PREFIX_DOCS_INDEX: ClassVar[str] = c.Infra.GITHUB_REPO_URL
+    """Link prefix for ``<project>/docs/index.md`` governance pointers.
+
+    Uses the canonical GitHub URL so MkDocs can resolve the pointers during
+    per-project builds; files under ``docs_dir`` cannot point outside the
+    project docs tree with relative paths.
+    """
 
     _LINK_PREFIX_README: ClassVar[str] = ".."
     """Relative path from ``<project>/README.md`` to workspace root."""
@@ -132,30 +158,46 @@ class FlextInfraUtilitiesDocsRender:
         other boilerplate helpers but is intentionally unused.
         """
         _ = scope
+        agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix, "AGENTS.md"
+        )
         return [
             "## Collection Rules",
             "",
-            f"Read [`/flext/AGENTS.md`]({link_prefix}/AGENTS.md) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).",
+            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).",
         ]
 
     @staticmethod
-    def _quality_gates_lines() -> t.SequenceOf[str]:
+    def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Quality Gates surface."""
+        skill_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix,
+            ".agents/skills/flext-quality-gates/SKILL.md",
+        )
         return [
             "## Quality Gates",
             "",
-            "Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`](../../.agents/skills/flext-quality-gates/SKILL.md) skill for selectors and thresholds.",
+            f"Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
         ]
 
     @staticmethod
     def _governance_pointer_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical governance surface."""
+        agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix, "AGENTS.md"
+        )
+        skills_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix, ".agents/skills/", is_dir=True
+        )
+        onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix, "docs/guides/onboarding.md"
+        )
         return [
             "## Governance Pointer",
             "",
-            f"- Engineering law: [`/flext/AGENTS.md`]({link_prefix}/AGENTS.md)",
-            f"- Skills index: [`/flext/.agents/skills/`]({link_prefix}/.agents/skills/)",
-            f"- Onboarding: [`/flext/docs/guides/onboarding.md`]({link_prefix}/docs/guides/onboarding.md)",
+            f"- Engineering law: [`/flext/AGENTS.md`]({agents_link})",
+            f"- Skills index: [`/flext/.agents/skills/`]({skills_link})",
+            f"- Onboarding: [`/flext/docs/guides/onboarding.md`]({onboarding_link})",
         ]
 
     @staticmethod
@@ -193,7 +235,9 @@ class FlextInfraUtilitiesDocsRender:
                     scope, link_prefix=link_prefix
                 ),
                 "",
-                *FlextInfraUtilitiesDocsRender._quality_gates_lines(),
+                *FlextInfraUtilitiesDocsRender._quality_gates_lines(
+                    link_prefix=link_prefix
+                ),
                 "",
                 *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
                     link_prefix=link_prefix
@@ -217,7 +261,7 @@ class FlextInfraUtilitiesDocsRender:
         data = contract
         version = str(data.get("version", "")).strip() or "unknown"
         description = str(data.get("description", "")).strip() or "_not declared_"
-        facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
+        facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
         return "\n".join([
             c.Infra.GENERATED_HEADER,
@@ -250,7 +294,9 @@ class FlextInfraUtilitiesDocsRender:
             f"- Public extensions exposed by this project: {FlextInfraUtilitiesDocsRender._preview(facades)}.",
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",
-            *FlextInfraUtilitiesDocsRender._quality_gates_lines(),
+            *FlextInfraUtilitiesDocsRender._quality_gates_lines(
+                link_prefix=link_prefix
+            ),
             "",
             *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
                 link_prefix=link_prefix
@@ -281,8 +327,8 @@ class FlextInfraUtilitiesDocsRender:
     ) -> str:
         """Return the standard API readme for a project."""
         data = contract
-        facades = FlextInfraUtilitiesDocsRender._string_list(data, "facades")
-        modules = FlextInfraUtilitiesDocsRender._string_list(data, "modules")
+        facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
+        modules = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "modules")
         return "\n".join([
             c.Infra.GENERATED_HEADER,
             "",
@@ -393,24 +439,24 @@ class FlextInfraUtilitiesDocsRender:
         """Return the generated overview page for a project API."""
         data = contract
         aliases = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender._string_list(data, "aliases"),
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "aliases"),
             limit=11,
         )
         exports = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender._string_list(data, "public_symbols"),
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "public_symbols"),
             limit=10,
         )
         facades = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender._string_list(data, "facades"),
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades"),
             limit=8,
         )
         module_exports = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender._string_list(data, "module_exports"),
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "module_exports"),
             limit=8,
         )
-        modules = FlextInfraUtilitiesDocsRender._string_list(data, "modules")
+        modules = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "modules")
         keywords = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender._string_list(data, "keywords"),
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"),
             limit=8,
         )
         return "\n".join([
@@ -546,7 +592,7 @@ class FlextInfraUtilitiesDocsRender:
             for entry in entries
             if not any(
                 fnmatch.fnmatch(
-                    str(entry.get("api_page", "")).removeprefix("../../"),
+                    entry.get("api_page", "").removeprefix("../../"),
                     pattern,
                 )
                 for pattern in exclude_docs

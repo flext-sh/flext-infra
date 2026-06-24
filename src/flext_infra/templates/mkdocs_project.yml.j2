@@ -13,9 +13,12 @@ site_dir: .reports/docs/site
 
 {{ mk.plugins_block(exclude_plugin_block, mkdocstrings_paths_block) }}
 
+{{ mk.markdown_extensions_block() }}
+
 nav:
   - Home: index.md
   - Guides: guides/README.md
   - API Reference: api-reference/README.md
 
+{{ mk.not_in_nav_block() }}
 {{ mk.validation_block() }}

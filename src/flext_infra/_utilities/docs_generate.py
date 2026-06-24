@@ -205,7 +205,7 @@ class FlextInfraUtilitiesDocsGenerate:
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             workspace_root
         )
-        exclude_docs = FlextInfraUtilitiesDocsRender._string_list(
+        exclude_docs = FlextInfraUtilitiesDocsRender.as_string_sequence(
             workspace_contract, "exclude_docs"
         )
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
@@ -297,6 +297,32 @@ class FlextInfraUtilitiesDocsGenerate:
         return files
 
     @staticmethod
+    def docs_sanitize_scope_fences(
+        scope: m.Infra.DocScope,
+        *,
+        apply: bool,
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+        """Remove unsupported ``notest`` qualifiers from code fence info lines."""
+        changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
+        docs_root = scope.path / "docs"
+        if not docs_root.exists():
+            return changed
+        for path in sorted(docs_root.rglob("*.md")):
+            content = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            sanitized = c.Infra.FENCE_NOTEST_RE.sub(r"```\1", content)
+            sanitized = c.Infra.MANUAL_TOC_RE.sub("", sanitized)
+            if sanitized == content:
+                continue
+            changed.append(
+                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                    path,
+                    sanitized,
+                    apply=apply,
+                ),
+            )
+        return changed
+
+    @staticmethod
     def docs_generate_scope(
         scope: m.Infra.DocScope,
         *,
@@ -305,7 +331,7 @@ class FlextInfraUtilitiesDocsGenerate:
         projects: t.StrSequence | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope and persist the standard reports."""
-        files = (
+        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = list(
             FlextInfraUtilitiesDocsGenerate.docs_root_generated_files(
                 workspace_root,
                 apply=apply,
@@ -316,6 +342,12 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope,
                 apply=apply,
             )
+        )
+        files.extend(
+            FlextInfraUtilitiesDocsGenerate.docs_sanitize_scope_fences(
+                scope,
+                apply=apply,
+            ),
         )
         generated = u.count(files, lambda item: item.written)
         files_payload: t.JsonList = [
