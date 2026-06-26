@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import FlextInfraUtilitiesDocs, c, m, t
+from flext_infra import (
+    FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesDocsContract,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesDocsFix:
@@ -26,6 +33,62 @@ class FlextInfraUtilitiesDocsFix:
                 if md_candidate.exists():
                     result = f"{base}.md{raw_link[len(base) :]}"
         return result
+
+    @staticmethod
+    def docs_fix_python_codeblocks(
+        scope: m.Infra.DocScope,
+        *,
+        apply: bool,
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+        """Auto-fix ``python`` fenced code blocks using ``ruff check --fix``.
+
+        Only fixes issues that ``ruff`` can resolve automatically; blocks that
+        still contain unfixable diagnostics are left untouched so the audit
+        gate reports them.
+        """
+        changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
+        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+            original = md_file.read_text(
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+            )
+
+            def _replace_fence(
+                match: re.Match[str],
+                source_file: Path = md_file,
+            ) -> str:
+                body = match.group("body")
+                rel = source_file.relative_to(scope.path).as_posix()
+                outcome = u.Cli.run_raw(
+                    [
+                        c.Infra.RUFF,
+                        c.Infra.VERB_CHECK,
+                        "--fix",
+                        "--extend-ignore",
+                        ",".join(c.Infra.PYTHON_FENCE_RUFF_EXTEND_IGNORE),
+                        "--stdin-filename",
+                        f"{rel}#block.py",
+                        "-",
+                    ],
+                    input_data=body.encode(),
+                )
+                if outcome.failure:
+                    return match.group(0)
+                fixed_body = outcome.value.stdout
+                if fixed_body == body:
+                    return match.group(0)
+                return f"{match.group('open')}{fixed_body}```"
+
+            sanitized = c.Infra.PYTHON_FENCE_FIX_RE.sub(_replace_fence, original)
+            if sanitized == original:
+                continue
+            changed.append(
+                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                    md_file,
+                    sanitized,
+                    apply=apply,
+                ),
+            )
+        return changed
 
     @staticmethod
     def docs_process_markdown_file(

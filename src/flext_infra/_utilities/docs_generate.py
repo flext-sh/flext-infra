@@ -149,6 +149,13 @@ class FlextInfraUtilitiesDocsGenerate:
                 apply=apply,
             )
         )
+        files.extend(
+            FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
+                scope.path / "docs/projects/generated",
+                [],
+                apply=apply,
+            )
+        )
         return files
 
     @staticmethod

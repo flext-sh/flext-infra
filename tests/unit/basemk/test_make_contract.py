@@ -88,6 +88,7 @@ def _run_make(
         "CHECK_ONLY",
         "FIX",
         "MAKEFLAGS",
+        "MAKEOVERRIDES",
         "MFLAGS",
         "MAKELEVEL",
         "GNUMAKEFLAGS",
@@ -169,8 +170,7 @@ class TestsFlextInfraBasemkMakeContract:
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
         _write_project(tmp_path)
-        (tmp_path / ".venv" / "bin").mkdir(parents=True)
-        (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+        _write_venv_python_stub(tmp_path, log_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
@@ -202,8 +202,7 @@ class TestsFlextInfraBasemkMakeContract:
             + '"\nexit 0\n',
         )
         _write_project(tmp_path)
-        (tmp_path / ".venv" / "bin").mkdir(parents=True)
-        (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+        _write_venv_python_stub(tmp_path, log_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
@@ -307,8 +306,7 @@ class TestsFlextInfraBasemkMakeContract:
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
         _write_project(tmp_path)
-        (tmp_path / ".venv" / "bin").mkdir(parents=True)
-        (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+        _write_venv_python_stub(tmp_path, log_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
@@ -330,8 +328,7 @@ class TestsFlextInfraBasemkMakeContract:
         self, tmp_path: Path
     ) -> None:
         _write_project(tmp_path)
-        (tmp_path / ".venv" / "bin").mkdir(parents=True)
-        (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+        _write_venv_python_stub(tmp_path, tmp_path / "tool.log")
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
