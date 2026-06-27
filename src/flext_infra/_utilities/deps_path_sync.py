@@ -15,6 +15,7 @@ from flext_infra import (
     r,
     t,
 )
+from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 
 
 class FlextInfraUtilitiesDependencyPathSync:
@@ -202,6 +203,24 @@ class FlextInfraUtilitiesDependencyPathSync:
             )
         )
 
+    @staticmethod
+    def _write_document_state(
+        pyproject_path: Path,
+        payload: t.JsonMapping,
+    ) -> p.Result[bool]:
+        """Write pyproject payload through the same comment-aware renderer as mod."""
+        doc = u.Cli.toml_document_from_mapping(payload)
+        rendered, _changes = FlextInfraInjectCommentsPhase().apply(doc.as_string())
+        try:
+            u.write_file(
+                pyproject_path,
+                rendered,
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+        except OSError as exc:
+            return r[bool].fail_op("write pyproject.toml", exc)
+        return r[bool].ok(True)
+
     def rewrite_dep_paths(
         self,
         pyproject_path: Path,
@@ -246,7 +265,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         )
         changes += list(self._rewrite_poetry(payload, is_root=is_root, mode=mode))
         if changes and (not command.dry_run):
-            write_result = u.Cli.toml_write_mapping(pyproject_path, state.payload)
+            write_result = self._write_document_state(pyproject_path, state.payload)
             if write_result.failure:
                 return r[t.StrSequence].fail(
                     write_result.error or "failed to write TOML",

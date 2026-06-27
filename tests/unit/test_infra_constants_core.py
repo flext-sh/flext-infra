@@ -119,6 +119,9 @@ class TestsFlextInfraInfraConstantsCore:
         skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
         assert ".claude.disabled" in skip_dirs
         assert ".flext-deps" in skip_dirs
+        assert "context_test" in skip_dirs
+        assert "rope_ws" in skip_dirs
+        assert "tmp_flow_test" in skip_dirs
 
     def test_check_excluded_dirs_includes_common(self) -> None:
         check_excluded = c.Infra.CHECK_EXCLUDED_DIRS

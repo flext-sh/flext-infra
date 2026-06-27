@@ -74,7 +74,9 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
-        patterns = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs")
+        patterns = FlextInfraUtilitiesDocsRender.as_string_sequence(
+            data, "exclude_docs"
+        )
         if not patterns:
             return []
         return [

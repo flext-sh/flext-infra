@@ -77,6 +77,22 @@ if _t.TYPE_CHECKING:
     from flext_infra._typings.adapters import FlextInfraTypesAdapters
     from flext_infra._typings.base import FlextInfraTypesBase
     from flext_infra._typings.rope import FlextInfraTypesRope
+    from flext_infra._utilities._docs_audit_detectors import (
+        FlextInfraUtilitiesDocsAuditDetectorsMixin,
+    )
+    from flext_infra._utilities._github_pr_single import (
+        FlextInfraUtilitiesGithubPrSingleMixin,
+    )
+    from flext_infra._utilities._github_sync import FlextInfraUtilitiesGithubSyncMixin
+    from flext_infra._utilities._rope_bracket_balance import (
+        FlextInfraUtilitiesRopeBracketBalanceMixin,
+    )
+    from flext_infra._utilities._rope_core_pymodule import (
+        FlextInfraUtilitiesRopeCorePyModuleMixin,
+    )
+    from flext_infra._utilities._rope_method_order import (
+        FlextInfraUtilitiesRopeMethodOrderMixin,
+    )
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -492,6 +508,22 @@ _LAZY_IMPORTS = merge_lazy_imports(
             "._typings.adapters": ("FlextInfraTypesAdapters",),
             "._typings.base": ("FlextInfraTypesBase",),
             "._typings.rope": ("FlextInfraTypesRope",),
+            "._utilities._docs_audit_detectors": (
+                "FlextInfraUtilitiesDocsAuditDetectorsMixin",
+            ),
+            "._utilities._github_pr_single": (
+                "FlextInfraUtilitiesGithubPrSingleMixin",
+            ),
+            "._utilities._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
+            "._utilities._rope_bracket_balance": (
+                "FlextInfraUtilitiesRopeBracketBalanceMixin",
+            ),
+            "._utilities._rope_core_pymodule": (
+                "FlextInfraUtilitiesRopeCorePyModuleMixin",
+            ),
+            "._utilities._rope_method_order": (
+                "FlextInfraUtilitiesRopeMethodOrderMixin",
+            ),
             "._utilities.base": ("FlextInfraUtilitiesBase",),
             "._utilities.census": ("FlextInfraUtilitiesRefactorCensus",),
             "._utilities.codegen": ("FlextInfraUtilitiesCodegen",),
@@ -1043,6 +1075,7 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocs",
     "FlextInfraUtilitiesDocsApi",
     "FlextInfraUtilitiesDocsAudit",
+    "FlextInfraUtilitiesDocsAuditDetectorsMixin",
     "FlextInfraUtilitiesDocsBuild",
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
@@ -1052,6 +1085,8 @@ __all__: list[str] = [
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubPr",
+    "FlextInfraUtilitiesGithubPrSingleMixin",
+    "FlextInfraUtilitiesGithubSyncMixin",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesProtectedEdit",
@@ -1072,10 +1107,13 @@ __all__: list[str] = [
     "FlextInfraUtilitiesRopeAnalysis",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
+    "FlextInfraUtilitiesRopeBracketBalanceMixin",
     "FlextInfraUtilitiesRopeCore",
+    "FlextInfraUtilitiesRopeCorePyModuleMixin",
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeMroTransform",
     "FlextInfraUtilitiesRopePep695Patch",

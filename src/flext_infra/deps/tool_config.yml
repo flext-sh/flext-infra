@@ -272,6 +272,7 @@ tools:
           - INP001
           - N999
           - PLC2701
+          - RUF067
           - TC004
         "**/_utilities/parser.py":
           - ARG004
@@ -633,7 +634,8 @@ tools:
       workspace-include-children: false
       workspace-include-child-env-dirs: []
       include-path-dependencies-in-search-path: true
-      project-shared-search-paths: []
+      project-shared-search-paths:
+        - scripts
   pytest:
     standard-markers:
       - "unit: unit tests"

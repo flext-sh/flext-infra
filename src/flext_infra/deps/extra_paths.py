@@ -128,13 +128,18 @@ class FlextInfraExtraPathsManager(
             for relative_path in configured_typings
             if (project_dir / relative_path).is_dir()
         ]
+        shared_paths = [
+            relative_path
+            for relative_path in rules.project_shared_search_paths
+            if (project_dir / relative_path).is_dir()
+        ]
         local_dirs = [
             directory
             for directory in u.Infra.discover_python_dirs(project_dir)
             if not is_root
             or not (project_dir / directory / c.Infra.PYPROJECT_FILENAME).is_file()
         ]
-        paths: t.Infra.StrSet = {*typings_paths}
+        paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
         if rules.include_path_dependencies_in_search_path:
             pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
             if pyproject.exists():

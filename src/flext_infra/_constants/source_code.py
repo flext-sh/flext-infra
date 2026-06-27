@@ -22,11 +22,13 @@ class FlextInfraConstantsSourceCode:
         "node_modules",
         "__pycache__",
         "dist",
+        "dist-packages",
         "build",
         ".reports",
         ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
+        "site-packages",
         "venv",
     })
     "Common directories to exclude from analysis across all scripts."
@@ -35,6 +37,9 @@ class FlextInfraConstantsSourceCode:
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         ".flext-deps",
+        "context_test",
+        "rope_ws",
+        "tmp_flow_test",
     }
     "Directories to skip when scanning pyproject.toml files."
     CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {

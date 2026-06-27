@@ -76,7 +76,7 @@ class FlextInfraPyprojectModernizerRunMixin:
             project_paths = [project.path for project in selected_projects.value]
         files_result = u.Infra.find_all_pyproject_files(
             self.root,
-            skip_dirs=c.Infra.SKIP_DIRS,
+            skip_dirs=c.Infra.PYPROJECT_SKIP_DIRS,
             project_paths=project_paths,
         )
         files: t.SequenceOf[Path] = (

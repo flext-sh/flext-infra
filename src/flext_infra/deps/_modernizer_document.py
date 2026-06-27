@@ -84,6 +84,35 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             ),
         )
 
+    def _format_rendered_pyproject(
+        self,
+        path: Path,
+        rendered: str,
+    ) -> p.Result[str]:
+        """Format rendered pyproject TOML with the workspace Taplo contract."""
+        cmd = [
+            "taplo",
+            "format",
+            "-",
+            "--stdin-filepath",
+            str(path),
+        ]
+        config_path = self.root / ".taplo.toml"
+        if config_path.is_file():
+            cmd.extend(["--config", str(config_path)])
+        format_result = u.Cli.run_raw(
+            cmd,
+            cwd=self.root,
+            input_data=rendered.encode(c.Cli.ENCODING_DEFAULT),
+        )
+        if format_result.failure:
+            return r[str].fail(format_result.error or "taplo format failed")
+        output = format_result.value
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).strip()
+            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
+        return r[str].ok(output.stdout)
+
     def _process_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
@@ -184,6 +213,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
+        formatted_result = self._format_rendered_pyproject(path, rendered)
+        if formatted_result.failure:
+            return [formatted_result.error or "taplo format failed"]
+        rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         if normalized_rendered == normalized_original:

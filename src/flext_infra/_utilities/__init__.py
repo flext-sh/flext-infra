@@ -7,6 +7,12 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        "._docs_audit_detectors": ("FlextInfraUtilitiesDocsAuditDetectorsMixin",),
+        "._github_pr_single": ("FlextInfraUtilitiesGithubPrSingleMixin",),
+        "._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
+        "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
+        "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
+        "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
         ".base": ("FlextInfraUtilitiesBase",),
         ".census": ("FlextInfraUtilitiesRefactorCensus",),
         ".codegen": ("FlextInfraUtilitiesCodegen",),

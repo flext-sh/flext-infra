@@ -166,7 +166,9 @@ class FlextInfraUtilitiesDiscovery:
         """Return top-level directories that contain at least one Python file."""
         if not project_dir.is_dir():
             return list[str]()
-        effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
+        effective_skip = (
+            skip_dirs if skip_dirs is not None else c.Infra.PYPROJECT_SKIP_DIRS
+        )
         return [
             subdir.name
             for subdir in sorted(project_dir.iterdir())
