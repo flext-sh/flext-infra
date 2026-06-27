@@ -8,13 +8,15 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesIteration,
     c,
     m,
     p,
     r,
     t,
 )
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesDocsScope:
@@ -33,10 +35,10 @@ class FlextInfraUtilitiesDocsScope:
         """
         root = Path(project_root)
         pyproject_path = root / c.Infra.PYPROJECT_FILENAME
-        payload = FlextInfraUtilitiesIteration.pyproject_payload(pyproject_path)
+        payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         dependency_names = tuple(
-            FlextInfraUtilitiesIteration.declared_dependency_names_from_payload(
+            FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
                 payload,
             )
         )
@@ -134,7 +136,7 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def _workspace_member_name_set(workspace_root: Path) -> t.Infra.StrSet:
         """Return configured uv workspace members for the current workspace root."""
-        return set(FlextInfraUtilitiesIteration.workspace_member_names(workspace_root))
+        return set(FlextInfraUtilitiesPyproject.workspace_member_names(workspace_root))
 
     @staticmethod
     def _project_info_for_entry(
@@ -147,7 +149,7 @@ class FlextInfraUtilitiesDocsScope:
         if not pyproject.is_file():
             return None
         # Pre-validate [project].name BEFORE triggering the strict cached state builder.
-        payload_preview = FlextInfraUtilitiesIteration.pyproject_payload(pyproject)
+        payload_preview = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject)
         project_section = payload_preview.get("project")
         if (
             not isinstance(project_section, dict)
@@ -378,8 +380,8 @@ class FlextInfraUtilitiesDocsScope:
         """Discover workspace projects that participate in the docs scope.
 
         ``include_attached`` is forwarded to
-        :meth:`FlextInfraUtilitiesIteration.discover_project_candidates`. When
-        True, sub-repos opted in via ``[tool.flext.workspace] attached = true``
+        :meth:`FlextInfraUtilitiesProjectDiscovery.discover_project_candidates`.
+        When True, sub-repos opted in via ``[tool.flext.workspace] attached = true``
         are surfaced alongside the workspace's git-tracked projects.
         """
         if not workspace_root.exists() or not workspace_root.is_dir():
@@ -390,7 +392,7 @@ class FlextInfraUtilitiesDocsScope:
         workspace_members = FlextInfraUtilitiesDocsScope._workspace_member_name_set(
             workspace_root,
         )
-        project_roots = FlextInfraUtilitiesIteration.discover_project_candidates(
+        project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
             workspace_root,
             include_attached=include_attached,
         )

@@ -8,13 +8,14 @@ from flext_cli import u
 from flext_infra import (
     FlextInfraModelsDeps,
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesIteration,
     c,
     m,
     p,
     r,
     t,
 )
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 
 
@@ -48,7 +49,7 @@ class FlextInfraUtilitiesDependencyPathSync:
         internal_deps: t.Infra.StrSet = set()
         for item in deps:
             requirement_part, _, marker_part = item.partition(";")
-            dep_name = FlextInfraUtilitiesIteration.dep_name(requirement_part)
+            dep_name = FlextInfraUtilitiesDependencies.dep_name(requirement_part)
             if not dep_name or dep_name not in internal_names:
                 updated_deps.append(item)
                 continue
@@ -165,7 +166,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             raw_path = value.get(c.Infra.PATH, None)
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
-            dep_name = FlextInfraUtilitiesIteration.dep_name(raw_path)
+            dep_name = FlextInfraUtilitiesDependencies.dep_name(raw_path)
             if not dep_name:
                 continue
             new_path = f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
@@ -367,7 +368,7 @@ class FlextInfraUtilitiesDependencyPathSync:
             if project.path.is_relative_to(workspace_root)
         }
         configured_members = tuple(
-            FlextInfraUtilitiesIteration.workspace_member_names(workspace_root),
+            FlextInfraUtilitiesPyproject.workspace_member_names(workspace_root),
         )
         invalid_members = [
             member

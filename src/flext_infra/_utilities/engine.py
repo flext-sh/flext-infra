@@ -17,11 +17,12 @@ from pathlib import Path
 
 from flext_cli import cli, u
 from flext_infra import (
-    FlextInfraUtilitiesIteration,
     c,
     m,
     t,
 )
+from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesRefactorEngine:
@@ -77,7 +78,7 @@ class FlextInfraUtilitiesRefactorEngine:
             settings,
         )
         scan_dirs = frozenset(engine_config.project_scan_dirs)
-        ir = FlextInfraUtilitiesIteration.iter_python_files(
+        ir = FlextInfraUtilitiesFileIteration.iter_python_files(
             workspace_root=project,
             project_roots=[project],
             include_tests=c.Infra.DIR_TESTS in scan_dirs,
@@ -113,7 +114,7 @@ class FlextInfraUtilitiesRefactorEngine:
             settings,
         )
         scan_dirs = frozenset(engine_config.project_scan_dirs)
-        projects = FlextInfraUtilitiesIteration.discover_project_roots(
+        projects = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             workspace_root=root,
             scan_dirs=scan_dirs or None,
         )
@@ -123,7 +124,7 @@ class FlextInfraUtilitiesRefactorEngine:
         allowed_extensions = set(ext)
         all_files: t.MutableSequenceOf[Path] = []
         for proj in projects:
-            ir = FlextInfraUtilitiesIteration.iter_python_files(
+            ir = FlextInfraUtilitiesFileIteration.iter_python_files(
                 workspace_root=root,
                 project_roots=[proj],
                 include_tests=c.Infra.DIR_TESTS in scan_dirs,
@@ -156,7 +157,7 @@ class FlextInfraUtilitiesRefactorEngine:
             settings,
         )
         scan_dirs = frozenset(engine_config.project_scan_dirs)
-        return FlextInfraUtilitiesIteration.discover_project_roots(
+        return FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             workspace_root=root,
             scan_dirs=scan_dirs or None,
         )

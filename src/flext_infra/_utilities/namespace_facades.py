@@ -12,13 +12,13 @@ from typing import ClassVar
 from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesRopeModulePatch,
     c,
     m,
     t,
 )
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesRefactorNamespaceFacades:
@@ -62,7 +62,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         payload = u.Cli.toml_mapping_from_text(raw)
         if payload is None:
             return {}
-        dep_names = FlextInfraUtilitiesIteration.local_dependency_names_from_payload(
+        dep_names = FlextInfraUtilitiesDependencies.local_dependency_names_from_payload(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         )
         chains: t.MutableStrSequenceMapping = defaultdict(list)

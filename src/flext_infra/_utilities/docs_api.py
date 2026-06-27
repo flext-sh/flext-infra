@@ -7,6 +7,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
+from flext_cli import u
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesRopeAnalysis,
@@ -15,7 +16,6 @@ from flext_infra import (
     c,
     m,
     t,
-    u,
 )
 
 

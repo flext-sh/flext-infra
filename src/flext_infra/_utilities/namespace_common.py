@@ -10,11 +10,11 @@ from io import StringIO
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRopeSource,
     c,
     t,
 )
+from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
 
 
 class FlextInfraUtilitiesRefactorNamespaceCommon:
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         existing_files = [path.resolve() for path in py_files if path.exists()]
         if not existing_files:
             return Path.cwd()
-        project_root = FlextInfraUtilitiesIteration.resolve_project_root(
+        project_root = FlextInfraUtilitiesFileIteration.resolve_project_root(
             existing_files[0],
         )
         return (

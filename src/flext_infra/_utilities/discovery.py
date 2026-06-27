@@ -8,13 +8,13 @@ from typing import ClassVar
 
 from flext_infra import (
     FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRopeAnalysis,
     c,
     p,
     r,
     t,
 )
+from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 
 
 class FlextInfraUtilitiesDiscovery:
@@ -259,7 +259,7 @@ class FlextInfraUtilitiesDiscovery:
                 resolved_root / c.Infra.MAKEFILE_FILENAME,
             )
         )
-        if not has_project_marker and FlextInfraUtilitiesIteration.namespace_scan_dirs(
+        if not has_project_marker and FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(
             resolved_root
         ):
             return resolved_root

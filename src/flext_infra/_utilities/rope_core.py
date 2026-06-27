@@ -20,10 +20,13 @@ from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction
 from rope.base.resources import File
 
-from flext_infra import FlextInfraUtilitiesIteration, c, t
+from flext_infra import c, t
 from flext_infra._utilities._rope_core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )
+from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
+from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.rope_pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
@@ -56,13 +59,13 @@ class FlextInfraUtilitiesRopeCore(FlextInfraUtilitiesRopeCorePyModuleMixin):
         _ = (project_prefix, src_dir)
         FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
-        project_roots = FlextInfraUtilitiesIteration.discover_project_roots(
+        project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             resolved_root,
         )
         source_folders = sorted({
             str(scan_path.relative_to(resolved_root))
             for project_root in project_roots
-            for dir_name in FlextInfraUtilitiesIteration.namespace_scan_dirs(
+            for dir_name in FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(
                 project_root,
             )
             if (scan_path := project_root / dir_name).is_dir()
@@ -177,7 +180,7 @@ class FlextInfraUtilitiesRopeCore(FlextInfraUtilitiesRopeCorePyModuleMixin):
         root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
         if not isinstance(root_real_path, str):
             return ()
-        file_paths = FlextInfraUtilitiesIteration.iter_python_files(
+        file_paths = FlextInfraUtilitiesFileIteration.iter_python_files(
             Path(root_real_path),
         )
         if file_paths.failure:

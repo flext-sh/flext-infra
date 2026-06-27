@@ -9,14 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
+from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRopeCore,
     c,
     m,
     t,
-    u,
 )
+from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
+from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesRefactorMroScan:
@@ -83,13 +85,15 @@ class FlextInfraUtilitiesRefactorMroScan:
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(target)
         project_name_set: set[str] = set(project_names or ())
-        for project_root in FlextInfraUtilitiesIteration.discover_project_roots(
+        for project_root in FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             workspace_root=workspace_root,
         ):
             if project_name_set and project_root.name not in project_name_set:
                 continue
-            scan_dirs = FlextInfraUtilitiesIteration.namespace_scan_dirs(project_root)
-            iter_result = FlextInfraUtilitiesIteration.iter_python_files(
+            scan_dirs = FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(
+                project_root,
+            )
+            iter_result = FlextInfraUtilitiesFileIteration.iter_python_files(
                 workspace_root=project_root,
                 project_roots=[project_root],
                 include_tests=c.Infra.DIR_TESTS in scan_dirs,
