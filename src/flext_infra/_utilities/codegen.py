@@ -51,9 +51,16 @@ class FlextInfraUtilitiesCodegen:
         *, class_name: str, base_class: str, docstring: str
     ) -> str:
         """Generate one minimal module skeleton used by codegen scaffolding."""
+        if base_class.startswith("FlextTests"):
+            base_import = f"from flext_tests import {base_class}\n\n"
+        elif base_class.startswith("Flext"):
+            base_import = f"from flext_core import {base_class}\n\n"
+        else:
+            base_import = ""
         return (
             f'"""{docstring}"""\n\n'
             "from __future__ import annotations\n\n"
+            f"{base_import}"
             f"class {class_name}({base_class}):\n"
             f'    """{docstring}"""\n'
             "\n"

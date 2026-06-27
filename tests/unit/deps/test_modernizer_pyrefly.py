@@ -127,7 +127,7 @@ class TestsFlextInfraModernizerPyrefly:
         assert isinstance(pyrefly, MutableMapping)
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        assert search_path == [".", "src"]
+        assert search_path == [".", "scripts", "src"]
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
         self,
