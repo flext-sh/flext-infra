@@ -41,7 +41,9 @@ class FlextInfraUtilitiesNamespaceConfig:
         2. Git-tracked top-level directories that exist on disk (dynamic).
         3. Fixed candidate list filtered by ``is_dir()`` (fallback).
         """
-        configured = FlextInfraUtilitiesNamespaceConfig.namespace_meta(project_root).get(
+        configured = FlextInfraUtilitiesNamespaceConfig.namespace_meta(
+            project_root
+        ).get(
             "scan_dirs",
         )
         if isinstance(configured, list):

@@ -13,6 +13,7 @@ from flext_cli import u
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -26,9 +27,10 @@ from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
+from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
+from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
@@ -38,6 +40,7 @@ from flext_infra._utilities.namespace_analysis import (
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
+from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.namespace_facades import (
     FlextInfraUtilitiesRefactorNamespaceFacades,
 )
@@ -45,7 +48,9 @@ from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -112,7 +117,12 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsValidate,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesGithubPr,
-        FlextInfraUtilitiesIteration,
+        FlextInfraUtilitiesPyproject,
+        FlextInfraUtilitiesNamespaceConfig,
+        FlextInfraUtilitiesDependencies,
+        FlextInfraUtilitiesGitScope,
+        FlextInfraUtilitiesProjectDiscovery,
+        FlextInfraUtilitiesFileIteration,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,

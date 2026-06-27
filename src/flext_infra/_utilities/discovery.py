@@ -259,8 +259,9 @@ class FlextInfraUtilitiesDiscovery:
                 resolved_root / c.Infra.MAKEFILE_FILENAME,
             )
         )
-        if not has_project_marker and FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(
-            resolved_root
+        if (
+            not has_project_marker
+            and FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(resolved_root)
         ):
             return resolved_root
         if FlextInfraUtilitiesDiscovery._child_project_roots(resolved_root):

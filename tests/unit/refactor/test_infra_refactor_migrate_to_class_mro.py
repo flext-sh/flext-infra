@@ -9,7 +9,8 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraRefactorMigrateToClassMRO,
-    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesFileIteration,
+    FlextInfraUtilitiesProjectDiscovery,
 )
 
 
@@ -234,7 +235,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
                 "from __future__ import annotations\n",
                 encoding="utf-8",
             )
-        discovered = FlextInfraUtilitiesIteration.iter_python_files(
+        discovered = FlextInfraUtilitiesFileIteration.iter_python_files(
             workspace_root=tmp_path
         )
         tm.ok(discovered)
@@ -255,7 +256,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (project_root / "src").mkdir(parents=True)
 
-        discovered = FlextInfraUtilitiesIteration.discover_project_roots(
+        discovered = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             workspace_root=workspace_root,
         )
         tm.that(discovered, eq=[project_root])

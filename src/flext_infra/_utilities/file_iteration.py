@@ -185,8 +185,11 @@ class FlextInfraUtilitiesFileIteration:
         src_dirs: frozenset[str] | None,
     ) -> t.SequenceOf[Path]:
         """Collect Python files across workspace projects."""
-        roots = project_roots or FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            workspace_root=workspace_root,
+        roots = (
+            project_roots
+            or FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
+                workspace_root=workspace_root,
+            )
         )
         selected_dirs = src_dirs or frozenset(
             {
@@ -242,10 +245,8 @@ class FlextInfraUtilitiesFileIteration:
         files: t.MutableSequenceOf[Path],
     ) -> None:
         """Discover additional directories with Python files (docs/, tools/, etc.)."""
-        tracked_dir_names = (
-            FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(
-                project_root,
-            )
+        tracked_dir_names = FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(
+            project_root,
         )
         for subdir in project_root.iterdir():
             if not subdir.is_dir():
@@ -322,9 +323,7 @@ class FlextInfraUtilitiesFileIteration:
             )
             if files_result.failure:
                 continue
-            result.extend(
-                (project_root, file_path) for file_path in files_result.value
-            )
+            result.extend((project_root, file_path) for file_path in files_result.value)
         return result
 
     @staticmethod

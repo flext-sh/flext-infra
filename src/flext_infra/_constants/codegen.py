@@ -104,6 +104,12 @@ class FlextInfraConstantsCodegen:
         "pytest_warning_recorded",
     })
     "Exports excluded from package __init__.py auto-export — pytest hooks live per-module via pytest plugin entry-points and infra-only utilities never bubble up."
+    PUBLISHED_ALL_EXCLUDE: Final[frozenset[str]] = frozenset({
+        "build_lazy_import_map",
+        "lazy",
+        "normalize_lazy_imports",
+    })
+    "Public-module symbols withheld from the generated root-facade __all__ but kept in the lazy map — lazy-runtime helpers stay importable via from-import yet are not part of the frozen public facade surface."
     ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
         "docs",
         "src",

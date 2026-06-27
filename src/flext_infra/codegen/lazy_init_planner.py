@@ -94,7 +94,21 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
-        all_export_names = tuple(sorted({*lazy_map, *eager_dunders}))
+        export_names = {*lazy_map, *eager_dunders}
+        if context.current_pkg and "." not in context.current_pkg:
+            # Privacy rule: the public root facade publishes in __all__ only the
+            # symbols sourced from public root modules. Sub-facades whose
+            # canonical source is a ``_``-private subpackage stay resolvable via
+            # the child-package merge and the TYPE_CHECKING block, yet are not
+            # part of the frozen public facade surface.
+            eager_names = frozenset(eager_dunders)
+            export_names = {
+                name
+                for name in export_names
+                if name in eager_names
+                or self._is_public_root_export(name, lazy_map)
+            }
+        all_export_names = tuple(sorted(export_names))
         return m.Infra.LazyInitPlan(
             context=context,
             action=c.Infra.LazyInitAction.WRITE,
@@ -666,6 +680,22 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if target_score < existing_score:
             return existing
         return min(existing, target)
+
+    @staticmethod
+    def _is_public_root_export(name: str, lazy_map: t.LazyAliasMap) -> bool:
+        """Return whether a root-facade export belongs in the public ``__all__``.
+
+        A symbol is part of the public facade surface only when its canonical
+        lazy-map source module is a public root module — i.e. no path segment
+        below the root package is ``_``-private — and it is not a lazy-runtime
+        helper that stays importable but is withheld from the frozen surface.
+        """
+        if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
+            return False
+        module_path = lazy_map[name][0]
+        return not any(
+            segment.startswith("_") for segment in module_path.split(".")[1:]
+        )
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:
