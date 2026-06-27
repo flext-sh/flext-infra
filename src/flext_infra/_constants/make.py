@@ -184,16 +184,22 @@ class FlextInfraConstantsMake:
         "PR_RELEASE_ON_MERGE=0|1",
     )
     WORKSPACE_CORE_VERBS: Final[t.StrPairSequence] = (
-        ("boot", "Bootstrap .venv + submodules (WHAT=venv|submodules|sync|stat|imp)"),
+        (
+            "boot",
+            "Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)",
+        ),
         ("build", "Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)"),
         (
             "check",
-            "Quality gates (WHAT=lint|format|pol|pyre|scan|loc-cap|boundary|coordination)",
+            "Quality gates (WHAT=all|lint|pyrefly|mypy|pyright|fmt|scan|types)",
         ),
-        ("test", "Run tests (WHAT=unit|integration|diag)"),
-        ("val", "Validation gates (WHAT=loc-cap|loc-delta|boundary|manual-cmd)"),
-        ("ship", "Release workflow (WHAT=save|tag|push|pr|rel; APPLY=Y)"),
+        ("test", "Run tests (WHAT=all)"),
+        ("val", "Validation gates (WHAT=all|project|workspace)"),
+        ("ship", "Release workflow (WHAT=all|save|tag|push|pr|rel; APPLY=Y)"),
         ("clean", "Clean build/test/type artifacts"),
+        ("coordination", "Run Beads coordination diagnostics"),
+        ("makefile", "Show promoted scripts command surface"),
+        ("status", "Show Beads status"),
         ("help", "Show workspace verbs"),
     )
     WORKSPACE_GIT_VERBS: Final[t.StrPairSequence] = ()
@@ -244,6 +250,7 @@ class FlextInfraConstantsMake:
             },
         }),
         "ship": MappingProxyType({
+            "": "_rel",
             "save": "_save",
             "tag": "_tag",
             "push": "_push",
@@ -257,26 +264,18 @@ class FlextInfraConstantsMake:
             verb: frozenset(phase for phase in targets if phase)
             for verb, targets in WHAT_DISPATCH.items()
         },
-        "test": frozenset({"unit", "integration", "diag"}),
-        "val": frozenset({
-            "loc-cap",
-            "loc-delta",
-            "boundary",
-            "manual-cmd",
-            "complexity",
-            "docstring",
-            "silent-failure",
-        }),
+        "test": frozenset({"all"}),
+        "val": frozenset({"all", "project", "workspace"}),
     })
     WORKSPACE_SELECTOR_LINES: Final[t.StrSequence] = (
         'PROJECT=<name> / PROJECTS="a b"    Scope to project(s)',
-        "WHAT=<phase>               Sub-phase for build/check/test/val/ship/boot",
+        "WHAT=<phase>               Sub-phase for promoted workspace verbs",
         "FIX=1                      Auto-fix (check/val)",
         'FILE=src/x.py / FILES="a b"        Scope to file(s)',
         "CHANGED_ONLY=1             Only git-modified files",
         "MATCH=expr                 pytest -k filter (test)",
         "FAIL_FAST=1                Stop on first failure",
-        "APPLY=Y                    Allow mutation (ship)",
+        "APPLY=Y                    Allow mutation (ship/build/check fmt)",
         "VERBOSE=1                  Show executed commands",
     )
     WORKSPACE_EXAMPLES: Final[t.StrSequence] = (
@@ -285,10 +284,11 @@ class FlextInfraConstantsMake:
         "make check WHAT=loc-cap",
         "make check WHAT=coordination",
         "make build WHAT=mod PROJECT=flext-core",
-        "make test PROJECT=flext-core MATCH=test_x FAIL_FAST=1",
-        "make val WHAT=loc-delta",
+        "make test WHAT=all PROJECT=flext-core MATCH=test_x FAIL_FAST=1",
+        "make val WHAT=workspace",
         'make ship WHAT=save MESSAGE="chore: ..." APPLY=Y',
-        "make boot",
+        "make makefile WHAT=all",
+        "make boot WHAT=all",
     )
     STANDALONE_BOOTSTRAP_VERBS: Final[t.StrPairSequence] = (
         ("venv", "Create virtual environment"),

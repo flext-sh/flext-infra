@@ -20,9 +20,9 @@
 
 {% macro what_dispatch(verb) -%}
 {%- for phase, target in make.WHAT_DISPATCH[verb].items() %}
-	{{ '""' if phase == '' else phase }}) $(MAKE) --no-print-directory {{ target }} $(MAKE_SELECTION_ARGS) ;; \
+	{{ '"" | all' if phase == '' else phase }}) $(MAKE) --no-print-directory {{ target }} $(MAKE_SELECTION_ARGS) ;; \
 {%- endfor %}
-	*) echo "invalid WHAT '$(WHAT)' for {{ verb }} (valid: {{ make.WHAT_DISPATCH[verb].keys() | reject('equalto', '') | join(' ') }})" >&2; exit 2 ;; \
+	*) echo "invalid WHAT '$(WHAT)' for {{ verb }} (valid: all {{ make.WHAT_DISPATCH[verb].keys() | reject('equalto', '') | join(' ') }})" >&2; exit 2 ;; \
 	esac
 {%- endmacro %}
 
@@ -257,7 +257,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination test val clean ship _rel _pr _save _tag _push _imp _stat
+.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status test val clean ship _rel _pr _save _tag _push _imp _stat
 
 help: ## Show simple workspace verbs
 	$(Q)echo "FLEXT Workspace"
@@ -267,12 +267,12 @@ help: ## Show simple workspace verbs
 	$(Q)echo ""
 	$(Q)echo "Core verbs:"
 {% for verb_name, verb_help in make.WORKSPACE_CORE_VERBS %}
-	$(Q)printf " %-7s %s\n" "{{ verb_name }}" "{{ verb_help }}"
+	$(Q)printf " %-12s %s\n" "{{ verb_name }}" "{{ verb_help }}"
 {% endfor %}
 	$(Q)echo ""
 	$(Q)echo "Git workflow:"
 {% for verb_name, verb_help in make.WORKSPACE_GIT_VERBS %}
-	$(Q)printf " %-7s %s\n" "{{ verb_name }}" "{{ verb_help }}"
+	$(Q)printf " %-12s %s\n" "{{ verb_name }}" "{{ verb_help }}"
 {% endfor %}
 	$(Q)echo ""
 	$(Q)echo "Selectors:"
@@ -286,7 +286,7 @@ help: ## Show simple workspace verbs
 {% endfor %}
 	$(Q)echo " NOTE: Attached projects are discovered from top-level pyproject.toml files that declare flext-core."
 
-boot: ## Bootstrap .venv + submodules (WHAT=venv|submodules|sync|stat|imp)
+boot: ## Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)
 	$(Q)case "$(WHAT)" in \
 {{ what_dispatch('boot') | trim }}
 
@@ -541,7 +541,7 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	echo ""
 	$(Q)echo "Dependency constraint rewrite complete."
 
-check: ## Quality gates (WHAT=scan|fmt|types|pyre|pol|cqrs|lint|pyrefly|loc-cap|boundary|coordination)
+check: ## Quality gates (WHAT=all|scan|fmt|format|types|pyre|pol|cqrs|lint|pyrefly|mypy|pyright|markdown|go|silent-failure|loc-cap|boundary|coordination)
 	$(Q)case "$(WHAT)" in \
 {{ what_dispatch('check') | trim }}
 
@@ -562,10 +562,28 @@ _coordination: ## Run Beads coordination reports
 	$(Q)bd stale --status in_progress --days 1 --limit 25 --json
 	$(Q)bd graph --all --compact >/dev/null
 
+coordination: ## Run Beads coordination reports (WHAT=all)
+	$(Q)case "$(WHAT)" in \
+	"" | all) $(MAKE) --no-print-directory _coordination $(MAKE_SELECTION_ARGS) ;; \
+	*) echo "invalid WHAT '$(WHAT)' for coordination (valid: all)" >&2; exit 2 ;; \
+	esac
+
+makefile: ## Show promoted scripts command surface (WHAT=all)
+	$(Q)case "$(WHAT)" in \
+	"" | all) $(PY) -m scripts.dispatch makefile WHAT=all ;; \
+	*) echo "invalid WHAT '$(WHAT)' for makefile (valid: all)" >&2; exit 2 ;; \
+	esac
+
+status: ## Show Beads status (WHAT=all)
+	$(Q)case "$(WHAT)" in \
+	"" | all) $(PY) -m scripts.dispatch status WHAT=all ;; \
+	*) echo "invalid WHAT '$(WHAT)' for status (valid: all)" >&2; exit 2 ;; \
+	esac
+
 _cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
 
-build: ## Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)
+build: ## Build/regen (WHAT=all|gen|mod|up|constraints|sync|docs|stubs)
 	$(Q)case "$(WHAT)" in \
 {{ what_dispatch('build') | trim }}
 
@@ -573,7 +591,7 @@ _build_default: ## Build/package all selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
-ship: ## Release workflow (WHAT=save|tag|push|pr|rel)
+ship: ## Release workflow (WHAT=all|save|tag|push|pr|rel)
 	$(Q)case "$(WHAT)" in \
 {{ what_dispatch('ship') | trim }}
 
@@ -623,8 +641,11 @@ _scan: ## Run all security checks in all projects
 _fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdownlint)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)echo "Formatting Python files (ruff)..."
-	$(Q)_fmt_target="$(WORKSPACE_SELECTED_ROOTS)"; \
+	$(Q)_fmt_apply=0; \
+	if [ "$(APPLY)" = "Y" ] || [ "$(FIX)" = "1" ]; then _fmt_apply=1; fi; \
+	if [ "$$_fmt_apply" = "1" ]; then echo "Formatting Python files (ruff)..."; \
+	else echo "Checking Python formatting (ruff)..."; fi; \
+	_fmt_target="$(WORKSPACE_SELECTED_ROOTS)"; \
 	_fmt_files=""; \
 	if [ -n "$(FILES)" ]; then _fmt_files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -632,20 +653,42 @@ _fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdow
 		else _fmt_files="$(FILE)"; fi; \
 	fi; \
 	if [ -n "$$_fmt_files" ]; then _fmt_target="$$_fmt_files"; fi; \
-	if [ "$(CHECK_ONLY)" = "1" ]; then \
-		ruff format $$_fmt_target --check; \
-	else \
+	if [ "$$_fmt_apply" = "1" ]; then \
 		ruff format $$_fmt_target --quiet; \
+	else \
+		ruff format $$_fmt_target --check; \
 	fi
-	$(Q)go_files=$$(find $(WORKSPACE_SELECTED_ROOTS) -type f -name '*.go' ! -path '*/.git/*' ! -path '*/vendor/*' ! -path '*/.venv/*' ! -path '*/.cache/*'); \
+	$(Q)_fmt_apply=0; \
+	if [ "$(APPLY)" = "Y" ] || [ "$(FIX)" = "1" ]; then _fmt_apply=1; fi; \
+	go_files=$$(find $(WORKSPACE_SELECTED_ROOTS) -type f -name '*.go' ! -path '*/.git/*' ! -path '*/vendor/*' ! -path '*/.venv/*' ! -path '*/.cache/*'); \
 	if [ -n "$$go_files" ]; then \
-		echo "Formatting Go files (gofmt)..."; \
-		printf '%s\n' "$$go_files" | xargs gofmt -w; \
-		if command -v goimports >/dev/null 2>&1; then \
-			printf '%s\n' "$$go_files" | xargs goimports -w; \
+		if [ "$$_fmt_apply" = "1" ]; then \
+			echo "Formatting Go files (gofmt)..."; \
+			printf '%s\n' "$$go_files" | xargs -r gofmt -w; \
+			if command -v goimports >/dev/null 2>&1; then \
+				printf '%s\n' "$$go_files" | xargs -r goimports -w; \
+			fi; \
+		else \
+			echo "Checking Go formatting (gofmt)..."; \
+			gofmt_out=$$(printf '%s\n' "$$go_files" | xargs -r gofmt -l); \
+			if [ -n "$$gofmt_out" ]; then \
+				echo "Go files require formatting:"; \
+				printf '%s\n' "$$gofmt_out"; \
+				exit 1; \
+			fi; \
+			if command -v goimports >/dev/null 2>&1; then \
+				goimports_out=$$(printf '%s\n' "$$go_files" | xargs -r goimports -l); \
+				if [ -n "$$goimports_out" ]; then \
+					echo "Go files require goimports formatting:"; \
+					printf '%s\n' "$$goimports_out"; \
+					exit 1; \
+				fi; \
+			fi; \
 		fi; \
 	fi
-	$(Q)if [ "$(HAS_EXPLICIT_PROJECT_SELECTION)" = "1" ]; then \
+	$(Q)_fmt_apply=0; \
+	if [ "$(APPLY)" = "Y" ] || [ "$(FIX)" = "1" ]; then _fmt_apply=1; fi; \
+	if [ "$(HAS_EXPLICIT_PROJECT_SELECTION)" = "1" ]; then \
 		md_roots="$(WORKSPACE_SELECTED_ROOTS)"; \
 	else \
 		md_roots=". $(ALL_PROJECTS)"; \
@@ -663,14 +706,23 @@ _fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdow
 	done); \
 	md_files=$$(printf '%s\n' "$$md_files" | awk 'NF' | while IFS= read -r f; do [ -f "$$f" ] && printf '%s\n' "$$f"; done | sort -u); \
 	if [ -n "$$md_files" ]; then \
-		echo "Formatting Markdown files (markdownlint)..."; \
 		md_config=""; \
 		if [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r markdownlint --fix $$md_config; \
+		if [ "$$_fmt_apply" = "1" ]; then \
+			echo "Formatting Markdown files (markdownlint)..."; \
+			echo "$$md_files" | xargs -r markdownlint --fix $$md_config; \
+		else \
+			echo "Checking Markdown files (markdownlint)..."; \
+			echo "$$md_files" | xargs -r markdownlint $$md_config; \
+		fi; \
 	fi
-	$(Q)echo "Format complete."
+	$(Q)if [ "$(APPLY)" = "Y" ] || [ "$(FIX)" = "1" ]; then \
+		echo "Format complete."; \
+	else \
+		echo "Format check complete."; \
+	fi
 
 _docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 	$(Q)$(PREPARE_RUNTIME_DOCS_PROJECTS)
@@ -686,7 +738,21 @@ test: ## Run tests only in all projects
 {{ forward_make_args(make.TEST_FORWARD_ARGS) | trim }}
 		$(ORCHESTRATOR_PROJECTS)
 
-val: ## Run validate gates (VALIDATE_SCOPE=project|workspace, FIX=1)
+val: ## Run validate gates (WHAT=all|project|workspace, VALIDATE_SCOPE=project|workspace, FIX=1)
+	$(Q)case "$(WHAT)" in \
+	"" | all) $(MAKE) --no-print-directory _val_body VALIDATE_SCOPE="$(VALIDATE_SCOPE)" $(MAKE_SELECTION_ARGS) ;; \
+	project) $(MAKE) --no-print-directory _val_project $(MAKE_SELECTION_ARGS) ;; \
+	workspace) $(MAKE) --no-print-directory _val_workspace $(MAKE_SELECTION_ARGS) ;; \
+	*) echo "invalid WHAT '$(WHAT)' for val (valid: all project workspace)" >&2; exit 2 ;; \
+	esac
+
+_val_project: ## Run project validation gates
+	$(Q)$(MAKE) --no-print-directory _val_body VALIDATE_SCOPE=project $(MAKE_SELECTION_ARGS)
+
+_val_workspace: ## Run workspace validation gates
+	$(Q)$(MAKE) --no-print-directory _val_body VALIDATE_SCOPE=workspace $(MAKE_SELECTION_ARGS)
+
+_val_body: ## Run validate gates using VALIDATE_SCOPE
 ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
