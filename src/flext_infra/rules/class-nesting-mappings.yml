@@ -701,12 +701,6 @@ class_nesting:
   target_name: FlextInfraWorkflowSyncer
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraJsonService
-  current_file: flext-core/src/flext_infra/json_io.py
-  target_namespace: FlextJsonIo
-  target_name: FlextInfraJsonService
-  confidence: low
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraPythonVersionEnforcer
   current_file: flext-core/src/flext_infra/maintenance/python_version.py
   target_namespace: FlextMaintenancePythonVersion
@@ -981,12 +975,6 @@ class_nesting:
   current_file: flext-core/src/flext_infra/templates.py
   target_namespace: FlextTemplates
   target_name: FlextInfraTemplateEngine
-  confidence: low
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraTomlService
-  current_file: flext-core/src/flext_infra/toml_io.py
-  target_namespace: FlextTomlIo
-  target_name: FlextInfraTomlService
   confidence: low
   reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraTypes
