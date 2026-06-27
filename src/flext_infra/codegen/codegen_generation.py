@@ -321,11 +321,11 @@ class FlextInfraCodegenGeneration:
                 else:
                     parts.append(export_name)
                 continue
-            parts.append(
-                export_name
-                if export_name == attr_name
-                else f"{attr_name} as {export_name}"
-            )
+            # Emit the redundant-alias re-export form (PEP 484 `X as X`) so type
+            # checkers treat every TYPE_CHECKING import as an intentional
+            # re-export. Without it, sub-facades dropped from __all__ by the
+            # privacy rule are flagged reportUnusedImport.
+            parts.append(f"{attr_name} as {export_name}")
 
         deduped_aliases = tuple(dict.fromkeys(alias_exports))
         deduped_parts = tuple(dict.fromkeys(parts))
