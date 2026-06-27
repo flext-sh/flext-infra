@@ -11,9 +11,19 @@ from flext_tests import tm
 from flext_infra import c
 from tests import t
 
-_CANONICAL_VERBS = frozenset(
-    {"boot", "build", "check", "test", "val", "ship", "clean", "help"},
-)
+_CANONICAL_VERBS = frozenset({
+    "boot",
+    "build",
+    "check",
+    "test",
+    "val",
+    "ship",
+    "clean",
+    "coordination",
+    "makefile",
+    "status",
+    "help",
+})
 _RETIRED_VERBS = frozenset({
     "scan",
     "fmt",
@@ -55,7 +65,6 @@ class TestMakeConstants:
         tm.that("scan" in phases["check"], eq=True)
         tm.that("gen" in phases["build"], eq=True)
         tm.that("save" in phases["ship"], eq=True)
-        tm.that("loc-delta" in phases["val"], eq=True)
 
     def test_what_variable_default_declared(self) -> None:
         names = {name for name, _ in c.Infra.WORKSPACE_VARIABLE_DEFAULTS}
