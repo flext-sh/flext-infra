@@ -29,6 +29,22 @@ class FlextInfraCodegenGeneration:
         return not attr_name
 
     @staticmethod
+    def _is_private_subpackage_source(module_path: str) -> bool:
+        """Whether a symbol's canonical source lives in a ``_``-private subpackage.
+
+        Symbols re-exported into a root package from a private subpackage
+        (``_models``, ``_constants``, ``_utilities`` …) are implementation
+        mixins: they MUST stay lazily importable (kept in ``_LAZY_IMPORTS`` and
+        the ``TYPE_CHECKING`` block) but MUST NOT be re-published in the root
+        package's ``__all__``. Dunder modules (``__version__``) are not private
+        subpackages and are unaffected.
+        """
+        return any(
+            segment.startswith("_") and not segment.startswith("__")
+            for segment in module_path.split(".")[1:]
+        )
+
+    @staticmethod
     def _is_root_namespace_package(current_pkg: str) -> bool:
         """Is root namespace package."""
         return bool(current_pkg) and "." not in current_pkg
@@ -397,8 +413,13 @@ class FlextInfraCodegenGeneration:
             export_name
             for export_name in exports
             if export_name not in lazy_filtered
-            or not FlextInfraCodegenGeneration._is_module_or_package_export(
-                lazy_filtered[export_name][1]
+            or (
+                not FlextInfraCodegenGeneration._is_module_or_package_export(
+                    lazy_filtered[export_name][1]
+                )
+                and not FlextInfraCodegenGeneration._is_private_subpackage_source(
+                    lazy_filtered[export_name][0]
+                )
             )
         )
 
