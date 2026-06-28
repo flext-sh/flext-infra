@@ -19,6 +19,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_transformer_pattern_modernizer": (
             "TestsFlextInfraTransformersPatternModernizer",
         ),
+        ".test_infra_transformer_pydantic_modernizer": (
+            "TestsFlextInfraTransformersPydanticModernizer",
+        ),
     },
 )
 

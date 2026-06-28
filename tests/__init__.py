@@ -12,395 +12,542 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import d, e, h, r, td, tf, tk, tm, tv, x
+    from flext_tests import (
+        d as d,
+        e as e,
+        h as h,
+        r as r,
+        td as td,
+        tf as tf,
+        tk as tk,
+        tv as tv,
+        x as x,
+    )
 
-    from tests.base import TestsFlextInfraServiceBase, s
-    from tests.constants import TestsFlextInfraConstants, c
+    from tests.base import (
+        TestsFlextInfraServiceBase as TestsFlextInfraServiceBase,
+        s as s,
+    )
+    from tests.constants import (
+        TestsFlextInfraConstants as TestsFlextInfraConstants,
+        c as c,
+    )
     from tests.integration.test_infra_integration import (
-        TestsFlextInfraIntegrationInfraIntegration,
+        TestsFlextInfraIntegrationInfraIntegration as TestsFlextInfraIntegrationInfraIntegration,
     )
     from tests.integration.test_refactor_nesting_file import (
-        TestsFlextInfraIntegrationRefactorNestingFile,
+        TestsFlextInfraIntegrationRefactorNestingFile as TestsFlextInfraIntegrationRefactorNestingFile,
     )
     from tests.integration.test_refactor_nesting_idempotency import (
-        TestsFlextInfraIntegrationRefactorNestingIdempotency,
+        TestsFlextInfraIntegrationRefactorNestingIdempotency as TestsFlextInfraIntegrationRefactorNestingIdempotency,
     )
     from tests.integration.test_refactor_nesting_performance import (
-        TestsFlextInfraIntegrationRefactorNestingPerformance,
+        TestsFlextInfraIntegrationRefactorNestingPerformance as TestsFlextInfraIntegrationRefactorNestingPerformance,
     )
     from tests.integration.test_refactor_nesting_project import (
-        TestsFlextInfraIntegrationRefactorNestingProject,
+        TestsFlextInfraIntegrationRefactorNestingProject as TestsFlextInfraIntegrationRefactorNestingProject,
     )
     from tests.integration.test_refactor_nesting_workspace import (
-        TestsFlextInfraIntegrationRefactorNestingWorkspace,
+        TestsFlextInfraIntegrationRefactorNestingWorkspace as TestsFlextInfraIntegrationRefactorNestingWorkspace,
     )
     from tests.integration.test_refactor_policy_mro import (
-        TestsFlextInfraIntegrationRefactorPolicyMro,
+        TestsFlextInfraIntegrationRefactorPolicyMro as TestsFlextInfraIntegrationRefactorPolicyMro,
     )
-    from tests.models import TestsFlextInfraModels, m
-    from tests.protocols import TestsFlextInfraProtocols, p
-    from tests.refactor.test_rope_semantic import TestsFlextInfraRefactorRopeSemantic
-    from tests.refactor.test_rope_stubs import TestsFlextInfraRefactorRopeStubs
-    from tests.settings import TestsFlextInfraSettings
-    from tests.typings import TestsFlextInfraTypes, t
+    from tests.models import TestsFlextInfraModels as TestsFlextInfraModels, m as m
+    from tests.protocols import (
+        TestsFlextInfraProtocols as TestsFlextInfraProtocols,
+        p as p,
+    )
+    from tests.refactor.test_rope_semantic import (
+        TestsFlextInfraRefactorRopeSemantic as TestsFlextInfraRefactorRopeSemantic,
+    )
+    from tests.refactor.test_rope_stubs import (
+        TestsFlextInfraRefactorRopeStubs as TestsFlextInfraRefactorRopeStubs,
+    )
+    from tests.settings import TestsFlextInfraSettings as TestsFlextInfraSettings
+    from tests.typings import TestsFlextInfraTypes as TestsFlextInfraTypes, t as t
     from tests.unit._utilities.test_discovery_consolidated import (
-        TestsFlextInfraUtilitiesdiscoveryconsolidated,
+        TestsFlextInfraUtilitiesdiscoveryconsolidated as TestsFlextInfraUtilitiesdiscoveryconsolidated,
     )
-    from tests.unit._utilities.test_formatting import TestsFlextInfraUtilitiesformatting
+    from tests.unit._utilities.test_formatting import (
+        TestsFlextInfraUtilitiesformatting as TestsFlextInfraUtilitiesformatting,
+    )
     from tests.unit._utilities.test_protected_edit import (
-        TestsFlextInfraUtilitiesProtectedEdit,
+        TestsFlextInfraUtilitiesProtectedEdit as TestsFlextInfraUtilitiesProtectedEdit,
     )
-    from tests.unit._utilities.test_rope_hooks import TestsFlextInfraUtilitiesRopeHooks
-    from tests.unit._utilities.test_safety import TestsFlextInfraUtilitiessafety
-    from tests.unit._utilities.test_scanning import TestsFlextInfraUtilitiesscanning
-    from tests.unit.basemk.test_engine import TestsFlextInfraBasemkEngine
-    from tests.unit.basemk.test_generator import TestsFlextInfraBasemkGenerator
+    from tests.unit._utilities.test_rope_hooks import (
+        TestsFlextInfraUtilitiesRopeHooks as TestsFlextInfraUtilitiesRopeHooks,
+    )
+    from tests.unit._utilities.test_safety import (
+        TestsFlextInfraUtilitiessafety as TestsFlextInfraUtilitiessafety,
+    )
+    from tests.unit._utilities.test_scanning import (
+        TestsFlextInfraUtilitiesscanning as TestsFlextInfraUtilitiesscanning,
+    )
+    from tests.unit.basemk.test_engine import (
+        TestsFlextInfraBasemkEngine as TestsFlextInfraBasemkEngine,
+    )
+    from tests.unit.basemk.test_generator import (
+        TestsFlextInfraBasemkGenerator as TestsFlextInfraBasemkGenerator,
+    )
     from tests.unit.basemk.test_generator_edge_cases import (
-        TestsFlextInfraBasemkGeneratorEdgeCases,
+        TestsFlextInfraBasemkGeneratorEdgeCases as TestsFlextInfraBasemkGeneratorEdgeCases,
     )
-    from tests.unit.basemk.test_init import TestsFlextInfraBasemkInit
-    from tests.unit.basemk.test_main import TestsFlextInfraBasemkMain
-    from tests.unit.basemk.test_make_contract import TestsFlextInfraBasemkMakeContract
-    from tests.unit.check.extended_cli_entry_tests import TestWorkspaceCheckCLI
+    from tests.unit.basemk.test_init import (
+        TestsFlextInfraBasemkInit as TestsFlextInfraBasemkInit,
+    )
+    from tests.unit.basemk.test_main import (
+        TestsFlextInfraBasemkMain as TestsFlextInfraBasemkMain,
+    )
+    from tests.unit.basemk.test_make_contract import (
+        TestsFlextInfraBasemkMakeContract as TestsFlextInfraBasemkMakeContract,
+    )
+    from tests.unit.check.extended_cli_entry_tests import (
+        TestWorkspaceCheckCLI as TestWorkspaceCheckCLI,
+    )
     from tests.unit.check.extended_config_fixer_errors_tests import (
-        TestConfigFixerPublicBehavior,
+        TestConfigFixerPublicBehavior as TestConfigFixerPublicBehavior,
     )
     from tests.unit.check.extended_config_fixer_tests import (
-        TestConfigFixerExecute,
-        TestConfigFixerProcessFile,
-        TestConfigFixerRun,
-        TestConfigFixerToArray,
+        TestConfigFixerExecute as TestConfigFixerExecute,
+        TestConfigFixerProcessFile as TestConfigFixerProcessFile,
+        TestConfigFixerRun as TestConfigFixerRun,
+        TestConfigFixerToArray as TestConfigFixerToArray,
     )
     from tests.unit.check.extended_error_reporting_tests import (
-        TestGateErrorReportingPublicBehavior,
+        TestGateErrorReportingPublicBehavior as TestGateErrorReportingPublicBehavior,
     )
     from tests.unit.check.extended_models_tests import (
-        TestCheckIssueFormatted,
-        TestProjectResultProperties,
-        TestRunCommandGateParsing,
-        TestWorkspaceCheckerErrorSummary,
+        TestCheckIssueFormatted as TestCheckIssueFormatted,
+        TestProjectResultProperties as TestProjectResultProperties,
+        TestRunCommandGateParsing as TestRunCommandGateParsing,
+        TestWorkspaceCheckerErrorSummary as TestWorkspaceCheckerErrorSummary,
     )
     from tests.unit.check.extended_project_runners_tests import (
-        TestsExtendedProjectRunners,
+        TestsExtendedProjectRunners as TestsExtendedProjectRunners,
     )
     from tests.unit.check.extended_resolve_gates_tests import (
-        TestWorkspaceCheckerResolveGates,
+        TestWorkspaceCheckerResolveGates as TestWorkspaceCheckerResolveGates,
     )
     from tests.unit.check.extended_run_projects_tests import (
-        TestRunProjectsPublicBehavior,
+        TestRunProjectsPublicBehavior as TestRunProjectsPublicBehavior,
     )
-    from tests.unit.check.extended_runners_extra_tests import TestExtendedRunnerExtras
-    from tests.unit.check.extended_runners_tests import TestRunnerPublicBehavior
-    from tests.unit.check.init_tests import TestFlextInfraCheck
-    from tests.unit.check.pyrefly_tests import TestFlextInfraConfigFixer
-    from tests.unit.check.tests_cli import TestWorkspaceCheckCli
-    from tests.unit.check.workspace_tests import TestFlextInfraWorkspaceChecker
-    from tests.unit.cli_what_selector_tests import TestsFlextInfraCliWhatSelector
+    from tests.unit.check.extended_runners_extra_tests import (
+        TestExtendedRunnerExtras as TestExtendedRunnerExtras,
+    )
+    from tests.unit.check.extended_runners_tests import (
+        TestRunnerPublicBehavior as TestRunnerPublicBehavior,
+    )
+    from tests.unit.check.init_tests import TestFlextInfraCheck as TestFlextInfraCheck
+    from tests.unit.check.pyrefly_tests import (
+        TestFlextInfraConfigFixer as TestFlextInfraConfigFixer,
+    )
+    from tests.unit.check.tests_cli import (
+        TestWorkspaceCheckCli as TestWorkspaceCheckCli,
+    )
+    from tests.unit.check.workspace_tests import (
+        TestFlextInfraWorkspaceChecker as TestFlextInfraWorkspaceChecker,
+    )
+    from tests.unit.cli_what_selector_tests import (
+        TestsFlextInfraCliWhatSelector as TestsFlextInfraCliWhatSelector,
+    )
     from tests.unit.codegen.lazy_init_generation_tests import (
-        TestGenerateFile,
-        TestGenerateTypeChecking,
-        TestRunRuffFix,
+        TestGenerateFile as TestGenerateFile,
+        TestGenerateTypeChecking as TestGenerateTypeChecking,
+        TestRunRuffFix as TestRunRuffFix,
     )
     from tests.unit.codegen.lazy_init_helpers_tests import (
-        TestsFlextInfraLazyInitHelpers,
+        TestsFlextInfraLazyInitHelpers as TestsFlextInfraLazyInitHelpers,
     )
     from tests.unit.codegen.lazy_init_tests import (
-        TestAllDirectoriesScanned,
-        TestCheckOnlyMode,
-        TestEdgeCases,
-        TestExcludedDirectories,
+        TestAllDirectoriesScanned as TestAllDirectoriesScanned,
+        TestCheckOnlyMode as TestCheckOnlyMode,
+        TestEdgeCases as TestEdgeCases,
+        TestExcludedDirectories as TestExcludedDirectories,
     )
     from tests.unit.codegen.lazy_init_transforms_tests import (
-        TestsFlextInfraLazyInitTransforms,
+        TestsFlextInfraLazyInitTransforms as TestsFlextInfraLazyInitTransforms,
     )
     from tests.unit.codegen.scaffolder_naming_tests import (
-        TestGeneratedClassNamingConvention,
-        TestGeneratedFilesAreValidPython,
+        TestGeneratedClassNamingConvention as TestGeneratedClassNamingConvention,
+        TestGeneratedFilesAreValidPython as TestGeneratedFilesAreValidPython,
     )
     from tests.unit.container.test_infra_container import (
-        TestsFlextInfraContainerInfraContainer,
+        TestsFlextInfraContainerInfraContainer as TestsFlextInfraContainerInfraContainer,
     )
     from tests.unit.deps.test_detection_classify import (
-        TestsFlextInfraDepsDetectionClassify,
+        TestsFlextInfraDepsDetectionClassify as TestsFlextInfraDepsDetectionClassify,
     )
-    from tests.unit.deps.test_detection_deptry import TestsFlextInfraDepsDetectionDeptry
+    from tests.unit.deps.test_detection_deptry import (
+        TestsFlextInfraDepsDetectionDeptry as TestsFlextInfraDepsDetectionDeptry,
+    )
     from tests.unit.deps.test_detection_discover import (
-        TestsFlextInfraDepsDetectionDiscover,
+        TestsFlextInfraDepsDetectionDiscover as TestsFlextInfraDepsDetectionDiscover,
     )
-    from tests.unit.deps.test_detection_models import TestsFlextInfraDepsDetectionModels
+    from tests.unit.deps.test_detection_models import (
+        TestsFlextInfraDepsDetectionModels as TestsFlextInfraDepsDetectionModels,
+    )
     from tests.unit.deps.test_detection_typings import (
-        TestsFlextInfraDepsDetectionTypings,
+        TestsFlextInfraDepsDetectionTypings as TestsFlextInfraDepsDetectionTypings,
     )
     from tests.unit.deps.test_detection_typings_flow import (
-        TestsFlextInfraDepsDetectionTypingsFlow,
+        TestsFlextInfraDepsDetectionTypingsFlow as TestsFlextInfraDepsDetectionTypingsFlow,
     )
     from tests.unit.deps.test_detection_uncovered import (
-        TestsFlextInfraDepsDetectionUncovered,
+        TestsFlextInfraDepsDetectionUncovered as TestsFlextInfraDepsDetectionUncovered,
     )
-    from tests.unit.deps.test_detector_detect import TestsFlextInfraDepsDetectorDetect
+    from tests.unit.deps.test_detector_detect import (
+        TestsFlextInfraDepsDetectorDetect as TestsFlextInfraDepsDetectorDetect,
+    )
     from tests.unit.deps.test_detector_detect_failures import (
-        TestsFlextInfraDepsDetectorDetectFailures,
+        TestsFlextInfraDepsDetectorDetectFailures as TestsFlextInfraDepsDetectorDetectFailures,
     )
-    from tests.unit.deps.test_detector_init import TestsFlextInfraDepsDetectorInit
-    from tests.unit.deps.test_detector_main import TestsFlextInfraDepsDetectorMain
-    from tests.unit.deps.test_detector_models import TestsFlextInfraDepsDetectorModels
-    from tests.unit.deps.test_detector_report import TestsFlextInfraDepsDetectorReport
+    from tests.unit.deps.test_detector_init import (
+        TestsFlextInfraDepsDetectorInit as TestsFlextInfraDepsDetectorInit,
+    )
+    from tests.unit.deps.test_detector_main import (
+        TestsFlextInfraDepsDetectorMain as TestsFlextInfraDepsDetectorMain,
+    )
+    from tests.unit.deps.test_detector_models import (
+        TestsFlextInfraDepsDetectorModels as TestsFlextInfraDepsDetectorModels,
+    )
+    from tests.unit.deps.test_detector_report import (
+        TestsFlextInfraDepsDetectorReport as TestsFlextInfraDepsDetectorReport,
+    )
     from tests.unit.deps.test_detector_report_flags import (
-        TestsFlextInfraDepsDetectorReportFlags,
+        TestsFlextInfraDepsDetectorReportFlags as TestsFlextInfraDepsDetectorReportFlags,
     )
     from tests.unit.deps.test_extra_paths_manager import (
-        TestsFlextInfraExtraPathsManager,
+        TestsFlextInfraExtraPathsManager as TestsFlextInfraExtraPathsManager,
     )
-    from tests.unit.deps.test_extra_paths_sync import TestsFlextInfraDepsExtraPathsSync
-    from tests.unit.deps.test_init import TestsFlextInfraDepsInit
+    from tests.unit.deps.test_extra_paths_sync import (
+        TestsFlextInfraDepsExtraPathsSync as TestsFlextInfraDepsExtraPathsSync,
+    )
+    from tests.unit.deps.test_init import (
+        TestsFlextInfraDepsInit as TestsFlextInfraDepsInit,
+    )
     from tests.unit.deps.test_internal_sync_discovery import (
-        TestsFlextInfraDepsInternalSyncDiscovery,
+        TestsFlextInfraDepsInternalSyncDiscovery as TestsFlextInfraDepsInternalSyncDiscovery,
     )
     from tests.unit.deps.test_internal_sync_discovery_edge import (
-        TestsFlextInfraDepsInternalSyncDiscoveryEdge,
+        TestsFlextInfraDepsInternalSyncDiscoveryEdge as TestsFlextInfraDepsInternalSyncDiscoveryEdge,
     )
     from tests.unit.deps.test_internal_sync_main import (
-        TestsFlextInfraDepsInternalSyncMain,
+        TestsFlextInfraDepsInternalSyncMain as TestsFlextInfraDepsInternalSyncMain,
     )
     from tests.unit.deps.test_internal_sync_resolve import (
-        TestsFlextInfraDepsInternalSyncResolve,
+        TestsFlextInfraDepsInternalSyncResolve as TestsFlextInfraDepsInternalSyncResolve,
     )
     from tests.unit.deps.test_internal_sync_sync import (
-        TestsFlextInfraDepsInternalSyncSync,
+        TestsFlextInfraDepsInternalSyncSync as TestsFlextInfraDepsInternalSyncSync,
     )
     from tests.unit.deps.test_internal_sync_sync_edge import (
-        TestsFlextInfraDepsInternalSyncSyncEdge,
+        TestsFlextInfraDepsInternalSyncSyncEdge as TestsFlextInfraDepsInternalSyncSyncEdge,
     )
     from tests.unit.deps.test_internal_sync_sync_edge_more import (
-        TestsFlextInfraDepsInternalSyncSyncEdgeMore,
+        TestsFlextInfraDepsInternalSyncSyncEdgeMore as TestsFlextInfraDepsInternalSyncSyncEdgeMore,
     )
     from tests.unit.deps.test_internal_sync_update import (
-        TestsFlextInfraDepsInternalSyncUpdate,
+        TestsFlextInfraDepsInternalSyncUpdate as TestsFlextInfraDepsInternalSyncUpdate,
     )
     from tests.unit.deps.test_internal_sync_update_checkout_edge import (
-        TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge,
+        TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge as TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge,
     )
     from tests.unit.deps.test_internal_sync_validation import (
-        TestsFlextInfraDepsInternalSyncValidation,
+        TestsFlextInfraDepsInternalSyncValidation as TestsFlextInfraDepsInternalSyncValidation,
     )
     from tests.unit.deps.test_internal_sync_workspace import (
-        TestsFlextInfraDepsInternalSyncWorkspace,
+        TestsFlextInfraDepsInternalSyncWorkspace as TestsFlextInfraDepsInternalSyncWorkspace,
     )
-    from tests.unit.deps.test_main_dispatch import TestsFlextInfraDepsMainDispatch
+    from tests.unit.deps.test_main_dispatch import (
+        TestsFlextInfraDepsMainDispatch as TestsFlextInfraDepsMainDispatch,
+    )
     from tests.unit.deps.test_modernizer_comments import (
-        TestsFlextInfraDepsModernizerComments,
+        TestsFlextInfraDepsModernizerComments as TestsFlextInfraDepsModernizerComments,
     )
     from tests.unit.deps.test_modernizer_consolidate import (
-        TestsFlextInfraDepsModernizerConsolidate,
+        TestsFlextInfraDepsModernizerConsolidate as TestsFlextInfraDepsModernizerConsolidate,
     )
     from tests.unit.deps.test_modernizer_coverage import (
-        TestsFlextInfraDepsModernizerCoverage,
+        TestsFlextInfraDepsModernizerCoverage as TestsFlextInfraDepsModernizerCoverage,
     )
     from tests.unit.deps.test_modernizer_helpers import (
-        TestsFlextInfraDepsModernizerHelpers,
+        TestsFlextInfraDepsModernizerHelpers as TestsFlextInfraDepsModernizerHelpers,
     )
-    from tests.unit.deps.test_modernizer_main import TestsFlextInfraDepsModernizerMain
+    from tests.unit.deps.test_modernizer_main import (
+        TestsFlextInfraDepsModernizerMain as TestsFlextInfraDepsModernizerMain,
+    )
     from tests.unit.deps.test_modernizer_main_extra import (
-        TestsFlextInfraDepsModernizerMainExtra,
+        TestsFlextInfraDepsModernizerMainExtra as TestsFlextInfraDepsModernizerMainExtra,
     )
-    from tests.unit.deps.test_modernizer_mypy import TestsFlextInfraDepsModernizerMypy
-    from tests.unit.deps.test_modernizer_pyrefly import TestsFlextInfraModernizerPyrefly
+    from tests.unit.deps.test_modernizer_mypy import (
+        TestsFlextInfraDepsModernizerMypy as TestsFlextInfraDepsModernizerMypy,
+    )
+    from tests.unit.deps.test_modernizer_pyrefly import (
+        TestsFlextInfraModernizerPyrefly as TestsFlextInfraModernizerPyrefly,
+    )
     from tests.unit.deps.test_modernizer_pyright import (
-        TestsFlextInfraDepsModernizerPyright,
+        TestsFlextInfraDepsModernizerPyright as TestsFlextInfraDepsModernizerPyright,
     )
     from tests.unit.deps.test_modernizer_pytest import (
-        TestsFlextInfraDepsModernizerPytest,
+        TestsFlextInfraDepsModernizerPytest as TestsFlextInfraDepsModernizerPytest,
     )
     from tests.unit.deps.test_modernizer_tooling import (
-        TestsFlextInfraDepsModernizerTooling,
+        TestsFlextInfraDepsModernizerTooling as TestsFlextInfraDepsModernizerTooling,
     )
     from tests.unit.deps.test_modernizer_workspace import (
-        TestsFlextInfraDepsModernizerWorkspace,
+        TestsFlextInfraDepsModernizerWorkspace as TestsFlextInfraDepsModernizerWorkspace,
     )
-    from tests.unit.deps.test_path_sync_init import TestsFlextInfraDepsPathSyncInit
-    from tests.unit.deps.test_path_sync_main import TestsFlextInfraDepsPathSyncMain
+    from tests.unit.deps.test_path_sync_init import (
+        TestsFlextInfraDepsPathSyncInit as TestsFlextInfraDepsPathSyncInit,
+    )
+    from tests.unit.deps.test_path_sync_main import (
+        TestsFlextInfraDepsPathSyncMain as TestsFlextInfraDepsPathSyncMain,
+    )
     from tests.unit.deps.test_path_sync_main_edges import (
-        TestsFlextInfraDepsPathSyncMainEdges,
+        TestsFlextInfraDepsPathSyncMainEdges as TestsFlextInfraDepsPathSyncMainEdges,
     )
     from tests.unit.deps.test_path_sync_main_more import (
-        TestsFlextInfraDepsPathSyncMainMore,
+        TestsFlextInfraDepsPathSyncMainMore as TestsFlextInfraDepsPathSyncMainMore,
     )
     from tests.unit.deps.test_path_sync_main_project_obj import (
-        TestsFlextInfraDepsPathSyncMainProjectObj,
+        TestsFlextInfraDepsPathSyncMainProjectObj as TestsFlextInfraDepsPathSyncMainProjectObj,
     )
     from tests.unit.deps.test_path_sync_rewrite_deps import (
-        TestsFlextInfraDepsPathSyncRewriteDeps,
+        TestsFlextInfraDepsPathSyncRewriteDeps as TestsFlextInfraDepsPathSyncRewriteDeps,
     )
     from tests.unit.deps.test_path_sync_rewrite_pep621 import (
-        TestsFlextInfraDepsPathSyncRewritePep621,
+        TestsFlextInfraDepsPathSyncRewritePep621 as TestsFlextInfraDepsPathSyncRewritePep621,
     )
     from tests.unit.deps.test_path_sync_rewrite_poetry import (
-        TestsFlextInfraDepsPathSyncRewritePoetry,
+        TestsFlextInfraDepsPathSyncRewritePoetry as TestsFlextInfraDepsPathSyncRewritePoetry,
     )
     from tests.unit.discovery.test_infra_discovery_edge_cases import (
-        TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases,
+        TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases as TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases,
     )
-    from tests.unit.docs.auditor_budgets_tests import TestLoadAuditBudgets
+    from tests.unit.docs.auditor_budgets_tests import (
+        TestLoadAuditBudgets as TestLoadAuditBudgets,
+    )
     from tests.unit.docs.auditor_links_tests import (
-        TestAuditorBrokenLinks,
-        TestAuditorToMarkdown,
+        TestAuditorBrokenLinks as TestAuditorBrokenLinks,
+        TestAuditorToMarkdown as TestAuditorToMarkdown,
     )
     from tests.unit.docs.auditor_scope_tests import (
-        TestAuditorForbiddenTerms,
-        TestAuditorScope,
+        TestAuditorForbiddenTerms as TestAuditorForbiddenTerms,
+        TestAuditorScope as TestAuditorScope,
     )
-    from tests.unit.docs.auditor_tests import TestAuditorCore, TestAuditorNormalize
-    from tests.unit.docs.builder_tests import TestBuilderCore
+    from tests.unit.docs.auditor_tests import (
+        TestAuditorCore as TestAuditorCore,
+        TestAuditorNormalize as TestAuditorNormalize,
+    )
+    from tests.unit.docs.builder_tests import TestBuilderCore as TestBuilderCore
     from tests.unit.docs.shared_iter_tests import (
-        TestIterMarkdownFiles,
-        TestSelectedProjectNames,
+        TestIterMarkdownFiles as TestIterMarkdownFiles,
+        TestSelectedProjectNames as TestSelectedProjectNames,
     )
     from tests.unit.fixtures import (
-        deptry_report_payload,
-        models_resource,
-        modernizer_workspace,
-        modernizer_workspace_with_projects,
-        real_docs_project,
-        real_makefile_project,
-        real_python_package,
-        real_toml_project,
-        real_workspace,
-        rope_workspace,
-        services_resource,
-        tool_config_document,
+        deptry_report_payload as deptry_report_payload,
+        models_resource as models_resource,
+        modernizer_workspace as modernizer_workspace,
+        modernizer_workspace_with_projects as modernizer_workspace_with_projects,
+        real_docs_project as real_docs_project,
+        real_makefile_project as real_makefile_project,
+        real_python_package as real_python_package,
+        real_toml_project as real_toml_project,
+        real_workspace as real_workspace,
+        rope_workspace as rope_workspace,
+        services_resource as services_resource,
+        tool_config_document as tool_config_document,
     )
-    from tests.unit.fixtures_git import real_git_repo
+    from tests.unit.fixtures_git import real_git_repo as real_git_repo
     from tests.unit.io.test_infra_terminal_detection import (
-        TestsFlextInfraIoInfraTerminalDetection,
+        TestsFlextInfraIoInfraTerminalDetection as TestsFlextInfraIoInfraTerminalDetection,
     )
     from tests.unit.refactor.test_infra_refactor_census_preview_cache import (
-        TestsFlextInfraRefactorCensusPreviewCache,
+        TestsFlextInfraRefactorCensusPreviewCache as TestsFlextInfraRefactorCensusPreviewCache,
     )
     from tests.unit.refactor.test_infra_refactor_class_and_propagation import (
-        TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
+        TestsFlextInfraRefactorInfraRefactorClassAndPropagation as TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
     )
     from tests.unit.refactor.test_infra_refactor_class_placement import (
-        TestsFlextInfraRefactorInfraRefactorClassPlacement,
+        TestsFlextInfraRefactorInfraRefactorClassPlacement as TestsFlextInfraRefactorInfraRefactorClassPlacement,
     )
     from tests.unit.refactor.test_infra_refactor_cli_models_workflow import (
-        TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
+        TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow as TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
     )
     from tests.unit.refactor.test_infra_refactor_engine import (
-        TestsFlextInfraRefactorInfraRefactorEngine,
+        TestsFlextInfraRefactorInfraRefactorEngine as TestsFlextInfraRefactorInfraRefactorEngine,
     )
     from tests.unit.refactor.test_infra_refactor_import_modernizer import (
-        TestsFlextInfraRefactorInfraRefactorImportModernizer,
+        TestsFlextInfraRefactorInfraRefactorImportModernizer as TestsFlextInfraRefactorInfraRefactorImportModernizer,
     )
     from tests.unit.refactor.test_infra_refactor_legacy_and_annotations import (
-        TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations,
+        TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations as TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations,
     )
     from tests.unit.refactor.test_infra_refactor_migrate_to_class_mro import (
-        TestsFlextInfraRefactorInfraRefactorMigrateToClassMro,
+        TestsFlextInfraRefactorInfraRefactorMigrateToClassMro as TestsFlextInfraRefactorInfraRefactorMigrateToClassMro,
     )
     from tests.unit.refactor.test_infra_refactor_mro_completeness import (
-        TestsFlextInfraRefactorInfraRefactorMroCompleteness,
+        TestsFlextInfraRefactorInfraRefactorMroCompleteness as TestsFlextInfraRefactorInfraRefactorMroCompleteness,
     )
     from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
-        TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
+        TestsFlextInfraRefactorInfraRefactorNamespaceAliases as TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
     )
     from tests.unit.refactor.test_infra_refactor_namespace_enforcer import (
-        TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer,
+        TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer as TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer,
     )
     from tests.unit.refactor.test_infra_refactor_namespace_moves import (
-        TestsFlextInfraRefactorInfraRefactorNamespaceMoves,
+        TestsFlextInfraRefactorInfraRefactorNamespaceMoves as TestsFlextInfraRefactorInfraRefactorNamespaceMoves,
     )
     from tests.unit.refactor.test_infra_refactor_pattern_corrections import (
-        TestsFlextInfraRefactorInfraRefactorPatternCorrections,
+        TestsFlextInfraRefactorInfraRefactorPatternCorrections as TestsFlextInfraRefactorInfraRefactorPatternCorrections,
     )
     from tests.unit.refactor.test_infra_refactor_policy_family_rules import (
-        TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules,
+        TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules as TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules,
     )
     from tests.unit.refactor.test_infra_refactor_project_classifier import (
-        TestsFlextInfraRefactorInfraRefactorProjectClassifier,
+        TestsFlextInfraRefactorInfraRefactorProjectClassifier as TestsFlextInfraRefactorInfraRefactorProjectClassifier,
     )
     from tests.unit.refactor.test_infra_refactor_safety import (
-        EngineSafetyStub,
-        TestsFlextInfraRefactorInfraRefactorSafety,
+        EngineSafetyStub as EngineSafetyStub,
+        TestsFlextInfraRefactorInfraRefactorSafety as TestsFlextInfraRefactorInfraRefactorSafety,
     )
     from tests.unit.refactor.test_infra_refactor_typing_unifier import (
-        FlextInfraRefactorTypingUnificationRule,
-        TestsFlextInfraRefactorInfraRefactorTypingUnifier,
+        FlextInfraRefactorTypingUnificationRule as FlextInfraRefactorTypingUnificationRule,
+        TestsFlextInfraRefactorInfraRefactorTypingUnifier as TestsFlextInfraRefactorInfraRefactorTypingUnifier,
     )
-    from tests.unit.refactor.test_main_cli import TestsFlextInfraRefactorMainCli
-    from tests.unit.release.test_release_dag import TestsFlextInfraReleaseDag
-    from tests.unit.runner_service import RealSubprocessRunner
-    from tests.unit.test_infra_constants_core import TestsFlextInfraInfraConstantsCore
-    from tests.unit.test_infra_constants_extra import TestsFlextInfraInfraConstantsExtra
-    from tests.unit.test_infra_main import TestsFlextInfraInfraMain
-    from tests.unit.test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli
+    from tests.unit.refactor.test_main_cli import (
+        TestsFlextInfraRefactorMainCli as TestsFlextInfraRefactorMainCli,
+    )
+    from tests.unit.release.test_release_dag import (
+        TestsFlextInfraReleaseDag as TestsFlextInfraReleaseDag,
+    )
+    from tests.unit.runner_service import RealSubprocessRunner as RealSubprocessRunner
+    from tests.unit.test_infra_constants_core import (
+        TestsFlextInfraInfraConstantsCore as TestsFlextInfraInfraConstantsCore,
+    )
+    from tests.unit.test_infra_constants_extra import (
+        TestsFlextInfraInfraConstantsExtra as TestsFlextInfraInfraConstantsExtra,
+    )
+    from tests.unit.test_infra_main import (
+        TestsFlextInfraInfraMain as TestsFlextInfraInfraMain,
+    )
+    from tests.unit.test_infra_maintenance_cli import (
+        TestsFlextInfraInfraMaintenanceCli as TestsFlextInfraInfraMaintenanceCli,
+    )
     from tests.unit.test_infra_maintenance_init import (
-        TestsFlextInfraInfraMaintenanceInit,
+        TestsFlextInfraInfraMaintenanceInit as TestsFlextInfraInfraMaintenanceInit,
     )
     from tests.unit.test_infra_maintenance_main import (
-        TestsFlextInfraInfraMaintenanceMain,
+        TestsFlextInfraInfraMaintenanceMain as TestsFlextInfraInfraMaintenanceMain,
     )
     from tests.unit.test_infra_maintenance_python_version import (
-        TestsFlextInfraInfraMaintenancePythonVersion,
+        TestsFlextInfraInfraMaintenancePythonVersion as TestsFlextInfraInfraMaintenancePythonVersion,
     )
-    from tests.unit.test_infra_paths import TestsFlextInfraInfraPaths
-    from tests.unit.test_infra_patterns_core import TestsFlextInfraInfraPatternsCore
-    from tests.unit.test_infra_patterns_extra import TestsFlextInfraInfraPatternsExtra
-    from tests.unit.test_infra_protocols import TestsFlextInfraInfraProtocols
-    from tests.unit.test_infra_public_api import TestsFlextInfraPublicApi
+    from tests.unit.test_infra_paths import (
+        TestsFlextInfraInfraPaths as TestsFlextInfraInfraPaths,
+    )
+    from tests.unit.test_infra_patterns_core import (
+        TestsFlextInfraInfraPatternsCore as TestsFlextInfraInfraPatternsCore,
+    )
+    from tests.unit.test_infra_patterns_extra import (
+        TestsFlextInfraInfraPatternsExtra as TestsFlextInfraInfraPatternsExtra,
+    )
+    from tests.unit.test_infra_protocols import (
+        TestsFlextInfraInfraProtocols as TestsFlextInfraInfraProtocols,
+    )
+    from tests.unit.test_infra_public_api import (
+        TestsFlextInfraPublicApi as TestsFlextInfraPublicApi,
+    )
     from tests.unit.test_infra_refactor_rope_migrations import (
-        TestsFlextInfraInfraRefactorRopeMigrations,
+        TestsFlextInfraInfraRefactorRopeMigrations as TestsFlextInfraInfraRefactorRopeMigrations,
     )
-    from tests.unit.test_infra_reporting_core import TestsFlextInfraInfraReportingCore
-    from tests.unit.test_infra_reporting_extra import TestsFlextInfraInfraReportingExtra
-    from tests.unit.test_infra_rope_imports import TestsFlextInfraRopeImports
-    from tests.unit.test_infra_rope_service import TestsFlextInfraInfraRopeService
-    from tests.unit.test_infra_selection import TestsFlextInfraInfraSelection
-    from tests.unit.test_infra_typings import TestsFlextInfraInfraTypings
-    from tests.unit.test_infra_utilities import TestsFlextInfraInfraUtilities
-    from tests.unit.test_infra_version_core import TestsFlextInfraInfraVersionCore
-    from tests.unit.test_infra_version_extra import TestsFlextInfraInfraVersionExtra
-    from tests.unit.test_infra_versioning import TestsFlextInfraInfraVersioning
+    from tests.unit.test_infra_reporting_core import (
+        TestsFlextInfraInfraReportingCore as TestsFlextInfraInfraReportingCore,
+    )
+    from tests.unit.test_infra_reporting_extra import (
+        TestsFlextInfraInfraReportingExtra as TestsFlextInfraInfraReportingExtra,
+    )
+    from tests.unit.test_infra_rope_imports import (
+        TestsFlextInfraRopeImports as TestsFlextInfraRopeImports,
+    )
+    from tests.unit.test_infra_rope_service import (
+        TestsFlextInfraInfraRopeService as TestsFlextInfraInfraRopeService,
+    )
+    from tests.unit.test_infra_selection import (
+        TestsFlextInfraInfraSelection as TestsFlextInfraInfraSelection,
+    )
+    from tests.unit.test_infra_typings import (
+        TestsFlextInfraInfraTypings as TestsFlextInfraInfraTypings,
+    )
+    from tests.unit.test_infra_utilities import (
+        TestsFlextInfraInfraUtilities as TestsFlextInfraInfraUtilities,
+    )
+    from tests.unit.test_infra_version_core import (
+        TestsFlextInfraInfraVersionCore as TestsFlextInfraInfraVersionCore,
+    )
+    from tests.unit.test_infra_version_extra import (
+        TestsFlextInfraInfraVersionExtra as TestsFlextInfraInfraVersionExtra,
+    )
+    from tests.unit.test_infra_versioning import (
+        TestsFlextInfraInfraVersioning as TestsFlextInfraInfraVersioning,
+    )
     from tests.unit.test_infra_workspace_detector import (
-        TestsFlextInfraInfraWorkspaceDetector,
+        TestsFlextInfraInfraWorkspaceDetector as TestsFlextInfraInfraWorkspaceDetector,
     )
     from tests.unit.test_infra_workspace_migrator import (
-        TestsFlextInfraInfraWorkspaceMigrator,
+        TestsFlextInfraInfraWorkspaceMigrator as TestsFlextInfraInfraWorkspaceMigrator,
     )
     from tests.unit.test_infra_workspace_migrator_deps import (
-        TestsFlextInfraInfraWorkspaceMigratorDeps,
+        TestsFlextInfraInfraWorkspaceMigratorDeps as TestsFlextInfraInfraWorkspaceMigratorDeps,
     )
     from tests.unit.test_infra_workspace_migrator_dryrun import (
-        TestsFlextInfraInfraWorkspaceMigratorDryrun,
+        TestsFlextInfraInfraWorkspaceMigratorDryrun as TestsFlextInfraInfraWorkspaceMigratorDryrun,
     )
     from tests.unit.test_infra_workspace_migrator_internal import (
-        TestsFlextInfraInfraWorkspaceMigratorInternal,
+        TestsFlextInfraInfraWorkspaceMigratorInternal as TestsFlextInfraInfraWorkspaceMigratorInternal,
     )
     from tests.unit.test_infra_workspace_orchestrator import (
-        TestsFlextInfraInfraWorkspaceOrchestrator,
+        TestsFlextInfraInfraWorkspaceOrchestrator as TestsFlextInfraInfraWorkspaceOrchestrator,
     )
     from tests.unit.transformers.test_infra_transformer_class_nesting import (
-        TestsFlextInfraTransformersInfraTransformerClassNesting,
+        TestsFlextInfraTransformersInfraTransformerClassNesting as TestsFlextInfraTransformersInfraTransformerClassNesting,
     )
     from tests.unit.transformers.test_infra_transformer_helper_consolidation import (
-        TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
+        TestsFlextInfraTransformersInfraTransformerHelperConsolidation as TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
     )
     from tests.unit.transformers.test_infra_transformer_nested_class_propagation import (
-        TestsFlextInfraTransformersInfraTransformerNestedClassPropagation,
+        TestsFlextInfraTransformersInfraTransformerNestedClassPropagation as TestsFlextInfraTransformersInfraTransformerNestedClassPropagation,
     )
-    from tests.unit.validate.main_cli_tests import TestValidateCli
+    from tests.unit.transformers.test_infra_transformer_pattern_modernizer import (
+        TestsFlextInfraTransformersPatternModernizer as TestsFlextInfraTransformersPatternModernizer,
+    )
+    from tests.unit.transformers.test_infra_transformer_pydantic_modernizer import (
+        TestsFlextInfraTransformersPydanticModernizer as TestsFlextInfraTransformersPydanticModernizer,
+    )
+    from tests.unit.validate.main_cli_tests import TestValidateCli as TestValidateCli
     from tests.unit.validate.namespace_validator_tests import (
-        TestFlextInfraNamespaceValidator,
+        TestFlextInfraNamespaceValidator as TestFlextInfraNamespaceValidator,
     )
-    from tests.unit.workspace.test_main import TestsFlextInfraWorkspaceMain
+    from tests.unit.workspace.test_main import (
+        TestsFlextInfraWorkspaceMain as TestsFlextInfraWorkspaceMain,
+    )
     from tests.unit.workspace.test_makefile_dry_run import (
-        TestsFlextInfraWorkspaceMakefileDryRun,
+        TestsFlextInfraWorkspaceMakefileDryRun as TestsFlextInfraWorkspaceMakefileDryRun,
     )
     from tests.unit.workspace.test_makefile_generator import (
-        TestsFlextInfraWorkspaceMakefileGenerator,
+        TestsFlextInfraWorkspaceMakefileGenerator as TestsFlextInfraWorkspaceMakefileGenerator,
     )
-    from tests.unit.workspace.test_sync import TestsFlextInfraWorkspaceSync
-    from tests.unit.workspace_factory import TestsFlextInfraWorkspaceFactory
-    from tests.utilities import TestsFlextInfraUtilities, u
+    from tests.unit.workspace.test_sync import (
+        TestsFlextInfraWorkspaceSync as TestsFlextInfraWorkspaceSync,
+    )
+    from tests.unit.workspace_factory import (
+        TestsFlextInfraWorkspaceFactory as TestsFlextInfraWorkspaceFactory,
+    )
+    from tests.utilities import (
+        TestsFlextInfraUtilities as TestsFlextInfraUtilities,
+        u as u,
+    )
 _LAZY_IMPORTS = merge_lazy_imports(
     (
         ".integration",
@@ -453,6 +600,16 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraTypes",
                 "t",
             ),
+            ".unit._utilities.test_discovery_consolidated": (
+                "TestsFlextInfraUtilitiesdiscoveryconsolidated",
+            ),
+            ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+            ".unit._utilities.test_protected_edit": (
+                "TestsFlextInfraUtilitiesProtectedEdit",
+            ),
+            ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
+            ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
+            ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
             ".unit.basemk.test_engine": ("TestsFlextInfraBasemkEngine",),
             ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
             ".unit.basemk.test_generator_edge_cases": (
@@ -790,6 +947,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.transformers.test_infra_transformer_nested_class_propagation": (
                 "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
             ),
+            ".unit.transformers.test_infra_transformer_pattern_modernizer": (
+                "TestsFlextInfraTransformersPatternModernizer",
+            ),
+            ".unit.transformers.test_infra_transformer_pydantic_modernizer": (
+                "TestsFlextInfraTransformersPydanticModernizer",
+            ),
             ".unit.validate.main_cli_tests": ("TestValidateCli",),
             ".unit.validate.namespace_validator_tests": (
                 "TestFlextInfraNamespaceValidator",
@@ -815,7 +978,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "td",
                 "tf",
                 "tk",
-                "tm",
                 "tv",
                 "x",
             ),
@@ -1017,6 +1179,8 @@ __all__: list[str] = [
     "TestsFlextInfraTransformersInfraTransformerClassNesting",
     "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
+    "TestsFlextInfraTransformersPatternModernizer",
+    "TestsFlextInfraTransformersPydanticModernizer",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
     "TestsFlextInfraWorkspaceFactory",
@@ -1048,7 +1212,6 @@ __all__: list[str] = [
     "td",
     "tf",
     "tk",
-    "tm",
     "tool_config_document",
     "tv",
     "u",

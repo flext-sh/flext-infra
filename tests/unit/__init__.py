@@ -353,6 +353,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".transformers.test_infra_transformer_nested_class_propagation": (
                 "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
             ),
+            ".transformers.test_infra_transformer_pattern_modernizer": (
+                "TestsFlextInfraTransformersPatternModernizer",
+            ),
+            ".transformers.test_infra_transformer_pydantic_modernizer": (
+                "TestsFlextInfraTransformersPydanticModernizer",
+            ),
             ".validate.main_cli_tests": ("TestValidateCli",),
             ".validate.namespace_validator_tests": (
                 "TestFlextInfraNamespaceValidator",
