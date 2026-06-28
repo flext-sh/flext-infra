@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from flext_infra import (
     FlextInfraAccessorMigrationOrchestrator,
+    FlextInfraModernizeOrchestrator,
     FlextInfraNamespaceEnforcer,
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
@@ -17,6 +18,9 @@ from flext_infra import (
 )
 from flext_infra.refactor.wrapper_root_namespace import (
     FlextInfraWrapperRootNamespaceRefactor,
+)
+from flext_infra.transformers.pattern_modernizer import (
+    FlextInfraRefactorPatternModernizer,
 )
 
 ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
@@ -66,6 +70,16 @@ ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             ),
             model_cls=FlextInfraWrapperRootNamespaceRefactor,
             handler=lambda params: params.execute(),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="modernize-patterns",
+            help_text="Fix print(), pdb, bare except and open() encoding in library code",
+            model_cls=m.Infra.ModernizeInput,
+            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
+                params,
+                transformer_factory=FlextInfraRefactorPatternModernizer,
+                description="pattern modernizer",
+            ),
         ),
     ),
     c.Infra.CLI_GROUP_RELEASE: (

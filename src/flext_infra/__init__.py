@@ -604,6 +604,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "FlextInfraRefactorMROMigrationValidator",
             ),
             ".refactor.mro_resolver": ("FlextInfraRefactorMROResolver",),
+            ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".refactor.namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".refactor.namespace_enforcer_phases": (
                 "FlextInfraNamespaceEnforcerPhasesMixin",
@@ -825,6 +826,7 @@ __all__: list[str] = [
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
     "FlextInfraModels",
+    "FlextInfraModernizeOrchestrator",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceEnforcerPhasesMixin",

@@ -22,6 +22,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".mro_import_rewriter": ("FlextInfraRefactorMROImportRewriter",),
         ".mro_migration_validator": ("FlextInfraRefactorMROMigrationValidator",),
         ".mro_resolver": ("FlextInfraRefactorMROResolver",),
+        ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
         ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
         ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
         ".orchestrator": ("FlextInfraRefactorOrchestrator",),
