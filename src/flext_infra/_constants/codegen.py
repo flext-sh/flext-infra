@@ -121,11 +121,22 @@ class FlextInfraConstantsCodegen:
     DUPLICATE_CLASS_MIN_LEN: Final[int] = 8
     "Minimum class-name length for workspace-wide duplicate detection."
     TEST_RUNTIME_ALIAS_TARGETS: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
+        "c": ("flext_tests", "c"),
+        "d": ("flext_tests", "d"),
+        "e": ("flext_tests", "e"),
+        "h": ("flext_tests", "h"),
+        "m": ("flext_tests", "m"),
+        "p": ("flext_tests", "p"),
+        "r": ("flext_tests", "r"),
+        "s": ("flext_tests", "s"),
+        "t": ("flext_tests", "t"),
         "td": ("flext_tests", "td"),
         "tf": ("flext_tests", "tf"),
         "tk": ("flext_tests", "tk"),
         "tm": ("flext_tests", "tm"),
         "tv": ("flext_tests", "tv"),
+        "u": ("flext_tests", "u"),
+        "x": ("flext_tests", "x"),
     })
     "Mapping of test-only aliases to flext-tests runtime targets."
 

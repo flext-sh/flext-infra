@@ -151,13 +151,15 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         if node is None:
             return ""
         direct: object = getattr(node, "name", "")
-        if isinstance(direct, str):
+        if isinstance(direct, str) and direct:
             return direct
+        identifier: object = getattr(node, "id", "")
+        if isinstance(identifier, str) and identifier:
+            return identifier
         nested: object = getattr(direct, "id", "")
         if isinstance(nested, str):
             return nested
-        identifier: object = getattr(node, "id", "")
-        return identifier if isinstance(identifier, str) else ""
+        return ""
 
     @staticmethod
     def _ast_line(node: p.AttributeProbe) -> int:

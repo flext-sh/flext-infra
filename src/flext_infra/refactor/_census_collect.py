@@ -33,7 +33,9 @@ class FlextInfraRefactorCensusCollectMixin(
     """Scan one module (inventory + rules) and assemble the WorkspaceReport."""
 
     if TYPE_CHECKING:
-        effective_dry_run: bool
+
+        @property
+        def effective_dry_run(self) -> bool: ...
 
         @staticmethod
         def _project_name_for_module(

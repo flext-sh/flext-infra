@@ -21,8 +21,8 @@ class FlextInfraDependencyDetectionAnalysis(
     """Typings analysis + conversion helpers composed with the tool-runner mixin."""
 
     @override
-    @staticmethod
     def _to_toml_config(
+        self,
         payload: t.MappingKV[str, t.Infra.InfraValue],
     ) -> t.Infra.ContainerDict:
         """To toml config."""
@@ -77,14 +77,14 @@ class FlextInfraDependencyDetectionAnalysis(
             converted_map[key] = conv
         return t.json_dict_adapter().validate_python(converted_map)
 
-    @staticmethod
     def _mapping_from_value(
+        self,
         value: t.Infra.InfraValue | None,
     ) -> t.Infra.ContainerDict:
         """Mapping from value."""
         if not isinstance(value, Mapping):
             return {}
-        return FlextInfraDependencyDetectionAnalysis._to_toml_config(value)
+        return self._to_toml_config(value)
 
     def get_current_typings_from_pyproject(self, project_path: Path) -> t.StrSequence:
         """Extract currently declared typing packages from project pyproject.toml."""

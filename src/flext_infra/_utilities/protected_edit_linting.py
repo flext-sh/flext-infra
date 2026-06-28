@@ -193,32 +193,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         remaining_tools = tuple(
             (tool, tmpl) for tool, tmpl in selected_tools if tool != "ruff"
         )
-        if not remaining_tools:
-            return dict(errors)
-
-        timeout_budget = max(1, gate_timeout + 10)
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(remaining_tools)),
-        ) as pool:
-            futures_by_tool = {
-                pool.submit(_run_gate, tool, tmpl): tool
-                for tool, tmpl in remaining_tools
-            }
-            done, not_done = concurrent.futures.wait(
-                tuple(futures_by_tool),
-                timeout=timeout_budget,
-            )
-
-        for future in done:
-            tool_name, lines = future.result()
+        for tool_name, tmpl in remaining_tools:
+            _, lines = _run_gate(tool_name, tmpl)
             if lines:
                 errors[tool_name] = lines
-        for future in not_done:
-            tool_name = futures_by_tool[future]
-            _ = future.cancel()
-            errors[tool_name] = [
-                f"timeout {timeout_budget}s: lint gate '{tool_name}' did not finish"
-            ]
         return dict(errors)
 
     @classmethod

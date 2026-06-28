@@ -12,19 +12,9 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import (
-        d as d,
-        e as e,
-        h as h,
-        r as r,
-        td as td,
-        tf as tf,
-        tk as tk,
-        tm as tm,
-        tv as tv,
-        x as x,
-    )
+    from flext_tests import td as td, tf as tf, tk as tk, tm as tm, tv as tv
 
+    from flext_infra import d as d, e as e, h as h, r as r, x as x
     from tests.base import (
         TestsFlextInfraServiceBase as TestsFlextInfraServiceBase,
         s as s,
@@ -514,8 +504,14 @@ if _t.TYPE_CHECKING:
     from tests.unit.transformers.test_infra_transformer_class_nesting import (
         TestsFlextInfraTransformersInfraTransformerClassNesting as TestsFlextInfraTransformersInfraTransformerClassNesting,
     )
+    from tests.unit.transformers.test_infra_transformer_cli_modernizer import (
+        TestsFlextInfraTransformersCliModernizer as TestsFlextInfraTransformersCliModernizer,
+    )
     from tests.unit.transformers.test_infra_transformer_helper_consolidation import (
         TestsFlextInfraTransformersInfraTransformerHelperConsolidation as TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
+    )
+    from tests.unit.transformers.test_infra_transformer_logging_modernizer import (
+        TestsFlextInfraTransformersLoggingModernizer as TestsFlextInfraTransformersLoggingModernizer,
     )
     from tests.unit.transformers.test_infra_transformer_nested_class_propagation import (
         TestsFlextInfraTransformersInfraTransformerNestedClassPropagation as TestsFlextInfraTransformersInfraTransformerNestedClassPropagation,
@@ -525,6 +521,12 @@ if _t.TYPE_CHECKING:
     )
     from tests.unit.transformers.test_infra_transformer_pydantic_modernizer import (
         TestsFlextInfraTransformersPydanticModernizer as TestsFlextInfraTransformersPydanticModernizer,
+    )
+    from tests.unit.transformers.test_infra_transformer_result_di_modernizer import (
+        TestsFlextInfraTransformersResultDiModernizer as TestsFlextInfraTransformersResultDiModernizer,
+    )
+    from tests.unit.transformers.test_infra_transformer_tests_modernizer import (
+        TestsFlextInfraTransformersTestsModernizer as TestsFlextInfraTransformersTestsModernizer,
     )
     from tests.unit.validate.main_cli_tests import TestValidateCli as TestValidateCli
     from tests.unit.validate.namespace_validator_tests import (
@@ -601,16 +603,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraTypes",
                 "t",
             ),
-            ".unit._utilities.test_discovery_consolidated": (
-                "TestsFlextInfraUtilitiesdiscoveryconsolidated",
-            ),
-            ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
-            ".unit._utilities.test_protected_edit": (
-                "TestsFlextInfraUtilitiesProtectedEdit",
-            ),
-            ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
-            ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
-            ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
             ".unit.basemk.test_engine": ("TestsFlextInfraBasemkEngine",),
             ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
             ".unit.basemk.test_generator_edge_cases": (
@@ -942,8 +934,14 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".unit.transformers.test_infra_transformer_class_nesting": (
                 "TestsFlextInfraTransformersInfraTransformerClassNesting",
             ),
+            ".unit.transformers.test_infra_transformer_cli_modernizer": (
+                "TestsFlextInfraTransformersCliModernizer",
+            ),
             ".unit.transformers.test_infra_transformer_helper_consolidation": (
                 "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
+            ),
+            ".unit.transformers.test_infra_transformer_logging_modernizer": (
+                "TestsFlextInfraTransformersLoggingModernizer",
             ),
             ".unit.transformers.test_infra_transformer_nested_class_propagation": (
                 "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
@@ -953,6 +951,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".unit.transformers.test_infra_transformer_pydantic_modernizer": (
                 "TestsFlextInfraTransformersPydanticModernizer",
+            ),
+            ".unit.transformers.test_infra_transformer_result_di_modernizer": (
+                "TestsFlextInfraTransformersResultDiModernizer",
+            ),
+            ".unit.transformers.test_infra_transformer_tests_modernizer": (
+                "TestsFlextInfraTransformersTestsModernizer",
             ),
             ".unit.validate.main_cli_tests": ("TestValidateCli",),
             ".unit.validate.namespace_validator_tests": (
@@ -971,17 +975,19 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_tests": (
+            "flext_infra": (
                 "d",
                 "e",
                 "h",
                 "r",
+                "x",
+            ),
+            "flext_tests": (
                 "td",
                 "tf",
                 "tk",
                 "tm",
                 "tv",
-                "x",
             ),
         },
     ),
@@ -1178,11 +1184,15 @@ __all__: list[str] = [
     "TestsFlextInfraRopeImports",
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraSettings",
+    "TestsFlextInfraTransformersCliModernizer",
     "TestsFlextInfraTransformersInfraTransformerClassNesting",
     "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
+    "TestsFlextInfraTransformersLoggingModernizer",
     "TestsFlextInfraTransformersPatternModernizer",
     "TestsFlextInfraTransformersPydanticModernizer",
+    "TestsFlextInfraTransformersResultDiModernizer",
+    "TestsFlextInfraTransformersTestsModernizer",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
     "TestsFlextInfraWorkspaceFactory",

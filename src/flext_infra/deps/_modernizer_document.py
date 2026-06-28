@@ -34,14 +34,29 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     if TYPE_CHECKING:
         # Members provided by sibling mixins / the facade at runtime via MRO.
-        type _Change = Callable[[t.MutableJsonMapping], t.StrSequence]
-        root: Path
         _tool_config: m.Infra.ToolConfigDocument
-        paths_manager: FlextInfraExtraPathsManager
-        _ensure_build_system_payload: _Change
-        _remove_empty_poetry_groups_payload: _Change
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
-        _reorder_document_inplace: Callable[[t.Cli.TomlDocument], None]
+
+        @property
+        def root(self) -> Path: ...
+
+        @property
+        def paths_manager(self) -> FlextInfraExtraPathsManager: ...
+
+        def _ensure_build_system_payload(
+            self,
+            payload: t.MutableJsonMapping,
+        ) -> t.StrSequence: ...
+
+        def _remove_empty_poetry_groups_payload(
+            self,
+            payload: t.MutableJsonMapping,
+        ) -> t.StrSequence: ...
+
+        def _reorder_document_inplace(
+            self,
+            doc: t.Cli.TomlDocument,
+        ) -> None: ...
 
     def _classify_project(
         self,

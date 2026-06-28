@@ -48,8 +48,8 @@ class FlextInfraPyprojectModernizerPayloadMixin:
             changes.append("tool.hatch.metadata.allow-direct-references set to true")
         return changes
 
-    @staticmethod
     def _remove_empty_poetry_groups_payload(
+        self,
         payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Remove empty Poetry group tables from one normalized payload."""
@@ -84,8 +84,8 @@ class FlextInfraPyprojectModernizerPayloadMixin:
         changes.append("removed empty poetry group container")
         return changes
 
-    @staticmethod
     def _ordered_keys(
+        self,
         keys: t.StrSequence,
         *,
         preferred_first: t.StrSequence | None = None,
@@ -98,20 +98,20 @@ class FlextInfraPyprojectModernizerPayloadMixin:
         ordered.extend(remaining)
         return ordered
 
-    @classmethod
     def _recurse_into_item(
-        cls, item: t.Cli.TomlContainer | t.Cli.TomlItem, table_key: str
+        self,
+        item: t.Cli.TomlContainer | t.Cli.TomlItem,
+        table_key: str,
     ) -> None:
         """Reorder children of one TOML node; Table/AoT only, no-op otherwise."""
         if u.Cli.toml_is_table(item):
-            cls._reorder_table_inplace(item, table_key=table_key)
+            self._reorder_table_inplace(item, table_key=table_key)
         elif u.Cli.toml_is_aot(item):
             for entry in item.body:
-                cls._reorder_table_inplace(entry, table_key=table_key)
+                self._reorder_table_inplace(entry, table_key=table_key)
 
-    @classmethod
     def _reorder_table_inplace(
-        cls,
+        self,
         table: t.Cli.TomlTable,
         *,
         preferred_first: t.StrSequence | None = None,
@@ -121,13 +121,13 @@ class FlextInfraPyprojectModernizerPayloadMixin:
         if table_key == "per-file-ignores":
             return
         original_keys = [str(key) for key in table]
-        ordered_keys = cls._ordered_keys(
+        ordered_keys = self._ordered_keys(
             original_keys,
             preferred_first=preferred_first,
         )
         if ordered_keys == original_keys:
             for key in ordered_keys:
-                cls._recurse_into_item(table[key], key)
+                self._recurse_into_item(table[key], key)
             return
         items: MutableMapping[str, t.Cli.TomlItem] = {
             key: table[key] for key in original_keys
@@ -136,14 +136,13 @@ class FlextInfraPyprojectModernizerPayloadMixin:
             del table[key]
         for key in ordered_keys:
             item_value: t.Cli.TomlItem = items[key]
-            cls._recurse_into_item(item_value, key)
+            self._recurse_into_item(item_value, key)
             table[key] = item_value
 
-    @classmethod
-    def _reorder_document_inplace(cls, doc: t.Cli.TomlDocument) -> None:
+    def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None:
         """Apply deterministic ordering for top-level groups and nested tables."""
         root_keys = [str(key) for key in doc]
-        ordered_root = cls._ordered_keys(
+        ordered_root = self._ordered_keys(
             root_keys,
             preferred_first=("build-system", "dependency-groups", "project", "tool"),
         )
@@ -157,11 +156,11 @@ class FlextInfraPyprojectModernizerPayloadMixin:
                 doc[key] = root_items[key]
         tool_child = u.Cli.toml_table_child(doc, "tool")
         if tool_child is not None:
-            cls._reorder_table_inplace(tool_child, table_key="tool")
+            self._reorder_table_inplace(tool_child, table_key="tool")
         for key in ordered_root:
             if key == "tool":
                 continue
-            cls._recurse_into_item(doc[key], key)
+            self._recurse_into_item(doc[key], key)
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerPayloadMixin"]

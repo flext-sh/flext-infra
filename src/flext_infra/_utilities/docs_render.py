@@ -577,7 +577,7 @@ class FlextInfraUtilitiesDocsRender:
         exclude_docs: t.SequenceOf[str] | None = None,
     ) -> str:
         """Return the generated workspace project catalog page."""
-        exclude_docs = exclude_docs or []
+        exclude_patterns: t.StrSequence = tuple(exclude_docs or ())
         rows = [
             "| "
             + " | ".join([
@@ -597,7 +597,7 @@ class FlextInfraUtilitiesDocsRender:
                     entry.get("api_page", "").removeprefix("../../"),
                     pattern,
                 )
-                for pattern in exclude_docs
+                for pattern in exclude_patterns
             )
         ]
         return "\n".join([

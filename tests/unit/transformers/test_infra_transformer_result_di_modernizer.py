@@ -29,10 +29,7 @@ class TestsFlextInfraTransformersResultDiModernizer:
         assert len(changes) == 1
 
     def test_raise_value_error_unchanged_without_result_alias(self) -> None:
-        source = (
-            "def compute() -> int:\n"
-            '    raise ValueError("bad")\n'
-        )
+        source = 'def compute() -> int:\n    raise ValueError("bad")\n'
         code, changes = _transform(source)
         assert 'raise ValueError("bad")' in code
         assert not changes

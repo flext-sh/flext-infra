@@ -40,7 +40,8 @@ class FlextInfraGateContractModels:
         @classmethod
         def create(cls, payload: t.JsonMapping) -> Self:
             """Validate one violation payload."""
-            return cls.model_validate(payload)
+            violation: Self = cls.model_validate(payload)
+            return violation
 
     class ScriptInfo(m.BaseModel):
         """Validation result for one script."""

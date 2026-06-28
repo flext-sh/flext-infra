@@ -95,18 +95,29 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
         export_names = {*lazy_map, *eager_dunders}
-        if context.current_pkg and "." not in context.current_pkg:
-            # Privacy rule: the public root facade publishes in __all__ only the
-            # symbols sourced from public root modules. Sub-facades whose
-            # canonical source is a ``_``-private subpackage stay resolvable via
-            # the child-package merge and the TYPE_CHECKING block, yet are not
-            # part of the frozen public facade surface.
+        if (
+            context.surface == c.Infra.DEFAULT_SRC_DIR
+            and context.current_pkg
+            and "." not in context.current_pkg
+        ):
+            # Privacy rule: the public root facade exposes only symbols sourced
+            # from public root modules. The same set drives __all__ and the
+            # runtime lazy resolver so private implementation owners cannot leak
+            # through package-level __getattr__.
             eager_names = frozenset(eager_dunders)
             export_names = {
                 name
                 for name in export_names
                 if name in eager_names or self._is_public_root_export(name, lazy_map)
             }
+            lazy_map = {
+                name: target
+                for name, target in lazy_map.items()
+                if name in export_names
+            }
+            child_lazy = self._child_packages_with_retained_exports(
+                child_lazy, lazy_map
+            )
         all_export_names = tuple(sorted(export_names))
         return m.Infra.LazyInitPlan(
             context=context,
@@ -254,25 +265,29 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None:
             return ((), ())
+        resolved_pkg_dir = pkg_dir.resolve()
         direct: list[str] = []
         descendants: list[str] = []
         for child_dir in package_entry.descendant_child_dirs:
+            resolved_child_dir = child_dir.resolve()
             child_init = child_dir / c.Infra.INIT_PY
             if not child_init.is_file():
                 continue
             child_entry = self._package_entry(child_dir)
-            if child_entry is None or not child_entry.package_name:
-                continue
             is_fixture_child = self._is_fixture_package(child_dir)
+            child_exports = dir_exports.get(str(resolved_child_dir), {})
+            if child_entry is None or (
+                not child_entry.package_name
+                and not (is_fixture_child and child_exports)
+            ):
+                continue
             if not is_fixture_child:
                 descendants.append(child_entry.package_name)
-            if child_dir.parent != pkg_dir:
+            if resolved_child_dir.parent != resolved_pkg_dir:
                 continue
             if not is_fixture_child:
                 direct.append(child_entry.package_name)
-            for name, (module_name, attr) in dir_exports.get(
-                str(child_dir), {}
-            ).items():
+            for name, (module_name, attr) in child_exports.items():
                 if (
                     attr
                     and name not in c.Infra.ALIAS_NAMES
@@ -281,6 +296,22 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 ):
                     self._add(lazy_map, name, (module_name, attr))
         return (tuple(sorted(direct)), tuple(sorted(descendants)))
+
+    @staticmethod
+    def _child_packages_with_retained_exports(
+        child_packages: t.StrSequence,
+        lazy_map: t.LazyAliasMap,
+    ) -> t.StrSequence:
+        """Return child packages still referenced by the filtered lazy map."""
+        retained_modules = tuple(module for module, _attr in lazy_map.values())
+        return tuple(
+            child_package
+            for child_package in child_packages
+            if any(
+                module == child_package or module.startswith(f"{child_package}.")
+                for module in retained_modules
+            )
+        )
 
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:
@@ -301,7 +332,15 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         surface: str,
     ) -> None:
         """Resolve aliases."""
-        if not u.Infra.matches_project_namespace_package(current_pkg):
+        is_test_runtime_alias_surface = c.Infra.DIR_TESTS in {
+            current_pkg,
+            pkg_dir.name,
+            surface,
+        }
+        if (
+            not u.Infra.matches_project_namespace_package(current_pkg)
+            and not is_test_runtime_alias_surface
+        ):
             return
         self._resolve_local_aliases(
             lazy_map,
@@ -316,7 +355,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             self._source_package_name(pkg_dir, inherited_key),
         ))
         runtime_alias_names: list[str] = []
-        if surface == c.Infra.DIR_TESTS:
+        if is_test_runtime_alias_surface:
             for alias_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
                 if not isinstance(alias_name, str):
                     msg = f"Invalid runtime alias name: {alias_name!r}"
@@ -336,6 +375,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 inherited_packages,
                 alias_name,
                 current_pkg=current_pkg,
+                use_test_runtime_aliases=is_test_runtime_alias_surface,
             )
             if package_name and package_name != current_pkg:
                 lazy_map[alias_name] = (package_name, alias_name)
@@ -502,12 +542,17 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         alias_name: str,
         *,
         current_pkg: str,
+        use_test_runtime_aliases: bool,
     ) -> str:
         """Resolve inherited alias source."""
         candidate_packages: t.StrSequence = tuple(
             name for name in package_names if name
         )
-        canonical_target = c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
+        canonical_target = (
+            c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
+            if use_test_runtime_aliases
+            else None
+        )
         if canonical_target is not None:
             canonical_package = canonical_target[0]
             if not isinstance(canonical_package, str):
@@ -699,14 +744,15 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
     def _is_public_root_export(name: str, lazy_map: t.LazyAliasMap) -> bool:
         """Return whether a root-facade export belongs in the public ``__all__``.
 
-        A symbol is part of the public facade surface only when its canonical
-        lazy-map source module is a public root module — i.e. no path segment
-        below the root package is ``_``-private — and it is not a lazy-runtime
-        helper that stays importable but is withheld from the frozen surface.
+        A symbol is part of the public facade surface when its canonical
+        lazy-map source module is public, with the single private-package
+        exception for ``_fixtures`` exports used by generated test fixtures.
         """
         if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
             return False
         module_path = lazy_map[name][0]
+        if "_fixtures" in module_path.split("."):
+            return True
         return not any(
             segment.startswith("_") for segment in module_path.split(".")[1:]
         )

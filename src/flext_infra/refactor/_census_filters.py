@@ -111,9 +111,11 @@ class FlextInfraRefactorCensusFiltersMixin:
     @staticmethod
     def _runtime_alias_target(
         convention: m.Infra.RopeModuleConvention,
-        objects: tuple[m.Infra.Census.Object, ...],
+        objects: tuple[m.Infra.Census.Object, ...] | None,
     ) -> m.Infra.Census.Object | None:
         """Runtime alias target."""
+        if objects is None:
+            return None
         target_name = FlextInfraRefactorCensusFiltersMixin._runtime_alias_target_name(
             convention
         )

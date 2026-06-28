@@ -22,18 +22,18 @@ class FlextInfraManualProtocolDetector:
             or c.Infra.MRO_PROTOCOLS_DIRECTORY in ctx.file_path.parts
         ):
             return []
-        res = u.Infra.fetch_python_resource(
-            ctx.rope_project, ctx.file_path, skip_protected=True
-        )
-        if res is None:
+        if ctx.file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
         file_path = ctx.file_path
-        rope_project = ctx.rope_project
+        try:
+            source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        except OSError:
+            return []
         return [
             m.Infra.ManualProtocolViolation(
                 file=str(file_path), line=ci.line, name=ci.name
             )
-            for ci in u.Infra.get_class_info(rope_project, res)
+            for ci in u.Infra.class_info_from_source(source)
             if "Protocol" in ci.bases
         ]
 

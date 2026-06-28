@@ -871,6 +871,58 @@ class FlextInfraUtilitiesRopeAnalysis:
         return class_infos
 
     @staticmethod
+    def class_info_from_source(source: str) -> t.SequenceOf[m.Infra.ClassInfo]:
+        """Return class info from the current source text without Rope resource cache."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return ()
+        body = getattr(pymodule.get_ast(), "body", ())
+        if not isinstance(body, (list, tuple)):
+            return ()
+        return tuple(
+            class_info
+            for node in body
+            if (
+                class_info := FlextInfraUtilitiesRopeAnalysis._class_info_from_ast(node)
+            )
+            is not None
+        )
+
+    @staticmethod
+    def _class_info_from_ast(node: object) -> m.Infra.ClassInfo | None:
+        """Return ClassInfo for one top-level ClassDef AST node."""
+        if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "ClassDef":
+            return None
+        name = getattr(node, "name", "")
+        if not isinstance(name, str) or not name:
+            return None
+        line = getattr(node, "lineno", 1)
+        raw_bases = getattr(node, "bases", ())
+        if not isinstance(raw_bases, (list, tuple)):
+            raw_bases = ()
+        return m.Infra.ClassInfo(
+            name=name,
+            line=line if isinstance(line, int) and line > 0 else 1,
+            bases=tuple(
+                base_name
+                for base in raw_bases
+                if (base_name := FlextInfraUtilitiesRopeAnalysis._class_base_name(base))
+            ),
+        )
+
+    @staticmethod
+    def _class_base_name(node: object) -> str:
+        """Return terminal base name from an AST base expression."""
+        for attr_name in ("id", "attr", "name"):
+            value = getattr(node, attr_name, "")
+            if isinstance(value, str) and value:
+                return value
+        subscript_value = getattr(node, "value", None)
+        if subscript_value is not None:
+            return FlextInfraUtilitiesRopeAnalysis._class_base_name(subscript_value)
+        return ""
+
+    @staticmethod
     def get_class_symbol_count(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,

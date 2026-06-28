@@ -9,9 +9,13 @@ from flext_infra import (
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
     FlextInfraRefactorCensus,
+    FlextInfraRefactorCliModernizer,
+    FlextInfraRefactorLoggingModernizer,
     FlextInfraRefactorMigrateToClassMRO,
     FlextInfraRefactorPatternModernizer,
     FlextInfraRefactorPydanticModernizer,
+    FlextInfraRefactorResultDiModernizer,
+    FlextInfraRefactorTestsModernizer,
     FlextInfraReleaseOrchestrator,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
@@ -88,6 +92,52 @@ ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 params,
                 transformer_factory=FlextInfraRefactorPydanticModernizer,
                 description="pydantic modernizer",
+            ),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="modernize-logging",
+            help_text="Migrate logging usage to u.fetch_logger",
+            model_cls=m.Infra.ModernizeInput,
+            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
+                params,
+                transformer_factory=FlextInfraRefactorLoggingModernizer,
+                description="logging modernizer",
+            ),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="modernize-result-di",
+            help_text=(
+                "Migrate result-flow and dependency-injector patterns "
+                "to FLEXT canonical forms"
+            ),
+            model_cls=m.Infra.ModernizeInput,
+            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
+                params,
+                transformer_factory=FlextInfraRefactorResultDiModernizer,
+                description="result/DI modernizer",
+            ),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="modernize-cli",
+            help_text=(
+                "Remove banned CLI helper imports and route print() "
+                "to cli.display_text()"
+            ),
+            model_cls=m.Infra.ModernizeInput,
+            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
+                params,
+                transformer_factory=FlextInfraRefactorCliModernizer,
+                description="cli modernizer",
+            ),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="modernize-tests",
+            help_text="Migrate unittest.TestCase tests to FLEXT test helpers",
+            model_cls=m.Infra.ModernizeInput,
+            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
+                params,
+                transformer_factory=FlextInfraRefactorTestsModernizer,
+                description="tests modernizer",
             ),
         ),
     ),

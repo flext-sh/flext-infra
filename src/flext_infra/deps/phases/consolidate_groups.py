@@ -115,11 +115,9 @@ class FlextInfraConsolidateGroupsPhase:
         )
         poetry_dev_table: t.MutableJsonMapping | None = None
         for old_group in c.Infra.LEGACY_DEV_DEPENDENCY_GROUPS:
-            old_group_table = (
-                u.Cli.toml_mapping_child(poetry_group, old_group)
-                if poetry_group is not None
-                else None
-            )
+            if poetry_group is None:
+                continue
+            old_group_table = u.Cli.toml_mapping_child(poetry_group, old_group)
             old_deps = (
                 u.Cli.toml_mapping_child(old_group_table, c.Infra.DEPENDENCIES)
                 if old_group_table is not None
@@ -127,7 +125,7 @@ class FlextInfraConsolidateGroupsPhase:
             )
             if old_deps is not None:
                 if poetry_dev_table is None:
-                    poetry_dev_table = u.Cli.toml_mapping_ensure_path(
+                    current_poetry_dev_table = u.Cli.toml_mapping_ensure_path(
                         payload,
                         (
                             c.Infra.TOOL,
@@ -137,11 +135,12 @@ class FlextInfraConsolidateGroupsPhase:
                             c.Infra.DEPENDENCIES,
                         ),
                     )
+                    poetry_dev_table = current_poetry_dev_table
+                else:
+                    current_poetry_dev_table = poetry_dev_table
                 for dep_name, dep_value in old_deps.items():
-                    if dep_name not in poetry_dev_table:
-                        poetry_dev_table[dep_name] = dep_value
-            if poetry_group is None:
-                continue
+                    if dep_name not in current_poetry_dev_table:
+                        current_poetry_dev_table[dep_name] = dep_value
             if u.Cli.toml_mapping_remove_key_if_present(poetry_group, old_group):
                 changes.append(f"tool.poetry.group.{old_group} removed")
         deptry = u.Cli.toml_mapping_ensure_path(

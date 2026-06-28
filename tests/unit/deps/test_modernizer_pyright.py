@@ -30,7 +30,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         flext_core = tmp_path / "flext-core"
         flext_api = tmp_path / "flext-api"
-        detached_project = tmp_path / "oud-migration-tool"
+        detached_project = tmp_path / "demo-migration-tool"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings" / "generated").mkdir(parents=True, exist_ok=True)
         flext_core.mkdir(parents=True, exist_ok=True)
@@ -45,7 +45,7 @@ class TestsFlextInfraDepsModernizerPyright:
             encoding="utf-8",
         )
         _ = (detached_project / "pyproject.toml").write_text(
-            "[project]\nname='oud-migration-tool'\ndependencies=['flext-core>=0.1.0']\n",
+            "[project]\nname='demo-migration-tool'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
         (flext_core / "src").mkdir(parents=True, exist_ok=True)

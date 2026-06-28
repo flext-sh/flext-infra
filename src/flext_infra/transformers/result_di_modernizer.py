@@ -21,13 +21,15 @@ from __future__ import annotations
 import ast
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraRopeTransformer, c, t, u
+from flext_infra import FlextInfraRopeTransformer, c, t
 
 
 class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
     """AST-driven transformer for result-flow and DI anti-patterns."""
 
-    _description = "migrate result-flow and dependency-injector patterns to FLEXT canonical forms"
+    _description = (
+        "migrate result-flow and dependency-injector patterns to FLEXT canonical forms"
+    )
 
     _CORE_PKG: ClassVar[str] = c.Infra.PKG_CORE_UNDERSCORE
     _DI_FACADE: ClassVar[str] = "flext_core.di"
@@ -223,8 +225,7 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
                 return
 
             new_text = (
-                f'return r[str].fail("{message}", '
-                f'error_code="{self._error_code()}")'
+                f'return r[str].fail("{message}", error_code="{self._error_code()}")'
             )
             self._append_rewrite(
                 node,

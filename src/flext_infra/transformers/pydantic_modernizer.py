@@ -227,7 +227,9 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
 
         def _rewrite_method_call(self, node: ast.Call) -> None:
             """Modernize Pydantic method calls on instances."""
-            attr = node.func.attr  # type: ignore[union-attr]
+            if not isinstance(node.func, ast.Attribute):
+                return
+            attr = node.func.attr
             mapping = {
                 "dict": "model_dump",
                 "json": "model_dump_json",

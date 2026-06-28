@@ -43,8 +43,10 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     if TYPE_CHECKING:
         workspace_root: Path
         include_init: bool
-        effective_dry_run: bool
         _WRAPPER_PACKAGES: t.StrSequence
+
+        @property
+        def effective_dry_run(self) -> bool: ...
 
     def _process_wrapper_file(
         self,

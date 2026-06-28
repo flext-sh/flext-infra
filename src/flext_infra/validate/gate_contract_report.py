@@ -132,19 +132,16 @@ class FlextInfraGateContractReportMixin:
             for script in gate_scripts
             if self._severity_count(script, c.Infra.GateSeverity.ERROR.value) == 0
         )
-        summary = FlextInfraGateContractModels.Summary.model_validate(
-            {
-                "errors": errors,
-                "gate_scripts": len(gate_scripts),
-                "ok": ok,
-                "warnings": warnings,
-            },
-        )
-        if not isinstance(summary, FlextInfraGateContractModels.Summary):
-            summary_type_error = (
-                "Summary.model_validate did not return a Summary instance"
+        summary: FlextInfraGateContractModels.Summary = (
+            FlextInfraGateContractModels.Summary.model_validate(
+                {
+                    "errors": errors,
+                    "gate_scripts": len(gate_scripts),
+                    "ok": ok,
+                    "warnings": warnings,
+                },
             )
-            raise TypeError(summary_type_error)
+        )
         return summary
 
     def _write_report(

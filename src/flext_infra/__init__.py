@@ -22,7 +22,7 @@ from flext_infra.__version__ import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_cli import d as d, e as e, h as h, r as r, x as x
+    from flext_core import d as d, e as e, h as h, r as r, x as x
     from flext_infra._constants.base import (
         FlextInfraConstantsBase as FlextInfraConstantsBase,
     )
@@ -609,6 +609,9 @@ if _t.TYPE_CHECKING:
     from flext_infra.transformers.class_reconstructor import (
         FlextInfraRefactorClassReconstructor as FlextInfraRefactorClassReconstructor,
     )
+    from flext_infra.transformers.cli_modernizer import (
+        FlextInfraRefactorCliModernizer as FlextInfraRefactorCliModernizer,
+    )
     from flext_infra.transformers.deprecated_remover import (
         FlextInfraRefactorDeprecatedRemover as FlextInfraRefactorDeprecatedRemover,
     )
@@ -623,6 +626,9 @@ if _t.TYPE_CHECKING:
     )
     from flext_infra.transformers.lazy_import_fixer import (
         FlextInfraRefactorLazyImportFixer as FlextInfraRefactorLazyImportFixer,
+    )
+    from flext_infra.transformers.logging_modernizer import (
+        FlextInfraRefactorLoggingModernizer as FlextInfraRefactorLoggingModernizer,
     )
     from flext_infra.transformers.mro_remover import (
         FlextInfraRefactorMRORemover as FlextInfraRefactorMRORemover,
@@ -639,11 +645,17 @@ if _t.TYPE_CHECKING:
     from flext_infra.transformers.pydantic_modernizer import (
         FlextInfraRefactorPydanticModernizer as FlextInfraRefactorPydanticModernizer,
     )
+    from flext_infra.transformers.result_di_modernizer import (
+        FlextInfraRefactorResultDiModernizer as FlextInfraRefactorResultDiModernizer,
+    )
     from flext_infra.transformers.signature_propagator import (
         FlextInfraRefactorSignaturePropagator as FlextInfraRefactorSignaturePropagator,
     )
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator as FlextInfraRefactorSymbolPropagator,
+    )
+    from flext_infra.transformers.tests_modernizer import (
+        FlextInfraRefactorTestsModernizer as FlextInfraRefactorTestsModernizer,
     )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer as FlextInfraTransformerTier0ImportFixer,
@@ -772,148 +784,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ),
     build_lazy_import_map(
         {
-            "._constants.base": ("FlextInfraConstantsBase",),
-            "._constants.basemk": ("FlextInfraConstantsBasemk",),
-            "._constants.census": ("FlextInfraConstantsCensus",),
-            "._constants.check": ("FlextInfraConstantsCheck",),
-            "._constants.codegen": ("FlextInfraConstantsCodegen",),
-            "._constants.deps": ("FlextInfraConstantsDeps",),
-            "._constants.docs": ("FlextInfraConstantsDocs",),
-            "._constants.github": ("FlextInfraConstantsGithub",),
-            "._constants.make": ("FlextInfraConstantsMake",),
-            "._constants.refactor": ("FlextInfraConstantsRefactor",),
-            "._constants.release": ("FlextInfraConstantsRelease",),
-            "._constants.rope": ("FlextInfraConstantsRope",),
-            "._constants.source_code": ("FlextInfraConstantsSourceCode",),
-            "._constants.validate": ("FlextInfraConstantsSharedInfra",),
-            "._constants.workspace": ("FlextInfraConstantsWorkspace",),
-            "._models.base": ("FlextInfraModelsBase",),
-            "._models.basemk": ("FlextInfraModelsBasemk",),
-            "._models.census": ("FlextInfraModelsCensus",),
-            "._models.check": ("FlextInfraModelsCheck",),
-            "._models.codegen": ("FlextInfraModelsCodegen",),
-            "._models.deps": ("FlextInfraModelsDeps",),
-            "._models.deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
-            "._models.deps_tool_config_linters": (
-                "FlextInfraModelsDepsToolConfigLinters",
-            ),
-            "._models.deps_tool_config_type_checkers": (
-                "FlextInfraModelsDepsToolConfigTypeCheckers",
-            ),
-            "._models.docs": ("FlextInfraModelsDocs",),
-            "._models.engine": ("FlextInfraModelsEngine",),
-            "._models.engine_ops": ("FlextInfraModelsEngineOperation",),
-            "._models.gates": ("FlextInfraModelsGates",),
-            "._models.github": ("FlextInfraModelsGithub",),
-            "._models.mixins": ("FlextInfraModelsMixins",),
-            "._models.refactor": ("FlextInfraModelsRefactor",),
-            "._models.refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
-            "._models.refactor_census": ("FlextInfraModelsRefactorCensus",),
-            "._models.refactor_namespace_enforcer": (
-                "FlextInfraModelsNamespaceEnforcer",
-            ),
-            "._models.refactor_violations": ("FlextInfraModelsRefactorViolations",),
-            "._models.release": ("FlextInfraModelsRelease",),
-            "._models.rope": ("FlextInfraModelsRope",),
-            "._models.scan": ("FlextInfraModelsScan",),
-            "._models.validate": ("FlextInfraModelsCore",),
-            "._models.workspace": ("FlextInfraModelsWorkspace",),
-            "._protocols.base": ("FlextInfraProtocolsBase",),
-            "._protocols.check": ("FlextInfraProtocolsCheck",),
-            "._protocols.rope": ("FlextInfraProtocolsRope",),
-            "._typings.adapters": ("FlextInfraTypesAdapters",),
-            "._typings.base": ("FlextInfraTypesBase",),
-            "._typings.rope": ("FlextInfraTypesRope",),
-            "._utilities._docs_audit_detectors": (
-                "FlextInfraUtilitiesDocsAuditDetectorsMixin",
-            ),
-            "._utilities._github_pr_single": (
-                "FlextInfraUtilitiesGithubPrSingleMixin",
-            ),
-            "._utilities._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
-            "._utilities._rope_bracket_balance": (
-                "FlextInfraUtilitiesRopeBracketBalanceMixin",
-            ),
-            "._utilities._rope_core_pymodule": (
-                "FlextInfraUtilitiesRopeCorePyModuleMixin",
-            ),
-            "._utilities._rope_method_order": (
-                "FlextInfraUtilitiesRopeMethodOrderMixin",
-            ),
-            "._utilities.base": ("FlextInfraUtilitiesBase",),
-            "._utilities.census": ("FlextInfraUtilitiesRefactorCensus",),
-            "._utilities.codegen": ("FlextInfraUtilitiesCodegen",),
-            "._utilities.dependencies": ("FlextInfraUtilitiesDependencies",),
-            "._utilities.deps_path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
-            "._utilities.deps_repos": ("FlextInfraInternalSyncRepoMixin",),
-            "._utilities.discovery": ("FlextInfraUtilitiesDiscovery",),
-            "._utilities.docs": ("FlextInfraUtilitiesDocs",),
-            "._utilities.docs_api": ("FlextInfraUtilitiesDocsApi",),
-            "._utilities.docs_audit": ("FlextInfraUtilitiesDocsAudit",),
-            "._utilities.docs_build": ("FlextInfraUtilitiesDocsBuild",),
-            "._utilities.docs_contract": ("FlextInfraUtilitiesDocsContract",),
-            "._utilities.docs_fix": ("FlextInfraUtilitiesDocsFix",),
-            "._utilities.docs_generate": ("FlextInfraUtilitiesDocsGenerate",),
-            "._utilities.docs_render": ("FlextInfraUtilitiesDocsRender",),
-            "._utilities.docs_scope": ("FlextInfraUtilitiesDocsScope",),
-            "._utilities.docs_validate": ("FlextInfraUtilitiesDocsValidate",),
-            "._utilities.engine": ("FlextInfraUtilitiesRefactorEngine",),
-            "._utilities.file_iteration": ("FlextInfraUtilitiesFileIteration",),
-            "._utilities.git_scope": ("FlextInfraUtilitiesGitScope",),
-            "._utilities.github": ("FlextInfraUtilitiesGithub",),
-            "._utilities.github_pr": ("FlextInfraUtilitiesGithubPr",),
-            "._utilities.log_parser": ("FlextInfraUtilitiesLogParser",),
-            "._utilities.mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
-            "._utilities.namespace": ("FlextInfraUtilitiesCodegenNamespace",),
-            "._utilities.namespace_analysis": (
-                "FlextInfraUtilitiesRefactorNamespaceMro",
-            ),
-            "._utilities.namespace_common": (
-                "FlextInfraUtilitiesRefactorNamespaceCommon",
-            ),
-            "._utilities.namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
-            "._utilities.namespace_facades": (
-                "FlextInfraUtilitiesRefactorNamespaceFacades",
-            ),
-            "._utilities.namespace_moves": (
-                "FlextInfraUtilitiesRefactorNamespaceMoves",
-            ),
-            "._utilities.policy": ("FlextInfraUtilitiesRefactorPolicy",),
-            "._utilities.project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
-            "._utilities.protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
-            "._utilities.protected_edit_apply": (
-                "FlextInfraUtilitiesProtectedEditApply",
-            ),
-            "._utilities.protected_edit_linting": (
-                "FlextInfraUtilitiesProtectedEditLinting",
-            ),
-            "._utilities.protected_edit_preview": (
-                "FlextInfraUtilitiesProtectedEditPreview",
-            ),
-            "._utilities.protected_edit_writes": (
-                "FlextInfraUtilitiesProtectedEditWrites",
-            ),
-            "._utilities.pyproject": ("FlextInfraUtilitiesPyproject",),
-            "._utilities.refactor": ("FlextInfraUtilitiesRefactor",),
-            "._utilities.release": ("FlextInfraUtilitiesRelease",),
-            "._utilities.rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
-            "._utilities.rope_analysis_introspection": (
-                "FlextInfraUtilitiesRopeAnalysisIntrospection",
-            ),
-            "._utilities.rope_analysis_workspace": (
-                "FlextInfraUtilitiesRopeAnalysisWorkspace",
-            ),
-            "._utilities.rope_core": ("FlextInfraUtilitiesRopeCore",),
-            "._utilities.rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
-            "._utilities.rope_imports": ("FlextInfraUtilitiesRopeImports",),
-            "._utilities.rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
-            "._utilities.rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
-            "._utilities.rope_mro_transform": ("FlextInfraUtilitiesRopeMroTransform",),
-            "._utilities.rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
-            "._utilities.rope_source": ("FlextInfraUtilitiesRopeSource",),
-            "._utilities.safety": ("FlextInfraUtilitiesSafety",),
-            "._utilities.snapshot": ("FlextInfraUtilitiesSnapshot",),
-            "._utilities.versioning": ("FlextInfraUtilitiesVersioning",),
             ".api": (
                 "FlextInfra",
                 "infra",
@@ -1083,6 +953,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".transformers.class_reconstructor": (
                 "FlextInfraRefactorClassReconstructor",
             ),
+            ".transformers.cli_modernizer": ("FlextInfraRefactorCliModernizer",),
             ".transformers.deprecated_remover": (
                 "FlextInfraRefactorDeprecatedRemover",
             ),
@@ -1094,6 +965,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".transformers.import_modernizer": ("FlextInfraRefactorImportModernizer",),
             ".transformers.lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
+            ".transformers.logging_modernizer": (
+                "FlextInfraRefactorLoggingModernizer",
+            ),
             ".transformers.mro_remover": ("FlextInfraRefactorMRORemover",),
             ".transformers.mro_symbol_propagator": (
                 "FlextInfraRefactorMROSymbolPropagator",
@@ -1107,10 +981,14 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".transformers.pydantic_modernizer": (
                 "FlextInfraRefactorPydanticModernizer",
             ),
+            ".transformers.result_di_modernizer": (
+                "FlextInfraRefactorResultDiModernizer",
+            ),
             ".transformers.signature_propagator": (
                 "FlextInfraRefactorSignaturePropagator",
             ),
             ".transformers.symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
+            ".transformers.tests_modernizer": ("FlextInfraRefactorTestsModernizer",),
             ".transformers.tier0_import_fixer": (
                 "FlextInfraTransformerTier0ImportFixer",
             ),
@@ -1157,7 +1035,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".workspace.sandbox_orchestrator": ("FlextInfraSandboxOrchestrator",),
             ".workspace.sync": ("FlextInfraSyncService",),
             ".workspace.workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
-            "flext_cli": (
+            "flext_core": (
                 "d",
                 "e",
                 "h",
@@ -1305,6 +1183,7 @@ __all__: list[str] = [
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
+    "FlextInfraRefactorCliModernizer",
     "FlextInfraRefactorDeprecatedRemover",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorFileExecutor",
@@ -1312,6 +1191,7 @@ __all__: list[str] = [
     "FlextInfraRefactorImportModernizer",
     "FlextInfraRefactorLazyImportFixer",
     "FlextInfraRefactorLegacyTextOps",
+    "FlextInfraRefactorLoggingModernizer",
     "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorMROImportRewriter",
     "FlextInfraRefactorMROMigrationValidator",
@@ -1322,10 +1202,12 @@ __all__: list[str] = [
     "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPydanticModernizer",
+    "FlextInfraRefactorResultDiModernizer",
     "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
+    "FlextInfraRefactorTestsModernizer",
     "FlextInfraRefactorTextExecutor",
     "FlextInfraRefactorTypingUnifier",
     "FlextInfraRefactorViolationAnalyzer",

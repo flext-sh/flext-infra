@@ -152,9 +152,12 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
         extension = script_path.suffix
         role = self._classify_role(script_path)
         if role == "other" and not check_all:
-            return FlextInfraGateContractModels.ScriptInfo.model_validate(
-                {"extension": extension, "path": script, "role": role},
+            other_info: FlextInfraGateContractModels.ScriptInfo = (
+                FlextInfraGateContractModels.ScriptInfo.model_validate(
+                    {"extension": extension, "path": script, "role": role},
+                )
             )
+            return other_info
 
         read = u.Cli.files_read_text(root / script_path)
         if read.failure:
@@ -165,14 +168,17 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
                     "script": script,
                 },
             )
-            return FlextInfraGateContractModels.ScriptInfo.model_validate(
-                {
-                    "extension": extension,
-                    "path": script,
-                    "role": role,
-                    "violations": (unreadable,),
-                },
+            unreadable_info: FlextInfraGateContractModels.ScriptInfo = (
+                FlextInfraGateContractModels.ScriptInfo.model_validate(
+                    {
+                        "extension": extension,
+                        "path": script,
+                        "role": role,
+                        "violations": (unreadable,),
+                    },
+                )
             )
+            return unreadable_info
         content = read.value
 
         header = self._read_header(content)
@@ -190,14 +196,17 @@ class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):
             )
             if violation is not None
         )
-        return FlextInfraGateContractModels.ScriptInfo.model_validate(
-            {
-                "extension": extension,
-                "path": script,
-                "role": role,
-                "violations": tuple(violations),
-            },
+        script_info: FlextInfraGateContractModels.ScriptInfo = (
+            FlextInfraGateContractModels.ScriptInfo.model_validate(
+                {
+                    "extension": extension,
+                    "path": script,
+                    "role": role,
+                    "violations": tuple(violations),
+                },
+            )
         )
+        return script_info
 
 
 __all__: list[str] = ["FlextInfraGateContractChecksMixin"]

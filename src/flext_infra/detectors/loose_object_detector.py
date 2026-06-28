@@ -17,8 +17,9 @@ from flext_infra import (
 class FlextInfraLooseObjectDetector:
     """Detect loose top-level objects outside namespace classes via rope."""
 
-    @staticmethod
+    @classmethod
     def detect_file(
+        cls,
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
@@ -38,7 +39,18 @@ class FlextInfraLooseObjectDetector:
         lines = res.read().splitlines()
         class_stem = m.derive_class_stem(project_name)
         file_str = str(file_path)
-        violations: t.MutableSequenceOf[m.Infra.LooseObjectViolation] = []
+        violations = list(
+            cls._detect_logger_assignments(
+                lines=lines,
+                file_str=file_str,
+                class_stem=class_stem,
+            )
+        )
+        logger_keys = {
+            (violation.line, violation.name)
+            for violation in violations
+            if violation.kind == "logger"
+        }
 
         def _add(symbol: m.Infra.SymbolInfo, kind: str, suffix: str) -> None:
             """Add."""
@@ -54,6 +66,8 @@ class FlextInfraLooseObjectDetector:
 
         class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
         for symbol in u.Infra.get_module_symbols(rope_project, res):
+            if (symbol.line, symbol.name) in logger_keys:
+                continue
             if symbol.name in c.Infra.SCAN_ALLOWED_TOP_LEVEL:
                 continue
             if symbol.kind == "class":
@@ -67,9 +81,6 @@ class FlextInfraLooseObjectDetector:
             line = lines[symbol.line - 1] if 0 < symbol.line <= len(lines) else ""
             if line.lstrip().startswith("type "):
                 _add(symbol, "typealias", "Types")
-                continue
-            if c.Infra.LOGGER_ASSIGN_RE.match(line):
-                _add(symbol, "logger", "Utilities")
                 continue
             if (
                 symbol.kind == "assignment"
@@ -91,6 +102,26 @@ class FlextInfraLooseObjectDetector:
             )
 
         return violations
+
+    @staticmethod
+    def _detect_logger_assignments(
+        *,
+        lines: t.StrSequence,
+        file_str: str,
+        class_stem: str,
+    ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
+        """Detect top-level logger assignments directly from module source."""
+        return tuple(
+            m.Infra.LooseObjectViolation(
+                file=file_str,
+                line=line_number,
+                name=match.group(1),
+                kind="logger",
+                suggestion=f"{class_stem}Utilities",
+            )
+            for line_number, line in enumerate(lines, start=1)
+            if (match := c.Infra.LOGGER_ASSIGN_RE.match(line))
+        )
 
 
 __all__: list[str] = ["FlextInfraLooseObjectDetector"]

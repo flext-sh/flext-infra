@@ -19,9 +19,11 @@ class FlextInfraRefactorCensusValidateMixin:
     """
 
     if TYPE_CHECKING:
-        root: Path
         dry_run: bool
         fail_fast: bool
+
+        @property
+        def root(self) -> Path: ...
 
         @property
         def dry_run_gate_names(self) -> t.StrSequence: ...

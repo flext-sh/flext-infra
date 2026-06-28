@@ -58,9 +58,12 @@ class FlextInfraGateContractValidator(
             if summary.errors > 0
             else int(c.Infra.ScriptExitCode.PASS)
         )
-        return FlextInfraGateContractModels.RunResult.model_validate(
-            {"exit_code": exit_code, "violation_count": summary.errors},
+        run_result: FlextInfraGateContractModels.RunResult = (
+            FlextInfraGateContractModels.RunResult.model_validate(
+                {"exit_code": exit_code, "violation_count": summary.errors},
+            )
         )
+        return run_result
 
     @override
     def execute(self) -> p.Result[bool]:

@@ -13,15 +13,21 @@ class FlextInfraPyprojectModernizerRunMixin:
     """Drive file iteration, modernization, and post-write build checks."""
 
     if TYPE_CHECKING:
-        root: Path
         audit: bool
         check_only: bool
-        effective_dry_run: bool
         skip_check: bool
         skip_comments: bool
         rewrite_constraints: bool
-        project_names: t.StrSequence | None
         constraint_policy: c.Infra.DependencyConstraintPolicy
+
+        @property
+        def root(self) -> Path: ...
+
+        @property
+        def effective_dry_run(self) -> bool: ...
+
+        @property
+        def project_names(self) -> t.StrSequence | None: ...
 
         def _read_document_state(
             self, path: Path

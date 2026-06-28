@@ -10,8 +10,14 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_transformer_class_nesting": (
             "TestsFlextInfraTransformersInfraTransformerClassNesting",
         ),
+        ".test_infra_transformer_cli_modernizer": (
+            "TestsFlextInfraTransformersCliModernizer",
+        ),
         ".test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
+        ),
+        ".test_infra_transformer_logging_modernizer": (
+            "TestsFlextInfraTransformersLoggingModernizer",
         ),
         ".test_infra_transformer_nested_class_propagation": (
             "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
@@ -21,6 +27,12 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".test_infra_transformer_pydantic_modernizer": (
             "TestsFlextInfraTransformersPydanticModernizer",
+        ),
+        ".test_infra_transformer_result_di_modernizer": (
+            "TestsFlextInfraTransformersResultDiModernizer",
+        ),
+        ".test_infra_transformer_tests_modernizer": (
+            "TestsFlextInfraTransformersTestsModernizer",
         ),
     },
 )

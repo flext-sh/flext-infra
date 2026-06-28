@@ -22,12 +22,13 @@ _UNDER_CAP = "from __future__ import annotations\n\nx = 1\n"
 
 
 def _gate_project(tmp_path: Path, *, name: str, module_src: str) -> Path:
-    return u.Tests.create_codegen_project(
+    project_path: Path = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
         pkg_name=name.replace("-", "_"),
         files={"sample.py": module_src},
     )
+    return project_path
 
 
 class TestLocCapGate:

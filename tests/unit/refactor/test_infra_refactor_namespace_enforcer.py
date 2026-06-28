@@ -549,7 +549,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             '"""Improved test base with high automation and real functionality."""\n'
             "from pathlib import Path\n"
             "\n"
-            "class AlgarOudMigTestBase:\n"
+            "class DemoMigrationTestBase:\n"
             '    """Highly automated test base with real functionality patterns."""\n'
             "    temp_dir: Path\n",
             encoding="utf-8",

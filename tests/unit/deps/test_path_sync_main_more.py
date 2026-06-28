@@ -161,8 +161,8 @@ class TestsFlextInfraDepsPathSyncMainMore:
             ),
             projects={
                 "flext-core": u.Tests.create_path_sync_pyproject(name="flext-core"),
-                "oud-migration-tool": u.Tests.create_path_sync_pyproject(
-                    name="oud-migration-tool",
+                "demo-migration-tool": u.Tests.create_path_sync_pyproject(
+                    name="demo-migration-tool",
                     dependency_path=".flext-deps/flext-core",
                 ),
             },
@@ -188,7 +188,7 @@ class TestsFlextInfraDepsPathSyncMainMore:
             ),
             eq=["flext-core"],
         )
-        assert "oud-migration-tool" not in _mapping_value(
+        assert "demo-migration-tool" not in _mapping_value(
             workspace / "pyproject.toml",
             "tool",
             "uv",

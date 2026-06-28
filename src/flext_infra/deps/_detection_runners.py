@@ -9,9 +9,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
 
 class FlextInfraDependencyDetectionRunnersMixin:
     """Mixin holding raw-run contract plus external analysis-tool runners."""
@@ -19,9 +16,10 @@ class FlextInfraDependencyDetectionRunnersMixin:
     if TYPE_CHECKING:
         # Conversion helper provided by the concrete analyzer; declared for static
         # resolution only (runtime impl lives on the concrete via MRO).
-        _to_toml_config: Callable[
-            [t.MappingKV[str, t.Infra.InfraValue]], t.Infra.ContainerDict
-        ]
+        def _to_toml_config(
+            self,
+            payload: t.MappingKV[str, t.Infra.InfraValue],
+        ) -> t.Infra.ContainerDict: ...
 
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         """Read plain; concrete analyzer supplies the real reader."""

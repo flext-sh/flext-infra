@@ -16,12 +16,13 @@ from tests import t, u
 
 
 def _project(tmp_path: Path, *, name: str, filename: str, src: str) -> Path:
-    return u.Tests.create_codegen_project(
+    project_path: Path = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name=name,
         pkg_name=name.replace("-", "_"),
         files={filename: src},
     )
+    return project_path
 
 
 class TestAbstractionBoundaryGate:

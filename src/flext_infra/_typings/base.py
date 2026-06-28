@@ -65,8 +65,8 @@ class FlextInfraTypesBase:
     type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
     type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
-        t.SequenceOf[RuleSelection[RuleKindT]],
-        t.SequenceOf[RuleSelection[FileRuleKindT]],
+        t.SequenceOf[tuple[RuleKindT, t.JsonMapping]],
+        t.SequenceOf[tuple[FileRuleKindT, t.JsonMapping]],
     ]
     "Loaded text-rule + file-rule selections from one declarative rules directory."
     type DomainResult = m.BaseModel | InfraValue
