@@ -25,6 +25,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".mro_remover": ("FlextInfraRefactorMRORemover",),
         ".mro_symbol_propagator": ("FlextInfraRefactorMROSymbolPropagator",),
         ".nested_class_propagation": ("FlextInfraNestedClassPropagationTransformer",),
+        ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
         ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
         ".symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
         ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),

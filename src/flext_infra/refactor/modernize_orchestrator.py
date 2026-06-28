@@ -9,18 +9,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
 
 from flext_cli import cli
 from flext_infra import c, m, p, r, t, u
-
-
-class _SourceTransformer(Protocol):
-    """Protocol for transformers exposing ``apply_to_source``."""
-
-    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
-        """Return transformed source and change descriptions."""
-        ...
 
 
 class FlextInfraModernizeOrchestrator:
@@ -28,7 +19,7 @@ class FlextInfraModernizeOrchestrator:
 
     def __init__(
         self,
-        transformer_factory: Callable[[], _SourceTransformer],
+        transformer_factory: Callable[[], p.Infra.ChangeTracker],
         *,
         description: str,
     ) -> None:
@@ -65,6 +56,25 @@ class FlextInfraModernizeOrchestrator:
                 results.extend(project_results.value)
 
         return r[t.SequenceOf[m.Infra.Result]].ok(tuple(results))
+
+    @classmethod
+    def execute_command(
+        cls,
+        params: m.Infra.ModernizeInput,
+        *,
+        transformer_factory: Callable[[], p.Infra.ChangeTracker],
+        description: str,
+    ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
+        """Convenience entrypoint for CLI route handlers."""
+        orchestrator = cls(transformer_factory, description=description)
+        result = orchestrator.run(params)
+        if result.failure:
+            return r[t.SequenceOf[m.Infra.Result]].fail(
+                result.error,
+                error_code=result.error_code,
+            )
+        cls._display_results(result.value, dry_run=not params.apply)
+        return r[t.SequenceOf[m.Infra.Result]].ok(result.value)
 
     def _resolve_projects(
         self,
@@ -153,7 +163,7 @@ class FlextInfraModernizeOrchestrator:
 
     @staticmethod
     def _safe_transform(
-        transformer: _SourceTransformer,
+        transformer: p.Infra.ChangeTracker,
         source: str,
     ) -> r[t.Infra.TransformResult]:
         """Run transformer, catching syntax/runtime errors as failures."""
@@ -170,38 +180,19 @@ class FlextInfraModernizeOrchestrator:
                 error_code="MODERNIZE_TRANSFORM_FAILED",
             )
 
-    @classmethod
-    def execute_command(
-        cls,
-        params: m.Infra.ModernizeInput,
+    @staticmethod
+    def _display_results(
+        results: t.SequenceOf[m.Infra.Result],
         *,
-        transformer_factory: Callable[[], _SourceTransformer],
-        description: str,
-    ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
-        """Convenience entrypoint for CLI route handlers."""
-        orchestrator = cls(transformer_factory, description=description)
-        result = orchestrator.run(params)
-        if result.failure:
-            return r[t.SequenceOf[m.Infra.Result]].fail(
-                result.error,
-                error_code=result.error_code,
-            )
-        _display_results(result.value, dry_run=not params.apply)
-        return r[t.SequenceOf[m.Infra.Result]].ok(result.value)
-
-
-def _display_results(
-    results: t.SequenceOf[m.Infra.Result],
-    *,
-    dry_run: bool,
-) -> None:
-    """Render concise summary of modernize results."""
-    modified = sum(1 for res in results if res.modified)
-    failed = sum(1 for res in results if not res.success)
-    mode = "dry-run" if dry_run else "applied"
-    cli.display_text(
-        f"Modernize {mode}: {len(results)} files, {modified} modified, {failed} failed."
-    )
+        dry_run: bool,
+    ) -> None:
+        """Render concise summary of modernize results."""
+        modified = sum(1 for res in results if res.modified)
+        failed = sum(1 for res in results if not res.success)
+        mode = "dry-run" if dry_run else "applied"
+        cli.display_text(
+            f"Modernize {mode}: {len(results)} files, {modified} modified, {failed} failed.",
+        )
 
 
 __all__: list[str] = ["FlextInfraModernizeOrchestrator"]

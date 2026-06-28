@@ -10,6 +10,7 @@ from flext_infra import (
     FlextInfraProjectMigrator,
     FlextInfraRefactorCensus,
     FlextInfraRefactorMigrateToClassMRO,
+    FlextInfraRefactorPatternModernizer,
     FlextInfraReleaseOrchestrator,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
@@ -18,9 +19,6 @@ from flext_infra import (
 )
 from flext_infra.refactor.wrapper_root_namespace import (
     FlextInfraWrapperRootNamespaceRefactor,
-)
-from flext_infra.transformers.pattern_modernizer import (
-    FlextInfraRefactorPatternModernizer,
 )
 
 ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {

@@ -16,6 +16,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_transformer_nested_class_propagation": (
             "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
         ),
+        ".test_infra_transformer_pattern_modernizer": (
+            "TestsFlextInfraTransformersPatternModernizer",
+        ),
     },
 )
 

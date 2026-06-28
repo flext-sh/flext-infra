@@ -22,425 +22,729 @@ from flext_infra.__version__ import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_cli import d, e, h, r, x
-    from flext_infra._constants.base import FlextInfraConstantsBase
-    from flext_infra._constants.basemk import FlextInfraConstantsBasemk
-    from flext_infra._constants.census import FlextInfraConstantsCensus
-    from flext_infra._constants.check import FlextInfraConstantsCheck
-    from flext_infra._constants.codegen import FlextInfraConstantsCodegen
-    from flext_infra._constants.deps import FlextInfraConstantsDeps
-    from flext_infra._constants.docs import FlextInfraConstantsDocs
-    from flext_infra._constants.github import FlextInfraConstantsGithub
-    from flext_infra._constants.make import FlextInfraConstantsMake
-    from flext_infra._constants.refactor import FlextInfraConstantsRefactor
-    from flext_infra._constants.release import FlextInfraConstantsRelease
-    from flext_infra._constants.rope import FlextInfraConstantsRope
-    from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
-    from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-    from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
-    from flext_infra._models.base import FlextInfraModelsBase
-    from flext_infra._models.basemk import FlextInfraModelsBasemk
-    from flext_infra._models.census import FlextInfraModelsCensus
-    from flext_infra._models.check import FlextInfraModelsCheck
-    from flext_infra._models.codegen import FlextInfraModelsCodegen
-    from flext_infra._models.deps import FlextInfraModelsDeps
-    from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+    from flext_cli import d as d, e as e, h as h, r as r, x as x
+    from flext_infra._constants.base import (
+        FlextInfraConstantsBase as FlextInfraConstantsBase,
+    )
+    from flext_infra._constants.basemk import (
+        FlextInfraConstantsBasemk as FlextInfraConstantsBasemk,
+    )
+    from flext_infra._constants.census import (
+        FlextInfraConstantsCensus as FlextInfraConstantsCensus,
+    )
+    from flext_infra._constants.check import (
+        FlextInfraConstantsCheck as FlextInfraConstantsCheck,
+    )
+    from flext_infra._constants.codegen import (
+        FlextInfraConstantsCodegen as FlextInfraConstantsCodegen,
+    )
+    from flext_infra._constants.deps import (
+        FlextInfraConstantsDeps as FlextInfraConstantsDeps,
+    )
+    from flext_infra._constants.docs import (
+        FlextInfraConstantsDocs as FlextInfraConstantsDocs,
+    )
+    from flext_infra._constants.github import (
+        FlextInfraConstantsGithub as FlextInfraConstantsGithub,
+    )
+    from flext_infra._constants.make import (
+        FlextInfraConstantsMake as FlextInfraConstantsMake,
+    )
+    from flext_infra._constants.refactor import (
+        FlextInfraConstantsRefactor as FlextInfraConstantsRefactor,
+    )
+    from flext_infra._constants.release import (
+        FlextInfraConstantsRelease as FlextInfraConstantsRelease,
+    )
+    from flext_infra._constants.rope import (
+        FlextInfraConstantsRope as FlextInfraConstantsRope,
+    )
+    from flext_infra._constants.source_code import (
+        FlextInfraConstantsSourceCode as FlextInfraConstantsSourceCode,
+    )
+    from flext_infra._constants.validate import (
+        FlextInfraConstantsSharedInfra as FlextInfraConstantsSharedInfra,
+    )
+    from flext_infra._constants.workspace import (
+        FlextInfraConstantsWorkspace as FlextInfraConstantsWorkspace,
+    )
+    from flext_infra._models.base import FlextInfraModelsBase as FlextInfraModelsBase
+    from flext_infra._models.basemk import (
+        FlextInfraModelsBasemk as FlextInfraModelsBasemk,
+    )
+    from flext_infra._models.census import (
+        FlextInfraModelsCensus as FlextInfraModelsCensus,
+    )
+    from flext_infra._models.check import FlextInfraModelsCheck as FlextInfraModelsCheck
+    from flext_infra._models.codegen import (
+        FlextInfraModelsCodegen as FlextInfraModelsCodegen,
+    )
+    from flext_infra._models.deps import FlextInfraModelsDeps as FlextInfraModelsDeps
+    from flext_infra._models.deps_tool_config import (
+        FlextInfraModelsDepsToolSettings as FlextInfraModelsDepsToolSettings,
+    )
     from flext_infra._models.deps_tool_config_linters import (
-        FlextInfraModelsDepsToolConfigLinters,
+        FlextInfraModelsDepsToolConfigLinters as FlextInfraModelsDepsToolConfigLinters,
     )
     from flext_infra._models.deps_tool_config_type_checkers import (
-        FlextInfraModelsDepsToolConfigTypeCheckers,
+        FlextInfraModelsDepsToolConfigTypeCheckers as FlextInfraModelsDepsToolConfigTypeCheckers,
     )
-    from flext_infra._models.docs import FlextInfraModelsDocs
-    from flext_infra._models.engine import FlextInfraModelsEngine
-    from flext_infra._models.engine_ops import FlextInfraModelsEngineOperation
-    from flext_infra._models.gates import FlextInfraModelsGates
-    from flext_infra._models.github import FlextInfraModelsGithub
-    from flext_infra._models.mixins import FlextInfraModelsMixins
-    from flext_infra._models.refactor import FlextInfraModelsRefactor
-    from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
-    from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
+    from flext_infra._models.docs import FlextInfraModelsDocs as FlextInfraModelsDocs
+    from flext_infra._models.engine import (
+        FlextInfraModelsEngine as FlextInfraModelsEngine,
+    )
+    from flext_infra._models.engine_ops import (
+        FlextInfraModelsEngineOperation as FlextInfraModelsEngineOperation,
+    )
+    from flext_infra._models.gates import FlextInfraModelsGates as FlextInfraModelsGates
+    from flext_infra._models.github import (
+        FlextInfraModelsGithub as FlextInfraModelsGithub,
+    )
+    from flext_infra._models.mixins import (
+        FlextInfraModelsMixins as FlextInfraModelsMixins,
+    )
+    from flext_infra._models.refactor import (
+        FlextInfraModelsRefactor as FlextInfraModelsRefactor,
+    )
+    from flext_infra._models.refactor_ast_grep import (
+        FlextInfraModelsRefactorGrep as FlextInfraModelsRefactorGrep,
+    )
+    from flext_infra._models.refactor_census import (
+        FlextInfraModelsRefactorCensus as FlextInfraModelsRefactorCensus,
+    )
     from flext_infra._models.refactor_namespace_enforcer import (
-        FlextInfraModelsNamespaceEnforcer,
+        FlextInfraModelsNamespaceEnforcer as FlextInfraModelsNamespaceEnforcer,
     )
     from flext_infra._models.refactor_violations import (
-        FlextInfraModelsRefactorViolations,
+        FlextInfraModelsRefactorViolations as FlextInfraModelsRefactorViolations,
     )
-    from flext_infra._models.release import FlextInfraModelsRelease
-    from flext_infra._models.rope import FlextInfraModelsRope
-    from flext_infra._models.scan import FlextInfraModelsScan
-    from flext_infra._models.validate import FlextInfraModelsCore
-    from flext_infra._models.workspace import FlextInfraModelsWorkspace
-    from flext_infra._protocols.base import FlextInfraProtocolsBase
-    from flext_infra._protocols.check import FlextInfraProtocolsCheck
-    from flext_infra._protocols.rope import FlextInfraProtocolsRope
-    from flext_infra._typings.adapters import FlextInfraTypesAdapters
-    from flext_infra._typings.base import FlextInfraTypesBase
-    from flext_infra._typings.rope import FlextInfraTypesRope
+    from flext_infra._models.release import (
+        FlextInfraModelsRelease as FlextInfraModelsRelease,
+    )
+    from flext_infra._models.rope import FlextInfraModelsRope as FlextInfraModelsRope
+    from flext_infra._models.scan import FlextInfraModelsScan as FlextInfraModelsScan
+    from flext_infra._models.validate import (
+        FlextInfraModelsCore as FlextInfraModelsCore,
+    )
+    from flext_infra._models.workspace import (
+        FlextInfraModelsWorkspace as FlextInfraModelsWorkspace,
+    )
+    from flext_infra._protocols.base import (
+        FlextInfraProtocolsBase as FlextInfraProtocolsBase,
+    )
+    from flext_infra._protocols.check import (
+        FlextInfraProtocolsCheck as FlextInfraProtocolsCheck,
+    )
+    from flext_infra._protocols.rope import (
+        FlextInfraProtocolsRope as FlextInfraProtocolsRope,
+    )
+    from flext_infra._typings.adapters import (
+        FlextInfraTypesAdapters as FlextInfraTypesAdapters,
+    )
+    from flext_infra._typings.base import FlextInfraTypesBase as FlextInfraTypesBase
+    from flext_infra._typings.rope import FlextInfraTypesRope as FlextInfraTypesRope
     from flext_infra._utilities._docs_audit_detectors import (
-        FlextInfraUtilitiesDocsAuditDetectorsMixin,
+        FlextInfraUtilitiesDocsAuditDetectorsMixin as FlextInfraUtilitiesDocsAuditDetectorsMixin,
     )
     from flext_infra._utilities._github_pr_single import (
-        FlextInfraUtilitiesGithubPrSingleMixin,
+        FlextInfraUtilitiesGithubPrSingleMixin as FlextInfraUtilitiesGithubPrSingleMixin,
     )
-    from flext_infra._utilities._github_sync import FlextInfraUtilitiesGithubSyncMixin
+    from flext_infra._utilities._github_sync import (
+        FlextInfraUtilitiesGithubSyncMixin as FlextInfraUtilitiesGithubSyncMixin,
+    )
     from flext_infra._utilities._rope_bracket_balance import (
-        FlextInfraUtilitiesRopeBracketBalanceMixin,
+        FlextInfraUtilitiesRopeBracketBalanceMixin as FlextInfraUtilitiesRopeBracketBalanceMixin,
     )
     from flext_infra._utilities._rope_core_pymodule import (
-        FlextInfraUtilitiesRopeCorePyModuleMixin,
+        FlextInfraUtilitiesRopeCorePyModuleMixin as FlextInfraUtilitiesRopeCorePyModuleMixin,
     )
     from flext_infra._utilities._rope_method_order import (
-        FlextInfraUtilitiesRopeMethodOrderMixin,
+        FlextInfraUtilitiesRopeMethodOrderMixin as FlextInfraUtilitiesRopeMethodOrderMixin,
     )
-    from flext_infra._utilities.base import FlextInfraUtilitiesBase
-    from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
-    from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
-    from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+    from flext_infra._utilities.base import (
+        FlextInfraUtilitiesBase as FlextInfraUtilitiesBase,
+    )
+    from flext_infra._utilities.census import (
+        FlextInfraUtilitiesRefactorCensus as FlextInfraUtilitiesRefactorCensus,
+    )
+    from flext_infra._utilities.codegen import (
+        FlextInfraUtilitiesCodegen as FlextInfraUtilitiesCodegen,
+    )
+    from flext_infra._utilities.dependencies import (
+        FlextInfraUtilitiesDependencies as FlextInfraUtilitiesDependencies,
+    )
     from flext_infra._utilities.deps_path_sync import (
-        FlextInfraUtilitiesDependencyPathSync,
+        FlextInfraUtilitiesDependencyPathSync as FlextInfraUtilitiesDependencyPathSync,
     )
-    from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
-    from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-    from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-    from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-    from flext_infra._utilities.docs_audit import FlextInfraUtilitiesDocsAudit
-    from flext_infra._utilities.docs_build import FlextInfraUtilitiesDocsBuild
-    from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-    from flext_infra._utilities.docs_fix import FlextInfraUtilitiesDocsFix
-    from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
-    from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
-    from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-    from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
-    from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
-    from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
-    from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
-    from flext_infra._utilities.github import FlextInfraUtilitiesGithub
-    from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
-    from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-    from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
-    from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+    from flext_infra._utilities.deps_repos import (
+        FlextInfraInternalSyncRepoMixin as FlextInfraInternalSyncRepoMixin,
+    )
+    from flext_infra._utilities.discovery import (
+        FlextInfraUtilitiesDiscovery as FlextInfraUtilitiesDiscovery,
+    )
+    from flext_infra._utilities.docs import (
+        FlextInfraUtilitiesDocs as FlextInfraUtilitiesDocs,
+    )
+    from flext_infra._utilities.docs_api import (
+        FlextInfraUtilitiesDocsApi as FlextInfraUtilitiesDocsApi,
+    )
+    from flext_infra._utilities.docs_audit import (
+        FlextInfraUtilitiesDocsAudit as FlextInfraUtilitiesDocsAudit,
+    )
+    from flext_infra._utilities.docs_build import (
+        FlextInfraUtilitiesDocsBuild as FlextInfraUtilitiesDocsBuild,
+    )
+    from flext_infra._utilities.docs_contract import (
+        FlextInfraUtilitiesDocsContract as FlextInfraUtilitiesDocsContract,
+    )
+    from flext_infra._utilities.docs_fix import (
+        FlextInfraUtilitiesDocsFix as FlextInfraUtilitiesDocsFix,
+    )
+    from flext_infra._utilities.docs_generate import (
+        FlextInfraUtilitiesDocsGenerate as FlextInfraUtilitiesDocsGenerate,
+    )
+    from flext_infra._utilities.docs_render import (
+        FlextInfraUtilitiesDocsRender as FlextInfraUtilitiesDocsRender,
+    )
+    from flext_infra._utilities.docs_scope import (
+        FlextInfraUtilitiesDocsScope as FlextInfraUtilitiesDocsScope,
+    )
+    from flext_infra._utilities.docs_validate import (
+        FlextInfraUtilitiesDocsValidate as FlextInfraUtilitiesDocsValidate,
+    )
+    from flext_infra._utilities.engine import (
+        FlextInfraUtilitiesRefactorEngine as FlextInfraUtilitiesRefactorEngine,
+    )
+    from flext_infra._utilities.file_iteration import (
+        FlextInfraUtilitiesFileIteration as FlextInfraUtilitiesFileIteration,
+    )
+    from flext_infra._utilities.git_scope import (
+        FlextInfraUtilitiesGitScope as FlextInfraUtilitiesGitScope,
+    )
+    from flext_infra._utilities.github import (
+        FlextInfraUtilitiesGithub as FlextInfraUtilitiesGithub,
+    )
+    from flext_infra._utilities.github_pr import (
+        FlextInfraUtilitiesGithubPr as FlextInfraUtilitiesGithubPr,
+    )
+    from flext_infra._utilities.log_parser import (
+        FlextInfraUtilitiesLogParser as FlextInfraUtilitiesLogParser,
+    )
+    from flext_infra._utilities.mro_scan import (
+        FlextInfraUtilitiesRefactorMroScan as FlextInfraUtilitiesRefactorMroScan,
+    )
+    from flext_infra._utilities.namespace import (
+        FlextInfraUtilitiesCodegenNamespace as FlextInfraUtilitiesCodegenNamespace,
+    )
     from flext_infra._utilities.namespace_analysis import (
-        FlextInfraUtilitiesRefactorNamespaceMro,
+        FlextInfraUtilitiesRefactorNamespaceMro as FlextInfraUtilitiesRefactorNamespaceMro,
     )
     from flext_infra._utilities.namespace_common import (
-        FlextInfraUtilitiesRefactorNamespaceCommon,
+        FlextInfraUtilitiesRefactorNamespaceCommon as FlextInfraUtilitiesRefactorNamespaceCommon,
     )
     from flext_infra._utilities.namespace_config import (
-        FlextInfraUtilitiesNamespaceConfig,
+        FlextInfraUtilitiesNamespaceConfig as FlextInfraUtilitiesNamespaceConfig,
     )
     from flext_infra._utilities.namespace_facades import (
-        FlextInfraUtilitiesRefactorNamespaceFacades,
+        FlextInfraUtilitiesRefactorNamespaceFacades as FlextInfraUtilitiesRefactorNamespaceFacades,
     )
     from flext_infra._utilities.namespace_moves import (
-        FlextInfraUtilitiesRefactorNamespaceMoves,
+        FlextInfraUtilitiesRefactorNamespaceMoves as FlextInfraUtilitiesRefactorNamespaceMoves,
     )
-    from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
+    from flext_infra._utilities.policy import (
+        FlextInfraUtilitiesRefactorPolicy as FlextInfraUtilitiesRefactorPolicy,
+    )
     from flext_infra._utilities.project_discovery import (
-        FlextInfraUtilitiesProjectDiscovery,
+        FlextInfraUtilitiesProjectDiscovery as FlextInfraUtilitiesProjectDiscovery,
     )
-    from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+    from flext_infra._utilities.protected_edit import (
+        FlextInfraUtilitiesProtectedEdit as FlextInfraUtilitiesProtectedEdit,
+    )
     from flext_infra._utilities.protected_edit_apply import (
-        FlextInfraUtilitiesProtectedEditApply,
+        FlextInfraUtilitiesProtectedEditApply as FlextInfraUtilitiesProtectedEditApply,
     )
     from flext_infra._utilities.protected_edit_linting import (
-        FlextInfraUtilitiesProtectedEditLinting,
+        FlextInfraUtilitiesProtectedEditLinting as FlextInfraUtilitiesProtectedEditLinting,
     )
     from flext_infra._utilities.protected_edit_preview import (
-        FlextInfraUtilitiesProtectedEditPreview,
+        FlextInfraUtilitiesProtectedEditPreview as FlextInfraUtilitiesProtectedEditPreview,
     )
     from flext_infra._utilities.protected_edit_writes import (
-        FlextInfraUtilitiesProtectedEditWrites,
+        FlextInfraUtilitiesProtectedEditWrites as FlextInfraUtilitiesProtectedEditWrites,
     )
-    from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-    from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
-    from flext_infra._utilities.release import FlextInfraUtilitiesRelease
-    from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+    from flext_infra._utilities.pyproject import (
+        FlextInfraUtilitiesPyproject as FlextInfraUtilitiesPyproject,
+    )
+    from flext_infra._utilities.refactor import (
+        FlextInfraUtilitiesRefactor as FlextInfraUtilitiesRefactor,
+    )
+    from flext_infra._utilities.release import (
+        FlextInfraUtilitiesRelease as FlextInfraUtilitiesRelease,
+    )
+    from flext_infra._utilities.rope_analysis import (
+        FlextInfraUtilitiesRopeAnalysis as FlextInfraUtilitiesRopeAnalysis,
+    )
     from flext_infra._utilities.rope_analysis_introspection import (
-        FlextInfraUtilitiesRopeAnalysisIntrospection,
+        FlextInfraUtilitiesRopeAnalysisIntrospection as FlextInfraUtilitiesRopeAnalysisIntrospection,
     )
     from flext_infra._utilities.rope_analysis_workspace import (
-        FlextInfraUtilitiesRopeAnalysisWorkspace,
+        FlextInfraUtilitiesRopeAnalysisWorkspace as FlextInfraUtilitiesRopeAnalysisWorkspace,
     )
-    from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-    from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
-    from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-    from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
+    from flext_infra._utilities.rope_core import (
+        FlextInfraUtilitiesRopeCore as FlextInfraUtilitiesRopeCore,
+    )
+    from flext_infra._utilities.rope_helpers import (
+        FlextInfraUtilitiesRopeHelpers as FlextInfraUtilitiesRopeHelpers,
+    )
+    from flext_infra._utilities.rope_imports import (
+        FlextInfraUtilitiesRopeImports as FlextInfraUtilitiesRopeImports,
+    )
+    from flext_infra._utilities.rope_inventory import (
+        FlextInfraUtilitiesRopeInventory as FlextInfraUtilitiesRopeInventory,
+    )
     from flext_infra._utilities.rope_module_patch import (
-        FlextInfraUtilitiesRopeModulePatch,
+        FlextInfraUtilitiesRopeModulePatch as FlextInfraUtilitiesRopeModulePatch,
     )
     from flext_infra._utilities.rope_mro_transform import (
-        FlextInfraUtilitiesRopeMroTransform,
+        FlextInfraUtilitiesRopeMroTransform as FlextInfraUtilitiesRopeMroTransform,
     )
     from flext_infra._utilities.rope_pep695_patch import (
-        FlextInfraUtilitiesRopePep695Patch,
+        FlextInfraUtilitiesRopePep695Patch as FlextInfraUtilitiesRopePep695Patch,
     )
-    from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-    from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
-    from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-    from flext_infra.api import FlextInfra, infra
+    from flext_infra._utilities.rope_source import (
+        FlextInfraUtilitiesRopeSource as FlextInfraUtilitiesRopeSource,
+    )
+    from flext_infra._utilities.safety import (
+        FlextInfraUtilitiesSafety as FlextInfraUtilitiesSafety,
+    )
+    from flext_infra._utilities.snapshot import (
+        FlextInfraUtilitiesSnapshot as FlextInfraUtilitiesSnapshot,
+    )
+    from flext_infra._utilities.versioning import (
+        FlextInfraUtilitiesVersioning as FlextInfraUtilitiesVersioning,
+    )
+    from flext_infra.api import FlextInfra as FlextInfra, infra as infra
     from flext_infra.base import (
-        FlextInfraProjectSelectionServiceBase,
-        FlextInfraServiceBase,
-        s,
+        FlextInfraProjectSelectionServiceBase as FlextInfraProjectSelectionServiceBase,
+        FlextInfraServiceBase as FlextInfraServiceBase,
+        s as s,
     )
-    from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
-    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-    from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+    from flext_infra.basemk.engine import (
+        FlextInfraBaseMkTemplateEngine as FlextInfraBaseMkTemplateEngine,
+    )
+    from flext_infra.basemk.generator import (
+        FlextInfraBaseMkGenerator as FlextInfraBaseMkGenerator,
+    )
+    from flext_infra.check.workspace_check import (
+        FlextInfraWorkspaceChecker as FlextInfraWorkspaceChecker,
+    )
     from flext_infra.check.workspace_check_gates import (
-        FlextInfraGateRegistry,
-        FlextInfraWorkspaceCheckGatesMixin,
+        FlextInfraGateRegistry as FlextInfraGateRegistry,
+        FlextInfraWorkspaceCheckGatesMixin as FlextInfraWorkspaceCheckGatesMixin,
     )
-    from flext_infra.cli import FlextInfraCli, main
-    from flext_infra.codegen.census import FlextInfraCodegenCensus
-    from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
-    from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-    from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-    from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-    from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-    from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-    from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
-    from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-    from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
-    from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-    from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-    from flext_infra.constants import FlextInfraConstants, c
-    from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+    from flext_infra.cli import FlextInfraCli as FlextInfraCli, main as main
+    from flext_infra.codegen.census import (
+        FlextInfraCodegenCensus as FlextInfraCodegenCensus,
+    )
+    from flext_infra.codegen.codegen_generation import (
+        FlextInfraCodegenGeneration as FlextInfraCodegenGeneration,
+    )
+    from flext_infra.codegen.consolidator import (
+        FlextInfraCodegenConsolidator as FlextInfraCodegenConsolidator,
+    )
+    from flext_infra.codegen.constants_quality_gate import (
+        FlextInfraCodegenQualityGate as FlextInfraCodegenQualityGate,
+    )
+    from flext_infra.codegen.fixer import (
+        FlextInfraCodegenFixer as FlextInfraCodegenFixer,
+    )
+    from flext_infra.codegen.lazy_init import (
+        FlextInfraCodegenLazyInit as FlextInfraCodegenLazyInit,
+    )
+    from flext_infra.codegen.lazy_init_planner import (
+        FlextInfraCodegenLazyInitPlanner as FlextInfraCodegenLazyInitPlanner,
+    )
+    from flext_infra.codegen.pipeline import (
+        FlextInfraCodegenPipeline as FlextInfraCodegenPipeline,
+    )
+    from flext_infra.codegen.py_typed import (
+        FlextInfraCodegenPyTyped as FlextInfraCodegenPyTyped,
+    )
+    from flext_infra.codegen.pyproject_keys import (
+        FlextInfraCodegenPyprojectKeys as FlextInfraCodegenPyprojectKeys,
+    )
+    from flext_infra.codegen.scaffolder import (
+        FlextInfraCodegenScaffolder as FlextInfraCodegenScaffolder,
+    )
+    from flext_infra.codegen.version_file import (
+        FlextInfraCodegenVersionFile as FlextInfraCodegenVersionFile,
+    )
+    from flext_infra.constants import FlextInfraConstants as FlextInfraConstants, c as c
+    from flext_infra.deps.detection import (
+        FlextInfraDependencyDetectionService as FlextInfraDependencyDetectionService,
+    )
     from flext_infra.deps.detection_analysis import (
-        FlextInfraDependencyDetectionAnalysis,
+        FlextInfraDependencyDetectionAnalysis as FlextInfraDependencyDetectionAnalysis,
     )
-    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-    from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-    from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+    from flext_infra.deps.detector import (
+        FlextInfraRuntimeDevDependencyDetector as FlextInfraRuntimeDevDependencyDetector,
+    )
+    from flext_infra.deps.detector_runtime import (
+        FlextInfraDependencyDetectorRuntime as FlextInfraDependencyDetectorRuntime,
+    )
+    from flext_infra.deps.extra_paths import (
+        FlextInfraExtraPathsManager as FlextInfraExtraPathsManager,
+    )
+    from flext_infra.deps.fix_pyrefly_config import (
+        FlextInfraConfigFixer as FlextInfraConfigFixer,
+    )
+    from flext_infra.deps.internal_sync import (
+        FlextInfraInternalDependencySyncService as FlextInfraInternalDependencySyncService,
+    )
+    from flext_infra.deps.modernizer import (
+        FlextInfraPyprojectModernizer as FlextInfraPyprojectModernizer,
+    )
+    from flext_infra.deps.phase_engine import (
+        FlextInfraPhaseEngine as FlextInfraPhaseEngine,
+    )
     from flext_infra.deps.phases.consolidate_groups import (
-        FlextInfraConsolidateGroupsPhase,
+        FlextInfraConsolidateGroupsPhase as FlextInfraConsolidateGroupsPhase,
     )
     from flext_infra.deps.phases.ensure_coverage import (
-        FlextInfraEnsureCoverageConfigPhase,
+        FlextInfraEnsureCoverageConfigPhase as FlextInfraEnsureCoverageConfigPhase,
     )
     from flext_infra.deps.phases.ensure_formatting import (
-        FlextInfraEnsureFormattingToolingPhase,
+        FlextInfraEnsureFormattingToolingPhase as FlextInfraEnsureFormattingToolingPhase,
     )
-    from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+    from flext_infra.deps.phases.ensure_mypy import (
+        FlextInfraEnsureMypyConfigPhase as FlextInfraEnsureMypyConfigPhase,
+    )
     from flext_infra.deps.phases.ensure_namespace import (
-        FlextInfraEnsureNamespaceToolingPhase,
+        FlextInfraEnsureNamespaceToolingPhase as FlextInfraEnsureNamespaceToolingPhase,
     )
     from flext_infra.deps.phases.ensure_pydantic_mypy import (
-        FlextInfraEnsurePydanticMypyConfigPhase,
+        FlextInfraEnsurePydanticMypyConfigPhase as FlextInfraEnsurePydanticMypyConfigPhase,
     )
     from flext_infra.deps.phases.ensure_pyrefly import (
-        FlextInfraEnsurePyreflyConfigPhase,
+        FlextInfraEnsurePyreflyConfigPhase as FlextInfraEnsurePyreflyConfigPhase,
     )
     from flext_infra.deps.phases.ensure_pyright import (
-        FlextInfraEnsurePyrightConfigPhase,
+        FlextInfraEnsurePyrightConfigPhase as FlextInfraEnsurePyrightConfigPhase,
     )
-    from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-    from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-    from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.deps.phases.ensure_pytest import (
+        FlextInfraEnsurePytestConfigPhase as FlextInfraEnsurePytestConfigPhase,
+    )
+    from flext_infra.deps.phases.ensure_ruff import (
+        FlextInfraEnsureRuffConfigPhase as FlextInfraEnsureRuffConfigPhase,
+    )
+    from flext_infra.deps.phases.inject_comments import (
+        FlextInfraInjectCommentsPhase as FlextInfraInjectCommentsPhase,
+    )
     from flext_infra.detectors.class_placement_detector import (
-        FlextInfraClassPlacementDetector,
+        FlextInfraClassPlacementDetector as FlextInfraClassPlacementDetector,
     )
     from flext_infra.detectors.compatibility_alias_detector import (
-        FlextInfraCompatibilityAliasDetector,
+        FlextInfraCompatibilityAliasDetector as FlextInfraCompatibilityAliasDetector,
     )
     from flext_infra.detectors.cyclic_import_detector import (
-        FlextInfraCyclicImportDetector,
+        FlextInfraCyclicImportDetector as FlextInfraCyclicImportDetector,
     )
-    from flext_infra.detectors.facade_scanner import FlextInfraScanner
+    from flext_infra.detectors.facade_scanner import (
+        FlextInfraScanner as FlextInfraScanner,
+    )
     from flext_infra.detectors.future_annotations_detector import (
-        FlextInfraFutureAnnotationsDetector,
+        FlextInfraFutureAnnotationsDetector as FlextInfraFutureAnnotationsDetector,
     )
     from flext_infra.detectors.import_alias_detector import (
-        FlextInfraImportAliasDetector,
+        FlextInfraImportAliasDetector as FlextInfraImportAliasDetector,
     )
     from flext_infra.detectors.internal_import_detector import (
-        FlextInfraInternalImportDetector,
+        FlextInfraInternalImportDetector as FlextInfraInternalImportDetector,
     )
     from flext_infra.detectors.loose_object_detector import (
-        FlextInfraLooseObjectDetector,
+        FlextInfraLooseObjectDetector as FlextInfraLooseObjectDetector,
     )
     from flext_infra.detectors.manual_protocol_detector import (
-        FlextInfraManualProtocolDetector,
+        FlextInfraManualProtocolDetector as FlextInfraManualProtocolDetector,
     )
     from flext_infra.detectors.manual_typing_alias_detector import (
-        FlextInfraManualTypingAliasDetector,
+        FlextInfraManualTypingAliasDetector as FlextInfraManualTypingAliasDetector,
     )
     from flext_infra.detectors.mro_completeness_detector import (
-        FlextInfraMROCompletenessDetector,
+        FlextInfraMROCompletenessDetector as FlextInfraMROCompletenessDetector,
     )
     from flext_infra.detectors.namespace_source_detector import (
-        FlextInfraNamespaceSourceDetector,
+        FlextInfraNamespaceSourceDetector as FlextInfraNamespaceSourceDetector,
     )
     from flext_infra.detectors.runtime_alias_detector import (
-        FlextInfraRuntimeAliasDetector,
+        FlextInfraRuntimeAliasDetector as FlextInfraRuntimeAliasDetector,
     )
     from flext_infra.detectors.silent_failure_detector import (
-        FlextInfraSilentFailureDetector,
+        FlextInfraSilentFailureDetector as FlextInfraSilentFailureDetector,
     )
-    from flext_infra.docs.auditor import FlextInfraDocAuditor
-    from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
-    from flext_infra.docs.base import FlextInfraDocServiceBase
-    from flext_infra.docs.builder import FlextInfraDocBuilder
-    from flext_infra.docs.fixer import FlextInfraDocFixer
-    from flext_infra.docs.generator import FlextInfraDocGenerator
-    from flext_infra.docs.validator import FlextInfraDocValidator
-    from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
-    from flext_infra.gates.bandit import FlextInfraBanditGate
-    from flext_infra.gates.base_gate import FlextInfraGate
-    from flext_infra.gates.go import FlextInfraGoGate
-    from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-    from flext_infra.gates.markdown import FlextInfraMarkdownGate
-    from flext_infra.gates.mypy import FlextInfraMypyGate
-    from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-    from flext_infra.gates.pyright import FlextInfraPyrightGate
-    from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-    from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-    from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
-    from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-    from flext_infra.models import FlextInfraModels, m
-    from flext_infra.protocols import FlextInfraProtocols, p
+    from flext_infra.docs.auditor import FlextInfraDocAuditor as FlextInfraDocAuditor
+    from flext_infra.docs.auditor_mixin import (
+        FlextInfraDocAuditorMixin as FlextInfraDocAuditorMixin,
+    )
+    from flext_infra.docs.base import (
+        FlextInfraDocServiceBase as FlextInfraDocServiceBase,
+    )
+    from flext_infra.docs.builder import FlextInfraDocBuilder as FlextInfraDocBuilder
+    from flext_infra.docs.fixer import FlextInfraDocFixer as FlextInfraDocFixer
+    from flext_infra.docs.generator import (
+        FlextInfraDocGenerator as FlextInfraDocGenerator,
+    )
+    from flext_infra.docs.validator import (
+        FlextInfraDocValidator as FlextInfraDocValidator,
+    )
+    from flext_infra.gates.abstraction_boundary import (
+        FlextInfraAbstractionBoundaryGate as FlextInfraAbstractionBoundaryGate,
+    )
+    from flext_infra.gates.bandit import FlextInfraBanditGate as FlextInfraBanditGate
+    from flext_infra.gates.base_gate import FlextInfraGate as FlextInfraGate
+    from flext_infra.gates.go import FlextInfraGoGate as FlextInfraGoGate
+    from flext_infra.gates.loc_cap import FlextInfraLocCapGate as FlextInfraLocCapGate
+    from flext_infra.gates.markdown import (
+        FlextInfraMarkdownGate as FlextInfraMarkdownGate,
+    )
+    from flext_infra.gates.mypy import FlextInfraMypyGate as FlextInfraMypyGate
+    from flext_infra.gates.pyrefly import FlextInfraPyreflyGate as FlextInfraPyreflyGate
+    from flext_infra.gates.pyright import FlextInfraPyrightGate as FlextInfraPyrightGate
+    from flext_infra.gates.ruff_format import (
+        FlextInfraRuffFormatGate as FlextInfraRuffFormatGate,
+    )
+    from flext_infra.gates.ruff_lint import (
+        FlextInfraRuffLintGate as FlextInfraRuffLintGate,
+    )
+    from flext_infra.gates.silent_failure import (
+        FlextInfraSilentFailureGate as FlextInfraSilentFailureGate,
+    )
+    from flext_infra.maintenance.python_version import (
+        FlextInfraPythonVersionEnforcer as FlextInfraPythonVersionEnforcer,
+    )
+    from flext_infra.models import FlextInfraModels as FlextInfraModels, m as m
+    from flext_infra.protocols import FlextInfraProtocols as FlextInfraProtocols, p as p
     from flext_infra.refactor.accessor_migration import (
-        FlextInfraAccessorMigrationOrchestrator,
+        FlextInfraAccessorMigrationOrchestrator as FlextInfraAccessorMigrationOrchestrator,
     )
-    from flext_infra.refactor.census import FlextInfraRefactorCensus
+    from flext_infra.refactor.census import (
+        FlextInfraRefactorCensus as FlextInfraRefactorCensus,
+    )
     from flext_infra.refactor.class_nesting_analyzer import (
-        FlextInfraRefactorClassNestingAnalyzer,
+        FlextInfraRefactorClassNestingAnalyzer as FlextInfraRefactorClassNestingAnalyzer,
     )
-    from flext_infra.refactor.engine import FlextInfraRefactorEngine
+    from flext_infra.refactor.engine import (
+        FlextInfraRefactorEngine as FlextInfraRefactorEngine,
+    )
     from flext_infra.refactor.engine_file import (
-        FlextInfraClassNestingPostCheckGate,
-        FlextInfraRefactorFileExecutor,
+        FlextInfraClassNestingPostCheckGate as FlextInfraClassNestingPostCheckGate,
+        FlextInfraRefactorFileExecutor as FlextInfraRefactorFileExecutor,
     )
-    from flext_infra.refactor.engine_legacy import FlextInfraRefactorLegacyTextOps
-    from flext_infra.refactor.engine_text import FlextInfraRefactorTextExecutor
-    from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
+    from flext_infra.refactor.engine_legacy import (
+        FlextInfraRefactorLegacyTextOps as FlextInfraRefactorLegacyTextOps,
+    )
+    from flext_infra.refactor.engine_text import (
+        FlextInfraRefactorTextExecutor as FlextInfraRefactorTextExecutor,
+    )
+    from flext_infra.refactor.loader import (
+        FlextInfraRefactorRuleLoader as FlextInfraRefactorRuleLoader,
+    )
     from flext_infra.refactor.migrate_to_class_mro import (
-        FlextInfraRefactorMigrateToClassMRO,
+        FlextInfraRefactorMigrateToClassMRO as FlextInfraRefactorMigrateToClassMRO,
+    )
+    from flext_infra.refactor.modernize_orchestrator import (
+        FlextInfraModernizeOrchestrator as FlextInfraModernizeOrchestrator,
     )
     from flext_infra.refactor.mro_import_rewriter import (
-        FlextInfraRefactorMROImportRewriter,
+        FlextInfraRefactorMROImportRewriter as FlextInfraRefactorMROImportRewriter,
     )
     from flext_infra.refactor.mro_migration_validator import (
-        FlextInfraRefactorMROMigrationValidator,
+        FlextInfraRefactorMROMigrationValidator as FlextInfraRefactorMROMigrationValidator,
     )
-    from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
-    from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+    from flext_infra.refactor.mro_resolver import (
+        FlextInfraRefactorMROResolver as FlextInfraRefactorMROResolver,
+    )
+    from flext_infra.refactor.namespace_enforcer import (
+        FlextInfraNamespaceEnforcer as FlextInfraNamespaceEnforcer,
+    )
     from flext_infra.refactor.namespace_enforcer_phases import (
-        FlextInfraNamespaceEnforcerPhasesMixin,
+        FlextInfraNamespaceEnforcerPhasesMixin as FlextInfraNamespaceEnforcerPhasesMixin,
     )
-    from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
-    from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
-    from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-    from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+    from flext_infra.refactor.orchestrator import (
+        FlextInfraRefactorOrchestrator as FlextInfraRefactorOrchestrator,
+    )
+    from flext_infra.refactor.project_classifier import (
+        FlextInfraProjectClassifier as FlextInfraProjectClassifier,
+    )
+    from flext_infra.refactor.safety import (
+        FlextInfraRefactorSafetyManager as FlextInfraRefactorSafetyManager,
+    )
+    from flext_infra.refactor.scanner import (
+        FlextInfraRefactorLooseClassScanner as FlextInfraRefactorLooseClassScanner,
+    )
     from flext_infra.refactor.violation_analyzer import (
-        FlextInfraRefactorViolationAnalyzer,
+        FlextInfraRefactorViolationAnalyzer as FlextInfraRefactorViolationAnalyzer,
     )
     from flext_infra.refactor.wrapper_root_namespace import (
-        FlextInfraWrapperRootNamespaceRefactor,
+        FlextInfraWrapperRootNamespaceRefactor as FlextInfraWrapperRootNamespaceRefactor,
     )
-    from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+    from flext_infra.release.orchestrator import (
+        FlextInfraReleaseOrchestrator as FlextInfraReleaseOrchestrator,
+    )
     from flext_infra.release.orchestrator_phases import (
-        FlextInfraReleaseOrchestratorPhases,
+        FlextInfraReleaseOrchestratorPhases as FlextInfraReleaseOrchestratorPhases,
     )
-    from flext_infra.settings import FlextInfraSettings
+    from flext_infra.settings import FlextInfraSettings as FlextInfraSettings
     from flext_infra.transformers.base import (
-        FlextInfraChangeTrackingTransformer,
-        FlextInfraRopeTransformer,
+        FlextInfraChangeTrackingTransformer as FlextInfraChangeTrackingTransformer,
+        FlextInfraRopeTransformer as FlextInfraRopeTransformer,
     )
     from flext_infra.transformers.census_visitors import (
-        FlextInfraCensusImportDiscoveryVisitor,
-        FlextInfraCensusUsageCollector,
+        FlextInfraCensusImportDiscoveryVisitor as FlextInfraCensusImportDiscoveryVisitor,
+        FlextInfraCensusUsageCollector as FlextInfraCensusUsageCollector,
     )
     from flext_infra.transformers.class_nesting import (
-        FlextInfraRefactorClassNestingTransformer,
+        FlextInfraRefactorClassNestingTransformer as FlextInfraRefactorClassNestingTransformer,
     )
     from flext_infra.transformers.class_reconstructor import (
-        FlextInfraRefactorClassReconstructor,
+        FlextInfraRefactorClassReconstructor as FlextInfraRefactorClassReconstructor,
     )
     from flext_infra.transformers.deprecated_remover import (
-        FlextInfraRefactorDeprecatedRemover,
+        FlextInfraRefactorDeprecatedRemover as FlextInfraRefactorDeprecatedRemover,
     )
     from flext_infra.transformers.helper_consolidation import (
-        FlextInfraHelperConsolidationTransformer,
+        FlextInfraHelperConsolidationTransformer as FlextInfraHelperConsolidationTransformer,
     )
     from flext_infra.transformers.import_bypass_remover import (
-        FlextInfraRefactorImportBypassRemover,
+        FlextInfraRefactorImportBypassRemover as FlextInfraRefactorImportBypassRemover,
     )
     from flext_infra.transformers.import_modernizer import (
-        FlextInfraRefactorImportModernizer,
+        FlextInfraRefactorImportModernizer as FlextInfraRefactorImportModernizer,
     )
     from flext_infra.transformers.lazy_import_fixer import (
-        FlextInfraRefactorLazyImportFixer,
+        FlextInfraRefactorLazyImportFixer as FlextInfraRefactorLazyImportFixer,
     )
-    from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
+    from flext_infra.transformers.mro_remover import (
+        FlextInfraRefactorMRORemover as FlextInfraRefactorMRORemover,
+    )
     from flext_infra.transformers.mro_symbol_propagator import (
-        FlextInfraRefactorMROSymbolPropagator,
+        FlextInfraRefactorMROSymbolPropagator as FlextInfraRefactorMROSymbolPropagator,
     )
     from flext_infra.transformers.nested_class_propagation import (
-        FlextInfraNestedClassPropagationTransformer,
+        FlextInfraNestedClassPropagationTransformer as FlextInfraNestedClassPropagationTransformer,
+    )
+    from flext_infra.transformers.pattern_modernizer import (
+        FlextInfraRefactorPatternModernizer as FlextInfraRefactorPatternModernizer,
     )
     from flext_infra.transformers.signature_propagator import (
-        FlextInfraRefactorSignaturePropagator,
+        FlextInfraRefactorSignaturePropagator as FlextInfraRefactorSignaturePropagator,
     )
     from flext_infra.transformers.symbol_propagator import (
-        FlextInfraRefactorSymbolPropagator,
+        FlextInfraRefactorSymbolPropagator as FlextInfraRefactorSymbolPropagator,
     )
     from flext_infra.transformers.tier0_import_fixer import (
-        FlextInfraTransformerTier0ImportFixer,
+        FlextInfraTransformerTier0ImportFixer as FlextInfraTransformerTier0ImportFixer,
     )
-    from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+    from flext_infra.transformers.typing_unifier import (
+        FlextInfraRefactorTypingUnifier as FlextInfraRefactorTypingUnifier,
+    )
     from flext_infra.transformers.violation_census_visitor import (
-        FlextInfraViolationCensusVisitor,
+        FlextInfraViolationCensusVisitor as FlextInfraViolationCensusVisitor,
     )
-    from flext_infra.typings import FlextInfraTypes, t
-    from flext_infra.utilities import FlextInfraUtilities, u
-    from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-    from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-    from flext_infra.validate.gate_contract import FlextInfraGateContractValidator
+    from flext_infra.typings import FlextInfraTypes as FlextInfraTypes, t as t
+    from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u as u
+    from flext_infra.validate.basemk_validator import (
+        FlextInfraBaseMkValidator as FlextInfraBaseMkValidator,
+    )
+    from flext_infra.validate.fresh_import import (
+        FlextInfraValidateFreshImport as FlextInfraValidateFreshImport,
+    )
+    from flext_infra.validate.gate_contract import (
+        FlextInfraGateContractValidator as FlextInfraGateContractValidator,
+    )
     from flext_infra.validate.gate_contract_checks import (
-        FlextInfraGateContractChecksMixin,
+        FlextInfraGateContractChecksMixin as FlextInfraGateContractChecksMixin,
     )
     from flext_infra.validate.gate_contract_content import (
-        FlextInfraGateContractContentMixin,
+        FlextInfraGateContractContentMixin as FlextInfraGateContractContentMixin,
     )
-    from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
+    from flext_infra.validate.gate_contract_models import (
+        FlextInfraGateContractModels as FlextInfraGateContractModels,
+    )
     from flext_infra.validate.gate_contract_report import (
-        FlextInfraGateContractReportMixin,
+        FlextInfraGateContractReportMixin as FlextInfraGateContractReportMixin,
     )
-    from flext_infra.validate.gate_contract_scan import FlextInfraGateContractScanMixin
-    from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
-    from flext_infra.validate.inventory import FlextInfraInventoryService
+    from flext_infra.validate.gate_contract_scan import (
+        FlextInfraGateContractScanMixin as FlextInfraGateContractScanMixin,
+    )
+    from flext_infra.validate.import_cycles import (
+        FlextInfraValidateImportCycles as FlextInfraValidateImportCycles,
+    )
+    from flext_infra.validate.inventory import (
+        FlextInfraInventoryService as FlextInfraInventoryService,
+    )
     from flext_infra.validate.lazy_map_freshness import (
-        FlextInfraValidateLazyMapFreshness,
+        FlextInfraValidateLazyMapFreshness as FlextInfraValidateLazyMapFreshness,
     )
-    from flext_infra.validate.loc_delta import FlextInfraLocDeltaValidator
-    from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
+    from flext_infra.validate.loc_delta import (
+        FlextInfraLocDeltaValidator as FlextInfraLocDeltaValidator,
+    )
+    from flext_infra.validate.manual_command import (
+        FlextInfraManualCommandValidator as FlextInfraManualCommandValidator,
+    )
     from flext_infra.validate.metadata_discipline import (
-        FlextInfraValidateMetadataDiscipline,
+        FlextInfraValidateMetadataDiscipline as FlextInfraValidateMetadataDiscipline,
     )
-    from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
-    from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-    from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-    from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-    from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
-    from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-    from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-    from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
-    from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
-    from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-    from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-    from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-    from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
-    from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-    from flext_infra.workspace.sandbox_orchestrator import FlextInfraSandboxOrchestrator
-    from flext_infra.workspace.sync import FlextInfraSyncService
+    from flext_infra.validate.namespace_rules import (
+        FlextInfraNamespaceRules as FlextInfraNamespaceRules,
+    )
+    from flext_infra.validate.namespace_validator import (
+        FlextInfraNamespaceValidator as FlextInfraNamespaceValidator,
+    )
+    from flext_infra.validate.pytest_diag import (
+        FlextInfraPytestDiagExtractor as FlextInfraPytestDiagExtractor,
+    )
+    from flext_infra.validate.scanner import (
+        FlextInfraTextPatternScanner as FlextInfraTextPatternScanner,
+    )
+    from flext_infra.validate.silent_failure import (
+        FlextInfraSilentFailureValidator as FlextInfraSilentFailureValidator,
+    )
+    from flext_infra.validate.skill_validator import (
+        FlextInfraSkillValidator as FlextInfraSkillValidator,
+    )
+    from flext_infra.validate.stub_chain import (
+        FlextInfraStubSupplyChain as FlextInfraStubSupplyChain,
+    )
+    from flext_infra.validate.tier_whitelist import (
+        FlextInfraValidateTierWhitelist as FlextInfraValidateTierWhitelist,
+    )
+    from flext_infra.workspace.base import (
+        FlextInfraWorkspaceGeneratorBase as FlextInfraWorkspaceGeneratorBase,
+    )
+    from flext_infra.workspace.detector import (
+        FlextInfraWorkspaceDetector as FlextInfraWorkspaceDetector,
+    )
+    from flext_infra.workspace.migrator import (
+        FlextInfraProjectMigrator as FlextInfraProjectMigrator,
+    )
+    from flext_infra.workspace.orchestrator import (
+        FlextInfraOrchestratorService as FlextInfraOrchestratorService,
+    )
+    from flext_infra.workspace.project_makefile import (
+        FlextInfraProjectMakefileUpdater as FlextInfraProjectMakefileUpdater,
+    )
+    from flext_infra.workspace.rope import (
+        FlextInfraRopeWorkspace as FlextInfraRopeWorkspace,
+    )
+    from flext_infra.workspace.sandbox_orchestrator import (
+        FlextInfraSandboxOrchestrator as FlextInfraSandboxOrchestrator,
+    )
+    from flext_infra.workspace.sync import (
+        FlextInfraSyncService as FlextInfraSyncService,
+    )
     from flext_infra.workspace.workspace_makefile import (
-        FlextInfraWorkspaceMakefileGenerator,
+        FlextInfraWorkspaceMakefileGenerator as FlextInfraWorkspaceMakefileGenerator,
     )
 _LAZY_IMPORTS = merge_lazy_imports(
     (
@@ -599,12 +903,12 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".refactor.engine_text": ("FlextInfraRefactorTextExecutor",),
             ".refactor.loader": ("FlextInfraRefactorRuleLoader",),
             ".refactor.migrate_to_class_mro": ("FlextInfraRefactorMigrateToClassMRO",),
+            ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".refactor.mro_import_rewriter": ("FlextInfraRefactorMROImportRewriter",),
             ".refactor.mro_migration_validator": (
                 "FlextInfraRefactorMROMigrationValidator",
             ),
             ".refactor.mro_resolver": ("FlextInfraRefactorMROResolver",),
-            ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".refactor.namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".refactor.namespace_enforcer_phases": (
                 "FlextInfraNamespaceEnforcerPhasesMixin",
@@ -651,6 +955,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".transformers.nested_class_propagation": (
                 "FlextInfraNestedClassPropagationTransformer",
+            ),
+            ".transformers.pattern_modernizer": (
+                "FlextInfraRefactorPatternModernizer",
             ),
             ".transformers.signature_propagator": (
                 "FlextInfraRefactorSignaturePropagator",
@@ -865,6 +1172,7 @@ __all__: list[str] = [
     "FlextInfraRefactorMROSymbolPropagator",
     "FlextInfraRefactorMigrateToClassMRO",
     "FlextInfraRefactorOrchestrator",
+    "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
     "FlextInfraRefactorSignaturePropagator",

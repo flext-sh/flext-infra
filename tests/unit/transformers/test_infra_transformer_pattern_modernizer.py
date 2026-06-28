@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from flext_infra.transformers.pattern_modernizer import (
-    FlextInfraRefactorPatternModernizer,
-)
+from collections.abc import Sequence
+
+from flext_infra import FlextInfraRefactorPatternModernizer
 
 
 def _transform(source: str) -> str:
     """Apply the pattern modernizer to source text."""
     transformer = FlextInfraRefactorPatternModernizer()
-    updated, _ = transformer.apply_to_source(source)
-    return updated
+    result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
+    return result[0]
 
 
 class TestsFlextInfraTransformersPatternModernizer:
@@ -32,23 +32,23 @@ class TestsFlextInfraTransformersPatternModernizer:
         assert 'logger.info("hello")' in code
 
     def test_breakpoint_replaced_with_pass(self) -> None:
-        source = 'def foo():\n    breakpoint()\n'
+        source = "def foo():\n    breakpoint()\n"
         code = _transform(source)
         assert "breakpoint()" not in code
         assert "    pass\n" in code
 
     def test_import_pdb_removed(self) -> None:
-        source = 'import pdb\n\ndef foo():\n    pdb.set_trace()\n'
+        source = "import pdb\n\ndef foo():\n    pdb.set_trace()\n"
         code = _transform(source)
         assert "import pdb" not in code
 
     def test_from_pdb_import_removed(self) -> None:
-        source = 'from pdb import set_trace\n\ndef foo():\n    set_trace()\n'
+        source = "from pdb import set_trace\n\ndef foo():\n    set_trace()\n"
         code = _transform(source)
         assert "from pdb import set_trace" not in code
 
     def test_bare_except_fixed(self) -> None:
-        source = 'def foo():\n    try:\n        pass\n    except:\n        pass\n'
+        source = "def foo():\n    try:\n        pass\n    except:\n        pass\n"
         code = _transform(source)
         assert "except Exception:" in code
         assert "except:\n" not in code
