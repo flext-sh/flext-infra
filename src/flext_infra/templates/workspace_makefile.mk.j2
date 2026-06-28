@@ -249,7 +249,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
+.PHONY: help boot _boot_default build _build_default _up _mod _constraints docs _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
 
 help: ## Show registry-driven workspace verbs
 	$(Q)$(FLEXT_MAKE_DISPATCH) help
@@ -645,6 +645,9 @@ _docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
 {{ forward_make_args(make.DOCS_FORWARD_ARGS) | trim }}
 		$(DOCS_PROJECT_FLAGS)
+
+docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
+	$(Q)$(FLEXT_MAKE_DISPATCH) docs
 
 test: ## Run tests only in all projects
 	$(Q)$(FLEXT_MAKE_DISPATCH) test

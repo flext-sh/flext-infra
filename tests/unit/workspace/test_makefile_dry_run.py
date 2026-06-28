@@ -44,6 +44,7 @@ def _run_workspace_make_dry_run(
         remove_env_keys=(
             "CHANGED_ONLY",
             "CHECK_GATES",
+            "DOCS_PHASE",
             "FAIL_FAST",
             "FILE",
             "FILES",
@@ -283,3 +284,19 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         assert process.exit_code == 0
         assert 'WHAT="stat"' in output
         assert "uv run --all-packages python -m scripts.dispatch boot" in output
+
+    def test_workspace_makefile_dry_run_docs_dispatches_to_registry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(
+            workspace_root,
+            "docs",
+            "DOCS_PHASE=validate",
+        )
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'DOCS_PHASE="validate"' in output
+        assert "uv run --all-packages python -m scripts.dispatch docs" in output
