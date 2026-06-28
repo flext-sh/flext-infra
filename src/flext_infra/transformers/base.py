@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Sequence
 
 from flext_infra import t
 
@@ -43,7 +42,7 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
     _description: str = "transformation"
 
     @abstractmethod
-    def apply_to_source(self, source: str) -> tuple[str, Sequence[str]]:
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply transformation to in-memory source."""
         ...
 
@@ -51,7 +50,7 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> tuple[str, Sequence[str]]:
+    ) -> t.Infra.TransformResult:
         """Read → apply_to_source → write if changed. Override for custom logic."""
         _ = rope_project
         source = resource.read()

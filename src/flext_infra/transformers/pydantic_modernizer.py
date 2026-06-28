@@ -17,10 +17,9 @@ The transformer only rewrites when the result is unambiguous.
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraRopeTransformer
+from flext_infra import FlextInfraRopeTransformer, t
 
 
 class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
@@ -54,7 +53,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             return (self.start, self.end) > (other.start, other.end)
 
     @override
-    def apply_to_source(self, source: str) -> tuple[str, Sequence[str]]:
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply Pydantic modernizations to source text."""
         self.changes.clear()
         try:

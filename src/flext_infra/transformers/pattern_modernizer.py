@@ -15,10 +15,9 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Sequence
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraRopeTransformer, c, u
+from flext_infra import FlextInfraRopeTransformer, c, t, u
 
 
 class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
@@ -53,7 +52,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
             return (self.start, self.end) > (other.start, other.end)
 
     @override
-    def apply_to_source(self, source: str) -> tuple[str, Sequence[str]]:
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply pattern modernizations to source text."""
         self.changes.clear()
         try:
@@ -71,8 +70,8 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
         updated = self._apply_rewrites(source, visitor.rewrites)
 
         if visitor.needs_logger and not module_has_logger:
-            updated = self._inject_logger(updated)
             updated = self._ensure_u_import(updated)
+            updated = self._inject_logger(updated)
 
         for change in visitor.changes:
             self._record_change(change)
@@ -107,7 +106,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
     def _inject_logger(cls, source: str) -> str:
         """Inject ``logger = u.fetch_logger(__name__)`` after imports/docstring."""
         lines = source.splitlines(keepends=True)
-        insert_idx = u.Infra.find_import_insert_position(lines, past_existing=False)
+        insert_idx = u.Infra.find_import_insert_position(lines)
         lines.insert(insert_idx, cls._LOGGER_LINE)
         return "".join(lines)
 
