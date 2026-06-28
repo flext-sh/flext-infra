@@ -105,8 +105,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             export_names = {
                 name
                 for name in export_names
-                if name in eager_names
-                or self._is_public_root_export(name, lazy_map)
+                if name in eager_names or self._is_public_root_export(name, lazy_map)
             }
         all_export_names = tuple(sorted(export_names))
         return m.Infra.LazyInitPlan(
@@ -316,15 +315,29 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             *self._parent_packages(pkg_dir),
             self._source_package_name(pkg_dir, inherited_key),
         ))
-        for alias_name in self.lazy_init.inherited_exports.get(inherited_key, ()):
+        runtime_alias_names: list[str] = []
+        if surface == c.Infra.DIR_TESTS:
+            for alias_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
+                if not isinstance(alias_name, str):
+                    msg = f"Invalid runtime alias name: {alias_name!r}"
+                    raise TypeError(msg)
+                runtime_alias_names.append(alias_name)
+        alias_names = tuple(
+            dict.fromkeys((
+                *self.lazy_init.inherited_exports.get(inherited_key, ()),
+                *runtime_alias_names,
+            ))
+        )
+        for alias_name in alias_names:
             existing = lazy_map.get(alias_name)
             if existing is not None and existing[0].startswith(current_pkg):
                 continue
             package_name = self._resolve_inherited_alias_source(
                 inherited_packages,
                 alias_name,
+                current_pkg=current_pkg,
             )
-            if package_name:
+            if package_name and package_name != current_pkg:
                 lazy_map[alias_name] = (package_name, alias_name)
 
     def _resolve_local_aliases(
@@ -487,6 +500,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         self,
         package_names: t.StrSequence,
         alias_name: str,
+        *,
+        current_pkg: str,
     ) -> str:
         """Resolve inherited alias source."""
         candidate_packages: t.StrSequence = tuple(
@@ -494,13 +509,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         )
         canonical_target = c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
         if canonical_target is not None:
-            canonical_package: str = canonical_target[0]
-            if canonical_package in candidate_packages and (
-                canonical_package
-                not in self.rope_workspace.workspace_index.package_dir_by_name
-                or alias_name in self._export_names_for_package(canonical_package)
-            ):
-                return f"{canonical_package}"
+            canonical_package = canonical_target[0]
+            if not isinstance(canonical_package, str):
+                msg = f"Invalid runtime alias package for {alias_name}: {canonical_target!r}"
+                raise TypeError(msg)
+            if canonical_package != current_pkg:
+                return canonical_package
         for package_name in reversed(candidate_packages):
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"

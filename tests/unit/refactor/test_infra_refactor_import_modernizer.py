@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorTextExecutor, c
+from flext_infra import (
+    FlextInfraModernizeOrchestrator,
+    FlextInfraRefactorTextExecutor,
+    c,
+)
 from tests import t
 
 
@@ -24,6 +28,37 @@ class _ImportModernizerHarness:
 
 class TestsFlextInfraRefactorInfraRefactorImportModernizer:
     """Behavior contract for test_infra_refactor_import_modernizer."""
+
+    class ReplacingTransformer:
+        """Change-tracker fixture that rewrites one sentinel token."""
+
+        def __init__(self) -> None:
+            self.changes: t.MutableSequenceOf[str] = []
+
+        def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+            self.changes.append("replace old_value")
+            return (source.replace("old_value", "new_value"), tuple(self.changes))
+
+    class FailingTransformer:
+        """Change-tracker fixture that raises a transformer error."""
+
+        def __init__(self) -> None:
+            self.changes: t.MutableSequenceOf[str] = []
+
+        def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+            _ = source
+            message = "transform failed"
+            raise ValueError(message)
+
+    @staticmethod
+    def _replace_transformer_factory() -> ReplacingTransformer:
+        return (
+            TestsFlextInfraRefactorInfraRefactorImportModernizer.ReplacingTransformer()
+        )
+
+    @staticmethod
+    def _failing_transformer_factory() -> FailingTransformer:
+        return TestsFlextInfraRefactorInfraRefactorImportModernizer.FailingTransformer()
 
     def test_import_modernizer_partial_import_keeps_unmapped_symbols(self) -> None:
         source = (
@@ -159,3 +194,37 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         updated, _ = rule.apply(source)
         assert updated.startswith("import json\n")
         assert "def build() -> None:\n    return None\n" in updated
+
+    def test_modernize_orchestrator_dry_run_reports_planned_modification(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        source_path = tmp_path / "sample.py"
+        source_path.write_text("value = 'old_value'\n", encoding="utf-8")
+        orchestrator = FlextInfraModernizeOrchestrator(
+            self._replace_transformer_factory,
+            description="replace sample value",
+        )
+
+        result = orchestrator._modernize_file(file_path=source_path, apply=False)
+
+        assert result.success, result.error
+        assert result.value.modified is True
+        assert result.value.refactored_code == "value = 'new_value'\n"
+        assert source_path.read_text(encoding="utf-8") == "value = 'old_value'\n"
+
+    def test_modernize_orchestrator_returns_result_failure_for_transform_error(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        source_path = tmp_path / "sample.py"
+        source_path.write_text("value = 'old_value'\n", encoding="utf-8")
+        orchestrator = FlextInfraModernizeOrchestrator(
+            self._failing_transformer_factory,
+            description="failing transformer",
+        )
+
+        result = orchestrator._modernize_file(file_path=source_path, apply=False)
+
+        assert result.failure
+        assert result.error_code == "MODERNIZE_TRANSFORM_FAILED"

@@ -238,14 +238,17 @@ select = ["E501"]
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
         workspace_root = tmp_path / "workspace"
-        project_dir = workspace_root / "algar-oud-mig"
+        project_dir = workspace_root / "oud-migration-tool"
         internal_project = workspace_root / "flext-core"
-        project_dir.joinpath("src", "algar_oud_mig").mkdir(parents=True, exist_ok=True)
+        project_dir.joinpath("src", "oud_migration_tool").mkdir(
+            parents=True,
+            exist_ok=True,
+        )
         internal_project.joinpath("src", "flext_core").mkdir(
             parents=True,
             exist_ok=True,
         )
-        _ = project_dir.joinpath("src", "algar_oud_mig", "__init__.py").write_text(
+        _ = project_dir.joinpath("src", "oud_migration_tool", "__init__.py").write_text(
             "",
             encoding="utf-8",
         )
@@ -254,7 +257,7 @@ select = ["E501"]
             encoding="utf-8",
         )
         _ = project_dir.joinpath("pyproject.toml").write_text(
-            '[project]\nname = "algar-oud-mig"\nversion = "0.1.0"\ndependencies = ["flext-core>=0.1.0"]\n',
+            '[project]\nname = "oud-migration-tool"\nversion = "0.1.0"\ndependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",
         )
         _ = workspace_root.joinpath("pyproject.toml").write_text(
@@ -281,4 +284,4 @@ select = ["E501"]
         isort = u.Tests.toml_mapping(lint_section["isort"])
         known_first_party = list(u.Tests.toml_strings(isort["known-first-party"]))
         tm.that(known_first_party, has="flext_core")
-        tm.that("algar_oud_mig" in known_first_party, eq=False)
+        tm.that("oud_migration_tool" in known_first_party, eq=False)

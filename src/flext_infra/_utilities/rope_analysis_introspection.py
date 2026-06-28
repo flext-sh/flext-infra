@@ -37,21 +37,34 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         class_name: str,
     ) -> t.StrSequence:
         """Return names of nested classes within a given class."""
-        result: list[str] = []
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-            attributes = pymodule.get_attributes()
-            if class_name not in attributes:
-                return result
-            obj = attributes[class_name].get_object()
-            if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
-                return result
-            for name, pyname in obj.get_attributes().items():
-                child = pyname.get_object()
-                if isinstance(child, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
-                    result.append(name)
+            return FlextInfraUtilitiesRopeAnalysisIntrospection._nested_class_names(
+                rope_project,
+                resource,
+                class_name,
+            )
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return ()
+
+    @staticmethod
+    def _nested_class_names(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        class_name: str,
+    ) -> t.StrSequence:
+        """Return nested class names from a resolved Rope class object."""
+        result: list[str] = []
+        pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+        attributes = pymodule.get_attributes()
+        if class_name not in attributes:
             return result
+        obj = attributes[class_name].get_object()
+        if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+            return result
+        for name, pyname in obj.get_attributes().items():
+            child = pyname.get_object()
+            if isinstance(child, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+                result.append(name)
         return result
 
     @staticmethod
@@ -63,22 +76,94 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         result: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-            resource_path = resource.path
-            for name, pyname in pymodule.get_attributes().items():
-                obj = pyname.get_object()
-                module, line = pyname.get_definition_location()
-                origin = module.get_resource() if module is not None else None
-                if line is None or origin is None or origin.path != resource_path:
-                    continue
-                kind = "assignment"
-                if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
-                    kind = "class"
-                elif isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
-                    kind = "function"
-                result.append(m.Infra.SymbolInfo(name=name, kind=kind, line=line))
+            tree: p.AttributeProbe = pymodule.get_ast()
+            body: object = getattr(tree, "body", ())
+            if not isinstance(body, (list, tuple)):
+                return result
+            for node in body:
+                result.extend(
+                    FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(
+                        node
+                    )
+                )
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return result
         return sorted(result, key=lambda symbol: symbol.line)
+
+    @staticmethod
+    def _module_symbols_from_node(
+        node: p.AttributeProbe,
+    ) -> t.SequenceOf[m.Infra.SymbolInfo]:
+        """Return top-level symbol entries represented by one Rope AST node."""
+        node_kind = node.__class__.__name__
+        line = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_line(node)
+        if node_kind == "ClassDef":
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(node)
+            return (
+                (m.Infra.SymbolInfo(name=name, kind="class", line=line),)
+                if name
+                else ()
+            )
+        if node_kind in {"FunctionDef", "AsyncFunctionDef"}:
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(node)
+            return (
+                (m.Infra.SymbolInfo(name=name, kind="function", line=line),)
+                if name
+                else ()
+            )
+        return tuple(
+            m.Infra.SymbolInfo(name=name, kind="assignment", line=line)
+            for name in FlextInfraUtilitiesRopeAnalysisIntrospection._assignment_names(
+                node,
+                node_kind,
+            )
+        )
+
+    @staticmethod
+    def _assignment_names(node: p.AttributeProbe, node_kind: str) -> t.StrSequence:
+        """Return assignment-like target names from one top-level AST node."""
+        if node_kind == "Assign":
+            raw_targets: object = getattr(node, "targets", ())
+            if not isinstance(raw_targets, (list, tuple)):
+                return ()
+            return tuple(
+                name
+                for target in raw_targets
+                if (
+                    name
+                    := FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(
+                        target
+                    )
+                )
+            )
+        if node_kind == "AnnAssign":
+            target: object = getattr(node, "target", None)
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(target)
+            return (name,) if name else ()
+        if node_kind == "TypeAlias":
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(node)
+            return (name,) if name else ()
+        return ()
+
+    @staticmethod
+    def _ast_named_value(node: p.AttributeProbe | object | None) -> str:
+        """Return ``name``/``id`` carried by a Rope AST node."""
+        if node is None:
+            return ""
+        direct: object = getattr(node, "name", "")
+        if isinstance(direct, str):
+            return direct
+        nested: object = getattr(direct, "id", "")
+        if isinstance(nested, str):
+            return nested
+        identifier: object = getattr(node, "id", "")
+        return identifier if isinstance(identifier, str) else ""
+
+    @staticmethod
+    def _ast_line(node: p.AttributeProbe) -> int:
+        """Return a stable one-based source line for a Rope AST node."""
+        line: object = getattr(node, "lineno", 1)
+        return line if isinstance(line, int) and line > 0 else 1
 
     @classmethod
     def extract_public_methods_from_dir(

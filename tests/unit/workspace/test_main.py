@@ -162,6 +162,12 @@ class TestsFlextInfraWorkspaceMain:
 
         assert result.success, result.error
 
+    def test_orchestrate_workspace_forwards_fail_fast_to_project_make(self) -> None:
+        assert FlextInfraOrchestratorService._normalize_fail_fast_make_args(
+            (),
+            fail_fast=True,
+        ) == ("FAIL_FAST=1",)
+
     def test_workspace_main_detect_accepts_explicit_workspace_root(
         self,
         tmp_path: Path,

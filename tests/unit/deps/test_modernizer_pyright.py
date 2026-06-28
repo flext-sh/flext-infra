@@ -30,12 +30,12 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         flext_core = tmp_path / "flext-core"
         flext_api = tmp_path / "flext-api"
-        algar = tmp_path / "algar-oud-mig"
+        detached_project = tmp_path / "oud-migration-tool"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
         (tmp_path / "typings" / "generated").mkdir(parents=True, exist_ok=True)
         flext_core.mkdir(parents=True, exist_ok=True)
         flext_api.mkdir(parents=True, exist_ok=True)
-        algar.mkdir(parents=True, exist_ok=True)
+        detached_project.mkdir(parents=True, exist_ok=True)
         _ = (flext_core / "pyproject.toml").write_text(
             "[project]\nname='flext-core'\n",
             encoding="utf-8",
@@ -44,14 +44,14 @@ class TestsFlextInfraDepsModernizerPyright:
             "[project]\nname='flext-api'\n",
             encoding="utf-8",
         )
-        _ = (algar / "pyproject.toml").write_text(
-            "[project]\nname='algar-oud-mig'\ndependencies=['flext-core>=0.1.0']\n",
+        _ = (detached_project / "pyproject.toml").write_text(
+            "[project]\nname='oud-migration-tool'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
         (flext_core / "src").mkdir(parents=True, exist_ok=True)
         (flext_core / "tests").mkdir(parents=True, exist_ok=True)
         (flext_api / "src").mkdir(parents=True, exist_ok=True)
-        (algar / "src").mkdir(parents=True, exist_ok=True)
+        (detached_project / "src").mkdir(parents=True, exist_ok=True)
         (flext_core / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
         (flext_core / "src" / "flext_core" / "__init__.py").write_text(
             "VALUE = 1\n",

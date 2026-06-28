@@ -153,17 +153,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
                                 or "orchestration completed with failures"
                             )
                         else:
-                            failures = sum(
-                                1
-                                for item in orchestrate_result.value
-                                if item.exit_code != 0
-                            )
-                            if failures:
-                                result = r[bool].fail(
-                                    f"orchestration completed with failures: {failures}"
-                                )
-                            else:
-                                result = r[bool].ok(True)
+                            result = r[bool].ok(True)
         return result
 
     def _execute_project(
@@ -175,7 +165,7 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         make_args: t.StrSequence,
     ) -> t.Pair[m.Cli.CommandOutput, bool]:
         """Run one project and return (output, succeeded)."""
-        output_result = self._run_project(project, verb, idx, make_args=list(make_args))
+        output_result = self._run_project(project, verb, idx, make_args=make_args)
         if output_result.failure:
             return (
                 m.Cli.CommandOutput(
@@ -229,60 +219,74 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         """
         u.Cli.header("Workspace Orchestration")
         try:
-            allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
-            if verb not in allowed_verbs:
-                allowed = ", ".join(allowed_verbs)
-                return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
-                    f"unsupported orchestrate verb '{verb}' (allowed: {allowed})",
-                )
-            results: t.MutableSequenceOf[m.Cli.CommandOutput] = []
-            total = len(projects)
-            success = 0
-            failed = 0
-            skipped = 0
-            started_total = time.monotonic()
-            for idx, project in enumerate(projects, start=1):
-                u.Cli.progress(idx, total, project, verb)
-                if skipped:
-                    results.append(
-                        m.Cli.CommandOutput(
-                            stdout="",
-                            stderr="",
-                            exit_code=0,
-                            duration=0.0,
-                        ),
-                    )
-                    continue
-                cmd_output, succeeded = self._execute_project(
-                    project,
-                    verb,
-                    idx,
-                    make_args=make_args,
-                )
-                results.append(cmd_output)
-                if succeeded:
-                    success += 1
-                else:
-                    failed += 1
-                    if fail_fast:
-                        skipped = total - idx
-            elapsed_total = time.monotonic() - started_total
-            u.Cli.summary(
-                m.Infra.SummaryStats(
-                    verb=verb,
-                    total=total,
-                    success=success,
-                    failed=failed,
-                    skipped=skipped,
-                    elapsed=elapsed_total,
-                )
+            return self._orchestrate_checked(
+                projects,
+                verb,
+                fail_fast=fail_fast,
+                make_args=make_args,
             )
-            if failed > 0:
-                failures = self._collect_failures(projects, results)
-                self._failure_summary(verb, failures)
-            return r[t.SequenceOf[m.Cli.CommandOutput]].ok(results)
         except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[t.SequenceOf[m.Cli.CommandOutput]].fail_op("Orchestration", exc)
+
+    def _orchestrate_checked(
+        self,
+        projects: t.StrSequence,
+        verb: str,
+        *,
+        fail_fast: bool,
+        make_args: t.StrSequence,
+    ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+        """Execute a validated orchestration run."""
+        allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
+        if verb not in allowed_verbs:
+            allowed = ", ".join(allowed_verbs)
+            return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
+                f"unsupported orchestrate verb '{verb}' (allowed: {allowed})",
+            )
+        effective_make_args = self._normalize_fail_fast_make_args(
+            make_args,
+            fail_fast=fail_fast,
+        )
+        results: t.MutableSequenceOf[m.Cli.CommandOutput] = []
+        total = len(projects)
+        success = 0
+        failed = 0
+        skipped = 0
+        started_total = time.monotonic()
+        for idx, project in enumerate(projects, start=1):
+            u.Cli.progress(idx, total, project, verb)
+            cmd_output, succeeded = self._execute_project(
+                project,
+                verb,
+                idx,
+                make_args=effective_make_args,
+            )
+            results.append(cmd_output)
+            if succeeded:
+                success += 1
+            else:
+                failed += 1
+                if fail_fast:
+                    skipped = total - idx
+                    break
+        elapsed_total = time.monotonic() - started_total
+        u.Cli.summary(
+            m.Infra.SummaryStats(
+                verb=verb,
+                total=total,
+                success=success,
+                failed=failed,
+                skipped=skipped,
+                elapsed=elapsed_total,
+            )
+        )
+        if failed > 0:
+            failures = self._collect_failures(projects, results)
+            self._failure_summary(verb, failures)
+            return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
+                f"orchestration completed with failures: {failed}",
+            )
+        return r[t.SequenceOf[m.Cli.CommandOutput]].ok(results)
 
     def _run_project(
         self,
@@ -370,6 +374,19 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
                 continue
             normalized_args.append(make_arg)
         return normalized_args
+
+    @staticmethod
+    def _normalize_fail_fast_make_args(
+        make_args: t.StrSequence,
+        *,
+        fail_fast: bool,
+    ) -> t.StrSequence:
+        """Propagate orchestration fail-fast intent to project make invocations."""
+        if not fail_fast:
+            return make_args
+        if any(make_arg.startswith("FAIL_FAST=") for make_arg in make_args):
+            return make_args
+        return (*make_args, "FAIL_FAST=1")
 
     def _is_go_project(self, project: str) -> bool:
         """Is go project."""

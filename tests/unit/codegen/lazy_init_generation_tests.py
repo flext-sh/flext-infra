@@ -247,7 +247,9 @@ class TestGenerateFile:
         tm.that(content, contains="if _t.TYPE_CHECKING:")
         tm.that(
             content,
-            contains="from test_pkg.typings import FlextTypes, T, U",
+            contains=(
+                "from test_pkg.typings import FlextTypes as FlextTypes, T as T, U as U"
+            ),
         )
         tm.that(content, contains='        ".typings": (')
         tm.that(content, contains='            "T",')
@@ -438,7 +440,7 @@ class TestGenerateFile:
         tm.that(content, lacks='"api": "test_pkg.api"')
         tm.that(content, lacks='"constants": "test_pkg.constants"')
         tm.that(content, lacks='"tools": "test_pkg.tools"')
-        tm.that(content, contains='    "Alpha",')
+        tm.that(content, lacks="__all__: list[str]")
         tm.that(content, lacks='    "_constants",')
         tm.that(content, lacks='    "api",')
         tm.that(content, lacks='    "constants",')

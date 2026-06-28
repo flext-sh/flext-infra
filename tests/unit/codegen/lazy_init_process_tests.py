@@ -412,6 +412,9 @@ class TestProcessDirectory:
         assert '"reset_settings"' in root_init
         assert '"settings"' in root_init
         assert '"settings_factory"' in root_init
+        assert '    "reset_settings",' in root_init
+        assert '    "settings",' in root_init
+        assert '    "settings_factory",' in root_init
 
     def test_handles_version_file(self, tmp_path: Path) -> None:
         """Version exports are preserved in generated public wrappers."""

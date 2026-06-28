@@ -33,15 +33,35 @@ class FlextInfraCodegenGeneration:
         """Whether a symbol's canonical source lives in a ``_``-private subpackage.
 
         Symbols re-exported into a root package from a private subpackage
-        (``_models``, ``_constants``, ``_utilities`` …) are implementation
-        mixins: they MUST stay lazily importable (kept in ``_LAZY_IMPORTS`` and
-        the ``TYPE_CHECKING`` block) but MUST NOT be re-published in the root
-        package's ``__all__``. Dunder modules (``__version__``) are not private
-        subpackages and are unaffected.
+        (``_models``, ``_constants``, ``_utilities`` …) are private unless they
+        are canonical aliases or pytest fixture exports. Dunder modules
+        (``__version__``) are not private subpackages and are unaffected.
         """
         return any(
             segment.startswith("_") and not segment.startswith("__")
             for segment in module_path.split(".")[1:]
+        )
+
+    @staticmethod
+    def _should_publish_root_export(
+        export_name: str,
+        lazy_filtered: t.LazyAliasMap,
+    ) -> bool:
+        """Return whether a root export belongs in the frozen ``__all__`` ABI."""
+        if export_name in c.Infra.INFRA_ONLY_EXPORTS | c.Infra.PUBLISHED_ALL_EXCLUDE:
+            return False
+        target = lazy_filtered.get(export_name)
+        if target is None:
+            return True
+        module_path, attr_name = target
+        if FlextInfraCodegenGeneration._is_module_or_package_export(attr_name):
+            return False
+        if not FlextInfraCodegenGeneration._is_private_subpackage_source(module_path):
+            return True
+        return (
+            export_name in c.Infra.ALIAS_NAMES
+            or export_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS
+            or "_fixtures" in module_path.split(".")
         )
 
     @staticmethod
@@ -409,17 +429,13 @@ class FlextInfraCodegenGeneration:
         lazy_filtered: t.LazyAliasMap,
     ) -> t.StrSequence:
         """Build published exports."""
+        export_candidates = tuple(dict.fromkeys((*exports, *lazy_filtered)))
         return tuple(
             export_name
-            for export_name in exports
-            if export_name not in lazy_filtered
-            or (
-                not FlextInfraCodegenGeneration._is_module_or_package_export(
-                    lazy_filtered[export_name][1]
-                )
-                and not FlextInfraCodegenGeneration._is_private_subpackage_source(
-                    lazy_filtered[export_name][0]
-                )
+            for export_name in export_candidates
+            if FlextInfraCodegenGeneration._should_publish_root_export(
+                export_name,
+                lazy_filtered,
             )
         )
 
@@ -655,8 +671,9 @@ class FlextInfraCodegenGeneration:
             runtime_import_block.append("")
         runtime_import_block.extend(runtime_import_lines)
 
+        lazy_entry_names = tuple(sorted(lazy_filtered)) if publish_all else exports
         lazy_entries = FlextInfraCodegenGeneration._build_lazy_entries(
-            published_exports,
+            lazy_entry_names,
             lazy_filtered,
             (current_pkg, frozenset(children_lazy), not publish_all),
         )

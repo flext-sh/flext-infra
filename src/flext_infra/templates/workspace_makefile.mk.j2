@@ -60,17 +60,12 @@ endif
 # a rich inventory so help/status/git verbs continue to work before and after boot.
 # - FLEXT_PROJECTS: declared git submodules from .gitmodules
 # - WORKSPACE_PROJECTS: configured workspace members from tool.flext.workspace or tool.uv.workspace
-# - EXTERNAL_PROJECTS: top-level children with pyproject.toml declaring flext-core
 FLEXT_PROJECTS := $(shell \
 	$(PYTHON_CMD) -c 'import pathlib, re; root = pathlib.Path("."); gitmodules = root / ".gitmodules"; content = gitmodules.read_text() if gitmodules.is_file() else ""; print(" ".join(re.findall(r"^\s*path\s*=\s*(.+?)\s*$$", content, re.MULTILINE)), end="")')
 WORKSPACE_PROJECTS := $(shell \
 	$(PYTHON_CMD) -c 'import pathlib, tomllib; root = pathlib.Path("pyproject.toml"); payload = tomllib.loads(root.read_text()) if root.is_file() else {}; tool_payload = payload.get("tool", {}) if isinstance(payload, dict) else {}; flext_payload = tool_payload.get("flext", {}) if isinstance(tool_payload, dict) else {}; workspace_payload = flext_payload.get("workspace", {}) if isinstance(flext_payload, dict) else {}; members = workspace_payload.get("members", []) if isinstance(workspace_payload, dict) else []; uv_payload = tool_payload.get("uv", {}) if isinstance(tool_payload, dict) else {}; uv_workspace = uv_payload.get("workspace", {}) if isinstance(uv_payload, dict) else {}; members = members if isinstance(members, list) and members else (uv_workspace.get("members", []) if isinstance(uv_workspace, dict) else []); print(" ".join(str(item).strip() for item in members if str(item).strip()), end="") if isinstance(members, list) else print("", end="")')
-EXTERNAL_PROJECTS := $(shell \
-	$(PYTHON_CMD) -c 'import pathlib, re, tomllib; root = pathlib.Path("."); root_payload = tomllib.loads((root / "pyproject.toml").read_text()) if (root / "pyproject.toml").is_file() else {}; mapping = lambda value: value if isinstance(value, dict) else {}; tool_payload = mapping(root_payload.get("tool")); flext_payload = mapping(tool_payload.get("flext")); workspace_payload = mapping(flext_payload.get("workspace")); members = workspace_payload.get("members", []); uv_workspace = mapping(mapping(tool_payload.get("uv")).get("workspace")); members = members if isinstance(members, list) and members else uv_workspace.get("members", []); members = {str(item).strip() for item in members if str(item).strip()} if isinstance(members, list) else set(); normalize = lambda spec: (match.group(0).lower().replace("_", "-") if (match := re.match(r"[A-Za-z0-9._-]+", str(spec).strip().split("@", 1)[0].strip())) else ""); dependency_names = lambda payload: ({name for item in (mapping(payload.get("project")).get("dependencies", []) if isinstance(mapping(payload.get("project")).get("dependencies", []), list) else []) if (name := normalize(item))} | {name for group in (mapping(payload.get("project")).get("optional-dependencies", {}).values() if isinstance(mapping(payload.get("project")).get("optional-dependencies", {}), dict) else []) for item in (group if isinstance(group, list) else []) if (name := normalize(item))} | {name for group in (payload.get("dependency-groups", {}).values() if isinstance(payload.get("dependency-groups", {}), dict) else []) for item in (group if isinstance(group, list) else []) if (name := normalize(item))} | {name for key in mapping(mapping(payload.get("tool")).get("poetry")).get("dependencies", {}) if (name := normalize(key)) and name != "python"}); print(" ".join(child.name for child in sorted(root.iterdir(), key=lambda item: item.name) if child.is_dir() and not child.name.startswith(".") and child.name != "cmd" and child.name not in members and (pyproject := child / "pyproject.toml").is_file() and (payload := tomllib.loads(pyproject.read_text())) and not (isinstance(mapping(mapping(mapping(payload.get("tool")).get("flext")).get("docs")).get("enabled", True), bool) and not mapping(mapping(mapping(payload.get("tool")).get("flext")).get("docs")).get("enabled", True)) and "flext-core" in dependency_names(payload)), end="")')
 MANAGED_PROJECTS := $(strip $(FLEXT_PROJECTS))
-INDEPENDENT_PROJECTS := $(strip $(EXTERNAL_PROJECTS))
-ALL_PROJECTS := $(strip $(sort $(MANAGED_PROJECTS) $(WORKSPACE_PROJECTS) $(INDEPENDENT_PROJECTS)))
-ATTACHABLE_PROJECTS := $(strip $(filter-out $(WORKSPACE_PROJECTS),$(ALL_PROJECTS)))
+ALL_PROJECTS := $(strip $(sort $(MANAGED_PROJECTS) $(WORKSPACE_PROJECTS)))
 SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(ALL_PROJECTS))))
 DOCS_DEFAULT_PROJECTS := $(strip $(filter flext-%,$(ALL_PROJECTS)))
 DOCS_SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(DOCS_DEFAULT_PROJECTS))))
@@ -284,7 +279,6 @@ help: ## Show simple workspace verbs
 {% for example_line in make.WORKSPACE_EXAMPLES %}
 	$(Q)echo " {{ example_line | replace('"', '\\"') }}"
 {% endfor %}
-	$(Q)echo " NOTE: Attached projects are discovered from top-level pyproject.toml files that declare flext-core."
 
 boot: ## Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)
 	$(Q)case "$(WHAT)" in \
@@ -301,20 +295,9 @@ _boot_default: ## Install all projects into workspace .venv
 		echo "Initializing and updating submodules..."; \
 		git submodule sync --recursive -- $$submodule_paths; \
 		if ! git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths; then \
-			echo "Submodule update with configured URLs failed. Retrying with HTTPS fallback..."; \
-			while IFS=' ' read -r key url; do \
-				name="$${key#submodule.}"; \
-				name="$${name%.url}"; \
-				if [[ "$$url" == git@github.com:* ]]; then \
-					https_url="https://github.com/$${url#git@github.com:}"; \
-					git config "submodule.$$name.url" "$$https_url"; \
-				fi; \
-			done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.url$$'); \
-			git submodule sync --recursive -- $$submodule_paths; \
-			git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths || { \
-				echo "ERROR: failed to update submodules"; \
-				exit 1; \
-			}; \
+			echo "ERROR: failed to update declared submodules from .gitmodules"; \
+			echo "Fix the canonical .gitmodules URL or local Git credentials, then rerun make boot."; \
+			exit 1; \
 		fi; \
 		echo "Submodules ready."; \
 		fi; \
@@ -334,25 +317,12 @@ _boot_default: ## Install all projects into workspace .venv
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)total_steps=$$(( $(words $(SELECTED_PROJECTS)) + 1 )); \
 	echo "Starting workspace setup for $$total_steps item(s) ($(words $(SELECTED_PROJECTS)) projects + root)"; \
-	failed=0; prepared=0; installed=0; attached=0; step=1; failed_projects=""; external_projects=""; \
+	failed=0; prepared=0; installed=0; step=1; failed_projects=""; \
 	for proj in $(SELECTED_PROJECTS); do \
 		if [ -d "$$proj" ] && [ -f "$$proj/pyproject.toml" ]; then \
 			log_file="/tmp/flext-setup-$$proj.log"; \
 			start_ts=$$(date +%s); \
 			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
-			if echo " $(ATTACHABLE_PROJECTS) " | grep -qF " $$proj "; then \
-				if echo " $(INDEPENDENT_PROJECTS) " | grep -qF " $$proj "; then \
-					echo "     detect ... independent project (no workspace writes)"; \
-				else \
-					echo "     detect ... attach-only project (outside uv workspace)"; \
-				fi; \
-				echo "     install ... deferred to editable workspace attach"; \
-				external_projects="$$external_projects $$proj"; \
-				prepared=$$((prepared + 1)); \
-				rm -f "$$log_file"; \
-				step=$$((step + 1)); \
-				continue; \
-			fi; \
 			if $(WORKSPACE_INFRA_DEPS) internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
 				:; \
 			else \
@@ -408,22 +378,6 @@ _boot_default: ## Install all projects into workspace .venv
 			elapsed=$$(( $$(date +%s) - start_ts )); \
 			echo "ok ($${elapsed}s)"; \
 			installed=$$((installed + 1)); \
-			for proj in $$external_projects; do \
-				attach_log="/tmp/flext-attach-$$proj.log"; \
-				attach_ts=$$(date +%s); \
-				printf "     attach  %s ... " "$$proj"; \
-				if uv pip install --python "$(PY)" --editable "$$proj[dev]" --no-sources --no-deps >"$$attach_log" 2>&1; then \
-					attach_elapsed=$$(( $$(date +%s) - attach_ts )); \
-					echo "ok ($${attach_elapsed}s)"; \
-					attached=$$((attached + 1)); \
-				else \
-					echo "failed"; \
-					cat "$$attach_log"; \
-					failed=$$((failed + 1)); \
-					failed_projects="$$failed_projects $$proj"; \
-				fi; \
-				rm -f "$$attach_log"; \
-			done; \
 		else \
 			echo "failed"; \
 			cat "$$log_file"; \
@@ -434,7 +388,7 @@ _boot_default: ## Install all projects into workspace .venv
 		printf "     install ... skipped\n"; \
 	fi; \
 	rm -f "$$log_file"; \
-	echo "Setup summary: Prepared=$$prepared Installed=$$installed Attached=$$attached Failed=$$failed Total=$$total_steps"; \
+	echo "Setup summary: Prepared=$$prepared Installed=$$installed Failed=$$failed Total=$$total_steps"; \
 	if [ $$failed -ne 0 ]; then \
 		echo "Failed projects:$$failed_projects"; \
 		echo "FAIL: boot ($$failed projects)"; \
@@ -869,7 +823,7 @@ _pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyref
 		--exclude "**/tests/fixtures/**" \
 		--match absent \
 		2>&1 || policy_violations=$$((policy_violations + 1)); \
-	echo "--- Any (typing) ---"; \
+	echo "--- Dynamic typing policy ---"; \
 	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "\\bAny\\b" \
 		--include "**/*.py*" \
@@ -914,7 +868,7 @@ _stubs: ## Repo-wide stub supply-chain validation -> .reports/pyrefly
 	printf "exit_code: %s\n" "$$stub_status" >> .reports/pyrefly/pyrefly-stub-validate.txt; \
 	exit $$stub_status
 
-_pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
+_pol: ## Repo-wide typing policy gate (dynamic typing/t.JsonValue/# type: ignore)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .reports/pyrefly
@@ -938,7 +892,7 @@ _pol: ## Repo-wide typing policy gate (no Any/t.JsonValue/# type: ignore)
 		--match absent \
 		2>&1 | tee -a .reports/pyrefly/type-policy.txt || status=$$?; \
 	echo "" >> .reports/pyrefly/type-policy.txt; \
-	echo "--- Any (typing) ---" >> .reports/pyrefly/type-policy.txt; \
+	echo "--- Dynamic typing policy ---" >> .reports/pyrefly/type-policy.txt; \
 	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "\\bAny\\b" \
 		--include "**/*.py*" \
@@ -985,7 +939,7 @@ _save: ## Commit all changes in selected projects (MESSAGE=)
 		if [ -e "$$proj/.git" ]; then \
 			changes=$$(cd "$$proj" && git status --porcelain 2>/dev/null | wc -l); \
 			if [ "$$changes" -gt 0 ]; then \
-				if (cd "$$proj" && git add -A && git commit -m "$(MESSAGE)") >/dev/null 2>&1; then \
+				if (cd "$$proj" && git ls-files -m -d -o --exclude-standard -z | xargs -0 -r git add -- && git commit -m "$(MESSAGE)") >/dev/null 2>&1; then \
 					echo "  ✓ $$proj"; \
 					committed=$$((committed + 1)); \
 				else \
@@ -999,7 +953,7 @@ _save: ## Commit all changes in selected projects (MESSAGE=)
 	done; \
 	root_changes=$$(git status --porcelain 2>/dev/null | wc -l); \
 	if [ "$$root_changes" -gt 0 ]; then \
-		if git add -A && git commit -m "$(MESSAGE)" >/dev/null 2>&1; then \
+		if git ls-files -m -d -o --exclude-standard -z | xargs -0 -r git add -- && git commit -m "$(MESSAGE)" >/dev/null 2>&1; then \
 			echo "  ✓ root"; \
 			committed=$$((committed + 1)); \
 		else \
@@ -1009,7 +963,7 @@ _save: ## Commit all changes in selected projects (MESSAGE=)
 	fi; \
 	echo "Commit: $$committed committed, $$skipped clean, $$failed failed"
 
-_stat: ## Show git status for all workspace projects (submodules + external + root)
+_stat: ## Show git status for all declared workspace projects plus root
 	$(Q)for proj in $(ALL_PROJECTS); do \
 		if [ -e "$$proj/.git" ]; then \
 			changes=$$(cd "$$proj" && git status --porcelain 2>/dev/null); \

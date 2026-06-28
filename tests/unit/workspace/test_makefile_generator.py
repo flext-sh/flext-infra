@@ -109,14 +109,10 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             [
                 "FLEXT_PROJECTS :=",
                 "WORKSPACE_PROJECTS :=",
-                "ATTACHABLE_PROJECTS :=",
                 "BOOT_VALIDATE_PROJECTS := $(strip $(filter $(WORKSPACE_PROJECTS),$(SELECTED_PROJECTS)))",
                 "tool.flext.workspace or tool.uv.workspace",
                 'gitmodules = root / ".gitmodules"',
-                "independent project (no workspace writes)",
-                "attach-only project (outside uv workspace)",
-                'uv pip install --python "$(PY)" --editable "$$proj[dev]" --no-sources --no-deps',
-                '$(MAKE) val VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)"',
+                '$(MAKE) val WHAT=workspace VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)"',
                 "Skipping workspace validation (no managed workspace projects selected).",
             ],
         )
@@ -131,8 +127,8 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         assert result.success, result.error
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        assert "algar-oud-mig" not in makefile_text
-        assert "gruponos-meltano-native" not in makefile_text
+        assert "sample-external-alpha" not in makefile_text
+        assert "sample-external-beta" not in makefile_text
 
     def test_workspace_makefile_generator_emits_parseable_discovery_commands(
         self,
@@ -148,7 +144,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
 
         assert outcome.success and outcome.value.exit_code == 0
 
-    def test_workspace_makefile_generator_discovers_external_projects_outside_docs_scope(
+    def test_workspace_makefile_generator_ignores_projects_outside_workspace_scope(
         self,
         tmp_path: Path,
     ) -> None:
@@ -170,8 +166,8 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         docs_config: dict[str, t.JsonValue] = {
             "scope": {
                 "exclude_roots": [
-                    "algar-oud-mig",
-                    "gruponos-meltano-native",
+                    "sample-external-alpha",
+                    "sample-external-beta",
                 ],
             },
         }
@@ -179,7 +175,8 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             docs_dir / "docs_config.json",
             docs_config,
         ).unwrap()
-        for project_name in ("flext-core", "algar-oud-mig", "gruponos-meltano-native"):
+        project_names = ("flext-core", "sample-external-alpha", "sample-external-beta")
+        for project_name in project_names:
             project_dir = workspace_root / project_name
             project_dir.mkdir()
             dependencies = "['flext-core']" if project_name != "flext-core" else "[]"
@@ -201,8 +198,10 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
 
         assert outcome.success and outcome.value.exit_code == 0
         stdout = outcome.value.stdout
-        assert "INDEPENDENT_PROJECTS := algar-oud-mig gruponos-meltano-native" in stdout
-        assert "ATTACHABLE_PROJECTS := algar-oud-mig gruponos-meltano-native" in stdout
+        assert "sample-external-alpha" not in stdout
+        assert "sample-external-beta" not in stdout
+        assert "INDEPENDENT_PROJECTS :=" not in stdout
+        assert "ATTACHABLE_PROJECTS :=" not in stdout
 
     def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation(
         self,

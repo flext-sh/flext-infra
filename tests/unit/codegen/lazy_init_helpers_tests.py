@@ -154,7 +154,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_support_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: list[str] = ["d", "td"]\n',
+            '__all__: list[str] = ["d", "td", "tm"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_support_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -162,6 +162,23 @@ class TestsFlextInfraLazyInitHelpers:
             "class FlextTestsConstants:\n"
             "    pass\n\n"
             '__all__: list[str] = ["FlextTestsConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
+        core_root.mkdir(parents=True)
+        core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        core_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__: list[str] = ["tm"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        core_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextCoreConstants:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextCoreConstants"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_root = workspace_root / c.Infra.DIR_TESTS
@@ -172,9 +189,10 @@ class TestsFlextInfraLazyInitHelpers:
         tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "from flext_demo import FlextDemoConstants\n"
+            "from flext_core import FlextCoreConstants\n"
             "from flext_tests import FlextTestsConstants\n\n"
             "class TestsFlextDemoConstants("
-            "FlextDemoConstants, FlextTestsConstants"
+            "FlextDemoConstants, FlextCoreConstants, FlextTestsConstants"
             "):\n"
             "    pass\n\n"
             "c = TestsFlextDemoConstants\n\n"
@@ -199,6 +217,9 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert '"d"' in init_content
         assert '"td"' in init_content
+        assert '"tm"' in init_content
+        assert '    "tm",' in init_content
+        assert '"flext_core": ("tm",)' not in init_content
 
     def test_root_aliases_follow_transitive_parent_exports_from_source(
         self,
