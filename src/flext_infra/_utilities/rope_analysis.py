@@ -106,10 +106,12 @@ class FlextInfraUtilitiesRopeAnalysis:
                 rope_project,
                 resource,
             )
-            state = FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
-                rope_project=rope_project,
-                resource=resource,
-                pymodule=pymodule,
+            state = (
+                FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
+                    rope_project=rope_project,
+                    resource=resource,
+                    pymodule=pymodule,
+                )
             )
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             state = FlextInfraUtilitiesRopeAnalysis._empty_module_semantic_state()
@@ -194,9 +196,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             resource,
         )
         raw_imports = (
-            getattr(module_imports, "imports", ())
-            if module_imports is not None
-            else ()
+            getattr(module_imports, "imports", ()) if module_imports is not None else ()
         )
         import_stmts: tuple[t.Infra.RopeImportStatement, ...] = tuple(raw_imports)
         for import_stmt in import_stmts:
@@ -269,7 +269,9 @@ class FlextInfraUtilitiesRopeAnalysis:
             return
         if module_name:
             local_name = alias_as or alias_name
-            target = f"{resolved_module}.{alias_name}" if resolved_module else alias_name
+            target = (
+                f"{resolved_module}.{alias_name}" if resolved_module else alias_name
+            )
         else:
             local_name = alias_as or alias_name.partition(".")[0]
             target = alias_name
@@ -438,7 +440,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _dunder_export_names(
         *,
-        attributes: t.MappingOf[str, t.Infra.RopePyName],
+        attributes: t.MappingKV[str, t.Infra.RopePyName],
         resource: t.Infra.RopeResource,
     ) -> t.StrSequence:
         """Return locally assigned dunder export names."""
@@ -457,7 +459,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _explicit_export_names(
         *,
-        attributes: t.MappingOf[str, t.Infra.RopePyName],
+        attributes: t.MappingKV[str, t.Infra.RopePyName],
         pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeResource,
     ) -> t.StrSequence | None:
@@ -478,7 +480,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _implicit_export_names(
         *,
-        attributes: t.MappingOf[str, t.Infra.RopePyName],
+        attributes: t.MappingKV[str, t.Infra.RopePyName],
         export_options: m.Infra.ExportOptions,
         resource: t.Infra.RopeResource,
     ) -> t.StrSequence:
@@ -508,7 +510,8 @@ class FlextInfraUtilitiesRopeAnalysis:
         if isinstance(pyname, RopeImportedName):
             return False
         if isinstance(pyname, RopeAssignedName):
-            return export_options.allow_assignments
+            allow_assignments: bool = export_options.allow_assignments
+            return allow_assignments
         if not isinstance(pyname, RopeDefinedName):
             return False
         obj = pyname.get_object()
@@ -516,9 +519,9 @@ class FlextInfraUtilitiesRopeAnalysis:
             return True
         if not isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
             return False
-        return (export_options.allow_main and name == "main") or (
-            export_options.allow_functions
-        )
+        allow_main: bool = export_options.allow_main
+        allow_functions: bool = export_options.allow_functions
+        return (allow_main and name == "main") or allow_functions
 
     @staticmethod
     def _explicit_all_names(
@@ -911,28 +914,41 @@ class FlextInfraUtilitiesRopeAnalysis:
         include_private: bool = False,
     ) -> t.StrMapping:
         """Return {method_name: kind} for methods of a class."""
-        result: t.MutableStrMapping = {}
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
                 rope_project,
                 resource,
             )
-            attributes = pymodule.get_attributes()
-            if class_name not in attributes:
-                return result
-            obj = attributes[class_name].get_object()
-            if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
-                return result
-            for name, pyname in obj.get_attributes().items():
-                if not include_private and name.startswith("_"):
-                    continue
-                child = pyname.get_object()
-                if not isinstance(child, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
-                    continue
-                kind = child.get_kind()
-                result[name] = kind
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            return {}
+        return FlextInfraUtilitiesRopeAnalysis._class_methods_from_pymodule(
+            class_name=class_name,
+            include_private=include_private,
+            pymodule=pymodule,
+        )
+
+    @staticmethod
+    def _class_methods_from_pymodule(
+        *,
+        class_name: str,
+        include_private: bool,
+        pymodule: t.Infra.RopePyModule,
+    ) -> t.StrMapping:
+        """Return method symbols for a class from one resolved Rope module."""
+        result: t.MutableStrMapping = {}
+        attributes = pymodule.get_attributes()
+        if class_name not in attributes:
             return result
+        obj = attributes[class_name].get_object()
+        if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+            return result
+        for name, pyname in obj.get_attributes().items():
+            if not include_private and name.startswith("_"):
+                continue
+            child = pyname.get_object()
+            if not isinstance(child, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
+                continue
+            result[name] = child.get_kind()
         return result
 
     # ------------------------------------------------------------------
