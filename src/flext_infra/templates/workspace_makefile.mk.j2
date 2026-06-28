@@ -442,7 +442,7 @@ _boot_default: ## Install all projects into workspace .venv
 	fi; \
 	if [ -n "$(BOOT_VALIDATE_PROJECTS)" ]; then \
 		echo "Validating workspace selection (validate VALIDATE_SCOPE=workspace)..."; \
-		$(MAKE) val VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)" || { echo "FAIL: boot validation"; exit 1; }; \
+		$(MAKE) val WHAT=workspace VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)" || { echo "FAIL: boot validation"; exit 1; }; \
 	else \
 		echo "Skipping workspace validation (no managed workspace projects selected)."; \
 	fi
