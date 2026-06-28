@@ -18,12 +18,8 @@
 {%- endfor %}
 {%- endmacro %}
 
-{% macro what_dispatch(verb) -%}
-{%- for phase, target in make.WHAT_DISPATCH[verb].items() %}
-	{{ '"" | all' if phase == '' else phase }}) $(MAKE) --no-print-directory {{ target }} $(MAKE_SELECTION_ARGS) ;; \
-{%- endfor %}
-	*) echo "invalid WHAT '$(WHAT)' for {{ verb }} (valid: all {{ make.WHAT_DISPATCH[verb].keys() | reject('equalto', '') | join(' ') }})" >&2; exit 2 ;; \
-	esac
+{% macro dispatch_environment() -%}
+FLEXT_WORKSPACE_ROOT="$(CURDIR)" {%- for variable_name, _default_value in make.WORKSPACE_VARIABLE_DEFAULTS %} {{ variable_name }}="$({{ variable_name }})"{%- endfor %}
 {%- endmacro %}
 
 SHELL := /usr/bin/bash
@@ -90,6 +86,7 @@ WORKSPACE_PYTHONPATH := $(shell \
 		[ "$$skip" = "0" ] && [ -d "$(CURDIR)/$$d/src" ] && printf "$(CURDIR)/$$d/src:"; \
 	done)$(CURDIR)/src
 WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)
+FLEXT_MAKE_DISPATCH := {{ dispatch_environment() }} PYTHONPATH="$(WORKSPACE_PYTHONPATH)" uv run --all-packages python -m scripts.dispatch
 WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra
 WORKSPACE_INFRA_CHECK := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CHECK }}
 WORKSPACE_INFRA_CODEGEN := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CODEGEN }}
@@ -252,37 +249,13 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status test val clean ship _rel _pr _save _tag _push _imp _stat
+.PHONY: help boot _boot_default build _build_default _up _mod _constraints _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
 
-help: ## Show simple workspace verbs
-	$(Q)echo "FLEXT Workspace"
-	$(Q)echo ""
-	$(Q)echo "Projects: $(words $(ALL_PROJECTS)) total"
-	$(Q)echo "Selection: $(words $(SELECTED_PROJECTS)) selected"
-	$(Q)echo ""
-	$(Q)echo "Core verbs:"
-{% for verb_name, verb_help in make.WORKSPACE_CORE_VERBS %}
-	$(Q)printf " %-12s %s\n" "{{ verb_name }}" "{{ verb_help }}"
-{% endfor %}
-	$(Q)echo ""
-	$(Q)echo "Git workflow:"
-{% for verb_name, verb_help in make.WORKSPACE_GIT_VERBS %}
-	$(Q)printf " %-12s %s\n" "{{ verb_name }}" "{{ verb_help }}"
-{% endfor %}
-	$(Q)echo ""
-	$(Q)echo "Selectors:"
-{% for help_line in make.WORKSPACE_SELECTOR_LINES %}
-	$(Q)echo " {{ help_line | replace('"', '\\"') }}"
-{% endfor %}
-	$(Q)echo ""
-	$(Q)echo "Examples:"
-{% for example_line in make.WORKSPACE_EXAMPLES %}
-	$(Q)echo " {{ example_line | replace('"', '\\"') }}"
-{% endfor %}
+help: ## Show registry-driven workspace verbs
+	$(Q)$(FLEXT_MAKE_DISPATCH) help
 
 boot: ## Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)
-	$(Q)case "$(WHAT)" in \
-{{ what_dispatch('boot') | trim }}
+	$(Q)$(FLEXT_MAKE_DISPATCH) boot
 
 _boot_default: ## Install all projects into workspace .venv
 	$(Q)$(PREFLIGHT_CHECK)
@@ -496,8 +469,7 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	$(Q)echo "Dependency constraint rewrite complete."
 
 check: ## Quality gates (WHAT=all|scan|fmt|format|types|pyre|pol|cqrs|lint|pyrefly|mypy|pyright|markdown|go|silent-failure|loc-cap|boundary|coordination)
-	$(Q)case "$(WHAT)" in \
-{{ what_dispatch('check') | trim }}
+	$(Q)$(FLEXT_MAKE_DISPATCH) check
 
 _check_default: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -517,37 +489,26 @@ _coordination: ## Run Beads coordination reports
 	$(Q)bd graph --all --compact >/dev/null
 
 coordination: ## Run Beads coordination reports (WHAT=all)
-	$(Q)case "$(WHAT)" in \
-	"" | all) $(MAKE) --no-print-directory _coordination $(MAKE_SELECTION_ARGS) ;; \
-	*) echo "invalid WHAT '$(WHAT)' for coordination (valid: all)" >&2; exit 2 ;; \
-	esac
+	$(Q)$(FLEXT_MAKE_DISPATCH) coordination
 
 makefile: ## Show promoted scripts command surface (WHAT=all)
-	$(Q)case "$(WHAT)" in \
-	"" | all) $(PY) -m scripts.dispatch makefile WHAT=all ;; \
-	*) echo "invalid WHAT '$(WHAT)' for makefile (valid: all)" >&2; exit 2 ;; \
-	esac
+	$(Q)$(FLEXT_MAKE_DISPATCH) makefile
 
 status: ## Show Beads status (WHAT=all)
-	$(Q)case "$(WHAT)" in \
-	"" | all) $(PY) -m scripts.dispatch status WHAT=all ;; \
-	*) echo "invalid WHAT '$(WHAT)' for status (valid: all)" >&2; exit 2 ;; \
-	esac
+	$(Q)$(FLEXT_MAKE_DISPATCH) status
 
 _cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
 
 build: ## Build/regen (WHAT=all|gen|mod|up|constraints|sync|docs|stubs)
-	$(Q)case "$(WHAT)" in \
-{{ what_dispatch('build') | trim }}
+	$(Q)$(FLEXT_MAKE_DISPATCH) build
 
 _build_default: ## Build/package all selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
 ship: ## Release workflow (WHAT=all|save|tag|push|pr|rel)
-	$(Q)case "$(WHAT)" in \
-{{ what_dispatch('ship') | trim }}
+	$(Q)$(FLEXT_MAKE_DISPATCH) ship
 
 _rel: ## Interactive workspace release orchestration
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -686,6 +647,9 @@ _docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 		$(DOCS_PROJECT_FLAGS)
 
 test: ## Run tests only in all projects
+	$(Q)$(FLEXT_MAKE_DISPATCH) test
+
+_test_default: ## Run tests only in all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb test \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
@@ -693,12 +657,7 @@ test: ## Run tests only in all projects
 		$(ORCHESTRATOR_PROJECTS)
 
 val: ## Run validate gates (WHAT=all|project|workspace, VALIDATE_SCOPE=project|workspace, FIX=1)
-	$(Q)case "$(WHAT)" in \
-	"" | all) $(MAKE) --no-print-directory _val_body VALIDATE_SCOPE="$(VALIDATE_SCOPE)" $(MAKE_SELECTION_ARGS) ;; \
-	project) $(MAKE) --no-print-directory _val_project $(MAKE_SELECTION_ARGS) ;; \
-	workspace) $(MAKE) --no-print-directory _val_workspace $(MAKE_SELECTION_ARGS) ;; \
-	*) echo "invalid WHAT '$(WHAT)' for val (valid: all project workspace)" >&2; exit 2 ;; \
-	esac
+	$(Q)$(FLEXT_MAKE_DISPATCH) val
 
 _val_project: ## Run project validation gates
 	$(Q)$(MAKE) --no-print-directory _val_body VALIDATE_SCOPE=project $(MAKE_SELECTION_ARGS)
@@ -924,6 +883,9 @@ _pol: ## Repo-wide typing policy gate (dynamic typing/t.JsonValue/# type: ignore
 	exit $$status
 
 clean: ## Clean all projects
+	$(Q)$(FLEXT_MAKE_DISPATCH) clean
+
+_clean_default: ## Clean all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb clean $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 	$(Q)rm -rf .pytest_cache/ htmlcov/ .coverage* .mypy_cache/ .ruff_cache/

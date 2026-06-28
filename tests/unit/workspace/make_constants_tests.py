@@ -1,7 +1,7 @@
-"""Tests for the canonical make-verb constants + WHAT phase map.
+"""Tests for the canonical workspace WHAT phase map.
 
-Asserts the public ``c.Infra`` surface: the 8 canonical workspace verbs and the
-WHAT_PHASES map that absorbs the retired verbs as phases.
+Asserts the public ``c.Infra`` helper map used by legacy CLI helpers. Public
+Make routing is owned by the registry discovered from ``scripts/cmd``.
 """
 
 from __future__ import annotations
@@ -11,18 +11,13 @@ from flext_tests import tm
 from flext_infra import c
 from tests import t
 
-_CANONICAL_VERBS = frozenset({
+_PHASED_VERBS = frozenset({
     "boot",
     "build",
     "check",
     "test",
     "val",
     "ship",
-    "clean",
-    "coordination",
-    "makefile",
-    "status",
-    "help",
 })
 _RETIRED_VERBS = frozenset({
     "scan",
@@ -49,14 +44,12 @@ _RETIRED_VERBS = frozenset({
 
 
 class TestMakeConstants:
-    def test_core_verbs_are_canonical_eight(self) -> None:
-        verbs = frozenset(verb for verb, _ in c.Infra.WORKSPACE_CORE_VERBS)
-        tm.that(verbs == _CANONICAL_VERBS, eq=True)
+    def test_what_phase_verbs_are_canonical_subset(self) -> None:
+        verbs = frozenset(c.Infra.WHAT_PHASES)
+        tm.that(verbs == _PHASED_VERBS, eq=True)
 
     def test_retired_verbs_absent_from_surface(self) -> None:
-        surface = {verb for verb, _ in c.Infra.WORKSPACE_CORE_VERBS}
-        surface |= {verb for verb, _ in c.Infra.WORKSPACE_GIT_VERBS}
-        tm.that(_RETIRED_VERBS.isdisjoint(surface), eq=True)
+        tm.that(_RETIRED_VERBS.isdisjoint(c.Infra.WHAT_PHASES), eq=True)
 
     def test_what_phases_absorb_retired_verbs(self) -> None:
         phases = c.Infra.WHAT_PHASES

@@ -183,113 +183,42 @@ class FlextInfraConstantsMake:
         "PR_DELETE_BRANCH=0|1  PR_CHECKS_STRICT=0|1",
         "PR_RELEASE_ON_MERGE=0|1",
     )
-    WORKSPACE_CORE_VERBS: Final[t.StrPairSequence] = (
-        (
-            "boot",
-            "Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)",
-        ),
-        ("build", "Build/regen (WHAT=gen|mod|up|constraints|sync|docs|stubs)"),
-        (
-            "check",
-            "Quality gates (WHAT=all|lint|pyrefly|mypy|pyright|fmt|scan|types)",
-        ),
-        ("test", "Run tests (WHAT=all)"),
-        ("val", "Validation gates (WHAT=all|project|workspace)"),
-        ("ship", "Release workflow (WHAT=all|save|tag|push|pr|rel; APPLY=Y)"),
-        ("clean", "Clean build/test/type artifacts"),
-        ("coordination", "Run Beads coordination diagnostics"),
-        ("makefile", "Show promoted scripts command surface"),
-        ("status", "Show Beads status"),
-        ("help", "Show workspace verbs"),
-    )
-    WORKSPACE_GIT_VERBS: Final[t.StrPairSequence] = ()
-    # SSOT: verb -> phase -> make target. Template derives the case arms; nothing
-    # else hardcodes phase names. WHAT_PHASES (below) derives its sets from this.
-    WHAT_DISPATCH: Final[t.MappingKV[str, t.MappingKV[str, str]]] = MappingProxyType({
-        "boot": MappingProxyType({
-            "": "_boot_default",
-            "venv": "_boot_default",
-            "submodules": "_boot_default",
-            "sync": "_sync",
-            "stat": "_stat",
-            "imp": "_imp",
-        }),
-        "build": MappingProxyType({
-            "": "_build_default",
-            "gen": "_gen",
-            "mod": "_mod",
-            "up": "_up",
-            "constraints": "_constraints",
-            "sync": "_sync",
-            "docs": "_docs",
-            "stubs": "_stubs",
-        }),
-        "check": MappingProxyType({
-            "": "_check_default",
-            "scan": "_scan",
-            "fmt": "_fmt",
-            "format": "_fmt",
-            "types": "_types",
-            "pyre": "_pyre",
-            "pol": "_pol",
-            "cqrs": "_cqrs",
-            "coordination": "_coordination",
-            **{
-                gate: f'_check_default CHECK_GATES="{gate}"'
-                for gate in (
-                    "lint",
-                    "pyrefly",
-                    "mypy",
-                    "pyright",
-                    "markdown",
-                    "go",
-                    "silent-failure",
-                    "loc-cap",
-                    "boundary",
-                )
-            },
-        }),
-        "ship": MappingProxyType({
-            "": "_rel",
-            "save": "_save",
-            "tag": "_tag",
-            "push": "_push",
-            "pr": "_pr",
-            "rel": "_rel",
-        }),
-    })
-    # Phase-set per verb (CLI resolve_what); make verbs derived from WHAT_DISPATCH.
+    # Phase-set per verb for legacy CLI helpers. Make routing is owned by
+    # the registry discovered from scripts/cmd through flext-tests.
     WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
-        **{
-            verb: frozenset(phase for phase in targets if phase)
-            for verb, targets in WHAT_DISPATCH.items()
-        },
+        "boot": frozenset({"imp", "stat", "submodules", "sync", "venv"}),
+        "build": frozenset({
+            "constraints",
+            "docs",
+            "gen",
+            "mod",
+            "stubs",
+            "sync",
+            "up",
+        }),
+        "check": frozenset({
+            "boundary",
+            "coordination",
+            "cqrs",
+            "fmt",
+            "format",
+            "go",
+            "lint",
+            "loc-cap",
+            "markdown",
+            "mypy",
+            "pol",
+            "pyre",
+            "pyrefly",
+            "pyright",
+            "scan",
+            "silent-failure",
+            "types",
+        }),
+        "ship": frozenset({"pr", "push", "rel", "save", "tag"}),
         "test": frozenset({"all"}),
         "val": frozenset({"all", "project", "workspace"}),
     })
-    WORKSPACE_SELECTOR_LINES: Final[t.StrSequence] = (
-        'PROJECT=<name> / PROJECTS="a b"    Scope to project(s)',
-        "WHAT=<phase>               Sub-phase for promoted workspace verbs",
-        "FIX=1                      Auto-fix (check/val)",
-        'FILE=src/x.py / FILES="a b"        Scope to file(s)',
-        "CHANGED_ONLY=1             Only git-modified files",
-        "MATCH=expr                 pytest -k filter (test)",
-        "FAIL_FAST=1                Stop on first failure",
-        "APPLY=Y                    Allow mutation (ship/build/check fmt)",
-        "VERBOSE=1                  Show executed commands",
-    )
-    WORKSPACE_EXAMPLES: Final[t.StrSequence] = (
-        "make check PROJECT=flext-core",
-        "make check WHAT=lint FIX=1 CHANGED_ONLY=1",
-        "make check WHAT=loc-cap",
-        "make check WHAT=coordination",
-        "make build WHAT=mod PROJECT=flext-core",
-        "make test WHAT=all PROJECT=flext-core MATCH=test_x FAIL_FAST=1",
-        "make val WHAT=workspace",
-        'make ship WHAT=save MESSAGE="chore: ..." APPLY=Y',
-        "make makefile WHAT=all",
-        "make boot WHAT=all",
-    )
     STANDALONE_BOOTSTRAP_VERBS: Final[t.StrPairSequence] = (
         ("venv", "Create virtual environment"),
         ("setup", "Full standalone setup"),

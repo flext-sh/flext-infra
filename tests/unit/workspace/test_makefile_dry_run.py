@@ -56,6 +56,7 @@ def _run_workspace_make_dry_run(
             "RUFF_ARGS",
             "VALIDATE_GATES",
             "VERBOSE",
+            "WHAT",
         ),
     )
     if outcome.failure:
@@ -211,7 +212,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         assert f'init --workspace "{workspace_root}/$proj" --apply' in output
         assert f'workspace sync --workspace "{workspace_root}" --apply' not in output
 
-    def test_workspace_makefile_dry_run_ship_save_dispatches_to_private(
+    def test_workspace_makefile_dry_run_ship_save_dispatches_to_registry(
         self,
         tmp_path: Path,
     ) -> None:
@@ -220,9 +221,10 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert "--no-print-directory _save" in output
+        assert 'WHAT="save"' in output
+        assert "uv run --all-packages python -m scripts.dispatch ship" in output
 
-    def test_workspace_makefile_dry_run_build_what_mod_dispatches_to_private(
+    def test_workspace_makefile_dry_run_build_what_mod_dispatches_to_registry(
         self,
         tmp_path: Path,
     ) -> None:
@@ -231,7 +233,8 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert "--no-print-directory _mod" in output
+        assert 'WHAT="mod"' in output
+        assert "uv run --all-packages python -m scripts.dispatch build" in output
 
     def test_workspace_makefile_dry_run_build_default_runs_orchestrator(
         self,
@@ -242,9 +245,10 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert "--no-print-directory _build_default" in output
+        assert 'WHAT=""' in output
+        assert "uv run --all-packages python -m scripts.dispatch build" in output
 
-    def test_workspace_makefile_dry_run_check_what_pol_dispatches_to_private(
+    def test_workspace_makefile_dry_run_check_what_pol_dispatches_to_registry(
         self,
         tmp_path: Path,
     ) -> None:
@@ -253,7 +257,8 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert "--no-print-directory _pol" in output
+        assert 'WHAT="pol"' in output
+        assert "uv run --all-packages python -m scripts.dispatch check" in output
 
     def test_workspace_makefile_dry_run_check_what_gate_forwards_check_gates(
         self,
@@ -264,9 +269,10 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert '_check_default CHECK_GATES="loc-cap"' in output
+        assert 'WHAT="loc-cap"' in output
+        assert "uv run --all-packages python -m scripts.dispatch check" in output
 
-    def test_workspace_makefile_dry_run_boot_what_stat_dispatches_to_private(
+    def test_workspace_makefile_dry_run_boot_what_stat_dispatches_to_registry(
         self,
         tmp_path: Path,
     ) -> None:
@@ -275,4 +281,5 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         output = process.stdout + process.stderr
 
         assert process.exit_code == 0
-        assert "--no-print-directory _stat" in output
+        assert 'WHAT="stat"' in output
+        assert "uv run --all-packages python -m scripts.dispatch boot" in output
