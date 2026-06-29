@@ -54,6 +54,7 @@ def _run_workspace_make_dry_run(
             "PROJECTS",
             "PYRIGHT_ARGS",
             "PYTEST_ARGS",
+            "PR_BRANCH",
             "RUFF_ARGS",
             "VALIDATE_GATES",
             "VERBOSE",
@@ -223,6 +224,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
 
         assert process.exit_code == 0
         assert 'WHAT="save"' in output
+        assert 'PR_BRANCH="' in output
         assert "uv run --all-packages python -m scripts.dispatch ship" in output
 
     def test_workspace_makefile_dry_run_build_what_mod_dispatches_to_registry(

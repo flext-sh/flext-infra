@@ -86,7 +86,7 @@ WORKSPACE_PYTHONPATH := $(shell \
 		[ "$$skip" = "0" ] && [ -d "$(CURDIR)/$$d/src" ] && printf "$(CURDIR)/$$d/src:"; \
 	done)$(CURDIR)/src
 WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)
-FLEXT_MAKE_DISPATCH := {{ dispatch_environment() }} PYTHONPATH="$(WORKSPACE_PYTHONPATH)" uv run --all-packages python -m scripts.dispatch
+FLEXT_MAKE_DISPATCH := {{ dispatch_environment() }} PR_BRANCH="$(PR_BRANCH)" PYTHONPATH="$(WORKSPACE_PYTHONPATH)" uv run --all-packages python -m scripts.dispatch
 WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra
 WORKSPACE_INFRA_CHECK := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CHECK }}
 WORKSPACE_INFRA_CODEGEN := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CODEGEN }}
@@ -249,7 +249,7 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot _boot_default build _build_default _up _mod _constraints docs _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
+.PHONY: help boot _boot_default build _build_default _up _mod _constraints docs _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status _status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
 
 help: ## Show registry-driven workspace verbs
 	$(Q)$(FLEXT_MAKE_DISPATCH) help
@@ -496,6 +496,11 @@ makefile: ## Show promoted scripts command surface (WHAT=all)
 
 status: ## Show Beads status (WHAT=all)
 	$(Q)$(FLEXT_MAKE_DISPATCH) status
+
+_status: ## Show Beads status
+	$(Q)bd status --json
+	$(Q)bd dolt show
+	$(Q)bd backup status --json
 
 _cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
