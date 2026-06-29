@@ -7,21 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import c
-from flext_infra import (
-    FlextInfraConstantsBase,
-    FlextInfraConstantsBasemk,
-    FlextInfraConstantsCensus,
-    FlextInfraConstantsCheck,
-    FlextInfraConstantsCodegen,
-    FlextInfraConstantsDeps,
-    FlextInfraConstantsDocs,
-    FlextInfraConstantsGithub,
-    FlextInfraConstantsRefactor,
-    FlextInfraConstantsRelease,
-    FlextInfraConstantsRope,
-    FlextInfraConstantsSharedInfra,
-    FlextInfraConstantsWorkspace,
-)
+from flext_infra._constants.base import FlextInfraConstantsBase
+from flext_infra._constants.basemk import FlextInfraConstantsBasemk
+from flext_infra._constants.census import FlextInfraConstantsCensus
+from flext_infra._constants.check import FlextInfraConstantsCheck
+from flext_infra._constants.codegen import FlextInfraConstantsCodegen
+from flext_infra._constants.deps import FlextInfraConstantsDeps
+from flext_infra._constants.docs import FlextInfraConstantsDocs
+from flext_infra._constants.github import FlextInfraConstantsGithub
+from flext_infra._constants.refactor import FlextInfraConstantsRefactor
+from flext_infra._constants.release import FlextInfraConstantsRelease
+from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 
 
 class FlextInfraConstants(c):
