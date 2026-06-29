@@ -12,7 +12,7 @@ def make_command(
     workspace_root: Path,
     **overrides: object,
 ) -> FlextInfraReleaseOrchestrator:
-    return FlextInfraReleaseOrchestrator.model_validate({
+    command: FlextInfraReleaseOrchestrator = FlextInfraReleaseOrchestrator.model_validate({
         "workspace_root": workspace_root,
         "phase": c.Tests.RELEASE_PHASE_VERSION,
         "interactive": 0,
@@ -20,6 +20,7 @@ def make_command(
         "apply_changes": True,
         **overrides,
     })
+    return command
 
 
 def test_execute_with_explicit_version_updates_workspace_file(tmp_path: Path) -> None:

@@ -781,6 +781,9 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             score += 15
         if attr == name:
             score += 3
+        part_number = module_file.stem.rpartition("_part_")[2]
+        if part_number.isdecimal():
+            score += int(part_number)
         score -= module_path.count(".")
         final_score: int = score
         return final_score

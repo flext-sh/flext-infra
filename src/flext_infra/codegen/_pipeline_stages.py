@@ -69,9 +69,10 @@ class FlextInfraCodegenPipelineStagesMixin:
         """Run PEP 561 py.typed marker generation."""
 
         def _action() -> int:
-            return FlextInfraCodegenPyTyped.model_validate({
+            py_typed: FlextInfraCodegenPyTyped = FlextInfraCodegenPyTyped.model_validate({
                 "workspace_root": ctx.workspace_root,
-            }).run()
+            })
+            return py_typed.run()
 
         return self._run_stage(
             c.Infra.PipelineStage.PY_TYPED,
@@ -160,9 +161,12 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         def _action() -> int:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            return FlextInfraCodegenLazyInit.model_validate({
+            lazy_init: FlextInfraCodegenLazyInit = (
+                FlextInfraCodegenLazyInit.model_validate({
                 "workspace_root": ctx.workspace_root,
-            }).generate_inits(check_only=dry_run)
+                })
+            )
+            return lazy_init.generate_inits(check_only=dry_run)
 
         return self._run_stage(
             c.Infra.PipelineStage.LAZY_INIT,

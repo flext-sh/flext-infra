@@ -95,6 +95,82 @@ class TestGenerateFile:
             contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
 
+    def test_lazy_parts_bootstrap_uses_direct_imports(self) -> None:
+        """The lazy runtime bootstrap package cannot import flext_core.lazy."""
+        content = FlextInfraCodegenGeneration.generate_file(
+            ["FlextLazy", "LazyImportDict"],
+            {
+                "FlextLazy": (
+                    "flext_core._lazy_parts.flextlazy_part_02",
+                    "FlextLazy",
+                ),
+                "LazyImportDict": (
+                    "flext_core._lazy_parts.flextlazy_part_01",
+                    "LazyImportDict",
+                ),
+            },
+            {},
+            "flext_core._lazy_parts",
+        )
+        tm.that(
+            content,
+            contains=(
+                "from flext_core._lazy_parts.flextlazy_part_01 import LazyImportDict"
+            ),
+        )
+        tm.that(content, contains="from __future__ import annotations")
+        tm.that(
+            content,
+            contains="from flext_core._lazy_parts.flextlazy_part_02 import FlextLazy",
+        )
+        tm.that(content, contains="__all__: list[str] = [")
+        tm.that(content, lacks="from flext_core.lazy")
+        tm.that(content, lacks="install_lazy_exports")
+
+    def test_typings_bootstrap_uses_direct_imports(self) -> None:
+        """The typing package is loaded by lazy bootstrap and cannot import it."""
+        content = FlextInfraCodegenGeneration.generate_file(
+            ["FlextTypesLazy", "FlextTypingBase"],
+            {
+                "FlextTypesLazy": (
+                    "flext_core._typings.lazy",
+                    "FlextTypesLazy",
+                ),
+                "FlextTypingBase": (
+                    "flext_core._typings.base",
+                    "FlextTypingBase",
+                ),
+            },
+            {},
+            "flext_core._typings",
+        )
+        tm.that(content, contains="from flext_core._typings.lazy import FlextTypesLazy")
+        tm.that(content, contains="from __future__ import annotations")
+        tm.that(content, contains="__all__: list[str] = [")
+        tm.that(content, lacks="FlextTypingBase")
+        tm.that(content, lacks="from flext_core._typings.base")
+        tm.that(content, lacks="from flext_core.lazy")
+        tm.that(content, lacks="install_lazy_exports")
+
+    def test_flext_core_packages_do_not_eager_merge_child_packages(self) -> None:
+        """flext_core bootstraps from explicit lazy maps without child imports."""
+        content = FlextInfraCodegenGeneration.generate_file(
+            ["FlextConstantsEnforcementEnums"],
+            {
+                "FlextConstantsEnforcementEnums": (
+                    "flext_core._constants._enforcement_parts.flextconstantsenforcement_part_01",
+                    "FlextConstantsEnforcementEnums",
+                ),
+            },
+            {},
+            "flext_core._constants",
+            child_packages_for_lazy=("flext_core._constants._enforcement_parts",),
+        )
+        tm.that(content, contains="build_lazy_import_map(")
+        tm.that(content, contains='"._enforcement_parts.flextconstantsenforcement_part_01"')
+        tm.that(content, lacks="merge_lazy_imports(")
+        tm.that(content, lacks='("._enforcement_parts",)')
+
     def test_with_other_package(self) -> None:
         """Test uses correct lazy import for non-core packages."""
         exports = ["Test"]
@@ -352,8 +428,8 @@ class TestGenerateFile:
         tm.that(content, contains="publish_all=False")
         tm.that(content, lacks="__all__: list[str] = [")
 
-    def test_subpackage_omits_type_checking_for_internal_exports(self) -> None:
-        """Subpackage __init__.py does not emit static imports for internals."""
+    def test_subpackage_emits_static_analysis_hints(self) -> None:
+        """Subpackage __init__.py exposes lazy exports to static checkers."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["ExamplesFlextModelsEx00"],
             {
@@ -366,9 +442,15 @@ class TestGenerateFile:
             "examples.models",
         )
         tm.that(content, contains='".ex00": ("ExamplesFlextModelsEx00",)')
-        tm.that(content, lacks="if _t.TYPE_CHECKING:")
+        tm.that(content, contains="if _t.TYPE_CHECKING:")
+        tm.that(
+            content,
+            contains=(
+                "from examples.models.ex00 import "
+                "ExamplesFlextModelsEx00 as ExamplesFlextModelsEx00"
+            ),
+        )
         tm.that(content, lacks="from models")
-        tm.that(content, lacks="from examples.models.ex00 import")
 
     def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
         """Root namespace TYPE_CHECKING must omit module/package compatibility names."""
@@ -466,8 +548,8 @@ class TestGenerateFile:
         tm.that(content, lacks='"test_pkg.services"')
         tm.that(content, lacks="_LAZY_IMPORTS.pop(")
 
-    def test_subpackage_omits_static_analysis_hints(self) -> None:
-        """Non-root package __init__.py keeps only _LAZY_IMPORTS + lazy loader."""
+    def test_subpackage_keeps_static_analysis_hints_without_public_all(self) -> None:
+        """Non-root package __init__.py exposes hints while keeping lazy exports private."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
@@ -477,8 +559,9 @@ class TestGenerateFile:
             inline_constants,
             "test_pkg.transformers",
         )
-        tm.that(content, lacks="if _t.TYPE_CHECKING:")
-        tm.that(content, lacks="import typing as _t")
+        tm.that(content, contains="if _t.TYPE_CHECKING:")
+        tm.that(content, contains="import typing as _t")
+        tm.that(content, contains="from mod import Alpha as Alpha, Beta as Beta")
         tm.that(content, lacks="__all__: list[str] = [")
         tm.that(
             content,

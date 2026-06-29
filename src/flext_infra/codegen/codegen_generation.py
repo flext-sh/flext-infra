@@ -24,6 +24,16 @@ class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
 
     @staticmethod
+    def _uses_direct_bootstrap(current_pkg: str) -> bool:
+        """Return whether a package bootstraps the lazy runtime itself."""
+        return current_pkg in {"flext_core._lazy_parts", "flext_core._typings"}
+
+    @staticmethod
+    def _uses_static_child_map(current_pkg: str) -> bool:
+        """Return whether child exports are already fully enumerated statically."""
+        return current_pkg == "flext_core" or current_pkg.startswith("flext_core.")
+
+    @staticmethod
     def _is_module_or_package_export(attr_name: str) -> bool:
         """Is module or package export."""
         return not attr_name
@@ -456,6 +466,40 @@ class FlextInfraCodegenGeneration:
         return tuple(normalized)
 
     @staticmethod
+    def _generate_direct_bootstrap_file(
+        exports: t.StrSequence,
+        filtered: t.LazyAliasMap,
+        inline_constants: t.StrMapping,
+        current_pkg: str,
+    ) -> str:
+        """Generate a direct-import package initializer for lazy bootstrap code."""
+        out: t.MutableSequenceOf[str] = [
+            c.Infra.AUTOGEN_HEADER,
+            FlextInfraCodegenGeneration._format_root_package_docstring(
+                current_pkg.rsplit(".", maxsplit=1)[-1],
+            ),
+            "",
+            "from __future__ import annotations",
+            "",
+        ]
+        runtime_groups = FlextInfraCodegenGeneration._group_imports(filtered)
+        out.extend(
+            FlextInfraCodegenGeneration._generate_import_lines(runtime_groups),
+        )
+        if runtime_groups:
+            out.append("")
+        for name, value in sorted(inline_constants.items()):
+            out.append(f'{name} = "{value}"')
+        if inline_constants:
+            out.append("")
+        if exports:
+            out.append("__all__: list[str] = [")
+            out.extend(f'    "{export}",' for export in exports)
+            out.append("]")
+        out.append("")
+        return "\n".join(out)
+
+    @staticmethod
     def _build_env() -> t.Infra.JinjaEnvironment:
         """Create a Jinja2 environment for codegen templates."""
         template_root = Path(__file__).resolve().parent.parent / "templates"
@@ -635,6 +679,22 @@ class FlextInfraCodegenGeneration:
             Complete Python module file as a single string.
 
         """
+        if FlextInfraCodegenGeneration._uses_direct_bootstrap(current_pkg):
+            direct_filtered = filtered
+            direct_exports = exports
+            if current_pkg == "flext_core._typings":
+                direct_filtered = {
+                    name: target
+                    for name, target in filtered.items()
+                    if target[0] == "flext_core._typings.lazy"
+                }
+                direct_exports = tuple(name for name in exports if name in direct_filtered)
+            return FlextInfraCodegenGeneration._generate_direct_bootstrap_file(
+                direct_exports,
+                direct_filtered,
+                inline_constants,
+                current_pkg,
+            )
         runtime_imports: t.LazyAliasMap = eager_imports or {}
         lazy_filtered: t.LazyAliasMap = dict(filtered)
         wildcard_runtime_module_set = frozenset(wildcard_runtime_modules or ())
@@ -661,7 +721,11 @@ class FlextInfraCodegenGeneration:
         merged_excluded_lazy_names = tuple(
             sorted(c.Infra.INFRA_ONLY_EXPORTS | set(excluded_lazy_names or ()))
         )
-        children_lazy = tuple(child_packages_for_lazy or ())
+        children_lazy = (
+            ()
+            if FlextInfraCodegenGeneration._uses_static_child_map(current_pkg)
+            else tuple(child_packages_for_lazy or ())
+        )
         rendered_child_module_paths = tuple(
             FlextInfraCodegenGeneration._compact_lazy_module_path(
                 current_pkg,
@@ -694,21 +758,15 @@ class FlextInfraCodegenGeneration:
         lazy_module_groups, lazy_alias_groups = (
             FlextInfraCodegenGeneration._group_lazy_entries(lazy_entries)
         )
-        type_checking_lines = (
-            FlextInfraCodegenGeneration.generate_type_checking(
-                FlextInfraCodegenGeneration._group_imports(type_checking_filtered),
-                include_flext_types=False,
-                child_packages=(
-                    ()
-                    if FlextInfraCodegenGeneration._is_root_namespace_package(
-                        current_pkg
-                    )
-                    else child_packages_for_tc or ()
-                ),
-                local_package_root=current_pkg,
-            )
-            if publish_all
-            else ()
+        type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
+            FlextInfraCodegenGeneration._group_imports(type_checking_filtered),
+            include_flext_types=False,
+            child_packages=(
+                ()
+                if publish_all
+                else child_packages_for_tc or ()
+            ),
+            local_package_root=current_pkg,
         )
 
         out: t.MutableSequenceOf[str] = [c.Infra.AUTOGEN_HEADER]
