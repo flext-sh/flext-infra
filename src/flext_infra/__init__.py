@@ -18,7 +18,7 @@ from flext_infra.__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_core import d as d, e as e, h as h, r as r, x as x
+    from flext_cli import d as d, e as e, h as h, r as r, x as x
     from flext_infra.api import FlextInfra as FlextInfra, infra as infra
     from flext_infra.base import (
         FlextInfraProjectSelectionServiceBase as FlextInfraProjectSelectionServiceBase,
@@ -73,7 +73,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "FlextInfraUtilities",
             "u",
         ),
-        "flext_core": (
+        "flext_cli": (
             "d",
             "e",
             "h",

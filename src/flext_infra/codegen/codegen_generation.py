@@ -866,7 +866,7 @@ class FlextInfraCodegenGeneration:
                 child_packages=(),
                 local_package_root=current_pkg,
             )
-            if type_checking_filtered
+            if publish_all and type_checking_filtered
             else ()
         )
 

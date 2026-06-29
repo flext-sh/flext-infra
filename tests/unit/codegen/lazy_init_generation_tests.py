@@ -592,8 +592,8 @@ class TestGenerateFile:
         tm.that(content, contains="publish_all=False")
         tm.that(content, lacks="__all__: list[str] = [")
 
-    def test_subpackage_keeps_static_analysis_hints(self) -> None:
-        """Subpackage __init__.py keeps lazy runtime plus static hints."""
+    def test_subpackage_omits_static_analysis_hints(self) -> None:
+        """Subpackage __init__.py keeps lazy runtime without static hints."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["ExamplesFlextModelsEx00"],
             {
@@ -606,9 +606,9 @@ class TestGenerateFile:
             "examples.models",
         )
         tm.that(content, contains='".ex00": ("ExamplesFlextModelsEx00",)')
-        tm.that(content, contains="if TYPE_CHECKING:")
-        tm.that(content, contains="from typing import TYPE_CHECKING")
-        tm.that(content, contains="from examples.models.ex00 import")
+        tm.that(content, lacks="if TYPE_CHECKING:")
+        tm.that(content, lacks="from typing import TYPE_CHECKING")
+        tm.that(content, lacks="from examples.models.ex00 import")
         tm.that(content, lacks="from models")
 
     def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
@@ -707,8 +707,8 @@ class TestGenerateFile:
         tm.that(content, lacks='"test_pkg.services"')
         tm.that(content, lacks="_LAZY_IMPORTS.pop(")
 
-    def test_subpackage_keeps_lazy_runtime_with_static_hints(self) -> None:
-        """Non-root package __init__.py keeps lazy runtime with static hints."""
+    def test_subpackage_keeps_lazy_exports_without_static_hints(self) -> None:
+        """Non-root package __init__.py keeps lazy runtime without static hints."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
@@ -718,9 +718,9 @@ class TestGenerateFile:
             inline_constants,
             "test_pkg.transformers",
         )
-        tm.that(content, contains="if TYPE_CHECKING:")
-        tm.that(content, contains="from typing import TYPE_CHECKING")
-        tm.that(content, contains="from mod import Alpha as Alpha")
+        tm.that(content, lacks="if TYPE_CHECKING:")
+        tm.that(content, lacks="from typing import TYPE_CHECKING")
+        tm.that(content, lacks="from mod import Alpha as Alpha")
         tm.that(content, lacks="__all__: tuple[str, ...] = (")
         tm.that(
             content,
@@ -728,7 +728,7 @@ class TestGenerateFile:
         )
 
     def test_tests_root_is_not_public_abi(self) -> None:
-        """Consumer test root keeps static hints without public ABI."""
+        """Consumer test root keeps lazy exports without public ABI."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["Alpha", "t"],
             {"Alpha": ("tests.alpha", "Alpha"), "t": ("flext_tests", "t")},
@@ -737,8 +737,8 @@ class TestGenerateFile:
         )
         tm.that(content, contains='".alpha": ("Alpha",)')
         tm.that(content, lacks="public_exports=(")
-        tm.that(content, contains="if TYPE_CHECKING:")
-        tm.that(content, contains="from flext_tests import t as t")
+        tm.that(content, lacks="if TYPE_CHECKING:")
+        tm.that(content, lacks="from flext_tests import t as t")
         tm.that(
             content,
             contains="publish_all=False,",
