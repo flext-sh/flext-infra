@@ -70,10 +70,12 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 confidence = parsed_violation.confidence or c.Infra.SeverityLevel.LOW
                 target_namespace = ""
                 rewrite_scope = c.Infra.RK_FILE
-                mapped_entry = mapping_index.get((
-                    normalized_file,
-                    parsed_violation.class_name,
-                ))
+                mapped_entry = mapping_index.get(
+                    (
+                        normalized_file,
+                        parsed_violation.class_name,
+                    )
+                )
                 if mapped_entry is not None:
                     target_namespace = mapped_entry.target_namespace
                     confidence = mapped_entry.confidence
@@ -176,7 +178,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         default_scope: str = c.Infra.RK_FILE
         if not isinstance(raw_scope, str):
             return default_scope
-        candidate = u.norm_str(raw_scope, case="lower")
+        candidate: str = u.norm_str(raw_scope, case="lower")
         if candidate in {
             c.Infra.RK_FILE,
             c.Infra.PROJECT,

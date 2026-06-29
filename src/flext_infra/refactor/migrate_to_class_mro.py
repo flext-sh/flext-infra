@@ -177,7 +177,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
     @staticmethod
     def _normalize_target(*, target: str) -> str:
         """Normalize target."""
-        value = u.norm_str(target, case="lower")
+        value: str = u.norm_str(target, case="lower")
         if value in c.Infra.MRO_TARGETS:
             return value
         msg = f"unsupported target: {target}"

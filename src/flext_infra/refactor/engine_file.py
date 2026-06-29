@@ -135,73 +135,10 @@ class FlextInfraRefactorFileExecutor:
             else Path(resource.real_path)
         )
         try:
-            source = resource.read()
-            config = self._load_class_nesting_config()
-            threshold = self._class_nesting_threshold(config)
-            class_map = self._class_nesting_symbol_map(
-                config,
+            return self._apply_class_nesting_checked(
+                resource,
                 file_path,
-                threshold,
-                c.Infra.RK_CLASS_NESTING,
-                c.Infra.RK_LOOSE_NAME,
-            )
-            helper_map = self._class_nesting_symbol_map(
-                config,
-                file_path,
-                threshold,
-                c.Infra.RK_HELPER_CONSOLIDATION,
-                c.Infra.RK_HELPER_NAME,
-            )
-            violations = self._class_nesting_precheck(config, file_path, threshold)
-            if violations:
-                return m.Infra.Result(
-                    file_path=file_path,
-                    success=False,
-                    modified=False,
-                    error="precheck_failed",
-                    changes=violations,
-                    refactored_code=None,
-                )
-            changes: t.MutableSequenceOf[str] = []
-            updated = self._apply_class_nesting_transforms(
-                source, class_map, helper_map, changes
-            )
-            modified = updated != source
-            if modified and not dry_run:
-                payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
-                    c.Infra.RK_SOURCE_SYMBOL: "",
-                    c.Infra.RK_EXPECTED_BASE_CHAIN: list[str](),
-                    c.Infra.RK_POST_CHECKS: [c.Infra.RK_IMPORTS_RESOLVE],
-                    c.Infra.RK_QUALITY_GATES: [c.Infra.RK_LSP_DIAGNOSTICS_CLEAN],
-                })
-                gate = self._class_nesting_gate or FlextInfraClassNestingPostCheckGate()
-                self._class_nesting_gate = gate
-                ok, errs = gate.validate(
-                    m.Infra.Result(
-                        file_path=file_path,
-                        success=True,
-                        modified=True,
-                        changes=changes,
-                        refactored_code=updated,
-                    ),
-                    payload,
-                )
-                if not ok:
-                    return m.Infra.Result(
-                        file_path=file_path,
-                        success=False,
-                        modified=False,
-                        error="postcheck_failed",
-                        changes=errs,
-                        refactored_code=None,
-                    )
-                resource.write(updated)
-            return m.Infra.Result(
-                file_path=file_path,
-                success=True,
-                modified=modified,
-                changes=changes,
-                refactored_code=updated,
+                dry_run=dry_run,
             )
         except Exception as exc:
             return m.Infra.Result(
@@ -212,6 +149,102 @@ class FlextInfraRefactorFileExecutor:
                 changes=[],
                 refactored_code=None,
             )
+
+    def _apply_class_nesting_checked(
+        self,
+        resource: t.Infra.RopeResource,
+        file_path: Path,
+        *,
+        dry_run: bool,
+    ) -> m.Infra.Result:
+        """Apply class nesting after the public error boundary."""
+        source = resource.read()
+        config = self._load_class_nesting_config()
+        threshold = self._class_nesting_threshold(config)
+        class_map = self._class_nesting_symbol_map(
+            config,
+            file_path,
+            threshold,
+            c.Infra.RK_CLASS_NESTING,
+            c.Infra.RK_LOOSE_NAME,
+        )
+        helper_map = self._class_nesting_symbol_map(
+            config,
+            file_path,
+            threshold,
+            c.Infra.RK_HELPER_CONSOLIDATION,
+            c.Infra.RK_HELPER_NAME,
+        )
+        violations = self._class_nesting_precheck(config, file_path, threshold)
+        if violations:
+            return m.Infra.Result(
+                file_path=file_path,
+                success=False,
+                modified=False,
+                error="precheck_failed",
+                changes=violations,
+                refactored_code=None,
+            )
+        changes: t.MutableSequenceOf[str] = []
+        updated = self._apply_class_nesting_transforms(
+            source, class_map, helper_map, changes
+        )
+        modified = updated != source
+        if modified and not dry_run:
+            postcheck_result = self._run_class_nesting_postcheck(
+                file_path=file_path,
+                updated=updated,
+                changes=changes,
+            )
+            if postcheck_result is not None:
+                return postcheck_result
+            resource.write(updated)
+        return m.Infra.Result(
+            file_path=file_path,
+            success=True,
+            modified=modified,
+            changes=changes,
+            refactored_code=updated,
+        )
+
+    def _run_class_nesting_postcheck(
+        self,
+        *,
+        file_path: Path,
+        updated: str,
+        changes: t.StrSequence,
+    ) -> m.Infra.Result | None:
+        """Run postchecks for a modified class-nesting result."""
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            {
+                c.Infra.RK_SOURCE_SYMBOL: "",
+                c.Infra.RK_EXPECTED_BASE_CHAIN: list[str](),
+                c.Infra.RK_POST_CHECKS: [c.Infra.RK_IMPORTS_RESOLVE],
+                c.Infra.RK_QUALITY_GATES: [c.Infra.RK_LSP_DIAGNOSTICS_CLEAN],
+            }
+        )
+        gate = self._class_nesting_gate or FlextInfraClassNestingPostCheckGate()
+        self._class_nesting_gate = gate
+        ok, errs = gate.validate(
+            m.Infra.Result(
+                file_path=file_path,
+                success=True,
+                modified=True,
+                changes=changes,
+                refactored_code=updated,
+            ),
+            payload,
+        )
+        if ok:
+            return None
+        return m.Infra.Result(
+            file_path=file_path,
+            success=False,
+            modified=False,
+            error="postcheck_failed",
+            changes=errs,
+            refactored_code=None,
+        )
 
     def _load_class_nesting_config(self) -> t.Infra.ContainerDict:
         """Load class nesting config."""
@@ -271,12 +304,14 @@ class FlextInfraRefactorFileExecutor:
             )
             if not ok and violation is not None:
                 violations.append(
-                    "|".join([
-                        violation[c.Infra.RK_RULE_ID],
-                        violation[c.Infra.RK_SOURCE_SYMBOL],
-                        violation[c.Infra.RK_VIOLATION_TYPE],
-                        violation[c.Infra.RK_SUGGESTED_FIX],
-                    ])
+                    "|".join(
+                        [
+                            violation[c.Infra.RK_RULE_ID],
+                            violation[c.Infra.RK_SOURCE_SYMBOL],
+                            violation[c.Infra.RK_VIOLATION_TYPE],
+                            violation[c.Infra.RK_SUGGESTED_FIX],
+                        ]
+                    )
                 )
         return violations
 
@@ -340,9 +375,9 @@ class FlextInfraRefactorFileExecutor:
             nesting = FlextInfraRefactorClassNestingTransformer(class_map, {}, {})
             updated, class_changes = nesting.apply_to_source(updated)
             changes.extend(class_changes)
-            propagation = FlextInfraNestedClassPropagationTransformer({
-                name: f"{target}.{name}" for name, target in class_map.items()
-            })
+            propagation = FlextInfraNestedClassPropagationTransformer(
+                {name: f"{target}.{name}" for name, target in class_map.items()}
+            )
             updated, propagation_changes = propagation.apply_to_source(updated)
             changes.extend(propagation_changes)
         if helper_map:
@@ -376,7 +411,7 @@ class FlextInfraRefactorFileExecutor:
         if not isinstance(raw, str):
             msg = "confidence_threshold must be a string"
             raise TypeError(msg)
-        candidate = u.norm_str(raw, case="lower")
+        candidate: str = u.norm_str(raw, case="lower")
         if candidate not in c.Infra.CONFIDENCE_RANKS:
             msg = f"unsupported confidence_threshold: {raw}"
             raise ValueError(msg)

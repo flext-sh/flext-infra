@@ -21,7 +21,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     @staticmethod
     def docs_is_external(target: str) -> bool:
         """Return whether a docs link target points outside the repository."""
-        lower = u.norm_str(target, case="lower").lstrip("<")
+        lower: str = u.norm_str(target, case="lower").lstrip("<")
         return lower.startswith(("http://", "https://", "mailto:", "tel:", "data:"))
 
     @staticmethod

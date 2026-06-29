@@ -134,7 +134,7 @@ class FlextInfraProjectClassifierDepsMixin:
 
     def _normalize_dependency_name(self, raw_name: str) -> str:
         """Normalize dependency name."""
-        normalized = u.norm_str(raw_name, case="lower").replace("_", "-")
+        normalized: str = u.norm_str(raw_name, case="lower").replace("_", "-")
         return normalized.strip("./")
 
 

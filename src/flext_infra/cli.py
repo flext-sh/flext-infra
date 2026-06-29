@@ -29,19 +29,21 @@ class FlextInfraCli(type(cli_facade)):
     _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
     _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = _cli_flags.SHARED_BOOL_FLAGS
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = _cli_flags.SHARED_VALUE_FLAGS
-    GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
-        c.Infra.CLI_GROUP_BASEMK: "Base.mk template generation",
-        c.Infra.CLI_GROUP_CHECK: "Lint gates and pyrefly settings management",
-        c.Infra.CLI_GROUP_CODEGEN: "Code generation and workspace standardization",
-        c.Infra.CLI_GROUP_VALIDATE: "Infrastructure validators and diagnostics",
-        c.Infra.CLI_GROUP_DEPS: "Dependency detection, sync, and modernization",
-        c.Infra.CLI_GROUP_DOCS: "Documentation audit, fix, build, generate, validate",
-        c.Infra.CLI_GROUP_GITHUB: "GitHub workflows, linting, and PR automation",
-        c.Infra.CLI_GROUP_MAINTENANCE: "Python version enforcement",
-        c.Infra.CLI_GROUP_REFACTOR: "Declarative refactoring and modernization",
-        c.Infra.CLI_GROUP_RELEASE: "Release orchestration",
-        c.Infra.CLI_GROUP_WORKSPACE: "Workspace detection, sync, orchestration, migration",
-    })
+    GROUPS: ClassVar[t.StrMapping] = MappingProxyType(
+        {
+            c.Infra.CLI_GROUP_BASEMK: "Base.mk template generation",
+            c.Infra.CLI_GROUP_CHECK: "Lint gates and pyrefly settings management",
+            c.Infra.CLI_GROUP_CODEGEN: "Code generation and workspace standardization",
+            c.Infra.CLI_GROUP_VALIDATE: "Infrastructure validators and diagnostics",
+            c.Infra.CLI_GROUP_DEPS: "Dependency detection, sync, and modernization",
+            c.Infra.CLI_GROUP_DOCS: "Documentation audit, fix, build, generate, validate",
+            c.Infra.CLI_GROUP_GITHUB: "GitHub workflows, linting, and PR automation",
+            c.Infra.CLI_GROUP_MAINTENANCE: "Python version enforcement",
+            c.Infra.CLI_GROUP_REFACTOR: "Declarative refactoring and modernization",
+            c.Infra.CLI_GROUP_RELEASE: "Release orchestration",
+            c.Infra.CLI_GROUP_WORKSPACE: "Workspace detection, sync, orchestration, migration",
+        }
+    )
     _GROUP_COMMANDS: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         **_ROUTES_CODEGEN,
         **_ROUTES_VALIDATE,
@@ -127,10 +129,12 @@ class FlextInfraCli(type(cli_facade)):
             return True
         if args[0] != c.Infra.VERB_RUN or any(arg in cls._HELP_FLAGS for arg in args):
             return True
-        scope_flags = ("--workspace", "--projects", "--project")
         return any(
-            arg in scope_flags
-            or any(arg.startswith(f"{scope_flag}=") for scope_flag in scope_flags)
+            arg in _cli_flags.CHECK_RUN_SCOPE_VALUE_FLAGS
+            or any(
+                arg.startswith(f"{scope_flag}=")
+                for scope_flag in _cli_flags.CHECK_RUN_SCOPE_VALUE_FLAGS
+            )
             for arg in args[1:]
         )
 
