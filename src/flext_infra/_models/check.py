@@ -64,6 +64,26 @@ class FlextInfraModelsCheck:
                 return reports_dir.resolve()
             return (Path.cwd() / reports_dir).resolve()
 
+    class CheckProjectTarget(m.ArbitraryTypesModel):
+        """Resolved project target for workspace gate execution."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True,
+            validate_default=False,
+        )
+
+        name: Annotated[str, m.Field(description="Display/project name")]
+        path: Annotated[Path, m.Field(description="Resolved project root path")]
+
+        @classmethod
+        def from_workspace_name(
+            cls,
+            workspace_root: Path,
+            project_name: str,
+        ) -> FlextInfraModelsCheck.CheckProjectTarget:
+            """Build a target from the public run_projects name contract."""
+            return cls(name=project_name, path=workspace_root / project_name)
+
     class FixPyreflyConfigCommand(
         mm.WriteMixin,
         m.ContractModel,

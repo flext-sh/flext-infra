@@ -98,12 +98,12 @@ class FlextInfraWorkspaceCheckGatesMixin:
     def _isolate_context(
         self,
         ctx: m.Infra.GateContext,
-        project_name: str,
+        target: m.Infra.CheckProjectTarget,
     ) -> m.Infra.GateContext:
         """Create a fresh GateContext scoped to a single project."""
         return m.Infra.GateContext(
             workspace=ctx.workspace_root,
-            reports_dir=ctx.reports_dir / project_name,
+            reports_dir=ctx.reports_dir / target.name,
             apply_fixes=ctx.apply_fixes,
             check_only=ctx.check_only,
             fail_fast=ctx.fail_fast,
@@ -113,20 +113,20 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
     def _run_single_project(
         self,
-        project_name: str,
+        target: m.Infra.CheckProjectTarget,
         index: int,
         total: int,
         resolved_gates: t.StrSequence,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.ProjectResult | None:
         """Check one project, returning None when the project should be skipped."""
-        project_dir = self._workspace_root / project_name
+        project_dir = target.path
         pyproject_path = project_dir / c.Infra.PYPROJECT_FILENAME
         if not project_dir.is_dir() or not pyproject_path.exists():
-            u.Cli.progress(index, total, project_name, c.Infra.SeverityLevel.SKIP)
+            u.Cli.progress(index, total, target.name, c.Infra.SeverityLevel.SKIP)
             return None
-        u.Cli.progress(index, total, project_name, c.Infra.VERB_CHECK)
-        project_ctx = self._isolate_context(ctx, project_name)
+        u.Cli.progress(index, total, target.name, c.Infra.VERB_CHECK)
+        project_ctx = self._isolate_context(ctx, target)
         _ = u.Cli.ensure_dir(project_ctx.reports_dir)
         start = time.monotonic()
         project_result = self._check_project_with_ctx(
@@ -137,7 +137,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         elapsed = time.monotonic() - start
         u.Cli.status(
             c.Infra.VERB_CHECK,
-            project_name,
+            target.name,
             result=project_result.passed,
             elapsed=elapsed,
         )
@@ -145,7 +145,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
     def _run_project_loop(
         self,
-        projects: t.StrSequence,
+        projects: t.SequenceOf[m.Infra.CheckProjectTarget],
         resolved_gates: t.StrSequence,
         ctx: m.Infra.GateContext,
         *,
@@ -157,9 +157,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
         failed = 0
         skipped = 0
         loop_start = time.monotonic()
-        for index, project_name in enumerate(projects, 1):
+        for index, target in enumerate(projects, 1):
             project_result = self._run_single_project(
-                project_name,
+                target,
                 index,
                 total,
                 resolved_gates,
