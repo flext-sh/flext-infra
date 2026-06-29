@@ -17,6 +17,7 @@ from flext_tests import tm
 
 import flext_infra as mod
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 from tests import t, u
 
 
@@ -79,8 +80,48 @@ class TestGenerateTypeChecking:
 class TestGenerateFile:
     """Test public lazy-init file generation behavior."""
 
+    def test_root_public_contract_exports_read_exports_module(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Root planner reads the package-level frozen public ABI contract."""
+        exports_file = tmp_path / "_exports.py"
+        exports_file.write_text(
+            'DEMO_PUBLIC_EXPORTS: tuple[str, ...] = ("DemoService", "c")\n',
+            encoding="utf-8",
+        )
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._root_public_contract_exports(tmp_path),
+            eq=frozenset({"DemoService", "c"}),
+        )
+
+    def test_root_public_contract_exports_allow_child_service(self) -> None:
+        """Explicit public root ABI keeps child-package service exports published."""
+        lazy_map: t.LazyAliasMap = {
+            "DemoService": ("demo_pkg.services.demo", "DemoService"),
+        }
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_public_root_export(
+                "DemoService",
+                lazy_map,
+                root_pkg="demo_pkg",
+                root_namespace_files=(),
+                explicit_public_exports=frozenset({"DemoService"}),
+            ),
+            eq=True,
+        )
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_public_root_export(
+                "DemoService",
+                lazy_map,
+                root_pkg="demo_pkg",
+                root_namespace_files=(),
+            ),
+            eq=False,
+        )
+
     def test_with_flext_core_package(self) -> None:
-        """Test uses correct lazy import for flext_core."""
+        """flext_core root uses its canonical root export map."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
@@ -94,6 +135,10 @@ class TestGenerateFile:
             content,
             contains="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
         )
+        tm.that(content, contains="from flext_core._root_exports import (")
+        tm.that(content, contains="ROOT_LAZY_MODULES")
+        tm.that(content, contains="public_exports=ROOT_ALL")
+        tm.that(content, lacks='        "Test",')
 
     def test_lazy_parts_bootstrap_uses_direct_imports(self) -> None:
         """The lazy runtime bootstrap package cannot import flext_core.lazy."""
@@ -350,10 +395,9 @@ class TestGenerateFile:
         tm.that(content, contains="public_exports=(")
         tm.that(content, contains='        "Alpha",')
         tm.that(content, contains='        "Beta",')
-        tm.that(content, lacks="__all__: list[str]")
 
-    def test_root_namespace_writes___all___after_lazy_loader(self) -> None:
-        """Root namespace passes public exports into the lazy loader."""
+    def test_root_namespace_passes_public_exports_to_lazy_loader(self) -> None:
+        """Root namespace exposes lazy-loader and static __all__ contracts."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
@@ -367,6 +411,26 @@ class TestGenerateFile:
             content.rfind("public_exports=(") > content.rfind("_LAZY_IMPORTS"),
             eq=True,
         )
+        tm.that(content, contains="__all__: tuple[str, ...] = (")
+
+    def test_root_namespace_public_exports_exclude_private_implementation(self) -> None:
+        """Root namespace keeps private implementation names out of public exports."""
+        content = FlextInfraCodegenGeneration.generate_file(
+            ["Alpha", "Beta"],
+            {
+                "Alpha": ("test_pkg._internal.alpha", "Alpha"),
+                "Beta": ("test_pkg.public.beta", "Beta"),
+            },
+            {},
+            "test_pkg",
+        )
+        tm.that(content, contains='"._internal.alpha": ("Alpha",)')
+        tm.that(content, lacks="from test_pkg._internal.alpha import Alpha")
+        tm.that(content, contains='".public.beta": ("Beta",)')
+        tm.that(content, contains="from test_pkg.public.beta import Beta")
+        public_exports = content[content.index("public_exports=(") :]
+        tm.that(public_exports, lacks='        "Alpha",')
+        tm.that(public_exports, contains='        "Beta",')
 
     def test_root_namespace_type_checking_uses_source_modules(self) -> None:
         """Root namespace TYPE_CHECKING must target real source modules."""
@@ -490,7 +554,7 @@ class TestGenerateFile:
         all_block = content[all_block_start:]
         alias_positions = tuple(
             all_block.index(f'    "{alias}",')
-            for alias in ("c", "m", "p", "t", "u", "r")
+            for alias in ("c", "m", "p", "r", "t", "u")
         )
         tm.that(alias_positions == tuple(sorted(alias_positions)), eq=True)
 
@@ -517,7 +581,7 @@ class TestGenerateFile:
         tm.that(content, lacks='"api": "test_pkg.api"')
         tm.that(content, lacks='"constants": "test_pkg.constants"')
         tm.that(content, lacks='"tools": "test_pkg.tools"')
-        tm.that(content, lacks="__all__: list[str]")
+        tm.that(content, contains="__all__: tuple[str, ...] = (")
         tm.that(content, lacks='    "_constants",')
         tm.that(content, lacks='    "api",')
         tm.that(content, lacks='    "constants",')
@@ -557,7 +621,7 @@ class TestGenerateFile:
         tm.that(content, lacks="if _t.TYPE_CHECKING:")
         tm.that(content, lacks="import typing as _t")
         tm.that(content, lacks="from mod import Alpha as Alpha, Beta as Beta")
-        tm.that(content, lacks="__all__: list[str] = [")
+        tm.that(content, lacks="__all__: tuple[str, ...] = (")
         tm.that(
             content,
             contains=(
@@ -567,7 +631,7 @@ class TestGenerateFile:
         )
 
     def test_tests_root_is_not_public_abi(self) -> None:
-        """Consumer test root keeps lazy access without root public exports."""
+        """Consumer test root keeps type-checker aliases without public ABI."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["Alpha", "t"],
             {"Alpha": ("tests.alpha", "Alpha"), "t": ("flext_tests", "t")},
@@ -576,7 +640,8 @@ class TestGenerateFile:
         )
         tm.that(content, contains='".alpha": ("Alpha",)')
         tm.that(content, lacks="public_exports=(")
-        tm.that(content, lacks="if _t.TYPE_CHECKING:")
+        tm.that(content, contains="if _t.TYPE_CHECKING:")
+        tm.that(content, contains="from flext_tests import t as t")
         tm.that(
             content,
             contains=(

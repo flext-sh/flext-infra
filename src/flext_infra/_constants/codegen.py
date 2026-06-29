@@ -45,6 +45,10 @@ class FlextInfraConstantsCodegen:
     "Maximum line length for generated import lines."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."
+    ROOT_EXPORTS_FILENAME: Final[str] = "_exports.py"
+    "Root public ABI contract module consumed by lazy-init planning."
+    ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
+    "Suffix for tuple constants that declare frozen public root exports."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (
         "src/**/__init__.py",
         "tests/**/__init__.py",
@@ -116,6 +120,22 @@ class FlextInfraConstantsCodegen:
         "normalize_lazy_imports",
     })
     "Public-module symbols withheld from the generated root-facade __all__ but kept in the lazy map — lazy-runtime helpers stay importable via from-import yet are not part of the frozen public facade surface."
+    PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
+        "c",
+        "d",
+        "e",
+        "h",
+        "infra",
+        "m",
+        "main",
+        "p",
+        "r",
+        "s",
+        "t",
+        "u",
+        "x",
+    )
+    "Canonical order for public root aliases and operational entry points."
     ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
         "docs",
         "src",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import Annotated
 
@@ -71,9 +72,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 "include_dunder": True
             }),
         )
-        child_lazy = self._merge_children(
-            context.pkg_dir, lazy_map, dir_exports
-        )
+        child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
         # Version-submodule dunders are emitted as eager imports rather than
         # lazy. The submodule shares its name (``__version__``) with the dunder
         # string it exports; lazy resolution would let Python's import
@@ -99,13 +98,15 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
-            and context.current_pkg == c.Infra.PACKAGE_IMPORT_NAME
             and "." not in context.current_pkg
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         ):
             # Privacy rule: the public root facade exposes only external API
             # symbols. Internal consumers must import their owning module.
             eager_names = frozenset(eager_dunders)
+            explicit_public_exports = self._root_public_contract_exports(
+                context.pkg_dir,
+            )
             export_names = {
                 name
                 for name in export_names
@@ -115,6 +116,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                     lazy_map,
                     root_pkg=context.current_pkg,
                     root_namespace_files=self.lazy_init.root_namespace_files,
+                    explicit_public_exports=explicit_public_exports,
                 )
             }
             allowed_export_names = frozenset(export_names)
@@ -796,6 +798,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         *,
         root_pkg: str,
         root_namespace_files: t.StrSequence,
+        explicit_public_exports: frozenset[str] = frozenset(),
     ) -> bool:
         """Return whether a root-facade export belongs in the external API."""
         if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
@@ -805,6 +808,8 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             return True
         if "_fixtures" in module_path.split("."):
             return True
+        if name in explicit_public_exports:
+            return True
         prefix = f"{root_pkg}."
         if not module_path.startswith(prefix):
             return False
@@ -812,6 +817,61 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if "." in local_module or local_module.startswith("_"):
             return False
         return f"{local_module}.py" in root_namespace_files
+
+    @staticmethod
+    def _root_public_contract_exports(pkg_dir: Path) -> frozenset[str]:
+        """Read explicit public root exports from the package ``_exports.py`` file."""
+        exports_path = pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME
+        if not exports_path.is_file():
+            return frozenset()
+        source = exports_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        tree = ast.parse(source, filename=str(exports_path))
+        exports: set[str] = set()
+        for statement in tree.body:
+            exports.update(
+                FlextInfraCodegenLazyInitPlanner._public_export_statement_names(
+                    statement,
+                )
+            )
+        return frozenset(exports)
+
+    @staticmethod
+    def _public_export_statement_names(statement: ast.stmt) -> frozenset[str]:
+        """Extract public export names from one assignment statement."""
+        match statement:
+            case ast.Assign(targets=targets, value=value):
+                if any(
+                    FlextInfraCodegenLazyInitPlanner._is_public_exports_target(target)
+                    for target in targets
+                ):
+                    return FlextInfraCodegenLazyInitPlanner._literal_string_names(value)
+            case ast.AnnAssign(target=target, value=value):
+                if value is not None and (
+                    FlextInfraCodegenLazyInitPlanner._is_public_exports_target(target)
+                ):
+                    return FlextInfraCodegenLazyInitPlanner._literal_string_names(value)
+            case _:
+                return frozenset()
+        return frozenset()
+
+    @staticmethod
+    def _is_public_exports_target(target: ast.expr) -> bool:
+        """Return whether an assignment target declares root public exports."""
+        return isinstance(target, ast.Name) and target.id.endswith(
+            c.Infra.ROOT_PUBLIC_EXPORTS_SUFFIX
+        )
+
+    @staticmethod
+    def _literal_string_names(node: ast.AST) -> frozenset[str]:
+        """Extract string literals from a tuple/list/set AST node."""
+        if not isinstance(node, ast.Tuple | ast.List | ast.Set):
+            return frozenset()
+        names: set[str] = set()
+        for item in node.elts:
+            if not isinstance(item, ast.Constant) or not isinstance(item.value, str):
+                return frozenset()
+            names.add(item.value)
+        return frozenset(names)
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:

@@ -1088,15 +1088,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             if deptry_exists:
                 deptry_path.write_text("", encoding="utf-8")
             if runner is not None:
-                return FlextInfraRuntimeDevDependencyDetector(
-                    workspace=tmp_path,
-                    deps=deps,
-                    runner=runner,
-                )
-            return FlextInfraRuntimeDevDependencyDetector(
-                workspace=tmp_path,
-                deps=deps,
-            )
+                return FlextInfraRuntimeDevDependencyDetector.model_validate({
+                    "workspace": tmp_path,
+                    "deps": deps,
+                    "runner": runner,
+                })
+            return FlextInfraRuntimeDevDependencyDetector.model_validate({
+                "workspace": tmp_path,
+                "deps": deps,
+            })
 
         @staticmethod
         def write_migrator_project(project_root: Path) -> None:

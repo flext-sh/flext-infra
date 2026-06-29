@@ -9,6 +9,12 @@ install_lazy_exports(
 {%- endfor %}
     ),
 )
+
+__all__: tuple[str, ...] = (
+{%- for export_name in exports %}
+    "{{ export_name }}",
+{%- endfor %}
+)
 {%- else %}
 {%- if eager_export_names %}
 install_lazy_exports(

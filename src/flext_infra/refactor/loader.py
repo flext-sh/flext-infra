@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import cli
-from flext_infra import c, p, t, u
+from flext_cli.utilities import u
+from flext_infra import c, p, t
 
 
 class FlextInfraRefactorRuleLoader:
@@ -25,7 +25,7 @@ class FlextInfraRefactorRuleLoader:
 
     def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
         """Load YAML configuration for this refactor session."""
-        result = cli.rules_load_scoped_config(
+        result = u.Cli.rules_load_scoped_config(
             self.config_path,
             scope_key=c.Infra.RK_REFACTOR_ENGINE,
             allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
@@ -51,7 +51,7 @@ class FlextInfraRefactorRuleLoader:
                 c.Infra.RefactorRuleKind,
                 c.Infra.RefactorFileRuleKind,
             ]
-        ] = cli.rules_load_local_definitions(
+        ] = u.Cli.rules_load_local_definitions(
             self.config_path,
             package_rules_dir=Path(__file__).resolve().parent.parent / c.Infra.RK_RULES,
             rule_filters=self.rule_filters,

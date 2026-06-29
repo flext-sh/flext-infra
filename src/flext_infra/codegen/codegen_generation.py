@@ -42,13 +42,15 @@ class FlextInfraCodegenGeneration:
     def _is_private_subpackage_source(module_path: str) -> bool:
         """Whether a symbol's canonical source lives in a ``_``-private subpackage.
 
-        Symbols re-exported into a root package from a private subpackage
-        (``_models``, ``_constants``, ``_utilities`` …) are private unless they
-        are canonical aliases or pytest fixture exports. Dunder modules
-        (``__version__``) are not private subpackages and are unaffected.
+        Canonical FLEXT owners such as ``_models``, ``_constants``, and
+        ``_utilities`` are allowed root sources when their symbols are declared
+        explicitly. Non-canonical private implementation packages such as
+        ``_internal`` remain outside the frozen public facade.
         """
         return any(
-            segment.startswith("_") and not segment.startswith("__")
+            segment.startswith("_")
+            and not segment.startswith("__")
+            and segment not in c.Infra.LOCAL_INFERRED_SEGMENTS
             for segment in module_path.split(".")[1:]
         )
 
@@ -453,7 +455,7 @@ class FlextInfraCodegenGeneration:
     ) -> t.StrSequence:
         """Build published exports."""
         export_candidates = tuple(dict.fromkeys(exports))
-        return tuple(
+        published = tuple(
             export_name
             for export_name in export_candidates
             if FlextInfraCodegenGeneration._should_publish_root_export(
@@ -461,6 +463,25 @@ class FlextInfraCodegenGeneration:
                 lazy_filtered,
             )
         )
+        alias_order = c.Infra.PUBLIC_ROOT_ALIAS_ORDER
+        return tuple(
+            export_name
+            for _index, export_name in sorted(
+                enumerate(published),
+                key=FlextInfraCodegenGeneration._public_export_order_key,
+            )
+            if export_name not in alias_order
+        ) + tuple(name for name in alias_order if name in published)
+
+    @staticmethod
+    def _public_export_order_key(item: tuple[int, str]) -> tuple[int, int, str]:
+        """Order classes before metadata before root aliases."""
+        index, export_name = item
+        if export_name in c.Infra.PUBLIC_ROOT_ALIAS_ORDER:
+            return (2, index, export_name)
+        if export_name.startswith("__") and export_name.endswith("__"):
+            return (1, index, export_name)
+        return (0, index, export_name)
 
     @staticmethod
     def _collapse_blank_runs(lines: t.StrSequence) -> t.StrSequence:
@@ -508,6 +529,72 @@ class FlextInfraCodegenGeneration:
             out.append("]")
         out.append("")
         return "\n".join(out)
+
+    @staticmethod
+    def _generate_flext_core_root_file() -> str:
+        """Generate the flext-core root from its canonical root export map."""
+        lines: t.MutableSequenceOf[str] = [
+            c.Infra.AUTOGEN_HEADER,
+            '"""Flext Core package."""',
+            "",
+            "from __future__ import annotations",
+            "",
+            "import typing as _t",
+            "",
+            "from flext_core.__version__ import (",
+            "    __author__,",
+            "    __author_email__,",
+            "    __description__,",
+            "    __license__,",
+            "    __title__,",
+            "    __url__,",
+            "    __version__,",
+            "    __version_info__,",
+            ")",
+            "from flext_core._root_exports import (",
+            "    ROOT_ALL,",
+            "    ROOT_LAZY_MODULES,",
+            "    ROOT_METADATA_NAMES,",
+            ")",
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
+            "",
+            "if _t.TYPE_CHECKING:",
+            "    from flext_core.constants import FlextConstants, c",
+            "    from flext_core.container import FlextContainer",
+            "    from flext_core.context import FlextContext",
+            "    from flext_core.decorators import FlextDecorators, d",
+            "    from flext_core.dispatcher import FlextDispatcher",
+            "    from flext_core.exceptions import FlextExceptions, e",
+            "    from flext_core.handlers import FlextHandlers, h",
+            "    from flext_core.lazy import FlextLazy",
+            "    from flext_core.loggings import FlextLogger",
+            "    from flext_core.mixins import FlextMixins, x",
+            "    from flext_core.models import FlextModels, m",
+            "    from flext_core.protocols import FlextProtocols, p",
+            "    from flext_core.registry import FlextRegistry",
+            "    from flext_core.result import FlextResult, r",
+            "    from flext_core.runtime import FlextRuntime",
+            "    from flext_core.service import FlextService, s",
+            "    from flext_core.settings import FlextSettings",
+            "    from flext_core.typings import FlextTypes, t",
+            "    from flext_core.utilities import FlextUtilities, u",
+            "",
+            "_LAZY_IMPORTS = build_lazy_import_map(ROOT_LAZY_MODULES, sort_keys=False)",
+            "_PUBLISHED_NAMES = frozenset({*_LAZY_IMPORTS, *ROOT_METADATA_NAMES})",
+            "_PUBLIC_NAMES = frozenset(ROOT_ALL)",
+            '_ROOT_EXPORTS_DRIFT_ERROR = "flext_core root exports drift from ROOT_ALL"',
+            "if not _PUBLIC_NAMES <= _PUBLISHED_NAMES:",
+            "    raise RuntimeError(_ROOT_EXPORTS_DRIFT_ERROR)",
+            "",
+            "install_lazy_exports(",
+            "    __name__,",
+            "    globals(),",
+            "    _LAZY_IMPORTS,",
+            "    public_exports=ROOT_ALL,",
+            ")",
+            "",
+        ]
+        return "\n".join(lines)
 
     @staticmethod
     def _build_env() -> t.Infra.JinjaEnvironment:
@@ -687,6 +774,8 @@ class FlextInfraCodegenGeneration:
             Complete Python module file as a single string.
 
         """
+        if current_pkg == "flext_core":
+            return FlextInfraCodegenGeneration._generate_flext_core_root_file()
         if FlextInfraCodegenGeneration._uses_direct_bootstrap(current_pkg):
             direct_filtered = filtered
             direct_exports = exports
@@ -711,6 +800,7 @@ class FlextInfraCodegenGeneration:
         publish_all = FlextInfraCodegenGeneration._is_public_api_root_namespace(
             current_pkg
         )
+        emit_type_checking_exports = publish_all or current_pkg == "tests"
         published_exports = (
             FlextInfraCodegenGeneration._build_published_exports(
                 exports,
@@ -719,6 +809,7 @@ class FlextInfraCodegenGeneration:
             if publish_all
             else tuple(sorted(exports))
         )
+        public_export_set = frozenset(published_exports)
         type_checking_filtered: t.LazyAliasMap = {
             name: val
             for name, val in (
@@ -727,6 +818,7 @@ class FlextInfraCodegenGeneration:
                 else lazy_filtered
             ).items()
             if val[0] not in wildcard_runtime_module_set
+            and (not publish_all or name in public_export_set)
         }
         merged_excluded_lazy_names = tuple(
             sorted(c.Infra.INFRA_ONLY_EXPORTS | set(excluded_lazy_names or ()))
@@ -775,7 +867,7 @@ class FlextInfraCodegenGeneration:
                 child_packages=(),
                 local_package_root=current_pkg,
             )
-            if publish_all
+            if emit_type_checking_exports
             else ()
         )
 
