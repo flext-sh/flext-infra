@@ -27,6 +27,7 @@ class FlextInfraUtilitiesIterationMatching:
         """Return files in one scope through the canonical git-aware selection path."""
         if not root.is_dir():
             return []
+        root = root.resolve()
         tracked_files = FlextInfraUtilitiesGitScope.git_tracked_scope_paths(root)
         candidates = (
             tracked_files
