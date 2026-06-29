@@ -7,7 +7,8 @@ from typing import override
 
 import pytest
 
-from flext_infra import FlextInfraRefactorFileExecutor, c
+from flext_infra import c
+from flext_infra.refactor.engine_file import FlextInfraRefactorFileExecutor
 from tests import m, t, u
 
 pytestmark = [pytest.mark.integration]

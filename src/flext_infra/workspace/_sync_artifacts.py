@@ -4,17 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraProjectMakefileUpdater,
-    FlextInfraWorkspaceMakefileGenerator,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
+from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
+from flext_infra.workspace.workspace_makefile import (
+    FlextInfraWorkspaceMakefileGenerator,
+)
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):

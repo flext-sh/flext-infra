@@ -5,23 +5,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraClassNestingPostCheckGate,
-    FlextInfraRefactorFileExecutor,
-    FlextInfraRefactorRuleLoader,
-    FlextInfraRefactorSafetyManager,
-    FlextInfraRefactorTextExecutor,
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra import c, m, t, u
 from flext_infra.refactor._orchestrator_dispatch import (
     FlextInfraRefactorOrchestratorDispatchMixin,
 )
 from flext_infra.refactor._orchestrator_scope import (
     FlextInfraRefactorOrchestratorScopeMixin,
 )
+from flext_infra.refactor.engine_file import (
+    FlextInfraClassNestingPostCheckGate,
+    FlextInfraRefactorFileExecutor,
+)
+from flext_infra.refactor.engine_text import FlextInfraRefactorTextExecutor
+from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
+from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 
 _log = u.fetch_logger(__name__)
 

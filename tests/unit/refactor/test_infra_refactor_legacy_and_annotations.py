@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorTextExecutor, c
+from flext_infra import c
+from flext_infra.refactor.engine_text import FlextInfraRefactorTextExecutor
 from tests import t
 
 

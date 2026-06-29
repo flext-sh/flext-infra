@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraHelperConsolidationTransformer
+from flext_infra.transformers.helper_consolidation import (
+    FlextInfraHelperConsolidationTransformer,
+)
 from tests import t, u
 
 

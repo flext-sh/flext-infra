@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 
 
 class TestsFlextInfraDepsInternalSyncValidation:

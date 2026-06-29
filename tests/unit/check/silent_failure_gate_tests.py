@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraSilentFailureGate
+from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from tests import t, u
 
 _DIRTY_UTILITIES = (

@@ -12,16 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraNamespaceValidator,
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 
 class FlextInfraCodegenCensus(s[str]):

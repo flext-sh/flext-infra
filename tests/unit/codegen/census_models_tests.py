@@ -1,8 +1,8 @@
 """Tests for census models and violation pattern.
 
 Validates CensusViolation/CensusReport models and the compiled violation
-regex pattern. Go-only projects are filtered via go.mod existence at the
-discovery boundary, not via a hand-curated list.
+regex pattern. Projects without pyproject.toml are filtered at the discovery
+boundary, not via a hand-curated list.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

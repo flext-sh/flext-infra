@@ -85,35 +85,52 @@ class FlextInfraTextPatternScanner(s[bool]):
         if error is not None:
             return r[t.ScalarMapping].fail(error)
         try:
-            regex = c.Infra.compile_multiline(pattern)
-            files = u.Infra.iter_matching_files(
+            return self._scan_validated(
                 scan_root,
-                includes=includes,
-                excludes=excludes or [],
+                pattern,
+                includes,
+                excludes or (),
+                match_mode,
             )
-            matches_result = self._count_matches(files, regex)
-            if matches_result.failure:
-                return r[t.ScalarMapping].fail(
-                    matches_result.error or "text pattern scan read failed",
-                )
-            matches = matches_result.value
-            violation_count = (
-                matches
-                if match_mode == c.Infra.MatchMode.PRESENT
-                else 0
-                if matches > 0
-                else 1
-            )
-            result: t.MutableConfigurationMapping = {
-                "violation_count": violation_count,
-                "match_count": matches,
-                "files_scanned": len(files),
-            }
-            return r[t.ScalarMapping].ok(result)
         except c.Infra.REGEX_ERROR as exc:
             return r[t.ScalarMapping].fail(f"invalid regex pattern: {exc}")
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[t.ScalarMapping].fail_op("text pattern scan", exc)
+
+    @staticmethod
+    def _violation_count(matches: int, match_mode: c.Infra.MatchMode) -> int:
+        """Return violation count for the selected match mode."""
+        if match_mode == c.Infra.MatchMode.PRESENT:
+            return matches
+        return 0 if matches > 0 else 1
+
+    def _scan_validated(
+        self,
+        scan_root: Path,
+        pattern: str,
+        includes: t.StrSequence,
+        excludes: t.StrSequence,
+        match_mode: c.Infra.MatchMode,
+    ) -> p.Result[t.ConfigurationMapping]:
+        """Scan a validated root with a compiled regex."""
+        regex = c.Infra.compile_multiline(pattern)
+        files = u.Infra.iter_matching_files(
+            scan_root,
+            includes=includes,
+            excludes=excludes,
+        )
+        matches_result = self._count_matches(files, regex)
+        if matches_result.failure:
+            return r[t.ScalarMapping].fail(
+                matches_result.error or "text pattern scan read failed",
+            )
+        matches = matches_result.value
+        result: t.MutableConfigurationMapping = {
+            "violation_count": self._violation_count(matches, match_mode),
+            "match_count": matches,
+            "files_scanned": len(files),
+        }
+        return r[t.ScalarMapping].ok(result)
 
     @override
     def execute(self) -> p.Result[bool]:

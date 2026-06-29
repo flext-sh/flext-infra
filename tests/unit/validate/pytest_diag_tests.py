@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraPytestDiagExtractor
+from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from tests import m, t
 
 

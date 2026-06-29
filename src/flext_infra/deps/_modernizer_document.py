@@ -6,27 +6,26 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraConsolidateGroupsPhase,
-    FlextInfraEnsureCoverageConfigPhase,
+from flext_infra import c, m, p, r, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
+from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
+from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
-    FlextInfraEnsureMypyConfigPhase,
-    FlextInfraEnsureNamespaceToolingPhase,
-    FlextInfraEnsurePydanticMypyConfigPhase,
-    FlextInfraEnsurePyreflyConfigPhase,
-    FlextInfraEnsurePyrightConfigPhase,
-    FlextInfraEnsurePytestConfigPhase,
-    FlextInfraEnsureRuffConfigPhase,
-    FlextInfraExtraPathsManager,
-    FlextInfraInjectCommentsPhase,
-    FlextInfraProjectClassifier,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
 )
+from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+from flext_infra.deps.phases.ensure_namespace import (
+    FlextInfraEnsureNamespaceToolingPhase,
+)
+from flext_infra.deps.phases.ensure_pydantic_mypy import (
+    FlextInfraEnsurePydanticMypyConfigPhase,
+)
+from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
+from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 
 class FlextInfraPyprojectModernizerDocumentMixin:

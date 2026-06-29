@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraImportAliasDetector
+from flext_infra.detectors.import_alias_detector import FlextInfraImportAliasDetector
 from tests import m, t, u
 
 

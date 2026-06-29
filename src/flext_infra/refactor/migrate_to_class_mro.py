@@ -7,20 +7,22 @@ from time import perf_counter
 from typing import ClassVar
 
 from flext_cli import cli
-from flext_infra import (
-    FlextInfraRefactorMROImportRewriter,
-    FlextInfraRefactorMROMigrationValidator,
-    FlextInfraRefactorSafetyManager,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_core import r
+from flext_core.utilities import u
+from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._migrate_mro_report import (
     FlextInfraRefactorMigrateMroReportMixin,
 )
+from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
+from flext_infra.refactor.mro_migration_validator import (
+    FlextInfraRefactorMROMigrationValidator,
+)
+from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
+from flext_infra.typings import t
 
 
 class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixin):
@@ -45,7 +47,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         normalized_target = self._normalize_target(target=target)
         selected_projects = tuple(sorted(set(project_names or ())))
         scan_start = perf_counter()
-        scan_results, files_scanned = u.Infra.scan_workspace(
+        scan_results, files_scanned = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
             workspace_root=self._workspace_root,
             target=normalized_target,
             project_names=project_names,
@@ -165,7 +167,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
-            *u.Infra.SYNTAX_ERRORS,
+            *FlextInfraUtilitiesRopeCore.SYNTAX_ERRORS,
             OSError,
             ValueError,
             KeyError,
@@ -185,7 +187,3 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
 
 
 __all__: list[str] = ["FlextInfraRefactorMigrateToClassMRO"]
-
-u.Infra.register_rope_post_hook(
-    FlextInfraRefactorMigrateToClassMRO.run_as_hook,
-)

@@ -8,9 +8,9 @@ from flext_core import t
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
-from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesMroScanCatalog:
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesMroScanCatalog:
     def python_files(project_root: Path) -> t.SequenceOf[Path]:
         """Return Python files under configured namespace scan directories."""
         scan_dirs = FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(project_root)
-        result = FlextInfraUtilitiesFileIteration.iter_python_files(
+        result = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=project_root,
             project_roots=[project_root],
             include_tests=FlextInfraConstantsSharedInfra.DIR_TESTS in scan_dirs,

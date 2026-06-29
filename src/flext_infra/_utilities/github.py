@@ -9,17 +9,11 @@ from __future__ import annotations
 import shutil
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesDocsScope,
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities._github_sync import (
     FlextInfraUtilitiesGithubSyncMixin,
 )
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):

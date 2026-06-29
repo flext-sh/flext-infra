@@ -4,18 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesDocsScope,
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities._docs_scope_selection import (
     FlextInfraUtilitiesDocsScopeSelectionMixin,
 )
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesDocsScopeBuildMixin(

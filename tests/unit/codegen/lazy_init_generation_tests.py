@@ -16,7 +16,7 @@ import pytest
 from flext_tests import tm
 
 import flext_infra as mod
-from flext_infra import FlextInfraCodegenGeneration
+from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from tests import t, u
 
 

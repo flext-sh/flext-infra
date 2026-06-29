@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraPhaseEngine, c, m, t, u
+from flext_infra import c, m, t, u
+from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
 
 
 class FlextInfraEnsureRuffConfigPhase:

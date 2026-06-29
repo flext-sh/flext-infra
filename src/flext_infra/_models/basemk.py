@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsMixins as mm, c, t
+from flext_infra import c, t
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsBasemk:
@@ -20,10 +21,6 @@ class FlextInfraModelsBasemk:
         python_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="Target Python version"),
-        ]
-        core_stack: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Core stack classification"),
         ]
         package_manager: Annotated[
             str,

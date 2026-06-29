@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from flext_cli import u as cli_u
-from flext_infra import FlextInfraReleaseOrchestrator
+from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests import c, m, t, u
 
 

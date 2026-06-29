@@ -10,7 +10,7 @@ import pytest
 from flext_tests import tm
 
 import flext_infra.validate as core_module
-from flext_infra import FlextInfraBaseMkValidator
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from tests import t
 
 

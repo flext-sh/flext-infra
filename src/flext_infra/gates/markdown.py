@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m, t, u
+from flext_infra import c, m, t, u
+from flext_infra.gates.base_gate import FlextInfraGate
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):

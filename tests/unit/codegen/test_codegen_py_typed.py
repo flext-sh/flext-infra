@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCodegenPyTyped
+from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from tests import c, t
 
 

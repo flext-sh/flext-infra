@@ -6,15 +6,10 @@ from functools import cache
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import (
-    FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesRopeAnalysis,
-    c,
-    p,
-    r,
-    t,
-)
+from flext_infra import c, p, r, t
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 
 class FlextInfraUtilitiesDiscovery:
@@ -225,10 +220,7 @@ class FlextInfraUtilitiesDiscovery:
             if child != project_root
             and child.is_dir()
             and (child / c.Infra.DEFAULT_SRC_DIR).is_dir()
-            and (
-                (child / c.Infra.PYPROJECT_FILENAME).is_file()
-                or (child / c.Infra.GO_MOD).is_file()
-            )
+            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
         )
 
     @staticmethod
@@ -241,10 +233,7 @@ class FlextInfraUtilitiesDiscovery:
             for child in workspace_root.iterdir()
             if child.is_dir()
             and not child.name.startswith(".")
-            and (
-                (child / c.Infra.PYPROJECT_FILENAME).is_file()
-                or (child / c.Infra.GO_MOD).is_file()
-            )
+            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
         )
 
     @staticmethod
@@ -255,7 +244,6 @@ class FlextInfraUtilitiesDiscovery:
             candidate.is_file()
             for candidate in (
                 resolved_root / c.Infra.PYPROJECT_FILENAME,
-                resolved_root / c.Infra.GO_MOD,
                 resolved_root / c.Infra.MAKEFILE_FILENAME,
             )
         )

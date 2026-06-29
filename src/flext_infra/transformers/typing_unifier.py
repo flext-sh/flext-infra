@@ -22,10 +22,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, c, t, u
+from flext_infra import c, t, u
 from flext_infra.transformers._typing_rewrite import (
     FlextInfraRefactorTypingUnifierRewriteMixin,
 )
+from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorTypingUnifier(

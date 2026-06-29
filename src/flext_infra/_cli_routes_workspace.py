@@ -2,29 +2,38 @@
 
 from __future__ import annotations
 
-from flext_infra import (
+from flext_infra import c, m
+from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
-    FlextInfraModernizeOrchestrator,
-    FlextInfraNamespaceEnforcer,
-    FlextInfraOrchestratorService,
-    FlextInfraProjectMigrator,
-    FlextInfraRefactorCensus,
-    FlextInfraRefactorCliModernizer,
-    FlextInfraRefactorLoggingModernizer,
-    FlextInfraRefactorMigrateToClassMRO,
-    FlextInfraRefactorPatternModernizer,
-    FlextInfraRefactorPydanticModernizer,
-    FlextInfraRefactorResultDiModernizer,
-    FlextInfraRefactorTestsModernizer,
-    FlextInfraReleaseOrchestrator,
-    FlextInfraSyncService,
-    FlextInfraWorkspaceDetector,
-    c,
-    m,
 )
+from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.refactor.migrate_to_class_mro import (
+    FlextInfraRefactorMigrateToClassMRO,
+)
+from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
+from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from flext_infra.refactor.wrapper_root_namespace import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
+from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
+from flext_infra.transformers.logging_modernizer import (
+    FlextInfraRefactorLoggingModernizer,
+)
+from flext_infra.transformers.pattern_modernizer import (
+    FlextInfraRefactorPatternModernizer,
+)
+from flext_infra.transformers.pydantic_modernizer import (
+    FlextInfraRefactorPydanticModernizer,
+)
+from flext_infra.transformers.result_di_modernizer import (
+    FlextInfraRefactorResultDiModernizer,
+)
+from flext_infra.transformers.tests_modernizer import FlextInfraRefactorTestsModernizer
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+from flext_infra.workspace.sync import FlextInfraSyncService
 
 ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_REFACTOR: (

@@ -9,7 +9,8 @@ from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraUtilitiesRopeAnalysis, c, t, u
+from flext_infra import c, t, u
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 
 @dataclass(slots=True)

@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsMixins as mm, t
+from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCore:
@@ -40,23 +41,23 @@ class FlextInfraModelsCore:
         """Structured stub-chain analysis result for a project."""
 
         mypy_hints: Annotated[
-            t.StrSequence,
+            t.MutableSequenceOf[str],
             m.Field(
                 description="Install-package hints extracted from mypy output",
             ),
-        ] = m.Field(default_factory=tuple)
+        ] = m.Field(default_factory=list)
         internal_missing: Annotated[
-            t.StrSequence,
+            t.MutableSequenceOf[str],
             m.Field(
                 description="Missing internal imports",
             ),
-        ] = m.Field(default_factory=tuple)
+        ] = m.Field(default_factory=list)
         unresolved_missing: Annotated[
-            t.StrSequence,
+            t.MutableSequenceOf[str],
             m.Field(
                 description="Missing external imports without stubs",
             ),
-        ] = m.Field(default_factory=tuple)
+        ] = m.Field(default_factory=list)
         total_missing: Annotated[
             t.NonNegativeInt,
             m.Field(description="Total missing imports"),
@@ -157,11 +158,11 @@ class FlextInfraModelsCore:
             m.Field(description="Total discovered scripts"),
         ]
         reports_written: Annotated[
-            t.StrSequence,
+            t.MutableSequenceOf[str],
             m.Field(
                 description="Written report file paths",
             ),
-        ] = m.Field(default_factory=tuple)
+        ] = m.Field(default_factory=list)
 
 
 __all__: list[str] = ["FlextInfraModelsCore"]

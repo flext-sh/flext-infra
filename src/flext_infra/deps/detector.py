@@ -5,15 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import (
-    FlextInfraDependencyDetectionService,
-    FlextInfraDependencyDetectorRuntime,
-    FlextInfraProjectSelectionServiceBase,
-    m,
-    p,
-    t,
-    u,
-)
+from flext_infra.base import FlextInfraProjectSelectionServiceBase
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRuntimeDevDependencyDetector(

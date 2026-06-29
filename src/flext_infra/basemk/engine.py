@@ -56,7 +56,6 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         return m.Infra.BaseMkConfig(
             project_name=c.Infra.DEFAULT_UNNAMED,
             python_version="3.13",
-            core_stack=c.Infra.PYTHON,
             package_manager=c.Infra.POETRY,
             source_dir=c.Infra.DEFAULT_SRC_DIR,
             tests_dir=c.Infra.DIR_TESTS,

@@ -13,16 +13,8 @@ import time
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
-    FlextInfraSyncService,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra.workspace.sync import FlextInfraSyncService
 
 logger = u.fetch_logger(__name__)
 
@@ -316,13 +308,8 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         )
         _ = u.Cli.ensure_dir(log_path.parent)
         started = time.monotonic()
-        normalized_make_args = self._normalize_make_args_for_project(
-            project=project,
-            verb=verb,
-            make_args=make_args,
-        )
         proc_result = u.Cli.run_to_file(
-            [c.Infra.MAKE, "-C", project, verb, *normalized_make_args],
+            [c.Infra.MAKE, "-C", project, verb, *make_args],
             log_path,
             env={"NO_COLOR": "1"},
         )
@@ -355,26 +342,6 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
             ),
         )
 
-    def _normalize_make_args_for_project(
-        self,
-        *,
-        project: str,
-        verb: str,
-        make_args: t.StrSequence,
-    ) -> t.StrSequence:
-        """Normalize make args for project."""
-        if (verb != c.Infra.VERB_CHECK) or (not self._is_go_project(project)):
-            return make_args
-        normalized_args: t.MutableSequenceOf[str] = []
-        for make_arg in make_args:
-            if make_arg.startswith("CHECK_GATES="):
-                _, _, gates_value = make_arg.partition("=")
-                normalized_gates = self._normalize_check_gates_for_go(gates_value)
-                normalized_args.append(f"CHECK_GATES={normalized_gates}")
-                continue
-            normalized_args.append(make_arg)
-        return normalized_args
-
     @staticmethod
     def _normalize_fail_fast_make_args(
         make_args: t.StrSequence,
@@ -387,41 +354,6 @@ class FlextInfraOrchestratorService(FlextInfraProjectSelectionServiceBase[bool])
         if any(make_arg.startswith("FAIL_FAST=") for make_arg in make_args):
             return make_args
         return (*make_args, "FAIL_FAST=1")
-
-    def _is_go_project(self, project: str) -> bool:
-        """Is go project."""
-        go_mod: str = c.Infra.GO_MOD
-        return (Path(project) / go_mod).exists()
-
-    def _normalize_check_gates_for_go(self, gates_value: str) -> str:
-        """Normalize check gates for go."""
-        raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]
-        if not raw_gates:
-            return gates_value
-        normalized_gates: t.MutableSequenceOf[str] = []
-        go_supported = {
-            c.Infra.LINT,
-            c.Infra.FORMAT,
-            c.Infra.SECURITY,
-            c.Infra.MARKDOWN,
-            c.Infra.GO,
-            c.Infra.TYPE_ALIAS,
-        }
-        python_type_gates = {
-            c.Infra.PYREFLY,
-            c.Infra.MYPY,
-            c.Infra.PYRIGHT,
-        }
-        for gate in raw_gates:
-            mapped_gate = c.Infra.TYPE_ALIAS if gate in python_type_gates else gate
-            if mapped_gate not in go_supported and mapped_gate not in python_type_gates:
-                normalized_gates.append(mapped_gate)
-                continue
-            if mapped_gate in go_supported and mapped_gate not in normalized_gates:
-                normalized_gates.append(mapped_gate)
-        if not normalized_gates:
-            normalized_gates.append(c.Infra.TYPE_ALIAS)
-        return ",".join(normalized_gates)
 
 
 __all__: list[str] = ["FlextInfraOrchestratorService"]

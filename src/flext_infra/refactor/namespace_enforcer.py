@@ -9,16 +9,12 @@ from pathlib import Path
 from typing import override
 
 from flext_cli import cli
-from flext_infra import (
-    FlextInfraNamespaceEnforcerPhasesMixin,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import m, p, r, t, u
 from flext_infra.refactor._namespace_enforcer_project import (
     FlextInfraNamespaceEnforcerProjectMixin,
+)
+from flext_infra.refactor.namespace_enforcer_phases import (
+    FlextInfraNamespaceEnforcerPhasesMixin,
 )
 
 

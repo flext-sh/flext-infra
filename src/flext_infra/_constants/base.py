@@ -9,12 +9,10 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
-from flext_infra import (
-    FlextInfraConstantsMake,
-    FlextInfraConstantsSharedInfra,
-    FlextInfraConstantsSourceCode,
-    t,
-)
+from flext_infra._constants.make import FlextInfraConstantsMake
+from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra.typings import t
 
 
 class FlextInfraConstantsBase(
@@ -63,6 +61,8 @@ class FlextInfraConstantsBase(
     "Poetry group key for dependency groups."
     NAME: Final[str] = "name"
     "Project/package name key."
+    PACKAGE_IMPORT_NAME: Final[str] = "flext_infra"
+    "Canonical import package name for flext-infra itself."
     VERSION: Final[str] = "version"
     "Version key within project or tool sections."
     PYREFLY: Final[str] = "pyrefly"
@@ -188,16 +188,12 @@ class FlextInfraConstantsBase(
     "Bandit security linter binary."
     MARKDOWNLINT: Final[str] = "markdownlint"
     "Markdown linter binary."
-    GOFMT: Final[str] = "gofmt"
-    "Go formatter binary."
     OUTPUT_JSON: Final[str] = "json"
     "Common CLI output format flag value."
     PR: Final[str] = "pr"
     "GitHub pull request subcommand."
     SCAN: Final[str] = "scan"
     "ast-grep scan subcommand."
-    GOVET: Final[str] = "go"
-    "Go vet binary (invoked as 'go vet')."
     MAKE: Final[str] = "make"
     "Make build tool binary."
 
@@ -207,11 +203,10 @@ class FlextInfraConstantsBase(
     LINT: Final[str] = "lint"
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
-    GO: Final[str] = "go"
     SILENT_FAILURE: Final[str] = "silent-failure"
     TYPE_ALIAS: Final[str] = "type"
     DEFAULT_CSV: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown,go"
+        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
     )
 
     @unique

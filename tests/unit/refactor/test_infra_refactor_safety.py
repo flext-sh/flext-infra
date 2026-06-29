@@ -8,7 +8,9 @@ from collections.abc import (
 from pathlib import Path
 from typing import overload, override
 
-from flext_infra import FlextInfraRefactorEngine, FlextInfraRefactorSafetyManager, t
+from flext_infra import t
+from flext_infra.refactor.engine import FlextInfraRefactorEngine
+from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from tests import p, r, u
 
 

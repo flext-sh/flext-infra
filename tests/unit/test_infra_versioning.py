@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraUtilitiesVersioning
+from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 
 
 @pytest.fixture

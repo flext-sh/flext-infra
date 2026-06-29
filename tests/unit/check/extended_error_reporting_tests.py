@@ -9,11 +9,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraGoGate,
-    FlextInfraMypyGate,
-    FlextInfraRuffFormatGate,
-)
+from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from tests import u
 
 
@@ -54,36 +51,6 @@ class TestGateErrorReportingPublicBehavior:
                 os.environ.pop("PYTHONPATH", None)
             else:
                 os.environ["PYTHONPATH"] = original_pythonpath
-
-        assert not result.result.passed
-        assert len(result.issues) == 2
-
-    def test_go_gate_ignores_empty_lines_in_gofmt_output(self, tmp_path: Path) -> None:
-        proj_dir = u.Tests.mk_project(tmp_path, "p1")
-        (proj_dir / "go.mod").write_text("module test\n", encoding="utf-8")
-        (proj_dir / "main.go").write_text("package main\n", encoding="utf-8")
-        fake_bin = tmp_path / "fake_bin"
-        fake_bin.mkdir(parents=True, exist_ok=True)
-        (fake_bin / "go").write_text(
-            "#!/usr/bin/env bash\nexit 0\n",
-            encoding="utf-8",
-        )
-        (fake_bin / "gofmt").write_text(
-            (
-                "#!/usr/bin/env bash\n"
-                "printf 'src/file.go\\n\\nsrc/other.go\\n'\n"
-                "exit 1\n"
-            ),
-            encoding="utf-8",
-        )
-        (fake_bin / "go").chmod(0o755)
-        (fake_bin / "gofmt").chmod(0o755)
-        original_path = os.environ.get("PATH", "")
-        os.environ["PATH"] = f"{fake_bin}:{original_path}"
-        try:
-            result = u.Tests.run_gate_check(FlextInfraGoGate, tmp_path, proj_dir)
-        finally:
-            os.environ["PATH"] = original_path
 
         assert not result.result.passed
         assert len(result.issues) == 2

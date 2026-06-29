@@ -6,10 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraLooseObjectDetector,
-    FlextInfraNamespaceEnforcer,
-)
+from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
+from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from tests import m, t
 
 

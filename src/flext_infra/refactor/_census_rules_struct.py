@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
+from flext_infra import m, p, t
+from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
+)
+from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
-    m,
-    p,
-    t,
 )
 
 

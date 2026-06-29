@@ -11,7 +11,7 @@ from rope.base.resources import File
 from flext_core import t
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
+from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesRopeCoreResourcesMixin:
@@ -122,7 +122,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
         if not isinstance(root_real_path, str):
             return ()
-        file_paths = FlextInfraUtilitiesFileIteration.iter_python_files(
+        file_paths = FlextInfraUtilitiesIteration.iter_python_files(
             Path(root_real_path),
         )
         if file_paths.failure:

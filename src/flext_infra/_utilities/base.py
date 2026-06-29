@@ -10,13 +10,13 @@ from importlib.resources import files
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
+from flext_core import r
+from flext_infra._models.deps_tool_config import (
     FlextInfraModelsDepsToolSettings as mdts,
-    c,
-    p,
-    r,
-    t,
 )
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesBase:

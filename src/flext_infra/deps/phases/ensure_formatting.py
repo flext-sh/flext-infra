@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from flext_infra import FlextInfraPhaseEngine, m, t, u
+from flext_infra import m, t, u
+from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
 
 
 class FlextInfraEnsureFormattingToolingPhase:

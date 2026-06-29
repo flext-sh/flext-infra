@@ -113,39 +113,59 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
 
         """
         try:
-            if log_path.exists():
-                log_read = u.Cli.files_read_text(log_path)
-                if log_read.failure:
-                    return r[m.Infra.PytestDiagnostics].fail(
-                        log_read.error or f"Failed to read pytest log: {log_path}",
-                    )
-                log_text = log_read.value
-            else:
-                log_text = ""
-            lines = log_text.splitlines()
-            diag = _DiagResult()
-            xml_parsed = self._parse_xml(junit_path, diag)
-            if not xml_parsed:
-                self._parse_log_into_diag(lines, diag)
-            self._extract_warnings(lines, diag)
-            if not diag.slow_entries:
-                self._extract_slow_from_log(lines, diag)
-            result = m.Infra.PytestDiagnostics(
-                failed_count=len(diag.failed_cases),
-                error_count=len(diag.error_traces),
-                warning_count=len(diag.warning_lines),
-                skipped_count=len(diag.skip_cases),
-                failed_cases=diag.failed_cases,
-                error_traces=diag.error_traces,
-                warning_lines=diag.warning_lines,
-                skip_cases=diag.skip_cases,
-                slow_entries=diag.slow_entries,
-            )
-            return r[m.Infra.PytestDiagnostics].ok(result)
+            return self._extract_diagnostics(junit_path, log_path)
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.PytestDiagnostics].fail_op(
                 "pytest diagnostics extraction", exc
             )
+
+    @staticmethod
+    def _read_log_text(log_path: Path) -> p.Result[str]:
+        """Read pytest log text when present."""
+        if not log_path.exists():
+            return r[str].ok("")
+        log_read = u.Cli.files_read_text(log_path)
+        if log_read.failure:
+            return r[str].fail(
+                log_read.error or f"Failed to read pytest log: {log_path}",
+            )
+        return r[str].ok(log_read.value)
+
+    @staticmethod
+    def _diagnostics_model(diag: _DiagResult) -> m.Infra.PytestDiagnostics:
+        """Convert mutable extraction state to the canonical diagnostics model."""
+        return m.Infra.PytestDiagnostics(
+            failed_count=len(diag.failed_cases),
+            error_count=len(diag.error_traces),
+            warning_count=len(diag.warning_lines),
+            skipped_count=len(diag.skip_cases),
+            failed_cases=diag.failed_cases,
+            error_traces=diag.error_traces,
+            warning_lines=diag.warning_lines,
+            skip_cases=diag.skip_cases,
+            slow_entries=diag.slow_entries,
+        )
+
+    def _extract_diagnostics(
+        self,
+        junit_path: Path,
+        log_path: Path,
+    ) -> p.Result[m.Infra.PytestDiagnostics]:
+        """Extract pytest diagnostics after input normalization."""
+        log_text_result = self._read_log_text(log_path)
+        if log_text_result.failure:
+            return r[m.Infra.PytestDiagnostics].fail(
+                log_text_result.error or f"Failed to read pytest log: {log_path}",
+            )
+        lines = log_text_result.value.splitlines()
+        diag = _DiagResult()
+        xml_parsed = self._parse_xml(junit_path, diag)
+        if not xml_parsed:
+            self._parse_log_into_diag(lines, diag)
+        self._extract_warnings(lines, diag)
+        if not diag.slow_entries:
+            self._extract_slow_from_log(lines, diag)
+        return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @override
     def execute(self) -> p.Result[bool]:

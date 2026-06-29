@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import cli, m as cli_m
-from flext_infra import FlextInfraWorkspaceMakefileGenerator
+from flext_infra.workspace.workspace_makefile import (
+    FlextInfraWorkspaceMakefileGenerator,
+)
 
 
 def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:
@@ -118,7 +120,6 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         assert process.exit_code == 0
         assert '_fmt_target="demo-b"' in output
         assert "ruff format $_fmt_target --quiet" in output
-        assert "find demo-b -type f -name '*.go'" in output
         assert 'md_roots="demo-b"' in output
         assert "find \"$md_root\" -type f -name '*.md'" in output
         assert '_fmt_target="."' not in output

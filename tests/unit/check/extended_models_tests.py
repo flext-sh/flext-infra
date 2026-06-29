@@ -45,7 +45,7 @@ class TestRunCommandGateParsing:
         command = m.Infra.RunCommand.model_validate(
             {
                 "projects": ["flext-core"],
-                "gates": ["lint,format,pyrefly,mypy,pyright,security,markdown,go"],
+                "gates": ["lint,format,pyrefly,mypy,pyright,security,markdown"],
             },
         )
 
@@ -59,7 +59,6 @@ class TestRunCommandGateParsing:
                 "pyright",
                 "security",
                 "markdown",
-                "go",
             ),
         )
 

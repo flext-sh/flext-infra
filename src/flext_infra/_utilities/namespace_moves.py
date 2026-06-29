@@ -6,18 +6,16 @@ from collections import defaultdict
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesProtectedEdit,
+from flext_infra import c, m, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeSource,
-    c,
-    m,
-    t,
 )
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:

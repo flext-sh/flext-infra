@@ -9,7 +9,8 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.gates.base_gate import FlextInfraGate
 
 
 class FlextInfraPyreflyGate(FlextInfraGate):
@@ -87,54 +88,16 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 )
                 return False, issues
             parsed_value = read.value
-            try:
-                error_items: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]] = []
-                if isinstance(parsed_value, Mapping):
-                    try:
-                        error_items = u.Cli.json_deep_mapping_list(
-                            u.Cli.json_as_mapping(parsed_value),
-                            c.Infra.PYREFLY_ERRORS_KEY,
-                        )
-                    except c.EXC_VALIDATION_TYPE as err:
-                        issues.append(
-                            m.Infra.Issue(
-                                file="<pyrefly-output>",
-                                line=0,
-                                column=0,
-                                code="PARSE_ERROR",
-                                message=f"Tool output parsing failed: {type(err).__name__}",
-                                severity="ERROR",
-                            )
-                        )
-                        return False, issues
-                elif isinstance(parsed_value, list):
-                    try:
-                        error_items = u.Cli.json_as_mapping_list(parsed_value)
-                    except c.EXC_VALIDATION_TYPE as err:
-                        issues.append(
-                            m.Infra.Issue(
-                                file="<pyrefly-output>",
-                                line=0,
-                                column=0,
-                                code="PARSE_ERROR",
-                                message=f"Tool output parsing failed: {type(err).__name__}",
-                                severity="ERROR",
-                            )
-                        )
-                        return False, issues
-                issues.extend(
-                    m.Infra.Issue(
-                        file=u.Cli.json_pick_str(err, "path", "?"),
-                        line=u.Cli.json_pick_int(err, "line"),
-                        column=u.Cli.json_pick_int(err, "column"),
-                        code=u.Cli.json_pick_str(err, "name"),
-                        message=u.Cli.json_pick_str(err, "description"),
-                        severity=u.Cli.json_pick_str(err, "severity", c.Infra.ERROR),
+            error_items = self._error_items_from_output(parsed_value)
+            if error_items.failure:
+                issues.append(
+                    self._parse_error_issue(
+                        error_items.error or "Tool output parsing failed",
                     )
-                    for err in error_items
-                    if "/.venv/" not in u.Cli.json_pick_str(err, "path", "")
-                    and "/site-packages/" not in u.Cli.json_pick_str(err, "path", "")
                 )
+                return False, issues
+            try:
+                issues.extend(self._issues_from_error_items(error_items.value))
             except c.EXC_VALIDATION_TYPE as err:
                 issues.append(
                     m.Infra.Issue(
@@ -167,6 +130,84 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 )
             )
         return result.exit_code == 0, issues
+
+    @staticmethod
+    def _parse_error_issue(message: str) -> m.Infra.Issue:
+        """Return the canonical parse-error issue."""
+        return m.Infra.Issue(
+            file="<pyrefly-output>",
+            line=0,
+            column=0,
+            code="PARSE_ERROR",
+            message=message,
+            severity=c.Infra.ERROR,
+        )
+
+    @classmethod
+    def _error_items_from_output(
+        cls,
+        parsed_value: t.Infra.InfraValue,
+    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]]:
+        """Return pyrefly error items from either object or list JSON output."""
+        if isinstance(parsed_value, Mapping):
+            return cls._error_items_from_mapping(parsed_value)
+        if isinstance(parsed_value, list):
+            return cls._error_items_from_list(parsed_value)
+        return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(())
+
+    @staticmethod
+    def _error_items_from_mapping(
+        parsed_value: t.Infra.InfraValue,
+    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]]:
+        """Return error items from object-shaped pyrefly JSON output."""
+        try:
+            parsed_mapping = u.Cli.json_as_mapping(parsed_value)
+        except c.EXC_VALIDATION_TYPE as err:
+            return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
+                f"Tool output parsing failed: {type(err).__name__}",
+            )
+        try:
+            error_items = u.Cli.json_deep_mapping_list(
+                parsed_mapping,
+                c.Infra.PYREFLY_ERRORS_KEY,
+            )
+        except c.EXC_VALIDATION_TYPE as err:
+            return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
+                f"Tool output parsing failed: {type(err).__name__}",
+            )
+        return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(error_items)
+
+    @staticmethod
+    def _error_items_from_list(
+        parsed_value: t.Infra.InfraValue,
+    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]]:
+        """Return error items from list-shaped pyrefly JSON output."""
+        try:
+            error_items = u.Cli.json_as_mapping_list(parsed_value)
+        except c.EXC_VALIDATION_TYPE as err:
+            return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
+                f"Tool output parsing failed: {type(err).__name__}",
+            )
+        return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(error_items)
+
+    @staticmethod
+    def _issues_from_error_items(
+        error_items: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]],
+    ) -> t.SequenceOf[m.Infra.Issue]:
+        """Convert validated pyrefly error items to gate issues."""
+        return tuple(
+            m.Infra.Issue(
+                file=u.Cli.json_pick_str(err, "path", "?"),
+                line=u.Cli.json_pick_int(err, "line"),
+                column=u.Cli.json_pick_int(err, "column"),
+                code=u.Cli.json_pick_str(err, "name"),
+                message=u.Cli.json_pick_str(err, "description"),
+                severity=u.Cli.json_pick_str(err, "severity", c.Infra.ERROR),
+            )
+            for err in error_items
+            if "/.venv/" not in u.Cli.json_pick_str(err, "path", "")
+            and "/site-packages/" not in u.Cli.json_pick_str(err, "path", "")
+        )
 
 
 __all__: list[str] = ["FlextInfraPyreflyGate"]

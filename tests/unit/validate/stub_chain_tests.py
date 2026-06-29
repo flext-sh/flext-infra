@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraStubSupplyChain, r
+from flext_infra import r
+from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 from tests import c, m, t, u
 
 

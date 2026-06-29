@@ -22,14 +22,9 @@ from typing import Annotated, override
 
 from git import GitCommandError, Repo
 
-from flext_infra import (
-    FlextInfraOrchestratorService,
-    FlextInfraUtilitiesSnapshot,
-    m,
-    p,
-    r,
-    u,
-)
+from flext_infra import m, p, r, u
+from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
+from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 
 class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):

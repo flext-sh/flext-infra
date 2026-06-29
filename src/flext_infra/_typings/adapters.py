@@ -18,7 +18,7 @@ from typing import ClassVar
 
 from flext_cli import t
 from flext_core import m
-from flext_infra import FlextInfraTypesBase
+from flext_infra._typings.base import FlextInfraTypesBase
 
 
 class FlextInfraTypesAdapters:

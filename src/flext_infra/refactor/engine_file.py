@@ -8,14 +8,15 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraHelperConsolidationTransformer,
-    FlextInfraNestedClassPropagationTransformer,
+from flext_infra import c, m, t, u
+from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
-    c,
-    m,
-    t,
-    u,
+)
+from flext_infra.transformers.helper_consolidation import (
+    FlextInfraHelperConsolidationTransformer,
+)
+from flext_infra.transformers.nested_class_propagation import (
+    FlextInfraNestedClassPropagationTransformer,
 )
 
 

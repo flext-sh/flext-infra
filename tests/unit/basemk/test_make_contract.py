@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraBaseMkGenerator
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from tests import m, u
 
 
@@ -120,7 +120,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             result.stdout,
             has=[
-                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,go,type",
+                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,type",
                 "FILE=src/foo.py             Single file for check/fmt/test",
                 'FILES="a.py b.py"          Multiple files for check/fmt/test',
                 "CHANGED_ONLY=1              Git-changed Python files for check",

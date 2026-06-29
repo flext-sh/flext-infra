@@ -4,22 +4,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
+from flext_infra import c, m, p, t, u
+from flext_infra.refactor.engine_legacy import FlextInfraRefactorLegacyTextOps
+from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
-    FlextInfraRefactorImportModernizer,
-    FlextInfraRefactorLazyImportFixer,
-    FlextInfraRefactorLegacyTextOps,
-    FlextInfraRefactorMRORemover,
-    FlextInfraRefactorSignaturePropagator,
-    FlextInfraRefactorSymbolPropagator,
-    FlextInfraRefactorTypingUnifier,
-    FlextInfraTransformerTier0ImportFixer,
-    c,
-    m,
-    p,
-    t,
-    u,
 )
+from flext_infra.transformers.import_modernizer import (
+    FlextInfraRefactorImportModernizer,
+)
+from flext_infra.transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
+from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
+from flext_infra.transformers.signature_propagator import (
+    FlextInfraRefactorSignaturePropagator,
+)
+from flext_infra.transformers.symbol_propagator import (
+    FlextInfraRefactorSymbolPropagator,
+)
+from flext_infra.transformers.tier0_import_fixer import (
+    FlextInfraTransformerTier0ImportFixer,
+)
+from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):

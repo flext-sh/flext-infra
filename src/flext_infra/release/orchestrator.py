@@ -14,16 +14,8 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_cli import cli
-from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
-    FlextInfraReleaseOrchestratorPhases,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra.release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
 
 
 class FlextInfraReleaseOrchestrator(

@@ -79,10 +79,10 @@ class FlextInfraInternalSyncCollectMixin:
             dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
             if dep_name_match is not None:
                 dep_name = dep_name_match.group(1)
-                if dep_name.startswith(c.Infra.PKG_PREFIX_HYPHEN) or dep_name in {
-                    "flext",
-                    "flexcore",
-                }:
+                if (
+                    dep_name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
+                    or dep_name == "flext"
+                ):
                     internal_dep_names.add(dep_name)
             if " @ " not in dep:
                 continue

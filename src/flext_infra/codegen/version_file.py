@@ -17,7 +17,8 @@ from __future__ import annotations
 from typing import override
 
 from flext_core.__version__ import FlextVersion
-from flext_infra import FlextInfraCodegenGeneration, c, p, r, s, u
+from flext_infra import c, p, r, s, u
+from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
 class FlextInfraCodegenVersionFile(s[bool]):

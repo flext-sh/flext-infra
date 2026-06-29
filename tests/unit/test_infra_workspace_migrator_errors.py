@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraBaseMkTemplateEngine, FlextInfraProjectMigrator, r
+from flext_infra import r
+from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import c, m, t, u
 
 

@@ -5,18 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraCodegenCensus,
-    FlextInfraCodegenFixer,
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenPyTyped,
-    FlextInfraCodegenScaffolder,
-    c,
-    m,
-    p,
-    t,
-    u,
-)
+from flext_infra import c, m, p, t, u
+from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
 
 class FlextInfraCodegenPipelineStagesMixin:

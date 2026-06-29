@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraValidateTierWhitelist
+from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 from tests import m, t
 
 

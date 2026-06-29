@@ -8,10 +8,9 @@ import pytest
 from rope.base.exceptions import RopeError
 
 import flext_infra
-from flext_infra import (
-    FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeInventory,
-)
+from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c, m, p, t, u
 
 
@@ -29,7 +28,7 @@ class TestsFlextInfraInfraRopeService:
             docstring="Models.",
         )
 
-        rope = flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root)
+        rope = FlextInfraRopeWorkspace.open_workspace(workspace_root)
         try:
             snapshot_result = rope.execute()
             assert snapshot_result.success
@@ -375,7 +374,7 @@ class TestsFlextInfraInfraRopeService:
 
         monkeypatch.setattr(type(module_path), "read_text", _broken_read_text)
 
-        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             with pytest.raises(
                 RuntimeError,
                 match=r"rope name index failed to read .*service\.py",
@@ -412,10 +411,10 @@ class TestsFlextInfraInfraRopeService:
             ),
             encoding="utf-8",
         )
-        original_resource = flext_infra.FlextInfraRopeWorkspace.resource
+        original_resource = FlextInfraRopeWorkspace.resource
 
         def _broken_resource(
-            rope: flext_infra.FlextInfraRopeWorkspace,
+            rope: FlextInfraRopeWorkspace,
             file_path: Path,
         ) -> t.Infra.RopeResource | None:
             if file_path.resolve() == consumer_path.resolve():
@@ -423,7 +422,7 @@ class TestsFlextInfraInfraRopeService:
             return original_resource(rope, file_path)
 
         monkeypatch.setattr(
-            flext_infra.FlextInfraRopeWorkspace,
+            FlextInfraRopeWorkspace,
             "resource",
             _broken_resource,
         )
@@ -467,7 +466,7 @@ class TestsFlextInfraInfraRopeService:
             encoding="utf-8",
         )
 
-        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(example_path)
             assert resource is not None
 

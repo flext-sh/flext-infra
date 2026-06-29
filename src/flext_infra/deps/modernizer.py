@@ -4,15 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_infra import (
-    FlextInfraExtraPathsManager,
-    FlextInfraProjectSelectionServiceBase,
-    c,
-    m,
-    p,
-    r,
-    u,
-)
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, u
 from flext_infra.deps._modernizer_constraints import (
     FlextInfraPyprojectModernizerConstraintsMixin,
 )
@@ -25,6 +17,7 @@ from flext_infra.deps._modernizer_payload import (
 from flext_infra.deps._modernizer_run import (
     FlextInfraPyprojectModernizerRunMixin,
 )
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 
 class FlextInfraPyprojectModernizer(

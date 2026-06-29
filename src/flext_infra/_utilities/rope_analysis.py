@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import importlib.util as _importlib_util
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from rope.base import libutils as rope_libutils
 from rope.base.pynames import (
     DefinedName as RopeDefinedName,
     ImportedName as RopeImportedName,
 )
 from rope.base.pynamesdef import AssignedName as RopeAssignedName
 
-from flext_infra import FlextInfraUtilitiesRopeCore, c, m
+from flext_infra import c, m
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p, t
 
 
@@ -688,26 +689,21 @@ class FlextInfraUtilitiesRopeAnalysis:
     def parse_string_module(source: str) -> t.Infra.RopePyModule | None:
         """Parse ``source`` to a rope ``PyModule`` via a shared parsing project.
 
-        Uses rope's ``pycore.get_string_module`` so callers don't need to
+        Uses rope's ``libutils.get_string_module`` so callers don't need to
         manage temporary files. Returns ``None`` on parse failure.
         """
         rope_project = FlextInfraUtilitiesRopeAnalysis._shared_parse_project()
-        get_string_module = getattr(rope_project.pycore, "get_string_module", None)
-        if get_string_module is None:
-            return None
         try:
-            pymodule = get_string_module(source)
+            pymodule = rope_libutils.get_string_module(rope_project, source)
         except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
             return None
-        return pymodule if isinstance(pymodule, type(pymodule)) else None
+        return pymodule
 
     @staticmethod
     def _shared_parse_project() -> t.Infra.RopeProject:
         """Return a process-wide rope project usable for string parsing."""
         cached = FlextInfraUtilitiesRopeAnalysis._parse_project
         if cached is None:
-            from pathlib import Path  # noqa: PLC0415  # lazy to avoid circular import
-
             cached = FlextInfraUtilitiesRopeCore.init_rope_project(
                 Path("/home/marlonsc/flext"),
             )

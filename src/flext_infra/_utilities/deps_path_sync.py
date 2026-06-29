@@ -5,16 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraModelsDeps,
-    FlextInfraUtilitiesDocsScope,
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_infra import c, m, p, r, t
+from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 

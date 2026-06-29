@@ -6,11 +6,9 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraBanditGate,
-    FlextInfraMarkdownGate,
-    FlextInfraPyrightGate,
-)
+from flext_infra.gates.bandit import FlextInfraBanditGate
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests import u
 
 

@@ -61,7 +61,7 @@ class FlextInfraInternalSyncRepoMixin:
 
     def is_workspace_mode(self, project_root: Path) -> t.Pair[bool, Path | None]:
         """Determine workspace mode and return resolved workspace root."""
-        settings = FlextInfraSettings.fetch_global()
+        settings = FlextInfraSettings()
         if settings.standalone:
             u.Cli.info("Standalone mode: skipping workspace dependency sync")
             return (False, None)
@@ -129,7 +129,7 @@ class FlextInfraInternalSyncRepoMixin:
 
     def resolve_ref(self, project_root: Path) -> str:
         """Resolve dependency sync git reference for current environment."""
-        settings = FlextInfraSettings.fetch_global()
+        settings = FlextInfraSettings()
         if settings.github_actions:
             for value in (settings.github_head_ref, settings.github_ref_name):
                 if value:
@@ -171,7 +171,7 @@ class FlextInfraInternalSyncRepoMixin:
 
     def workspace_root_from_env(self, project_root: Path) -> Path | None:
         """Resolve workspace root from environment when valid for project root."""
-        candidate = FlextInfraSettings.fetch_global().workspace_root
+        candidate = FlextInfraSettings().workspace_root
         if candidate is None:
             return None
         if not candidate.exists() or not candidate.is_dir():

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import cli
-from flext_infra import FlextInfraInternalDependencySyncService
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests import u
 
 

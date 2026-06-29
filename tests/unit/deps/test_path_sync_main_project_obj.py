@@ -8,7 +8,8 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesDependencyPathSync, r
+from flext_infra import r
+from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 from tests import m, p, t
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import u
 
 

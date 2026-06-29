@@ -6,11 +6,13 @@ from pathlib import Path
 
 import tomlkit
 
-from flext_infra import (
+from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
-    FlextInfraEnsureNamespaceToolingPhase,
-    FlextInfraEnsureRuffConfigPhase,
 )
+from flext_infra.deps.phases.ensure_namespace import (
+    FlextInfraEnsureNamespaceToolingPhase,
+)
+from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from tests import m, tm, u
 
 

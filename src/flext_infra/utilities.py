@@ -27,7 +27,6 @@ from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
-from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
@@ -74,6 +73,7 @@ from flext_infra._utilities.rope_pep695_patch import (
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
+from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilities(u):
@@ -122,7 +122,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDependencies,
         FlextInfraUtilitiesGitScope,
         FlextInfraUtilitiesProjectDiscovery,
-        FlextInfraUtilitiesFileIteration,
+        FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,

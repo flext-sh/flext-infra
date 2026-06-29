@@ -10,14 +10,8 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraModelsRefactorCensus as mrc,
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_infra import c, m, p, r, t
+from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore

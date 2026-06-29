@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraClassPlacementDetector
+from flext_infra.detectors.class_placement_detector import (
+    FlextInfraClassPlacementDetector,
+)
 from tests import c, m, t
 
 

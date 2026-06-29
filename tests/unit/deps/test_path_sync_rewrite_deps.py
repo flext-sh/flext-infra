@@ -191,7 +191,7 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
                 "[project]\n"
                 'dependencies = ["flext-core>=0.1.0"]\n'
                 "[tool.uv.sources]\n"
-                "flexcore = { workspace = true }\n"
+                "external-core = { workspace = true }\n"
             ),
             encoding="utf-8",
         )
@@ -203,7 +203,7 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
                 workspace=str(tmp_path),
                 apply=True,
             ),
-            internal_names={"flext-api", "flext-core", "flexcore"},
+            internal_names={"flext-api", "flext-core", "external-core"},
             workspace_members=("flext-api", "flext-core"),
         )
 

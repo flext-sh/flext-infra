@@ -4,14 +4,9 @@ from __future__ import annotations
 
 from operator import itemgetter
 
-from flext_infra import (
-    FlextInfraChangeTrackingTransformer,
-    FlextInfraUtilitiesRopeAnalysis,
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra import c, m, t, u
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.transformers.base import FlextInfraChangeTrackingTransformer
 
 
 class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer):

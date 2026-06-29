@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, c, t
+from flext_infra import c, t
+from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):

@@ -14,7 +14,8 @@ from typing import Final
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from tests import m, t, u
 
 _ROOT: Final[str] = "# root content"

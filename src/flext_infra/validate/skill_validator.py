@@ -103,76 +103,140 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleEngineMixin):
 
         """
         try:
-            root = workspace_root.resolve()
-            skills_dir = root / c.Infra.SKILLS_DIR
-            rules_path = skills_dir / skill_name / "rules.yml"
-            if not rules_path.exists():
-                return r[m.Infra.ValidationReport].ok(
-                    m.Infra.ValidationReport(
-                        passed=False,
-                        violations=[f"rules.yml not found for skill '{skill_name}'"],
-                        summary=f"no rules.yml for {skill_name}",
-                    ),
-                )
-            rules = u.Cli.yaml_load_mapping(rules_path)
-            scan_targets_raw = rules.get("scan_targets", {})
-            scan_targets = u.Cli.json_as_mapping(scan_targets_raw)
-            if not scan_targets and scan_targets_raw not in ({}, None):
-                return r[m.Infra.ValidationReport].fail(
-                    f"scan_targets must be a mapping: {rules_path}",
-                )
-            include_globs = u.Infra.string_list(
-                scan_targets.get("include", ["**/*.py"]),
-            ) or ["**/*"]
-            exclude_globs = u.Infra.string_list(
-                scan_targets.get(c.Infra.EXCLUDE, []),
-            )
-            rules_list_obj = rules.get(c.Infra.RK_RULES, [])
-            if not isinstance(rules_list_obj, list):
-                return r[m.Infra.ValidationReport].fail("rules must be a list")
-            rules_list: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
-                rules_list_obj,
-            )
-            counts: t.MutableIntMapping = {}
-            violations: t.MutableSequenceOf[str] = []
-            skill_dir = skills_dir / skill_name
-            for rule_obj_raw in rules_list:
-                rule_obj = u.Cli.json_as_mapping(rule_obj_raw)
-                if not rule_obj:
-                    continue
-                self._evaluate_single_rule(
-                    rule_obj,
-                    skill_dir,
-                    root,
-                    mode,
-                    include_globs,
-                    exclude_globs,
-                    counts,
-                    violations,
-                )
-            total = sum(counts.values())
-            if mode == c.Infra.OperationMode.STRICT:
-                passed = total == 0
-            else:
-                passed = self._apply_baseline_comparison(
-                    rules,
-                    root,
-                    skill_name,
-                    counts,
-                    total,
-                )
-            summary = (
-                f"{skill_name}: {total} violations, {('PASS' if passed else 'FAIL')}"
-            )
-            return r[m.Infra.ValidationReport].ok(
-                m.Infra.ValidationReport(
-                    passed=passed,
-                    violations=violations,
-                    summary=summary,
-                ),
-            )
+            return self._build_skill_report(workspace_root, skill_name, mode)
         except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[m.Infra.ValidationReport].fail_op("skill validation", exc)
+
+    @staticmethod
+    def _missing_rules_report(skill_name: str) -> m.Infra.ValidationReport:
+        """Build the report returned when a skill lacks rules.yml."""
+        return m.Infra.ValidationReport(
+            passed=False,
+            violations=[f"rules.yml not found for skill '{skill_name}'"],
+            summary=f"no rules.yml for {skill_name}",
+        )
+
+    @staticmethod
+    def _scan_globs(
+        scan_targets: t.MappingKV[str, t.Infra.InfraValue],
+    ) -> tuple[t.StrSequence, t.StrSequence]:
+        """Return include and exclude glob lists from rules.yml scan targets."""
+        include_globs = u.Infra.string_list(
+            scan_targets.get("include", ["**/*.py"]),
+        ) or ["**/*"]
+        exclude_globs = u.Infra.string_list(
+            scan_targets.get(c.Infra.EXCLUDE, []),
+        )
+        return include_globs, exclude_globs
+
+    @staticmethod
+    def _rules_list(
+        rules: t.MappingKV[str, t.Infra.InfraValue],
+    ) -> p.Result[t.JsonList]:
+        """Validate the rules.yml rules payload."""
+        rules_list_obj = rules.get(c.Infra.RK_RULES, [])
+        if not isinstance(rules_list_obj, list):
+            return r[t.JsonList].fail("rules must be a list")
+        return r[t.JsonList].ok(
+            t.Cli.JSON_LIST_ADAPTER.validate_python(rules_list_obj),
+        )
+
+    def _evaluate_rules(
+        self,
+        rules_list: t.JsonList,
+        skill_dir: Path,
+        root: Path,
+        mode: c.Infra.OperationMode,
+        include_globs: t.StrSequence,
+        exclude_globs: t.StrSequence,
+    ) -> tuple[t.IntMapping, t.StrSequence]:
+        """Evaluate skill validation rules and return counts plus violations."""
+        counts: t.MutableIntMapping = {}
+        violations: t.MutableSequenceOf[str] = []
+        for rule_obj_raw in rules_list:
+            rule_obj = u.Cli.json_as_mapping(rule_obj_raw)
+            if not rule_obj:
+                continue
+            self._evaluate_single_rule(
+                rule_obj,
+                skill_dir,
+                root,
+                mode,
+                include_globs,
+                exclude_globs,
+                counts,
+                violations,
+            )
+        return counts, tuple(violations)
+
+    def _skill_report_model(
+        self,
+        rules: t.MappingKV[str, t.Infra.InfraValue],
+        root: Path,
+        skill_name: str,
+        mode: c.Infra.OperationMode,
+        counts: t.IntMapping,
+        violations: t.StrSequence,
+    ) -> m.Infra.ValidationReport:
+        """Build the canonical skill validation report model."""
+        total = sum(counts.values())
+        passed = (
+            total == 0
+            if mode == c.Infra.OperationMode.STRICT
+            else self._apply_baseline_comparison(rules, root, skill_name, counts, total)
+        )
+        summary = f"{skill_name}: {total} violations, {('PASS' if passed else 'FAIL')}"
+        return m.Infra.ValidationReport(
+            passed=passed,
+            violations=violations,
+            summary=summary,
+        )
+
+    def _build_skill_report(
+        self,
+        workspace_root: Path,
+        skill_name: str,
+        mode: c.Infra.OperationMode,
+    ) -> p.Result[m.Infra.ValidationReport]:
+        """Build a skill validation report after path resolution."""
+        root = workspace_root.resolve()
+        skills_dir = root / c.Infra.SKILLS_DIR
+        rules_path = skills_dir / skill_name / "rules.yml"
+        if not rules_path.exists():
+            return r[m.Infra.ValidationReport].ok(
+                self._missing_rules_report(skill_name)
+            )
+        rules = u.Cli.yaml_load_mapping(rules_path)
+        scan_targets_raw = rules.get("scan_targets", {})
+        scan_targets = u.Cli.json_as_mapping(scan_targets_raw)
+        if not scan_targets and scan_targets_raw not in ({}, None):
+            return r[m.Infra.ValidationReport].fail(
+                f"scan_targets must be a mapping: {rules_path}",
+            )
+        include_globs, exclude_globs = self._scan_globs(scan_targets)
+        rules_list_result = self._rules_list(rules)
+        if rules_list_result.failure:
+            return r[m.Infra.ValidationReport].fail(
+                rules_list_result.error or "rules must be a list",
+            )
+        counts, violations = self._evaluate_rules(
+            rules_list_result.value,
+            skills_dir / skill_name,
+            root,
+            mode,
+            include_globs,
+            exclude_globs,
+        )
+        return r[m.Infra.ValidationReport].ok(
+            self._skill_report_model(
+                rules,
+                root,
+                skill_name,
+                mode,
+                counts,
+                violations,
+            ),
+        )
 
     @override
     def execute(self) -> p.Result[bool]:

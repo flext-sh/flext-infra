@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsMixins as mm, t
+from flext_infra import t
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRelease:

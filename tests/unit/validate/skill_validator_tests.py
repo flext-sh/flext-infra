@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraSkillValidator
+from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 from tests import c, m, t, u
 
 

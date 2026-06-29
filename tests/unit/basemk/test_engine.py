@@ -4,12 +4,9 @@ from __future__ import annotations
 
 from _pytest.capture import CaptureFixture
 
-from flext_infra import (
-    FlextInfraBaseMkGenerator,
-    FlextInfraBaseMkTemplateEngine,
-    m,
-    main as infra_main,
-)
+from flext_infra import m, main as infra_main
+from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 def basemk_main(argv: list[str]) -> int:
@@ -35,7 +32,6 @@ class TestsFlextInfraBasemkEngine:
         settings = m.Infra.BaseMkConfig(
             project_name="sample-project",
             python_version="3.13",
-            core_stack="python",
             package_manager="poetry",
             source_dir="src",
             tests_dir="tests",
@@ -95,7 +91,7 @@ class TestsFlextInfraBasemkEngine:
         text = result.value
         for part in (
             "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,go,type"',
+            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,type"',
             'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
             'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
             'echo "  DIAG=1                      Emit extended pytest diagnostics"',

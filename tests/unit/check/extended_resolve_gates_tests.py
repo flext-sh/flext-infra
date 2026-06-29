@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 
 class TestWorkspaceCheckerResolveGates:
@@ -48,7 +48,6 @@ class TestWorkspaceCheckerResolveGates:
             "silent-failure",
             "security",
             "markdown",
-            "go",
         ]
         result = FlextInfraWorkspaceChecker.resolve_gates(gates)
         tm.ok(result)

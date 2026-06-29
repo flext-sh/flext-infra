@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraReleaseOrchestrator
+from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests.constants import c
 
 

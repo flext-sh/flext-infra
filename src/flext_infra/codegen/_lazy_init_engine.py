@@ -6,14 +6,9 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraCodegenGeneration,
-    FlextInfraCodegenLazyInitPlanner,
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra import c, m, t, u
+from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 
 class FlextInfraCodegenLazyInitEngineMixin:

@@ -282,7 +282,9 @@ class TestsFlextInfraLazyInitHelpers:
         assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
-        assert "from flext_cli import d, e, h, m, p, r, s, t, u, x" in init_content
+        assert "from flext_cli import (" in init_content
+        for alias_name in ("d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
+            assert f"{alias_name} as {alias_name}" in init_content
         assert '"flext_cli": (' in init_content
 
     def test_nested_tests_namespace_exports_local_symbols_only(

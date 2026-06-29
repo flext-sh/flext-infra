@@ -7,16 +7,16 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraCodegenLazyInit,
+from flext_infra import c, m, p, t, u
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
+)
+from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
+)
+from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
-    c,
-    m,
-    p,
-    t,
-    u,
 )
 
 _log = u.fetch_logger(__name__)

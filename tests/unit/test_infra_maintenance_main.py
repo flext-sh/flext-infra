@@ -15,10 +15,8 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraPythonVersionEnforcer,
-    main as infra_main,
-)
+from flext_infra import main as infra_main
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
 
 def main(argv: list[str] | None = None) -> int:

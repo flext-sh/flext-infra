@@ -19,8 +19,9 @@ import ast
 import re
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraRopeTransformer, t
+from flext_infra import t
 from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
+from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):

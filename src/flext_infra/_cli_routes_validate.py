@@ -2,30 +2,28 @@
 
 from __future__ import annotations
 
-from flext_infra import (
-    FlextInfraBaseMkValidator,
-    FlextInfraDocAuditor,
-    FlextInfraDocBuilder,
-    FlextInfraDocFixer,
-    FlextInfraDocGenerator,
-    FlextInfraDocValidator,
-    FlextInfraInventoryService,
-    FlextInfraManualCommandValidator,
-    FlextInfraPytestDiagExtractor,
-    FlextInfraPythonVersionEnforcer,
-    FlextInfraSilentFailureValidator,
-    FlextInfraSkillValidator,
-    FlextInfraStubSupplyChain,
-    FlextInfraTextPatternScanner,
-    FlextInfraValidateFreshImport,
-    FlextInfraValidateImportCycles,
-    FlextInfraValidateLazyMapFreshness,
+from flext_infra import c, m, u
+from flext_infra.docs.auditor import FlextInfraDocAuditor
+from flext_infra.docs.builder import FlextInfraDocBuilder
+from flext_infra.docs.fixer import FlextInfraDocFixer
+from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
+from flext_infra.validate.inventory import FlextInfraInventoryService
+from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFreshness
+from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
+from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
-    FlextInfraValidateTierWhitelist,
-    c,
-    m,
-    u,
 )
+from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
+from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 
 ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_DOCS: tuple(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_infra import FlextInfraRefactorCliModernizer
+from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
 
 
 def _transform(source: str) -> tuple[str, Sequence[str]]:

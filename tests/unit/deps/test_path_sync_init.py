@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesDependencyPathSync
+from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 from tests import c, m
 
 

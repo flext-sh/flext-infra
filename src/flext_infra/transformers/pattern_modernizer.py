@@ -17,11 +17,12 @@ import ast
 import re
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraRopeTransformer, c, t, u
+from flext_infra import c, t, u
 from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewrite,
     FlextInfraSourceRewriter,
 )
+from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):

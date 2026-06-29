@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDocAuditor
+from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests import t, u
 
 

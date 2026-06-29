@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenScaffolder
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests import c, m, t, u
 
 

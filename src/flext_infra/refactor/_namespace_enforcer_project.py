@@ -6,23 +6,35 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
+from flext_infra import m, t, u
+from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
-    FlextInfraCompatibilityAliasDetector,
-    FlextInfraCyclicImportDetector,
-    FlextInfraFutureAnnotationsDetector,
-    FlextInfraImportAliasDetector,
-    FlextInfraInternalImportDetector,
-    FlextInfraLooseObjectDetector,
-    FlextInfraManualProtocolDetector,
-    FlextInfraManualTypingAliasDetector,
-    FlextInfraMROCompletenessDetector,
-    FlextInfraNamespaceSourceDetector,
-    FlextInfraRuntimeAliasDetector,
-    m,
-    t,
-    u,
 )
+from flext_infra.detectors.compatibility_alias_detector import (
+    FlextInfraCompatibilityAliasDetector,
+)
+from flext_infra.detectors.cyclic_import_detector import FlextInfraCyclicImportDetector
+from flext_infra.detectors.future_annotations_detector import (
+    FlextInfraFutureAnnotationsDetector,
+)
+from flext_infra.detectors.import_alias_detector import FlextInfraImportAliasDetector
+from flext_infra.detectors.internal_import_detector import (
+    FlextInfraInternalImportDetector,
+)
+from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
+from flext_infra.detectors.manual_protocol_detector import (
+    FlextInfraManualProtocolDetector,
+)
+from flext_infra.detectors.manual_typing_alias_detector import (
+    FlextInfraManualTypingAliasDetector,
+)
+from flext_infra.detectors.mro_completeness_detector import (
+    FlextInfraMROCompletenessDetector,
+)
+from flext_infra.detectors.namespace_source_detector import (
+    FlextInfraNamespaceSourceDetector,
+)
+from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
 
 
 class FlextInfraNamespaceEnforcerProjectMixin:

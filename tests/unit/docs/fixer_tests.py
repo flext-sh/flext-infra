@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraDocFixer
+from flext_infra.docs.fixer import FlextInfraDocFixer
 from tests import m, u
 
 

@@ -12,7 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, p, r, s, t, u
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class FlextInfraBaseMkValidator(s[bool]):
@@ -38,48 +39,73 @@ class FlextInfraBaseMkValidator(s[bool]):
         """
         try:
             source = workspace_root / c.Infra.BASE_MK
-            if not source.exists():
-                return r[m.Infra.ValidationReport].ok(
-                    m.Infra.ValidationReport(
-                        passed=False,
-                        violations=["missing root base.mk"],
-                        summary="missing root base.mk",
-                    ),
-                )
-            generator = self.generator or FlextInfraBaseMkGenerator()
-            gen_result = generator.generate_basemk()
-            if gen_result.failure:
-                return r[m.Infra.ValidationReport].ok(
-                    m.Infra.ValidationReport(
-                        passed=False,
-                        violations=[
-                            gen_result.error or "base.mk generation failed",
-                        ],
-                        summary="base.mk template generation failed",
-                    ),
-                )
-            generated_hash = u.Cli.sha256_content(gen_result.value)
-            existing_hash = u.Cli.sha256_file(source)
-            violations: t.MutableSequenceOf[str] = []
-            if generated_hash != existing_hash:
-                violations.append(
-                    "root base.mk is stale (does not match generated template)",
-                )
-            passed = not violations
-            summary = (
-                "root base.mk matches generated template"
-                if passed
-                else "root base.mk is out of sync with templates"
-            )
+        except OSError as exc:
+            return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
+        if not source.exists():
+            return r[m.Infra.ValidationReport].ok(self._missing_source_report())
+        return self._compare_with_generated(source)
+
+    @staticmethod
+    def _missing_source_report() -> m.Infra.ValidationReport:
+        """Return the canonical missing-root-base.mk report."""
+        return m.Infra.ValidationReport(
+            passed=False,
+            violations=["missing root base.mk"],
+            summary="missing root base.mk",
+        )
+
+    def _compare_with_generated(
+        self,
+        source: Path,
+    ) -> p.Result[m.Infra.ValidationReport]:
+        """Compare source base.mk with freshly generated content."""
+        generator = self.generator or FlextInfraBaseMkGenerator()
+        gen_result = generator.generate_basemk()
+        if gen_result.failure:
             return r[m.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(
-                    passed=passed,
-                    violations=violations,
-                    summary=summary,
+                    passed=False,
+                    violations=[gen_result.error or "base.mk generation failed"],
+                    summary="base.mk template generation failed",
                 ),
+            )
+        try:
+            existing_hash, generated_hash = self._base_mk_hash_pair(
+                source, gen_result.value
             )
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
+        return r[m.Infra.ValidationReport].ok(
+            self._build_freshness_report(existing_hash, generated_hash),
+        )
+
+    @staticmethod
+    def _base_mk_hash_pair(source: Path, generated: str) -> t.StrPair:
+        """Return existing/generated SHA256 pair for base.mk freshness checks."""
+        return u.Cli.sha256_file(source), u.Cli.sha256_content(generated)
+
+    @staticmethod
+    def _build_freshness_report(
+        existing_hash: str,
+        generated_hash: str,
+    ) -> m.Infra.ValidationReport:
+        """Build freshness validation report from hash comparison."""
+        violations: t.MutableSequenceOf[str] = []
+        if generated_hash != existing_hash:
+            violations.append(
+                "root base.mk is stale (does not match generated template)"
+            )
+        passed = not violations
+        summary = (
+            "root base.mk matches generated template"
+            if passed
+            else "root base.mk is out of sync with templates"
+        )
+        return m.Infra.ValidationReport(
+            passed=passed,
+            violations=violations,
+            summary=summary,
+        )
 
     @override
     def execute(self) -> p.Result[bool]:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import FlextInfraConsolidateGroupsPhase
+from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
 
 
 class TestsFlextInfraDepsModernizerConsolidate:

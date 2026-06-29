@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorClassNestingTransformer, u
+from flext_infra import u
+from flext_infra.transformers.class_nesting import (
+    FlextInfraRefactorClassNestingTransformer,
+)
 
 
 def _transform_source(tmp_path: Path, source: str) -> str:

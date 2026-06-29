@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from flext_infra import (
+from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
+)
+from flext_infra.transformers.signature_propagator import (
     FlextInfraRefactorSignaturePropagator,
+)
+from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
 from tests import m

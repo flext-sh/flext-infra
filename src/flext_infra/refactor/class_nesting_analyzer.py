@@ -8,15 +8,8 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraRefactorLooseClassScanner,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 
 
 class FlextInfraRefactorClassNestingAnalyzer:

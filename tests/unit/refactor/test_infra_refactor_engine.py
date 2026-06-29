@@ -6,10 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraRefactorEngine,
-    c,
-)
+from flext_infra import c
+from flext_infra.refactor.engine import FlextInfraRefactorEngine
 
 
 class TestsFlextInfraRefactorInfraRefactorEngine:

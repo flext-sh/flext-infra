@@ -6,19 +6,13 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraGateRegistry,
-    FlextInfraWorkspaceCheckGatesMixin,
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
+)
+from flext_infra.check.workspace_check_gates import (
+    FlextInfraGateRegistry,
+    FlextInfraWorkspaceCheckGatesMixin,
 )
 
 

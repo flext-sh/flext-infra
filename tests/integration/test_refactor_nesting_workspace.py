@@ -8,7 +8,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorLooseClassScanner
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from tests import m
 
 

@@ -16,14 +16,11 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import (
-    FlextInfraBaseMkGenerator,
-    FlextInfraBaseMkTemplateEngine,
-    FlextInfraOrchestratorService,
-    FlextInfraWorkspaceDetector,
-    r,
-    u,
-)
+from flext_infra import r, u
+from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 pytestmark = [pytest.mark.integration]
 

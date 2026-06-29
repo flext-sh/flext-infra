@@ -7,17 +7,9 @@ import sys
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraRefactorCensus,
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.refactor.census import FlextInfraRefactorCensus
 
 
 class FlextInfraCodegenQualityGate(s[bool]):

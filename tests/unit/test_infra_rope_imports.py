@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 import rope.refactor.importutils as rope_importutils
 
-import flext_infra
-from flext_infra import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeImports
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import u
 
 
@@ -37,7 +38,7 @@ class TestsFlextInfraRopeImports:
             encoding="utf-8",
         )
 
-        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             result = FlextInfraUtilitiesRopeImports.normalize_imports(
                 rope.rope_project,
                 file_paths=(module_path,),
@@ -81,7 +82,7 @@ class TestsFlextInfraRopeImports:
             _no_changes,
         )
 
-        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(module_path)
             assert resource is not None
             result = FlextInfraUtilitiesRopeImports.organize_imports(
@@ -122,7 +123,7 @@ class TestsFlextInfraRopeImports:
             _unexpected_result,
         )
 
-        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(module_path)
             assert resource is not None
             result = FlextInfraUtilitiesRopeImports.organize_imports(
@@ -154,7 +155,7 @@ class TestsFlextInfraRopeImports:
             encoding="utf-8",
         )
 
-        with flext_infra.FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(module_path)
             assert resource is not None
             module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(

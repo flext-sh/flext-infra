@@ -8,14 +8,12 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import (
-    FlextInfraRefactorMROSymbolPropagator,
-    m,
-    t,
-    u,
-)
+from flext_infra import m, t, u
 from flext_infra.refactor._mro_import_collect import (
     FlextInfraRefactorMROImportRewriterFileOpsMixin,
+)
+from flext_infra.transformers.mro_symbol_propagator import (
+    FlextInfraRefactorMROSymbolPropagator,
 )
 
 

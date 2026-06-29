@@ -351,9 +351,6 @@ class FlextInfraCodegenGeneration:
                 else:
                     parts.append(export_name)
                 continue
-            if attr_name == export_name and export_name in c.Infra.ALIAS_NAMES:
-                parts.append(export_name)
-                continue
             # Emit the redundant-alias re-export form (PEP 484 `X as X`) so type
             # checkers treat non-alias TYPE_CHECKING imports as intentional
             # re-exports. Without it, sub-facades dropped from __all__ by the
@@ -391,18 +388,23 @@ class FlextInfraCodegenGeneration:
             if exp not in lazy_filtered:
                 continue
             mod, attr = lazy_filtered[exp]
-            if (
+            module_or_package_export = (
                 FlextInfraCodegenGeneration._is_module_or_package_export(attr)
-                and not include_module_exports
-            ):
+            )
+            if module_or_package_export and not include_module_exports:
                 continue
+            child_package_module = (
+                module_or_package_export
+                and mod in child_aliases
+                and exp == mod.rsplit(".", maxsplit=1)[-1]
+            )
             compact_mod = FlextInfraCodegenGeneration._compact_lazy_module_path(
                 current_pkg,
                 mod,
             )
             # Keep module-level child package exports collapsed via merge_lazy_imports,
             # but publish symbol exports from child submodules explicitly at root.
-            if mod in child_aliases and not attr:
+            if mod in child_aliases and not attr and not child_package_module:
                 continue
             entries.append((exp, compact_mod, attr))
         return entries
@@ -442,7 +444,7 @@ class FlextInfraCodegenGeneration:
         lazy_filtered: t.LazyAliasMap,
     ) -> t.StrSequence:
         """Build published exports."""
-        export_candidates = tuple(dict.fromkeys((*exports, *lazy_filtered)))
+        export_candidates = tuple(dict.fromkeys(exports))
         return tuple(
             export_name
             for export_name in export_candidates

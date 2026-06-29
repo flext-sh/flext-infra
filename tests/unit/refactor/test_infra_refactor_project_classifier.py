@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraProjectClassifier
+from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 
 def _write_pyproject(project_root: Path, content: str) -> None:

@@ -10,10 +10,8 @@ from pathlib import Path
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraEnsurePyreflyConfigPhase,
-    FlextInfraExtraPathsManager,
-)
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
 from tests import m, u
 
 

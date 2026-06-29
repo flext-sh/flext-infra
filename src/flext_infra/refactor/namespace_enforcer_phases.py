@@ -9,12 +9,8 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraScanner,
-    m,
-    t,
-    u,
-)
+from flext_infra import m, t, u
+from flext_infra.detectors.facade_scanner import FlextInfraScanner
 
 
 class FlextInfraNamespaceEnforcerPhasesMixin:

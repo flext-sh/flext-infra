@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import tomlkit
 
-from flext_infra import (
-    FlextInfraEnsureMypyConfigPhase,
+from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
 from tests import m, u

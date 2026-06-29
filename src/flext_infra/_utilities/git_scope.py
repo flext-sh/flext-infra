@@ -160,10 +160,7 @@ class FlextInfraUtilitiesGitScope:
         tracked_gitlink = relative_prefix.removesuffix("/")
         if tracked_gitlink and tracked_gitlink in tracked_paths:
             return True
-        return any(
-            f"{relative_prefix}{filename}" in tracked_paths
-            for filename in (c.Infra.PYPROJECT_FILENAME, c.Infra.GO_MOD)
-        )
+        return f"{relative_prefix}{c.Infra.PYPROJECT_FILENAME}" in tracked_paths
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitScope"]

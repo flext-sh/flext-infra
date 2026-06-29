@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenFixer
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from tests import m, t, u
 
 
@@ -26,14 +26,12 @@ def _project_info(
     )
 
 
-def test_go_only_project_excluded_from_run(tmp_path: Path) -> None:
-    flexcore = tmp_path / "flexcore"
-    flexcore.mkdir()
-    (flexcore / "Makefile").touch()
-    (flexcore / "pyproject.toml").write_text("[project]\nname='flexcore'\n")
-    (flexcore / "go.mod").write_text("module flexcore\n\ngo 1.22\n")
-    (flexcore / ".git").mkdir()
-    pkg = flexcore / "src" / "flexcore"
+def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
+    external_project = tmp_path / "external-project"
+    external_project.mkdir()
+    (external_project / "Makefile").touch()
+    (external_project / ".git").mkdir()
+    pkg = external_project / "src" / "external_project"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").touch()
     (pkg / "typings.py").write_text("pass\n")
@@ -51,7 +49,7 @@ def test_go_only_project_excluded_from_run(tmp_path: Path) -> None:
     fixer = FlextInfraCodegenFixer(workspace=tmp_path)
     results = fixer.fix_workspace()
     project_names = [res.project for res in results]
-    tm.that("flexcore" not in project_names, eq=True)
+    tm.that("external-project" not in project_names, eq=True)
     tm.that(project_names, has="test-proj")
 
 

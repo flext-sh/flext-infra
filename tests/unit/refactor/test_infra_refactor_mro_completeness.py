@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraMROCompletenessDetector
+from flext_infra.detectors.mro_completeness_detector import (
+    FlextInfraMROCompletenessDetector,
+)
 from tests import m, t, u
 
 

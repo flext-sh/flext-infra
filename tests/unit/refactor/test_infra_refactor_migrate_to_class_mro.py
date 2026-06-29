@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraRefactorMigrateToClassMRO,
-    FlextInfraUtilitiesFileIteration,
-    FlextInfraUtilitiesProjectDiscovery,
-)
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra.iteration import FlextInfraUtilitiesIteration
+from flext_infra.refactor.migrate_to_class_mro import (
+    FlextInfraRefactorMigrateToClassMRO,
+)
 
 
 class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
@@ -241,7 +241,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
                 "from __future__ import annotations\n",
                 encoding="utf-8",
             )
-        discovered = FlextInfraUtilitiesFileIteration.iter_python_files(
+        discovered = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=tmp_path
         )
         tm.ok(discovered)

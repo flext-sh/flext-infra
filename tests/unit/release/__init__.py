@@ -3,8 +3,33 @@
 
 from __future__ import annotations
 
+import typing as _t
+
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
+if _t.TYPE_CHECKING:
+    from flext_tests import (
+        c as c,
+        d as d,
+        e as e,
+        h as h,
+        m as m,
+        p as p,
+        r as r,
+        s as s,
+        t as t,
+        td as td,
+        tf as tf,
+        tk as tk,
+        tm as tm,
+        tv as tv,
+        u as u,
+        x as x,
+    )
+
+    from tests.unit.release.test_release_dag import (
+        TestsFlextInfraReleaseDag as TestsFlextInfraReleaseDag,
+    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".flow_tests": ("flow_tests",),
@@ -15,6 +40,24 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".orchestrator_tests": ("orchestrator_tests",),
         ".test_release_dag": ("TestsFlextInfraReleaseDag",),
         ".version_resolution_tests": ("version_resolution_tests",),
+        "flext_tests": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "td",
+            "tf",
+            "tk",
+            "tm",
+            "tv",
+            "u",
+            "x",
+        ),
     },
 )
 

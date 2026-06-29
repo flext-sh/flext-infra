@@ -10,12 +10,9 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraDependencyDetectorRuntime,
-    FlextInfraModelsDeps,
-    main,
-    r,
-)
+from flext_infra import main, r
+from flext_infra._models.deps import FlextInfraModelsDeps
+from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
 from tests.models import m
 from tests.protocols import p
 from tests.typings import t

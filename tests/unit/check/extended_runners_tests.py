@@ -9,7 +9,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import FlextInfraMypyGate, FlextInfraPyreflyGate
+from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from tests import u
 
 

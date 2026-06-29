@@ -6,15 +6,9 @@ import difflib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraRefactorRuleLoader,
-    FlextInfraRefactorViolationAnalyzer,
-    c,
-    m,
-    p,
-    t,
-    u,
-)
+from flext_infra import c, m, p, t, u
+from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
+from flext_infra.refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
 
 
 class FlextInfraRefactorOrchestratorDispatchMixin:

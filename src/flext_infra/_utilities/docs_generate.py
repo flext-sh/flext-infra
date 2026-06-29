@@ -5,15 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesDocs,
-    FlextInfraUtilitiesDocsApi,
-    FlextInfraUtilitiesDocsContract,
-    FlextInfraUtilitiesDocsRender,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
+from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 
 
 class FlextInfraUtilitiesDocsGenerate:

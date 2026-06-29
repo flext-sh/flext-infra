@@ -8,7 +8,8 @@ from __future__ import annotations
 import pytest
 
 import flext_infra.basemk as basemk_module
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class TestsFlextInfraBasemkInit:

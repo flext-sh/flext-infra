@@ -7,16 +7,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_cli import cli
-from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
-    FlextInfraRopeWorkspace,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 from flext_infra.refactor._census_apply import (
     FlextInfraRefactorCensusApplyMixin,
 )
@@ -56,6 +47,7 @@ from flext_infra.refactor._census_symbols import (
 from flext_infra.refactor._census_validate import (
     FlextInfraRefactorCensusValidateMixin,
 )
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraRefactorCensus(

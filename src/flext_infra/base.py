@@ -8,15 +8,16 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
-from flext_cli import cli, p as cli_p
+from flext_cli import cli, p as cli_p, u as cli_u
 from flext_core import s
 from flext_infra import (
     c,
     m,
     p,
     t,
-    u,
 )
+from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 
 class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
@@ -137,13 +138,13 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     report_path: Annotated[
         Path | None,
         m.Field(description="Report output path", exclude=True),
-        m.BeforeValidator(u.Infra.normalize_optional_path),
+        m.BeforeValidator(ub.normalize_optional_path),
     ] = None
     output_dir: Annotated[
         Path | None, m.Field(description="Output directory", exclude=True)
     ] = None
 
-    @u.field_validator("project_filter", mode="before")
+    @cli_u.field_validator("project_filter", mode="before")
     @classmethod
     def _normalize_project_filter(
         cls,
@@ -153,28 +154,28 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         if value is None:
             return None
         normalized_values = (
-            u.Infra.normalize_cli_values(value)
+            ub.normalize_cli_values(value)
             if isinstance(value, str)
-            else u.Infra.normalize_cli_values(*value)
+            else ub.normalize_cli_values(*value)
         )
         return ",".join(normalized_values) or None
 
-    @u.field_validator("output_dir", mode="before")
+    @cli_u.field_validator("output_dir", mode="before")
     @classmethod
     def _normalize_output_dir(cls, value: str | Path | None) -> Path | None:
         """Preserve relative output dirs so callers can scope them under workspace roots."""
         if value is None:
             return None
-        path: Path = u.Cli.resolve_optional_path(value, default=Path())
+        path: Path = cli_u.Cli.resolve_optional_path(value, default=Path())
         return path.resolve() if path.is_absolute() else path
 
-    @u.computed_field()
+    @cli_u.computed_field()
     @property
     def root(self) -> Path:
         """Return the canonical normalized workspace root."""
         return self.workspace_root
 
-    @u.computed_field()
+    @cli_u.computed_field()
     @property
     def effective_dry_run(self) -> bool:
         """Return the normalized write-mode decision for CLI services."""
@@ -223,17 +224,17 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
         m.Field(alias="projects", description="Projects to process"),
     ] = None
 
-    @u.computed_field()
+    @cli_u.computed_field()
     @property
     def project_names(self) -> t.StrSequence | None:
         """Return normalized selected project names."""
-        return u.Infra.normalize_sequence_values(self.selected_projects)
+        return ub.normalize_sequence_values(self.selected_projects)
 
-    @u.computed_field()
+    @cli_u.computed_field()
     @property
     def project_dirs(self) -> t.SequenceOf[Path] | None:
         """Resolve selected project directories relative to the workspace root."""
-        names = u.Infra.normalize_sequence_values(self.selected_projects)
+        names = ub.normalize_sequence_values(self.selected_projects)
         if names is None:
             return None
         return [self.root / name for name in names]
@@ -250,10 +251,10 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
         projects: t.StrSequence | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Run one docs phase across the resolved governed scopes."""
-        return u.Infra.run_scoped(
+        return FlextInfraUtilitiesDocs.run_scoped(
             workspace_root,
             projects=self.selected_projects if projects is None else projects,
-            output_dir=u.Cli.resolve_optional_path(
+            output_dir=cli_u.Cli.resolve_optional_path(
                 output_dir,
                 default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
             ),

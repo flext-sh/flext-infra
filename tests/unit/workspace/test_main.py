@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraOrchestratorService,
-    FlextInfraSyncService,
-    FlextInfraWorkspaceDetector,
-    main as infra_main,
-)
+from flext_infra import main as infra_main
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+from flext_infra.workspace.sync import FlextInfraSyncService
 from tests import c, m, p, r, t
 
 

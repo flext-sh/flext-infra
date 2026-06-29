@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenCensus
+from flext_infra.codegen.census import FlextInfraCodegenCensus
 from tests import m, r, t, u
 
 

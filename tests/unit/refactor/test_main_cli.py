@@ -5,13 +5,11 @@ from pathlib import Path
 import pytest
 from rope.base.exceptions import RopeError
 
-from flext_infra import (
-    FlextInfraRefactorCensus,
-    FlextInfraRopeWorkspace,
-    FlextInfraUtilitiesRefactorCensus,
-    FlextInfraUtilitiesRopeInventory,
-    main as infra_main,
-)
+from flext_infra import main as infra_main
+from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
+from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
+from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import m, p, t, u
 
 

@@ -7,14 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraGate,
-    FlextInfraMypyGate,
-    FlextInfraPyrightGate,
-    m,
-    p,
-    r,
-)
+from flext_infra import m, p, r
+from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests.utilities import TestsFlextInfraUtilities as u
 
 

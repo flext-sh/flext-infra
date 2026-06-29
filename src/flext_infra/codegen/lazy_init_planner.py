@@ -94,44 +94,44 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
-        type_checking_map = dict(lazy_map)
         export_names = {*lazy_map, *eager_dunders}
         excluded_lazy_names: t.StrSequence = ()
         if (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
+            and context.current_pkg == c.Infra.PACKAGE_IMPORT_NAME
             and "." not in context.current_pkg
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         ):
-            # Privacy rule: the public root facade exposes only symbols sourced
-            # from public root modules. The same set drives __all__ and the
-            # runtime lazy resolver so private implementation owners cannot leak
-            # through package-level __getattr__.
+            # Privacy rule: the public root facade exposes only external API
+            # symbols. Internal consumers must import their owning module.
             eager_names = frozenset(eager_dunders)
             export_names = {
                 name
                 for name in export_names
-                if name in eager_names or self._is_public_root_export(name, lazy_map)
+                if name in eager_names
+                or self._is_public_root_export(
+                    name,
+                    lazy_map,
+                    root_pkg=context.current_pkg,
+                    root_namespace_files=self.lazy_init.root_namespace_files,
+                )
             }
+            allowed_export_names = frozenset(export_names)
             lazy_map = {
                 name: target
                 for name, target in lazy_map.items()
-                if name in export_names
+                if name in allowed_export_names
             }
-            allowed_export_names = frozenset(export_names)
-            child_lazy = self._child_packages_with_retained_exports(
-                child_lazy,
-                lazy_map,
-            )
-            child_lazy = self._child_packages_without_main_export(
-                child_lazy,
-                dir_exports,
-            )
+            runtime_lazy_names = frozenset(lazy_map)
+            child_lazy = ()
             excluded_lazy_names = self._excluded_child_lazy_names(
                 child_lazy,
                 allowed_export_names,
+                runtime_lazy_names,
                 dir_exports,
             )
+        type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))
         return m.Infra.LazyInitPlan(
             context=context,
@@ -303,6 +303,11 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 continue
             if not is_fixture_child:
                 direct.append(child_entry.package_name)
+                self._add(
+                    lazy_map,
+                    child_entry.package_name.rsplit(".", maxsplit=1)[-1],
+                    (child_entry.package_name, ""),
+                )
             for name, (module_name, attr) in child_exports.items():
                 if (
                     attr
@@ -313,26 +318,11 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                     self._add(lazy_map, name, (module_name, attr))
         return (tuple(sorted(direct)), tuple(sorted(descendants)))
 
-    @staticmethod
-    def _child_packages_with_retained_exports(
-        child_packages: t.StrSequence,
-        lazy_map: t.LazyAliasMap,
-    ) -> t.StrSequence:
-        """Return child packages still referenced by the filtered lazy map."""
-        retained_modules = tuple(module for module, _attr in lazy_map.values())
-        return tuple(
-            child_package
-            for child_package in child_packages
-            if any(
-                module == child_package or module.startswith(f"{child_package}.")
-                for module in retained_modules
-            )
-        )
-
     def _excluded_child_lazy_names(
         self,
         child_packages: t.StrSequence,
         allowed_export_names: frozenset[str],
+        runtime_lazy_names: frozenset[str],
         dir_exports: t.MappingKV[str, t.LazyAliasMap],
     ) -> t.StrSequence:
         """Return child exports that must not leak through runtime lazy merges."""
@@ -341,7 +331,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 name
                 for child_package in child_packages
                 for name in self._merged_child_export_names(child_package, dir_exports)
-                if name not in allowed_export_names
+                if name not in allowed_export_names and name not in runtime_lazy_names
             })
         )
 
@@ -804,21 +794,28 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         return min(existing, target)
 
     @staticmethod
-    def _is_public_root_export(name: str, lazy_map: t.LazyAliasMap) -> bool:
-        """Return whether a root-facade export belongs in the public ``__all__``.
-
-        A symbol is part of the public facade surface when its canonical
-        lazy-map source module is public, with the single private-package
-        exception for ``_fixtures`` exports used by generated test fixtures.
-        """
+    def _is_public_root_export(
+        name: str,
+        lazy_map: t.LazyAliasMap,
+        *,
+        root_pkg: str,
+        root_namespace_files: t.StrSequence,
+    ) -> bool:
+        """Return whether a root-facade export belongs in the external API."""
         if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
             return False
         module_path = lazy_map[name][0]
+        if name in c.Infra.ALIAS_NAMES:
+            return True
         if "_fixtures" in module_path.split("."):
             return True
-        return not any(
-            segment.startswith("_") for segment in module_path.split(".")[1:]
-        )
+        prefix = f"{root_pkg}."
+        if not module_path.startswith(prefix):
+            return False
+        local_module = module_path.removeprefix(prefix)
+        if "." in local_module or local_module.startswith("_"):
+            return False
+        return f"{local_module}.py" in root_namespace_files
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:

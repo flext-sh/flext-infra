@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraTextPatternScanner
+from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from tests import c, t, u
 
 

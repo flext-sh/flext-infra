@@ -8,16 +8,10 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesDocs,
-    FlextInfraUtilitiesDocsApi,
-    FlextInfraUtilitiesDocsScope,
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_infra import c, m, p, r, t
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 
 class FlextInfraUtilitiesDocsValidate:

@@ -5,14 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
+from flext_infra import c, m, p, t
+from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
-    FlextInfraRuntimeAliasDetector,
-    c,
-    m,
-    p,
-    t,
 )
+from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
 
 
 class FlextInfraRefactorCensusRulesAliasMixin:

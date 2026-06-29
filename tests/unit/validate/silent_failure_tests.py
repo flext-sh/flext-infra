@@ -6,11 +6,11 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import (
+from flext_infra import main as infra_main
+from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
-    FlextInfraSilentFailureValidator,
-    main as infra_main,
 )
+from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from tests import m, t, u
 
 

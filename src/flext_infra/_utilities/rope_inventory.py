@@ -11,14 +11,9 @@ from rope.base.pynamesdef import AssignedName, ParameterName
 from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction, PyModule
 
-from flext_infra import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeImports,
-    c,
-    m,
-    p,
-    t,
-)
+from flext_infra import c, m, p, t
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 
 
 class FlextInfraUtilitiesRopeInventory:
@@ -56,7 +51,7 @@ class FlextInfraUtilitiesRopeInventory:
         source = resource.read()
         items: t.MutableSequenceOf[m.Infra.Census.Object] = []
         module_scope = pymodule.get_scope()
-        if not isinstance(module_scope, p.Infra.RopeScopeDsl):
+        if module_scope is None:
             msg = f"rope inventory scope unavailable for {resource.path}"
             raise TypeError(msg)
         child_scopes = tuple(module_scope.get_scopes())

@@ -7,19 +7,12 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import cli as cli_facade, p as cli_p
-from flext_infra import (
-    FlextInfraWorkspaceChecker,
-    _cli_flags,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
+from flext_infra._cli_flags import SHARED_BOOL_FLAGS, SHARED_VALUE_FLAGS
 from flext_infra._cli_routes_codegen import ROUTES as _ROUTES_CODEGEN
 from flext_infra._cli_routes_validate import ROUTES as _ROUTES_VALIDATE
 from flext_infra._cli_routes_workspace import ROUTES as _ROUTES_WORKSPACE
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 _CLI_GROUP_ITEMS: tuple[tuple[str, str], ...] = (
     (c.Infra.CLI_GROUP_BASEMK, "Base.mk template generation"),
@@ -44,8 +37,8 @@ class FlextInfraCli(type(cli_facade)):
 
     app_name: ClassVar[str] = "flext-infra"
     _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
-    _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = _cli_flags.SHARED_BOOL_FLAGS
-    _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = _cli_flags.SHARED_VALUE_FLAGS
+    _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = SHARED_BOOL_FLAGS
+    _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = SHARED_VALUE_FLAGS
     GROUPS: ClassVar[t.StrMapping] = MappingProxyType(dict(_CLI_GROUP_ITEMS))
     _GROUP_COMMANDS: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         **_ROUTES_CODEGEN,

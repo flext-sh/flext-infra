@@ -6,10 +6,12 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import (
+from flext_infra import t
+from flext_infra._models.deps_tool_config_linters import (
     FlextInfraModelsDepsToolConfigLinters,
+)
+from flext_infra._models.deps_tool_config_type_checkers import (
     FlextInfraModelsDepsToolConfigTypeCheckers,
-    t,
 )
 
 

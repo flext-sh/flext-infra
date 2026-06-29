@@ -22,7 +22,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraCodegenLazyInit, m, p, r, s, t
+from flext_infra import m, p, r, s, t
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 class FlextInfraValidateLazyMapFreshness(s[bool]):

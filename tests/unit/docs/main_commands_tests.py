@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraDocAuditor,
-    FlextInfraDocBuilder,
-    FlextInfraDocFixer,
-    FlextInfraDocGenerator,
-    FlextInfraDocValidator,
-)
+from flext_infra.docs.auditor import FlextInfraDocAuditor
+from flext_infra.docs.builder import FlextInfraDocBuilder
+from flext_infra.docs.fixer import FlextInfraDocFixer
+from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.docs.validator import FlextInfraDocValidator
 from tests import u
 
 

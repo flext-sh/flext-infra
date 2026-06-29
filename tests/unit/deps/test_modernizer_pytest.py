@@ -6,7 +6,7 @@ import tomlkit
 from flext_tests import tm
 from tomlkit import TOMLDocument
 
-from flext_infra import FlextInfraEnsurePytestConfigPhase
+from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
 from tests import m, t, u
 
 

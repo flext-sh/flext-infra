@@ -8,15 +8,11 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeHelpers,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 
 
 class FlextInfraUtilitiesDocsApi:

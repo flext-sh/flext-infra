@@ -35,14 +35,10 @@ class TestsFlextInfraInfraConstantsCore:
     def test_base_mk_constant(self) -> None:
         tm.that(c.Infra.BASE_MK, eq="base.mk")
 
-    def test_go_mod_constant(self) -> None:
-        tm.that(c.Infra.GO_MOD, eq="go.mod")
-
     def test_files_constants_are_strings(self) -> None:
         tm.that(c.Infra.PYPROJECT_FILENAME, is_=str)
         tm.that(c.Infra.MAKEFILE_FILENAME, is_=str)
         tm.that(c.Infra.BASE_MK, is_=str)
-        tm.that(c.Infra.GO_MOD, is_=str)
 
     def test_gate_constants_exist(self) -> None:
         tm.that(c.Infra.LINT, eq="lint")
@@ -52,7 +48,6 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(c.Infra.PYRIGHT, eq="pyright")
         tm.that(c.Infra.SECURITY, eq="security")
         tm.that(c.Infra.MARKDOWN, eq="markdown")
-        tm.that(c.Infra.GO, eq="go")
 
     def test_type_alias_gate(self) -> None:
         tm.that(c.Infra.TYPE_ALIAS, eq="type")

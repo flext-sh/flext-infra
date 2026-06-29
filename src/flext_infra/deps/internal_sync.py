@@ -6,17 +6,8 @@ import shutil
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from flext_infra import (
-    FlextInfraInternalSyncRepoMixin,
-    FlextInfraServiceBase,
-    FlextInfraSettings,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import FlextInfraServiceBase, FlextInfraSettings, c, m, p, r, t, u
+from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
 from flext_infra.deps._internal_sync_collect import FlextInfraInternalSyncCollectMixin
 
 

@@ -29,7 +29,7 @@ pytest_plugins = [
 ]
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def reset_infra_settings(reset_settings: None) -> Iterator[None]:
     """Reset project-specific infra settings around each test."""
     del reset_settings
@@ -81,6 +81,7 @@ def pytest_collection_modifyitems(
 
     for item in items:
         if _is_collectable_test_module(Path(item.path)):
+            item.add_marker(pytest.mark.usefixtures("reset_infra_settings"))
             kept_items.append(item)
             continue
         deselected_items.append(item)

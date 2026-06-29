@@ -8,8 +8,8 @@ from typing import override
 
 from flext_tests import tm
 
-import flext_infra as detector_module
 from flext_infra import r
+from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from tests.protocols import p
 from tests.typings import t
 from tests.utilities import TestsFlextInfraUtilities as u
@@ -74,12 +74,10 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 def _setup(
     tmp_path: Path,
     deps: _DepsStub,
-) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
-    detector: detector_module.FlextInfraRuntimeDevDependencyDetector = (
-        u.Tests.setup_detector_runtime(
-            tmp_path,
-            deps,
-        )
+) -> FlextInfraRuntimeDevDependencyDetector:
+    detector: FlextInfraRuntimeDevDependencyDetector = u.Tests.setup_detector_runtime(
+        tmp_path,
+        deps,
     )
     return detector
 

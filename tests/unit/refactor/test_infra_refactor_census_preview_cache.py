@@ -7,16 +7,11 @@ from pathlib import Path
 import pytest
 
 import flext_infra
-from flext_infra import (
-    FlextInfraRefactorCensus,
-    FlextInfraUtilitiesProtectedEdit,
-    FlextInfraUtilitiesRefactorCensus,
-    c,
-    m,
-    p,
-    r,
-    u as infra_u,
-)
+from flext_infra import c, m, p, r, u as infra_u
+from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
+from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import t, u
 
 
@@ -62,11 +57,11 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             encoding="utf-8",
         )
         candidate = self._candidate(module_path)
-        original_source = flext_infra.FlextInfraRopeWorkspace.source
+        original_source = FlextInfraRopeWorkspace.source
         source_calls = 0
 
         def _tracking_source(
-            rope: flext_infra.FlextInfraRopeWorkspace,
+            rope: FlextInfraRopeWorkspace,
             file_path: Path,
         ) -> str:
             """Track source reads for the target module."""
@@ -84,7 +79,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             return (True, [])
 
         monkeypatch.setattr(
-            flext_infra.FlextInfraRopeWorkspace,
+            FlextInfraRopeWorkspace,
             "source",
             _tracking_source,
         )
@@ -500,10 +495,10 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             del args, kwargs
             return (True, [])
 
-        original_refresh = flext_infra.FlextInfraRopeWorkspace.refresh
+        original_refresh = FlextInfraRopeWorkspace.refresh
 
         def _tracking_refresh(
-            rope: flext_infra.FlextInfraRopeWorkspace,
+            rope: FlextInfraRopeWorkspace,
             *,
             preserve_indexes: bool = False,
             validate_project: bool = True,
@@ -522,7 +517,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             staticmethod(_preview_source_writes),
         )
         monkeypatch.setattr(
-            flext_infra.FlextInfraRopeWorkspace,
+            FlextInfraRopeWorkspace,
             "refresh",
             _tracking_refresh,
         )

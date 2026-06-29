@@ -21,8 +21,8 @@ from flext_infra import (
     m,
     t,
 )
-from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesRefactorEngine:
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesRefactorEngine:
             settings,
         )
         scan_dirs = frozenset(engine_config.project_scan_dirs)
-        ir = FlextInfraUtilitiesFileIteration.iter_python_files(
+        ir = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=project,
             project_roots=[project],
             include_tests=c.Infra.DIR_TESTS in scan_dirs,
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesRefactorEngine:
         allowed_extensions = set(ext)
         all_files: t.MutableSequenceOf[Path] = []
         for proj in projects:
-            ir = FlextInfraUtilitiesFileIteration.iter_python_files(
+            ir = FlextInfraUtilitiesIteration.iter_python_files(
                 workspace_root=root,
                 project_roots=[proj],
                 include_tests=c.Infra.DIR_TESTS in scan_dirs,

@@ -12,7 +12,6 @@ SRC_DIR ?= {{ settings.source_dir }}
 TESTS_DIR ?= {{ settings.tests_dir }}
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
-CORE_STACK ?= {{ settings.core_stack }}
 {% for variable_name, default_value in make.PROJECT_VARIABLE_DEFAULTS -%}
 {{ variable_name }} ?= {{ default_value }}
 {% endfor %}

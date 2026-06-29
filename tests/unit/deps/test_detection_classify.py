@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import t
 
 

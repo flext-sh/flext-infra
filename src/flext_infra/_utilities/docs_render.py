@@ -6,6 +6,7 @@ import fnmatch
 from typing import ClassVar
 
 from flext_infra import c, m, t
+from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -410,7 +411,6 @@ class FlextInfraUtilitiesDocsRender:
         """
         _ = modules
         data = contract
-        from flext_infra import FlextInfraCodegenGeneration  # noqa: PLC0415
 
         template = FlextInfraCodegenGeneration.get_template(
             c.Infra.TEMPLATE_MKDOCS_PROJECT,
@@ -519,7 +519,6 @@ class FlextInfraUtilitiesDocsRender:
         shared with the per-project variant.
         """
         data = contract
-        from flext_infra import FlextInfraCodegenGeneration  # noqa: PLC0415
 
         template = FlextInfraCodegenGeneration.get_template(
             c.Infra.TEMPLATE_MKDOCS_ROOT,

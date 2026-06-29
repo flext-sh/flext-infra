@@ -10,13 +10,9 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRopeCore,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeSource:

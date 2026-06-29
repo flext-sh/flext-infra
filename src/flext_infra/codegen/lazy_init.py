@@ -14,19 +14,12 @@ from pathlib import Path
 from time import perf_counter
 from typing import override
 
-from flext_infra import (
-    FlextInfraCodegenLazyInitPlanner,
-    FlextInfraRopeWorkspace,
-    c,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, p, r, s, t, u
 from flext_infra.codegen._lazy_init_engine import (
     FlextInfraCodegenLazyInitEngineMixin,
 )
+from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitEngineMixin):

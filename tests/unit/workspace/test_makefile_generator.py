@@ -6,7 +6,9 @@ from pathlib import Path
 
 from flext_cli import cli
 from flext_core import FlextTypes as t
-from flext_infra import FlextInfraWorkspaceMakefileGenerator
+from flext_infra.workspace.workspace_makefile import (
+    FlextInfraWorkspaceMakefileGenerator,
+)
 
 
 def _write_workspace_root(tmp_path: Path) -> Path:

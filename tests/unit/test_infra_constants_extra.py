@@ -90,7 +90,6 @@ class TestsFlextInfraInfraConstantsExtra:
             c.Infra.PYRIGHT,
             c.Infra.SECURITY,
             c.Infra.MARKDOWN,
-            c.Infra.GO,
         ]
         for gate in gates:
             tm.that(gate.islower(), eq=True, msg=f"Gate {gate} should be lowercase")

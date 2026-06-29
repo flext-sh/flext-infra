@@ -12,12 +12,10 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraBaseMkValidator,
-    FlextInfraInventoryService,
-    FlextInfraTextPatternScanner,
-    main as infra_main,
-)
+from flext_infra import main as infra_main
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+from flext_infra.validate.inventory import FlextInfraInventoryService
+from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from tests import c, t
 
 

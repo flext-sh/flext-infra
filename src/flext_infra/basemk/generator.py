@@ -7,16 +7,8 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import (
-    FlextInfraBaseMkTemplateEngine,
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
 
 
 class FlextInfraBaseMkGenerator(s[str]):
@@ -100,31 +92,53 @@ class FlextInfraBaseMkGenerator(s[str]):
         """Validate generated base.mk by running make --dry-run."""
         try:
             with tempfile.TemporaryDirectory(prefix="flext-basemk-") as temp_dir_name:
-                temp_dir = Path(temp_dir_name)
-                base_mk_path = temp_dir / c.Infra.BASE_MK
-                makefile_path = temp_dir / c.Infra.MAKEFILE_FILENAME
-                base_write = u.Cli.atomic_write_text_file(base_mk_path, content)
-                if base_write.failure:
-                    return r[str].fail(base_write.error or "temp base.mk write failed")
-                mk_write = u.Cli.atomic_write_text_file(
-                    makefile_path,
-                    "include base.mk\n",
+                validation = self._validate_generated_output_in_dir(
+                    content,
+                    Path(temp_dir_name),
                 )
-                if mk_write.failure:
-                    return r[str].fail(mk_write.error or "temp Makefile write failed")
-                process_result = self._get_runner.run([
-                    c.Infra.MAKE,
-                    "-C",
-                    str(temp_dir),
-                    "--dry-run",
-                    "help",
-                ])
-                if process_result.failure:
-                    error_text = process_result.error or "make validation failed"
-                    return r[str].fail_op("generated base.mk validation", error_text)
+                if validation.failure:
+                    return validation
         except OSError as exc:
             return r[str].fail_op("generated base.mk validation", exc)
         return r[str].ok(content)
+
+    def _validate_generated_output_in_dir(
+        self,
+        content: str,
+        temp_dir: Path,
+    ) -> p.Result[str]:
+        """Validate generated content inside an already-created temp directory."""
+        write_result = self._write_validation_makefiles(content, temp_dir)
+        if write_result.failure:
+            return r[str].fail(write_result.error or "temp Makefile write failed")
+        process_result = self._get_runner.run([
+            c.Infra.MAKE,
+            "-C",
+            str(temp_dir),
+            "--dry-run",
+            "help",
+        ])
+        if process_result.failure:
+            error_text = process_result.error or "make validation failed"
+            return r[str].fail_op("generated base.mk validation", error_text)
+        return r[str].ok(content)
+
+    @staticmethod
+    def _write_validation_makefiles(content: str, temp_dir: Path) -> p.Result[bool]:
+        """Write temporary Makefile pair used by base.mk validation."""
+        base_write = u.Cli.atomic_write_text_file(
+            temp_dir / c.Infra.BASE_MK,
+            content,
+        )
+        if base_write.failure:
+            return r[bool].fail(base_write.error or "temp base.mk write failed")
+        makefile_write = u.Cli.atomic_write_text_file(
+            temp_dir / c.Infra.MAKEFILE_FILENAME,
+            "include base.mk\n",
+        )
+        if makefile_write.failure:
+            return r[bool].fail(makefile_write.error or "temp Makefile write failed")
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraBaseMkGenerator"]

@@ -10,15 +10,13 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesRefactorNamespaceCommon,
-    FlextInfraUtilitiesRopeModulePatch,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities.namespace_common import (
+    FlextInfraUtilitiesRefactorNamespaceCommon,
+)
+from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 
 
 class FlextInfraUtilitiesRefactorNamespaceFacades:

@@ -37,7 +37,6 @@ class FlextInfraConstantsCheck:
             "MarkdownLint",
             "https://github.com/DavidAnson/markdownlint",
         ),
-        "go": ("Go Vet", "https://pkg.go.dev/cmd/vet"),
         "loc-cap": ("Tokei", "https://github.com/XAMPPRocky/tokei"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
@@ -52,10 +51,6 @@ class FlextInfraConstantsCheck:
     MARKDOWN_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<file>.*?):(?P<line>\d+)(?::(?P<col>\d+))?\s+error\s+(?P<code>MD\d+)(?:/[^\s]+)?\s+(?P<msg>.*)$",
     )
-    GO_VET_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<file>[^:\n]+\.go):(?P<line>\d+)(?::(?P<col>\d+))?:\s*(?P<msg>.*)$",
-    )
-
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
 

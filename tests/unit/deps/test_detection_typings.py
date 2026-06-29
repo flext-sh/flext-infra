@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService, m, p, r as tr
+from flext_infra import m, p, r as tr
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests.typings import t
 
 

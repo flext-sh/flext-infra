@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, cast
 
-import flext_infra as infra_package
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope_bracket_balance import (
     FlextInfraUtilitiesRopeBracketBalanceMixin,
@@ -23,14 +23,20 @@ class FlextInfraUtilitiesRopeHelpers(
 
     _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
     _default_post_hooks_registered: ClassVar[bool] = False
+    _default_post_hook_module: ClassVar[str] = (
+        "flext_infra.refactor.migrate_to_class_mro"
+    )
+    _default_post_hook_owner: ClassVar[str] = "FlextInfraRefactorMigrateToClassMRO"
 
     @classmethod
     def _ensure_default_post_hooks_registered(cls) -> None:
         """Load and register built-in rope post-hooks once."""
         if cls._default_post_hooks_registered:
             return
+        module = import_module(cls._default_post_hook_module)
+        owner = getattr(module, cls._default_post_hook_owner)
         cls.register_rope_post_hook(
-            infra_package.FlextInfraRefactorMigrateToClassMRO.run_as_hook,
+            cast("p.Infra.RopePostHook", getattr(owner, "run_as_hook")),
         )
         cls._default_post_hooks_registered = True
 

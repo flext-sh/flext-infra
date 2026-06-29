@@ -8,15 +8,9 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import (
-    FlextInfraDocAuditorMixin,
-    FlextInfraDocServiceBase,
-    c,
-    m,
-    p,
-    t,
-    u,
-)
+from flext_infra import c, m, p, t, u
+from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
+from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
 class FlextInfraDocAuditor(

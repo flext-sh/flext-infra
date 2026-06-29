@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraValidateFreshImport
+from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from tests import m, t
 
 

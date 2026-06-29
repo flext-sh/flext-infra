@@ -9,7 +9,7 @@ from pathlib import Path
 
 import tomlkit
 
-from flext_infra import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from tests import m, tm, u
 
 

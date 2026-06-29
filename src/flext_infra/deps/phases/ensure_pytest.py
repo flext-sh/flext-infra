@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from flext_infra import FlextInfraPhaseEngine, c, m, t
+from flext_infra import c, m, t
+from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
 
 
 class FlextInfraEnsurePytestConfigPhase:

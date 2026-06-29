@@ -45,8 +45,8 @@ class TestsFlextInfraInfraSelection:
     def workspace_with_declared_names(self, tmp_path: Path) -> Path:
         """Create projects whose declared names differ from directory names."""
         for directory_name, project_name in [
-            ("flexcore", "flext-core"),
-            ("legacy-cli", "flext-cli"),
+            ("core-alias", "flext-core"),
+            ("cli-alias", "flext-cli"),
         ]:
             proj = tmp_path / directory_name
             proj.mkdir()
@@ -155,7 +155,7 @@ class TestsFlextInfraInfraSelection:
         """Test resolving projects by directory name alias."""
         result = selector.resolve_projects(
             workspace_with_declared_names,
-            ["flexcore", "legacy-cli"],
+            ["core-alias", "cli-alias"],
         )
         projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.name for p in projects], eq=["flext-cli", "flext-core"])
@@ -171,7 +171,7 @@ class TestsFlextInfraInfraSelection:
             ["flext-core", "flext-cli"],
         )
         projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
-        tm.that([p.path.name for p in projects], eq=["legacy-cli", "flexcore"])
+        tm.that([p.path.name for p in projects], eq=["cli-alias", "core-alias"])
 
     def test_selector_with_default_discovery(
         self,

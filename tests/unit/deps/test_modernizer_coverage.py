@@ -6,7 +6,7 @@ import tomlkit
 from flext_tests import tm
 from tomlkit import TOMLDocument
 
-from flext_infra import FlextInfraEnsureCoverageConfigPhase
+from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from tests import m, t, u
 
 

@@ -6,7 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer, main
+from flext_infra import main
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from tests import c
 
 

@@ -10,26 +10,18 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import cli
-from flext_infra import (
-    FlextInfraAbstractionBoundaryGate,
-    FlextInfraBanditGate,
-    FlextInfraGate,
-    FlextInfraGoGate,
-    FlextInfraLocCapGate,
-    FlextInfraMarkdownGate,
-    FlextInfraMypyGate,
-    FlextInfraPyreflyGate,
-    FlextInfraPyrightGate,
-    FlextInfraRuffFormatGate,
-    FlextInfraRuffLintGate,
-    FlextInfraSilentFailureGate,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
+from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
+from flext_infra.gates.bandit import FlextInfraBanditGate
+from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates.loc_cap import FlextInfraLocCapGate
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
+from flext_infra.gates.pyright import FlextInfraPyrightGate
+from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 
 
 class FlextInfraGateRegistry:
@@ -44,7 +36,6 @@ class FlextInfraGateRegistry:
         FlextInfraSilentFailureGate,
         FlextInfraBanditGate,
         FlextInfraMarkdownGate,
-        FlextInfraGoGate,
         FlextInfraLocCapGate,
         FlextInfraAbstractionBoundaryGate,
     )

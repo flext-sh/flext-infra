@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraValidateImportCycles
+from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
 from tests import m, t
 
 

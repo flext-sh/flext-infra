@@ -87,9 +87,7 @@ class FlextInfraUtilitiesProjectDiscovery:
             ):
                 result = True
             else:
-                payload = FlextInfraUtilitiesPyproject.pyproject_payload(
-                    pyproject_path
-                )
+                payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)
                 if payload:
                     dependency_names: set[str] = set(
                         FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(

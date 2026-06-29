@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraUtilitiesLogParser
+from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from tests import c, t
 
 

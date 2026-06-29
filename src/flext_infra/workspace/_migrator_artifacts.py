@@ -5,17 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraBaseMkTemplateEngine,
-    c,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, p, r, t, u
+from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraBaseMkGenerator
+    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class FlextInfraProjectMigratorArtifactsMixin:

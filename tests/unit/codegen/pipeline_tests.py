@@ -13,14 +13,11 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraCodegenCensus,
-    FlextInfraCodegenFixer,
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenScaffolder,
-    infra,
-    t,
-)
+from flext_infra import infra, t
+from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
 _SRC_MODULES = (
     "constants.py",
@@ -68,17 +65,12 @@ def _make_project(
     *,
     with_all_modules: bool,
     with_tests_dir: bool,
-    go_only: bool = False,
+    with_pyproject: bool = True,
 ) -> Path:
     project = tmp_path / name
     project.mkdir()
     (project / "Makefile").touch()
-    if go_only:
-        _ = (project / "go.mod").write_text(
-            f"module {name}\ngo 1.22\n",
-            encoding="utf-8",
-        )
-    else:
+    if with_pyproject:
         _ = (project / "pyproject.toml").write_text(
             f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
@@ -120,12 +112,12 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         with_all_modules=True,
         with_tests_dir=True,
     )
-    flexcore = _make_project(
+    external_project = _make_project(
         tmp_path,
-        "flexcore",
+        "external-project",
         with_all_modules=False,
         with_tests_dir=True,
-        go_only=True,
+        with_pyproject=False,
     )
     package_b = project_b / "src" / "project_b"
     (package_b / "models.py").unlink()
@@ -134,8 +126,8 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         "class ProjectBBase:\n    pass\n",
         encoding="utf-8",
     )
-    flexcore_package = flexcore / "src" / "flexcore"
-    tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
+    external_package = external_project / "src" / "external_project"
+    tm.that(not external_package.joinpath("constants.py").exists(), eq=True)
     payload = infra.model_copy(
         update={"workspace_root": tmp_path, "apply_changes": True},
     ).command_payload()
@@ -181,7 +173,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         source = py_file.read_text(encoding="utf-8")
         compiled = compile(source, str(py_file), "exec")
         assert compiled is not None
-    tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
+    tm.that(not external_package.joinpath("constants.py").exists(), eq=True)
 
 
 __all__: t.StrSequence = []

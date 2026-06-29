@@ -6,18 +6,27 @@ from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
-from typing import TYPE_CHECKING, Annotated, ClassVar, Self, override
+from typing import Annotated, ClassVar, Self, override
 
-from flext_infra import c, m, r, s, t, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_core import r, s
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     """Open one shared Rope workspace with cached public DSL methods."""
 
     _IDENTIFIER_PATTERN: ClassVar[t.Infra.RegexPattern] = c.Infra.IDENTIFIER_PATTERN
+
+    workspace_root: Annotated[
+        Path,
+        m.Field(
+            description="Resolved workspace root requested by the caller",
+        ),
+    ]
 
     project_prefix: Annotated[
         str,
@@ -91,7 +100,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     ) -> Self:
         """Create one ready-to-use Rope workspace session."""
         workspace = cls(
-            workspace=workspace_root,
+            workspace_root=workspace_root,
             project_prefix=project_prefix,
             src_dir=src_dir,
             ignored_resources=ignored_resources,

@@ -15,20 +15,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraNamespaceEnforcer,
-    FlextInfraNamespaceValidator,
-    FlextInfraProjectSelectionServiceBase,
-    FlextInfraRefactorEngine,
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.refactor.engine import FlextInfraRefactorEngine
+from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
 )
+from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 _log = u.fetch_logger(__name__)
 

@@ -4,14 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_infra import (
+from flext_infra import m, p, r, s, t, u
+from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
 )
 
 

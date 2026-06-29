@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraExtraPathsManager, main, t
+from flext_infra import main, t
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 
 @pytest.fixture

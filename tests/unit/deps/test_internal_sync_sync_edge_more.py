@@ -4,7 +4,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService, r
+from flext_infra import r
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests.protocols import p
 from tests.typings import t
 

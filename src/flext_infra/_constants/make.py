@@ -38,12 +38,11 @@ class FlextInfraConstantsMake:
     CLI_ROUTE_MAINTENANCE: Final[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: Final[str] = "workspace"
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,go,type"
+        "lint,format,pyrefly,mypy,pyright,security,markdown,type"
     )
     PROJECT_CHECK_GATES_DEFAULT: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,go"
+        "lint,format,pyrefly,mypy,pyright,security,markdown"
     )
-    GO_PROJECT_CHECK_GATES_DEFAULT: Final[str] = "lint,format,security,markdown,go"
     PROJECT_FAST_PATH_CHECK_GATES: Final[str] = "lint,format,pyrefly,mypy,pyright"
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
     DOCS_PHASES_ALLOWED: Final[str] = "all|generate|fix|audit|build|validate"
@@ -202,7 +201,6 @@ class FlextInfraConstantsMake:
             "cqrs",
             "fmt",
             "format",
-            "go",
             "lint",
             "loc-cap",
             "markdown",

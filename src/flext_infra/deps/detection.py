@@ -8,7 +8,8 @@ from collections.abc import (
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraDependencyDetectionAnalysis, c, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):

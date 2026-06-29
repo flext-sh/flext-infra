@@ -5,7 +5,8 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from flext_infra import FlextInfraBaseMkGenerator, m
+from flext_infra import m
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class TestsFlextInfraBasemkGenerator:
@@ -30,7 +31,6 @@ class TestsFlextInfraBasemkGenerator:
         settings = m.Infra.BaseMkConfig(
             project_name="test-proj",
             python_version="3.13",
-            core_stack="python",
             package_manager="poetry",
             source_dir="src",
             tests_dir="tests",

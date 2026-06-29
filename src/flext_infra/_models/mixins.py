@@ -6,11 +6,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m, u
-from flext_infra import (
-    FlextInfraUtilitiesBase as ub,
-    c,
-    t,
-)
+from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraModelsMixins:

@@ -6,7 +6,7 @@ import io
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraBaseMkGenerator
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class _FailingStream(io.StringIO):

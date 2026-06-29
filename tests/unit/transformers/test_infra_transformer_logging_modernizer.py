@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_infra import FlextInfraRefactorLoggingModernizer
+from flext_infra.transformers.logging_modernizer import (
+    FlextInfraRefactorLoggingModernizer,
+)
 
 
 def _transform(source: str) -> str:

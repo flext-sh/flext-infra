@@ -12,9 +12,19 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import td as td, tf as tf, tk as tk, tm as tm, tv as tv
+    from flext_tests import (
+        d as d,
+        e as e,
+        h as h,
+        r as r,
+        td as td,
+        tf as tf,
+        tk as tk,
+        tm as tm,
+        tv as tv,
+        x as x,
+    )
 
-    from flext_infra import d as d, e as e, h as h, r as r, x as x
     from tests.base import (
         TestsFlextInfraServiceBase as TestsFlextInfraServiceBase,
         s as s,
@@ -459,6 +469,9 @@ if _t.TYPE_CHECKING:
     from tests.unit.test_infra_reporting_extra import (
         TestsFlextInfraInfraReportingExtra as TestsFlextInfraInfraReportingExtra,
     )
+    from tests.unit.test_infra_root_export_contract import (
+        TestsFlextInfraRootExportContract as TestsFlextInfraRootExportContract,
+    )
     from tests.unit.test_infra_rope_imports import (
         TestsFlextInfraRopeImports as TestsFlextInfraRopeImports,
     )
@@ -603,6 +616,16 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraTypes",
                 "t",
             ),
+            ".unit._utilities.test_discovery_consolidated": (
+                "TestsFlextInfraUtilitiesdiscoveryconsolidated",
+            ),
+            ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+            ".unit._utilities.test_protected_edit": (
+                "TestsFlextInfraUtilitiesProtectedEdit",
+            ),
+            ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
+            ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
+            ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
             ".unit.basemk.test_engine": ("TestsFlextInfraBasemkEngine",),
             ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
             ".unit.basemk.test_generator_edge_cases": (
@@ -905,6 +928,9 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".unit.test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
             ".unit.test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
+            ".unit.test_infra_root_export_contract": (
+                "TestsFlextInfraRootExportContract",
+            ),
             ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
             ".unit.test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
             ".unit.test_infra_selection": ("TestsFlextInfraInfraSelection",),
@@ -975,19 +1001,17 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_infra": (
+            "flext_tests": (
                 "d",
                 "e",
                 "h",
                 "r",
-                "x",
-            ),
-            "flext_tests": (
                 "td",
                 "tf",
                 "tk",
                 "tm",
                 "tv",
+                "x",
             ),
         },
     ),
@@ -1181,6 +1205,7 @@ __all__: list[str] = [
     "TestsFlextInfraRefactorRopeSemantic",
     "TestsFlextInfraRefactorRopeStubs",
     "TestsFlextInfraReleaseDag",
+    "TestsFlextInfraRootExportContract",
     "TestsFlextInfraRopeImports",
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraSettings",

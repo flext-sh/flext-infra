@@ -21,7 +21,9 @@ from tests import c, u
 class TestsFlextInfraContainerInfraContainer:
     """Test container accessor functions."""
 
-    @pytest.fixture(autouse=True)
+    pytestmark = pytest.mark.usefixtures("setup")
+
+    @pytest.fixture
     def setup(self) -> None:
         """Ensure container is configured before each test."""
         FlextContainer().initialize_di_components()

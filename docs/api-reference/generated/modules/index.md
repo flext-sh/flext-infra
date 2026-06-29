@@ -68,7 +68,6 @@ These pages are generated from public modules and their docstrings.
 - [flext_infra.gates.abstraction_boundary](gates/abstraction_boundary.md)
 - [flext_infra.gates.bandit](gates/bandit.md)
 - [flext_infra.gates.base_gate](gates/base_gate.md)
-- [flext_infra.gates.go](gates/go.md)
 - [flext_infra.gates.loc_cap](gates/loc_cap.md)
 - [flext_infra.gates.markdown](gates/markdown.md)
 - [flext_infra.gates.mypy](gates/mypy.md)

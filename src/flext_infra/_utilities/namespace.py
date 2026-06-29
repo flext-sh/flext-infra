@@ -9,19 +9,13 @@ from pathlib import Path
 from typing import ClassVar, Final
 
 from flext_cli import u
-from flext_infra import (
-    FlextInfraUtilitiesBase,
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesDocsScope,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeSource,
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_infra import c, m, p, r, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -412,7 +406,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         selected = tuple(
             project
             for project in discovered
-            if not (project.path / c.Infra.GO_MOD).exists()
+            if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
         )
         return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(selected)
 

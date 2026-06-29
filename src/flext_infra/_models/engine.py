@@ -13,7 +13,8 @@ from itertools import chain
 from typing import Annotated, Self
 
 from flext_cli import m
-from flext_infra import FlextInfraModelsEngineOperation, c, t
+from flext_infra import c, t
+from flext_infra._models.engine_ops import FlextInfraModelsEngineOperation
 
 
 class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):

@@ -8,11 +8,9 @@ import tracemalloc
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    FlextInfraRefactorFileExecutor,
-    FlextInfraRefactorLooseClassScanner,
-    c,
-)
+from flext_infra import c
+from flext_infra.refactor.engine_file import FlextInfraRefactorFileExecutor
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from tests import u
 
 

@@ -9,11 +9,8 @@ from typing import cast
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraDependencyDetectionService,
-    m,
-    t,
-)
+from flext_infra import m, t
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 
 
 class TestsFlextInfraDepsDetectionModels:

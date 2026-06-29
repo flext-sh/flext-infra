@@ -130,7 +130,6 @@ class FlextInfraConstantsSharedInfra:
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
     MAKEFILE_FILENAME: Final[str] = "Makefile"
     BASE_MK: Final[str] = "base.mk"
-    GO_MOD: Final[str] = "go.mod"
     GITMODULES: Final[str] = ".gitmodules"
     GITIGNORE: Final[str] = ".gitignore"
     INIT_PY: Final[str] = "__init__.py"
