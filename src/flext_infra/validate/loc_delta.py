@@ -16,7 +16,13 @@ class FlextInfraLocDeltaValidator(s[bool]):
     """Fail refactor/cleanup commits that grow the codebase (net positive LOC)."""
 
     @classmethod
-    def evaluate(cls, *, subject: str, insertions: int, deletions: int) -> r[None]:
+    def evaluate(
+        cls,
+        *,
+        subject: str,
+        insertions: int,
+        deletions: int,
+    ) -> p.Result[None]:
         """Pure rule: net positive delta on a labelled commit is a violation."""
         lowered = subject.lower()
         if not any(label in lowered for label in c.Infra.REFACTOR_COMMIT_LABELS):

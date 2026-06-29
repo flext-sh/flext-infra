@@ -30,7 +30,7 @@ class FlextInfraModernizeOrchestrator:
     def run(
         self,
         params: m.Infra.ModernizeInput,
-    ) -> r[t.SequenceOf[m.Infra.Result]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
         """Run modernize across selected projects."""
         workspace_root = params.workspace_path
         project_roots = self._resolve_projects(workspace_root, params.projects)
@@ -94,7 +94,7 @@ class FlextInfraModernizeOrchestrator:
         rope_project: t.Infra.RopeProject,
         project_root: Path,
         apply: bool,
-    ) -> r[t.SequenceOf[m.Infra.Result]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
         """Apply transformer to all Python files in a project."""
         results: list[m.Infra.Result] = []
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
@@ -123,7 +123,7 @@ class FlextInfraModernizeOrchestrator:
         *,
         file_path: Path,
         apply: bool,
-    ) -> r[m.Infra.Result]:
+    ) -> p.Result[m.Infra.Result]:
         """Apply transformer to a single file."""
         read_result = u.Cli.files_read_text(file_path)
         if read_result.failure:
@@ -165,7 +165,7 @@ class FlextInfraModernizeOrchestrator:
     def _safe_transform(
         transformer: p.Infra.ChangeTracker,
         source: str,
-    ) -> r[t.Infra.TransformResult]:
+    ) -> p.Result[t.Infra.TransformResult]:
         """Run transformer, catching syntax/runtime errors as failures."""
         try:
             return r[t.Infra.TransformResult].ok(transformer.apply_to_source(source))

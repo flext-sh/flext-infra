@@ -5,18 +5,18 @@ from unittest.mock import patch
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService, m, r as tr
+from flext_infra import FlextInfraDependencyDetectionService, m, p, r as tr
 from tests.typings import t
 
 
 class _StubToml:
-    def __init__(self, values: t.SequenceOf[tr[t.Infra.ContainerDict]]) -> None:
-        self._values: tuple[tr[t.Infra.ContainerDict], ...] = tuple(values)
+    def __init__(self, values: t.SequenceOf[p.Result[t.Infra.ContainerDict]]) -> None:
+        self._values: tuple[p.Result[t.Infra.ContainerDict], ...] = tuple(values)
         self._idx = 0
 
-    def read_plain(self, path: Path) -> tr[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         _ = path
-        value: tr[t.Infra.ContainerDict] = self._values[self._idx]
+        value: p.Result[t.Infra.ContainerDict] = self._values[self._idx]
         if self._idx < len(self._values) - 1:
             self._idx += 1
         return value

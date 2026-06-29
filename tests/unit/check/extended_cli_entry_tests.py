@@ -8,6 +8,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import main
+from flext_infra.cli import FlextInfraCli
 from tests import u
 
 
@@ -26,6 +27,27 @@ class TestWorkspaceCheckCLI:
 
     def test_no_projects_error(self) -> None:
         tm.that(main(["check", "run"]), eq=1)
+
+    def test_run_scope_detection_accepts_explicit_scope(self, tmp_path: Path) -> None:
+        workspace = self._workspace(tmp_path)
+        tm.that(
+            FlextInfraCli._check_run_has_scope(
+                "check",
+                ("run", "--workspace", str(workspace)),
+            ),
+            eq=True,
+        )
+        tm.that(
+            FlextInfraCli._check_run_has_scope("check", ("run", "--project", "p1")),
+            eq=True,
+        )
+        tm.that(
+            FlextInfraCli._check_run_has_scope("check", ("run", "--projects=p1")),
+            eq=True,
+        )
+
+    def test_run_scope_detection_rejects_unscoped_run(self) -> None:
+        tm.that(FlextInfraCli._check_run_has_scope("check", ("run",)), eq=False)
 
     def test_with_projects_success(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)

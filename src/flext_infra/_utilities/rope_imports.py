@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
@@ -35,14 +36,9 @@ class FlextInfraUtilitiesRopeImports:
         module_imports: t.Infra.RopeModuleImports,
     ) -> t.SequenceOf[t.Infra.RopeImportStatement]:
         """Return validated Rope import statements from one module import collection."""
-        import_statements = module_imports.imports
-        if not isinstance(import_statements, list):
-            return ()
-        return tuple(
-            import_stmt
-            for import_stmt in import_statements
-            if isinstance(import_stmt, ImportStatement)
-        )
+        # Rope exposes imports via a cached descriptor whose third-party typing differs across analyzers.
+        import_statements = cast("list[ImportStatement]", module_imports.imports)
+        return tuple(import_statements)
 
     @staticmethod
     def import_statement_module_name(
@@ -302,9 +298,9 @@ class FlextInfraUtilitiesRopeImports:
         )
         if module_imports is None:
             return ()
-        import_statements = module_imports.imports
-        if not isinstance(import_statements, list):
-            return ()
+        import_statements = FlextInfraUtilitiesRopeImports.import_statements(
+            module_imports
+        )
         return tuple(
             import_stmt.import_info
             for import_stmt in import_statements
@@ -496,49 +492,47 @@ class FlextInfraUtilitiesRopeImports:
             if module_imports is not None:
                 moved_aliases: t.Infra.StrSet = set()
                 package_prefix = f"{package_name}."
-                import_statements = module_imports.imports
-                if isinstance(import_statements, list):
-                    for import_stmt in import_statements:
-                        import_info = import_stmt.import_info
-                        from_import = (
-                            import_info
-                            if isinstance(import_info, FromImport)
-                            and import_info.level == 0
-                            else None
-                        )
-                        if (
-                            from_import is None
-                            or not from_import.module_name.startswith(package_prefix)
-                        ):
+                import_statements = cls.import_statements(module_imports)
+                for import_stmt in import_statements:
+                    import_info = import_stmt.import_info
+                    from_import = (
+                        import_info
+                        if isinstance(import_info, FromImport)
+                        and import_info.level == 0
+                        else None
+                    )
+                    if from_import is None or not from_import.module_name.startswith(
+                        package_prefix
+                    ):
+                        continue
+                    kept_pairs: list[tuple[str, str | None]] = []
+                    for name, alias in from_import.names_and_aliases:
+                        if alias is None and name in requested_aliases:
+                            moved_aliases.add(name)
                             continue
-                        kept_pairs: list[tuple[str, str | None]] = []
-                        for name, alias in from_import.names_and_aliases:
-                            if alias is None and name in requested_aliases:
-                                moved_aliases.add(name)
-                                continue
-                            kept_pairs.append((name, alias))
-                        if len(kept_pairs) == len(from_import.names_and_aliases):
-                            continue
-                        import_stmt.import_info = FromImport(
-                            from_import.module_name,
+                        kept_pairs.append((name, alias))
+                    if len(kept_pairs) == len(from_import.names_and_aliases):
+                        continue
+                    import_stmt.import_info = FromImport(
+                        from_import.module_name,
+                        0,
+                        kept_pairs,
+                    )
+                if moved_aliases:
+                    module_imports.add_import(
+                        FromImport(
+                            package_name,
                             0,
-                            kept_pairs,
+                            [(name, None) for name in sorted(moved_aliases)],
                         )
-                    if moved_aliases:
-                        module_imports.add_import(
-                            FromImport(
-                                package_name,
-                                0,
-                                [(name, None) for name in sorted(moved_aliases)],
-                            )
-                        )
-                        module_imports.remove_duplicates()
-                        module_imports.sort_imports()
-                        updated_source: str = module_imports.get_changed_source()
-                        if updated_source != resource.read():
-                            if apply:
-                                resource.write(updated_source)
-                            result = updated_source
+                    )
+                    module_imports.remove_duplicates()
+                    module_imports.sort_imports()
+                    updated_source: str = module_imports.get_changed_source()
+                    if updated_source != resource.read():
+                        if apply:
+                            resource.write(updated_source)
+                        result = updated_source
         return result
 
     @staticmethod
@@ -587,9 +581,9 @@ class FlextInfraUtilitiesRopeImports:
         if module_imports is None:
             return None
         changed = False
-        import_statements = module_imports.imports
-        if not isinstance(import_statements, list):
-            return None
+        import_statements = FlextInfraUtilitiesRopeImports.import_statements(
+            module_imports
+        )
         for import_stmt in import_statements:
             import_info = import_stmt.import_info
             from_import = (

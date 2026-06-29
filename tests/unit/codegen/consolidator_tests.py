@@ -2,13 +2,40 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from flext_tests import tm
 
+from flext_cli import m as cli_m
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from tests import t, u
+
+
+class _ConsolidatorFilePayload(cli_m.ContractModel):
+    """Typed JSON row emitted by the consolidator command."""
+
+    file: str = cli_m.Field(description="Relative file path")
+    status: str = cli_m.Field(description="File processing status")
+    changes: t.StrSequence = cli_m.Field(description="Changes applied to the file")
+
+
+class _ConsolidatorJsonPayload(cli_m.ContractModel):
+    """Typed JSON payload emitted by the consolidator command."""
+
+    total_found: int = cli_m.Field(description="Total replacements found")
+    total_applied: int = cli_m.Field(description="Total replacements applied")
+    total_failed: int = cli_m.Field(description="Total files that failed")
+    files: t.SequenceOf[_ConsolidatorFilePayload] = cli_m.Field(
+        description="Per-file consolidator results",
+    )
+
+
+def _consolidator_payload(value: str) -> _ConsolidatorJsonPayload:
+    """Load and validate consolidator JSON output."""
+    payload: _ConsolidatorJsonPayload = _ConsolidatorJsonPayload.model_validate_json(
+        value
+    )
+    return payload
 
 
 def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
@@ -107,12 +134,12 @@ def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
     result = service.execute()
 
     tm.ok(result)
-    payload = json.loads(result.value)
-    assert payload["total_found"] == 1
-    assert payload["total_applied"] == 1
-    assert payload["total_failed"] == 0
-    assert len(payload["files"]) == 1
-    assert payload["files"][0]["status"] == "applied"
+    payload = _consolidator_payload(result.value)
+    assert payload.total_found == 1
+    assert payload.total_applied == 1
+    assert payload.total_failed == 0
+    assert len(payload.files) == 1
+    assert payload.files[0].status == "applied"
 
 
 def test_execute_dry_run_json_output(tmp_path: Path) -> None:
@@ -126,11 +153,11 @@ def test_execute_dry_run_json_output(tmp_path: Path) -> None:
     result = service.execute()
 
     tm.ok(result)
-    payload = json.loads(result.value)
-    assert payload["total_found"] == 1
-    assert payload["total_applied"] == 0
-    assert payload["total_failed"] == 0
-    assert payload["files"] == []
+    payload = _consolidator_payload(result.value)
+    assert payload.total_found == 1
+    assert payload.total_applied == 0
+    assert payload.total_failed == 0
+    assert payload.files == []
 
 
 __all__: t.StrSequence = []

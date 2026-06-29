@@ -120,6 +120,20 @@ class FlextInfraCli(type(cli_facade)):
             index += 1
         return what, remaining
 
+    @classmethod
+    def _check_run_has_scope(cls, group: str, args: t.StrSequence) -> bool:
+        """Return whether ``check run`` has an explicit workspace/project scope."""
+        if group != c.Infra.CLI_GROUP_CHECK or not args:
+            return True
+        if args[0] != c.Infra.VERB_RUN or any(arg in cls._HELP_FLAGS for arg in args):
+            return True
+        scope_flags = ("--workspace", "--projects", "--project")
+        return any(
+            arg in scope_flags
+            or any(arg.startswith(f"{scope_flag}=") for scope_flag in scope_flags)
+            for arg in args[1:]
+        )
+
     def _translate_what(self, group: str, args: t.StrSequence) -> p.Result[list[str]]:
         """Map ``--what <phase>`` onto the existing gate/validator selectors.
 
@@ -169,6 +183,12 @@ class FlextInfraCli(type(cli_facade)):
                 app,
                 prog_name=f"{self.app_name} {group}",
                 args=["--help"],
+            )
+            return 1
+        if not self._check_run_has_scope(group, normalized_args):
+            self.display_message(
+                "no projects specified",
+                c.Cli.MessageTypes.ERROR,
             )
             return 1
         result = self.execute_app(
