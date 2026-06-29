@@ -215,14 +215,16 @@ class FlextInfraRefactorFileExecutor:
         changes: t.StrSequence,
     ) -> m.Infra.Result | None:
         """Run postchecks for a modified class-nesting result."""
-        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-            {
-                c.Infra.RK_SOURCE_SYMBOL: "",
-                c.Infra.RK_EXPECTED_BASE_CHAIN: list[str](),
-                c.Infra.RK_POST_CHECKS: [c.Infra.RK_IMPORTS_RESOLVE],
-                c.Infra.RK_QUALITY_GATES: [c.Infra.RK_LSP_DIAGNOSTICS_CLEAN],
-            }
-        )
+        expected_base_chain: t.JsonValueList = []
+        post_checks: t.JsonValueList = [c.Infra.RK_IMPORTS_RESOLVE]
+        quality_gates: t.JsonValueList = [c.Infra.RK_LSP_DIAGNOSTICS_CLEAN]
+        payload_values: t.Infra.ContainerDict = {
+            c.Infra.RK_SOURCE_SYMBOL: "",
+            c.Infra.RK_EXPECTED_BASE_CHAIN: expected_base_chain,
+            c.Infra.RK_POST_CHECKS: post_checks,
+            c.Infra.RK_QUALITY_GATES: quality_gates,
+        }
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload_values)
         gate = self._class_nesting_gate or FlextInfraClassNestingPostCheckGate()
         self._class_nesting_gate = gate
         ok, errs = gate.validate(
@@ -303,16 +305,13 @@ class FlextInfraRefactorFileExecutor:
                 entry, policy_by_family=self._class_nesting_policy()
             )
             if not ok and violation is not None:
-                violations.append(
-                    "|".join(
-                        [
-                            violation[c.Infra.RK_RULE_ID],
-                            violation[c.Infra.RK_SOURCE_SYMBOL],
-                            violation[c.Infra.RK_VIOLATION_TYPE],
-                            violation[c.Infra.RK_SUGGESTED_FIX],
-                        ]
-                    )
-                )
+                violation_parts: list[str] = [
+                    violation[c.Infra.RK_RULE_ID],
+                    violation[c.Infra.RK_SOURCE_SYMBOL],
+                    violation[c.Infra.RK_VIOLATION_TYPE],
+                    violation[c.Infra.RK_SUGGESTED_FIX],
+                ]
+                violations.append("|".join(violation_parts))
         return violations
 
     def _class_nesting_symbol_map(
@@ -375,9 +374,10 @@ class FlextInfraRefactorFileExecutor:
             nesting = FlextInfraRefactorClassNestingTransformer(class_map, {}, {})
             updated, class_changes = nesting.apply_to_source(updated)
             changes.extend(class_changes)
-            propagation = FlextInfraNestedClassPropagationTransformer(
-                {name: f"{target}.{name}" for name, target in class_map.items()}
-            )
+            propagation_map: t.MutableStrMapping = {
+                name: f"{target}.{name}" for name, target in class_map.items()
+            }
+            propagation = FlextInfraNestedClassPropagationTransformer(propagation_map)
             updated, propagation_changes = propagation.apply_to_source(updated)
             changes.extend(propagation_changes)
         if helper_map:

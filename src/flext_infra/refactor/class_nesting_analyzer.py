@@ -70,12 +70,11 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 confidence = parsed_violation.confidence or c.Infra.SeverityLevel.LOW
                 target_namespace = ""
                 rewrite_scope = c.Infra.RK_FILE
-                mapped_entry = mapping_index.get(
-                    (
-                        normalized_file,
-                        parsed_violation.class_name,
-                    )
+                mapping_key: tuple[str, str] = (
+                    normalized_file,
+                    parsed_violation.class_name,
                 )
+                mapped_entry = mapping_index.get(mapping_key)
                 if mapped_entry is not None:
                     target_namespace = mapped_entry.target_namespace
                     confidence = mapped_entry.confidence
