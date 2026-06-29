@@ -167,7 +167,9 @@ class TestGenerateFile:
             child_packages_for_lazy=("flext_core._constants._enforcement_parts",),
         )
         tm.that(content, contains="build_lazy_import_map(")
-        tm.that(content, contains='"._enforcement_parts.flextconstantsenforcement_part_01"')
+        tm.that(
+            content, contains='"._enforcement_parts.flextconstantsenforcement_part_01"'
+        )
         tm.that(content, lacks="merge_lazy_imports(")
         tm.that(content, lacks='("._enforcement_parts",)')
 

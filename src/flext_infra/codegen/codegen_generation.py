@@ -688,7 +688,9 @@ class FlextInfraCodegenGeneration:
                     for name, target in filtered.items()
                     if target[0] == "flext_core._typings.lazy"
                 }
-                direct_exports = tuple(name for name in exports if name in direct_filtered)
+                direct_exports = tuple(
+                    name for name in exports if name in direct_filtered
+                )
             return FlextInfraCodegenGeneration._generate_direct_bootstrap_file(
                 direct_exports,
                 direct_filtered,
@@ -761,11 +763,7 @@ class FlextInfraCodegenGeneration:
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
             FlextInfraCodegenGeneration._group_imports(type_checking_filtered),
             include_flext_types=False,
-            child_packages=(
-                ()
-                if publish_all
-                else child_packages_for_tc or ()
-            ),
+            child_packages=(() if publish_all else child_packages_for_tc or ()),
             local_package_root=current_pkg,
         )
 

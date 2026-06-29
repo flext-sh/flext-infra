@@ -12,14 +12,16 @@ def make_command(
     workspace_root: Path,
     **overrides: object,
 ) -> FlextInfraReleaseOrchestrator:
-    command: FlextInfraReleaseOrchestrator = FlextInfraReleaseOrchestrator.model_validate({
-        "workspace_root": workspace_root,
-        "phase": c.Tests.RELEASE_PHASE_VERSION,
-        "interactive": 0,
-        "create_branches": 0,
-        "apply_changes": True,
-        **overrides,
-    })
+    command: FlextInfraReleaseOrchestrator = (
+        FlextInfraReleaseOrchestrator.model_validate({
+            "workspace_root": workspace_root,
+            "phase": c.Tests.RELEASE_PHASE_VERSION,
+            "interactive": 0,
+            "create_branches": 0,
+            "apply_changes": True,
+            **overrides,
+        })
+    )
     return command
 
 
