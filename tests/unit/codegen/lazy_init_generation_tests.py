@@ -78,6 +78,101 @@ class TestGenerateTypeChecking:
         tm.that(joined, contains="from beta_pkg.module import Test2")
 
 
+class TestLazyInitPlannerCollision:
+    """Test lazy-init export collision classification."""
+
+    def test_mro_part_siblings_are_intentional_reexports(self) -> None:
+        """MRO implementation parts share one logical owner by design."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                (
+                    "flext_cli._models._base_parts.flextclimodelsbase_part_01",
+                    "FlextCliModelsBase",
+                ),
+                (
+                    "flext_cli._models._base_parts.flextclimodelsbase_part_02",
+                    "FlextCliModelsBase",
+                ),
+            ),
+            eq=True,
+        )
+
+    def test_mro_part_facade_is_intentional_reexport(self) -> None:
+        """A canonical facade module may re-export its private MRO part family."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("flext_cli._utilities.files", "FlextCliUtilitiesFiles"),
+                (
+                    "flext_cli._utilities._files_parts.flextcliutilitiesfiles_part_04",
+                    "FlextCliUtilitiesFiles",
+                ),
+            ),
+            eq=True,
+        )
+
+    def test_same_package_part_modules_are_intentional_reexports(self) -> None:
+        """Generated split test modules share one logical exported owner."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                (
+                    "tests.unit._cases.test_cli_service.testsflextcliservice_part_01",
+                    "TestsFlextCliService",
+                ),
+                (
+                    "tests.unit._cases.test_cli_service.testsflextcliservice_part_02",
+                    "TestsFlextCliService",
+                ),
+            ),
+            eq=True,
+        )
+
+    def test_private_parts_facade_is_intentional_reexport(self) -> None:
+        """A facade may re-export implementation modules from a private parts family."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("flext_tests._fixtures.enforcement", "active_rules"),
+                (
+                    "flext_tests._fixtures._enforcement_parts.config",
+                    "active_rules",
+                ),
+            ),
+            eq=True,
+        )
+
+    def test_root_facade_private_package_parts_are_intentional_reexports(self) -> None:
+        """A root facade may expose its private implementation package owner."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("flext_tests.validator", "FlextTestsValidator"),
+                (
+                    "flext_tests._validator._orchestration_parts.validator_part_02",
+                    "FlextTestsValidator",
+                ),
+            ),
+            eq=True,
+        )
+
+    def test_root_typing_parts_are_intentional_reexports(self) -> None:
+        """Generated root typing parts aggregate canonical source owners."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("flext_core._constants.cqrs", "FlextConstantsCqrs"),
+                ("flext_core._root_typing_parts.core", "FlextConstantsCqrs"),
+            ),
+            eq=True,
+        )
+
+    def test_unrelated_same_name_exports_are_not_intentional_reexports(self) -> None:
+        """Unrelated modules exporting the same name still count as collisions."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("demo.alpha", "DemoService"),
+                ("demo.beta", "DemoService"),
+            ),
+            eq=False,
+        )
+
+
 class TestGenerateFile:
     """Test public lazy-init file generation behavior."""
 

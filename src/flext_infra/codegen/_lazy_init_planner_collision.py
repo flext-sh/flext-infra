@@ -100,12 +100,17 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         )
         index[name] = winner
 
-    @staticmethod
+    @classmethod
     def _is_intentional_reexport(
+        cls,
         a: t.StrPair,
         b: t.StrPair,
     ) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
+        if cls._is_mro_part_reexport(a, b):
+            return True
+        if cls._is_root_typing_reexport(a, b):
+            return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
             if not u.Infra.matches_root_namespace_file(pub_file):
@@ -113,6 +118,77 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
                 return True
         return False
+
+    @staticmethod
+    def _module_parts(module_path: str) -> t.StrTuple:
+        """Return normalized dotted module path parts."""
+        return tuple(part for part in module_path.split(".") if part)
+
+    @staticmethod
+    def _part_family_index(parts: t.StrSequence) -> int:
+        """Return the index of the private ``*_parts`` package segment."""
+        for index, part in enumerate(parts[:-1]):
+            if part.startswith("_") and part.endswith("_parts"):
+                return index
+        return -1
+
+    @staticmethod
+    def _is_part_leaf(module_stem: str) -> bool:
+        """Return whether a module stem is an MRO implementation part."""
+        return "_part_" in module_stem
+
+    @classmethod
+    def _is_mro_part_reexport(
+        cls,
+        a: t.StrPair,
+        b: t.StrPair,
+    ) -> bool:
+        """Return whether targets are the same logical MRO owner split into parts."""
+        if a[1] != b[1]:
+            return False
+        a_parts = cls._module_parts(a[0])
+        b_parts = cls._module_parts(b[0])
+        a_index = cls._part_family_index(a_parts)
+        b_index = cls._part_family_index(b_parts)
+        if (
+            cls._is_part_leaf(a_parts[-1])
+            and cls._is_part_leaf(b_parts[-1])
+            and a_parts[:-1] == b_parts[:-1]
+        ):
+            return True
+        if a_index < 0 and b_index < 0:
+            return False
+        if a_index >= 0 and b_index >= 0:
+            return a_parts[: a_index + 1] == b_parts[: b_index + 1]
+        part_parts, part_index, facade_parts = (
+            (a_parts, a_index, b_parts) if a_index >= 0 else (b_parts, b_index, a_parts)
+        )
+        owner_package = part_parts[:part_index]
+        if facade_parts[:-1] == owner_package:
+            return True
+        return (
+            bool(owner_package)
+            and owner_package[-1].startswith("_")
+            and facade_parts
+            == (*owner_package[:-1], owner_package[-1].removeprefix("_"))
+        )
+
+    @classmethod
+    def _is_root_typing_reexport(
+        cls,
+        a: t.StrPair,
+        b: t.StrPair,
+    ) -> bool:
+        """Return whether a generated root-typing module re-exports source owners."""
+        if a[1] != b[1]:
+            return False
+        a_parts = cls._module_parts(a[0])
+        b_parts = cls._module_parts(b[0])
+        if not a_parts or not b_parts or a_parts[0] != b_parts[0]:
+            return False
+        a_root_typing = "_root_typing_parts" in a_parts
+        b_root_typing = "_root_typing_parts" in b_parts
+        return a_root_typing != b_root_typing
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:
