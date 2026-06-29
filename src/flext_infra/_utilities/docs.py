@@ -9,7 +9,6 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import (
-    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesDocsScope,
     c,
     m,
@@ -17,143 +16,13 @@ from flext_infra import (
     r,
     t,
 )
+from flext_infra._utilities._docs_scope_build import (
+    FlextInfraUtilitiesDocsScopeBuildMixin,
+)
 
 
-class FlextInfraUtilitiesDocs:
+class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     """Documentation-related utility methods exposed via u.Infra."""
-
-    @staticmethod
-    def _selected_project_names(
-        workspace_root: Path,
-        projects: t.StrSequence | None,
-    ) -> list[str]:
-        """Return normalized project filters for docs-scoped operations."""
-        _ = workspace_root
-        return list(FlextInfraUtilitiesBase.normalize_sequence_values(projects) or ())
-
-    @staticmethod
-    def _doc_scope(
-        *,
-        project: m.Infra.ProjectInfo,
-        output_dir: Path | str,
-    ) -> m.Infra.DocScope:
-        """Build one canonical docs scope model."""
-        resolved = project.path.resolve()
-        return m.Infra.DocScope(
-            name=project.name,
-            path=resolved,
-            report_dir=(resolved / output_dir).resolve(),
-            project_class=project.project_class,
-            package_name=project.package_name,
-        )
-
-    @staticmethod
-    def build_scopes(
-        workspace_root: Path,
-        projects: t.StrSequence | None,
-        output_dir: Path | str,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocScope]]:
-        """Build DocScope objects for workspace root and each selected project."""
-        try:
-            resolved_root = workspace_root.resolve()
-            if FlextInfraUtilitiesDocsScope.is_governed_project(
-                resolved_root.name,
-                resolved_root.parent,
-            ):
-                payload = FlextInfraUtilitiesDocsScope.project_payload(resolved_root)
-                docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-                return r[t.SequenceOf[m.Infra.DocScope]].ok(
-                    [
-                        m.Infra.DocScope(
-                            name=resolved_root.name,
-                            path=resolved_root,
-                            report_dir=(resolved_root / output_dir).resolve(),
-                            project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                                resolved_root.name,
-                                docs_meta,
-                            ),
-                            package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                                resolved_root,
-                                payload,
-                                docs_meta,
-                            ),
-                        )
-                    ],
-                )
-            scopes: t.MutableSequenceOf[m.Infra.DocScope] = [
-                m.Infra.DocScope(
-                    name=c.Infra.RK_ROOT,
-                    path=resolved_root,
-                    report_dir=(resolved_root / output_dir).resolve(),
-                    project_class="root",
-                    package_name="",
-                )
-            ]
-            discovered_result = FlextInfraUtilitiesDocsScope.discover_projects(
-                resolved_root,
-            )
-            if discovered_result.failure:
-                return r[t.SequenceOf[m.Infra.DocScope]].fail(
-                    discovered_result.error or "project discovery failed",
-                )
-            discovered = discovered_result.value
-            selected_names = FlextInfraUtilitiesDocs._selected_project_names(
-                resolved_root,
-                projects,
-            )
-            if selected_names:
-                project_by_name: dict[str, m.Infra.ProjectInfo] = {}
-                for project in discovered:
-                    project_by_name.setdefault(project.name, project)
-                    project_by_name.setdefault(project.path.name, project)
-                for name in selected_names:
-                    selected = project_by_name.get(name)
-                    if selected is not None:
-                        scopes.append(
-                            FlextInfraUtilitiesDocs._doc_scope(
-                                project=selected,
-                                output_dir=output_dir,
-                            )
-                        )
-                        continue
-                    project_root = (resolved_root / name).resolve()
-                    if not project_root.is_dir():
-                        continue
-                    if not (project_root / c.Infra.PYPROJECT_FILENAME).is_file():
-                        continue
-                    payload = FlextInfraUtilitiesDocsScope.project_payload(
-                        project_root,
-                    )
-                    docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(
-                        payload,
-                    )
-                    scopes.append(
-                        m.Infra.DocScope(
-                            name=name,
-                            path=project_root,
-                            report_dir=(project_root / output_dir).resolve(),
-                            project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                                name,
-                                docs_meta,
-                            ),
-                            package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                                project_root,
-                                payload,
-                                docs_meta,
-                            ),
-                        )
-                    )
-                return r[t.SequenceOf[m.Infra.DocScope]].ok(scopes)
-            for project in discovered:
-                scopes.append(
-                    FlextInfraUtilitiesDocs._doc_scope(
-                        project=project,
-                        output_dir=output_dir,
-                    )
-                )
-            return r[t.SequenceOf[m.Infra.DocScope]].ok(scopes)
-        except c.EXC_OS_TYPE_VALUE as exc:
-            return r[t.SequenceOf[m.Infra.DocScope]].fail_op("scope resolution", exc)
 
     @staticmethod
     def iter_markdown_files(workspace_root: Path) -> t.SequenceOf[Path]:

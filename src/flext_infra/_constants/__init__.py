@@ -16,6 +16,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".docs": ("FlextInfraConstantsDocs",),
         ".github": ("FlextInfraConstantsGithub",),
         ".make": ("FlextInfraConstantsMake",),
+        ".namespace": ("FlextInfraConstantsNamespace",),
         ".refactor": ("FlextInfraConstantsRefactor",),
         ".release": ("FlextInfraConstantsRelease",),
         ".rope": ("FlextInfraConstantsRope",),

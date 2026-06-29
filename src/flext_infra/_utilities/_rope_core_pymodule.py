@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import re
+from typing import ClassVar
+
 import rope.refactor.importutils as rope_importutils
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
+from rope.base.project import Project
 from rope.base.pyobjectsdef import PyModule
+from rope.base.resources import File
+from rope.refactor.importutils.module_imports import ModuleImports
 
-from flext_infra import c, t
+from flext_core import t
 
 
 class FlextInfraUtilitiesRopeCorePyModuleMixin:
@@ -15,6 +21,8 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
     Composed into FlextInfraUtilitiesRopeCore via inheritance so the helpers
     stay reachable as ``FlextInfraUtilitiesRopeCore.<method>`` for all callers.
     """
+
+    _IDENTIFIER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"\b[A-Za-z_]\w*\b")
 
     @staticmethod
     def find_identifier_offset_in_lines(
@@ -35,7 +43,11 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
             return None
         line_start = sum(len(item) for item in lines[: line - 1])
         source_line = lines[line - 1]
-        for match in c.Infra.IDENTIFIER_PATTERN.finditer(source_line):
+        for (
+            match
+        ) in FlextInfraUtilitiesRopeCorePyModuleMixin._IDENTIFIER_PATTERN.finditer(
+            source_line
+        ):
             if match.group(0) == symbol:
                 offset: int = line_start + match.start()
                 return offset
@@ -43,9 +55,9 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
 
     @staticmethod
     def get_pymodule(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> t.Infra.RopePyModule:
+        rope_project: Project,
+        resource: File,
+    ) -> PyModule:
         """Resolve one concrete rope PyModule through the validated API boundary."""
         pymodule = rope_project.get_pymodule(resource)
         if not isinstance(pymodule, PyModule):
@@ -55,9 +67,9 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
 
     @staticmethod
     def get_module_imports(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> t.Infra.RopeModuleImports | None:
+        rope_project: Project,
+        resource: File,
+    ) -> ModuleImports | None:
         """Get module imports."""
         try:
             module_imports = rope_importutils.get_module_imports(

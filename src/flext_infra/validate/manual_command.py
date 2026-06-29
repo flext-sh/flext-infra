@@ -8,7 +8,8 @@ Two responsibilities:
   FIRST, per shell segment, after stripping wrappers and path components — an
   allow-list substring can never short-circuit a deny.
 - ``render_pre_commit_config`` — the canonical ``.pre-commit-config.yaml`` content
-  (hooks call ``python -m flext_infra``, never standalone scripts).
+  (hooks call ``uv run --all-packages python -m flext_infra``, never standalone
+  scripts).
 
 ``execute`` is a drift gate: the live ``.pre-commit-config.yaml`` MUST equal the
 rendered canonical template.
@@ -81,7 +82,30 @@ class FlextInfraManualCommandValidator(s[bool]):
             if name in c.Infra.MANUAL_CMD_WRAPPERS:
                 out = out[1:]
                 continue
+            if name == "uv" and len(out) > 1 and out[1] == "run":
+                out = cls._strip_uv_run_options(out[2:])
+                continue
             break
+        return out
+
+    @classmethod
+    def _strip_uv_run_options(cls, tokens: t.StrSequence) -> t.MutableSequenceOf[str]:
+        """Return the real command after ``uv run`` and its options."""
+        out = list(tokens)
+        while out:
+            arg = out[0]
+            if arg == "--":
+                return out[1:]
+            if not arg.startswith("-"):
+                return out
+            option = arg.split("=", maxsplit=1)[0]
+            out = out[1:]
+            if (
+                "=" not in arg
+                and option in c.Infra.MANUAL_CMD_UV_RUN_VALUE_OPTIONS
+                and out
+            ):
+                out = out[1:]
         return out
 
     @staticmethod

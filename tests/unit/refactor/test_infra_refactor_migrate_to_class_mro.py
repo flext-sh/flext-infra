@@ -12,6 +12,7 @@ from flext_infra import (
     FlextInfraUtilitiesFileIteration,
     FlextInfraUtilitiesProjectDiscovery,
 )
+from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
 
 
 class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
@@ -184,7 +185,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (src_pkg / "protocols.py").write_text(
-            "from __future__ import annotations\nfrom typing import Protocol\n\nclass SampleProtocols:\n    pass\n\nclass Greeter(Protocol):\n    def greet(self) -> str:\n        ...\n\np = SampleProtocols",
+            "from __future__ import annotations\nfrom typing import Protocol, runtime_checkable\n\nclass SampleProtocols:\n    pass\n\n@runtime_checkable\nclass Greeter(Protocol):\n    def greet(self) -> str:\n        ...\n\np = SampleProtocols",
             encoding="utf-8",
         )
         _ = (src_pkg / "consumer.py").write_text(
@@ -204,8 +205,13 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             eq=True,
         )
         tm.that(
+            "@runtime_checkable"
+            not in protocols_source.split("class SampleProtocols:", maxsplit=1)[0],
+            eq=True,
+        )
+        tm.that(
             protocols_source.split("class SampleProtocols:", maxsplit=1)[1],
-            has="class Greeter(Protocol):",
+            has="@runtime_checkable\n    class Greeter(Protocol):",
         )
         # Consumer import rewritten: Greeter → p.Greeter with facade alias import.
         tm.that(consumer_source, has="from sample_pkg.protocols import p")
@@ -260,6 +266,40 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             workspace_root=workspace_root,
         )
         tm.that(discovered, eq=[project_root])
+
+    def test_mro_scan_respects_namespace_scan_dirs_src_only(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_root = tmp_path / "sample"
+        src_pkg = project_root / "src" / "sample_pkg"
+        tests_dir = project_root / "tests"
+        src_pkg.mkdir(parents=True)
+        tests_dir.mkdir(parents=True)
+        _ = (project_root / "pyproject.toml").write_text(
+            "[project]\nname='sample'\n\n[tool.flext.namespace]\nscan_dirs = ['src']\n",
+            encoding="utf-8",
+        )
+        _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (src_pkg / "constants.py").write_text(
+            "from __future__ import annotations\n\nSRC_VALUE = 1\n\nclass SampleConstants:\n    pass\n\nc = SampleConstants\n",
+            encoding="utf-8",
+        )
+        _ = (tests_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\nTEST_VALUE = 2\n\nclass TestConstants:\n    pass\n\nc = TestConstants\n",
+            encoding="utf-8",
+        )
+
+        reports, scanned = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
+            workspace_root=project_root,
+            target="constants",
+        )
+        report_files = {
+            Path(report.file).relative_to(project_root).as_posix() for report in reports
+        }
+
+        tm.that(scanned, eq=1)
+        tm.that(report_files, eq={"src/sample_pkg/constants.py"})
 
     def test_migrate_to_mro_moves_manual_uppercase_assignment(
         self, tmp_path: Path

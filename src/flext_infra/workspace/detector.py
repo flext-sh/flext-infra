@@ -53,52 +53,43 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         """
         result: p.Result[c.Infra.WorkspaceMode]
         try:
-            resolved_project_root = project_root.resolve()
-            mode = c.Infra.WorkspaceMode.WORKSPACE
-            for candidate in (resolved_project_root, *resolved_project_root.parents):
-                if (candidate / c.Infra.GITMODULES).exists():
-                    break
-            else:
-                parent = resolved_project_root.parent
-                git_marker = parent / c.Infra.GIT_DIR
-                if not git_marker.exists():
-                    u.Cli.info(
-                        "Running in standalone mode (no parent workspace detected)"
-                    )
-                    mode = c.Infra.WorkspaceMode.STANDALONE
-                else:
-                    capture_result = u.Cli.capture(
-                        [c.Infra.GIT, "config", "--get", "remote.origin.url"],
-                        cwd=parent,
-                    )
-                    if capture_result.failure:
-                        u.Cli.info(
-                            "Running in standalone mode (unable to detect workspace)"
-                        )
-                        mode = c.Infra.WorkspaceMode.STANDALONE
-                    else:
-                        origin = capture_result.value.strip()
-                        if not origin:
-                            u.Cli.info(
-                                "Running in standalone mode (no remote origin found)"
-                            )
-                            mode = c.Infra.WorkspaceMode.STANDALONE
-                        else:
-                            repo_name = self._repo_name_from_url(origin)
-                            mode = (
-                                c.Infra.WorkspaceMode.WORKSPACE
-                                if repo_name == c.Infra.PKG_ROOT
-                                else c.Infra.WorkspaceMode.STANDALONE
-                            )
-                            if mode == c.Infra.WorkspaceMode.STANDALONE:
-                                u.Cli.info(
-                                    f"Running in standalone mode (parent repo: {repo_name})"
-                                )
+            mode = self._detect_mode(project_root)
             result = r[c.Infra.WorkspaceMode].ok(mode)
         except c.EXC_OS_RUNTIME_TYPE as exc:
             u.Cli.info(f"Running in standalone mode (detection error: {exc})")
             result = r[c.Infra.WorkspaceMode].fail_op("Detection", exc)
         return result
+
+    def _detect_mode(self, project_root: Path) -> c.Infra.WorkspaceMode:
+        """Resolve workspace mode without wrapping expected OS/runtime errors."""
+        resolved_project_root = project_root.resolve()
+        for candidate in (resolved_project_root, *resolved_project_root.parents):
+            if (candidate / c.Infra.GITMODULES).exists():
+                return c.Infra.WorkspaceMode.WORKSPACE
+        return self._detect_parent_mode(resolved_project_root.parent)
+
+    def _detect_parent_mode(self, parent: Path) -> c.Infra.WorkspaceMode:
+        """Detect mode from parent repository metadata."""
+        git_marker = parent / c.Infra.GIT_DIR
+        if not git_marker.exists():
+            u.Cli.info("Running in standalone mode (no parent workspace detected)")
+            return c.Infra.WorkspaceMode.STANDALONE
+        capture_result = u.Cli.capture(
+            [c.Infra.GIT, "config", "--get", "remote.origin.url"],
+            cwd=parent,
+        )
+        if capture_result.failure:
+            u.Cli.info("Running in standalone mode (unable to detect workspace)")
+            return c.Infra.WorkspaceMode.STANDALONE
+        origin = capture_result.value.strip()
+        if not origin:
+            u.Cli.info("Running in standalone mode (no remote origin found)")
+            return c.Infra.WorkspaceMode.STANDALONE
+        repo_name = self._repo_name_from_url(origin)
+        if repo_name == c.Infra.PKG_ROOT:
+            return c.Infra.WorkspaceMode.WORKSPACE
+        u.Cli.info(f"Running in standalone mode (parent repo: {repo_name})")
+        return c.Infra.WorkspaceMode.STANDALONE
 
     @override
     def execute(self) -> p.Result[c.Infra.WorkspaceMode]:

@@ -37,6 +37,8 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".github_pr": ("FlextInfraUtilitiesGithubPr",),
         ".log_parser": ("FlextInfraUtilitiesLogParser",),
         ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
+        ".mro_scan_catalog": ("FlextInfraUtilitiesMroScanCatalog",),
+        ".mro_scan_source": ("FlextInfraUtilitiesMroScanSource",),
         ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
         ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceMro",),
         ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),

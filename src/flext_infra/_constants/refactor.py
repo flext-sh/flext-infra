@@ -12,9 +12,11 @@ from flext_core import t
 from flext_infra import (
     FlextInfraConstantsBase as cb,
 )
+from flext_infra._constants.namespace import FlextInfraConstantsNamespace
+from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 
-class FlextInfraConstantsRefactor:
+class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     """Shared constants for refactor engine modules."""
 
     RK_REFACTOR_ENGINE: Final[str] = "refactor_engine"
@@ -271,11 +273,44 @@ class FlextInfraConstantsRefactor:
     "Canonical utilities module file names."
     MRO_UTILITIES_DIRECTORY: Final[str] = "utilities"
     "Canonical utilities package directory name."
-
     DEFAULT_CONSTANTS_CLASS: Final[str] = "FlextConstants"
     "Fallback constants class name when none exists in module."
     CONSTANTS_CLASS_SUFFIX: Final[str] = "Constants"
     "Class-name suffix used to identify constants facades."
+    MRO_TARGET_SPECS: Final[tuple[FlextInfraModelsMroScan.MROTargetSpec, ...]] = (
+        FlextInfraModelsMroScan.MROTargetSpec(
+            family_alias="c",
+            file_names=MRO_CONSTANTS_FILE_NAMES,
+            package_directory=MRO_CONSTANTS_DIRECTORY,
+            class_suffix=CONSTANTS_CLASS_SUFFIX,
+        ),
+        FlextInfraModelsMroScan.MROTargetSpec(
+            family_alias="t",
+            file_names=MRO_TYPINGS_FILE_NAMES,
+            package_directory=MRO_TYPINGS_DIRECTORY,
+            class_suffix="Types",
+        ),
+        FlextInfraModelsMroScan.MROTargetSpec(
+            family_alias="p",
+            file_names=MRO_PROTOCOLS_FILE_NAMES,
+            package_directory=MRO_PROTOCOLS_DIRECTORY,
+            class_suffix="Protocols",
+        ),
+        FlextInfraModelsMroScan.MROTargetSpec(
+            family_alias="m",
+            file_names=MRO_MODELS_FILE_NAMES,
+            package_directory=MRO_MODELS_DIRECTORY,
+            class_suffix="Models",
+        ),
+        FlextInfraModelsMroScan.MROTargetSpec(
+            family_alias="u",
+            file_names=MRO_UTILITIES_FILE_NAMES,
+            package_directory=MRO_UTILITIES_DIRECTORY,
+            class_suffix="Utilities",
+        ),
+    )
+    "Canonical MRO target specs shared by scan and migration code."
+
     CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
     "Compiled naming pattern for module-level constant candidates."
     FAMILY_SUFFIXES: Final[t.StrMapping] = MappingProxyType({
@@ -401,27 +436,7 @@ class FlextInfraConstantsRefactor:
     NAMESPACE_CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(
         r"^_?[A-Z][A-Z0-9_]+$",
     )
-    NAMESPACE_SETTINGS_FILE_NAMES: Final[frozenset[str]] = frozenset({
-        "settings.py",
-        "_settings.py",
-    })
-    NAMESPACE_PROTECTED_FILES: Final[frozenset[str]] = frozenset({
-        "settings.py",
-        "_settings.py",
-        "typings.py",
-        "_typings.py",
-        "__init__.py",
-        "__main__.py",
-        "__version__.py",
-        "conftest.py",
-        "py.typed",
-    })
-    NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS: Final[frozenset[str]] = frozenset({
-        "ldif",
-        "cli",
-        "main",
-    })
-    "Canonical alias module stems exempt from strict single-class enforcement."
+    "Regex: namespace constant candidate names."
     NAMESPACE_MIN_ALIAS_LENGTH: Final[int] = 2
     FACADE_ALIAS_RE: Final[t.RegexPattern] = re.compile(
         r"^(\w)\s*=\s*(\w+)",

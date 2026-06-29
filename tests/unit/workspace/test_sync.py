@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraSyncService
+from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from tests import m, p, r, t, u
 
 
@@ -167,6 +168,26 @@ class TestsFlextInfraWorkspaceSync:
         for project_root in (demo_a, demo_b):
             assert (project_root / "base.mk").exists()
             assert (project_root / "Makefile").exists()
+
+    def test_sync_workspace_root_writes_pre_commit_config(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = tmp_path / "workspace"
+        _ = _write_workspace(workspace_root)
+
+        result = FlextInfraSyncService(
+            canonical_root=workspace_root,
+            workspace=workspace_root,
+        ).execute()
+
+        assert result.success, _error_text(result)
+        pre_commit_path = workspace_root / ".pre-commit-config.yaml"
+        gitignore_text = (workspace_root / ".gitignore").read_text(encoding="utf-8")
+        assert pre_commit_path.read_text(encoding="utf-8").strip() == (
+            FlextInfraManualCommandValidator.render_pre_commit_config().strip()
+        )
+        assert "!.pre-commit-config.yaml" in gitignore_text
 
     def test_sync_regenerates_project_makefile_without_legacy_passthrough(
         self,

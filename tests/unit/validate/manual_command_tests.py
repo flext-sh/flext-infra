@@ -42,6 +42,21 @@ class TestManualCommandValidator:
     def test_python_m_blocked_module_blocked(self) -> None:
         tm.that(_V.command_blocked("python -m ruff check"), eq=True)
 
+    def test_uv_run_blocked_tool_blocked(self) -> None:
+        for tool in ("ruff", "pytest", "mypy", "pyright"):
+            tm.that(_V.command_blocked(f"uv run --all-packages {tool} src/"), eq=True)
+
+    def test_uv_run_python_m_blocked_module_blocked(self) -> None:
+        tm.that(_V.command_blocked("uv run --all-packages python -m pytest"), eq=True)
+
+    def test_uv_run_flext_infra_allowed(self) -> None:
+        tm.that(
+            _V.command_blocked(
+                "uv run --all-packages python -m flext_infra check --what boundary",
+            ),
+            eq=False,
+        )
+
     def test_path_prefixed_tool_blocked(self) -> None:
         tm.that(_V.command_blocked("/usr/bin/ruff check src/"), eq=True)
 

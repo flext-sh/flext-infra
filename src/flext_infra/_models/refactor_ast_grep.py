@@ -7,33 +7,11 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import FlextInfraModelsMixins as mm, c, t
+from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 
-class FlextInfraModelsRefactorGrep:
+class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
     """Mixin containing migration/reporting contracts for refactor orchestration."""
-
-    class MROSymbolCandidate(
-        m.ArbitraryTypesModel,
-    ):
-        """Unified symbol candidate used by MRO scan and rewrites."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        facade_name: Annotated[str, m.Field(description="Facade alias/import name")] = (
-            ""
-        )
-        symbol: Annotated[t.NonEmptyStr, m.Field(description="Symbol name")]
-        line: Annotated[t.PositiveInt, m.Field(description="Source line number")]
-        end_line: Annotated[
-            int | None,
-            m.Field(
-                description="Inclusive end line for multi-line declarations",
-            ),
-        ] = None
-        kind: Annotated[str, m.Field(description="constant|typevar|typealias")] = (
-            "constant"
-        )
-        class_name: Annotated[str, m.Field(description="Target class name")] = ""
 
     class MROImportRewrite(
         m.ArbitraryTypesModel,
@@ -52,24 +30,6 @@ class FlextInfraModelsRefactorGrep:
         ]
         as_name: Annotated[str | None, m.Field(description="Optional alias")] = None
         symbol: Annotated[str, m.Field(description="Resolved symbol in facade")] = ""
-
-    class MROScanReport(m.ArbitraryTypesModel):
-        """Scan result for one constants module candidate file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
-        module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
-        constants_class: Annotated[
-            str,
-            m.Field(
-                description="First constants class name",
-            ),
-        ] = ""
-        facade_alias: Annotated[str, m.Field(description="Facade alias letter")] = "c"
-        candidates: t.VariadicTuple[FlextInfraModelsRefactorGrep.MROSymbolCandidate] = (
-            m.Field(default_factory=tuple, description="Module-level symbol candidates")
-        )
 
     class MROFileMigration(m.ArbitraryTypesModel):
         """Migration summary for one transformed file."""

@@ -88,9 +88,12 @@ class FlextInfraWorkspaceChecker(
     ) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
         checker = cls(workspace_root=params.workspace_path)
-        project_names = params.project_names or []
-        if not project_names:
-            return r[bool].fail("no projects specified")
+        project_names_result = cls._resolve_project_names(params)
+        if project_names_result.failure:
+            return r[bool].fail(
+                project_names_result.error or "project resolution failed"
+            )
+        project_names = project_names_result.value
         gates = params.gates
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
@@ -116,6 +119,22 @@ class FlextInfraWorkspaceChecker(
             failed_names = ", ".join(project.project for project in failed_projects)
             return r[bool].fail(f"quality gates failed for: {failed_names}")
         return r[bool].ok(True)
+
+    @staticmethod
+    def _resolve_project_names(
+        params: m.Infra.RunCommand,
+    ) -> p.Result[t.StrSequence]:
+        """Resolve explicit projects or discover the workspace project set."""
+        requested = params.project_names
+        if requested:
+            return r[t.StrSequence].ok(tuple(requested))
+        discovered = u.Infra.resolve_projects(params.workspace_path, ())
+        if discovered.failure:
+            return r[t.StrSequence].fail(discovered.error or "project discovery failed")
+        project_names = tuple(project.name for project in discovered.value)
+        if not project_names:
+            return r[t.StrSequence].fail("no projects discovered")
+        return r[t.StrSequence].ok(project_names)
 
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project."""
@@ -146,10 +165,7 @@ class FlextInfraWorkspaceChecker(
         fail_fast: bool = False,
         ctx: m.Infra.GateContext | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
-        """Run selected gates for multiple projects.
-
-        Pass ``ctx`` to supply a pre-built GateContext.
-        """
+        """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(

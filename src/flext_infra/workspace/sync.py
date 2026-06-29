@@ -60,20 +60,28 @@ class FlextInfraSyncService(
         lock_file = resolved / ".flext-sync.lock"
         try:
             with lock_file.open("w", encoding=c.Cli.ENCODING_DEFAULT) as handle:
-                try:
-                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    return self._sync_locked_content(
-                        resolved,
-                        settings=None,
-                        canonical_root=self.canonical_root,
-                    )
-                except OSError as exc:
-                    return r[m.Infra.SyncResult].fail_op("lock acquisition", exc)
-                finally:
-                    with contextlib.suppress(OSError):
-                        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                return self._execute_with_lock(resolved, handle.fileno())
         except OSError as exc:
             return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
+
+    def _execute_with_lock(
+        self,
+        resolved: Path,
+        descriptor: int,
+    ) -> p.Result[m.Infra.SyncResult]:
+        """Run sync while holding the workspace sync lock."""
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return self._sync_locked_content(
+                resolved,
+                settings=None,
+                canonical_root=self.canonical_root,
+            )
+        except OSError as exc:
+            return r[m.Infra.SyncResult].fail_op("lock acquisition", exc)
+        finally:
+            with contextlib.suppress(OSError):
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
 
     def _sync_locked_content(
         self,
@@ -85,6 +93,7 @@ class FlextInfraSyncService(
         """Execute all sync steps under the file lock."""
         changed = 0
         effective_root = canonical_root or self.canonical_root
+        is_workspace_root = self._is_workspace_root(resolved, effective_root)
         basemk_result = self._sync_basemk(
             resolved,
             settings,
@@ -97,13 +106,25 @@ class FlextInfraSyncService(
         changed += 1 if basemk_result.value else 0
         gitignore_result = self._ensure_gitignore_entries(
             resolved,
-            c.Infra.REQUIRED_GITIGNORE_ENTRIES,
+            (
+                *c.Infra.REQUIRED_GITIGNORE_ENTRIES,
+                "!.pre-commit-config.yaml",
+            )
+            if is_workspace_root
+            else c.Infra.REQUIRED_GITIGNORE_ENTRIES,
         )
         if gitignore_result.failure:
             return r[m.Infra.SyncResult].fail(
                 gitignore_result.error or ".gitignore sync failed",
             )
         changed += 1 if gitignore_result.value else 0
+        if is_workspace_root:
+            pre_commit_result = self._sync_pre_commit_config(resolved)
+            if pre_commit_result.failure:
+                return r[m.Infra.SyncResult].fail(
+                    pre_commit_result.error or ".pre-commit-config.yaml sync failed",
+                )
+            changed += 1 if pre_commit_result.value else 0
         makefile_result = self._sync_makefile_if_needed(
             resolved,
             effective_root,
@@ -113,7 +134,6 @@ class FlextInfraSyncService(
                 makefile_result.error or "Makefile sync failed",
             )
         changed += makefile_result.value
-        is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
             child_sync_result = self._sync_workspace_children(
                 resolved,

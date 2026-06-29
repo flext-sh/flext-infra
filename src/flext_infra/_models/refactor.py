@@ -235,21 +235,6 @@ class FlextInfraModelsRefactor(
             m.Field(description="Family letter to MRO chain mapping"),
         ]
 
-    # -- MRO Target Specification -----------------------------------------------
-
-    class MROTargetSpec(m.ContractModel):
-        """Specification for an MRO target family."""
-
-        family_alias: Annotated[
-            t.NonEmptyStr, m.Field(description="Family alias letter")
-        ]
-        file_names: Annotated[frozenset[str], m.Field(description="File name patterns")]
-        package_directory: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Package directory name"),
-        ]
-        class_suffix: Annotated[t.NonEmptyStr, m.Field(description="Class suffix")]
-
     # -- Namespace Enforcer Models ---------------------------------------------
 
     class ParsedPythonModule(m.ArbitraryTypesModel):

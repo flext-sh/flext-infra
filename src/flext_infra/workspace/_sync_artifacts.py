@@ -93,19 +93,35 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         Never removes or reorders existing entries; returns True iff changed.
         """
         gitignore = workspace_root / c.Infra.GITIGNORE
+        existing_result = self._gitignore_existing_patterns(gitignore)
+        if existing_result.failure:
+            return r[bool].fail(existing_result.error or ".gitignore read failed")
+        missing = [p for p in required if p not in existing_result.value]
+        if not missing:
+            return r[bool].ok(False)
+        return self._append_gitignore_entries(gitignore, missing)
+
+    def _gitignore_existing_patterns(
+        self,
+        gitignore: Path,
+    ) -> p.Result[frozenset[str]]:
+        """Read existing non-empty .gitignore patterns."""
+        if not gitignore.exists():
+            return r[frozenset[str]].ok(frozenset())
+        read = u.Cli.files_read_text(gitignore)
+        if read.failure:
+            return r[frozenset[str]].fail(read.error or ".gitignore read failed")
+        return r[frozenset[str]].ok(
+            frozenset(line.strip() for line in read.value.splitlines() if line.strip())
+        )
+
+    def _append_gitignore_entries(
+        self,
+        gitignore: Path,
+        missing: t.StrSequence,
+    ) -> p.Result[bool]:
+        """Append missing generated .gitignore entries."""
         try:
-            existing_lines: t.StrSequence = []
-            if gitignore.exists():
-                read = u.Cli.files_read_text(gitignore)
-                if read.failure:
-                    return r[bool].fail(read.error or ".gitignore read failed")
-                existing_lines = read.value.splitlines()
-            existing_patterns = {
-                line.strip() for line in existing_lines if line.strip()
-            }
-            missing = [p for p in required if p not in existing_patterns]
-            if not missing:
-                return r[bool].ok(False)
             with gitignore.open("a", encoding=c.Cli.ENCODING_DEFAULT) as handle:
                 _ = handle.write(
                     "\n# --- workspace-sync: required ignores (auto-managed) ---\n",
@@ -115,6 +131,20 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
             return r[bool].ok(True)
         except OSError as exc:
             return r[bool].fail_op(".gitignore update", exc)
+
+    def _sync_pre_commit_config(
+        self,
+        workspace_root: Path,
+    ) -> p.Result[bool]:
+        """Sync the workspace pre-commit config from the canonical SSOT."""
+        target_path = workspace_root / ".pre-commit-config.yaml"
+        content: str = c.Infra.PRE_COMMIT_CONFIG
+        content_hash = u.Cli.sha256_content(content)
+        if target_path.exists():
+            existing_hash = u.Cli.sha256_file(target_path)
+            if content_hash == existing_hash:
+                return r[bool].ok(False)
+        return u.Cli.atomic_write_text_file(target_path, content)
 
     def _sync_basemk(
         self,

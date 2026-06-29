@@ -18,13 +18,16 @@ from rope.base.exceptions import (
 from rope.base.project import Project
 from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction
-from rope.base.resources import File
 
-from flext_infra import c, t
+from flext_core import t
+from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._utilities._rope_core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )
-from flext_infra._utilities.file_iteration import FlextInfraUtilitiesFileIteration
+from flext_infra._utilities._rope_core_resources import (
+    FlextInfraUtilitiesRopeCoreResourcesMixin,
+)
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.rope_pep695_patch import (
@@ -32,7 +35,10 @@ from flext_infra._utilities.rope_pep695_patch import (
 )
 
 
-class FlextInfraUtilitiesRopeCore(FlextInfraUtilitiesRopeCorePyModuleMixin):
+class FlextInfraUtilitiesRopeCore(
+    FlextInfraUtilitiesRopeCoreResourcesMixin,
+    FlextInfraUtilitiesRopeCorePyModuleMixin,
+):
     """Core Rope lifecycle helpers."""
 
     SYNTAX_ERRORS: ClassVar[tuple[type[BaseException], ...]] = (
@@ -51,9 +57,11 @@ class FlextInfraUtilitiesRopeCore(FlextInfraUtilitiesRopeCorePyModuleMixin):
     def init_rope_project(
         workspace_root: Path,
         *,
-        project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
-        src_dir: str = c.Infra.DEFAULT_SRC_DIR,
-        ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
+        project_prefix: str = FlextInfraConstantsSharedInfra.PKG_PREFIX_HYPHEN,
+        src_dir: str = FlextInfraConstantsSharedInfra.DEFAULT_SRC_DIR,
+        ignored_resources: t.StrSequence = (
+            FlextInfraConstantsRope.ROPE_IGNORED_RESOURCES
+        ),
     ) -> Project:
         """Create a rope Project over workspace_root with no disk artifacts."""
         _ = (project_prefix, src_dir)
@@ -95,113 +103,6 @@ class FlextInfraUtilitiesRopeCore(FlextInfraUtilitiesRopeCorePyModuleMixin):
             yield rope_project
         finally:
             rope_project.close()
-
-    @staticmethod
-    def get_resource_from_path(
-        rope_project: t.Infra.RopeProject,
-        file_path: Path,
-    ) -> t.Infra.RopeResource | None:
-        """Return rope File for a filesystem Path, or None if outside project."""
-        try:
-            root_real_path = getattr(
-                getattr(rope_project, "root", None),
-                "real_path",
-                None,
-            )
-            if not isinstance(root_real_path, str):
-                return None
-            relative_path = str(file_path.resolve().relative_to(Path(root_real_path)))
-            resource = rope_project.get_resource(relative_path)
-            return resource if isinstance(resource, File) else None
-        except (ResourceNotFoundError, ValueError):
-            return None
-
-    @staticmethod
-    def fetch_python_resource(
-        rope_project: t.Infra.RopeProject,
-        file_path: Path,
-        *,
-        skip_protected: bool = False,
-        skip_settings: bool = False,
-        skip_alias_modules: bool = False,
-        skip_init_py: bool = False,
-    ) -> t.Infra.RopeResource | None:
-        """Resolve a Python source as a Rope resource (or ``None`` to skip).
-
-        Centralizes the per-detector pre-amble: Python-extension filter,
-        optional skip lists for protected/settings/alias-module files,
-        plus the Rope resource resolution. Returns ``None`` when the
-        caller should bail out of the file — the canonical "skip this
-        file" sentinel.
-        """
-        result: t.Infra.RopeResource | None = None
-        if (
-            file_path.suffix == c.Infra.EXT_PYTHON
-            and not (skip_init_py and file_path.name == c.Infra.INIT_PY)
-            and not (
-                skip_protected and file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
-            )
-            and not (
-                skip_settings
-                and file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
-            )
-            and not (
-                skip_alias_modules
-                and file_path.stem in c.Infra.NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS
-            )
-        ):
-            result = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                rope_project, file_path
-            )
-        return result
-
-    @staticmethod
-    def python_resources(
-        rope_project: t.Infra.RopeProject,
-    ) -> t.SequenceOf[t.Infra.RopeResource]:
-        """Return stable Python file resources for one Rope project."""
-        return tuple(
-            resource
-            for file_path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project)
-            if (
-                resource := FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project,
-                    file_path,
-                )
-            )
-            is not None
-        )
-
-    @staticmethod
-    def python_file_paths(
-        rope_project: t.Infra.RopeProject,
-    ) -> t.SequenceOf[Path]:
-        """Return stable Python file paths for one Rope project."""
-        root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
-        if not isinstance(root_real_path, str):
-            return ()
-        file_paths = FlextInfraUtilitiesFileIteration.iter_python_files(
-            Path(root_real_path),
-        )
-        if file_paths.failure:
-            return ()
-        return tuple(
-            sorted(
-                file_paths.unwrap(),
-                key=lambda file_path: file_path.as_posix(),
-            ),
-        )
-
-    @staticmethod
-    def resource_file_path(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> Path | None:
-        """Resolve one Rope resource back to an absolute filesystem path."""
-        root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
-        if not isinstance(root_real_path, str):
-            return None
-        return Path(root_real_path, resource.path).resolve()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeCore"]

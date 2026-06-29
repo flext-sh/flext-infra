@@ -21,30 +21,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from jinja2 import (
-    Environment,
-    FileSystemLoader,
-    StrictUndefined,
-    TemplateError,
-    select_autoescape,
+from flext_infra import c, p, r, t, u
+from flext_infra.workspace._workspace_makefile_template import (
+    FlextInfraWorkspaceMakefileTemplateMixin,
 )
 
-from flext_infra import c, p, r, t, u
 
-
-class FlextInfraWorkspaceMakefileGenerator:
+class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMixin):
     """Generate and keep the workspace root Makefile in sync with flext_infra.
 
     The canonical source of truth is
     ``flext_infra/templates/workspace_makefile.mk.j2``.  Edit that file
     to change workspace-level verbs; then run ``make sync`` to propagate.
     """
-
-    @property
-    def template_path(self) -> Path:
-        """Path to the Makefile Jinja2 template used for workspace generation."""
-        template_name: str = c.Infra.MAKEFILE_TEMPLATE_NAME
-        return Path(__file__).parent.parent / "templates" / template_name
 
     def generate(self, workspace_root: Path) -> p.Result[bool]:
         """Regenerate the workspace root Makefile from the stored template.
@@ -77,38 +66,6 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         return u.Cli.atomic_write_text_file(makefile, content)
 
-    @staticmethod
-    def _build_template_lines(content: str) -> str:
-        """Transform raw Makefile content into a Jinja2 template string."""
-        lines = content.splitlines(keepends=True)
-        out: t.MutableSequenceOf[str] = []
-        header_done = False
-        for line in lines:
-            if not header_done and line.startswith("#"):
-                out.extend((
-                    "# =============================================================================\n",
-                    "# FLEXT Workspace Makefile\n",
-                    "# =============================================================================\n",
-                    f"{c.Infra.MAKEFILE_GENERATED_MARKER}\n",
-                    "# Run 'make sync' from workspace root to regenerate this file.\n",
-                    "# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n",
-                    "# =============================================================================\n",
-                ))
-                header_done = True
-                continue
-            if not header_done and not line.strip():
-                continue
-            if line.startswith("PR_BRANCH ?="):
-                out.append("PR_BRANCH ?= {{ pr_branch }}\n")
-                continue
-            out.append(line)
-        template_content = "".join(out)
-        if c.Infra.MAKEFILE_CUSTOM_INCLUDE not in content:
-            if not template_content.endswith("\n"):
-                template_content += "\n"
-            template_content += f"\n# Workspace-specific custom targets (optional, never overwritten by sync)\n{c.Infra.MAKEFILE_CUSTOM_INCLUDE}\n"
-        return template_content
-
     def _bootstrap_template(self, makefile: Path) -> p.Result[bool]:
         """Create the template from the current Makefile (one-time bootstrap)."""
         result: p.Result[bool]
@@ -127,73 +84,14 @@ class FlextInfraWorkspaceMakefileGenerator:
                     template_content = self._build_template_lines(content)
 
                     try:
-                        _ = u.Cli.ensure_dir(Path(__file__).parent.parent / "templates")
-                        template_write = u.Cli.atomic_write_text_file(
-                            self.template_path, template_content
+                        result = self._write_bootstrap_template(
+                            makefile=makefile,
+                            pr_branch=pr_branch,
+                            template_content=template_content,
                         )
-                        if template_write.failure:
-                            result = template_write
-                        else:
-                            render_result = self._render_template(
-                                pr_branch=pr_branch,
-                                template_text=template_content,
-                            )
-                            if render_result.failure:
-                                result = r[bool].fail(
-                                    render_result.error or "template render failed"
-                                )
-                            else:
-                                result = u.Cli.atomic_write_text_file(
-                                    makefile, render_result.value
-                                )
                     except OSError as exc:
                         result = r[bool].fail_op("template bootstrap", exc)
         return result
-
-    def _render_template(
-        self,
-        *,
-        pr_branch: str,
-        template_text: str | None = None,
-    ) -> p.Result[str]:
-        """Render the workspace Makefile template with canonical make metadata."""
-        try:
-            environment = Environment(
-                loader=FileSystemLoader(
-                    str(Path(__file__).parent.parent / "templates")
-                ),
-                trim_blocks=False,
-                lstrip_blocks=False,
-                keep_trailing_newline=True,
-                undefined=StrictUndefined,
-                autoescape=select_autoescape(),
-            )
-            if template_text is None:
-                template_obj: t.Infra.JinjaTemplate = environment.get_template(
-                    c.Infra.MAKEFILE_TEMPLATE_NAME
-                )
-            else:
-                template_obj = environment.from_string(template_text)
-            rendered = self._render_template_content(
-                template_obj,
-                pr_branch=pr_branch,
-            )
-            return r[str].ok(rendered)
-        except (OSError, TemplateError, TypeError, ValueError) as exc:
-            return r[str].fail_op("template render", exc)
-
-    @staticmethod
-    def _render_template_content(
-        template: p.Infra.RenderableTemplate,
-        *,
-        pr_branch: str,
-    ) -> str:
-        """Render a validated template object into the final Makefile text."""
-        rendered: str = template.render(
-            pr_branch=pr_branch,
-            make=c.Infra,
-        )
-        return rendered
 
     @staticmethod
     def _current_branch(workspace_root: Path) -> str:

@@ -36,22 +36,7 @@ class FlextInfraUtilitiesBase:
         if cached is not None:
             return cached
         try:
-            raw_text = (
-                files("flext_infra.deps")
-                .joinpath("tool_config.yml")
-                .read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            )
-            parsed = u.Cli.yaml_parse(raw_text)
-            if parsed.failure:
-                result = r[mdts.ToolConfigDocument].fail(
-                    parsed.error or "tool_config.yml parse failed",
-                )
-                FlextInfraUtilitiesBase._tool_config_cache = result
-                return result
-            validated = mdts.ToolConfigDocument.model_validate(parsed.value)
-            result = r[mdts.ToolConfigDocument].ok(validated)
-            FlextInfraUtilitiesBase._tool_config_cache = result
-            return result
+            result = FlextInfraUtilitiesBase._load_tool_config_uncached()
         except (
             FileNotFoundError,
             OSError,
@@ -62,8 +47,24 @@ class FlextInfraUtilitiesBase:
             result = r[mdts.ToolConfigDocument].fail(
                 f"failed to load tool_config.yml: {exc}",
             )
-            FlextInfraUtilitiesBase._tool_config_cache = result
-            return result
+        FlextInfraUtilitiesBase._tool_config_cache = result
+        return result
+
+    @staticmethod
+    def _load_tool_config_uncached() -> p.Result[mdts.ToolConfigDocument]:
+        """Read and validate the dependency tool configuration once."""
+        raw_text = (
+            files("flext_infra.deps")
+            .joinpath("tool_config.yml")
+            .read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        )
+        parsed = u.Cli.yaml_parse(raw_text)
+        if parsed.failure:
+            return r[mdts.ToolConfigDocument].fail(
+                parsed.error or "tool_config.yml parse failed",
+            )
+        validated = mdts.ToolConfigDocument.model_validate(parsed.value)
+        return r[mdts.ToolConfigDocument].ok(validated)
 
     @staticmethod
     def load_tool_config() -> p.Result[mdts.ToolConfigDocument]:
