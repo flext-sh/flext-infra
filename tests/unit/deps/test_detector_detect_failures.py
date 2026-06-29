@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import u
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsDetectorDetectFailures:

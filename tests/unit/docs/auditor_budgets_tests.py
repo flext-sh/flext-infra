@@ -11,7 +11,8 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import t, u
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestLoadAuditBudgets:

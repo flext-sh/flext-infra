@@ -12,10 +12,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import r, tm
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
-from tests import m, r, t, u
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:

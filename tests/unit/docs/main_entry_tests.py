@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import main as infra_main
-from tests import u
+from tests.utilities import u
 
 
 def _workspace(tmp_path: Path, *, fixable: bool = False) -> Path:

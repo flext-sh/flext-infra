@@ -7,7 +7,8 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from tests import c, u
+from tests.constants import c
+from tests.utilities import u
 
 
 class TestsFlextInfraInfraWorkspaceDetector:

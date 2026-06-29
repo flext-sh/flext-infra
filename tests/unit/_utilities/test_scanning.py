@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m
+from tests.constants import c
+from tests.models import m
 
 
 class TestsFlextInfraUtilitiesscanning:

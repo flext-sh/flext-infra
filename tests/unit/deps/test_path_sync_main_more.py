@@ -12,7 +12,9 @@ from flext_tests import tm
 from flext_infra import (
     main,
 )
-from tests import m, t, u
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 def _nested_value(pyproject_path: Path, *keys: str) -> object:

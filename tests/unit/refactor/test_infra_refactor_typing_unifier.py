@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_infra import c
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-from tests import t
+from tests.typings import t
 
 
 class FlextInfraRefactorTypingUnificationRule:

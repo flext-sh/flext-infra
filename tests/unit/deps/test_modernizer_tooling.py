@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import tomlkit
+from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
@@ -13,7 +14,8 @@ from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from tests import m, tm, u
+from tests.models import m
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsModernizerTooling:

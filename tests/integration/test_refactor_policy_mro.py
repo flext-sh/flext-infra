@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
-from tests import c
+from tests.constants import c
 
 
 class TestsFlextInfraIntegrationRefactorPolicyMro:

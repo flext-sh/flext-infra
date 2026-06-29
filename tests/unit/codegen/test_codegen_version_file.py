@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from tests import c, t
+from tests.constants import c
+from tests.typings import t
 
 _WORKSPACE_PYPROJECT = """\
 [project]

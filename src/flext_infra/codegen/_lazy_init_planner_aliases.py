@@ -1,0 +1,183 @@
+"""Alias resolution (local and inherited) for the lazy-init planner."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_infra import c, m, t, u
+
+if TYPE_CHECKING:
+    from flext_infra import p
+
+
+class FlextInfraCodegenLazyInitPlannerAliasesMixin:
+    if TYPE_CHECKING:
+        rope_workspace: p.Infra.RopeWorkspaceDsl
+        lazy_init: m.Infra.LazyInitConfig
+        _parent_package_cache: dict[str, t.StrSequence]
+
+        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str: ...
+
+        def _module_exports(
+            self,
+            py_file: Path,
+            module_path: str,
+            *,
+            export_options: m.Infra.ExportOptions | None = None,
+        ) -> t.MutableLazyAliasMap: ...
+
+        def _package_entry(
+            self, pkg_dir: Path
+        ) -> m.Infra.RopePackageIndexEntry | None: ...
+
+        def _parents_from_constants_module(
+            self,
+            module_path: Path,
+            current_pkg: str,
+            visited: set[str] | None = None,
+        ) -> t.StrSequence: ...
+
+        def _resolve_inherited_alias_source(
+            self,
+            package_names: t.StrSequence,
+            alias_name: str,
+            *,
+            current_pkg: str,
+            use_test_runtime_aliases: bool,
+        ) -> str: ...
+
+    def _resolve_aliases(
+        self,
+        lazy_map: t.MutableLazyAliasMap,
+        *,
+        current_pkg: str,
+        pkg_dir: Path,
+        surface: str,
+    ) -> None:
+        """Inject inherited and local aliases into the lazy map."""
+        is_test_runtime_alias_surface = c.Infra.DIR_TESTS in {
+            current_pkg,
+            pkg_dir.name,
+            surface,
+        }
+        if (
+            not u.Infra.matches_project_namespace_package(current_pkg)
+            and not is_test_runtime_alias_surface
+        ):
+            return
+        self._resolve_local_aliases(
+            lazy_map,
+            current_pkg=current_pkg,
+            pkg_dir=pkg_dir,
+        )
+        inherited_key = (
+            surface if surface in self.lazy_init.inherited_exports else "src"
+        )
+        inherited_packages = self._resolve_transitive_parent_packages((
+            *self._parent_packages(pkg_dir),
+            self._source_package_name(pkg_dir, inherited_key),
+        ))
+        runtime_alias_names: list[str] = []
+        if is_test_runtime_alias_surface:
+            for alias_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
+                if not isinstance(alias_name, str):
+                    msg = f"Invalid runtime alias name: {alias_name!r}"
+                    raise TypeError(msg)
+                runtime_alias_names.append(alias_name)
+        alias_names = tuple(
+            dict.fromkeys((
+                *self.lazy_init.inherited_exports.get(inherited_key, ()),
+                *runtime_alias_names,
+            ))
+        )
+        for alias_name in alias_names:
+            existing = lazy_map.get(alias_name)
+            if existing is not None and existing[0].startswith(current_pkg):
+                continue
+            package_name = self._resolve_inherited_alias_source(
+                inherited_packages,
+                alias_name,
+                current_pkg=current_pkg,
+                use_test_runtime_aliases=is_test_runtime_alias_surface,
+            )
+            if package_name and package_name != current_pkg:
+                lazy_map[alias_name] = (package_name, alias_name)
+
+    def _resolve_local_aliases(
+        self,
+        lazy_map: t.MutableLazyAliasMap,
+        *,
+        current_pkg: str,
+        pkg_dir: Path,
+    ) -> None:
+        """Inject public_file_aliases from the lazy-init config into the lazy map."""
+        alias_to_file = {
+            alias_name: file_name
+            for file_name, alias_name in self.lazy_init.public_file_aliases.items()
+        }
+        for alias_name, file_name in alias_to_file.items():
+            existing = lazy_map.get(alias_name)
+            if existing is not None and existing[0].startswith(current_pkg):
+                continue
+            base_name = Path(file_name).stem
+            module_file = pkg_dir / file_name
+            package_dir = pkg_dir / base_name
+            module_name = f"{current_pkg}.{base_name}"
+            if module_file.is_file() and alias_name in self._module_exports(
+                module_file,
+                module_name,
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_assignments": True
+                }),
+            ):
+                lazy_map[alias_name] = (module_name, alias_name)
+                continue
+            if package_dir.is_dir() and (package_dir / c.Infra.INIT_PY).is_file():
+                package_exports = self._module_exports(
+                    package_dir / c.Infra.INIT_PY,
+                    module_name,
+                    export_options=m.Infra.ExportOptions.model_validate({
+                        "allow_assignments": True
+                    }),
+                )
+                if alias_name in package_exports:
+                    lazy_map[alias_name] = (module_name, alias_name)
+
+    def _resolve_transitive_parent_packages(
+        self,
+        package_names: t.StrSequence,
+    ) -> t.StrSequence:
+        """Return package_names expanded with their transitive parents (ordered)."""
+        ordered: list[str] = []
+        for package_name in package_names:
+            if not package_name or package_name in ordered:
+                continue
+            package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+                package_name
+            )
+            if package_dir is not None:
+                ordered.extend(
+                    self._resolve_transitive_parent_packages(
+                        self._parent_packages(package_dir)
+                    )
+                )
+            if package_name not in ordered:
+                ordered.append(package_name)
+        return tuple(ordered)
+
+    def _parent_packages(self, pkg_dir: Path) -> t.StrSequence:
+        """Return the list of parent package names declared in constants.py."""
+        cache_key = str(pkg_dir.resolve())
+        cached = self._parent_package_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        package_entry = self._package_entry(pkg_dir)
+        current_pkg = package_entry.package_name if package_entry is not None else ""
+        constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
+        if self.rope_workspace.resource(constants_path) is None:
+            self._parent_package_cache[cache_key] = ()
+            return ()
+        parents = self._parents_from_constants_module(constants_path, current_pkg)
+        self._parent_package_cache[cache_key] = parents
+        return parents

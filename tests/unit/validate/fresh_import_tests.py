@@ -14,7 +14,8 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from tests import m, t
+from tests.models import m
+from tests.typings import t
 
 
 @pytest.fixture

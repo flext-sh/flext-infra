@@ -9,7 +9,9 @@ from types import ModuleType
 import pytest
 
 import flext_infra as infra_pkg
-from tests import c, m, s
+from tests.base import s
+from tests.constants import c
+from tests.models import m
 
 
 class TestsFlextInfraPublicApi:

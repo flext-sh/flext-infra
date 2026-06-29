@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 {% if type_checking_enabled -%}
-import typing as _t
+from typing import TYPE_CHECKING
 
 {% endif -%}
 {% if use_merge_lazy_imports -%}

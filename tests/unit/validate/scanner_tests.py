@@ -12,7 +12,8 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests import c, t
+from tests.constants import c
+from tests.typings import t
 
 
 def _scanner() -> FlextInfraTextPatternScanner:

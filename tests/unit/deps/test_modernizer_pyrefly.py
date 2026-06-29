@@ -12,7 +12,8 @@ from flext_tests import tm
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from tests import m, u
+from tests.models import m
+from tests.utilities import u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:

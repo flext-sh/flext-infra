@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from tests import u
+from tests.utilities import u
 
 
 class TestGateErrorReportingPublicBehavior:

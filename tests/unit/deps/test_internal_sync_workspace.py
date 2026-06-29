@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests import u
+from tests.utilities import u
 
 
 @contextmanager

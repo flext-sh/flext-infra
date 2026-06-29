@@ -5,7 +5,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import main
-from tests import u
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsPathSyncMainEdges:

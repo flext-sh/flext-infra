@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests import m, u
+from tests.models import m
+from tests.utilities import u
 
 
 def test_anchorize_normalizes_headings() -> None:

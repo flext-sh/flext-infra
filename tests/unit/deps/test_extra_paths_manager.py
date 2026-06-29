@@ -7,7 +7,7 @@ import tomlkit
 from flext_tests import tm
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from tests import t
+from tests.typings import t
 
 _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
 

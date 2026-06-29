@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import t, u
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestFlextInfraCodegenLazyInit:

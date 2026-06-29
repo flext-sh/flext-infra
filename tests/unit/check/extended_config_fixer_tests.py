@@ -13,7 +13,7 @@ from flext_tests import tm
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import u
+from tests.utilities import u
 
 
 class TestConfigFixerProcessFile:

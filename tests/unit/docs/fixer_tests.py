@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
-from tests import m, u
+from tests.models import m
+from tests.utilities import u
 
 
 def test_fix_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:

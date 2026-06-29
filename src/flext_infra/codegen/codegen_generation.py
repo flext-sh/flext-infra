@@ -539,7 +539,7 @@ class FlextInfraCodegenGeneration:
             "",
             "from __future__ import annotations",
             "",
-            "import typing as _t",
+            "from typing import TYPE_CHECKING",
             "",
             "from flext_core.__version__ import (",
             "    __author__,",
@@ -558,7 +558,7 @@ class FlextInfraCodegenGeneration:
             ")",
             "from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
             "",
-            "if _t.TYPE_CHECKING:",
+            "if TYPE_CHECKING:",
             "    from flext_core.constants import FlextConstants, c",
             "    from flext_core.container import FlextContainer",
             "    from flext_core.context import FlextContext",
@@ -695,7 +695,7 @@ class FlextInfraCodegenGeneration:
         if not groups and not include_flext_types:
             return ()
         if not groups and include_flext_types:
-            return ("if _t.TYPE_CHECKING:", "    from flext_core import FlextTypes")
+            return ("if TYPE_CHECKING:", "    from flext_core import FlextTypes")
 
         normalized_groups: dict[str, t.StrPairSequence] = {}
         for mod, items in groups.items():
@@ -714,7 +714,7 @@ class FlextInfraCodegenGeneration:
         )
         root_name = "" if not local_package_root else local_package_root.split(".")[0]
 
-        lines: t.MutableSequenceOf[str] = ["if _t.TYPE_CHECKING:"]
+        lines: t.MutableSequenceOf[str] = ["if TYPE_CHECKING:"]
         if include_flext_types and not FlextInfraCodegenGeneration._has_flext_types(
             collapsed
         ):
@@ -800,7 +800,6 @@ class FlextInfraCodegenGeneration:
         publish_all = FlextInfraCodegenGeneration._is_public_api_root_namespace(
             current_pkg
         )
-        emit_type_checking_exports = publish_all or current_pkg == "tests"
         published_exports = (
             FlextInfraCodegenGeneration._build_published_exports(
                 exports,
@@ -867,7 +866,7 @@ class FlextInfraCodegenGeneration:
                 child_packages=(),
                 local_package_root=current_pkg,
             )
-            if emit_type_checking_exports
+            if type_checking_filtered
             else ()
         )
 

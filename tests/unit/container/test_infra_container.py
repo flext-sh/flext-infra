@@ -15,7 +15,8 @@ from io import StringIO
 import pytest
 
 from flext_core import FlextContainer
-from tests import c, u
+from tests.constants import c
+from tests.utilities import u
 
 
 class TestsFlextInfraContainerInfraContainer:

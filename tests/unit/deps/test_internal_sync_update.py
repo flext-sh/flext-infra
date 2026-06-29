@@ -10,7 +10,7 @@ from typing import Final
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests import u
+from tests.utilities import u
 
 _REPO_URL: Final[str] = "https://github.com/flext-sh/flext.git"
 

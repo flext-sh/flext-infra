@@ -8,7 +8,8 @@ from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
-from tests import m, u
+from tests.models import m
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsModernizerMypy:

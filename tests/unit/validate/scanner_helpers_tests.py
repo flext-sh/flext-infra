@@ -11,7 +11,9 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests import c, t, u
+from tests.constants import c
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestScannerHelpers:

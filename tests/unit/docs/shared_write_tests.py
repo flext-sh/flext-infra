@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import m, u
+from tests.models import m
+from tests.utilities import u
 
 
 def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:

@@ -4,7 +4,9 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import m, t, u
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsDetectionUncovered:

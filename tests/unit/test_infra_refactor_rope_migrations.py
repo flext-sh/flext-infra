@@ -10,7 +10,8 @@ from flext_infra.transformers.nested_class_propagation import (
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
-from tests import t, u
+from tests.typings import t
+from tests.utilities import u
 
 
 def _apply_transformer(

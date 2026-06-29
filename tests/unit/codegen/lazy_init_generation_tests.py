@@ -18,7 +18,8 @@ from flext_tests import tm
 import flext_infra as mod
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from tests import t, u
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestGenerateTypeChecking:
@@ -28,7 +29,7 @@ class TestGenerateTypeChecking:
         """Test with no imports returns header + FlextTypes only."""
         groups: t.MappingKV[str, t.StrPairSequence] = {}
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
-        tm.that(lines, contains="if _t.TYPE_CHECKING:")
+        tm.that(lines, contains="if TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
@@ -288,8 +289,10 @@ class TestGenerateFile:
         tm.that(content, contains="_LAZY_IMPORTS = build_lazy_import_map(")
         tm.that(content, lacks="merge_lazy_imports(")
         tm.that(content, contains="build_lazy_import_map(")
-        tm.that(content, contains='        "FlextVersion",')
-        tm.that(content, contains='        "__version__",')
+        tm.that(content, contains="__all__: tuple[str, ...] = (")
+        tm.that(content, contains='    "FlextVersion",')
+        tm.that(content, contains='    "__version__",')
+        tm.that(content, contains="public_exports=__all__")
 
     def test_skips_wildcard_runtime_modules_in_type_checking(self) -> None:
         """Test wildcard runtime imports are not duplicated in TYPE_CHECKING."""
@@ -367,7 +370,7 @@ class TestGenerateFile:
             inline_constants,
             "test_pkg",
         )
-        tm.that(content, contains="if _t.TYPE_CHECKING:")
+        tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(
             content,
             contains=(
@@ -389,12 +392,13 @@ class TestGenerateFile:
             inline_constants,
             "test_pkg",
         )
-        tm.that(content, contains="if _t.TYPE_CHECKING:")
-        tm.that(content, contains="import typing as _t")
+        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="from typing import TYPE_CHECKING")
         tm.that(content, contains="install_lazy_exports(")
-        tm.that(content, contains="public_exports=(")
-        tm.that(content, contains='        "Alpha",')
-        tm.that(content, contains='        "Beta",')
+        tm.that(content, contains="__all__: tuple[str, ...] = (")
+        tm.that(content, contains='    "Alpha",')
+        tm.that(content, contains='    "Beta",')
+        tm.that(content, contains="public_exports=__all__")
 
     def test_root_namespace_passes_public_exports_to_lazy_loader(self) -> None:
         """Root namespace exposes lazy-loader and static __all__ contracts."""
@@ -408,7 +412,7 @@ class TestGenerateFile:
             "test_pkg",
         )
         tm.that(
-            content.rfind("public_exports=(") > content.rfind("_LAZY_IMPORTS"),
+            content.rfind("public_exports=__all__") > content.rfind("_LAZY_IMPORTS"),
             eq=True,
         )
         tm.that(content, contains="__all__: tuple[str, ...] = (")
@@ -428,9 +432,9 @@ class TestGenerateFile:
         tm.that(content, lacks="from test_pkg._internal.alpha import Alpha")
         tm.that(content, contains='".public.beta": ("Beta",)')
         tm.that(content, contains="from test_pkg.public.beta import Beta")
-        public_exports = content[content.index("public_exports=(") :]
-        tm.that(public_exports, lacks='        "Alpha",')
-        tm.that(public_exports, contains='        "Beta",')
+        public_exports = content[content.index("__all__:") :]
+        tm.that(public_exports, lacks='    "Alpha",')
+        tm.that(public_exports, contains='    "Beta",')
 
     def test_root_namespace_type_checking_uses_source_modules(self) -> None:
         """Root namespace TYPE_CHECKING must target real source modules."""
@@ -493,8 +497,8 @@ class TestGenerateFile:
         tm.that(content, contains="publish_all=False")
         tm.that(content, lacks="__all__: list[str] = [")
 
-    def test_subpackage_omits_static_analysis_hints(self) -> None:
-        """Subpackage __init__.py keeps lazy exports private to runtime plumbing."""
+    def test_subpackage_keeps_static_analysis_hints(self) -> None:
+        """Subpackage __init__.py keeps lazy runtime plus static hints."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["ExamplesFlextModelsEx00"],
             {
@@ -507,9 +511,9 @@ class TestGenerateFile:
             "examples.models",
         )
         tm.that(content, contains='".ex00": ("ExamplesFlextModelsEx00",)')
-        tm.that(content, lacks="if _t.TYPE_CHECKING:")
-        tm.that(content, lacks="import typing as _t")
-        tm.that(content, lacks="from examples.models.ex00 import")
+        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="from typing import TYPE_CHECKING")
+        tm.that(content, contains="from examples.models.ex00 import")
         tm.that(content, lacks="from models")
 
     def test_root_namespace_type_checking_skips_module_reexport_names(self) -> None:
@@ -550,7 +554,7 @@ class TestGenerateFile:
             {},
             "test_pkg",
         )
-        all_block_start = content.index("public_exports=(")
+        all_block_start = content.index("__all__:")
         all_block = content[all_block_start:]
         alias_positions = tuple(
             all_block.index(f'    "{alias}",')
@@ -582,6 +586,7 @@ class TestGenerateFile:
         tm.that(content, lacks='"constants": "test_pkg.constants"')
         tm.that(content, lacks='"tools": "test_pkg.tools"')
         tm.that(content, contains="__all__: tuple[str, ...] = (")
+        tm.that(content, contains="public_exports=__all__")
         tm.that(content, lacks='    "_constants",')
         tm.that(content, lacks='    "api",')
         tm.that(content, lacks='    "constants",')
@@ -607,8 +612,8 @@ class TestGenerateFile:
         tm.that(content, lacks='"test_pkg.services"')
         tm.that(content, lacks="_LAZY_IMPORTS.pop(")
 
-    def test_subpackage_keeps_lazy_exports_without_static_hints(self) -> None:
-        """Non-root package __init__.py exposes runtime lazy access only."""
+    def test_subpackage_keeps_lazy_runtime_with_static_hints(self) -> None:
+        """Non-root package __init__.py keeps lazy runtime with static hints."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
@@ -618,20 +623,17 @@ class TestGenerateFile:
             inline_constants,
             "test_pkg.transformers",
         )
-        tm.that(content, lacks="if _t.TYPE_CHECKING:")
-        tm.that(content, lacks="import typing as _t")
-        tm.that(content, lacks="from mod import Alpha as Alpha, Beta as Beta")
+        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains="from typing import TYPE_CHECKING")
+        tm.that(content, contains="from mod import Alpha as Alpha")
         tm.that(content, lacks="__all__: tuple[str, ...] = (")
         tm.that(
             content,
-            contains=(
-                "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, "
-                "publish_all=False)"
-            ),
+            contains="publish_all=False,",
         )
 
     def test_tests_root_is_not_public_abi(self) -> None:
-        """Consumer test root keeps type-checker aliases without public ABI."""
+        """Consumer test root keeps static hints without public ABI."""
         content = FlextInfraCodegenGeneration.generate_file(
             ["Alpha", "t"],
             {"Alpha": ("tests.alpha", "Alpha"), "t": ("flext_tests", "t")},
@@ -640,14 +642,11 @@ class TestGenerateFile:
         )
         tm.that(content, contains='".alpha": ("Alpha",)')
         tm.that(content, lacks="public_exports=(")
-        tm.that(content, contains="if _t.TYPE_CHECKING:")
+        tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="from flext_tests import t as t")
         tm.that(
             content,
-            contains=(
-                "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, "
-                "publish_all=False)"
-            ),
+            contains="publish_all=False,",
         )
 
 

@@ -7,7 +7,9 @@ from typing import override
 
 from flext_infra import c
 from flext_infra.refactor.engine_file import FlextInfraRefactorFileExecutor
-from tests import m, t, u
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 class _FileRuleHarness(FlextInfraRefactorFileExecutor):

@@ -12,7 +12,9 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests import c, m, t
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
 
 
 class TestViolationPattern:

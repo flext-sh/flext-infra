@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import u
+from tests.utilities import u
 
 
 class TestsFlextInfraRefactorRopeStubs:

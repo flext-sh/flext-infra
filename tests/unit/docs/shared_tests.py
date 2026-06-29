@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, m, u
+from tests.constants import c
+from tests.models import m
+from tests.utilities import u
 
 
 def test_doc_scope_creation(tmp_path: Path) -> None:

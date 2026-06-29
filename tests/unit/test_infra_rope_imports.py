@@ -10,7 +10,7 @@ import rope.refactor.importutils as rope_importutils
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import u
+from tests.utilities import u
 
 
 class TestsFlextInfraRopeImports:

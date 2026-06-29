@@ -17,7 +17,9 @@ from flext_tests import (
 
 import flext_infra as infra_pkg
 from flext_infra import FlextInfraSettings
-from tests import c, t, u
+from tests.constants import c
+from tests.typings import t
+from tests.utilities import u
 
 reset_settings = _shared_reset_settings
 settings = _shared_settings

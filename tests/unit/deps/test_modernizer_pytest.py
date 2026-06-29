@@ -7,7 +7,9 @@ from flext_tests import tm
 from tomlkit import TOMLDocument
 
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-from tests import m, t, u
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:

@@ -8,9 +8,11 @@ from collections.abc import (
 from pathlib import Path
 
 import tomlkit
+from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from tests import m, tm, u
+from tests.models import m
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsModernizerPyright:

@@ -16,7 +16,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from tests import u
+from tests.utilities import u
 
 _MINOR: int = sys.version_info.minor
 _BAD: int = _MINOR + 1

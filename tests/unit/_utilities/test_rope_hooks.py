@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import m, u
+from tests.models import m
+from tests.utilities import u
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:

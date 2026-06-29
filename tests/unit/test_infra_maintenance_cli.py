@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from flext_infra import main as infra_main
-from tests import t
+from tests.typings import t
 
 
 def main(argv: t.StrSequence | None = None) -> int:

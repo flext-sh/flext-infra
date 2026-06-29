@@ -12,7 +12,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_tests import FlextTestsUtilities
+from flext_tests import FlextTestsUtilities, r
 from tomlkit import TOMLDocument
 
 from flext_cli import cli as cli_facade
@@ -26,7 +26,10 @@ from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import c, m, p, r, t
+from tests.constants import c
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):

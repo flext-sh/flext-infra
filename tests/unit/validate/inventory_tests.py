@@ -11,7 +11,8 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.validate.inventory import FlextInfraInventoryService
-from tests import m, t
+from tests.models import m
+from tests.typings import t
 
 
 class TestInventoryServiceCore:

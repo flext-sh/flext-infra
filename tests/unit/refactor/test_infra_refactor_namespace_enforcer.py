@@ -8,7 +8,8 @@ from flext_tests import tm
 
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from tests import m, t
+from tests.models import m
+from tests.typings import t
 
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:

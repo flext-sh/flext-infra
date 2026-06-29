@@ -10,7 +10,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
-from tests import t
+from tests.typings import t
 
 _V = FlextInfraManualCommandValidator
 

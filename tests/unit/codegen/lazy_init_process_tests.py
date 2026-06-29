@@ -8,7 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, t, u
+from tests.constants import c
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestProcessDirectory:
@@ -217,8 +219,10 @@ class TestProcessDirectory:
         assert "exclude_names=" not in init_content
         assert "module_name=__name__" not in init_content
 
-    def test_includes_child_exports(self, tmp_path: Path) -> None:
-        """Parent package includes exports discovered from child packages."""
+    def test_child_package_keeps_exports_without_root_leak(
+        self, tmp_path: Path
+    ) -> None:
+        """Child package keeps its exports without leaking them through public root."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
         )
@@ -247,9 +251,13 @@ class TestProcessDirectory:
 
         assert result == 0
         parent_init = (package_root / "__init__.py").read_text(encoding="utf-8")
+        child_init = (sub_dir / "__init__.py").read_text(encoding="utf-8")
         assert "FlextTestsModels" in parent_init
-        assert "FlextTestsService" in parent_init
-        assert "ALL_STREAMS" in parent_init
+        assert "FlextTestsService" not in parent_init
+        assert "ALL_STREAMS" not in parent_init
+        assert "FlextTestsService" in child_init
+        assert "ALL_STREAMS" in child_init
+        assert "if TYPE_CHECKING:" in child_init
 
     @pytest.mark.parametrize(
         ("surface", "family_dir", "file_name", "class_name"),
@@ -337,8 +345,9 @@ class TestProcessDirectory:
 
         assert result == 0
         init_content = (tests_dir / "__init__.py").read_text(encoding="utf-8")
-        assert "if _t.TYPE_CHECKING:" in init_content
-        assert "__all__: list[str] = [" in init_content
+        assert "if TYPE_CHECKING:" in init_content
+        assert "__all__: list[str] = [" not in init_content
+        assert "publish_all=False" in init_content
         assert "TestsFlextTypes" in init_content
         assert f'"{"t"}"' in init_content
 

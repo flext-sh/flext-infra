@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import main as infra_main
-from tests import u
+from tests.utilities import u
 
 
 def test_docs_cli_validate_fails_before_generation(tmp_path: Path) -> None:

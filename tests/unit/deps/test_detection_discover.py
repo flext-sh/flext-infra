@@ -6,7 +6,8 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import m, u
+from tests.models import m
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsDetectionDiscover:

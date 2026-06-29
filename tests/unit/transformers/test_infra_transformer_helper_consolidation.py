@@ -7,7 +7,8 @@ from pathlib import Path
 from flext_infra.transformers.helper_consolidation import (
     FlextInfraHelperConsolidationTransformer,
 )
-from tests import t, u
+from tests.typings import t
+from tests.utilities import u
 
 
 def _transform_source(

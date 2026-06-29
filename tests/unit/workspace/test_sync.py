@@ -6,10 +6,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
+from flext_tests import r
+
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests import m, p, r, t, u
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
+from tests.utilities import u
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:

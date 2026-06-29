@@ -8,10 +8,13 @@ from collections.abc import (
 from pathlib import Path
 from typing import overload, override
 
+from flext_tests import r
+
 from flext_infra import t
 from flext_infra.refactor.engine import FlextInfraRefactorEngine
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-from tests import p, r, u
+from tests.protocols import p
+from tests.utilities import u
 
 
 class EngineSafetyStub(FlextInfraRefactorSafetyManager):

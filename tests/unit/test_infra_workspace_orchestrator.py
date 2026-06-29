@@ -4,10 +4,12 @@ from pathlib import Path
 from typing import override
 
 import pytest
-from flext_tests import tm
+from flext_tests import r, tm
 
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from tests import m, p, r, t
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 
 
 @pytest.fixture

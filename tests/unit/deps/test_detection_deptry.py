@@ -4,7 +4,9 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import c, t, u
+from tests.constants import c
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsDetectionDeptry:

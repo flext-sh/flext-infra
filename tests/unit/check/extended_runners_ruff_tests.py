@@ -10,7 +10,8 @@ from flext_infra import m
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests import t, u
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestRealGateRunners:

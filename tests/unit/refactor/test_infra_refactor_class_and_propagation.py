@@ -11,7 +11,7 @@ from flext_infra.transformers.signature_propagator import (
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
-from tests import m
+from tests.models import m
 
 
 class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:

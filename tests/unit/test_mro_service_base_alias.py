@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flext_cli import s as cli_service_base
 from flext_infra import FlextInfraServiceBase
-from tests import u
+from tests.utilities import u
 
 
 def test_service_base_generic_alias_mro_is_permitted() -> None:

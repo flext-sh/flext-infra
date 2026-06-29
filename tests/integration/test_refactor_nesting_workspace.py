@@ -9,7 +9,7 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-from tests import m
+from tests.models import m
 
 
 class TestsFlextInfraIntegrationRefactorNestingWorkspace:

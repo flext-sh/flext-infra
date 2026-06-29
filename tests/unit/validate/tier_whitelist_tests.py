@@ -18,7 +18,8 @@ import pytest
 from flext_tests import tf, tm
 
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
-from tests import m, t
+from tests.models import m
+from tests.typings import t
 
 
 @pytest.fixture
