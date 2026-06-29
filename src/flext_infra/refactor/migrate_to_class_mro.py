@@ -54,20 +54,20 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         )
         scan_duration = perf_counter() - scan_start
         warnings: list[str] = []
-        stash_ref = ""
+        checkpoint_ref = ""
         safety_manager: FlextInfraRefactorSafetyManager | None = None
         if apply:
             safety_manager = FlextInfraRefactorSafetyManager()
-            stash_outcome = safety_manager.create_pre_transformation_stash(
+            checkpoint_outcome = safety_manager.create_pre_transformation_checkpoint(
                 self._workspace_root,
                 label="flext-infra-refactor-migrate-to-class-mro",
             )
-            if stash_outcome.failure:
+            if checkpoint_outcome.failure:
                 warnings.append(
-                    f"Pre-transformation stash failed: {stash_outcome.error}",
+                    f"Pre-transformation checkpoint failed: {checkpoint_outcome.error}",
                 )
             else:
-                stash_ref = stash_outcome.value
+                checkpoint_ref = checkpoint_outcome.value
         rewrite_start = perf_counter()
         migrations, rewrites, errors = (
             FlextInfraRefactorMROImportRewriter.migrate_workspace(
@@ -92,7 +92,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
             if safety_manager is not None and (errors or mro_failures):
                 rollback_outcome = safety_manager.rollback(
                     self._workspace_root,
-                    stash_ref=stash_ref,
+                    checkpoint_ref=checkpoint_ref,
                 )
                 if rollback_outcome.failure:
                     warnings.append(
@@ -131,7 +131,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
             rewrites=tuple(rewrites),
             remaining_violations=remaining_violations,
             mro_failures=mro_failures,
-            stash_ref=stash_ref,
+            checkpoint_ref=checkpoint_ref,
             scan_duration_seconds=scan_duration,
             rewrite_duration_seconds=rewrite_duration,
             validation_duration_seconds=validation_duration,

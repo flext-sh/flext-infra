@@ -34,7 +34,7 @@ class FlextInfraRefactorSafetyManager:
         """Return whether an emergency stop has been requested."""
         return bool(self._emergency_stop_reason)
 
-    def create_pre_transformation_stash(
+    def create_pre_transformation_checkpoint(
         self,
         workspace_root: Path,
         *,
@@ -51,9 +51,13 @@ class FlextInfraRefactorSafetyManager:
         self._bak_paths = u.Infra.backup_files(py_files)
         return r[str].ok(str(workspace_root))
 
-    def rollback(self, workspace_root: Path, stash_ref: str = "") -> p.Result[bool]:
+    def rollback(
+        self,
+        workspace_root: Path,
+        checkpoint_ref: str = "",
+    ) -> p.Result[bool]:
         """Restore previously backed up files."""
-        _ = workspace_root, stash_ref
+        _ = workspace_root, checkpoint_ref
         u.Infra.restore_files(self._bak_paths)
         self._bak_paths = []
         return r[bool].ok(True)
@@ -63,7 +67,7 @@ class FlextInfraRefactorSafetyManager:
         workspace_root: Path,
         *,
         status: str,
-        stash_ref: str,
+        checkpoint_ref: str,
         processed_targets: t.StrSequence,
     ) -> p.Result[bool]:
         """Persist checkpoint metadata for the current refactor run.
@@ -72,7 +76,7 @@ class FlextInfraRefactorSafetyManager:
         checkpoint state is intentionally a no-op hook used by integrations
         and tests to observe lifecycle sequencing.
         """
-        _ = workspace_root, status, stash_ref, processed_targets
+        _ = workspace_root, status, checkpoint_ref, processed_targets
         return r[bool].ok(True)
 
     @staticmethod

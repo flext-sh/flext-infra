@@ -35,14 +35,43 @@ class FlextInfraProjectMigratorArtifactsMixin:
             return r[str].ok(f"[DRY-RUN] {message}")
         return r[str].ok("")
 
+    @staticmethod
+    def _is_flext_infra_root(project_root: Path) -> bool:
+        """Return True when the path is the flext-infra project root."""
+        return (project_root / "src" / "flext_infra" / "__init__.py").is_file()
+
     def _migrate_basemk(
         self,
         project_root: Path,
         *,
         dry_run: bool,
     ) -> p.Result[str]:
-        """Migrate basemk."""
+        """Migrate basemk.
+
+        The canonical base.mk now lives only in flext-infra. Other projects
+        must not keep a local copy.
+        """
         target = project_root / c.Infra.BASE_MK
+        is_canonical = self._is_flext_infra_root(project_root)
+
+        if not is_canonical:
+            if not target.exists():
+                return self._no_change_result(
+                    "no local base.mk to remove",
+                    dry_run=dry_run,
+                )
+            if not dry_run:
+                try:
+                    target.unlink()
+                except OSError as exc:
+                    return r[str].fail_op("base.mk removal", exc)
+            return r[str].ok(
+                self._action_text(
+                    "removed obsolete local base.mk",
+                    dry_run=dry_run,
+                ),
+            )
+
         generator = self._get_generator()
         generated = generator.generate_basemk()
         if generated.failure:
@@ -56,7 +85,7 @@ class FlextInfraProjectMigratorArtifactsMixin:
             current = read.value
         if u.Cli.sha256_content(current) == u.Cli.sha256_content(generated_text):
             return self._no_change_result(
-                "base.mk already up-to-date",
+                "canonical base.mk already up-to-date",
                 dry_run=dry_run,
             )
         if not dry_run:
@@ -66,7 +95,7 @@ class FlextInfraProjectMigratorArtifactsMixin:
                 return r[str].fail_op("base.mk update", exc)
         return r[str].ok(
             self._action_text(
-                "base.mk regenerated via BaseMkGenerator",
+                "canonical base.mk regenerated via BaseMkGenerator",
                 dry_run=dry_run,
             ),
         )

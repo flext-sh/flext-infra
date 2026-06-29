@@ -56,6 +56,10 @@ PROJECT_ROOT := $(CURDIR)
 ifeq ($(FLEXT_STANDALONE),1)
 FLEXT_MODE := standalone
 else
+# Caller may already know the workspace root (e.g., when including flext-infra/base.mk).
+ifdef FLEXT_WORKSPACE_ROOT
+FLEXT_MODE := workspace
+else
 # Pure Make detection: if base.mk lives in a parent dir, we are inside a workspace.
 # No Python dependency — shell/Make only until venv is ready.
 ifneq ($(BASE_MK_DIR),$(PROJECT_ROOT))
@@ -64,9 +68,14 @@ else
 FLEXT_MODE := standalone
 endif
 endif
+endif
 
 ifeq ($(FLEXT_MODE),workspace)
+# Prefer the caller-provided workspace root; fall back to the directory holding base.mk.
+WORKSPACE_ROOT := $(FLEXT_WORKSPACE_ROOT)
+ifndef WORKSPACE_ROOT
 WORKSPACE_ROOT := $(BASE_MK_DIR)
+endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
 ifeq ($(wildcard $(WORKSPACE_VENV)),)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv

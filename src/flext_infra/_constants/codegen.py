@@ -52,6 +52,12 @@ class FlextInfraConstantsCodegen:
         "scripts/**/__init__.py",
     )
     "Glob patterns for all directories the lazy-init generator scans."
+    NON_PUBLIC_LAZY_ROOTS: Final[frozenset[str]] = frozenset({
+        "examples",
+        "scripts",
+        "tests",
+    })
+    "Root import surfaces generated as private lazy plumbing, not public ABI."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s",

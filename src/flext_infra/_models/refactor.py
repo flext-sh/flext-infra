@@ -150,7 +150,7 @@ class FlextInfraModelsRefactor(
         ] = m.Field(default_factory=tuple)
 
     class Checkpoint(
-        mm.StashRefMixin,
+        mm.CheckpointRefMixin,
         m.ArbitraryTypesModel,
     ):
         """Serialisable checkpoint state for refactor safety recovery."""

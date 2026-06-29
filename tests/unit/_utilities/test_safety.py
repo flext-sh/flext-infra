@@ -35,7 +35,7 @@ class TestsFlextInfraUtilitiessafety:
         assert result.success
         assert result.value == ""
 
-    def test_create_checkpoint_creates_stash_for_dirty_repo(
+    def test_create_checkpoint_fails_for_dirty_repo(
         self,
         tmp_path: Path,
     ) -> None:
@@ -44,9 +44,8 @@ class TestsFlextInfraUtilitiessafety:
 
         result = u.Infra.create_checkpoint(tmp_path, label="test-checkpoint")
 
-        assert result.success
-        assert "stash@{0}" in result.value
-        assert "test-checkpoint:" in result.value
+        assert result.failure
+        assert "dirty git worktree" in (result.error or "")
 
     def test_create_checkpoint_returns_empty_for_non_git_folder(
         self,
@@ -57,15 +56,18 @@ class TestsFlextInfraUtilitiessafety:
         assert result.success
         assert result.value == ""
 
-    def test_rollback_to_checkpoint_invalid_stash_ref_fails(
+    def test_rollback_to_checkpoint_rejects_repository_checkpoint(
         self,
         tmp_path: Path,
     ) -> None:
         _init_git_repo(tmp_path)
 
-        result = u.Infra.rollback_to_checkpoint(tmp_path, "stash@{999}")
+        result = u.Infra.rollback_to_checkpoint(tmp_path, "checkpoint-ref")
 
         assert result.failure
+        assert "repository-wide checkpoint rollback is unsupported" in (
+            result.error or ""
+        )
 
     def test_rollback_to_checkpoint_succeeds_for_non_repo(self, tmp_path: Path) -> None:
         result = u.Infra.rollback_to_checkpoint(tmp_path)

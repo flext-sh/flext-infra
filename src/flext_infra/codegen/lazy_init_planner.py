@@ -71,7 +71,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 "include_dunder": True
             }),
         )
-        child_lazy, child_tc = self._merge_children(
+        child_lazy = self._merge_children(
             context.pkg_dir, lazy_map, dir_exports
         )
         # Version-submodule dunders are emitted as eager imports rather than
@@ -147,7 +147,6 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
-            child_packages_for_tc=child_tc,
         )
 
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
@@ -276,14 +275,13 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         pkg_dir: Path,
         lazy_map: t.MutableLazyAliasMap,
         dir_exports: t.MappingKV[str, t.LazyAliasMap],
-    ) -> tuple[t.StrSequence, t.StrSequence]:
+    ) -> t.StrSequence:
         """Merge children."""
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None:
-            return ((), ())
+            return ()
         resolved_pkg_dir = pkg_dir.resolve()
         direct: list[str] = []
-        descendants: list[str] = []
         for child_dir in package_entry.descendant_child_dirs:
             resolved_child_dir = child_dir.resolve()
             child_init = child_dir / c.Infra.INIT_PY
@@ -297,8 +295,6 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 and not (is_fixture_child and child_exports)
             ):
                 continue
-            if not is_fixture_child:
-                descendants.append(child_entry.package_name)
             if resolved_child_dir.parent != resolved_pkg_dir:
                 continue
             if not is_fixture_child:
@@ -316,7 +312,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                     and self._publish(name, allow_main=False)
                 ):
                     self._add(lazy_map, name, (module_name, attr))
-        return (tuple(sorted(direct)), tuple(sorted(descendants)))
+        return tuple(sorted(direct))
 
     def _excluded_child_lazy_names(
         self,

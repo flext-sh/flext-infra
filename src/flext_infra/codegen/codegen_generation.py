@@ -80,6 +80,14 @@ class FlextInfraCodegenGeneration:
         return bool(current_pkg) and "." not in current_pkg
 
     @staticmethod
+    def _is_public_api_root_namespace(current_pkg: str) -> bool:
+        """Return whether ``current_pkg`` is a generated public package ABI root."""
+        return (
+            FlextInfraCodegenGeneration._is_root_namespace_package(current_pkg)
+            and current_pkg not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        )
+
+    @staticmethod
     def _is_local_module(mod: str, root_name: str) -> bool:
         """Is local module."""
         return (
@@ -662,7 +670,6 @@ class FlextInfraCodegenGeneration:
         wildcard_runtime_modules: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
         excluded_lazy_names: t.StrSequence | None = None,
-        child_packages_for_tc: t.StrSequence | None = None,
     ) -> str:
         """Generate complete module file with lazy imports and type hints.
 
@@ -675,7 +682,6 @@ class FlextInfraCodegenGeneration:
             type_checking_imports: Static-only imports exposed to type checkers.
             child_packages_for_lazy: Child packages for lazy import collapsing.
             excluded_lazy_names: Runtime lazy merge exclusions.
-            child_packages_for_tc: Child packages for TYPE_CHECKING collapsing.
 
         Returns:
             Complete Python module file as a single string.
@@ -702,7 +708,7 @@ class FlextInfraCodegenGeneration:
         runtime_imports: t.LazyAliasMap = eager_imports or {}
         lazy_filtered: t.LazyAliasMap = dict(filtered)
         wildcard_runtime_module_set = frozenset(wildcard_runtime_modules or ())
-        publish_all = FlextInfraCodegenGeneration._is_root_namespace_package(
+        publish_all = FlextInfraCodegenGeneration._is_public_api_root_namespace(
             current_pkg
         )
         published_exports = (
@@ -762,11 +768,15 @@ class FlextInfraCodegenGeneration:
         lazy_module_groups, lazy_alias_groups = (
             FlextInfraCodegenGeneration._group_lazy_entries(lazy_entries)
         )
-        type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
-            FlextInfraCodegenGeneration._group_imports(type_checking_filtered),
-            include_flext_types=False,
-            child_packages=(() if publish_all else child_packages_for_tc or ()),
-            local_package_root=current_pkg,
+        type_checking_lines = (
+            FlextInfraCodegenGeneration.generate_type_checking(
+                FlextInfraCodegenGeneration._group_imports(type_checking_filtered),
+                include_flext_types=False,
+                child_packages=(),
+                local_package_root=current_pkg,
+            )
+            if publish_all
+            else ()
         )
 
         out: t.MutableSequenceOf[str] = [c.Infra.AUTOGEN_HEADER]

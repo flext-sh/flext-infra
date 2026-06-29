@@ -21,11 +21,12 @@ class FlextInfraUtilitiesSafety:
 
     @staticmethod
     def create_checkpoint(repo: Path, *, label: str = "checkpoint") -> p.Result[str]:
-        """Create a git-stash checkpoint for dirty repositories.
+        """Validate that a repository is clean before file-scoped protection.
 
         Returns an empty string for non-repositories or clean trees.
         """
         result: p.Result[str]
+        checkpoint_label = label.strip() or "checkpoint"
         repo_check = u.Cli.run_raw(
             [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
             cwd=repo,
@@ -42,34 +43,15 @@ class FlextInfraUtilitiesSafety:
             elif not status_result.value.stdout.strip():
                 result = r[str].ok("")
             else:
-                stash_result = u.Cli.run_raw(
-                    [c.Infra.GIT, "stash", "push", "--include-untracked", "-m", label],
-                    cwd=repo,
+                result = r[str].fail(
+                    "dirty git worktree cannot be checkpointed automatically "
+                    f"({checkpoint_label}); use file-scoped backup APIs"
                 )
-                if stash_result.failure or stash_result.value.exit_code != 0:
-                    result = r[str].fail(stash_result.error or "git stash push failed")
-                else:
-                    list_result = u.Cli.run_raw(
-                        [c.Infra.GIT, "stash", "list", "-1", "--format=%gd"],
-                        cwd=repo,
-                    )
-                    if list_result.failure or list_result.value.exit_code != 0:
-                        result = r[str].fail(
-                            list_result.error or "git stash list failed"
-                        )
-                    else:
-                        stash_ref = list_result.value.stdout.strip()
-                        if not stash_ref:
-                            result = r[str].fail(
-                                "git stash list returned no checkpoint ref"
-                            )
-                        else:
-                            result = r[str].ok(f"{label}: {stash_ref}")
         return result
 
     @staticmethod
     def rollback_to_checkpoint(repo: Path, checkpoint: str = "") -> p.Result[bool]:
-        """Restore a previously-created git-stash checkpoint.
+        """Reject repository-wide rollback; callers must use file-scoped backups.
 
         Returns success for non-repositories or empty checkpoint strings.
         """
@@ -81,20 +63,10 @@ class FlextInfraUtilitiesSafety:
         )
         if repo_check.failure or repo_check.value.exit_code != 0:
             return r[bool].ok(True)
-        checkpoint_ref = checkpoint.split(":", 1)[-1].strip()
-        apply_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "apply", checkpoint_ref],
-            cwd=repo,
+        return r[bool].fail(
+            "repository-wide checkpoint rollback is unsupported; "
+            "use file-scoped backup APIs"
         )
-        if apply_result.failure or apply_result.value.exit_code != 0:
-            return r[bool].fail(apply_result.error or "git stash apply failed")
-        drop_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "drop", checkpoint_ref],
-            cwd=repo,
-        )
-        if drop_result.failure or drop_result.value.exit_code != 0:
-            return r[bool].fail(drop_result.error or "git stash drop failed")
-        return r[bool].ok(True)
 
     @staticmethod
     def backup_files(files: t.SequenceOf[Path]) -> t.SequenceOf[Path]:

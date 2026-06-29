@@ -141,6 +141,11 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
                 return r[bool].ok(False)
         return u.Cli.atomic_write_text_file(target_path, content)
 
+    @staticmethod
+    def _is_flext_infra_root(workspace_root: Path) -> bool:
+        """Return True when the path is the flext-infra project root."""
+        return (workspace_root / "src" / "flext_infra" / "__init__.py").is_file()
+
     def _sync_basemk(
         self,
         workspace_root: Path,
@@ -150,9 +155,8 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     ) -> p.Result[bool]:
         """Sync base.mk for workspace root and subprojects.
 
-        All projects receive a generated local ``base.mk`` so regeneration is
-        fully deterministic from ``make gen`` without relying on deferred
-        bootstrap.
+        The canonical ``base.mk`` now lives only in ``flext-infra``; other
+        projects include it via the generated Makefile bootstrap.
         """
         _ = canonical_root
         generator = self._get_generator()
@@ -161,6 +165,8 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value
         target_path = workspace_root / c.Infra.BASE_MK
+        if not self._is_flext_infra_root(workspace_root):
+            return r[bool].ok(False)
         content_hash = u.Cli.sha256_content(content)
         if target_path.exists():
             existing_hash = u.Cli.sha256_file(target_path)

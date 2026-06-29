@@ -18,7 +18,7 @@ from flext_infra.__version__ import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_core import d as d, e as e, h as h, r as r, x as x
+    from flext_cli import d as d, e as e, h as h, r as r, x as x
     from flext_infra.api import FlextInfra as FlextInfra, infra as infra
     from flext_infra.base import (
         FlextInfraProjectSelectionServiceBase as FlextInfraProjectSelectionServiceBase,
@@ -68,7 +68,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "FlextInfraUtilities",
             "u",
         ),
-        "flext_core": (
+        "flext_cli": (
             "d",
             "e",
             "h",
@@ -83,7 +83,17 @@ install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,
-    [
+    public_exports=(
+        "FlextInfra",
+        "FlextInfraCli",
+        "FlextInfraConstants",
+        "FlextInfraModels",
+        "FlextInfraProjectSelectionServiceBase",
+        "FlextInfraProtocols",
+        "FlextInfraServiceBase",
+        "FlextInfraSettings",
+        "FlextInfraTypes",
+        "FlextInfraUtilities",
         "__author__",
         "__author_email__",
         "__description__",
@@ -92,39 +102,18 @@ install_lazy_exports(
         "__url__",
         "__version__",
         "__version_info__",
-    ],
+        "infra",
+        "main",
+        "c",
+        "m",
+        "p",
+        "t",
+        "u",
+        "d",
+        "e",
+        "h",
+        "r",
+        "s",
+        "x",
+    ),
 )
-
-__all__: list[str] = [
-    "FlextInfra",
-    "FlextInfraCli",
-    "FlextInfraConstants",
-    "FlextInfraModels",
-    "FlextInfraProjectSelectionServiceBase",
-    "FlextInfraProtocols",
-    "FlextInfraServiceBase",
-    "FlextInfraSettings",
-    "FlextInfraTypes",
-    "FlextInfraUtilities",
-    "__author__",
-    "__author_email__",
-    "__description__",
-    "__license__",
-    "__title__",
-    "__url__",
-    "__version__",
-    "__version_info__",
-    "c",
-    "d",
-    "e",
-    "h",
-    "infra",
-    "m",
-    "main",
-    "p",
-    "r",
-    "s",
-    "t",
-    "u",
-    "x",
-]

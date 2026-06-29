@@ -165,7 +165,6 @@ class FlextInfraCodegenLazyInitEngineMixin:
             wildcard_runtime_modules=plan.wildcard_runtime_modules,
             child_packages_for_lazy=plan.child_packages_for_lazy,
             excluded_lazy_names=plan.excluded_lazy_names,
-            child_packages_for_tc=plan.child_packages_for_tc,
         )
 
     @staticmethod

@@ -54,7 +54,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         ]
 
     class MROMigrationReport(
-        mm.StashRefMixin,
+        mm.CheckpointRefMixin,
         m.ArbitraryTypesModel,
     ):
         """End-to-end report for migrate-to-mro command execution."""

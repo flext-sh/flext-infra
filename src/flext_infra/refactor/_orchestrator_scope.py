@@ -11,7 +11,7 @@ from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 
 
 class FlextInfraRefactorOrchestratorScopeMixin:
-    """Provide project/workspace refactor scopes with safety stash/rollback flow."""
+    """Provide project/workspace refactor scopes with checkpoint/rollback flow."""
 
     if TYPE_CHECKING:
         loader: FlextInfraRefactorRuleLoader
@@ -31,28 +31,28 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         @staticmethod
         def _refactor_header(message: str) -> None: ...
 
-    def _try_safety_stash(
+    def _try_safety_checkpoint(
         self,
         target: Path,
         *,
         apply_safety: bool,
         dry_run: bool,
     ) -> t.Pair[str, t.SequenceOf[m.Infra.Result] | None]:
-        """Try safety stash."""
+        """Try safety checkpoint."""
         if not apply_safety or dry_run:
             return "", None
-        stash = self.safety_manager.create_pre_transformation_stash(target)
-        if stash.failure:
-            msg = stash.error or "pre-transformation stash failed"
+        checkpoint = self.safety_manager.create_pre_transformation_checkpoint(target)
+        if checkpoint.failure:
+            msg = checkpoint.error or "pre-transformation checkpoint failed"
             u.Cli.error(msg)
             return "", [self._error_result(target, msg)]
-        return stash.value, None
+        return checkpoint.value, None
 
     def _finalize_safety(
         self,
         *,
         target: Path,
-        stash_ref: str,
+        checkpoint_ref: str,
         processed_targets: t.StrSequence,
         results: t.MutableSequenceOf[m.Infra.Result],
     ) -> None:
@@ -60,13 +60,13 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         checkpoint = self.safety_manager.save_checkpoint_state(
             target,
             status="post-transform",
-            stash_ref=stash_ref,
+            checkpoint_ref=checkpoint_ref,
             processed_targets=processed_targets,
         )
         if checkpoint.failure:
             self._abort_with_rollback(
                 target=target,
-                stash_ref=stash_ref,
+                checkpoint_ref=checkpoint_ref,
                 results=results,
                 msg=checkpoint.error or "checkpoint save failed",
             )
@@ -75,7 +75,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         if validation.failure:
             self._abort_with_rollback(
                 target=target,
-                stash_ref=stash_ref,
+                checkpoint_ref=checkpoint_ref,
                 results=results,
                 msg=validation.error or "semantic validation failed",
             )
@@ -94,7 +94,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         self,
         *,
         target: Path,
-        stash_ref: str,
+        checkpoint_ref: str,
         results: t.MutableSequenceOf[m.Infra.Result],
         msg: str,
     ) -> None:
@@ -107,7 +107,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         """
         self.safety_manager.request_emergency_stop(msg)
         u.Cli.error(msg)
-        rollback = self.safety_manager.rollback(target, stash_ref)
+        rollback = self.safety_manager.rollback(target, checkpoint_ref)
         if rollback.failure:
             u.Cli.error(rollback.error or "rollback failed")
         results.append(self._error_result(target, msg))
@@ -122,7 +122,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor files under configured project directories."""
-        stash_ref, error_results = self._try_safety_stash(
+        checkpoint_ref, error_results = self._try_safety_checkpoint(
             project_path,
             apply_safety=apply_safety,
             dry_run=dry_run,
@@ -149,7 +149,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         if apply_safety and not dry_run:
             self._finalize_safety(
                 target=project_path,
-                stash_ref=stash_ref,
+                checkpoint_ref=checkpoint_ref,
                 processed_targets=[str(project_path)],
                 results=results,
             )
@@ -177,7 +177,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
             u.Cli.error(f"No projects discovered under: {workspace_root}")
             return []
         u.Cli.info(f"Discovered {len(projects)} projects in workspace")
-        stash_ref, error_results = self._try_safety_stash(
+        checkpoint_ref, error_results = self._try_safety_checkpoint(
             root,
             apply_safety=apply_safety,
             dry_run=dry_run,
@@ -206,7 +206,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         if apply_safety and not dry_run:
             self._finalize_safety(
                 target=root,
-                stash_ref=stash_ref,
+                checkpoint_ref=checkpoint_ref,
                 processed_targets=processed,
                 results=results,
             )

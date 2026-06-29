@@ -40,8 +40,8 @@ class FlextInfraRefactorMigrateMroReportMixin:
             f"Validation time: {report.validation_duration_seconds:.3f}s",
             f"Total time: {report.total_duration_seconds:.3f}s",
         ]
-        if report.stash_ref:
-            lines.append(f"Rollback stash: {report.stash_ref}")
+        if report.checkpoint_ref:
+            lines.append(f"Rollback checkpoint: {report.checkpoint_ref}")
         if report.warnings:
             lines.append("Warnings:")
             lines.extend(f"- {warning}" for warning in report.warnings)

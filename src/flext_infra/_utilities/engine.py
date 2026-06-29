@@ -15,7 +15,7 @@ from collections.abc import (
 )
 from pathlib import Path
 
-from flext_cli import cli, u
+from flext_cli.utilities import u
 from flext_infra import (
     c,
     m,
@@ -34,7 +34,7 @@ class FlextInfraUtilitiesRefactorEngine:
     ) -> m.Infra.EngineConfig:
         """Resolve the typed refactor engine config through the shared CLI DSL."""
         return m.Infra.EngineConfig.model_validate(
-            cli.rules_resolve_scope(
+            u.Cli.rules_resolve_scope(
                 dict(settings),
                 scope_key=c.Infra.RK_REFACTOR_ENGINE,
                 allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,

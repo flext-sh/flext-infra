@@ -285,10 +285,6 @@ class FlextInfraModelsCodegen:
             default_factory=tuple,
             description="Names excluded from runtime child lazy import merges.",
         )
-        child_packages_for_tc: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Descendant package imports available for type checking.",
-        )
 
     class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""

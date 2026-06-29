@@ -24,7 +24,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         self.kept_paths: t.SequenceOf[Path] = []
 
     @override
-    def create_pre_transformation_stash(
+    def create_pre_transformation_checkpoint(
         self,
         workspace_root: Path,
         *,
@@ -32,8 +32,8 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
     ) -> p.Result[str]:
         _ = workspace_root
         _ = label
-        self.calls.append("stash")
-        return r[str].ok("stash@{0}")
+        self.calls.append("checkpoint")
+        return r[str].ok("checkpoint-ref")
 
     @override
     def save_checkpoint_state(
@@ -41,14 +41,14 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         workspace_root: Path,
         *,
         status: str,
-        stash_ref: str,
+        checkpoint_ref: str,
         processed_targets: t.StrSequence,
     ) -> p.Result[bool]:
         _ = workspace_root
         _ = status
-        _ = stash_ref
+        _ = checkpoint_ref
         _ = processed_targets
-        self.calls.append("checkpoint")
+        self.calls.append("checkpoint-state")
         return r[bool].ok(True)
 
     @override
@@ -69,7 +69,11 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
         self.calls.append("stop")
 
     @overload
-    def rollback(self, workspace_root: Path, stash_ref: str = "") -> p.Result[bool]: ...
+    def rollback(
+        self,
+        workspace_root: Path,
+        checkpoint_ref: str = "",
+    ) -> p.Result[bool]: ...
 
     @overload
     def rollback(self, workspace_root: str, /) -> None: ...
@@ -78,9 +82,9 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
     def rollback(
         self,
         workspace_root: Path | str,
-        stash_ref: str = "",
+        checkpoint_ref: str = "",
     ) -> p.Result[bool] | None:
-        _ = stash_ref
+        _ = checkpoint_ref
         self.calls.append("rollback")
         if isinstance(workspace_root, Path):
             return r[bool].ok(True)
@@ -117,7 +121,7 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)
         assert results
         assert all(item.success for item in results)
-        assert stub.calls == ["stash", "checkpoint", "validate", "clear"]
+        assert stub.calls == ["checkpoint", "checkpoint-state", "validate", "clear"]
         assert stub.kept_paths == [src_dir / "sample.py"]
 
     def test_clear_checkpoint_preserves_requested_backups(self, tmp_path: Path) -> None:
@@ -126,7 +130,7 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         keep_file.write_text("value = 1\n", encoding="utf-8")
         drop_file.write_text("value = 2\n", encoding="utf-8")
         manager = FlextInfraRefactorSafetyManager()
-        created = manager.create_pre_transformation_stash(tmp_path)
+        created = manager.create_pre_transformation_checkpoint(tmp_path)
         assert created.success
 
         cleared = manager.clear_checkpoint(keep=[keep_file])
@@ -135,7 +139,7 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         assert keep_file.with_suffix(".py.bak").exists()
         assert not drop_file.with_suffix(".py.bak").exists()
 
-    def test_create_pre_transformation_stash_ignores_untracked_git_python_files(
+    def test_create_pre_transformation_checkpoint_tracks_python_files(
         self,
         tmp_path: Path,
     ) -> None:
@@ -156,15 +160,15 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         assert name_result.value.exit_code == 0
         tracked_file = tmp_path / "tracked.py"
         tracked_file.write_text("value = 1\n", encoding="utf-8")
-        untracked_file = tmp_path / "untracked.py"
-        untracked_file.write_text("value = 2\n", encoding="utf-8")
+        second_file = tmp_path / "second.py"
+        second_file.write_text("value = 2\n", encoding="utf-8")
         add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
         assert add_result.success
         assert add_result.value.exit_code == 0
         manager = FlextInfraRefactorSafetyManager()
 
-        created = manager.create_pre_transformation_stash(tmp_path)
+        created = manager.create_pre_transformation_checkpoint(tmp_path)
 
         assert created.success
         assert tracked_file.with_suffix(".py.bak").exists()
-        assert untracked_file.with_suffix(".py.bak").exists()
+        assert second_file.with_suffix(".py.bak").exists()

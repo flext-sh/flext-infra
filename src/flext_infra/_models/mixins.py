@@ -310,10 +310,13 @@ class FlextInfraModelsMixins:
 
         workspace_root: Annotated[Path, m.Field(description="Workspace root path")]
 
-    class StashRefMixin:
-        """Shared git stash reference field."""
+    class CheckpointRefMixin:
+        """Shared safety checkpoint reference field."""
 
-        stash_ref: Annotated[str, m.Field(description="Git stash reference")] = ""
+        checkpoint_ref: Annotated[
+            str,
+            m.Field(description="Safety checkpoint reference"),
+        ] = ""
 
     class ProjectNamesOptionalMixin:
         """Shared optional project-name collection."""
