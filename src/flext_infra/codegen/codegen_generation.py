@@ -612,6 +612,7 @@ class FlextInfraCodegenGeneration:
         inline_constants: t.StrMapping,
         current_pkg: str,
         eager_imports: t.LazyAliasMap | None = None,
+        type_checking_imports: t.LazyAliasMap | None = None,
         wildcard_runtime_modules: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
         excluded_lazy_names: t.StrSequence | None = None,
@@ -625,6 +626,7 @@ class FlextInfraCodegenGeneration:
             inline_constants: Mapping of constant names to their string values.
             current_pkg: Current package name for import strategy selection.
             eager_imports: Runtime imports that must exist eagerly in module globals.
+            type_checking_imports: Static-only imports exposed to type checkers.
             child_packages_for_lazy: Child packages for lazy import collapsing.
             excluded_lazy_names: Runtime lazy merge exclusions.
             child_packages_for_tc: Child packages for TYPE_CHECKING collapsing.
@@ -649,7 +651,11 @@ class FlextInfraCodegenGeneration:
         )
         type_checking_filtered: t.LazyAliasMap = {
             name: val
-            for name, val in lazy_filtered.items()
+            for name, val in (
+                type_checking_imports
+                if type_checking_imports is not None
+                else lazy_filtered
+            ).items()
             if val[0] not in wildcard_runtime_module_set
         }
         merged_excluded_lazy_names = tuple(

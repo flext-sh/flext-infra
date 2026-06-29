@@ -107,6 +107,41 @@ class FlextInfraModelsCodegen:
             description="Modified file paths",
         )
 
+    class ConsolidatorFileResult(m.ContractModel):
+        """Per-file result emitted by the constants consolidator."""
+
+        file: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace-relative file path")
+        ]
+        status: Annotated[
+            Literal["applied", "reverted"],
+            m.Field(description="File processing status"),
+        ]
+        changes: Annotated[
+            t.StrSequence,
+            m.Field(default_factory=tuple, description="Applied replacements"),
+        ]
+
+    class ConsolidatorReport(m.ContractModel):
+        """JSON report emitted by the constants consolidator."""
+
+        total_found: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total replacements found"),
+        ] = 0
+        total_applied: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total replacements applied"),
+        ] = 0
+        total_failed: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total files reverted"),
+        ] = 0
+        files: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.ConsolidatorFileResult],
+            m.Field(default_factory=tuple, description="Per-file processing results"),
+        ]
+
     class NamespaceModulePolicy(m.ArbitraryTypesModel):
         """Derived gen-init policy for one governed module."""
 
@@ -220,6 +255,13 @@ class FlextInfraModelsCodegen:
         lazy_map: t.LazyAliasMap = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Lazy import map: export name to module/attribute target.",
+        )
+        type_checking_map: t.LazyAliasMap = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description=(
+                "Type-checking import map used to publish static package attributes "
+                "without widening the runtime/public lazy export surface."
+            ),
         )
         eager_dunders: t.LazyAliasMap = m.Field(
             default_factory=lambda: MappingProxyType({}),

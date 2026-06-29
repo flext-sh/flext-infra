@@ -49,7 +49,10 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
     package_dir = project_root / "src" / "flext_demo"
     package_dir.mkdir(parents=True)
     (project_root / "pyproject.toml").write_text(
-        "[project]\nname='flext-demo'\nversion='0.1.0'\n",
+        "[project]\nname='flext-demo'\nversion='0.1.0'\n"
+        "\n"
+        "[tool.mypy]\n"
+        'mypy_path = ["src"]\n',
         encoding="utf-8",
     )
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
@@ -80,7 +83,10 @@ def _build_consolidator_workspace(tmp_path: Path) -> Path:
     package_dir = project_root / "src" / "flext_demo"
     package_dir.mkdir(parents=True)
     (project_root / "pyproject.toml").write_text(
-        "[project]\nname='flext-demo'\nversion='0.1.0'\n",
+        "[project]\nname='flext-demo'\nversion='0.1.0'\n"
+        "\n"
+        "[tool.mypy]\n"
+        'mypy_path = ["src"]\n',
         encoding="utf-8",
     )
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
@@ -105,6 +111,23 @@ def _build_consolidator_workspace(tmp_path: Path) -> Path:
     return workspace_root
 
 
+def _write_wrapper_consumers(workspace_root: Path) -> t.SequenceOf[Path]:
+    """Create wrapper-surface consumers for constants consolidation."""
+    project_root = workspace_root / "flext-demo"
+    consumer_paths = (
+        project_root / "examples" / "consumer.py",
+        project_root / "scripts" / "consumer.py",
+        project_root / "tests" / "test_consumer.py",
+    )
+    for consumer_path in consumer_paths:
+        consumer_path.parent.mkdir(parents=True, exist_ok=True)
+        consumer_path.write_text(
+            'from __future__ import annotations\n\nVALUE = "demo"\n',
+            encoding="utf-8",
+        )
+    return consumer_paths
+
+
 def test_execute_apply_mode_replaces_literal_with_canonical_reference(
     tmp_path: Path,
 ) -> None:
@@ -121,6 +144,32 @@ def test_execute_apply_mode_replaces_literal_with_canonical_reference(
     updated_source = consumer_path.read_text(encoding="utf-8")
     tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
     tm.that(updated_source, has="from flext_demo import c")
+
+
+def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
+    workspace_root = _build_consolidator_workspace(tmp_path)
+    package_consumer_path = (
+        workspace_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
+    )
+    wrapper_consumer_paths = _write_wrapper_consumers(workspace_root)
+    service = FlextInfraCodegenConsolidator(
+        workspace=workspace_root,
+        dry_run=False,
+        output_format="json",
+    )
+
+    result = service.execute()
+
+    tm.ok(result)
+    payload = _consolidator_payload(result.value)
+    assert payload.total_found == 4
+    assert payload.total_applied == 4
+    assert payload.total_failed == 0
+    assert len(payload.files) == 4
+    for consumer_path in (package_consumer_path, *wrapper_consumer_paths):
+        updated_source = consumer_path.read_text(encoding="utf-8")
+        tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
+        tm.that(updated_source, has="from flext_demo import c")
 
 
 def test_execute_apply_mode_json_output(tmp_path: Path) -> None:

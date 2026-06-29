@@ -108,6 +108,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             [c.Infra.GIT, "status", "--porcelain"],
             cwd=repo_root,
         )
+        result: p.Result[bool]
         if changes_capture.failure:
             result = r[bool].fail(changes_capture.error or "changes check failed")
         elif not changes_capture.unwrap().strip():

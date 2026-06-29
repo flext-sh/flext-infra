@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import (
@@ -40,7 +41,7 @@ class FlextInfraCodegenConsolidator(
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )
         found = applied = failed = 0
-        file_results: list[dict[str, list[str] | str]] = []
+        file_results: t.MutableSequenceOf[m.Infra.ConsolidatorFileResult] = []
 
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             projects_result = self._selected_projects(rope)
@@ -65,14 +66,12 @@ class FlextInfraCodegenConsolidator(
                 if not value_map:
                     continue
 
-                for python_file in (
-                    path
-                    for path in u.Infra.iter_matching_files(
-                        project_layout.package_dir,
-                        includes=[c.Infra.EXT_PYTHON_GLOB],
+                project_files = self._project_python_files(project.path)
+                if project_files.failure:
+                    return r[str].fail(
+                        project_files.error or "project python file discovery failed",
                     )
-                    if "_constants" not in path.parts
-                ):
+                for python_file in project_files.value:
                     scanned = self._scan_file(rope.rope_project, python_file, value_map)
                     if scanned is None:
                         continue
@@ -95,11 +94,13 @@ class FlextInfraCodegenConsolidator(
                         matches,
                     )
                     output_lines.extend(lines)
-                    file_results.append({
-                        "file": str(rel_path),
-                        "status": "applied" if ok else "reverted",
-                        "changes": list(changes),
-                    })
+                    file_results.append(
+                        m.Infra.ConsolidatorFileResult(
+                            file=str(rel_path),
+                            status="applied" if ok else "reverted",
+                            changes=tuple(changes),
+                        ),
+                    )
                     if ok:
                         applied += len(changes)
                     else:
@@ -112,17 +113,38 @@ class FlextInfraCodegenConsolidator(
         )
         output_lines.extend(("", summary))
         if self.output_format == c.Cli.OutputFormats.JSON:
-            payload = {
-                "total_found": found,
-                "total_applied": applied,
-                "total_failed": failed,
-                "files": list(file_results),
-            }
-            normalized_payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-            return r[str].ok(
-                t.Infra.INFRA_MAPPING_ADAPTER.dump_json(normalized_payload).decode()
+            report = m.Infra.ConsolidatorReport(
+                total_found=found,
+                total_applied=applied,
+                total_failed=failed,
+                files=tuple(file_results),
             )
+            return r[str].ok(report.model_dump_json())
         return r[str].ok("\n".join(output_lines))
+
+    def _project_python_files(self, project_root: Path) -> p.Result[t.SequenceOf[Path]]:
+        """Return governed Python files for one project consolidation pass."""
+        files_result = u.Infra.iter_python_files(
+            workspace_root=self.workspace_root,
+            project_roots=(project_root,),
+            include_tests=True,
+            include_examples=True,
+            include_scripts=True,
+            include_dynamic_dirs=False,
+            src_dirs=frozenset(c.Infra.DEFAULT_CHECK_DIRS),
+        )
+        if files_result.failure:
+            return r[t.SequenceOf[Path]].fail(
+                files_result.error or "project python file discovery failed",
+            )
+        constants_directory = c.Infra.FAMILY_DIRECTORIES["c"]
+        return r[t.SequenceOf[Path]].ok(
+            tuple(
+                path
+                for path in files_result.value
+                if constants_directory not in path.parts
+            ),
+        )
 
     def _selected_projects(
         self,

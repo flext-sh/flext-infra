@@ -166,6 +166,7 @@ class FlextInfraCodegenLazyInitEngineMixin:
             plan.inline_constants,
             plan.context.current_pkg,
             eager_imports=plan.eager_dunders,
+            type_checking_imports=plan.type_checking_map,
             wildcard_runtime_modules=plan.wildcard_runtime_modules,
             child_packages_for_lazy=plan.child_packages_for_lazy,
             excluded_lazy_names=plan.excluded_lazy_names,

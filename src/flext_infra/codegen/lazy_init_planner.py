@@ -94,6 +94,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
+        type_checking_map = dict(lazy_map)
         export_names = {*lazy_map, *eager_dunders}
         excluded_lazy_names: t.StrSequence = ()
         if (
@@ -141,6 +142,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 export_names=all_export_names,
             ),
             lazy_map=dict(lazy_map),
+            type_checking_map=type_checking_map,
             eager_dunders=eager_dunders,
             wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
