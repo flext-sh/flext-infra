@@ -81,44 +81,30 @@ class FlextInfraUtilitiesProjectDiscovery:
         result = False
         if path.is_dir():
             pyproject_path = path / c.Infra.PYPROJECT_FILENAME
-            go_mod_path = path / c.Infra.GO_MOD
-            if pyproject_path.exists() or go_mod_path.exists():
-                if go_mod_path.exists():
-                    if effective_scan_dirs:
+            if pyproject_path.exists() and (
+                path.name in configured_member_set
+                or (path / c.Infra.MAKEFILE_FILENAME).exists()
+            ):
+                result = True
+            else:
+                payload = FlextInfraUtilitiesPyproject.pyproject_payload(
+                    pyproject_path
+                )
+                if payload:
+                    dependency_names: set[str] = set(
+                        FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
+                            payload,
+                        )
+                    )
+                    if c.Infra.PKG_CORE in dependency_names:
+                        result = True
+                    elif effective_scan_dirs:
                         result = any(
                             (path / dir_name).is_dir()
                             for dir_name in effective_scan_dirs
                         )
                     else:
-                        result = any(
-                            child.is_dir() and any(child.rglob("*.go"))
-                            for child in path.iterdir()
-                            if not child.name.startswith(".")
-                        )
-                elif (
-                    path.name in configured_member_set
-                    or (path / c.Infra.MAKEFILE_FILENAME).exists()
-                ):
-                    result = True
-                else:
-                    payload = FlextInfraUtilitiesPyproject.pyproject_payload(
-                        pyproject_path
-                    )
-                    if payload:
-                        dependency_names: set[str] = set(
-                            FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
-                                payload,
-                            )
-                        )
-                        if c.Infra.PKG_CORE in dependency_names:
-                            result = True
-                        elif effective_scan_dirs:
-                            result = any(
-                                (path / dir_name).is_dir()
-                                for dir_name in effective_scan_dirs
-                            )
-                        else:
-                            result = True
+                        result = True
         return result
 
     @classmethod
