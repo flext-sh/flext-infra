@@ -42,6 +42,7 @@ class FlextInfraNamespaceEnforcer(
         *,
         apply: bool = False,
         project_names: t.StrSequence | None = None,
+        gates: t.StrSequence | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
 
@@ -57,6 +58,7 @@ class FlextInfraNamespaceEnforcer(
                 project_root=project_root,
                 project_name=project_root.name,
                 apply=apply,
+                gates=gates,
             )
             project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(

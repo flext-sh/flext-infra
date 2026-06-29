@@ -20,6 +20,7 @@ import re
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraRopeTransformer, t
+from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
 
 
 class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
@@ -37,26 +38,6 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
         "argparse": frozenset({"ArgumentParser"}),
     }
 
-    class _Rewrite:
-        """One source rewrite: replace ``source[start:end]`` with ``text``."""
-
-        __slots__ = ("end", "start", "text")
-
-        def __init__(self, start: int, end: int, text: str) -> None:
-            self.start = start
-            self.end = end
-            self.text = text
-
-        def __lt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorCliModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) < (other.start, other.end)
-
-        def __gt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorCliModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) > (other.start, other.end)
-
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply CLI modernizations to source text."""
@@ -72,7 +53,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
         updated = (
             source
             if not visitor.rewrites
-            else self._apply_rewrites(source, visitor.rewrites)
+            else FlextInfraSourceRewriter.apply_rewrites(source, visitor.rewrites)
         )
 
         for module, attr in visitor.manual_conversions:
@@ -85,18 +66,6 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             self._record_change(change)
 
         return updated, list(self.changes)
-
-    @classmethod
-    def _apply_rewrites(
-        cls,
-        source: str,
-        rewrites: list[_Rewrite],
-    ) -> str:
-        """Apply rewrites from bottom-right to top-left to preserve offsets."""
-        result = source
-        for rewrite in sorted(rewrites, reverse=True):
-            result = result[: rewrite.start] + rewrite.text + result[rewrite.end :]
-        return result
 
     @staticmethod
     def _banned_modules() -> frozenset[str]:
@@ -113,52 +82,14 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
         """Return banned-module attributes that require manual conversion."""
         return FlextInfraRefactorCliModernizer._MANUAL_ATTRS
 
-    class _CliVisitor(ast.NodeVisitor):
+    class _CliVisitor(FlextInfraSourceRewriter):
         """Collect rewrites for CLI anti-patterns."""
 
         def __init__(self, source: str) -> None:
-            super().__init__()
-            self._source = source
-            self.rewrites: list[FlextInfraRefactorCliModernizer._Rewrite] = []
-            self.changes: list[str] = []
+            super().__init__(source)
             self.manual_conversions: list[tuple[str, str]] = []
             self.removed_modules: set[str] = set()
             self._cli_symbol: str | None = None
-
-        def _offset(self, lineno: int, col_offset: int) -> int:
-            """Convert (1-based line, 0-based column) to byte offset."""
-            lines = self._source.splitlines(keepends=True)
-            return sum(len(lines[i]) for i in range(lineno - 1)) + col_offset
-
-        def _node_offset(self, node: ast.AST, *, start: bool) -> int:
-            """Return byte offset for a node's start or end position."""
-            if start:
-                lineno = getattr(node, "lineno", 1)
-                col_offset = getattr(node, "col_offset", 0)
-            else:
-                lineno = getattr(node, "end_lineno", getattr(node, "lineno", 1))
-                col_offset = getattr(node, "end_col_offset", 0)
-            return self._offset(lineno, col_offset)
-
-        def _node_text(self, node: ast.AST) -> str:
-            """Return source text for a node."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            return self._source[start:end]
-
-        def _append_rewrite(
-            self,
-            node: ast.AST,
-            text: str,
-            change: str,
-        ) -> None:
-            """Record a rewrite spanning a node's source range."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            self.rewrites.append(
-                FlextInfraRefactorCliModernizer._Rewrite(start, end, text),
-            )
-            self.changes.append(change)
 
         @override
         def visit_Import(self, node: ast.Import) -> None:
@@ -166,7 +97,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             banned = FlextInfraRefactorCliModernizer._banned_modules()
             if node.names and all(alias.name in banned for alias in node.names):
                 names = ", ".join(alias.name for alias in node.names)
-                self._append_rewrite(node, "", f"Removed import {names}")
+                self.append_rewrite(node, "", f"Removed import {names}")
                 for alias in node.names:
                     self.removed_modules.add(alias.name)
             self.generic_visit(node)
@@ -180,7 +111,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
                 return
             banned = FlextInfraRefactorCliModernizer._banned_modules()
             if module in banned:
-                self._append_rewrite(node, "", f"Removed from {module} import")
+                self.append_rewrite(node, "", f"Removed from {module} import")
                 self.removed_modules.add(module)
             elif module == FlextInfraRefactorCliModernizer._cli_pkg():
                 for alias in node.names:
@@ -204,14 +135,14 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
                 return
             if len(node.args) != 1 or node.keywords:
                 return
-            call_text = self._node_text(node)
+            call_text = self.node_text(node)
             new_call = re.sub(
                 r"\bprint\b",
                 f"{self._cli_symbol}.display_text",
                 call_text,
                 count=1,
             )
-            self._append_rewrite(
+            self.append_rewrite(
                 node,
                 new_call,
                 f"Replaced print() with {self._cli_symbol}.display_text()",

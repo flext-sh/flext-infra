@@ -340,6 +340,8 @@ class FlextInfraConstantsBase(
     "Default quality gates for post-transform validation."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
+    ENV_VAR_LINT_SNAPSHOT_GATES: Final[str] = "FLEXT_INFRA_LINT_SNAPSHOT_GATES"
+    "Optional override for lint-snapshot gate selection (comma-separated)."
 
     ENV_VAR_STANDALONE: Final[str] = "FLEXT_STANDALONE"
     ENV_VAR_WORKSPACE_ROOT: Final[str] = "FLEXT_WORKSPACE_ROOT"

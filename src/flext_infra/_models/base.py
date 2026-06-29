@@ -134,6 +134,18 @@ class FlextInfraModelsBase:
             m.Field(description="Optional lint gate selection for validation"),
         ] = None
 
+    class LintGateResult(m.ContractModel):
+        """Validated result from one protected-edit lint gate."""
+
+        tool_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical lint tool name"),
+        ]
+        errors: Annotated[
+            t.StrSequence,
+            m.Field(description="Error lines reported by the lint tool"),
+        ] = m.Field(default_factory=tuple)
+
     class TransformStep(m.ContractModel):
         """Declarative step for enforcement pipeline."""
 

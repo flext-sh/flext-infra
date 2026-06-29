@@ -20,6 +20,7 @@ import ast
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraRopeTransformer, t
+from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
 
 
 class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
@@ -31,26 +32,6 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
         {"BaseModel", "BaseSettings", "RootModel"},
     )
     _CONFIG_MIN_BODY_LINES: ClassVar[int] = 2
-
-    class _Rewrite:
-        """One source rewrite: replace ``source[start:end]`` with ``text``."""
-
-        __slots__ = ("end", "start", "text")
-
-        def __init__(self, start: int, end: int, text: str) -> None:
-            self.start = start
-            self.end = end
-            self.text = text
-
-        def __lt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorPydanticModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) < (other.start, other.end)
-
-        def __gt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorPydanticModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) > (other.start, other.end)
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -67,70 +48,20 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
         if not visitor.rewrites:
             return source, list(self.changes)
 
-        updated = self._apply_rewrites(source, visitor.rewrites)
+        updated = FlextInfraSourceRewriter.apply_rewrites(source, visitor.rewrites)
         for change in visitor.changes:
             self._record_change(change)
 
         return updated, list(self.changes)
 
-    @classmethod
-    def _apply_rewrites(
-        cls,
-        source: str,
-        rewrites: list[_Rewrite],
-    ) -> str:
-        """Apply rewrites from bottom-right to top-left to preserve offsets."""
-        result = source
-        for rewrite in sorted(rewrites, reverse=True):
-            result = result[: rewrite.start] + rewrite.text + result[rewrite.end :]
-        return result
-
-    class _PydanticVisitor(ast.NodeVisitor):
+    class _PydanticVisitor(FlextInfraSourceRewriter):
         """Collect rewrites for Pydantic anti-patterns."""
 
         def __init__(self, source: str) -> None:
-            super().__init__()
-            self._source = source
-            self.rewrites: list[FlextInfraRefactorPydanticModernizer._Rewrite] = []
-            self.changes: list[str] = []
+            super().__init__(source)
             self._needs_config_dict_import = False
             self._needs_model_validator_import = False
             self._needs_field_validator_import = False
-
-        def _offset(self, lineno: int, col_offset: int) -> int:
-            """Convert (1-based line, 0-based column) to byte offset."""
-            lines = self._source.splitlines(keepends=True)
-            return sum(len(lines[i]) for i in range(lineno - 1)) + col_offset
-
-        def _node_offset(self, node: ast.AST, *, start: bool) -> int:
-            """Return byte offset for a node's start or end position."""
-            if start:
-                lineno = getattr(node, "lineno", 1)
-                col_offset = getattr(node, "col_offset", 0)
-            else:
-                lineno = getattr(node, "end_lineno", getattr(node, "lineno", 1))
-                col_offset = getattr(node, "end_col_offset", 0)
-            return self._offset(lineno, col_offset)
-
-        def _append_rewrite(
-            self,
-            node: ast.AST,
-            text: str,
-            change: str,
-        ) -> None:
-            """Record a rewrite spanning a node's source range."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            self.rewrites.append(
-                FlextInfraRefactorPydanticModernizer._Rewrite(start, end, text),
-            )
-            self.changes.append(change)
-
-        def _node_text(self, node: ast.AST) -> str:
-            """Return source text for a node."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            return self._source[start:end]
 
         @override
         def visit_ClassDef(self, node: ast.ClassDef) -> None:
@@ -167,9 +98,9 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
                 new_attr = (
                     "model_fields" if node.attr == "__fields__" else "model_config"
                 )
-                attr_text = self._node_text(node)
+                attr_text = self.node_text(node)
                 new_text = attr_text[: -len(node.attr)] + new_attr
-                self._append_rewrite(
+                self.append_rewrite(
                     node,
                     new_text,
                     f"Replaced {node.attr} with {new_attr}",
@@ -196,7 +127,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
 
         def _rewrite_config_class(self, node: ast.ClassDef) -> None:
             """Convert ``class Config:`` body into ``model_config = ConfigDict(...)``."""
-            body_text = self._node_text(node)
+            body_text = self.node_text(node)
             lines = body_text.splitlines(keepends=True)
             if len(lines) < FlextInfraRefactorPydanticModernizer._CONFIG_MIN_BODY_LINES:
                 return
@@ -222,7 +153,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             config_dict_body = ", ".join(assignments)
             class_indent = lines[0][: len(lines[0]) - len(lines[0].lstrip())]
             new_text = f"{class_indent}model_config = ConfigDict({config_dict_body})\n"
-            self._append_rewrite(node, new_text, "Converted Config class to ConfigDict")
+            self.append_rewrite(node, new_text, "Converted Config class to ConfigDict")
             self._needs_config_dict_import = True
 
         def _rewrite_method_call(self, node: ast.Call) -> None:
@@ -242,9 +173,9 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             if attr not in mapping:
                 return
 
-            call_text = self._node_text(node)
+            call_text = self.node_text(node)
             new_call = call_text.replace(f".{attr}(", f".{mapping[attr]}(", 1)
-            self._append_rewrite(
+            self.append_rewrite(
                 node,
                 new_call,
                 f"Replaced .{attr}() with .{mapping[attr]}()",
@@ -273,7 +204,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             _func: ast.FunctionDef | ast.AsyncFunctionDef,
         ) -> None:
             """Convert ``@validator("field")`` to ``@field_validator("field")``."""
-            dec_text = self._node_text(decorator)
+            dec_text = self.node_text(decorator)
             new_text = dec_text.replace("validator(", "field_validator(", 1)
 
             # Add mode="before" if pre=True is present, otherwise mode="after".
@@ -282,7 +213,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             elif "mode=" not in new_text:
                 new_text = new_text.replace(")", ', mode="after")', 1)
 
-            self._append_rewrite(
+            self.append_rewrite(
                 decorator,
                 new_text,
                 "Replaced @validator with @field_validator",
@@ -295,7 +226,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             _func: ast.FunctionDef | ast.AsyncFunctionDef,
         ) -> None:
             """Convert ``@root_validator`` to ``@model_validator``."""
-            dec_text = self._node_text(decorator)
+            dec_text = self.node_text(decorator)
             new_text = dec_text.replace("root_validator(", "model_validator(", 1)
 
             if "pre=True" in new_text and "mode=" not in new_text:
@@ -303,7 +234,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             elif "mode=" not in new_text:
                 new_text = new_text.replace(")", ', mode="after")', 1)
 
-            self._append_rewrite(
+            self.append_rewrite(
                 decorator,
                 new_text,
                 "Replaced @root_validator with @model_validator",

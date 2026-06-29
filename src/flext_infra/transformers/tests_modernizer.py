@@ -21,6 +21,10 @@ import re
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraRopeTransformer, c, t, u
+from flext_infra.transformers._rewrite import (
+    FlextInfraSourceRewrite,
+    FlextInfraSourceRewriter,
+)
 
 
 class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
@@ -34,26 +38,6 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
     _TM_NAME: ClassVar[str] = "tm"
     _UNITTEST_MODULE: ClassVar[str] = "unittest"
     _TESTCASE: ClassVar[str] = "TestCase"
-
-    class _Rewrite:
-        """One source rewrite: replace ``source[start:end]`` with ``text``."""
-
-        __slots__ = ("end", "start", "text")
-
-        def __init__(self, start: int, end: int, text: str) -> None:
-            self.start = start
-            self.end = end
-            self.text = text
-
-        def __lt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorTestsModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) < (other.start, other.end)
-
-        def __gt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorTestsModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) > (other.start, other.end)
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -69,7 +53,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
 
         updated = source
         if visitor.rewrites:
-            updated = self._apply_rewrites(source, visitor.rewrites)
+            updated = FlextInfraSourceRewriter.apply_rewrites(source, visitor.rewrites)
 
         if visitor.needs_flext_tests_case_import:
             before = updated
@@ -102,18 +86,6 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
         return updated, list(self.changes)
 
     @classmethod
-    def _apply_rewrites(
-        cls,
-        source: str,
-        rewrites: list[_Rewrite],
-    ) -> str:
-        """Apply rewrites from bottom-right to top-left to preserve offsets."""
-        result = source
-        for rewrite in sorted(rewrites, reverse=True):
-            result = result[: rewrite.start] + rewrite.text + result[rewrite.end :]
-        return result
-
-    @classmethod
     def _ensure_from_import(cls, source: str, module: str, name: str) -> str:
         """Ensure ``from <module> import <name>`` is present."""
         bound_names: set[str] = set()
@@ -137,14 +109,11 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
         lines.insert(insert_idx, f"from {module} import {name}\n")
         return "".join(lines)
 
-    class _TestsVisitor(ast.NodeVisitor):
+    class _TestsVisitor(FlextInfraSourceRewriter):
         """Collect rewrites for unittest test anti-patterns."""
 
         def __init__(self, source: str) -> None:
-            super().__init__()
-            self._source = source
-            self.rewrites: list[FlextInfraRefactorTestsModernizer._Rewrite] = []
-            self.changes: list[str] = []
+            super().__init__(source)
             self.needs_flext_tests_case_import = False
             self.needs_tm_import = False
             self._unittest_aliases = self._collect_unittest_aliases(source)
@@ -168,53 +137,18 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
                 )
             return aliases
 
-        def _offset(self, lineno: int, col_offset: int) -> int:
-            """Convert (1-based line, 0-based column) to byte offset."""
-            lines = self._source.splitlines(keepends=True)
-            return sum(len(lines[i]) for i in range(lineno - 1)) + col_offset
-
-        def _node_offset(self, node: ast.AST, *, start: bool) -> int:
-            """Return byte offset for a node's start or end position."""
-            if start:
-                lineno = getattr(node, "lineno", 1)
-                col_offset = getattr(node, "col_offset", 0)
-            else:
-                lineno = getattr(node, "end_lineno", getattr(node, "lineno", 1))
-                col_offset = getattr(node, "end_col_offset", 0)
-            return self._offset(lineno, col_offset)
-
-        def _node_text(self, node: ast.AST) -> str:
-            """Return source text for a node."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            return self._source[start:end]
-
-        def _append_rewrite(
-            self,
-            node: ast.AST,
-            text: str,
-            change: str,
-        ) -> None:
-            """Record a rewrite spanning a node's source range."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            self.rewrites.append(
-                FlextInfraRefactorTestsModernizer._Rewrite(start, end, text),
-            )
-            self.changes.append(change)
-
         @override
         def visit_Import(self, node: ast.Import) -> None:
             """Remove ``import unittest`` statements."""
             if all(alias.name == "unittest" for alias in node.names):
-                self._append_rewrite(node, "", "Removed import unittest")
+                self.append_rewrite(node, "", "Removed import unittest")
             self.generic_visit(node)
 
         @override
         def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
             """Remove ``from unittest import ...`` statements."""
             if node.module == "unittest":
-                self._append_rewrite(node, "", "Removed from unittest import")
+                self.append_rewrite(node, "", "Removed from unittest import")
             self.generic_visit(node)
 
         @override
@@ -275,7 +209,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
             start = self._offset(header_lineno + 1, 0)
             end = start + len(line)
             self.rewrites.append(
-                FlextInfraRefactorTestsModernizer._Rewrite(start, end, new_line),
+                FlextInfraSourceRewrite(start, end, new_line),
             )
             self.changes.append(
                 f"Renamed {old_name} to {new_name} and replaced base "
@@ -342,7 +276,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
             else:
                 return
 
-            self._append_rewrite(
+            self.append_rewrite(
                 node,
                 replacement,
                 f"Replaced self.{method}(...) with {replacement}",

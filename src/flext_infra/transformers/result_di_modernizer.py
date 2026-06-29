@@ -22,6 +22,9 @@ import ast
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraRopeTransformer, c, t
+from flext_infra.transformers._rewrite import (
+    FlextInfraSourceRewriter,
+)
 
 
 class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
@@ -34,26 +37,6 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
     _CORE_PKG: ClassVar[str] = c.Infra.PKG_CORE_UNDERSCORE
     _DI_FACADE: ClassVar[str] = "flext_core.di"
     _VALUE_ERROR_CODE: ClassVar[str] = "RESULT_VALUE_ERROR"
-
-    class _Rewrite:
-        """One source rewrite: replace ``source[start:end]`` with ``text``."""
-
-        __slots__ = ("end", "start", "text")
-
-        def __init__(self, start: int, end: int, text: str) -> None:
-            self.start = start
-            self.end = end
-            self.text = text
-
-        def __lt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorResultDiModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) < (other.start, other.end)
-
-        def __gt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorResultDiModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) > (other.start, other.end)
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -71,7 +54,7 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
         if not visitor.rewrites:
             return source, list(self.changes)
 
-        updated = self._apply_rewrites(source, visitor.rewrites)
+        updated = FlextInfraSourceRewriter.apply_rewrites(source, visitor.rewrites)
         for change in visitor.changes:
             self._record_change(change)
 
@@ -89,62 +72,12 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
                 return True
         return False
 
-    @classmethod
-    def _apply_rewrites(
-        cls,
-        source: str,
-        rewrites: list[_Rewrite],
-    ) -> str:
-        """Apply rewrites from bottom-right to top-left to preserve offsets."""
-        result = source
-        for rewrite in sorted(rewrites, reverse=True):
-            result = result[: rewrite.start] + rewrite.text + result[rewrite.end :]
-        return result
-
-    class _ResultDiVisitor(ast.NodeVisitor):
+    class _ResultDiVisitor(FlextInfraSourceRewriter):
         """Collect rewrites for result-flow and DI anti-patterns."""
 
         def __init__(self, source: str, *, has_result_alias: bool) -> None:
-            super().__init__()
-            self._source = source
+            super().__init__(source)
             self._has_result_alias = has_result_alias
-            self.rewrites: list[FlextInfraRefactorResultDiModernizer._Rewrite] = []
-            self.changes: list[str] = []
-
-        def _offset(self, lineno: int, col_offset: int) -> int:
-            """Convert (1-based line, 0-based column) to byte offset."""
-            lines = self._source.splitlines(keepends=True)
-            return sum(len(lines[i]) for i in range(lineno - 1)) + col_offset
-
-        def _node_offset(self, node: ast.AST, *, start: bool) -> int:
-            """Return byte offset for a node's start or end position."""
-            if start:
-                lineno = getattr(node, "lineno", 1)
-                col_offset = getattr(node, "col_offset", 0)
-            else:
-                lineno = getattr(node, "end_lineno", getattr(node, "lineno", 1))
-                col_offset = getattr(node, "end_col_offset", 0)
-            return self._offset(lineno, col_offset)
-
-        def _node_text(self, node: ast.AST) -> str:
-            """Return source text for a node."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            return self._source[start:end]
-
-        def _append_rewrite(
-            self,
-            node: ast.AST,
-            text: str,
-            change: str,
-        ) -> None:
-            """Record a rewrite spanning a node's source range."""
-            start = self._node_offset(node, start=True)
-            end = self._node_offset(node, start=False)
-            self.rewrites.append(
-                FlextInfraRefactorResultDiModernizer._Rewrite(start, end, text),
-            )
-            self.changes.append(change)
 
         @override
         def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -173,7 +106,7 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
             if not all(name in {"containers", "providers"} for name in names):
                 return
             new_text = f"from {self._di_facade()} import {', '.join(names)}\n"
-            self._append_rewrite(
+            self.append_rewrite(
                 node,
                 new_text,
                 "Rewrote dependency_injector import to flext_core.di",
@@ -196,7 +129,7 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
                 else:
                     as_clauses.append(alias.name)
             new_text = f"from {new_module} import {', '.join(as_clauses)}\n"
-            self._append_rewrite(
+            self.append_rewrite(
                 node,
                 new_text,
                 f"Rewrote {node.module} import to {new_module}",
@@ -227,7 +160,7 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
             new_text = (
                 f'return r[str].fail("{message}", error_code="{self._error_code()}")'
             )
-            self._append_rewrite(
+            self.append_rewrite(
                 node,
                 new_text,
                 "Replaced raise ValueError with r[str].fail result",

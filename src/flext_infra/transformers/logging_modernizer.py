@@ -19,6 +19,10 @@ import re
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraRopeTransformer, c, t, u
+from flext_infra.transformers._rewrite import (
+    FlextInfraSourceRewrite,
+    FlextInfraSourceRewriter,
+)
 
 
 class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
@@ -27,26 +31,6 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
     _description = "migrate logging usage to u.fetch_logger"
 
     _CORE_PKG: ClassVar[str] = c.Infra.PKG_CORE_UNDERSCORE
-
-    class _Rewrite:
-        """One source rewrite: replace ``source[start:end]`` with ``text``."""
-
-        __slots__ = ("end", "start", "text")
-
-        def __init__(self, start: int, end: int, text: str) -> None:
-            self.start = start
-            self.end = end
-            self.text = text
-
-        def __lt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorLoggingModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) < (other.start, other.end)
-
-        def __gt__(self, other: object) -> bool:
-            if not isinstance(other, FlextInfraRefactorLoggingModernizer._Rewrite):
-                return NotImplemented
-            return (self.start, self.end) > (other.start, other.end)
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -66,7 +50,7 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
             import_node = visitor.logging_import_node
             start = visitor.node_offset(import_node, start=True)
             end = visitor.node_offset(import_node, start=False)
-            rewrites.append(self._Rewrite(start, end, "pass"))
+            rewrites.append(FlextInfraSourceRewrite(start, end, "pass"))
             visitor.changes.append("Removed unused import logging")
 
         for from_import_node in visitor.logging_from_import_nodes:
@@ -74,13 +58,13 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
             if new_text is not None:
                 start = visitor.node_offset(from_import_node, start=True)
                 end = visitor.node_offset(from_import_node, start=False)
-                rewrites.append(self._Rewrite(start, end, new_text))
+                rewrites.append(FlextInfraSourceRewrite(start, end, new_text))
                 visitor.changes.append(change)
 
         if not rewrites:
             return source, list(self.changes)
 
-        updated = self._apply_rewrites(source, rewrites)
+        updated = FlextInfraSourceRewriter.apply_rewrites(source, rewrites)
 
         if visitor.needs_u_import:
             updated = self._ensure_u_import(updated)
@@ -89,18 +73,6 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
             self._record_change(change)
 
         return updated, list(self.changes)
-
-    @classmethod
-    def _apply_rewrites(
-        cls,
-        source: str,
-        rewrites: list[_Rewrite],
-    ) -> str:
-        """Apply rewrites from bottom-right to top-left to preserve offsets."""
-        result = source
-        for rewrite in sorted(rewrites, reverse=True):
-            result = result[: rewrite.start] + rewrite.text + result[rewrite.end :]
-        return result
 
     @classmethod
     def _ensure_u_import(cls, source: str) -> str:
@@ -145,54 +117,16 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
             "Removed getLogger from logging imports",
         )
 
-    class _LoggingVisitor(ast.NodeVisitor):
+    class _LoggingVisitor(FlextInfraSourceRewriter):
         """Collect rewrites for logging anti-patterns."""
 
         def __init__(self, source: str) -> None:
-            super().__init__()
-            self._source = source
-            self.rewrites: list[FlextInfraRefactorLoggingModernizer._Rewrite] = []
-            self.changes: list[str] = []
+            super().__init__(source)
             self.logging_import_node: ast.Import | None = None
             self.logging_from_import_nodes: list[ast.ImportFrom] = []
             self.other_logging_usage = False
             self.needs_u_import = False
             self._logging_function_names: set[str] = set()
-
-        def _offset(self, lineno: int, col_offset: int) -> int:
-            """Convert (1-based line, 0-based column) to byte offset."""
-            lines = self._source.splitlines(keepends=True)
-            return sum(len(lines[i]) for i in range(lineno - 1)) + col_offset
-
-        def node_offset(self, node: ast.AST, *, start: bool) -> int:
-            """Return byte offset for a node's start or end position."""
-            if start:
-                lineno = getattr(node, "lineno", 1)
-                col_offset = getattr(node, "col_offset", 0)
-            else:
-                lineno = getattr(node, "end_lineno", getattr(node, "lineno", 1))
-                col_offset = getattr(node, "end_col_offset", 0)
-            return self._offset(lineno, col_offset)
-
-        def _node_text(self, node: ast.AST) -> str:
-            """Return source text for a node."""
-            start = self.node_offset(node, start=True)
-            end = self.node_offset(node, start=False)
-            return self._source[start:end]
-
-        def _append_rewrite(
-            self,
-            node: ast.AST,
-            text: str,
-            change: str,
-        ) -> None:
-            """Record a rewrite spanning a node's source range."""
-            start = self.node_offset(node, start=True)
-            end = self.node_offset(node, start=False)
-            self.rewrites.append(
-                FlextInfraRefactorLoggingModernizer._Rewrite(start, end, text),
-            )
-            self.changes.append(change)
 
         @override
         def visit_Import(self, node: ast.Import) -> None:
@@ -235,9 +169,9 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
                 and node.func.value.id == "logging"
                 and node.func.attr == "getLogger"
             ):
-                call_text = self._node_text(node)
+                call_text = self.node_text(node)
                 new_call = call_text.replace("logging.getLogger", "u.fetch_logger", 1)
-                self._append_rewrite(
+                self.append_rewrite(
                     node,
                     new_call,
                     "Replaced logging.getLogger(...) with u.fetch_logger(...)",
@@ -248,14 +182,14 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
                 isinstance(node.func, ast.Name)
                 and node.func.id in self._logging_function_names
             ):
-                call_text = self._node_text(node)
+                call_text = self.node_text(node)
                 new_call = re.sub(
                     rf"\b{re.escape(node.func.id)}\b",
                     "u.fetch_logger",
                     call_text,
                     count=1,
                 )
-                self._append_rewrite(
+                self.append_rewrite(
                     node,
                     new_call,
                     "Replaced getLogger(...) with u.fetch_logger(...)",

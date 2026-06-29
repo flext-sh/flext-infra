@@ -95,10 +95,12 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
         export_names = {*lazy_map, *eager_dunders}
+        excluded_lazy_names: t.StrSequence = ()
         if (
-            context.surface == c.Infra.DEFAULT_SRC_DIR
+            context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
             and "." not in context.current_pkg
+            and u.Infra.matches_project_namespace_package(context.current_pkg)
         ):
             # Privacy rule: the public root facade exposes only symbols sourced
             # from public root modules. The same set drives __all__ and the
@@ -115,8 +117,19 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 for name, target in lazy_map.items()
                 if name in export_names
             }
+            allowed_export_names = frozenset(export_names)
             child_lazy = self._child_packages_with_retained_exports(
-                child_lazy, lazy_map
+                child_lazy,
+                lazy_map,
+            )
+            child_lazy = self._child_packages_without_main_export(
+                child_lazy,
+                dir_exports,
+            )
+            excluded_lazy_names = self._excluded_child_lazy_names(
+                child_lazy,
+                allowed_export_names,
+                dir_exports,
             )
         all_export_names = tuple(sorted(export_names))
         return m.Infra.LazyInitPlan(
@@ -131,6 +144,7 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
             eager_dunders=eager_dunders,
             wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
+            excluded_lazy_names=excluded_lazy_names,
             child_packages_for_tc=child_tc,
         )
 
@@ -312,6 +326,50 @@ class FlextInfraCodegenLazyInitPlanner(m.ArbitraryTypesModel):
                 for module in retained_modules
             )
         )
+
+    def _excluded_child_lazy_names(
+        self,
+        child_packages: t.StrSequence,
+        allowed_export_names: frozenset[str],
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+    ) -> t.StrSequence:
+        """Return child exports that must not leak through runtime lazy merges."""
+        return tuple(
+            sorted({
+                name
+                for child_package in child_packages
+                for name in self._merged_child_export_names(child_package, dir_exports)
+                if name not in allowed_export_names
+            })
+        )
+
+    def _child_packages_without_main_export(
+        self,
+        child_packages: t.StrSequence,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+    ) -> t.StrSequence:
+        """Return child packages safe to merge into a root facade."""
+        return tuple(
+            child_package
+            for child_package in child_packages
+            if "main" not in self._merged_child_export_names(child_package, dir_exports)
+        )
+
+    def _merged_child_export_names(
+        self,
+        child_package: str,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+    ) -> frozenset[str]:
+        """Return export names from the child lazy map produced bottom-up."""
+        child_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+            child_package,
+        )
+        if child_dir is None:
+            return self._export_names_for_package(child_package)
+        child_exports = dir_exports.get(str(child_dir.resolve()))
+        if child_exports is None:
+            return self._export_names_for_package(child_package)
+        return frozenset(child_exports)
 
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:

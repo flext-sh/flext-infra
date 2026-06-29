@@ -614,6 +614,7 @@ class FlextInfraCodegenGeneration:
         eager_imports: t.LazyAliasMap | None = None,
         wildcard_runtime_modules: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
+        excluded_lazy_names: t.StrSequence | None = None,
         child_packages_for_tc: t.StrSequence | None = None,
     ) -> str:
         """Generate complete module file with lazy imports and type hints.
@@ -625,6 +626,7 @@ class FlextInfraCodegenGeneration:
             current_pkg: Current package name for import strategy selection.
             eager_imports: Runtime imports that must exist eagerly in module globals.
             child_packages_for_lazy: Child packages for lazy import collapsing.
+            excluded_lazy_names: Runtime lazy merge exclusions.
             child_packages_for_tc: Child packages for TYPE_CHECKING collapsing.
 
         Returns:
@@ -650,6 +652,9 @@ class FlextInfraCodegenGeneration:
             for name, val in lazy_filtered.items()
             if val[0] not in wildcard_runtime_module_set
         }
+        merged_excluded_lazy_names = tuple(
+            sorted(c.Infra.INFRA_ONLY_EXPORTS | set(excluded_lazy_names or ()))
+        )
         children_lazy = tuple(child_packages_for_lazy or ())
         rendered_child_module_paths = tuple(
             FlextInfraCodegenGeneration._compact_lazy_module_path(
@@ -725,9 +730,7 @@ class FlextInfraCodegenGeneration:
         body: str = body_template.render(
             runtime_import_lines="\n".join(runtime_import_block),
             child_module_paths=rendered_child_module_paths,
-            excluded_lazy_names=sorted(
-                c.Infra.INFRA_ONLY_EXPORTS,
-            ),
+            excluded_lazy_names=merged_excluded_lazy_names,
             use_merge_lazy_imports=use_merge_lazy_imports,
             inline_constants=sorted(inline_constants.items()),
             eager_export_names=eager_export_names,

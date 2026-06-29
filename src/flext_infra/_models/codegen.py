@@ -243,6 +243,10 @@ class FlextInfraModelsCodegen:
             default_factory=tuple,
             description="Direct child package imports merged at runtime.",
         )
+        excluded_lazy_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Names excluded from runtime child lazy import merges.",
+        )
         child_packages_for_tc: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Descendant package imports available for type checking.",

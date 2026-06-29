@@ -165,6 +165,15 @@ class TestsFlextInfraBasemkMakeContract:
             has='--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply',
         )
 
+    def test_rendered_base_mk_disables_addopts_coverage_for_filtered_tests(
+        self,
+    ) -> None:
+        rendered = _render_base_mk()
+        tm.that(
+            rendered,
+            has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi;',
+        )
+
     def test_make_check_file_scope_runs_mypy(self, tmp_path: Path) -> None:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"

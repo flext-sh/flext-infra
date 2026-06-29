@@ -24,11 +24,19 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         loader: FlextInfraRefactorRuleLoader
 
         def refactor_file(
-            self, file_path: Path, *, dry_run: bool = False
+            self,
+            file_path: Path,
+            *,
+            dry_run: bool = False,
+            gates: t.StrSequence | None = None,
         ) -> m.Infra.Result: ...
 
         def refactor_files(
-            self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
+            self,
+            file_paths: t.SequenceOf[Path],
+            *,
+            dry_run: bool = False,
+            gates: t.StrSequence | None = None,
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         def refactor_project(
@@ -38,6 +46,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             dry_run: bool = False,
             pattern: str = c.Infra.EXT_PYTHON_GLOB,
             apply_safety: bool = True,
+            gates: t.StrSequence | None = None,
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         def refactor_workspace(
@@ -47,6 +56,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             dry_run: bool = False,
             pattern: str = c.Infra.EXT_PYTHON_GLOB,
             apply_safety: bool = True,
+            gates: t.StrSequence | None = None,
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
     @staticmethod

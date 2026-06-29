@@ -35,6 +35,7 @@ class FlextInfraRefactorMROImportRewriter(
         file_moves: t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]]
         pending_sources: t.MappingKV[Path, str]
         apply: bool
+        gates: t.StrSequence | None = None
 
     @classmethod
     def migrate_workspace(
@@ -44,6 +45,7 @@ class FlextInfraRefactorMROImportRewriter(
         scan_results: t.SequenceOf[m.Infra.MROScanReport],
         apply: bool,
         project_names: t.StrSequence | None = None,
+        gates: t.StrSequence | None = None,
     ) -> t.Triple[
         t.SequenceOf[m.Infra.MROFileMigration],
         t.SequenceOf[m.Infra.MRORewriteResult],
@@ -77,6 +79,7 @@ class FlextInfraRefactorMROImportRewriter(
             write_errors, failed_paths = cls._write_pending_sources(
                 workspace_root=workspace_root,
                 pending_sources=pending_sources,
+                gates=gates,
             )
             errors.extend(write_errors)
             if failed_paths:
@@ -97,6 +100,7 @@ class FlextInfraRefactorMROImportRewriter(
             pending_sources=pending_sources,
             apply=apply,
             project_names=project_names,
+            gates=gates,
         )
         errors.extend(rewrite_errors)
         return (tuple(migrations), tuple(rewrites), tuple(errors))
@@ -110,6 +114,7 @@ class FlextInfraRefactorMROImportRewriter(
         pending_sources: t.MappingKV[Path, str],
         apply: bool,
         project_names: t.StrSequence | None = None,
+        gates: t.StrSequence | None = None,
     ) -> tuple[
         t.SequenceOf[m.Infra.MRORewriteResult],
         t.StrSequence,
@@ -128,6 +133,7 @@ class FlextInfraRefactorMROImportRewriter(
                 file_moves=file_moves,
                 pending_sources=pending_sources,
                 apply=apply,
+                gates=gates,
             ),
         )
 
@@ -162,6 +168,7 @@ class FlextInfraRefactorMROImportRewriter(
                     workspace_root=request.workspace_root,
                     file_path=file_path,
                     updated_source=updated_source,
+                    gates=request.gates,
                 )
                 if not ok:
                     errors.extend(

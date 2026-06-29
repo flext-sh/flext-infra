@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import difflib
 import shutil
 from collections.abc import MutableMapping
@@ -123,9 +124,41 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         return any(marker in lowered for marker in cls._NO_TESTS_MARKERS)
 
     @classmethod
+    def _file_contains_tests(cls, py_file: Path) -> bool:
+        """Return whether *py_file* defines pytest-collectable tests."""
+        try:
+            tree = ast.parse(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+        except SyntaxError:
+            return False
+        for node in ast.walk(tree):
+            if isinstance(
+                node, ast.FunctionDef | ast.AsyncFunctionDef
+            ) and node.name.startswith("test_"):
+                return True
+            if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
+                return True
+        return False
+
+    @classmethod
     def _pytest_failure(cls, py_file: Path, workspace: Path) -> p.Result[bool]:
         """Run pytest for a single file and surface a failure message via ``r``."""
         if "tests" not in py_file.parts and not py_file.name.startswith("test_"):
+            return r[bool].ok(True)
+        if not cls._file_contains_tests(py_file):
+            compile_result = u.Cli.run_raw(
+                [
+                    *cls._workspace_tool_command(workspace, c.Infra.PYTHON),
+                    "-m",
+                    "py_compile",
+                    str(py_file),
+                ],
+                cwd=cls._command_cwd(py_file, workspace),
+                env=cls._command_env(),
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+            if compile_result.failure:
+                error = compile_result.error or "py_compile failed"
+                return r[bool].fail(error[:300])
             return r[bool].ok(True)
         run_result = u.Cli.run_raw(
             [

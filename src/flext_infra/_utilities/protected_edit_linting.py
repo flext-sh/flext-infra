@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import FlextInfraUtilitiesDiscovery, c, t
+from flext_infra import FlextInfraUtilitiesDiscovery, c, m, t
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -49,9 +49,22 @@ class FlextInfraUtilitiesProtectedEditLinting:
         gates: t.StrSequence | None = None,
     ) -> t.StrSequencePairTuple:
         """Selected lint tools."""
+        env_gates = (
+            u.Cli
+            .process_env()
+            .get(
+                c.Infra.ENV_VAR_LINT_SNAPSHOT_GATES,
+                "",
+            )
+            .strip()
+        )
         resolved_gates = gates or tuple(
             gate.strip()
-            for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
+            for gate in (
+                env_gates.split(",")
+                if env_gates
+                else c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
+            )
             if gate.strip()
         )
         gate_names = {gate.strip().lower() for gate in resolved_gates if gate.strip()}
@@ -82,14 +95,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _command_cwd(py_file: Path, workspace: Path) -> Path:
         """Command cwd."""
         resolved_workspace = workspace.resolve()
-        project_root = FlextInfraUtilitiesDiscovery.project_root(
+        project_root: Path | None = FlextInfraUtilitiesDiscovery.project_root(
             py_file,
         )
         if project_root is None:
-            return resolved_workspace
-        try:
-            project_root.relative_to(resolved_workspace)
-        except ValueError:
             return resolved_workspace
         return project_root
 
@@ -155,49 +164,106 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_env = cls._command_env()
         gate_timeout = max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
-        def _run_gate(
-            tool_name: str,
-            tmpl: t.StrSequence,
-        ) -> t.StrSequencePair:
-            """Run gate."""
-            cmd = [
-                *cls._workspace_tool_command(workspace, tmpl[0]),
-                *(item.replace("{file}", str(py_file)) for item in tmpl[1:]),
-            ]
-            run_result = u.Cli.run_raw(
-                cmd,
-                cwd=command_cwd,
-                env=command_env,
-                timeout=gate_timeout,
-            )
-            gate_errors: t.StrSequence
-            if run_result.failure:
-                gate_errors = [run_result.error or f"{tool_name} failed"]
-            elif run_result.success and run_result.value.exit_code != 0:
-                output = (run_result.value.stdout + run_result.value.stderr).strip()
-                gate_errors = [line for line in output.splitlines() if line.strip()]
-            else:
-                gate_errors = ()
-            return tool_name, gate_errors
-
-        errors: MutableMapping[str, t.StrSequence] = {}
+        results: list[m.Infra.LintGateResult] = []
         ruff_template = next(
             (tmpl for tool, tmpl in selected_tools if tool == "ruff"),
             None,
         )
         if ruff_template is not None:
-            ruff_tool, ruff_lines = _run_gate("ruff", ruff_template)
-            if ruff_lines:
-                errors[ruff_tool] = ruff_lines
+            results.append(
+                cls._run_lint_gate(
+                    py_file=py_file,
+                    workspace=workspace,
+                    command_cwd=command_cwd,
+                    command_env=command_env,
+                    gate_timeout=gate_timeout,
+                    tool_name="ruff",
+                    template=ruff_template,
+                ),
+            )
 
         remaining_tools = tuple(
             (tool, tmpl) for tool, tmpl in selected_tools if tool != "ruff"
         )
-        for tool_name, tmpl in remaining_tools:
-            _, lines = _run_gate(tool_name, tmpl)
-            if lines:
-                errors[tool_name] = lines
-        return dict(errors)
+        if not remaining_tools:
+            return cls._lint_snapshot_from_results(tuple(results))
+
+        timeout_budget = max(1, gate_timeout + 10)
+        pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, len(remaining_tools)),
+        )
+        futures_by_tool = {
+            pool.submit(
+                cls._run_lint_gate,
+                py_file=py_file,
+                workspace=workspace,
+                command_cwd=command_cwd,
+                command_env=command_env,
+                gate_timeout=gate_timeout,
+                tool_name=tool,
+                template=tmpl,
+            ): tool
+            for tool, tmpl in remaining_tools
+        }
+        try:
+            done, not_done = concurrent.futures.wait(
+                tuple(futures_by_tool),
+                timeout=timeout_budget,
+            )
+            results.extend(future.result() for future in done)
+            for future in not_done:
+                tool_name = futures_by_tool[future]
+                _ = future.cancel()
+                results.append(
+                    m.Infra.LintGateResult(
+                        tool_name=tool_name,
+                        errors=(
+                            f"timeout {timeout_budget}s: lint gate '{tool_name}' did not finish",
+                        ),
+                    ),
+                )
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
+        return cls._lint_snapshot_from_results(tuple(results))
+
+    @classmethod
+    def _run_lint_gate(
+        cls,
+        *,
+        py_file: Path,
+        workspace: Path,
+        command_cwd: Path,
+        command_env: t.StrMapping,
+        gate_timeout: int,
+        tool_name: str,
+        template: t.StrSequence,
+    ) -> m.Infra.LintGateResult:
+        """Run one lint gate and return a validated result model."""
+        cmd = [
+            *cls._workspace_tool_command(workspace, template[0]),
+            *(item.replace("{file}", str(py_file)) for item in template[1:]),
+        ]
+        run_result = u.Cli.run_raw(
+            cmd,
+            cwd=command_cwd,
+            env=command_env,
+            timeout=gate_timeout,
+        )
+        if run_result.failure:
+            gate_errors: t.StrSequence = (run_result.error or f"{tool_name} failed",)
+        elif run_result.success and run_result.value.exit_code != 0:
+            output = (run_result.value.stdout + run_result.value.stderr).strip()
+            gate_errors = tuple(line for line in output.splitlines() if line.strip())
+        else:
+            gate_errors = ()
+        return m.Infra.LintGateResult(tool_name=tool_name, errors=gate_errors)
+
+    @staticmethod
+    def _lint_snapshot_from_results(
+        results: t.SequenceOf[m.Infra.LintGateResult],
+    ) -> t.Infra.LintSnapshot:
+        """Convert validated lint gate results into the public snapshot contract."""
+        return {result.tool_name: result.errors for result in results if result.errors}
 
     @classmethod
     def lint_snapshot(

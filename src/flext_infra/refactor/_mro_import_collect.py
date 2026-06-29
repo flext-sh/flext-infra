@@ -168,6 +168,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         workspace_root: Path,
         file_path: Path,
         updated_source: str,
+        gates: t.StrSequence | None,
     ) -> t.Infra.EditResult:
         """Protected source write."""
         return u.Infra.protected_source_write(
@@ -176,6 +177,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
                 workspace=workspace_root,
                 updated_source=updated_source,
                 keep_backup=True,
+                gates=gates,
             ),
         )
 
@@ -185,6 +187,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         *,
         workspace_root: Path,
         pending_sources: t.MappingKV[Path, str],
+        gates: t.StrSequence | None,
     ) -> tuple[t.StrSequence, t.SequenceOf[Path]]:
         """Write pending sources."""
         errors: list[str] = []
@@ -194,6 +197,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
                 workspace_root=workspace_root,
                 file_path=file_path,
                 updated_source=source,
+                gates=gates,
             )
             if ok:
                 continue

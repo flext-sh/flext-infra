@@ -82,14 +82,6 @@ class FlextInfraCodegenLazyInitEngineMixin:
                 pkg_dir,
                 dir_exports=dir_exports,
             )
-            if plan.action == "skip":
-                result = (None, dict(plan.lazy_map))
-            elif check_only:
-                result = (0, dict(plan.lazy_map))
-            elif plan.action == "remove":
-                result = self._remove_init(plan)
-            else:
-                result = self._write_init(plan)
         except ValueError as exc:
             u.Cli.error(
                 f"export collision in {pkg_dir}: {exc}; "
@@ -101,7 +93,24 @@ class FlextInfraCodegenLazyInitEngineMixin:
             u.Cli.error(f"generating {pkg_dir}: {exc}")
             failed_lazy_map = {}
             result = (-1, failed_lazy_map)
+        else:
+            result = self._process_plan(plan, check_only=check_only)
         return result
+
+    def _process_plan(
+        self,
+        plan: m.Infra.LazyInitPlan,
+        *,
+        check_only: bool,
+    ) -> t.Infra.LazyInitProcessResult:
+        """Process a resolved lazy-init plan."""
+        if plan.action == c.Infra.LazyInitAction.SKIP:
+            return (None, dict(plan.lazy_map))
+        if check_only:
+            return (0, dict(plan.lazy_map))
+        if plan.action == c.Infra.LazyInitAction.REMOVE:
+            return self._remove_init(plan)
+        return self._write_init(plan)
 
     def _remove_init(
         self,
@@ -132,32 +141,13 @@ class FlextInfraCodegenLazyInitEngineMixin:
         """Write init."""
         init_path = plan.context.init_path
         try:
-            generated = FlextInfraCodegenGeneration.generate_file(
-                plan.exports,
-                plan.lazy_map,
-                plan.inline_constants,
-                plan.context.current_pkg,
-                eager_imports=plan.eager_dunders,
-                wildcard_runtime_modules=plan.wildcard_runtime_modules,
-                child_packages_for_lazy=plan.child_packages_for_lazy,
-                child_packages_for_tc=plan.child_packages_for_tc,
-            )
-            previous: str | None = None
-            if init_path.exists():
-                read = u.Cli.files_read_text(init_path)
-                if read.failure:
-                    u.Cli.error(f"reading {init_path}: {read.error}")
-                    return (-1, dict(plan.lazy_map))
-                previous = read.value
-            if previous != generated:
-                write_result = u.Cli.atomic_write_text_file(init_path, generated)
-                if write_result.failure:
-                    u.Cli.error(f"writing {init_path}: {write_result.error}")
-                    return (-1, dict(plan.lazy_map))
-                self._modified_files.add(str(init_path))
-                _ = u.Infra.run_ruff_fix(init_path, quiet=True)
+            generated = self._render_init(plan)
+            previous = self._read_previous_init(plan)
+            write_exit = self._write_changed_init(plan, generated, previous)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating {init_path}: {exc}")
+            return (-1, dict(plan.lazy_map))
+        if write_exit < 0:
             return (-1, dict(plan.lazy_map))
         rel_path = (
             init_path.relative_to(self.workspace_root)
@@ -166,6 +156,55 @@ class FlextInfraCodegenLazyInitEngineMixin:
         )
         u.Cli.info(f"  OK: {rel_path} — {len(plan.exports)} exports")
         return (0, dict(plan.lazy_map))
+
+    @staticmethod
+    def _render_init(plan: m.Infra.LazyInitPlan) -> str:
+        """Render generated __init__.py content for a lazy-init plan."""
+        return FlextInfraCodegenGeneration.generate_file(
+            plan.exports,
+            plan.lazy_map,
+            plan.inline_constants,
+            plan.context.current_pkg,
+            eager_imports=plan.eager_dunders,
+            wildcard_runtime_modules=plan.wildcard_runtime_modules,
+            child_packages_for_lazy=plan.child_packages_for_lazy,
+            excluded_lazy_names=plan.excluded_lazy_names,
+            child_packages_for_tc=plan.child_packages_for_tc,
+        )
+
+    @staticmethod
+    def _read_previous_init(plan: m.Infra.LazyInitPlan) -> str | None:
+        """Read existing __init__.py content when it exists."""
+        init_path = plan.context.init_path
+        if not init_path.exists():
+            return None
+        read = u.Cli.files_read_text(init_path)
+        if read.failure:
+            message = f"reading {init_path}: {read.error}"
+            raise OSError(message)
+        content = read.value
+        if isinstance(content, str):
+            return content
+        message = f"reading {init_path}: expected text content"
+        raise TypeError(message)
+
+    def _write_changed_init(
+        self,
+        plan: m.Infra.LazyInitPlan,
+        generated: str,
+        previous: str | None,
+    ) -> int:
+        """Write generated __init__.py content when it changed."""
+        if previous == generated:
+            return 0
+        init_path = plan.context.init_path
+        write_result = u.Cli.atomic_write_text_file(init_path, generated)
+        if write_result.failure:
+            message = f"writing {init_path}: {write_result.error}"
+            raise OSError(message)
+        self._modified_files.add(str(init_path))
+        _ = u.Infra.run_ruff_fix(init_path, quiet=True)
+        return 0
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitEngineMixin"]

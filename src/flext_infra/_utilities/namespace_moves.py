@@ -93,6 +93,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         cls,
         *,
         py_files: t.SequenceOf[Path],
+        gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite runtime alias violations."""
         if not py_files:
@@ -149,6 +150,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         workspace=workspace_root,
                         updated_source=rewritten,
                         keep_backup=True,
+                        gates=gates,
                     ),
                 )
 
@@ -158,6 +160,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         project_root: Path,
         py_files: t.SequenceOf[Path],
         violations: t.SequenceOf[m.Infra.ManualProtocolViolation],
+        gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite manual protocol violations."""
         grouped: t.MappingKV[Path, t.Infra.StrSet] = defaultdict(set)
@@ -173,6 +176,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 target_filename=c.Infra.PROTOCOLS_PY,
                 names=protocol_names,
                 header_prefix="class ",
+                gates=gates,
             )
             if move is not None:
                 protocol_moves.append(move)
@@ -207,6 +211,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         *,
         violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite compatibility alias violations."""
         _ = parse_failures
@@ -217,6 +222,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_compat_aliases_in_file(
                 file_path=file_path,
                 alias_map=alias_map,
+                gates=gates,
             )
 
     @staticmethod
@@ -224,6 +230,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         *,
         file_path: Path,
         alias_map: t.StrMapping,
+        gates: t.StrSequence | None,
     ) -> None:
         """Rewrite compat aliases in file."""
         source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -247,6 +254,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     workspace=file_path.parent,
                     updated_source=rewritten,
                     keep_backup=True,
+                    gates=gates,
                 ),
             )
 
@@ -258,6 +266,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         target_filename: str,
         names: t.Infra.StrSet,
         header_prefix: str,
+        gates: t.StrSequence | None,
     ) -> t.Triple[Path, Path, t.VariadicTuple[str]] | None:
         """Move named blocks."""
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -320,6 +329,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=project_root,
                 keep_backup=True,
+                gates=gates,
                 post_write=_post_write,
             ),
         )

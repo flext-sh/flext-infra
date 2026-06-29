@@ -159,7 +159,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         """Run the MRO migrator and accumulate fixed/skipped violations."""
         report = FlextInfraRefactorMigrateToClassMRO(
             workspace_root=project_path,
-        ).run(target="all", apply=True)
+        ).run(target="all", apply=True, gates=(c.Infra.LINT,))
         _log.info(
             "mro_migration_complete",
             project=project_path.name,
@@ -247,6 +247,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
                 project_path,
                 dry_run=False,
                 apply_safety=False,
+                gates=(c.Infra.LINT,),
             ),
         )
         ctx.files_modified |= {
@@ -284,7 +285,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         """Run namespace enforcement and record any unresolved violations."""
         enforcement = FlextInfraNamespaceEnforcer(
             workspace_root=project_path,
-        ).enforce(apply=True)
+        ).enforce(apply=True, gates=(c.Infra.LINT,))
         violating_projects = tuple(
             project_report
             for project_report in enforcement.projects
