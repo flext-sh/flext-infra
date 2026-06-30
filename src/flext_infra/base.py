@@ -199,10 +199,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         return self.logger
 
     @classmethod
-    def execute_command(
-        cls,
-        params: Self,
-    ) -> p.Result[TDomainResult]:
+    def execute_command(cls, params: Self) -> p.Result[TDomainResult]:
         """Execute the validated CLI service instance directly."""
         return params.execute()
 
@@ -212,6 +209,10 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
     FlextInfraProjectSelectionMixin,
 ):
     """Shared service foundation for commands that target workspace projects."""
+
+    selected_projects: Annotated[
+        t.StrSequence | None, m.Field(alias="projects", description="Projects to process")
+    ] = None
 
 
 s = FlextInfraServiceBase

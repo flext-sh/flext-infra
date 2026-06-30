@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
 from flext_infra import c, m, p, t
@@ -19,10 +19,8 @@ from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 class FlextInfraProjectSelectionMixin:
     """Private project-selection behavior for project-scoped services."""
 
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(alias="projects", description="Projects to process"),
-    ] = None
+    if TYPE_CHECKING:
+        selected_projects: t.StrSequence | None
 
     @property
     def root(self) -> Path:
