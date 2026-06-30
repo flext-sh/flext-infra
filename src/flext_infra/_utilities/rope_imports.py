@@ -197,7 +197,7 @@ class FlextInfraUtilitiesRopeImports:
         *,
         apply: bool,
     ) -> p.Result[bool]:
-        """Organize imports for one rope resource using rope's import engine.
+        """Organize imports for one rope resource using rope's import tools.
 
         ``r.ok(True)`` when rope produced a non-empty change set; the
         change is applied when ``apply`` is set. ``r.ok(False)`` when

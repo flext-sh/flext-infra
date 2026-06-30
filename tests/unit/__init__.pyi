@@ -58,9 +58,6 @@ from tests.unit._utilities.test_safety import (
 from tests.unit._utilities.test_scanning import (
     TestsFlextInfraUtilitiesscanning as TestsFlextInfraUtilitiesscanning,
 )
-from tests.unit.basemk.test_renderer import (
-    TestsFlextInfraBasemkRenderer as TestsFlextInfraBasemkRenderer,
-)
 from tests.unit.basemk.test_generator import (
     TestsFlextInfraBasemkGenerator as TestsFlextInfraBasemkGenerator,
 )
@@ -75,6 +72,9 @@ from tests.unit.basemk.test_main import (
 )
 from tests.unit.basemk.test_make_contract import (
     TestsFlextInfraBasemkMakeContract as TestsFlextInfraBasemkMakeContract,
+)
+from tests.unit.basemk.test_renderer import (
+    TestsFlextInfraBasemkRenderer as TestsFlextInfraBasemkRenderer,
 )
 from tests.unit.check.extended_cli_entry_tests import (
     TestWorkspaceCheckCLI as TestWorkspaceCheckCLI,
@@ -352,9 +352,6 @@ from tests.unit.refactor.test_infra_refactor_class_placement import (
 from tests.unit.refactor.test_infra_refactor_cli_models_workflow import (
     TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow as TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
 )
-from tests.unit.refactor.test_infra_refactor_engine import (
-    TestsFlextInfraRefactorInfraRefactorEngine as TestsFlextInfraRefactorInfraRefactorEngine,
-)
 from tests.unit.refactor.test_infra_refactor_import_modernizer import (
     TestsFlextInfraRefactorInfraRefactorImportModernizer as TestsFlextInfraRefactorInfraRefactorImportModernizer,
 )
@@ -386,8 +383,11 @@ from tests.unit.refactor.test_infra_refactor_project_classifier import (
     TestsFlextInfraRefactorInfraRefactorProjectClassifier as TestsFlextInfraRefactorInfraRefactorProjectClassifier,
 )
 from tests.unit.refactor.test_infra_refactor_safety import (
-    EngineSafetyStub as EngineSafetyStub,
+    RefactorSafetyStub as RefactorSafetyStub,
     TestsFlextInfraRefactorInfraRefactorSafety as TestsFlextInfraRefactorInfraRefactorSafety,
+)
+from tests.unit.refactor.test_infra_refactor_service import (
+    TestsFlextInfraRefactorInfraRefactorService as TestsFlextInfraRefactorInfraRefactorService,
 )
 from tests.unit.refactor.test_infra_refactor_typing_unifier import (
     FlextInfraRefactorTypingUnificationRule as FlextInfraRefactorTypingUnificationRule,

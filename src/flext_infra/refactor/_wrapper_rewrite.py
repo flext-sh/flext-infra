@@ -1,4 +1,4 @@
-"""Wrapper-root per-file AST rewrite engine — extracted concern."""
+"""Wrapper-root per-file AST rewrite helpers."""
 
 from __future__ import annotations
 

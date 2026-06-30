@@ -1,4 +1,4 @@
-"""Direct file-rule execution for the refactor engine."""
+"""Direct file-rule execution for the refactor service."""
 
 from __future__ import annotations
 

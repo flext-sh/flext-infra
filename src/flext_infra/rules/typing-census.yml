@@ -1,6 +1,6 @@
 # Typing census and annotation fix rules.
 # Driven by CST analysis — no hardcoded patterns.
-# Engine discovers violations dynamically via TypingAnnotationCensusVisitor.
+# The TypingAnnotationCensusVisitor discovers violations dynamically.
 
 rules:
 - id: replace-t.JsonValue-annotations

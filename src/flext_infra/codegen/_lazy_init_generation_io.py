@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from flext_infra import m, t, u
 
 
-class FlextInfraCodegenLazyInitEngineIOMixin:
+class FlextInfraCodegenLazyInitGenerationIOMixin:
     """Read and write generated ``__init__.py`` files."""
 
     if TYPE_CHECKING:
@@ -48,4 +48,4 @@ class FlextInfraCodegenLazyInitEngineIOMixin:
         return 0
 
 
-__all__: list[str] = ["FlextInfraCodegenLazyInitEngineIOMixin"]
+__all__: list[str] = ["FlextInfraCodegenLazyInitGenerationIOMixin"]

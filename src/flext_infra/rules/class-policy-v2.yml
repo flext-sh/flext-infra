@@ -1,5 +1,5 @@
 version: 2
-engine: class_refactor_policy
+policy_id: class_refactor_policy
 description: Declarative policy matrix for module-family-aware class refactoring.
 policy_matrix:
   - family_name: models

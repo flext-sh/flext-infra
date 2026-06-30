@@ -17,18 +17,12 @@ if TYPE_CHECKING:
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer as FlextInfraRefactorClassNestingAnalyzer,
     )
-    from flext_infra.refactor.engine import (
-        FlextInfraRefactorEngine as FlextInfraRefactorEngine,
-    )
-    from flext_infra.refactor.engine_file import (
+    from flext_infra.refactor.file_executor import (
         FlextInfraClassNestingPostCheckGate as FlextInfraClassNestingPostCheckGate,
         FlextInfraRefactorFileExecutor as FlextInfraRefactorFileExecutor,
     )
-    from flext_infra.refactor.engine_legacy import (
+    from flext_infra.refactor.legacy_text_ops import (
         FlextInfraRefactorLegacyTextOps as FlextInfraRefactorLegacyTextOps,
-    )
-    from flext_infra.refactor.engine_text import (
-        FlextInfraRefactorTextExecutor as FlextInfraRefactorTextExecutor,
     )
     from flext_infra.refactor.loader import (
         FlextInfraRefactorRuleLoader as FlextInfraRefactorRuleLoader,
@@ -66,6 +60,12 @@ if TYPE_CHECKING:
     from flext_infra.refactor.scanner import (
         FlextInfraRefactorLooseClassScanner as FlextInfraRefactorLooseClassScanner,
     )
+    from flext_infra.refactor.service import (
+        FlextInfraRefactorService as FlextInfraRefactorService,
+    )
+    from flext_infra.refactor.text_executor import (
+        FlextInfraRefactorTextExecutor as FlextInfraRefactorTextExecutor,
+    )
     from flext_infra.refactor.violation_analyzer import (
         FlextInfraRefactorViolationAnalyzer as FlextInfraRefactorViolationAnalyzer,
     )
@@ -77,13 +77,13 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".accessor_migration": ("FlextInfraAccessorMigrationOrchestrator",),
         ".census": ("FlextInfraRefactorCensus",),
         ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
-        ".engine": ("FlextInfraRefactorEngine",),
-        ".engine_file": (
+        ".service": ("FlextInfraRefactorService",),
+        ".file_executor": (
             "FlextInfraClassNestingPostCheckGate",
             "FlextInfraRefactorFileExecutor",
         ),
-        ".engine_legacy": ("FlextInfraRefactorLegacyTextOps",),
-        ".engine_text": ("FlextInfraRefactorTextExecutor",),
+        ".legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
+        ".text_executor": ("FlextInfraRefactorTextExecutor",),
         ".loader": ("FlextInfraRefactorRuleLoader",),
         ".migrate_to_class_mro": ("FlextInfraRefactorMigrateToClassMRO",),
         ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),

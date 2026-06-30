@@ -15,14 +15,14 @@ from time import perf_counter
 from typing import override
 
 from flext_infra import c, p, r, s, t, u
-from flext_infra.codegen._lazy_init_engine import (
-    FlextInfraCodegenLazyInitEngineMixin,
+from flext_infra.codegen._lazy_init_generation import (
+    FlextInfraCodegenLazyInitGenerationMixin,
 )
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
-class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitEngineMixin):
+class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
     """Generates ``__init__.py`` with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their

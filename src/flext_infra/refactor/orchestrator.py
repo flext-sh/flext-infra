@@ -12,13 +12,13 @@ from flext_infra.refactor._orchestrator_dispatch import (
 from flext_infra.refactor._orchestrator_scope import (
     FlextInfraRefactorOrchestratorScopeMixin,
 )
-from flext_infra.refactor.engine_file import (
+from flext_infra.refactor.file_executor import (
     FlextInfraClassNestingPostCheckGate,
     FlextInfraRefactorFileExecutor,
 )
-from flext_infra.refactor.engine_text import FlextInfraRefactorTextExecutor
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
+from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
 
 _log = u.fetch_logger(__name__)
 

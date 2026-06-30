@@ -1,4 +1,4 @@
-"""GitHub workflow sync engine: template render + per-project ci.yml — extracted."""
+"""GitHub workflow sync helpers: template render + per-project ci.yml."""
 
 from __future__ import annotations
 

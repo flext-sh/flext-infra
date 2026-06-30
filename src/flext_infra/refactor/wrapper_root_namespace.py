@@ -15,7 +15,7 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.refactor._wrapper_rewrite_engine import (
+from flext_infra.refactor._wrapper_rewrite import (
     FlextInfraWrapperRootNamespaceRewriteMixin,
     _WrapperRewriteAccumulator,
 )

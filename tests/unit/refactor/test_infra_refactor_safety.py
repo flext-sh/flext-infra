@@ -11,13 +11,13 @@ from typing import overload, override
 from flext_tests import r
 
 from flext_infra import t
-from flext_infra.refactor.engine import FlextInfraRefactorEngine
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
+from flext_infra.refactor.service import FlextInfraRefactorService
 from tests.protocols import p
 from tests.utilities import u
 
 
-class EngineSafetyStub(FlextInfraRefactorSafetyManager):
+class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
     """Test double for safety manager lifecycle operations."""
 
     def __init__(self) -> None:
@@ -116,12 +116,12 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         src_dir = tmp_path / "src"
         src_dir.mkdir(parents=True)
         (src_dir / "sample.py").write_text("import os\n", encoding="utf-8")
-        engine = FlextInfraRefactorEngine(config_path=config_path)
-        stub = EngineSafetyStub()
-        engine.orchestrator.safety_manager = stub
-        loaded = engine.load_rules()
+        service = FlextInfraRefactorService(config_path=config_path)
+        stub = RefactorSafetyStub()
+        service.orchestrator.safety_manager = stub
+        loaded = service.load_rules()
         assert loaded.success
-        results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)
+        results = service.refactor_project(tmp_path, dry_run=False, apply_safety=True)
         assert results
         assert all(item.success for item in results)
         assert stub.calls == ["checkpoint", "checkpoint-state", "validate", "clear"]

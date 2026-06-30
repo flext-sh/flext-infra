@@ -767,10 +767,10 @@ class_nesting:
   target_name: FlextInfraConstantsRefactor
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraRefactorEngine
-  current_file: flext-core/src/flext_infra/refactor/engine.py
-  target_namespace: FlextRefactorEngine
-  target_name: FlextInfraRefactorEngine
+- loose_name: FlextInfraRefactorService
+  current_file: flext-core/src/flext_infra/refactor/service.py
+  target_namespace: FlextRefactorService
+  target_name: FlextInfraRefactorService
   confidence: medium
   reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraRefactorMethodInfo
@@ -971,10 +971,10 @@ class_nesting:
   target_name: FlextInfraProjectSelector
   confidence: low
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraTemplateEngine
+- loose_name: FlextInfraTemplateRenderer
   current_file: flext-core/src/flext_infra/templates.py
   target_namespace: FlextTemplates
-  target_name: FlextInfraTemplateEngine
+  target_name: FlextInfraTemplateRenderer
   confidence: low
   reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraTypes

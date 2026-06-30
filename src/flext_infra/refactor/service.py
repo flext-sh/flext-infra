@@ -1,4 +1,4 @@
-"""Refactor engine composition root for flext_infra.refactor."""
+"""Refactor service composition root for flext_infra.refactor."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 
 
-class FlextInfraRefactorEngine:
+class FlextInfraRefactorService:
     """Composition root wiring loader, orchestrator, and safety services."""
 
     def __init__(self, config_path: Path | None = None) -> None:
-        """Initialize the composed refactor engine services."""
+        """Initialize the composed refactor services."""
         self.config_path = config_path or Path(__file__).parent / "settings.yml"
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.orchestrator = FlextInfraRefactorOrchestrator(
@@ -125,4 +125,4 @@ class FlextInfraRefactorEngine:
         )
 
 
-__all__: list[str] = ["FlextInfraRefactorEngine"]
+__all__: list[str] = ["FlextInfraRefactorService"]

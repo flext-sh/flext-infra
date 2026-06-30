@@ -1,4 +1,4 @@
-"""Lazy-init per-directory generation engine — extracted concern."""
+"""Lazy-init per-directory generation service — extracted concern."""
 
 from __future__ import annotations
 
@@ -7,19 +7,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.codegen._lazy_init_engine_io import (
-    FlextInfraCodegenLazyInitEngineIOMixin,
+from flext_infra.codegen._lazy_init_generation_io import (
+    FlextInfraCodegenLazyInitGenerationIOMixin,
 )
-from flext_infra.codegen._lazy_init_engine_registry import (
-    FlextInfraCodegenLazyInitEngineRegistryMixin,
+from flext_infra.codegen._lazy_init_generation_registry import (
+    FlextInfraCodegenLazyInitGenerationRegistryMixin,
 )
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 
-class FlextInfraCodegenLazyInitEngineMixin(
-    FlextInfraCodegenLazyInitEngineIOMixin,
-    FlextInfraCodegenLazyInitEngineRegistryMixin,
+class FlextInfraCodegenLazyInitGenerationMixin(
+    FlextInfraCodegenLazyInitGenerationIOMixin,
+    FlextInfraCodegenLazyInitGenerationRegistryMixin,
 ):
     """Generate/remove ``__init__.py`` per package directory."""
 
@@ -173,4 +173,4 @@ class FlextInfraCodegenLazyInitEngineMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraCodegenLazyInitEngineMixin"]
+__all__: list[str] = ["FlextInfraCodegenLazyInitGenerationMixin"]

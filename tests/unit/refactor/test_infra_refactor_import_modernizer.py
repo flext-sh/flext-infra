@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
-from flext_infra.refactor.engine_text import FlextInfraRefactorTextExecutor
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
+from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
 from tests.typings import t
 
 
@@ -122,7 +122,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
             "symbol_mapping": {"PLATFORM": "c.System.PLATFORM"},
         })
         updated, _ = rule.apply(source)
-        # The regex-based engine indiscriminately replaces the alias `P`.
+        # The regex-based rewrite indiscriminately replaces the alias `P`.
         assert "def f(c.System.PLATFORM: str) -> str:" in updated
         assert "return c.System.PLATFORM" in updated
         assert "value = c.System.PLATFORM" in updated

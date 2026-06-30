@@ -1,4 +1,4 @@
-"""Direct legacy-removal execution for the refactor engine.
+"""Direct legacy-removal execution for the refactor service.
 
 Pure rope + ``c.Infra.*_RE`` constants — no direct ``import ast`` or
 ``import re``. Wrapper detection uses rope's

@@ -13,12 +13,12 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, s, t, u
-from flext_infra.validate._skill_rule_engine import (
-    FlextInfraSkillRuleEngineMixin,
+from flext_infra.validate._skill_rule_runner import (
+    FlextInfraSkillRuleRunnerMixin,
 )
 
 
-class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleEngineMixin):
+class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
     """Validates workspace skills using rules.yml policy gates.
 
     Supports AST-grep rules, custom validator scripts, and baseline

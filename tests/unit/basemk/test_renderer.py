@@ -5,8 +5,8 @@ from __future__ import annotations
 from _pytest.capture import CaptureFixture
 
 from flext_infra import m, main as infra_main
-from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
 
 def basemk_main(argv: list[str]) -> int:

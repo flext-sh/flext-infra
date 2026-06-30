@@ -29,7 +29,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
 
     @override
     def execute(self) -> p.Result[str]:
-        """Execute the end-to-end codegen pipeline via DAG engine."""
+        """Execute the end-to-end codegen pipeline via DAG runner."""
         self._state = m.Infra.CodegenPipelineState()
         stages = self._build_codegen_stages()
 
@@ -93,7 +93,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
         ``action`` performs the work and may mutate ``self._state``; ``emit``
         builds the output payload from the action's return value. Any
         exception is captured and returned as ``r.fail_op(stage_id, exc)``
-        so the DAG engine can fail-fast — never silenced, never demoted.
+        so the DAG runner can fail-fast — never silenced, never demoted.
         """
         return r[m.Cli.PipelineStageResult].create_from_callable(
             lambda: cli.stage_result(

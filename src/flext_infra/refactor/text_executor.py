@@ -1,11 +1,11 @@
-"""Direct text-rule execution for the refactor engine."""
+"""Direct text-rule execution for the refactor service."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from flext_infra import c, m, p, t, u
-from flext_infra.refactor.engine_legacy import FlextInfraRefactorLegacyTextOps
+from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
 )

@@ -1,4 +1,4 @@
-"""Recursive built-in container-annotation rewrite engine — extracted concern."""
+"""Recursive built-in container-annotation rewrite helpers."""
 
 from __future__ import annotations
 

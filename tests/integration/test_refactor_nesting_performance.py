@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c
-from flext_infra.refactor.engine_file import FlextInfraRefactorFileExecutor
+from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from tests.utilities import u
 
@@ -27,7 +27,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
 
 
 class TestsFlextInfraIntegrationRefactorNestingPerformance:
-    """Benchmark performance of refactor engine."""
+    """Benchmark performance of refactor service."""
 
     def test_process_1000_files_in_30_seconds(self) -> None:
         """Benchmark: Process 1000 files in < 30 seconds."""

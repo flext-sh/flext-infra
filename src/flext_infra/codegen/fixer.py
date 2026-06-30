@@ -1,6 +1,6 @@
-"""Auto-fix engine for namespace violations.
+"""Auto-fix service for namespace violations.
 
-Orchestrates NS rule fixes, MRO migration, refactor engine passes,
+Orchestrates NS rule fixes, MRO migration, refactor service passes,
 namespace enforcement, and lazy init propagation for each project.
 
 Rule implementations live in ``_utilities_codegen_fixer_rules``.
@@ -17,11 +17,11 @@ from typing import Annotated, override
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.refactor.engine import FlextInfraRefactorEngine
 from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_infra.refactor.service import FlextInfraRefactorService
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 _log = u.fetch_logger(__name__)
@@ -113,7 +113,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         bak_paths = u.Infra.backup_files(py_files)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         self._run_mro_migration(ctx, project_path)
-        self._run_refactor_engine(ctx, project_path)
+        self._run_refactor_service(ctx, project_path)
         self._run_namespace_enforcement(ctx, project_path)
         self._run_lazy_init_regeneration(ctx, project_path)
         self._post_fix_ruff_format(ctx, bak_paths)
@@ -198,14 +198,14 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
         )
 
     @staticmethod
-    def _run_refactor_engine(
+    def _run_refactor_service(
         ctx: m.Infra.FixContext,
         project_path: Path,
     ) -> None:
-        """Load refactor rules and run the engine; record fixed/skipped violations."""
-        engine = FlextInfraRefactorEngine()
-        config_result = engine.load_config()
-        rules_result = engine.load_rules() if config_result.success else None
+        """Load refactor rules and run the service; record fixed/skipped violations."""
+        service = FlextInfraRefactorService()
+        config_result = service.load_config()
+        rules_result = service.load_rules() if config_result.success else None
         load_error = next(
             (
                 message
@@ -237,7 +237,7 @@ class FlextInfraCodegenFixer(FlextInfraProjectSelectionServiceBase[str]):
             )
             return
         refactor_results = tuple(
-            engine.refactor_project(
+            service.refactor_project(
                 project_path,
                 dry_run=False,
                 apply_safety=False,

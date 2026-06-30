@@ -9,7 +9,7 @@ from flext_infra import c, m, t, u
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
-class FlextInfraCodegenLazyInitEngineRegistryMixin:
+class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     """Write split lazy registries for generated test wrappers."""
 
     if TYPE_CHECKING:
@@ -142,4 +142,4 @@ class FlextInfraCodegenLazyInitEngineRegistryMixin:
         raise TypeError(message)
 
 
-__all__: list[str] = ["FlextInfraCodegenLazyInitEngineRegistryMixin"]
+__all__: list[str] = ["FlextInfraCodegenLazyInitGenerationRegistryMixin"]

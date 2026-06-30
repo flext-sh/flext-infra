@@ -40,7 +40,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class RenderableTemplate(Protocol):
-        """Structural contract for template engines that expose ``render``."""
+        """Structural contract for template renderers that expose ``render``."""
 
         def render(
             self,
@@ -291,7 +291,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class TemplateRenderer(Protocol):
-        """Protocol for template rendering engines."""
+        """Protocol for template renderers."""
 
         def render_all(
             self,
@@ -362,8 +362,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class RefactorEngine(Protocol):
-        """Protocol for rope-based refactor engine services."""
+    class RefactorService(Protocol):
+        """Protocol for rope-based refactor services."""
 
         def execute(self) -> p.Result[bool]:
             """Execute refactoring pass."""
@@ -419,7 +419,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Structural protocol for the parsed refactor CLI argument bag.
 
         Replaces the prior ``argparse.Namespace`` annotation: the orchestrator
-        and engine consume only attribute access, so a structural protocol
+        and renderer consume only attribute access, so a structural protocol
         captures the contract without binding to argparse.
         """
 

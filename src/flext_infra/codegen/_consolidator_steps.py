@@ -1,4 +1,4 @@
-"""Constants-consolidation engine — extracted concern of FlextInfraCodegenConsolidator."""
+"""Constants-consolidation steps for FlextInfraCodegenConsolidator."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenConsolidatorEngineMixin:
+class FlextInfraCodegenConsolidatorStepsMixin:
     """Value-map build + per-file scan/match/apply for constants consolidation.
 
     Composed into FlextInfraCodegenConsolidator via MRO; self-contained (no
@@ -186,4 +186,4 @@ class FlextInfraCodegenConsolidatorEngineMixin:
         return (False, list(descs), report)
 
 
-__all__: list[str] = ["FlextInfraCodegenConsolidatorEngineMixin"]
+__all__: list[str] = ["FlextInfraCodegenConsolidatorStepsMixin"]

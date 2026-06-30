@@ -51,7 +51,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ),
         ".docs.builder_tests": ("TestBuilderCore",),
         ".docs.shared_iter_tests": ("TestIterMarkdownFiles",),
-        ".refactor.test_infra_refactor_safety": ("EngineSafetyStub",),
+        ".refactor.test_infra_refactor_safety": ("RefactorSafetyStub",),
         ".refactor.test_infra_refactor_typing_unifier": (
             "FlextInfraRefactorTypingUnificationRule",
         ),

@@ -16,6 +16,6 @@ rules:
       EnsureFutureAnnotationsRule: "FlextInfraRefactorEnsureFutureAnnotationsRule"
       ClassReconstructorRule: "FlextInfraRefactorClassReconstructorRule"
       MRORedundancyChecker: "FlextInfraRefactorMRORedundancyChecker"
-      FlextRefactorEngine: "FlextInfraRefactorEngine"
+      FlextRefactorService: "FlextInfraRefactorService"
       RefactorResult: "FlextInfraRefactorResult"
       RefactorRule: "FlextInfraRefactorRule"

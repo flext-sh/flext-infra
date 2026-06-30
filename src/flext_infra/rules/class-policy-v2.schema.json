@@ -3,16 +3,16 @@
   "title": "Class Policy v2 Schema",
   "description": "Schema for validating class refactoring policy v2 declarations",
   "type": "object",
-  "required": ["version", "engine", "policy_matrix"],
+  "required": ["version", "policy_id", "policy_matrix"],
   "properties": {
     "version": {
       "type": "integer",
       "description": "Policy version number",
       "enum": [2]
     },
-    "engine": {
+    "policy_id": {
       "type": "string",
-      "description": "Policy engine identifier",
+      "description": "Policy identifier",
       "enum": ["class_refactor_policy"]
     },
     "description": {

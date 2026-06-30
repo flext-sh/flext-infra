@@ -50,8 +50,8 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".unit.refactor.test_infra_refactor_cli_models_workflow": (
             "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
         ),
-        ".unit.refactor.test_infra_refactor_engine": (
-            "TestsFlextInfraRefactorInfraRefactorEngine",
+        ".unit.refactor.test_infra_refactor_service": (
+            "TestsFlextInfraRefactorInfraRefactorService",
         ),
         ".unit.refactor.test_infra_refactor_import_modernizer": (
             "TestsFlextInfraRefactorInfraRefactorImportModernizer",

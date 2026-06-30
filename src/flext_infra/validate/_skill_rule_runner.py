@@ -9,7 +9,7 @@ from pathlib import Path
 from flext_infra import c, m, t, u
 
 
-class FlextInfraSkillRuleEngineMixin:
+class FlextInfraSkillRuleRunnerMixin:
     """Run one rule (ast-grep or custom script) and count its violations.
 
     Composed into FlextInfraSkillValidator via inheritance; self-contained
@@ -152,4 +152,4 @@ class FlextInfraSkillRuleEngineMixin:
         return count
 
 
-__all__: list[str] = ["FlextInfraSkillRuleEngineMixin"]
+__all__: list[str] = ["FlextInfraSkillRuleRunnerMixin"]
