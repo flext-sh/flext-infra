@@ -4,6 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import c
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests.models import m
 from tests.typings import t
@@ -48,6 +49,11 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that("scripts/check/workspace_check.py" not in makefile_text, eq=True)
         tm.that(makefile_text, has="python -m flext_infra check run")
+        tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
+        tm.that(
+            (project_root / ".mise.toml").read_text(encoding="utf-8"),
+            has='python = "3.13"',
+        )
 
     def test_migrator_handles_missing_pyproject_gracefully(
         self, tmp_path: Path
@@ -87,6 +93,22 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(text, has="custom-target")
         tm.that(text, has="@echo 'custom'")
+
+    def test_migrator_preserves_custom_environment_files(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project-a"
+        u.Tests.write_migrator_project(project_root)
+        custom_envrc = "PATH_add bin\n"
+        (project_root / ".envrc").write_text(custom_envrc, encoding="utf-8")
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(project_root),
+            "NEW_BASE\n",
+            workspace_root=tmp_path,
+            dry_run=False,
+        )
+        result = migrator.execute()
+        tm.ok(result)
+        tm.that((project_root / ".envrc").read_text(encoding="utf-8"), eq=custom_envrc)
+        tm.that((project_root / ".mise.toml").exists(), eq=True)
 
     def test_migrator_workspace_root_not_exists(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
@@ -131,10 +153,18 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             tmp_path,
             makefile="migrated",
             pyproject='[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
-            gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
+            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
+        (project_root / ".envrc").write_text(
+            c.Infra.WORKSPACE_ENVRC_CONTENT,
+            encoding="utf-8",
+        )
+        (project_root / ".mise.toml").write_text(
+            c.Infra.WORKSPACE_MISE_TOML_CONTENT,
+            encoding="utf-8",
+        )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "base.mk",

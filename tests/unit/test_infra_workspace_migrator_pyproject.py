@@ -10,6 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import c
 from tests.models import m
 from tests.typings import t
 from tests.utilities import u
@@ -149,7 +150,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         root = u.Tests.create_migrator_dir_layout(
             tmp_path,
             base_mk="base",
-            gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
+            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
