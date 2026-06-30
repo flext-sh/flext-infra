@@ -8,6 +8,7 @@ from typing import Annotated, ClassVar, Self, override
 from flext_cli import cli, p as cli_p, u as cli_u
 from flext_core import s
 from flext_infra import c, m, p, t
+from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 from flext_infra._base_projects import (
     FlextInfraProjectSelectionMixin,
 )
@@ -16,6 +17,7 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 
 class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     s[TDomainResult],
+    FlextInfraCommandPayloadMixin,
 ):
     """Domain command context shared by all flext-infra CLI services.
 
@@ -169,24 +171,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     def effective_dry_run(self) -> bool:
         """Return the normalized write-mode decision for CLI services."""
         return self.dry_run or self.check_only or (not self.apply_changes)
-
-    def command_payload(self) -> t.JsonMapping:
-        """Return the normalized shared command payload once."""
-        payload: t.MutableJsonMapping = {
-            "workspace_root": str(self.workspace_root),
-            "apply_changes": self.apply_changes,
-            "check_only": self.check_only,
-            "dry_run": self.dry_run,
-            "fail_fast": self.fail_fast,
-            "output_format": self.output_format,
-        }
-        if self.project_filter is not None:
-            payload["project_filter"] = self.project_filter
-        if self.report_path is not None:
-            payload["report_path"] = str(self.report_path)
-        if self.output_dir is not None:
-            payload["output_dir"] = str(self.output_dir)
-        return payload
 
     @override
     def execute(self) -> p.Result[TDomainResult]:
