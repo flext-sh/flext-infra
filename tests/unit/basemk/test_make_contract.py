@@ -12,6 +12,15 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from tests.models import m
 from tests.utilities import u
 
+_MAKE_ISOLATION_ENV_KEYS = (
+    "FLEXT_ROOT",
+    "FLEXT_STANDALONE",
+    "FLEXT_WORKSPACE_ROOT",
+    "PROJECT",
+    "PROJECTS",
+    "WORKSPACE_ROOT",
+)
+
 
 def _render_base_mk() -> str:
     result = FlextInfraBaseMkGenerator().generate_basemk()
@@ -93,12 +102,7 @@ def _run_make(
         "MFLAGS",
         "MAKELEVEL",
         "GNUMAKEFLAGS",
-        "FLEXT_ROOT",
-        "FLEXT_STANDALONE",
-        "FLEXT_WORKSPACE_ROOT",
-        "PROJECT",
-        "PROJECTS",
-        "WORKSPACE_ROOT",
+        *_MAKE_ISOLATION_ENV_KEYS,
     ):
         active_env.pop(key, None)
     if env is not None:
@@ -107,6 +111,7 @@ def _run_make(
         ["make", *args],
         cwd=project_root,
         env=active_env,
+        remove_env_keys=_MAKE_ISOLATION_ENV_KEYS,
     )
     if result.success:
         return result.value
