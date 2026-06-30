@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
@@ -132,36 +133,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         workspace_root: Path,
     ) -> p.Result[int]:
         """Sync generated direnv and mise files without overwriting custom files."""
-        changed = 0
-        for filename, content in (
-            (c.Infra.ENVRC_FILENAME, c.Infra.WORKSPACE_ENVRC_CONTENT),
-            (c.Infra.MISE_TOML_FILENAME, c.Infra.WORKSPACE_MISE_TOML_CONTENT),
-        ):
-            result = self._sync_generated_environment_file(
-                workspace_root / filename,
-                content,
-            )
-            if result.failure:
-                return r[int].fail(result.error or f"{filename} sync failed")
-            changed += 1 if result.value else 0
-        return r[int].ok(changed)
-
-    @staticmethod
-    def _sync_generated_environment_file(
-        target_path: Path,
-        content: str,
-    ) -> p.Result[bool]:
-        """Write one generated environment file when absent or previously generated."""
-        if target_path.exists():
-            read = u.Cli.files_read_text(target_path)
-            if read.failure:
-                return r[bool].fail(read.error or f"{target_path.name} read failed")
-            existing = read.value
-            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
-                return r[bool].ok(False)
-            if c.Infra.WORKSPACE_ENV_GENERATED_MARKER not in existing:
-                return r[bool].ok(False)
-        return u.Cli.atomic_write_text_file(target_path, content)
+        return FlextInfraWorkspaceEnvironment.sync_environment_files(workspace_root)
 
     def _sync_pre_commit_config(
         self,

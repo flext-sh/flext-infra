@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, p, r, t, u
 from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 
 if TYPE_CHECKING:
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -185,66 +186,23 @@ class FlextInfraProjectMigratorArtifactsMixin:
         dry_run: bool,
     ) -> p.Result[str]:
         """Migrate generated direnv and mise environment files."""
-        changed: list[str] = []
-        skipped: list[str] = []
-        for filename, content in (
-            (c.Infra.ENVRC_FILENAME, c.Infra.WORKSPACE_ENVRC_CONTENT),
-            (c.Infra.MISE_TOML_FILENAME, c.Infra.WORKSPACE_MISE_TOML_CONTENT),
-        ):
-            target = project_root / filename
-            result = self._migrate_generated_environment_file(
-                target,
-                content,
-                dry_run=dry_run,
-            )
-            if result.failure:
-                return result
-            if result.value:
-                if result.value.startswith("custom "):
-                    skipped.append(filename)
-                else:
-                    changed.append(filename)
-        if changed:
+        result = FlextInfraWorkspaceEnvironment.sync_environment_files(
+            project_root,
+            apply=not dry_run,
+        )
+        if result.failure:
+            return r[str].fail(result.error or "workspace environment sync failed")
+        if result.value:
             return r[str].ok(
                 self._action_text(
-                    f"workspace environment files normalized: {', '.join(changed)}",
+                    "workspace environment files normalized",
                     dry_run=dry_run,
                 ),
-            )
-        if skipped:
-            return self._no_change_result(
-                f"custom workspace environment files preserved: {', '.join(skipped)}",
-                dry_run=dry_run,
             )
         return self._no_change_result(
             "workspace environment files already normalized",
             dry_run=dry_run,
         )
-
-    def _migrate_generated_environment_file(
-        self,
-        target: Path,
-        content: str,
-        *,
-        dry_run: bool,
-    ) -> p.Result[str]:
-        """Write a generated environment file unless a custom file is present."""
-        current = ""
-        if target.exists():
-            read = u.Cli.files_read_text(target)
-            if read.failure:
-                return r[str].fail(f"{target.name} read failed: {read.error}")
-            current = read.value
-        if u.Cli.sha256_content(current) == u.Cli.sha256_content(content):
-            return r[str].ok("")
-        if current and c.Infra.WORKSPACE_ENV_GENERATED_MARKER not in current:
-            return r[str].ok(f"custom {target.name} preserved")
-        if not dry_run:
-            try:
-                u.write_file(target, content, encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[str].fail_op(f"{target.name} update", exc)
-        return r[str].ok(target.name)
 
     def _apply_bootstrap_include(self, content: str) -> p.Result[str]:
         """Apply bootstrap include."""
