@@ -315,21 +315,17 @@ staging/
 .claude/
 
 # Auto-added by maintenance
-__pycache__/
 *.egg-info
 .github/*.rej
 
-# --- workspace-sync: required ignores (auto-managed) ---
-.reports/
-.venv/
 
 
 
-# --- workspace-sync: required ignores (auto-managed) ---
 !base.mk
 
 # --- workspace-sync: required ignores (auto-managed) ---
-base.mk
-
-# --- workspace-sync: required ignores (auto-managed) ---
 .direnv/
+.reports/
+.venv/
+__pycache__/
+base.mk

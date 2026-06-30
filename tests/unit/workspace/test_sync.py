@@ -8,6 +8,7 @@ from typing import override
 
 from flext_tests import r
 
+from flext_infra import c
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
@@ -122,6 +123,34 @@ class TestsFlextInfraWorkspaceSync:
 
         assert second_result.success, _error_text(second_result)
         assert second_result.value.files_changed == 0
+
+    def test_sync_deduplicates_gitignore_managed_block(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+        header = c.Infra.GITIGNORE_MANAGED_HEADER
+        gitignore = project_root / ".gitignore"
+        gitignore.write_text(
+            f"custom.log\n\n{header}\n.direnv/\n\n"
+            f"# keep manual ignore\n.venv/\n{header}\nbase.mk\n",
+            encoding="utf-8",
+        )
+        service = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace=project_root,
+        )
+
+        result = service.execute()
+        second_result = service.execute()
+
+        assert result.success, _error_text(result)
+        assert second_result.success, _error_text(second_result)
+        assert second_result.value.files_changed == 0
+        synced = gitignore.read_text(encoding="utf-8")
+        assert synced.count(header) == 1
+        assert "custom.log\n" in synced
+        assert "# keep manual ignore\n" in synced
+        for pattern in c.Infra.REQUIRED_GITIGNORE_ENTRIES:
+            assert synced.count(f"{pattern}\n") == 1
 
     def test_sync_fails_when_workspace_root_is_missing(self) -> None:
         missing_root = Path("/nonexistent/path")

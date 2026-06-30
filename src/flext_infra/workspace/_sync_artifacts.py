@@ -84,49 +84,42 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         workspace_root: Path,
         required: t.StrSequence,
     ) -> p.Result[bool]:
-        """Idempotently append missing .gitignore entries (exact-line match).
-
-        Never removes or reorders existing entries; returns True iff changed.
-        """
+        """Idempotently sync one managed .gitignore block."""
         gitignore = workspace_root / c.Infra.GITIGNORE
-        existing_result = self._gitignore_existing_patterns(gitignore)
-        if existing_result.failure:
-            return r[bool].fail(existing_result.error or ".gitignore read failed")
-        missing = [p for p in required if p not in existing_result.value]
-        if not missing:
+        existing = ""
+        if gitignore.exists():
+            read = u.Cli.files_read_text(gitignore)
+            if read.failure:
+                return r[bool].fail(read.error or ".gitignore read failed")
+            existing = read.value
+        rendered = self._render_gitignore_with_managed_entries(existing, required)
+        if rendered == existing:
             return r[bool].ok(False)
-        return self._append_gitignore_entries(gitignore, missing)
+        write = u.Cli.files_write_text(gitignore, rendered)
+        if write.failure:
+            return r[bool].fail(write.error or ".gitignore update failed")
+        return r[bool].ok(True)
 
-    def _gitignore_existing_patterns(
-        self,
-        gitignore: Path,
-    ) -> p.Result[frozenset[str]]:
-        """Read existing non-empty .gitignore patterns."""
-        if not gitignore.exists():
-            return r[frozenset[str]].ok(frozenset())
-        read = u.Cli.files_read_text(gitignore)
-        if read.failure:
-            return r[frozenset[str]].fail(read.error or ".gitignore read failed")
-        return r[frozenset[str]].ok(
-            frozenset(line.strip() for line in read.value.splitlines() if line.strip())
-        )
-
-    def _append_gitignore_entries(
-        self,
-        gitignore: Path,
-        missing: t.StrSequence,
-    ) -> p.Result[bool]:
-        """Append missing generated .gitignore entries."""
-        try:
-            with gitignore.open("a", encoding=c.Cli.ENCODING_DEFAULT) as handle:
-                _ = handle.write(
-                    "\n# --- workspace-sync: required ignores (auto-managed) ---\n",
-                )
-                for pattern in missing:
-                    _ = handle.write(f"{pattern}\n")
-            return r[bool].ok(True)
-        except OSError as exc:
-            return r[bool].fail_op(".gitignore update", exc)
+    @staticmethod
+    def _render_gitignore_with_managed_entries(
+        existing: str,
+        required: t.StrSequence,
+    ) -> str:
+        """Return ``existing`` with one canonical managed ignore block."""
+        managed_patterns = frozenset(required)
+        unmanaged: t.MutableSequenceOf[str] = [
+            line
+            for line in existing.splitlines()
+            if line.strip() != c.Infra.GITIGNORE_MANAGED_HEADER
+            and line.strip() not in managed_patterns
+        ]
+        while unmanaged and not unmanaged[-1].strip():
+            _ = unmanaged.pop()
+        if unmanaged:
+            unmanaged.append("")
+        unmanaged.append(c.Infra.GITIGNORE_MANAGED_HEADER)
+        unmanaged.extend(required)
+        return "\n".join(unmanaged) + "\n"
 
     def _sync_environment_files(
         self,

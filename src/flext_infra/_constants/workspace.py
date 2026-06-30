@@ -68,6 +68,9 @@ class FlextInfraConstantsWorkspace:
         "__pycache__/",
         "base.mk",
     )
+    GITIGNORE_MANAGED_HEADER: Final[str] = (
+        "# --- workspace-sync: required ignores (auto-managed) ---"
+    )
     ENVRC_FILENAME: Final[str] = ".envrc"
     MISE_TOML_FILENAME: Final[str] = ".mise.toml"
     WORKSPACE_ENV_GENERATED_MARKER: Final[str] = (
