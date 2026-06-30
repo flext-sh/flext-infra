@@ -183,6 +183,10 @@ class FlextInfraCodegenLazyInitPlanner(
             wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
+            registry_wrapper=self._lazy_import_registry_wrapper(
+                context.pkg_dir,
+                context.current_pkg,
+            ),
         )
 
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:

@@ -1,0 +1,21 @@
+{{ autogen_header }}
+{{ docstring }}
+
+from __future__ import annotations
+{% if runtime_import_lines %}
+
+{{ runtime_import_lines | join("\n") }}
+{% endif %}
+{% for name, value in inline_constants %}
+{{ name }} = "{{ value }}"
+{% endfor %}
+{% if inline_constants %}
+
+{% endif %}
+{% if exports %}
+__all__: list[str] = [
+{% for export in exports %}
+    "{{ export }}",
+{% endfor %}
+]
+{% endif %}

@@ -11,10 +11,11 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import c, p, t
+from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
-class FlextInfraModelsCodegen:
+class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class CensusViolation(
@@ -228,6 +229,12 @@ class FlextInfraModelsCodegen:
             ),
         ] = False
 
+    class LazyInitRegistryWrapper(m.ArbitraryTypesModel):
+        """External lazy import registry consumed by a thin generated ``__init__``."""
+
+        module: t.NonEmptyStr = m.Field(description="Importable registry module.")
+        name: t.NonEmptyStr = m.Field(description="Registry symbol exported by module.")
+
     class LazyInitPlan(m.ArbitraryTypesModel):
         """Fully resolved lazy-init action and render payload.
 
@@ -285,6 +292,14 @@ class FlextInfraModelsCodegen:
             default_factory=tuple,
             description="Names excluded from runtime child lazy import merges.",
         )
+        registry_wrapper: Annotated[
+            FlextInfraModelsCodegen.LazyInitRegistryWrapper | None,
+            m.Field(
+                description=(
+                    "Pre-split lazy registry for generated wrappers that must stay thin."
+                ),
+            ),
+        ] = None
 
     class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""

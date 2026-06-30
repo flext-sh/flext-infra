@@ -21,6 +21,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
         ".lazy_init_process_tests": ("lazy_init_process_tests",),
+        ".lazy_init_registry_wrapper_tests": ("lazy_init_registry_wrapper_tests",),
         ".lazy_init_service_tests": ("lazy_init_service_tests",),
         ".lazy_init_tests": (
             "TestAllDirectoriesScanned",

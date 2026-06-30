@@ -12,12 +12,7 @@ from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlann
 
 
 class FlextInfraCodegenLazyInitEngineMixin:
-    """Generate/remove ``__init__.py`` per package directory.
-
-    Composed into FlextInfraCodegenLazyInit via inheritance; borrows
-    ``workspace_root`` + the ``_modified_files`` private set from the facade
-    via MRO.
-    """
+    """Generate/remove ``__init__.py`` per package directory."""
 
     if TYPE_CHECKING:
         workspace_root: Path
@@ -30,7 +25,6 @@ class FlextInfraCodegenLazyInitEngineMixin:
         check_only: bool,
         planner: FlextInfraCodegenLazyInitPlanner,
     ) -> tuple[int, int, int, MutableMapping[str, t.LazyAliasMap]]:
-        """Generate all inits."""
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
         progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
@@ -165,6 +159,7 @@ class FlextInfraCodegenLazyInitEngineMixin:
             wildcard_runtime_modules=plan.wildcard_runtime_modules,
             child_packages_for_lazy=plan.child_packages_for_lazy,
             excluded_lazy_names=plan.excluded_lazy_names,
+            registry_wrapper=plan.registry_wrapper,
         )
 
     @staticmethod

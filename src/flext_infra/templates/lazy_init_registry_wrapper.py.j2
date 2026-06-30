@@ -1,0 +1,16 @@
+{{ autogen_header }}
+{{ docstring }}
+
+from __future__ import annotations
+
+from flext_core.lazy import install_lazy_exports
+from {{ registry_module }} import {{ registry_name }}
+
+_LAZY_IMPORTS = {{ registry_name }}
+
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    publish_all=False,
+)

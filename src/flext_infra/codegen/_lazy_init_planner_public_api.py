@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 
 
 class FlextInfraCodegenLazyInitPlannerPublicApiMixin:
@@ -52,6 +52,86 @@ class FlextInfraCodegenLazyInitPlannerPublicApiMixin:
                 )
             )
         return frozenset(exports)
+
+    @staticmethod
+    def _lazy_import_registry_wrapper(
+        pkg_dir: Path,
+        current_pkg: str,
+    ) -> m.Infra.LazyInitRegistryWrapper | None:
+        """Return thin-wrapper registry metadata for test packages with ``_exports``."""
+        if not (
+            current_pkg == c.Infra.DIR_TESTS
+            or current_pkg.startswith(f"{c.Infra.DIR_TESTS}.")
+        ):
+            return None
+        exports_path = pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME
+        if not exports_path.is_file():
+            return None
+        names = frozenset(
+            name
+            for name in (
+                FlextInfraCodegenLazyInitPlannerPublicApiMixin._all_exports(
+                    exports_path
+                )
+            )
+            if name.endswith("LAZY_IMPORTS")
+        )
+        if len(names) != 1:
+            return None
+        registry_name = next(iter(names))
+        registry_module = (
+            f"{current_pkg}.{c.Infra.ROOT_EXPORTS_FILENAME.removesuffix('.py')}"
+        )
+        return m.Infra.LazyInitRegistryWrapper.model_validate({
+            "module": registry_module,
+            "name": registry_name,
+        })
+
+    @staticmethod
+    def _all_exports(exports_path: Path) -> frozenset[str]:
+        """Read literal ``__all__`` names from a Python module."""
+        source = exports_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        tree = ast.parse(source, filename=str(exports_path))
+        exports: set[str] = set()
+        for statement in tree.body:
+            exports.update(
+                FlextInfraCodegenLazyInitPlannerPublicApiMixin._all_export_statement_names(
+                    statement
+                )
+            )
+        return frozenset(exports)
+
+    @staticmethod
+    def _all_export_statement_names(statement: ast.stmt) -> frozenset[str]:
+        """Extract literal names from a module ``__all__`` assignment."""
+        match statement:
+            case ast.Assign(targets=targets, value=value):
+                if any(
+                    FlextInfraCodegenLazyInitPlannerPublicApiMixin._is_all_exports_target(
+                        target
+                    )
+                    for target in targets
+                ):
+                    return FlextInfraCodegenLazyInitPlannerPublicApiMixin._literal_string_names(
+                        value
+                    )
+            case ast.AnnAssign(target=target, value=value):
+                if value is not None and (
+                    FlextInfraCodegenLazyInitPlannerPublicApiMixin._is_all_exports_target(
+                        target
+                    )
+                ):
+                    return FlextInfraCodegenLazyInitPlannerPublicApiMixin._literal_string_names(
+                        value
+                    )
+            case _:
+                return frozenset()
+        return frozenset()
+
+    @staticmethod
+    def _is_all_exports_target(target: ast.expr) -> bool:
+        """Return whether an assignment target declares module ``__all__``."""
+        return isinstance(target, ast.Name) and target.id == "__all__"
 
     @staticmethod
     def _public_export_statement_names(statement: ast.stmt) -> frozenset[str]:
