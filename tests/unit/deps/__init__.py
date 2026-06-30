@@ -25,7 +25,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_detector_report": ("TestsFlextInfraDepsDetectorReport",),
         ".test_detector_report_flags": ("TestsFlextInfraDepsDetectorReportFlags",),
         ".test_extra_paths_manager": ("TestsFlextInfraExtraPathsManager",),
+        ".test_extra_paths_search_paths": ("TestsFlextInfraExtraPathsSearchPaths",),
         ".test_extra_paths_sync": ("TestsFlextInfraDepsExtraPathsSync",),
+        ".test_extra_paths_uv_sources": ("TestsFlextInfraExtraPathsUvSources",),
         ".test_init": ("TestsFlextInfraDepsInit",),
         ".test_internal_sync_discovery": ("TestsFlextInfraDepsInternalSyncDiscovery",),
         ".test_internal_sync_discovery_edge": (

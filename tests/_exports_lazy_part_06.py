@@ -8,7 +8,6 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
         ".base": ("TestsFlextInfraServiceBase",),
-        ".constants": ("c",),
         ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
         ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
         ".settings": ("TestsFlextInfraSettings",),
@@ -23,6 +22,12 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
+        ".unit.refactor.test_infra_refactor_project_classifier": (
+            "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
+        ),
+        ".unit.refactor.test_infra_refactor_safety": (
+            "TestsFlextInfraRefactorInfraRefactorSafety",
+        ),
         ".unit.refactor.test_infra_refactor_typing_unifier": (
             "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
         ),
@@ -64,7 +69,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".unit.workspace.test_makefile_generator": (
             "TestsFlextInfraWorkspaceMakefileGenerator",
         ),
-        ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
         ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         ".utilities": ("TestsFlextInfraUtilities",),
     },

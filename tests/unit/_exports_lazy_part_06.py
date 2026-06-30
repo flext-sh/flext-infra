@@ -23,12 +23,14 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".deps": ("deps",),
         ".discovery": ("discovery",),
         ".docs": ("docs",),
-        ".fixtures": (
-            "deptry_report_payload",
-            "models_resource",
-        ),
+        ".fixtures": ("deptry_report_payload",),
         ".github": ("github",),
-        ".io": ("io",),
+        ".transformers.test_infra_transformer_logging_modernizer": (
+            "TestsFlextInfraTransformersLoggingModernizer",
+        ),
+        ".transformers.test_infra_transformer_nested_class_propagation": (
+            "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
+        ),
         ".transformers.test_infra_transformer_pattern_modernizer": (
             "TestsFlextInfraTransformersPatternModernizer",
         ),
@@ -47,13 +49,15 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
             "TestsFlextInfraWorkspaceMakefileGenerator",
         ),
         ".workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
+        ".workspace.test_sync_environment": (
+            "TestsFlextInfraWorkspaceSyncEnvironment",
+        ),
         ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         "flext_tests": (
             "c",
             "d",
             "e",
             "h",
-            "m",
         ),
     },
 )

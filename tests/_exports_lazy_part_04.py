@@ -8,6 +8,12 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
     {
         ".unit.deps.test_extra_paths_manager": ("TestsFlextInfraExtraPathsManager",),
+        ".unit.deps.test_extra_paths_search_paths": (
+            "TestsFlextInfraExtraPathsSearchPaths",
+        ),
+        ".unit.deps.test_extra_paths_uv_sources": (
+            "TestsFlextInfraExtraPathsUvSources",
+        ),
         ".unit.deps.test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
         ".unit.deps.test_path_sync_main_project_obj": (
             "TestsFlextInfraDepsPathSyncMainProjectObj",
@@ -54,12 +60,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
         ),
         ".unit.test_infra_workspace_migrator": (
             "TestsFlextInfraInfraWorkspaceMigrator",
-        ),
-        ".unit.test_infra_workspace_migrator_deps": (
-            "TestsFlextInfraInfraWorkspaceMigratorDeps",
-        ),
-        ".unit.test_infra_workspace_migrator_dryrun": (
-            "TestsFlextInfraInfraWorkspaceMigratorDryrun",
         ),
     },
 )

@@ -112,12 +112,15 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
                 return excludes_result
             all_fixes.extend(excludes_result.value)
         if all_fixes and (not dry_run):
-            typed_tool_data[c.Infra.PYREFLY] = dict(pyrefly)
-            doc_data[c.Infra.TOOL] = typed_tool_data
-            new_doc = u.Cli.toml_document()
-            for key, value in doc_data.items():
-                new_doc[key] = value
-            write_result = u.Cli.toml_write_document(path, new_doc)
+            tool_table = doc[c.Infra.TOOL]
+            if not isinstance(tool_table, MutableMapping):
+                return r[t.StrSequence].fail(f"invalid {path} [tool] table")
+            pyrefly_table = tool_table[c.Infra.PYREFLY]
+            if not isinstance(pyrefly_table, MutableMapping):
+                return r[t.StrSequence].fail(f"invalid {path} [tool.pyrefly] table")
+            for key, value in pyrefly.items():
+                pyrefly_table[key] = value
+            write_result = u.Cli.toml_write_document(path, doc)
             if write_result.failure:
                 return r[t.StrSequence].fail(
                     write_result.error or f"failed to write {path}",

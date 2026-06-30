@@ -9,12 +9,12 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
         ".base": ("s",),
         ".conftest": ("conftest",),
+        ".constants": ("c",),
         ".integration": ("integration",),
         ".models": ("m",),
         ".protocols": ("p",),
         ".refactor": ("refactor",),
         ".typings": ("t",),
-        ".unit": ("unit",),
         ".unit.fixtures": (
             "deptry_report_payload",
             "models_resource",
@@ -30,7 +30,10 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "tool_config_document",
         ),
         ".unit.fixtures_git": ("real_git_repo",),
-        ".utilities": ("u",),
+        ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
+        ".unit.workspace.test_sync_environment": (
+            "TestsFlextInfraWorkspaceSyncEnvironment",
+        ),
         "flext_tests": (
             "d",
             "e",
@@ -41,7 +44,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "tk",
             "tm",
             "tv",
-            "x",
         ),
     },
 )

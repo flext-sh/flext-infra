@@ -69,6 +69,12 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
         ".test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
         ".test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
+        ".test_infra_workspace_migrator_dryrun": (
+            "TestsFlextInfraInfraWorkspaceMigratorDryrun",
+        ),
+        ".test_infra_workspace_migrator_internal": (
+            "TestsFlextInfraInfraWorkspaceMigratorInternal",
+        ),
         ".test_infra_workspace_orchestrator": (
             "TestsFlextInfraInfraWorkspaceOrchestrator",
         ),
@@ -80,12 +86,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ),
         ".transformers.test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
-        ),
-        ".transformers.test_infra_transformer_logging_modernizer": (
-            "TestsFlextInfraTransformersLoggingModernizer",
-        ),
-        ".transformers.test_infra_transformer_nested_class_propagation": (
-            "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
         ),
     },
 )

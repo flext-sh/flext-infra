@@ -18,10 +18,12 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.deps._extra_paths_sources import FlextInfraExtraPathsSourceMixin
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
 
 class FlextInfraExtraPathsManager(
+    FlextInfraExtraPathsSourceMixin,
     FlextInfraExtraPathsSyncMixin,
     FlextInfraProjectSelectionServiceBase[bool],
 ):
@@ -147,6 +149,7 @@ class FlextInfraExtraPathsManager(
                     pyproject,
                 )
                 paths.update(self._dep_paths(payload, is_root=is_root))
+                paths.update(self._uv_source_paths(payload, project_dir=project_dir))
         if (project_dir / source_root).is_dir():
             paths.add(source_root)
         if (

@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import cli, p as cli_p, u as cli_u
 from flext_core import s
-from flext_infra import (
-    c,
-    m,
-    p,
-    t,
+from flext_infra import c, m, p, t
+from flext_infra._base_projects import (
+    FlextInfraProjectSelectionMixin,
 )
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 
 class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
@@ -65,11 +59,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     def settings(self) -> cli_p.Cli.Settings:
         """Return the typed CLI settings via the canonical cli facade."""
         return cli.settings
-
-    @property
-    def log(self) -> p.Logger:
-        """Compatibility alias for the composed structured logger."""
-        return self.logger
 
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
@@ -204,62 +193,25 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         """Execute the service contract and return a typed result."""
         raise NotImplementedError
 
+    @property
+    def log(self) -> p.Logger:
+        """Return the service logger through the canonical FlextService kernel."""
+        return self.logger
+
     @classmethod
     def execute_command(
         cls,
         params: Self,
     ) -> p.Result[TDomainResult]:
         """Execute the validated CLI service instance directly."""
-        _ = cls
         return params.execute()
 
 
 class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
     FlextInfraServiceBase[TDomainResult],
+    FlextInfraProjectSelectionMixin,
 ):
     """Shared service foundation for commands that target workspace projects."""
-
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(alias="projects", description="Projects to process"),
-    ] = None
-
-    @cli_u.computed_field()
-    @property
-    def project_names(self) -> t.StrSequence | None:
-        """Return normalized selected project names."""
-        return ub.normalize_sequence_values(self.selected_projects)
-
-    @cli_u.computed_field()
-    @property
-    def project_dirs(self) -> t.SequenceOf[Path] | None:
-        """Resolve selected project directories relative to the workspace root."""
-        names = ub.normalize_sequence_values(self.selected_projects)
-        if names is None:
-            return None
-        return [self.root / name for name in names]
-
-    def run_scoped_docs(
-        self,
-        workspace_root: Path,
-        *,
-        output_dir: Path | str | None,
-        handler: Callable[
-            [m.Infra.DocScope],
-            m.Infra.DocsPhaseReport,
-        ],
-        projects: t.StrSequence | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-        """Run one docs phase across the resolved governed scopes."""
-        return FlextInfraUtilitiesDocs.run_scoped(
-            workspace_root,
-            projects=self.selected_projects if projects is None else projects,
-            output_dir=cli_u.Cli.resolve_optional_path(
-                output_dir,
-                default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
-            ),
-            handler=handler,
-        )
 
 
 s = FlextInfraServiceBase

@@ -16,6 +16,16 @@ from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from tests.utilities import u
 
 
+def _extra_paths_manager(workspace_root: Path) -> FlextInfraExtraPathsManager:
+    validated = FlextInfraExtraPathsManager.model_validate(
+        {"workspace": str(workspace_root)},
+    )
+    if isinstance(validated, FlextInfraExtraPathsManager):
+        return validated
+    msg = "FlextInfraExtraPathsManager validation returned an unexpected model"
+    raise TypeError(msg)
+
+
 class TestConfigFixerProcessFile:
     """Test FlextInfraConfigFixer.process_file."""
 
@@ -61,11 +71,43 @@ class TestConfigFixerProcessFile:
         payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
         tm.that(
             payload["tool"]["pyrefly"]["search-path"],
-            eq=FlextInfraExtraPathsManager(workspace=tmp_path).pyrefly_search_paths(
+            eq=_extra_paths_manager(tmp_path).pyrefly_search_paths(
                 project_dir=tmp_path,
                 is_root=True,
             ),
         )
+
+    def test_process_file_preserves_unrelated_toml_comments_and_formatting(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            (
+                "[project]\n"
+                "name = 'sample'\n"
+                "# keep dependency context\n"
+                "dependencies = [\n"
+                "    # keep dependency item comment\n"
+                "    'flext-core',\n"
+                "]\n\n"
+                "[tool.ruff]\n"
+                "line-length = 120\n\n"
+                "[tool.pyrefly]\n"
+                "search-path = []\n"
+                "project-excludes = []\n"
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+
+        tm.ok(result)
+        updated = pyproject.read_text(encoding="utf-8")
+        tm.that(updated, contains="# keep dependency context")
+        tm.that(updated, contains="# keep dependency item comment")
+        tm.that(updated, contains="line-length = 120")
+        tm.that(result.value, has="synchronized search-path from YAML rules")
 
     def test_process_file_removes_ignored_sub_configs_via_public_api(
         self,

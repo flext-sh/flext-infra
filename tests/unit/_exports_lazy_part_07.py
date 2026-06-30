@@ -8,6 +8,7 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
         ".fixtures": (
+            "models_resource",
             "modernizer_workspace",
             "modernizer_workspace_with_projects",
             "real_docs_project",
@@ -20,6 +21,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "tool_config_document",
         ),
         ".fixtures_git": ("real_git_repo",),
+        ".io": ("io",),
         ".refactor": ("refactor",),
         ".release": ("release",),
         ".test_infra_workspace_migrator_errors": (
@@ -32,9 +34,8 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".test_version_diag": ("test_version_diag",),
         ".test_version_diag2": ("test_version_diag2",),
         ".transformers": ("transformers",),
-        ".validate": ("validate",),
-        ".workspace": ("workspace",),
         "flext_tests": (
+            "m",
             "p",
             "r",
             "s",
@@ -45,7 +46,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "tm",
             "tv",
             "u",
-            "x",
         ),
     },
 )

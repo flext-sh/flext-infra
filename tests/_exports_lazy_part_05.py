@@ -80,13 +80,13 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".unit.refactor.test_infra_refactor_policy_family_rules": (
             "TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules",
         ),
-        ".unit.refactor.test_infra_refactor_project_classifier": (
-            "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
-        ),
-        ".unit.refactor.test_infra_refactor_safety": (
-            "TestsFlextInfraRefactorInfraRefactorSafety",
-        ),
         ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
+        ".unit.test_infra_workspace_migrator_deps": (
+            "TestsFlextInfraInfraWorkspaceMigratorDeps",
+        ),
+        ".unit.test_infra_workspace_migrator_dryrun": (
+            "TestsFlextInfraInfraWorkspaceMigratorDryrun",
+        ),
         ".unit.test_infra_workspace_migrator_internal": (
             "TestsFlextInfraInfraWorkspaceMigratorInternal",
         ),

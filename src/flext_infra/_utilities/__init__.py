@@ -12,6 +12,10 @@ _LAZY_IMPORTS = build_lazy_import_map(
         "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
         "._github_pr_single": ("FlextInfraUtilitiesGithubPrSingleMixin",),
         "._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
+        "._project_discovery_candidates": (
+            "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
+        ),
+        "._project_discovery_shape": ("FlextInfraUtilitiesProjectDiscoveryShapeMixin",),
         "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
         "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
         "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
