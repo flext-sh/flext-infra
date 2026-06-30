@@ -27,8 +27,8 @@ class FlextInfraRefactorRuleLoader:
         """Load YAML configuration for this refactor session."""
         result = u.Cli.rules_load_scoped_config(
             self.config_path,
-            scope_key=c.Infra.RK_REFACTOR_ENGINE,
-            allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
+            scope_key=c.Infra.RK_REFACTOR,
+            allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
         )
         if result.success:
             self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(

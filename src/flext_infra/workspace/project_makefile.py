@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -52,7 +52,7 @@ class FlextInfraProjectMakefileUpdater:
                 result = r[bool].fail_op("pyproject.toml parse", exc)
             else:
                 bootstrap_result = (
-                    FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
+                    FlextInfraBaseMkTemplateRenderer.render_bootstrap_include()
                 )
                 if bootstrap_result.failure:
                     result = r[bool].fail(

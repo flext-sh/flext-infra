@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import r, u
-from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
@@ -61,21 +61,21 @@ class TestsFlextInfraIntegrationInfraIntegration:
         assert isinstance(detector, FlextInfraWorkspaceDetector)
 
     @pytest.mark.integration
-    def test_basemk_template_engine_and_generator_flow(self, tmp_path: Path) -> None:
-        """Test BaseMk template engine → generator flow.
+    def test_basemk_template_renderer_and_generator_flow(self, tmp_path: Path) -> None:
+        """Test BaseMk template renderer → generator flow.
 
         Validates:
-        - Template engine can be created
+        - Template renderer can be created
         - Generator can be created
         - Both work together in a flow
         """
         output_dir = tmp_path / "basemk_output"
         output_dir.mkdir()
-        engine = FlextInfraBaseMkTemplateEngine()
+        renderer = FlextInfraBaseMkTemplateRenderer()
         generator = FlextInfraBaseMkGenerator()
-        assert engine is not None
+        assert renderer is not None
         assert generator is not None
-        assert isinstance(engine, FlextInfraBaseMkTemplateEngine)
+        assert isinstance(renderer, FlextInfraBaseMkTemplateRenderer)
         assert isinstance(generator, FlextInfraBaseMkGenerator)
 
     @pytest.mark.integration

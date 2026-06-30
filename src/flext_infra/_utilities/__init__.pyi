@@ -95,9 +95,6 @@ from flext_infra._utilities.docs_scope import (
 from flext_infra._utilities.docs_validate import (
     FlextInfraUtilitiesDocsValidate as FlextInfraUtilitiesDocsValidate,
 )
-from flext_infra._utilities.engine import (
-    FlextInfraUtilitiesRefactorEngine as FlextInfraUtilitiesRefactorEngine,
-)
 from flext_infra._utilities.git_scope import (
     FlextInfraUtilitiesGitScope as FlextInfraUtilitiesGitScope,
 )
@@ -163,6 +160,9 @@ from flext_infra._utilities.pyproject import (
 )
 from flext_infra._utilities.refactor import (
     FlextInfraUtilitiesRefactor as FlextInfraUtilitiesRefactor,
+)
+from flext_infra._utilities.refactor_discovery import (
+    FlextInfraUtilitiesRefactorDiscovery as FlextInfraUtilitiesRefactorDiscovery,
 )
 from flext_infra._utilities.release import (
     FlextInfraUtilitiesRelease as FlextInfraUtilitiesRelease,
@@ -255,7 +255,7 @@ __all__ = (
     "FlextInfraUtilitiesPyproject",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
-    "FlextInfraUtilitiesRefactorEngine",
+    "FlextInfraUtilitiesRefactorDiscovery",
     "FlextInfraUtilitiesRefactorMroScan",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",

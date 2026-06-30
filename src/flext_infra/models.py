@@ -17,7 +17,6 @@ from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._models.docs import FlextInfraModelsDocs
-from flext_infra._models.engine import FlextInfraModelsEngine
 from flext_infra._models.gates import FlextInfraModelsGates
 from flext_infra._models.github import FlextInfraModelsGithub
 from flext_infra._models.mixins import FlextInfraModelsMixins
@@ -49,7 +48,6 @@ class FlextInfraModels(m):
         FlextInfraModelsScan,
         FlextInfraModelsCore,
         FlextInfraModelsBase,
-        FlextInfraModelsEngine,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 

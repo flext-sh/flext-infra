@@ -1,4 +1,4 @@
-"""Engine file collection and nested-class propagation utilities.
+"""Refactor file discovery utilities.
 
 Centralizes file filtering, project/workspace file collection, and
 rope-based nested class propagation helpers.
@@ -25,24 +25,24 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
-class FlextInfraUtilitiesRefactorEngine:
-    """Engine file collection and nested-class propagation helpers."""
+class FlextInfraUtilitiesRefactorDiscovery:
+    """File collection and project discovery helpers for refactor services."""
 
     @staticmethod
-    def _resolve_engine_config(
+    def _resolve_refactor_config(
         settings: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> m.Infra.EngineConfig:
-        """Resolve the typed refactor engine config through the shared CLI DSL."""
-        return m.Infra.EngineConfig.model_validate(
+    ) -> m.Infra.RefactorConfig:
+        """Resolve the typed refactor config through the shared CLI DSL."""
+        return m.Infra.RefactorConfig.model_validate(
             u.Cli.rules_resolve_scope(
                 dict(settings),
-                scope_key=c.Infra.RK_REFACTOR_ENGINE,
-                allowed_keys=c.Infra.ENGINE_CONFIG_KEYS,
+                scope_key=c.Infra.RK_REFACTOR,
+                allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
             )
         )
 
     @staticmethod
-    def filter_engine_files(
+    def filter_refactor_files(
         files: t.SequenceOf[Path],
         *,
         base_path: Path,
@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRefactorEngine:
             yield f
 
     @staticmethod
-    def collect_engine_project_files(
+    def collect_refactor_project_files(
         settings: t.MappingKV[str, t.Infra.InfraValue],
         project: Path,
         *,
@@ -74,10 +74,12 @@ class FlextInfraUtilitiesRefactorEngine:
 
         Returns None on error.
         """
-        engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(
-            settings,
+        refactor_config = (
+            FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
+                settings,
+            )
         )
-        scan_dirs = frozenset(engine_config.project_scan_dirs)
+        scan_dirs = frozenset(refactor_config.project_scan_dirs)
         ir = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=project,
             project_roots=[project],
@@ -89,10 +91,10 @@ class FlextInfraUtilitiesRefactorEngine:
         if ir.failure:
             u.Cli.error(ir.error or f"File iteration failed for {project}")
             return None
-        ign = engine_config.ignore_patterns
-        ext = engine_config.file_extensions
+        ign = refactor_config.ignore_patterns
+        ext = refactor_config.file_extensions
         return list(
-            FlextInfraUtilitiesRefactorEngine.filter_engine_files(
+            FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
                 ir.value,
                 base_path=project,
                 pattern=pattern,
@@ -102,7 +104,7 @@ class FlextInfraUtilitiesRefactorEngine:
         )
 
     @staticmethod
-    def collect_engine_workspace_files(
+    def collect_refactor_workspace_files(
         settings: t.MappingKV[str, t.Infra.InfraValue],
         workspace_root: Path,
         *,
@@ -110,16 +112,18 @@ class FlextInfraUtilitiesRefactorEngine:
     ) -> t.SequenceOf[Path]:
         """Collect all candidate files under workspace projects."""
         root = workspace_root.resolve()
-        engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(
-            settings,
+        refactor_config = (
+            FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
+                settings,
+            )
         )
-        scan_dirs = frozenset(engine_config.project_scan_dirs)
+        scan_dirs = frozenset(refactor_config.project_scan_dirs)
         projects = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             workspace_root=root,
             scan_dirs=scan_dirs or None,
         )
-        ign = engine_config.ignore_patterns
-        ext = engine_config.file_extensions
+        ign = refactor_config.ignore_patterns
+        ext = refactor_config.file_extensions
         ignore_patterns = set(ign)
         allowed_extensions = set(ext)
         all_files: t.MutableSequenceOf[Path] = []
@@ -136,7 +140,7 @@ class FlextInfraUtilitiesRefactorEngine:
                 u.Cli.error(ir.error or f"File iteration failed for {proj}")
                 continue
             all_files.extend(
-                FlextInfraUtilitiesRefactorEngine.filter_engine_files(
+                FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
                     ir.value,
                     base_path=proj,
                     pattern=pattern,
@@ -147,20 +151,22 @@ class FlextInfraUtilitiesRefactorEngine:
         return all_files
 
     @staticmethod
-    def discover_engine_projects(
+    def discover_refactor_projects(
         settings: t.MappingKV[str, t.Infra.InfraValue],
         workspace_root: Path,
     ) -> t.SequenceOf[Path]:
-        """Discover workspace projects using the typed engine config."""
+        """Discover workspace projects using the typed refactor config."""
         root = workspace_root.resolve()
-        engine_config = FlextInfraUtilitiesRefactorEngine._resolve_engine_config(
-            settings,
+        refactor_config = (
+            FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
+                settings,
+            )
         )
-        scan_dirs = frozenset(engine_config.project_scan_dirs)
+        scan_dirs = frozenset(refactor_config.project_scan_dirs)
         return FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             workspace_root=root,
             scan_dirs=scan_dirs or None,
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRefactorEngine"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorDiscovery"]

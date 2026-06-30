@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from flext_infra import m, t, u
-from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureFormattingToolingPhase:
@@ -93,7 +93,7 @@ class FlextInfraEnsureFormattingToolingPhase:
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply canonical codespell, tomlsort, and yamlfix configuration."""
-        changes = list(FlextInfraPhaseEngine.apply_phases(doc, *self._phases()))
+        changes = list(FlextInfraTomlPhaseService.apply_phases(doc, *self._phases()))
         changes.extend(self._remove_codespell_skip_doc(doc))
         return changes
 
@@ -103,7 +103,7 @@ class FlextInfraEnsureFormattingToolingPhase:
     ) -> t.StrSequence:
         """Apply formatting defaults directly to one normalized payload."""
         changes = list(
-            FlextInfraPhaseEngine.apply_payload_phases(payload, *self._phases())
+            FlextInfraTomlPhaseService.apply_payload_phases(payload, *self._phases())
         )
         changes.extend(self._remove_codespell_skip_payload(payload))
         return changes

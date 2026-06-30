@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from flext_infra import m, t
-from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureCoverageConfigPhase:
@@ -55,7 +55,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         project_kind: str = "core",
     ) -> t.StrSequence:
         """Apply canonical coverage report/run tables for the selected project kind."""
-        return FlextInfraPhaseEngine.apply_phases(
+        return FlextInfraTomlPhaseService.apply_phases(
             doc,
             *self._phases(project_kind=project_kind),
         )
@@ -67,7 +67,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         project_kind: str = "core",
     ) -> t.StrSequence:
         """Apply canonical coverage settings to one normalized payload."""
-        return FlextInfraPhaseEngine.apply_payload_phases(
+        return FlextInfraTomlPhaseService.apply_payload_phases(
             payload,
             *self._phases(project_kind=project_kind),
         )

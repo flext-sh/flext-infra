@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, t, u
-from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -155,7 +155,7 @@ class FlextInfraEnsureRuffConfigPhase:
             if per_file_ignores is not None
             else []
         )
-        return FlextInfraPhaseEngine.apply_phases(
+        return FlextInfraTomlPhaseService.apply_phases(
             doc,
             self._phase(
                 path=path,
@@ -186,7 +186,7 @@ class FlextInfraEnsureRuffConfigPhase:
             else []
         )
         changes = list(
-            FlextInfraPhaseEngine.apply_payload_phases(
+            FlextInfraTomlPhaseService.apply_payload_phases(
                 payload,
                 self._phase(
                     path=path,

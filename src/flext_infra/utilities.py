@@ -26,7 +26,6 @@ from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
-from flext_infra._utilities.engine import FlextInfraUtilitiesRefactorEngine
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
@@ -51,6 +50,9 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
+from flext_infra._utilities.refactor_discovery import (
+    FlextInfraUtilitiesRefactorDiscovery,
+)
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_analysis_introspection import (
@@ -127,7 +129,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRefactorCensus,
-        FlextInfraUtilitiesRefactorEngine,
+        FlextInfraUtilitiesRefactorDiscovery,
         FlextInfraUtilitiesRefactorMroScan,
         FlextInfraUtilitiesRefactorNamespaceMro,
         FlextInfraUtilitiesRefactorNamespaceCommon,

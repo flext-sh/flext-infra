@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import r
-from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests.constants import c
 from tests.models import m
@@ -84,7 +84,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
             makefile=c.Infra.MAKEFILE_INCLUDE_OLD,
         )
         monkeypatch.setattr(
-            FlextInfraBaseMkTemplateEngine,
+            FlextInfraBaseMkTemplateRenderer,
             "render_bootstrap_include",
             staticmethod(
                 lambda: r[str].fail("bootstrap include render failed"),

@@ -112,7 +112,7 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
             encoding="utf-8",
         )
         config_path = tmp_path / "settings.yml"
-        config_path.write_text('refactor_engine:\n  project_scan_dirs: ["src"]\n')
+        config_path.write_text('refactor:\n  project_scan_dirs: ["src"]\n')
         src_dir = tmp_path / "src"
         src_dir.mkdir(parents=True)
         (src_dir / "sample.py").write_text("import os\n", encoding="utf-8")

@@ -115,7 +115,7 @@ class TestsFlextInfraRefactorInfraRefactorEngine:
         )
         config_path = tmp_path / "settings.yml"
         config_path.write_text(
-            "\nrefactor_engine:\n  project_scan_dirs:\n    - tests\n    - scripts\n".strip()
+            "\nrefactor:\n  project_scan_dirs:\n    - tests\n    - scripts\n".strip()
             + "\n",
             encoding="utf-8",
         )
@@ -150,7 +150,7 @@ class TestsFlextInfraRefactorInfraRefactorEngine:
             encoding="utf-8",
         )
         config_path = tmp_path / "settings.yml"
-        config_path.write_text('refactor_engine:\n  project_scan_dirs: ["src"]\n')
+        config_path.write_text('refactor:\n  project_scan_dirs: ["src"]\n')
         py_file = tmp_path / "sample.py"
         py_file.write_text("import os\n", encoding="utf-8")
         md_file = tmp_path / "README.md"

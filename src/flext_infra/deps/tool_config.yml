@@ -718,6 +718,7 @@ lazy-init:
     - services.py
     - settings.py
     - shared.py
+    - tap.py
     - typings.py
     - utilities.py
   public-file-aliases:

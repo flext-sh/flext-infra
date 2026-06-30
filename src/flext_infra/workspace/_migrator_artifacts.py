@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, p, r, t, u
-from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 
 if TYPE_CHECKING:
@@ -208,7 +208,7 @@ class FlextInfraProjectMigratorArtifactsMixin:
         """Apply bootstrap include."""
         if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
             return r[str].ok(content)
-        bootstrap_result = FlextInfraBaseMkTemplateEngine.render_bootstrap_include()
+        bootstrap_result = FlextInfraBaseMkTemplateRenderer.render_bootstrap_include()
         if bootstrap_result.failure:
             return r[str].fail(
                 bootstrap_result.error or "Makefile bootstrap include render failed",

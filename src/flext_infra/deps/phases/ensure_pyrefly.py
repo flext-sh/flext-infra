@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
-from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 if TYPE_CHECKING:
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -85,7 +85,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply canonical pyrefly table values, paths, and strict error toggles."""
-        return FlextInfraPhaseEngine.apply_phases(
+        return FlextInfraTomlPhaseService.apply_phases(
             doc,
             self._phase(
                 is_root=is_root,
@@ -103,7 +103,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply canonical pyrefly settings to one normalized payload."""
-        return FlextInfraPhaseEngine.apply_payload_phases(
+        return FlextInfraTomlPhaseService.apply_payload_phases(
             payload,
             self._phase(
                 is_root=is_root,

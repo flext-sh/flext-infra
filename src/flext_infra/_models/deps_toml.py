@@ -1,4 +1,4 @@
-"""TOML phase engine models with Builder DSL.
+"""TOML phase models with Builder DSL for deps configuration sync.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,20 +10,63 @@ from collections.abc import (
     Callable,
 )
 from itertools import chain
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 from flext_infra import c, t
-from flext_infra._models.engine_ops import FlextInfraModelsEngineOperation
 
 
-class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
-    """Engine models accessible via ``m.Infra.*``."""
+class FlextInfraModelsDepsToml:
+    """TOML operation models exposed through the deps model domain."""
+
+    class TomlSetOp(m.ContractModel):
+        """Set one TOML key to one JSON-compatible value."""
+
+        kind: Literal[c.Infra.TomlOperationKind.SET] = m.Field(
+            c.Infra.TomlOperationKind.SET,
+            description="Operation kind",
+            validate_default=True,
+        )
+        key: str = m.Field(description="TOML key name")
+        value: t.JsonValue = m.Field(description="JSON-compatible value")
+
+    class TomlListOp(m.ContractModel):
+        """Set or merge one TOML string list."""
+
+        kind: Literal[c.Infra.TomlOperationKind.LIST] = m.Field(
+            c.Infra.TomlOperationKind.LIST,
+            description="Operation kind",
+            validate_default=True,
+        )
+        key: str = m.Field(description="TOML key name")
+        values: t.StrSequence = m.Field(description="Expected values")
+        strategy: Annotated[
+            c.Infra.TomlMergeMode,
+            m.Field(
+                description="Merge strategy",
+                validate_default=True,
+            ),
+        ] = c.Infra.TomlMergeMode.REPLACE
+        sort: Annotated[
+            bool, m.Field(description="Sort values before sync", validate_default=True)
+        ] = True
+
+    class TomlRemoveOp(m.ContractModel):
+        """Remove one TOML key, optionally from a nested relative table."""
+
+        kind: Literal[c.Infra.TomlOperationKind.REMOVE] = m.Field(
+            c.Infra.TomlOperationKind.REMOVE,
+            description="Operation kind",
+            validate_default=True,
+        )
+        key: str = m.Field(description="Key to remove")
+        table_path: Annotated[
+            t.StrSequence,
+            m.Field(description="Relative sub-table path", validate_default=True),
+        ] = ()
 
     type TomlOperation = Annotated[
-        FlextInfraModelsEngineOperation.TomlSetOp
-        | FlextInfraModelsEngineOperation.TomlListOp
-        | FlextInfraModelsEngineOperation.TomlRemoveOp,
+        TomlSetOp | TomlListOp | TomlRemoveOp,
         m.Field(discriminator="kind"),
     ]
 
@@ -41,13 +84,13 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             t.StrSequence, m.Field(description="Primary table path")
         ] = ()
         operations: Annotated[
-            t.SequenceOf[FlextInfraModelsEngine.TomlOperation],
+            t.SequenceOf[FlextInfraModelsDepsToml.TomlOperation],
             m.Field(
                 description="Declarative TOML operations",
             ),
         ] = ()
         nested_tables: Annotated[
-            t.SequenceOf[FlextInfraModelsEngine.TomlPhaseConfig],
+            t.SequenceOf[FlextInfraModelsDepsToml.TomlPhaseConfig],
             m.Field(description="Nested TOML phase configs"),
         ] = ()
         custom_handler: Annotated[
@@ -58,12 +101,12 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             ),
         ] = None
 
-        class Builder(m.Builder.Identity["FlextInfraModelsEngine.TomlPhaseConfig"]):
-            """Fluent builder — ``m.Infra.TomlPhaseConfig.Builder("ruff").table(...).build()``."""
+        class Builder(m.Builder.Identity["FlextInfraModelsDepsToml.TomlPhaseConfig"]):
+            """Fluent builder for ``m.Infra.TomlPhaseConfig``."""
 
             def __init__(self, name: str) -> None:
                 super().__init__(
-                    state=FlextInfraModelsEngine.TomlPhaseConfig(name=name)
+                    state=FlextInfraModelsDepsToml.TomlPhaseConfig(name=name)
                 )
 
             @classmethod
@@ -73,26 +116,26 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 values: t.SequenceOf[tuple[str, t.JsonValue]] = (),
                 lists: t.SequenceOf[t.StrSequencePair] = (),
                 deprecated_keys: t.StrSequence = (),
-            ) -> tuple[FlextInfraModelsEngine.TomlOperation, ...]:
+            ) -> tuple[FlextInfraModelsDepsToml.TomlOperation, ...]:
                 """Nested operations."""
                 return tuple(
                     chain(
                         (
-                            FlextInfraModelsEngine.TomlSetOp.model_validate({
+                            FlextInfraModelsDepsToml.TomlSetOp.model_validate({
                                 "key": key,
                                 "value": value,
                             })
                             for key, value in values
                         ),
                         (
-                            FlextInfraModelsEngine.TomlListOp.model_validate({
+                            FlextInfraModelsDepsToml.TomlListOp.model_validate({
                                 "key": key,
                                 "values": tuple(entries),
                             })
                             for key, entries in lists
                         ),
                         (
-                            FlextInfraModelsEngine.TomlRemoveOp.model_validate({
+                            FlextInfraModelsDepsToml.TomlRemoveOp.model_validate({
                                 "key": key
                             })
                             for key in deprecated_keys
@@ -130,7 +173,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             def value(self, key: str, value: t.JsonValue) -> Self:
                 """Value."""
                 return self.operation(
-                    FlextInfraModelsEngine.TomlSetOp, key=key, value=value
+                    FlextInfraModelsDepsToml.TomlSetOp, key=key, value=value
                 )
 
             def list(
@@ -143,7 +186,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             ) -> Self:
                 """List."""
                 return self.operation(
-                    FlextInfraModelsEngine.TomlListOp,
+                    FlextInfraModelsDepsToml.TomlListOp,
                     key=key,
                     values=tuple(values),
                     strategy=strategy,
@@ -153,7 +196,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
             def deprecated(self, key: str, *sub_path: str) -> Self:
                 """Deprecated."""
                 return self.operation(
-                    FlextInfraModelsEngine.TomlRemoveOp,
+                    FlextInfraModelsDepsToml.TomlRemoveOp,
                     key=key,
                     table_path=tuple(sub_path),
                 )
@@ -166,7 +209,7 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 deprecated_keys: t.StrSequence = (),
             ) -> Self:
                 """Nested."""
-                nested_table = FlextInfraModelsEngine.TomlPhaseConfig(
+                nested_table = FlextInfraModelsDepsToml.TomlPhaseConfig(
                     name=self.state.name,
                     root_path=(),
                     table_path=tuple(path),
@@ -198,4 +241,4 @@ class FlextInfraModelsEngine(FlextInfraModelsEngineOperation):
                 return replaced
 
 
-__all__: list[str] = ["FlextInfraModelsEngine"]
+__all__: list[str] = ["FlextInfraModelsDepsToml"]

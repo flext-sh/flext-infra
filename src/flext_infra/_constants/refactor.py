@@ -15,9 +15,9 @@ from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 
 class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
-    """Shared constants for refactor engine modules."""
+    """Shared constants for refactor modules."""
 
-    RK_REFACTOR_ENGINE: Final[str] = "refactor_engine"
+    RK_REFACTOR: Final[str] = "refactor"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
     RK_IGNORE_PATTERNS: Final[str] = "ignore_patterns"
     RK_FILE_EXTENSIONS: Final[str] = "file_extensions"
@@ -45,12 +45,12 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
     CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
     CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
-    ENGINE_CONFIG_KEYS: Final[t.StrSequence] = (
+    REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
         RK_IGNORE_PATTERNS,
         RK_FILE_EXTENSIONS,
     )
-    """Allowed keys under the ``refactor_engine`` config scope."""
+    """Allowed keys under the ``refactor`` config scope."""
 
     TYPING_DEFINITION_FILES: Final[frozenset[str]] = frozenset({
         "typings.py",

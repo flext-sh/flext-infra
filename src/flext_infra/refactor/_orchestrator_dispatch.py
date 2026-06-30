@@ -139,7 +139,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         """Collect files."""
         result: t.MutableSequenceOf[Path] | None
         if args.project:
-            collected = u.Infra.collect_engine_project_files(
+            collected = u.Infra.collect_refactor_project_files(
                 self.loader.settings,
                 args.project,
                 pattern=args.pattern,
@@ -147,7 +147,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             result = None if collected is None else list(collected)
         elif args.workspace:
             result = list(
-                u.Infra.collect_engine_workspace_files(
+                u.Infra.collect_refactor_workspace_files(
                     self.loader.settings,
                     args.workspace,
                     pattern=args.pattern,

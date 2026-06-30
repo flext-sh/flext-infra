@@ -1,9 +1,9 @@
-# Configuração global do Refactor Engine
+# Configuração global do refactor
 # Regras 100% declarativas - editar este arquivo, não código Python
 
-refactor_engine:
+refactor:
   version: "1.0.0"
-  description: "Flext Refactor Engine - Declarative code transformation"
+  description: "Flext Refactor - Declarative code transformation"
 
   # Runtime aliases padrão do flext
   runtime_aliases:

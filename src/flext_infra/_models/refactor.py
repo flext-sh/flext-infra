@@ -28,11 +28,11 @@ class FlextInfraModelsRefactor(
     FlextInfraModelsRefactorCensus,
     FlextInfraModelsRefactorViolations,
 ):
-    """Models for the refactor engine and related tools.
+    """Models for refactor workflows and related tools.
 
     Canonical base policy:
     - ``ContractModel`` for configuration/policy contracts.
-    - ``ArbitraryTypesModel`` for mutable engine/report/result payloads.
+    - ``ArbitraryTypesModel`` for mutable report/result payloads.
     """
 
     class RefactorMigrateMroInput(

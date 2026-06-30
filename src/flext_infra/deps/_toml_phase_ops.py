@@ -1,8 +1,8 @@
-"""TOML operation appliers for the phase engine (cohesive mixin, §3.1 split).
+"""TOML operation appliers for the TOML phase (cohesive mixin, §3.1 split).
 
 Holds the discriminated ``m.Infra.TomlOperation`` appliers for both the
 ``t.Cli.TomlTable`` (document) and ``t.MutableJsonMapping`` (payload) paths.
-Composed into ``FlextInfraPhaseEngine`` via MRO.
+Composed into ``FlextInfraTomlPhaseService`` via MRO.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,8 +13,8 @@ from __future__ import annotations
 from flext_infra import c, m, t, u
 
 
-class FlextInfraPhaseEngineOps:
-    """Discriminated TOML operation appliers shared by the phase engine."""
+class FlextInfraTomlPhaseOps:
+    """Discriminated TOML operation appliers shared by the TOML phase."""
 
     @staticmethod
     def _apply_operation(
@@ -46,7 +46,7 @@ class FlextInfraPhaseEngineOps:
             ):
                 out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             return
-        FlextInfraPhaseEngineOps._remove_operation(tbl, operation, out, pfx)
+        FlextInfraTomlPhaseOps._remove_operation(tbl, operation, out, pfx)
 
     @staticmethod
     def _apply_payload_operation(
@@ -79,7 +79,7 @@ class FlextInfraPhaseEngineOps:
                 ):
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             case c.Infra.TomlOperationKind.REMOVE:
-                FlextInfraPhaseEngineOps._remove_payload_operation(
+                FlextInfraTomlPhaseOps._remove_payload_operation(
                     tbl, operation, out, pfx
                 )
             case _:
@@ -128,4 +128,4 @@ class FlextInfraPhaseEngineOps:
             )
 
 
-__all__: list[str] = ["FlextInfraPhaseEngineOps"]
+__all__: list[str] = ["FlextInfraTomlPhaseOps"]

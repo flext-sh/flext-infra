@@ -186,6 +186,18 @@ class TestsFlextInfraBasemkMakeContract:
             has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi;',
         )
 
+    def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(
+        self,
+    ) -> None:
+        rendered = _render_base_mk()
+        tm.that(
+            rendered,
+            has=[
+                "git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py'",
+                "git ls-files --others --exclude-standard -- '*.py'",
+            ],
+        )
+
     def test_make_check_file_scope_runs_mypy(self, tmp_path: Path) -> None:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"

@@ -58,8 +58,8 @@ from tests.unit._utilities.test_safety import (
 from tests.unit._utilities.test_scanning import (
     TestsFlextInfraUtilitiesscanning as TestsFlextInfraUtilitiesscanning,
 )
-from tests.unit.basemk.test_engine import (
-    TestsFlextInfraBasemkEngine as TestsFlextInfraBasemkEngine,
+from tests.unit.basemk.test_renderer import (
+    TestsFlextInfraBasemkRenderer as TestsFlextInfraBasemkRenderer,
 )
 from tests.unit.basemk.test_generator import (
     TestsFlextInfraBasemkGenerator as TestsFlextInfraBasemkGenerator,

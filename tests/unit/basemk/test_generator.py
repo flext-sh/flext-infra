@@ -12,7 +12,7 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 class TestsFlextInfraBasemkGenerator:
     """Behavior contract for test_generator."""
 
-    def test_generator_initializes_with_default_engine(self) -> None:
+    def test_generator_initializes_with_default_renderer(self) -> None:
         assert FlextInfraBaseMkGenerator() is not None
 
     def test_generator_execute_returns_generated_content(self) -> None:

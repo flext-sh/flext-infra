@@ -10,7 +10,7 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRefactorCensus:
-    """Census and MRO models for the refactor engine."""
+    """Census and MRO models for refactor workflows."""
 
     # -- MRO Generic Models ----------------------------------------------------
 

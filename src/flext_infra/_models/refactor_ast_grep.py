@@ -130,8 +130,8 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             default_factory=tuple, description="Errors"
         )
 
-    class EngineConfig(m.ContractModel):
-        """Engine config."""
+    class RefactorConfig(m.ContractModel):
+        """Refactor file-selection config."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 

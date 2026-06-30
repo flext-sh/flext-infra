@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, s, t, u
-from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
 
 class FlextInfraBaseMkGenerator(s[str]):
@@ -21,9 +21,9 @@ class FlextInfraBaseMkGenerator(s[str]):
         Path | None, m.Field(description="Optional file path for generated content")
     ] = None
 
-    template_engine: Annotated[
+    template_renderer: Annotated[
         p.Infra.TemplateRenderer | None,
-        m.Field(exclude=True, description="Template engine"),
+        m.Field(exclude=True, description="Template renderer"),
     ] = None
 
     @property
@@ -35,7 +35,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     def execute(self) -> p.Result[str]:
         """Execute."""
         settings = (
-            FlextInfraBaseMkTemplateEngine.default_config().model_copy(
+            FlextInfraBaseMkTemplateRenderer.default_config().model_copy(
                 update={"project_name": self.project_name},
             )
             if self.project_name
@@ -58,12 +58,12 @@ class FlextInfraBaseMkGenerator(s[str]):
         settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> p.Result[str]:
         """Generate base.mk content from configuration."""
-        config_result = FlextInfraBaseMkTemplateEngine.normalize_config(settings)
+        config_result = FlextInfraBaseMkTemplateRenderer.normalize_config(settings)
         if config_result.failure:
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
         render_result = (
-            self.template_engine or FlextInfraBaseMkTemplateEngine()
+            self.template_renderer or FlextInfraBaseMkTemplateRenderer()
         ).render_all(config_value)
         if render_result.failure:
             return r[str].fail(render_result.error or "base.mk render failed")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from flext_infra import c, m, t, u
-from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureMypyConfigPhase:
@@ -59,14 +59,14 @@ class FlextInfraEnsureMypyConfigPhase:
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply mypy defaults, overrides, and toggles from tool configuration."""
-        return FlextInfraPhaseEngine.apply_phases(doc, self._phase())
+        return FlextInfraTomlPhaseService.apply_phases(doc, self._phase())
 
     def apply_payload(
         self,
         payload: t.MutableJsonMapping,
     ) -> t.StrSequence:
         """Apply canonical mypy settings directly to one normalized payload."""
-        return FlextInfraPhaseEngine.apply_payload_phases(payload, self._phase())
+        return FlextInfraTomlPhaseService.apply_payload_phases(payload, self._phase())
 
 
 __all__: list[str] = ["FlextInfraEnsureMypyConfigPhase"]

@@ -130,7 +130,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         if error_results is not None:
             results_out: t.SequenceOf[m.Infra.Result] = error_results
             return results_out
-        collected = u.Infra.collect_engine_project_files(
+        collected = u.Infra.collect_refactor_project_files(
             self.loader.settings,
             project_path,
             pattern=pattern,
@@ -169,7 +169,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         if not root.exists() or not root.is_dir():
             u.Cli.error(f"Invalid workspace root: {workspace_root}")
             return []
-        projects = u.Infra.discover_engine_projects(
+        projects = u.Infra.discover_refactor_projects(
             self.loader.settings,
             root,
         )

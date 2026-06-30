@@ -1,4 +1,4 @@
-"""TOML engine — applies m.Infra.TomlPhaseConfig to docs.
+"""TOML phase service for applying m.Infra.TomlPhaseConfig to docs.
 
 Uses one cached per-document path resolver plus
 u.Cli.toml_* sync/navigate primitives,
@@ -13,10 +13,10 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_infra import m, p, r, s, t, u
-from flext_infra.deps._phase_engine_ops import FlextInfraPhaseEngineOps
+from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
 
 
-class FlextInfraPhaseEngine(FlextInfraPhaseEngineOps, s[t.StrSequence]):
+class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
     """Apply ``m.Infra.TomlPhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
@@ -69,7 +69,7 @@ class FlextInfraPhaseEngine(FlextInfraPhaseEngineOps, s[t.StrSequence]):
                 for phase in self.phases
                 for change in self._apply_phase(phase, parent_path=())
             ),
-            error_code="phase_engine_execute",
+            error_code="toml_phase_execute",
         )
 
     def apply(self) -> t.StrSequence:
@@ -153,4 +153,4 @@ class FlextInfraPhaseEngine(FlextInfraPhaseEngineOps, s[t.StrSequence]):
         return out
 
 
-__all__: list[str] = ["FlextInfraPhaseEngine"]
+__all__: list[str] = ["FlextInfraTomlPhaseService"]

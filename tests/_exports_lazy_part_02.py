@@ -8,7 +8,7 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
     {
         ".constants": ("TestsFlextInfraConstants",),
-        ".unit.basemk.test_engine": ("TestsFlextInfraBasemkEngine",),
+        ".unit.basemk.test_renderer": ("TestsFlextInfraBasemkRenderer",),
         ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
         ".unit.basemk.test_generator_edge_cases": (
             "TestsFlextInfraBasemkGeneratorEdgeCases",

@@ -1,11 +1,11 @@
-"""Public rendering tests for the base.mk template engine."""
+"""Public rendering tests for the base.mk template renderer."""
 
 from __future__ import annotations
 
 from _pytest.capture import CaptureFixture
 
 from flext_infra import m, main as infra_main
-from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
@@ -13,17 +13,17 @@ def basemk_main(argv: list[str]) -> int:
     return infra_main(["basemk", *argv])
 
 
-class TestsFlextInfraBasemkEngine:
-    """Behavior contract for test_engine."""
+class TestsFlextInfraBasemkRenderer:
+    """Behavior contract for test_renderer."""
 
     def test_render_all_generates_large_makefile(self) -> None:
-        result = FlextInfraBaseMkTemplateEngine().render_all()
+        result = FlextInfraBaseMkTemplateRenderer().render_all()
 
         assert result.success, result.error
         assert len(result.value.splitlines()) > 400
 
     def test_render_all_has_no_scripts_path_references(self) -> None:
-        result = FlextInfraBaseMkTemplateEngine().render_all()
+        result = FlextInfraBaseMkTemplateRenderer().render_all()
 
         assert result.success, result.error
         assert "scripts/" not in result.value
@@ -45,7 +45,7 @@ class TestsFlextInfraBasemkEngine:
         assert "PROJECT_NAME ?= sample-project" in result.value
 
     def test_render_single_missing_template_fails(self) -> None:
-        result = FlextInfraBaseMkTemplateEngine().render_single(
+        result = FlextInfraBaseMkTemplateRenderer().render_single(
             "missing-template.mk.j2"
         )
 
@@ -59,15 +59,15 @@ class TestsFlextInfraBasemkEngine:
         assert exit_code == 0
         assert "PROJECT_NAME ?= cli-project" in captured.out
 
-    def test_engine_execute_returns_string(self) -> None:
-        result = FlextInfraBaseMkTemplateEngine().execute()
+    def test_renderer_execute_returns_string(self) -> None:
+        result = FlextInfraBaseMkTemplateRenderer().execute()
 
         assert result.success, result.error
         assert isinstance(result.value, str)
         assert result.value
 
     def test_render_all_exposes_canonical_public_targets(self) -> None:
-        result = FlextInfraBaseMkTemplateEngine().render_all()
+        result = FlextInfraBaseMkTemplateRenderer().render_all()
 
         assert result.success, result.error
         text = result.value
@@ -85,7 +85,7 @@ class TestsFlextInfraBasemkEngine:
         assert "docs-sync-scripts" not in text
 
     def test_render_all_declares_and_documents_runtime_options(self) -> None:
-        result = FlextInfraBaseMkTemplateEngine().render_all()
+        result = FlextInfraBaseMkTemplateRenderer().render_all()
 
         assert result.success, result.error
         text = result.value

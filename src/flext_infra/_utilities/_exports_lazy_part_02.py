@@ -16,7 +16,6 @@ FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
         "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
         ".census": ("FlextInfraUtilitiesRefactorCensus",),
-        ".engine": ("FlextInfraUtilitiesRefactorEngine",),
         ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
         ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceMro",),
         ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),
@@ -32,6 +31,7 @@ FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".protected_edit_writes": ("FlextInfraUtilitiesProtectedEditWrites",),
         ".pyproject": ("FlextInfraUtilitiesPyproject",),
         ".refactor": ("FlextInfraUtilitiesRefactor",),
+        ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
         ".release": ("FlextInfraUtilitiesRelease",),
         ".rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
         ".rope_analysis_introspection": (

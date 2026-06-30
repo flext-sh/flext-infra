@@ -161,10 +161,10 @@ class_nesting:
   target_name: FlextInfraConstantsBasemk
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraBaseMkTemplateEngine
-  current_file: flext-core/src/flext_infra/basemk/engine.py
-  target_namespace: FlextBasemkEngine
-  target_name: FlextInfraBaseMkTemplateEngine
+- loose_name: FlextInfraBaseMkTemplateRenderer
+  current_file: flext-core/src/flext_infra/basemk/renderer.py
+  target_namespace: FlextBasemkRenderer
+  target_name: FlextInfraBaseMkTemplateRenderer
   confidence: medium
   reason: top_level_class_without_namespace_prefix
 - loose_name: _TemplateRenderer

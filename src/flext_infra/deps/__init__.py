@@ -36,9 +36,6 @@ if TYPE_CHECKING:
     from flext_infra.deps.modernizer import (
         FlextInfraPyprojectModernizer as FlextInfraPyprojectModernizer,
     )
-    from flext_infra.deps.phase_engine import (
-        FlextInfraPhaseEngine as FlextInfraPhaseEngine,
-    )
     from flext_infra.deps.phases.consolidate_groups import (
         FlextInfraConsolidateGroupsPhase as FlextInfraConsolidateGroupsPhase,
     )
@@ -72,6 +69,9 @@ if TYPE_CHECKING:
     from flext_infra.deps.phases.inject_comments import (
         FlextInfraInjectCommentsPhase as FlextInfraInjectCommentsPhase,
     )
+    from flext_infra.deps.toml_phase import (
+        FlextInfraTomlPhaseService as FlextInfraTomlPhaseService,
+    )
 _LAZY_IMPORTS = merge_lazy_imports(
     (".phases",),
     build_lazy_import_map(
@@ -85,7 +85,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".internal_sync": ("FlextInfraInternalDependencySyncService",),
             ".modernizer": ("FlextInfraPyprojectModernizer",),
             ".path_sync": ("path_sync",),
-            ".phase_engine": ("FlextInfraPhaseEngine",),
+            ".toml_phase": ("FlextInfraTomlPhaseService",),
             ".phases": ("phases",),
             ".phases.consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
             ".phases.ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),

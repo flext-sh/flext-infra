@@ -23,6 +23,9 @@ if TYPE_CHECKING:
         FlextInfraModelsCodegenRender as FlextInfraModelsCodegenRender,
     )
     from flext_infra._models.deps import FlextInfraModelsDeps as FlextInfraModelsDeps
+    from flext_infra._models.deps_toml import (
+        FlextInfraModelsDepsToml as FlextInfraModelsDepsToml,
+    )
     from flext_infra._models.deps_tool_config import (
         FlextInfraModelsDepsToolSettings as FlextInfraModelsDepsToolSettings,
     )
@@ -33,12 +36,6 @@ if TYPE_CHECKING:
         FlextInfraModelsDepsToolConfigTypeCheckers as FlextInfraModelsDepsToolConfigTypeCheckers,
     )
     from flext_infra._models.docs import FlextInfraModelsDocs as FlextInfraModelsDocs
-    from flext_infra._models.engine import (
-        FlextInfraModelsEngine as FlextInfraModelsEngine,
-    )
-    from flext_infra._models.engine_ops import (
-        FlextInfraModelsEngineOperation as FlextInfraModelsEngineOperation,
-    )
     from flext_infra._models.gates import FlextInfraModelsGates as FlextInfraModelsGates
     from flext_infra._models.github import (
         FlextInfraModelsGithub as FlextInfraModelsGithub,
@@ -84,14 +81,13 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".codegen": ("FlextInfraModelsCodegen",),
         ".codegen_render": ("FlextInfraModelsCodegenRender",),
         ".deps": ("FlextInfraModelsDeps",),
+        ".deps_toml": ("FlextInfraModelsDepsToml",),
         ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
         ".deps_tool_config_linters": ("FlextInfraModelsDepsToolConfigLinters",),
         ".deps_tool_config_type_checkers": (
             "FlextInfraModelsDepsToolConfigTypeCheckers",
         ),
         ".docs": ("FlextInfraModelsDocs",),
-        ".engine": ("FlextInfraModelsEngine",),
-        ".engine_ops": ("FlextInfraModelsEngineOperation",),
         ".gates": ("FlextInfraModelsGates",),
         ".github": ("FlextInfraModelsGithub",),
         ".mixins": ("FlextInfraModelsMixins",),

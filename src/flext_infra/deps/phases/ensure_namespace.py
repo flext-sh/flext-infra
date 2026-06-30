@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, t, u
-from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureNamespaceToolingPhase:
@@ -31,7 +31,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
         )
         if not detected:
             return []
-        return FlextInfraPhaseEngine.apply_phases(doc, self._phase(detected))
+        return FlextInfraTomlPhaseService.apply_phases(doc, self._phase(detected))
 
     def apply_payload(
         self,
@@ -48,7 +48,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
         )
         if not detected:
             return []
-        return FlextInfraPhaseEngine.apply_payload_phases(
+        return FlextInfraTomlPhaseService.apply_payload_phases(
             payload, self._phase(detected)
         )
 

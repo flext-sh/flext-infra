@@ -314,7 +314,11 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 		else _files="$(FILE)"; fi; \
 	fi; \
 	if [ "$(CHANGED_ONLY)" = "1" ]; then \
-		_files=$$(git diff --name-only HEAD -- '*.py' 2>/dev/null | tr '\n' ' '); \
+		_files=$$( \
+			{ git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py' 2>/dev/null; \
+			  git ls-files --others --exclude-standard -- '*.py' 2>/dev/null; } \
+			| tr '\n' ' ' \
+		); \
 	fi; \
 	if [ -n "$$_files" ]; then \
 		if [ -z "$(CHECK_GATES)" ]; then gates="lint,format,pyrefly,mypy,pyright"; fi; \

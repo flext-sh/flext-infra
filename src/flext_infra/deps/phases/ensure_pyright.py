@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.deps.phase_engine import FlextInfraPhaseEngine
+from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 if TYPE_CHECKING:
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -421,7 +421,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply the managed pyright configuration for one TOML document."""
-        return FlextInfraPhaseEngine.apply_phases(
+        return FlextInfraTomlPhaseService.apply_phases(
             doc,
             self._phase(
                 is_root=is_root,
@@ -443,7 +443,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply managed pyright settings directly to one normalized payload."""
-        return FlextInfraPhaseEngine.apply_payload_phases(
+        return FlextInfraTomlPhaseService.apply_payload_phases(
             payload,
             self._phase(
                 is_root=is_root,

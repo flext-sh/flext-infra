@@ -1,4 +1,4 @@
-"""Jinja2-based template engine for rendering base.mk configuration."""
+"""Jinja2-based template renderer for rendering base.mk configuration."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ from flext_infra import (
 )
 
 
-class FlextInfraBaseMkTemplateEngine(s[str]):
+class FlextInfraBaseMkTemplateRenderer(s[str]):
     """Render base.mk templates with configuration context."""
 
     _environment: t.Infra.JinjaEnvironment = u.PrivateAttr(
-        default_factory=lambda: FlextInfraBaseMkTemplateEngine._build_environment(),
+        default_factory=lambda: FlextInfraBaseMkTemplateRenderer._build_environment(),
     )
 
     @staticmethod
@@ -41,7 +41,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         """Create the shared Jinja environment for base.mk rendering."""
         return Environment(
             loader=FileSystemLoader(
-                str(FlextInfraBaseMkTemplateEngine._templates_dir()),
+                str(FlextInfraBaseMkTemplateRenderer._templates_dir()),
             ),
             trim_blocks=False,
             lstrip_blocks=False,
@@ -76,7 +76,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         """Normalize user-provided config to the canonical BaseMk model."""
         if settings is None:
             return r[m.Infra.BaseMkConfig].ok(
-                FlextInfraBaseMkTemplateEngine.default_config(),
+                FlextInfraBaseMkTemplateRenderer.default_config(),
             )
         if isinstance(settings, m.Infra.BaseMkConfig):
             return r[m.Infra.BaseMkConfig].ok(settings)
@@ -93,7 +93,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     @staticmethod
     def render_bootstrap_include() -> p.Result[str]:
         """Render the canonical Makefile bootstrap include block."""
-        return FlextInfraBaseMkTemplateEngine().render_single(
+        return FlextInfraBaseMkTemplateRenderer().render_single(
             c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
             make=c.Infra,
         )
@@ -153,4 +153,4 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             return r[str].fail_op("template render", exc)
 
 
-__all__: list[str] = ["FlextInfraBaseMkTemplateEngine"]
+__all__: list[str] = ["FlextInfraBaseMkTemplateRenderer"]
