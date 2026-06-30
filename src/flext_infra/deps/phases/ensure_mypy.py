@@ -13,7 +13,7 @@ class FlextInfraEnsureMypyConfigPhase:
         """Store tool configuration used to generate the canonical mypy section."""
         self._tool_config = tool_config
 
-    def _phase(self) -> m.Infra.TomlPhaseConfig:
+    def _phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical mypy phase definition."""
         configured = self._tool_config.tools.mypy.overrides
         expected_overrides: t.SequenceOf[t.JsonDict] = [
@@ -26,7 +26,7 @@ class FlextInfraEnsureMypyConfigPhase:
             for entry in configured
         ]
         phase_builder = (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("mypy")
             .table(c.Infra.MYPY)
             .deprecated("strict_concatenate")

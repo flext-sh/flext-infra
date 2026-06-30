@@ -11,10 +11,10 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsureNamespaceToolingPhase:
     """Ensure namespace discovery is reflected across project tooling tables."""
 
-    def _phase(self, detected: t.StrSequence) -> m.Infra.TomlPhaseConfig:
+    def _phase(self, detected: t.StrSequence) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the deptry namespace phase for one detected namespace set."""
         return (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("namespace-tooling")
             .table(c.Infra.DEPTRY)
             .list(c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE, detected)

@@ -60,7 +60,7 @@ class FlextInfraEnsureRuffConfigPhase:
         workspace_namespaces: t.StrSequence,
         stale_patterns: t.StrSequence,
         include_handler: bool,
-    ) -> m.Infra.TomlPhaseConfig:
+    ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         discovered_src = sorted(u.Infra.discover_python_dirs(path.parent))
@@ -92,7 +92,7 @@ class FlextInfraEnsureRuffConfigPhase:
                 ),
             )
         phase = (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("ruff")
             .table(c.Infra.RUFF)
             .deprecated(c.Infra.EXTEND)

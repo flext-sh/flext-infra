@@ -13,10 +13,10 @@ class FlextInfraEnsurePytestConfigPhase:
         """Store tool configuration used to compose canonical pytest defaults."""
         self._tool_config = tool_config
 
-    def _phase(self) -> m.Infra.TomlPhaseConfig:
+    def _phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pytest phase definition."""
         return (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("pytest")
             .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
             .value(c.Infra.MINVERSION, "8.0")

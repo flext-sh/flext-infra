@@ -17,7 +17,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         self,
         *,
         project_kind: str = "core",
-    ) -> tuple[m.Infra.TomlPhaseConfig, m.Infra.TomlPhaseConfig]:
+    ) -> tuple[m.Infra.Deps.Toml.PhaseConfig, m.Infra.Deps.Toml.PhaseConfig]:
         """Build the canonical coverage phases for the selected project kind."""
         cov_config = self._tool_config.tools.coverage
         fail_under_map: t.IntMapping = {
@@ -29,7 +29,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         }
         fail_under = fail_under_map.get(project_kind, cov_config.fail_under.core)
         report_phase = (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("coverage-report")
             .table("coverage", "report")
             .value("fail_under", fail_under)
@@ -40,7 +40,7 @@ class FlextInfraEnsureCoverageConfigPhase:
             .build()
         )
         run_phase = (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("coverage-run")
             .table("coverage", "run")
             .list("omit", sorted(set(cov_config.omit)))

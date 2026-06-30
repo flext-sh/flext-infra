@@ -1,6 +1,6 @@
 """TOML operation appliers for the TOML phase (cohesive mixin, §3.1 split).
 
-Holds the discriminated ``m.Infra.TomlOperation`` appliers for both the
+Holds the discriminated ``m.Infra.Deps.Toml.Operation`` appliers for both the
 ``t.Cli.TomlTable`` (document) and ``t.MutableJsonMapping`` (payload) paths.
 Composed into ``FlextInfraTomlPhaseService`` via MRO.
 
@@ -19,18 +19,18 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _apply_operation(
         tbl: t.Cli.TomlTable,
-        operation: m.Infra.TomlOperation,
+        operation: m.Infra.Deps.Toml.Operation,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to the target table."""
-        if isinstance(operation, m.Infra.TomlSetOp):
+        if isinstance(operation, m.Infra.Deps.Toml.SetOp):
             if u.Cli.toml_sync_value(tbl, operation.key, operation.value):
                 out.append(
                     f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
                 )
             return
-        if isinstance(operation, m.Infra.TomlListOp):
+        if isinstance(operation, m.Infra.Deps.Toml.ListOp):
             if operation.strategy in {
                 c.Infra.TomlMergeMode.ADDITIVE,
                 c.Infra.TomlMergeMode.MERGE,
@@ -51,7 +51,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _apply_payload_operation(
         tbl: t.MutableJsonMapping,
-        operation: m.Infra.TomlOperation,
+        operation: m.Infra.Deps.Toml.Operation,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
@@ -89,7 +89,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _remove_operation(
         tbl: t.Cli.TomlTable,
-        operation: m.Infra.TomlRemoveOp,
+        operation: m.Infra.Deps.Toml.RemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
@@ -110,7 +110,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _remove_payload_operation(
         tbl: t.MutableJsonMapping,
-        operation: m.Infra.TomlRemoveOp,
+        operation: m.Infra.Deps.Toml.RemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:

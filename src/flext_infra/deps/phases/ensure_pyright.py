@@ -321,7 +321,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
-    ) -> m.Infra.TomlPhaseConfig:
+    ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
         project_root = workspace_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root)
@@ -350,7 +350,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             workspace_root=workspace_root,
             project_dir=project_dir,
         )
-        phase_builder = m.Infra.TomlPhaseConfig.Builder("pyright").table(
+        phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
             c.Infra.PYRIGHT
         )
         if expected_excludes:

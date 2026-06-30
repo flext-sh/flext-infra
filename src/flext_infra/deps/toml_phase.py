@@ -1,4 +1,4 @@
-"""TOML phase service for applying m.Infra.TomlPhaseConfig to docs.
+"""TOML phase service for applying m.Infra.Deps.Toml.PhaseConfig to docs.
 
 Uses one cached per-document path resolver plus
 u.Cli.toml_* sync/navigate primitives,
@@ -17,14 +17,14 @@ from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
 
 
 class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
-    """Apply ``m.Infra.TomlPhaseConfig`` phases to a TOML document."""
+    """Apply ``m.Infra.Deps.Toml.PhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
         t.Cli.TomlDocument,
         m.Field(exclude=True, description="Target TOML document"),
     ]
     phases: Annotated[
-        t.SequenceOf[m.Infra.TomlPhaseConfig],
+        t.SequenceOf[m.Infra.Deps.Toml.PhaseConfig],
         m.Field(
             default_factory=tuple,
             description="Ordered TOML transformation phases to apply.",
@@ -38,7 +38,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
     def apply_phases(
         cls,
         doc: t.Cli.TomlDocument,
-        *phases: m.Infra.TomlPhaseConfig,
+        *phases: m.Infra.Deps.Toml.PhaseConfig,
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
         return cls.model_construct(doc=doc, phases=phases).apply()
@@ -47,7 +47,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
     def apply_payload_phases(
         cls,
         payload: t.MutableJsonMapping,
-        *phases: m.Infra.TomlPhaseConfig,
+        *phases: m.Infra.Deps.Toml.PhaseConfig,
     ) -> t.StrSequence:
         """Apply one declarative phase set to one plain TOML payload."""
         return [
@@ -84,7 +84,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
     def _apply_payload_phase(
         cls,
         payload: t.MutableJsonMapping,
-        phase: m.Infra.TomlPhaseConfig,
+        phase: m.Infra.Deps.Toml.PhaseConfig,
         *,
         parent_path: t.StrSequence,
     ) -> t.StrSequence:
@@ -119,7 +119,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
 
     def _apply_phase(
         self,
-        phase: m.Infra.TomlPhaseConfig,
+        phase: m.Infra.Deps.Toml.PhaseConfig,
         *,
         parent_path: t.StrSequence,
     ) -> t.StrSequence:

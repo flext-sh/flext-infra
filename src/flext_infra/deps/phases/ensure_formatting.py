@@ -16,13 +16,13 @@ class FlextInfraEnsureFormattingToolingPhase:
     def _phases(
         self,
     ) -> tuple[
-        m.Infra.TomlPhaseConfig,
-        m.Infra.TomlPhaseConfig,
-        m.Infra.TomlPhaseConfig,
+        m.Infra.Deps.Toml.PhaseConfig,
+        m.Infra.Deps.Toml.PhaseConfig,
+        m.Infra.Deps.Toml.PhaseConfig,
     ]:
         """Build the canonical formatting phases."""
         codespell_builder = (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("codespell")
             .table("codespell")
             .value(
@@ -37,7 +37,7 @@ class FlextInfraEnsureFormattingToolingPhase:
             )
         codespell_phase = codespell_builder.build()
         tomlsort_phase = (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("tomlsort")
             .table("tomlsort")
             .value("all", self._tool_config.tools.tomlsort.all)
@@ -46,7 +46,7 @@ class FlextInfraEnsureFormattingToolingPhase:
             .build()
         )
         yamlfix_phase = (
-            m.Infra.TomlPhaseConfig
+            m.Infra.Deps.Toml.PhaseConfig
             .Builder("yamlfix")
             .table("yamlfix")
             .value("line_length", self._tool_config.tools.yamlfix.line_length)
