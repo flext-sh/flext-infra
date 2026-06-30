@@ -20,6 +20,26 @@ _MAKE_ISOLATION_ENV_KEYS = (
     "PROJECTS",
     "WORKSPACE_ROOT",
 )
+_MAKE_TEST_ENV_KEYS = (
+    "FILE",
+    "FILES",
+    "CHANGED_ONLY",
+    "CHECK_GATES",
+    "VALIDATE_GATES",
+    "PYTEST_ARGS",
+    "MATCH",
+    "FAIL_FAST",
+    "RUFF_ARGS",
+    "PYRIGHT_ARGS",
+    "CHECK_ONLY",
+    "FIX",
+    "MAKEFLAGS",
+    "MAKEOVERRIDES",
+    "MFLAGS",
+    "MAKELEVEL",
+    "GNUMAKEFLAGS",
+    *_MAKE_ISOLATION_ENV_KEYS,
+)
 
 
 def _render_base_mk() -> str:
@@ -84,26 +104,7 @@ def _run_make(
     project_root: Path, *args: str, env: dict[str, str] | None = None
 ) -> m.Cli.CommandOutput:
     active_env = os.environ.copy()
-    for key in (
-        "FILE",
-        "FILES",
-        "CHANGED_ONLY",
-        "CHECK_GATES",
-        "VALIDATE_GATES",
-        "PYTEST_ARGS",
-        "MATCH",
-        "FAIL_FAST",
-        "RUFF_ARGS",
-        "PYRIGHT_ARGS",
-        "CHECK_ONLY",
-        "FIX",
-        "MAKEFLAGS",
-        "MAKEOVERRIDES",
-        "MFLAGS",
-        "MAKELEVEL",
-        "GNUMAKEFLAGS",
-        *_MAKE_ISOLATION_ENV_KEYS,
-    ):
+    for key in _MAKE_TEST_ENV_KEYS:
         active_env.pop(key, None)
     if env is not None:
         active_env.update(env)
@@ -111,7 +112,7 @@ def _run_make(
         ["make", *args],
         cwd=project_root,
         env=active_env,
-        remove_env_keys=_MAKE_ISOLATION_ENV_KEYS,
+        remove_env_keys=_MAKE_TEST_ENV_KEYS,
     )
     if result.success:
         return result.value
