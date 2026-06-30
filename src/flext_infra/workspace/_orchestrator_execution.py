@@ -14,6 +14,31 @@ from flext_infra import c, m, p, r, t, u
 class FlextInfraWorkspaceOrchestratorExecutionMixin:
     """Project orchestration execution logic."""
 
+    @staticmethod
+    def _project_child_env() -> t.StrMapping:
+        """Return child process env overrides for project make execution."""
+        inherited = u.Cli.process_env()
+        path = inherited.get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
+        blocked_path_entries = frozenset(
+            entry
+            for entry in (
+                inherited.get(c.Infra.ORCHESTRATOR_ENV_MISE_SHIMS, ""),
+                inherited.get(c.Infra.ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS, ""),
+            )
+            if entry
+        )
+        path_entries = tuple(
+            entry
+            for entry in path.split(c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR)
+            if entry and entry not in blocked_path_entries
+        )
+        env: dict[str, str] = {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
+        if path_entries:
+            env[c.Infra.ORCHESTRATOR_ENV_PATH] = (
+                c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(path_entries)
+            )
+        return env
+
     def _execute_project(
         self,
         project: str,
@@ -167,7 +192,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         proc_result = u.Cli.run_to_file(
             [c.Infra.MAKE, "-C", project, verb, *make_args],
             log_path,
-            env={"NO_COLOR": "1"},
+            env=self._project_child_env(),
+            remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         return_code: int = proc_result.unwrap() if proc_result.success else 1
         stderr = "" if proc_result.success else proc_result.error or ""

@@ -55,6 +55,29 @@ class FlextInfraConstantsMake:
         "test",
         "val",
     )
+    ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
+        "GNUMAKEFLAGS",
+        "MAKEFLAGS",
+        "MAKELEVEL",
+        "MAKEOVERRIDES",
+        "MISE_DIR",
+        "MISE_EXE",
+        "MISE_ORIG_PATH",
+        "MISE_SESSION",
+        "MISE_SHELL",
+        "MISE_SHIMS",
+        "MISE_VERBOSE",
+        "MFLAGS",
+        "MYPYPATH",
+        "PYTHONPATH",
+        "WORKSPACE_MISE_SHIMS",
+    )
+    "Environment keys removed before project-level make orchestration."
+    ORCHESTRATOR_ENV_NO_COLOR: Final[str] = "NO_COLOR"
+    ORCHESTRATOR_ENV_PATH: Final[str] = "PATH"
+    ORCHESTRATOR_ENV_PATH_SEPARATOR: Final[str] = ":"
+    ORCHESTRATOR_ENV_MISE_SHIMS: Final[str] = "MISE_SHIMS"
+    ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
         ("DIAG", "0"),
