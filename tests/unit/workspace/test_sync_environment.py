@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.sync import FlextInfraSyncService
 from tests.protocols import p
 
@@ -169,3 +170,46 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         envrc_text = envrc_path.read_text(encoding="utf-8")
         assert c.Infra.WORKSPACE_ENV_GENERATED_MARKER in envrc_text
         assert "old" not in envrc_text
+
+    def test_environment_sync_skips_workspace_without_pyproject(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+
+        result = FlextInfraWorkspaceEnvironment.sync_environment_files(project_root)
+
+        assert result.success, self._error_text(result)
+        assert result.value == 0
+        assert not (project_root / ".envrc").exists()
+        assert not (project_root / ".mise.toml").exists()
+
+    def test_environment_sync_removes_generated_files_without_pyproject(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        (project_root / ".envrc").write_text(
+            f"{c.Infra.WORKSPACE_ENV_GENERATED_MARKER}\nold\n",
+            encoding="utf-8",
+        )
+        (project_root / ".mise.toml").write_text(
+            f"{c.Infra.WORKSPACE_ENV_GENERATED_MARKER}\n[tools]\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceEnvironment.sync_environment_files(project_root)
+
+        assert result.success, self._error_text(result)
+        assert result.value == 2
+        assert not (project_root / ".envrc").exists()
+        assert not (project_root / ".mise.toml").exists()
+
+    def test_environment_sync_preserves_custom_env_without_pyproject(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        envrc_path = project_root / ".envrc"
+        envrc_path.write_text("PATH_add bin\n", encoding="utf-8")
+
+        result = FlextInfraWorkspaceEnvironment.sync_environment_files(project_root)
+
+        assert result.success, self._error_text(result)
+        assert result.value == 0
+        assert envrc_path.read_text(encoding="utf-8") == "PATH_add bin\n"
+        assert not (project_root / ".mise.toml").exists()

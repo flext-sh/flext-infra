@@ -20,6 +20,8 @@ class FlextInfraWorkspaceEnvironment:
         force: bool = False,
     ) -> p.Result[int]:
         """Sync generated workspace environment files."""
+        if not cls.has_pyproject(workspace_root):
+            return cls.remove_generated_environment_files(workspace_root, apply=apply)
         envrc_result = cls.sync_envrc(workspace_root, apply=apply, force=force)
         if envrc_result.failure:
             return r[int].fail(envrc_result.error or ".envrc sync failed")
@@ -155,9 +157,18 @@ class FlextInfraWorkspaceEnvironment:
         return r[dict[str, str]].ok(pins)
 
     @staticmethod
+    def has_pyproject(workspace_root: Path) -> bool:
+        """Return whether the workspace declares Python project metadata."""
+        pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
+        return (workspace_root / pyproject_filename).is_file()
+
+    @staticmethod
     def workspace_python_version(workspace_root: Path) -> str | None:
         """Return the Python minor version declared by ``pyproject.toml``."""
-        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
+        pyproject = workspace_root / pyproject_filename
+        if not pyproject.is_file():
+            return None
         mapping_result = u.Cli.toml_read_json(pyproject)
         if mapping_result.failure:
             return None
@@ -169,6 +180,45 @@ class FlextInfraWorkspaceEnvironment:
             return None
         match = re.search(r">=\s*(3\.\d+)", requires_python)
         return match.group(1) if match else None
+
+    @classmethod
+    def remove_generated_environment_files(
+        cls,
+        workspace_root: Path,
+        *,
+        apply: bool = True,
+    ) -> p.Result[int]:
+        """Remove generated environment files from non-Python workspaces."""
+        changed = 0
+        for filename in c.Infra.WORKSPACE_ENV_FILES:
+            target_path = workspace_root / filename
+            result = cls.remove_generated_environment_file(target_path, apply=apply)
+            if result.failure:
+                return r[int].fail(result.error or f"{filename} removal failed")
+            changed += int(result.value)
+        return r[int].ok(changed)
+
+    @classmethod
+    def remove_generated_environment_file(
+        cls,
+        target_path: Path,
+        *,
+        apply: bool = True,
+    ) -> p.Result[bool]:
+        """Remove one generated environment file without touching custom files."""
+        if not target_path.exists():
+            return r[bool].ok(False)
+        read = u.Cli.files_read_text(target_path)
+        if read.failure:
+            return r[bool].fail(read.error or f"{target_path.name} read failed")
+        if not cls.is_generated_environment_text(read.value):
+            return r[bool].ok(False)
+        if not apply:
+            return r[bool].ok(True)
+        delete_result = u.Cli.files_delete(target_path)
+        if delete_result.failure:
+            return r[bool].fail(delete_result.error or f"{target_path.name} delete failed")
+        return r[bool].ok(True)
 
     @classmethod
     def write_generated_text(
