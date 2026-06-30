@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import m, p, t, u
+from flext_infra.docs._auditor_checks import FlextInfraDocAuditorChecksMixin
+from flext_infra.docs._auditor_report import FlextInfraDocAuditorReportMixin
 from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
@@ -16,6 +15,8 @@ from flext_infra.docs.base import FlextInfraDocServiceBase
 class FlextInfraDocAuditor(
     FlextInfraDocServiceBase,
     FlextInfraDocAuditorMixin,
+    FlextInfraDocAuditorChecksMixin,
+    FlextInfraDocAuditorReportMixin,
 ):
     """Audit governed docs scopes using code-backed and policy-backed checks."""
 
@@ -26,43 +27,6 @@ class FlextInfraDocAuditor(
             description="Strict audit mode",
         ),
     ] = False
-
-    @staticmethod
-    def _policy_token_issues(
-        scope: m.Infra.DocScope,
-        *,
-        policy_key: str,
-        issue_type: str,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Return text-token issues for one scope using the named policy list."""
-        issues: t.SequenceOf[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
-            scope,
-            tokens=u.Infra.docs_policy_list(scope, section="audit", key=policy_key),
-            issue_type=issue_type,
-        )
-        return issues
-
-    @staticmethod
-    def forbidden_term_issues(
-        scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Return forbidden-term issues configured for one scope."""
-        return FlextInfraDocAuditor._policy_token_issues(
-            scope,
-            policy_key="forbidden_terms",
-            issue_type="forbidden_term",
-        )
-
-    @staticmethod
-    def placeholder_issues(
-        scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Return placeholder-text issues for one scope."""
-        return FlextInfraDocAuditor._policy_token_issues(
-            scope,
-            policy_key="placeholder_terms",
-            issue_type="placeholder",
-        )
 
     def audit(
         self,
@@ -90,50 +54,11 @@ class FlextInfraDocAuditor(
         """Audit one scope and persist the standard reports."""
         checks = sorted(self.resolve_checks(params.check))
         issues = self._collect_issues(scope, checks)
-        default_budget, per_scope_budget = params.budgets or (None, {})
-        scope_budget = per_scope_budget.get(scope.name, default_budget)
-        issue_count = len(issues)
-        passed = True
-        if params.strict:
-            passed = (
-                issue_count == 0
-                if scope_budget is None
-                else issue_count <= scope_budget
-            )
-        result = (
-            c.Infra.ResultStatus.OK
-            if passed and issue_count == 0
-            else c.Infra.ResultStatus.WARN
-            if passed
-            else c.Infra.ResultStatus.FAIL
-        )
-        reason = (
-            f"issues:{issue_count}"
-            if scope_budget is None
-            else f"issues:{issue_count};budget:{scope_budget}"
-        )
-        message = (
-            "audit passed" if issue_count == 0 else f"found {issue_count} issue(s)"
-        )
-        report = m.Infra.DocsPhaseReport(
-            phase="audit",
-            scope=scope.name,
-            result=result,
-            reason=reason,
-            message=message,
+        report = self._audit_report(
+            scope,
+            issues=issues,
             checks=checks,
-            strict=params.strict,
-            passed=passed,
-            items=[
-                m.Infra.DocsPhaseItemModel(
-                    phase="audit",
-                    file=issue.file,
-                    issue_type=issue.issue_type,
-                    severity=issue.severity,
-                    message=issue.message,
-                )
-                for issue in issues
-            ],
+            params=params,
         )
         self.write_audit_reports(
             scope,
@@ -187,32 +112,6 @@ class FlextInfraDocAuditor(
             check=params.check,
             strict=params.strict,
             budgets=budgets,
-        )
-
-    def _collect_issues(
-        self,
-        scope: m.Infra.DocScope,
-        checks: t.StrSequence,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Collect issues for the requested check set in canonical order."""
-        handlers: tuple[
-            tuple[str, Callable[[m.Infra.DocScope], t.SequenceOf[m.Infra.AuditIssue]]],
-            ...,
-        ] = (
-            ("links", u.Infra.docs_broken_link_issues),
-            ("forbidden-terms", self.forbidden_term_issues),
-            ("placeholders", self.placeholder_issues),
-            ("stale-symbols", u.Infra.docs_stale_symbol_issues),
-            ("scope-boundary", u.Infra.docs_scope_boundary_issues),
-            ("generated-ownership", u.Infra.docs_generated_ownership_issues),
-            ("docstrings", u.Infra.docs_public_docstring_issues),
-            ("python-codeblocks", u.Infra.docs_python_codeblock_issues),
-        )
-        return tuple(
-            issue
-            for check_name, handler in handlers
-            if check_name in checks
-            for issue in handler(scope)
         )
 
 
