@@ -7,6 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_cli import m as cli_m
+from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from tests.typings import t
 from tests.utilities import u
@@ -153,6 +154,19 @@ def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
         workspace_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
     )
     wrapper_consumer_paths = _write_wrapper_consumers(workspace_root)
+    constants_family_path = (
+        workspace_root
+        / "flext-demo"
+        / "src"
+        / "flext_demo"
+        / c.Infra.FAMILY_DIRECTORIES["c"]
+        / "internal.py"
+    )
+    constants_family_path.parent.mkdir(parents=True, exist_ok=True)
+    constants_family_path.write_text(
+        'from __future__ import annotations\n\nVALUE = "demo"\n',
+        encoding="utf-8",
+    )
     service = FlextInfraCodegenConsolidator(
         workspace=workspace_root,
         dry_run=False,
@@ -171,6 +185,9 @@ def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
         updated_source = consumer_path.read_text(encoding="utf-8")
         tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
         tm.that(updated_source, has="from flext_demo import c")
+    constants_family_source = constants_family_path.read_text(encoding="utf-8")
+    tm.that(constants_family_source, has='VALUE = "demo"')
+    assert "c.DEMO_VALUE" not in constants_family_source
 
 
 def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
