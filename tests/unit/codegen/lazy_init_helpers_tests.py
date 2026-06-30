@@ -26,6 +26,26 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
+    @staticmethod
+    def _generated_exports(package_root: Path) -> str:
+        part_exports = sorted(
+            package_root.glob("_exports_lazy_part_*.py"),
+            key=lambda path: path.name,
+        )
+        if part_exports:
+            return "\n".join(
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                for path in part_exports
+            )
+
+        exports_file = package_root / "_exports.py"
+        if exports_file.exists():
+            return exports_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+
+        return package_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
     def test_discover_package_from_standard_roots(self) -> None:
         assert (
             u.Infra.package_name(
@@ -59,10 +79,12 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
 
-        assert '"FlextDemoModels"' in init_content
-        assert '"m"' in init_content
+        assert "from flext_core.lazy import install_lazy_exports" in init_content
         assert "_LAZY_IMPORTS" in init_content
+        assert '"FlextDemoModels"' in exports_content
+        assert '"m"' in exports_content
 
     def test_private_modules_do_not_export_from_root(self, tmp_path: Path) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
@@ -90,11 +112,11 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         assert u.Tests.run_lazy_init(workspace_root) == 0
-        init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
 
-        assert '"FlextDemo"' in init_content
-        assert '"demo"' in init_content
-        assert "hidden" not in init_content
+        assert '"FlextDemo"' in exports_content
+        assert '"demo"' in exports_content
+        assert "hidden" not in exports_content
 
     def test_child_exports_bubble_public_symbols_only(self, tmp_path: Path) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
@@ -124,12 +146,12 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         assert u.Tests.run_lazy_init(workspace_root) == 0
-        init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
 
-        assert "FlextDemoService" in init_content
-        assert '"BLUE"' in init_content
-        assert '"main"' not in init_content
-        assert '"m": ("flext_demo.services.models", "m")' not in init_content
+        assert "FlextDemoService" in exports_content
+        assert '"BLUE"' in exports_content
+        assert '"main"' not in exports_content
+        assert '"m": ("flext_demo.services.models", "m")' not in exports_content
 
     def test_tests_root_aliases_follow_export_hierarchy(self, tmp_path: Path) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
@@ -221,6 +243,7 @@ class TestsFlextInfraLazyInitHelpers:
         assert '"tm"' in init_content
         assert '    "tm",' in init_content
         assert '"flext_core": ("tm",)' not in init_content
+        assert "install_lazy_exports(" in init_content
 
     def test_root_aliases_follow_transitive_parent_exports_from_source(
         self,
@@ -283,10 +306,13 @@ class TestsFlextInfraLazyInitHelpers:
         assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
 
-        assert "from flext_cli import (" in init_content
+        assert "from flext_cli import d, e, h, m, p, r, s, t, u, x" in init_content
         for alias_name in ("d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
-            assert f"{alias_name} as {alias_name}" in init_content
-        assert '"flext_cli": (' in init_content
+            assert f'    "{alias_name}",' in init_content
+        sidecar_content = package_root.joinpath("_exports_lazy_part_01.py").read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        assert '".constants": (' in sidecar_content
 
     def test_nested_tests_namespace_exports_local_symbols_only(
         self,
@@ -346,9 +372,9 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         assert u.Tests.run_lazy_init(workspace_root) == 0
-        init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
 
-        assert "FlextDemoHttpTransport" in init_content
+        assert "FlextDemoHttpTransport" in exports_content
 
     def test_duplicate_public_export_resolved_by_canonical_scorer(
         self, tmp_path: Path
@@ -366,5 +392,6 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
         assert init_content.startswith(c.Infra.AUTOGEN_HEADER)
-        assert "Shared" in init_content
+        assert "Shared" in exports_content

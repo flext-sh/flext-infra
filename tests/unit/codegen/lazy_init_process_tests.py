@@ -16,6 +16,26 @@ from tests.utilities import u
 class TestProcessDirectory:
     """Test public lazy-init generation scenarios."""
 
+    @staticmethod
+    def _generated_exports(package_root: Path) -> str:
+        part_exports = sorted(
+            package_root.glob("_exports_lazy_part_*.py"),
+            key=lambda path: path.name,
+        )
+        if part_exports:
+            return "\n".join(
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                for path in part_exports
+            )
+
+        exports_file = package_root / "_exports.py"
+        if exports_file.exists():
+            return exports_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+
+        return package_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
     def test_generates_init_from_sibling_files(self, tmp_path: Path) -> None:
         """generate_inits() generates __init__.py from sibling exports."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -32,9 +52,13 @@ class TestProcessDirectory:
 
         assert result == 0
         init_content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert '".models": (' in init_content
-        assert "FlextTestsModels" in init_content
-        assert f'"{"m"}"' in init_content
+        exports_content = self._generated_exports(package_root)
+        assert "from flext_core.lazy import install_lazy_exports" in init_content
+        assert "_LAZY_IMPORTS" in init_content
+        assert "install_lazy_exports(" in init_content
+        assert '".models": (' in exports_content
+        assert "FlextTestsModels" in exports_content
+        assert f'"{"m"}"' in exports_content
 
     def test_check_only_does_not_write(self, tmp_path: Path) -> None:
         """check_only mode reports without creating __init__.py."""
@@ -172,20 +196,22 @@ class TestProcessDirectory:
         init_content = (child_package / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+        exports_content = self._generated_exports(child_package)
         for module_key, alias, class_name in (
             ('".models": (', "m", "FlextChildModels"),
             ('".typings": (', "t", "FlextChildTypes"),
             ('".utilities": (', "u", "FlextChildUtilities"),
         ):
-            section = init_content.split(module_key, maxsplit=1)[1].split(
+            section = exports_content.split(module_key, maxsplit=1)[1].split(
                 "),",
                 maxsplit=1,
             )[0]
             assert f'"{alias}"' in section
             assert f'"{class_name}"' in section
-        assert "flext_parent.models" not in init_content
-        assert "flext_parent.typings" not in init_content
-        assert "flext_parent.utilities" not in init_content
+        assert "flext_parent.models" not in exports_content
+        assert "flext_parent.typings" not in exports_content
+        assert "flext_parent.utilities" not in exports_content
+        assert "from flext_core.lazy import install_lazy_exports" in init_content
 
     def test_leaf_package_uses_direct_lazy_map(self, tmp_path: Path) -> None:
         """Packages without child packages do not emit merge-only arguments."""
@@ -251,13 +277,15 @@ class TestProcessDirectory:
 
         assert result == 0
         parent_init = (package_root / "__init__.py").read_text(encoding="utf-8")
+        parent_exports = self._generated_exports(package_root)
         child_init = (sub_dir / "__init__.py").read_text(encoding="utf-8")
-        assert "FlextTestsModels" in parent_init
-        assert "FlextTestsService" not in parent_init
-        assert "ALL_STREAMS" not in parent_init
+        assert "FlextTestsModels" in parent_exports
+        assert "FlextTestsService" not in parent_exports
+        assert "ALL_STREAMS" not in parent_exports
         assert "FlextTestsService" in child_init
         assert "ALL_STREAMS" in child_init
         assert "if TYPE_CHECKING:" in child_init
+        assert "install_lazy_exports(" in parent_init
 
     @pytest.mark.parametrize(
         ("surface", "family_dir", "file_name", "class_name"),
@@ -412,18 +440,13 @@ class TestProcessDirectory:
         fixture_init = (fixture_dir / "__init__.py").read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        root_init = (package_root / "__init__.py").read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        exports_content = self._generated_exports(package_root)
         assert '"reset_settings"' in fixture_init
         assert '"settings"' in fixture_init
         assert '"settings_factory"' in fixture_init
-        assert '"reset_settings"' in root_init
-        assert '"settings"' in root_init
-        assert '"settings_factory"' in root_init
-        assert '    "reset_settings",' in root_init
-        assert '    "settings",' in root_init
-        assert '    "settings_factory",' in root_init
+        assert '"reset_settings"' in exports_content
+        assert '"settings"' in exports_content
+        assert '"settings_factory"' in exports_content
 
     def test_handles_version_file(self, tmp_path: Path) -> None:
         """Version exports are preserved in generated public wrappers."""
@@ -478,11 +501,9 @@ class TestProcessDirectory:
         result = u.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
-        init_content = (package_root / "__init__.py").read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        assert '".settings": (' in init_content
-        assert '"FlextDemoSettings"' in init_content
+        exports_content = self._generated_exports(package_root)
+        assert '".settings": (' in exports_content
+        assert '"FlextDemoSettings"' in exports_content
 
     def test_private_family_base_without_all_keeps_class_export(
         self,
@@ -538,9 +559,9 @@ class TestProcessDirectory:
         result = u.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
-        content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert '".settings": ("FlextDemoSettings",)' in content
-        assert '    "FlextDemoSettings",' in content
+        exports_content = self._generated_exports(package_root)
+        assert '".settings": (' in exports_content
+        assert '"FlextDemoSettings"' in exports_content
 
     def test_internal_family_package_keeps_class_exports_without_explicit_all(
         self,
