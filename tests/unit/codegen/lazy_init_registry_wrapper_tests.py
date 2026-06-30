@@ -49,17 +49,13 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         unit_dir = tests_dir / "unit"
         unit_dir.mkdir(parents=True)
 
-        root_wrapper = (
-            FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
-                tests_dir,
-                "tests",
-            )
+        root_wrapper = FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
+            tests_dir,
+            "tests",
         )
-        unit_wrapper = (
-            FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
-                unit_dir,
-                "tests.unit",
-            )
+        unit_wrapper = FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
+            unit_dir,
+            "tests.unit",
         )
 
         assert root_wrapper is not None
@@ -68,6 +64,76 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         assert unit_wrapper is not None
         assert unit_wrapper.generated is True
         assert unit_wrapper.name == "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS"
+
+    def test_public_package_uses_generated_lazy_sidecar(self, tmp_path: Path) -> None:
+        """Public packages keep existing exports while lazy imports move to sidecar."""
+        pkg_dir = tmp_path / "src" / "flext_demo"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME).write_text(
+            "__all__ = ('FlextDemoService',)\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        wrapper = FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
+            pkg_dir,
+            "flext_demo",
+        )
+
+        assert wrapper is not None
+        assert wrapper.generated is True
+        assert wrapper.module == "flext_demo._exports_lazy"
+        assert wrapper.name == "FLEXT_DEMO_LAZY_IMPORTS"
+
+    def test_public_registry_wrapper_keeps_runtime_thin(self) -> None:
+        """Public registry wrappers publish registry names without inline imports."""
+        registry = m.Infra.LazyInitRegistryWrapper(
+            module="flext_demo._exports",
+            name="FLEXT_DEMO_LAZY_IMPORTS",
+        )
+        generated_exports = tuple(
+            f"FlextDemoGenerated{index}" for index in range(c.Infra.LOC_CAP_MAX + 1)
+        )
+        exports = (
+            "FlextDemo",
+            "FlextDemoModels",
+            "m",
+            "r",
+            *generated_exports,
+        )
+        filtered = {
+            "FlextDemo": ("flext_demo.api", "FlextDemo"),
+            "FlextDemoModels": ("flext_demo.models", "FlextDemoModels"),
+            "m": ("flext_demo.models", "m"),
+            "r": ("flext_core", "r"),
+            **{
+                name: (f"flext_demo.generated_{index}", name)
+                for index, name in enumerate(generated_exports)
+            },
+        }
+
+        content = FlextInfraCodegenGeneration.generate_file(
+            exports,
+            filtered,
+            {},
+            "flext_demo",
+            registry_wrapper=registry,
+        )
+
+        assert "from typing import TYPE_CHECKING" not in content
+        assert "if TYPE_CHECKING:" not in content
+        assert "from flext_demo.api import FlextDemo as FlextDemo" not in content
+        assert (
+            "from flext_demo.models import FlextDemoModels as FlextDemoModels"
+            not in content
+        )
+        assert "from flext_demo._exports import FLEXT_DEMO_LAZY_IMPORTS" in content
+        assert "_LAZY_IMPORTS = FLEXT_DEMO_LAZY_IMPORTS" in content
+        assert "_PUBLIC_EXPORTS: tuple[str, ...] = (" in content
+        assert '"FlextDemo",' in content
+        assert '"m"' in content
+        assert '"r"' in content
+        assert "__all__ =" not in content
+        assert "public_exports=_PUBLIC_EXPORTS" in content
 
     def test_generated_registry_files_use_split_templates(self) -> None:
         """Generated registries split lazy maps into bounded template parts."""
@@ -96,7 +162,9 @@ class TestsFlextInfraLazyInitRegistryWrapper:
             "TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01"
         ) in files[c.Infra.ROOT_EXPORTS_FILENAME]
         assert "build_lazy_import_map(" in files["_exports_lazy_part_01.py"]
-        assert len(files["_exports_lazy_part_01.py"].splitlines()) <= c.Infra.LOC_CAP_MAX
+        assert (
+            len(files["_exports_lazy_part_01.py"].splitlines()) <= c.Infra.LOC_CAP_MAX
+        )
 
 
 __all__: list[str] = []
