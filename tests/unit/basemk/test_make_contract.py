@@ -93,6 +93,12 @@ def _run_make(
         "MFLAGS",
         "MAKELEVEL",
         "GNUMAKEFLAGS",
+        "FLEXT_ROOT",
+        "FLEXT_STANDALONE",
+        "FLEXT_WORKSPACE_ROOT",
+        "PROJECT",
+        "PROJECTS",
+        "WORKSPACE_ROOT",
     ):
         active_env.pop(key, None)
     if env is not None:
