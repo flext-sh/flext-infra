@@ -234,6 +234,12 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
 
         module: t.NonEmptyStr = m.Field(description="Importable registry module.")
         name: t.NonEmptyStr = m.Field(description="Registry symbol exported by module.")
+        generated: Annotated[
+            bool,
+            m.Field(
+                description="Whether codegen owns and refreshes the registry module.",
+            ),
+        ] = False
 
     class LazyInitPlan(m.ArbitraryTypesModel):
         """Fully resolved lazy-init action and render payload.

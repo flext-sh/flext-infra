@@ -32,6 +32,8 @@ class TestsFlextInfraInfraWorkspaceMigrator:
     def test_migrator_apply_updates_project_files(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project-a"
         u.Tests.write_migrator_project(project_root)
+        (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (project_root / "src" / "flext_infra" / "__init__.py").touch()
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "NEW_BASE\n",
@@ -57,6 +59,8 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             pyproject=None,
             gitignore=None,
         )
+        (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (project_root / "src" / "flext_infra" / "__init__.py").touch()
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "NEW_BASE\n",
@@ -129,6 +133,8 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             pyproject='[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
+        (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (project_root / "src" / "flext_infra" / "__init__.py").touch()
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "base.mk",

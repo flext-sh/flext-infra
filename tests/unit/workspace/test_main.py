@@ -195,7 +195,7 @@ class TestsFlextInfraWorkspaceMain:
 
         assert exit_code == 0
         assert (project_root / "Makefile").exists()
-        assert (project_root / "base.mk").exists()
+        assert not (project_root / "base.mk").exists()
 
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
         assert (

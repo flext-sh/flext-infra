@@ -37,6 +37,8 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         expected_error: str,
     ) -> None:
         root = u.Tests.create_migrator_dir_layout(tmp_path, base_mk=base_mk)
+        (root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "flext_infra" / "__init__.py").touch()
         self._make_read_only(root / read_only_name)
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -126,6 +128,8 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
     def test_basemk_generation_failure(self, tmp_path: Path) -> None:
         root = tmp_path
         (root / ".git").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "flext_infra" / "__init__.py").touch()
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")

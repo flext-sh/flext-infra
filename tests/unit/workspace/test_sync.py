@@ -104,7 +104,7 @@ class TestsFlextInfraWorkspaceSync:
 
         assert result.success, _error_text(result)
         assert result.value.files_changed >= 1
-        assert (project_root / "base.mk").exists()
+        assert not (project_root / "base.mk").exists()
         assert (project_root / ".gitignore").exists()
         assert (project_root / "Makefile").exists()
 
@@ -169,10 +169,10 @@ class TestsFlextInfraWorkspaceSync:
         ).execute()
 
         assert result.success, _error_text(result)
-        assert (workspace_root / "base.mk").exists()
+        assert not (workspace_root / "base.mk").exists()
         assert (workspace_root / "Makefile").exists()
         for project_root in (demo_a, demo_b):
-            assert (project_root / "base.mk").exists()
+            assert not (project_root / "base.mk").exists()
             assert (project_root / "Makefile").exists()
 
     def test_sync_workspace_root_writes_pre_commit_config(

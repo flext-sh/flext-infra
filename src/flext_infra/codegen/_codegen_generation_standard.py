@@ -50,6 +50,23 @@ class FlextInfraCodegenGenerationStandardMixin(
         runtime_import_block.extend(runtime_import_lines)
         return tuple(runtime_import_block)
 
+    @staticmethod
+    def _should_emit_type_checking(
+        current_pkg: str,
+        type_checking_filtered: t.LazyAliasMap,
+        *,
+        publish_all: bool,
+    ) -> bool:
+        """Return whether this package owns static TYPE_CHECKING exports."""
+        if not type_checking_filtered:
+            return False
+        if publish_all:
+            return True
+        return current_pkg in {
+            c.Infra.DIR_EXAMPLES,
+            c.Infra.DIR_TESTS,
+        }
+
     @classmethod
     def _standard_render_context(
         cls,
@@ -81,7 +98,11 @@ class FlextInfraCodegenGenerationStandardMixin(
                 child_packages=(),
                 local_package_root=current_pkg,
             )
-            if publish_all and type_checking_filtered
+            if cls._should_emit_type_checking(
+                current_pkg,
+                type_checking_filtered,
+                publish_all=publish_all,
+            )
             else ()
         )
         docstring_pkg = current_pkg if publish_all else current_pkg.rsplit(".", 1)[-1]

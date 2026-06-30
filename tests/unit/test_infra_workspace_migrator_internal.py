@@ -85,6 +85,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             pyproject='[project]\ndependencies = ["flext-core"]\n',
             gitignore=".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         )
+        (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (project_root / "src" / "flext_infra" / "__init__.py").touch()
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "base",

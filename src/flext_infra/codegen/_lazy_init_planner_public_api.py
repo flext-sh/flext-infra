@@ -58,34 +58,61 @@ class FlextInfraCodegenLazyInitPlannerPublicApiMixin:
         pkg_dir: Path,
         current_pkg: str,
     ) -> m.Infra.LazyInitRegistryWrapper | None:
-        """Return thin-wrapper registry metadata for test packages with ``_exports``."""
+        """Return thin-wrapper registry metadata for test packages."""
         if not (
             current_pkg == c.Infra.DIR_TESTS
             or current_pkg.startswith(f"{c.Infra.DIR_TESTS}.")
         ):
             return None
         exports_path = pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME
-        if not exports_path.is_file():
-            return None
-        names = frozenset(
-            name
-            for name in (
-                FlextInfraCodegenLazyInitPlannerPublicApiMixin._all_exports(
-                    exports_path
+        if exports_path.is_file():
+            names = frozenset(
+                name
+                for name in (
+                    FlextInfraCodegenLazyInitPlannerPublicApiMixin._all_exports(
+                        exports_path
+                    )
+                )
+                if name.endswith("LAZY_IMPORTS")
+            )
+            if len(names) != 1:
+                return None
+            registry_name = next(iter(names))
+            generated = exports_path.read_text(
+                encoding=c.Cli.ENCODING_DEFAULT,
+            ).startswith(c.Infra.AUTOGEN_HEADER)
+        else:
+            registry_name = (
+                FlextInfraCodegenLazyInitPlannerPublicApiMixin._registry_name(
+                    pkg_dir,
+                    current_pkg,
                 )
             )
-            if name.endswith("LAZY_IMPORTS")
-        )
-        if len(names) != 1:
-            return None
-        registry_name = next(iter(names))
+            generated = True
         registry_module = (
             f"{current_pkg}.{c.Infra.ROOT_EXPORTS_FILENAME.removesuffix('.py')}"
         )
         return m.Infra.LazyInitRegistryWrapper.model_validate({
             "module": registry_module,
             "name": registry_name,
+            "generated": generated,
         })
+
+    @staticmethod
+    def _registry_name(pkg_dir: Path, current_pkg: str) -> str:
+        """Return the canonical lazy registry symbol for a test package."""
+        segments = tuple(segment for segment in current_pkg.split(".") if segment)
+        project_dir = pkg_dir
+        for _segment in segments:
+            project_dir = project_dir.parent
+        project_token = project_dir.name.replace("-", "_").upper()
+        suffix_tokens = tuple(segment.upper() for segment in segments[1:])
+        return "_".join((
+            c.Infra.DIR_TESTS.upper(),
+            project_token,
+            *suffix_tokens,
+            "LAZY_IMPORTS",
+        ))
 
     @staticmethod
     def _all_exports(exports_path: Path) -> frozenset[str]:

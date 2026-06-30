@@ -49,6 +49,8 @@ class FlextInfraConstantsCodegen:
     "Root public ABI contract module consumed by lazy-init planning."
     ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
     "Suffix for tuple constants that declare frozen public root exports."
+    LAZY_REGISTRY_PART_SIZE: Final[int] = 32
+    "Maximum lazy import entry groups emitted per generated registry part."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (
         "src/**/__init__.py",
         "tests/**/__init__.py",
@@ -225,6 +227,10 @@ class FlextInfraConstantsCodegen:
     "L0-typings __getattr__ + __dir__ + namespace-cleanup."
     TEMPLATE_REGISTRY_WRAPPER: Final[str] = "lazy_init_registry_wrapper.py.j2"
     "Thin generated test package wrapper backed by a split lazy registry."
+    TEMPLATE_REGISTRY: Final[str] = "lazy_init_registry.py.j2"
+    "Generated split lazy registry aggregator."
+    TEMPLATE_REGISTRY_PART: Final[str] = "lazy_init_registry_part.py.j2"
+    "Generated split lazy registry part."
     TEMPLATE_DIRECT_BOOTSTRAP: Final[str] = "lazy_init_direct_bootstrap.py.j2"
     "Direct-import bootstrap package initializer."
     TEMPLATE_FLEXT_CORE_ROOT: Final[str] = "lazy_init_flext_core_root.py.j2"

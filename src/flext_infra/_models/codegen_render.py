@@ -78,6 +78,49 @@ class FlextInfraModelsCodegenRender:
         )
         registry_name: t.NonEmptyStr = m.Field(description="Lazy registry symbol.")
 
+    class LazyInitRegistryRender(m.ArbitraryTypesModel):
+        """Template context for split lazy registry aggregators."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            validate_assignment=True,
+        )
+
+        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
+        registry_name: t.NonEmptyStr = m.Field(description="Lazy registry symbol.")
+        current_pkg: t.NonEmptyStr = m.Field(description="Owning package name.")
+        part_imports: t.StrPairSequence = m.Field(
+            default_factory=tuple,
+            description="Registry part modules paired with exported part names.",
+        )
+        child_module_paths: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Child package lazy registries merged at runtime.",
+        )
+        excluded_lazy_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Names excluded from merged child lazy registries.",
+        )
+
+    class LazyInitRegistryPartRender(m.ArbitraryTypesModel):
+        """Template context for one split lazy registry part."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            validate_assignment=True,
+        )
+
+        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
+        part_name: t.NonEmptyStr = m.Field(description="Lazy registry part symbol.")
+        lazy_module_groups: t.StrSequencePairSequence = m.Field(
+            default_factory=tuple,
+            description="Lazy imports grouped by module.",
+        )
+        lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
+            default_factory=tuple,
+            description="Lazy alias imports grouped by module.",
+        )
+
     class LazyInitDirectBootstrapRender(m.ArbitraryTypesModel):
         """Template context for direct bootstrap generated packages."""
 
