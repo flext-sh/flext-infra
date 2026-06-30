@@ -46,6 +46,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             ),
             registry_module=registry_wrapper.module,
             registry_name=registry_wrapper.name,
+            public_exports_name=registry_wrapper.public_exports_name,
             runtime_import_lines=runtime_import_lines,
             inline_constants=inline_constants,
             eager_export_names=eager_export_names,

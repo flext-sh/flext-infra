@@ -30,7 +30,11 @@ class FlextInfraCodegenLazyInitEngineRegistryMixin:
                 return -1
             return 0
         import_line = f"from {registry.module} import {registry.name}"
-        if import_line not in generated_init:
+        import_block = f"from {registry.module} import ("
+        imports_registry = import_line in generated_init or (
+            import_block in generated_init and f"    {registry.name}," in generated_init
+        )
+        if not imports_registry:
             self._remove_generated_typing_stub(plan)
             return 0
         if not registry.generated:

@@ -27,13 +27,26 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
             lazy_names = frozenset(
                 name for name in names if name.endswith("LAZY_IMPORTS")
             )
+            public_exports_names = frozenset(
+                name
+                for name in names
+                if name.endswith(c.Infra.ROOT_PUBLIC_EXPORTS_SUFFIX)
+            )
             if len(lazy_names) > 1:
                 msg = f"{exports_path}: expected one LAZY_IMPORTS export, got {sorted(lazy_names)!r}"
+                raise ValueError(msg)
+            if len(public_exports_names) > 1:
+                msg = (
+                    f"{exports_path}: expected one "
+                    f"{c.Infra.ROOT_PUBLIC_EXPORTS_SUFFIX} export, "
+                    f"got {sorted(public_exports_names)!r}"
+                )
                 raise ValueError(msg)
             if lazy_names:
                 return m.Infra.LazyInitRegistryWrapper.model_validate({
                     "module": f"{current_pkg}.{exports_path.stem}",
                     "name": next(iter(lazy_names)),
+                    "public_exports_name": next(iter(public_exports_names), None),
                     "generated": exports_path.read_text(
                         encoding=c.Cli.ENCODING_DEFAULT,
                     ).startswith(c.Infra.AUTOGEN_HEADER),

@@ -75,6 +75,10 @@ class FlextInfraModelsCodegenRender:
             description="Importable lazy registry module.",
         )
         registry_name: t.NonEmptyStr = m.Field(description="Lazy registry symbol.")
+        public_exports_name: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional public export contract symbol."),
+        ] = None
         runtime_import_lines: str = m.Field(
             description="Rendered eager import block for non-lazy exports.",
         )

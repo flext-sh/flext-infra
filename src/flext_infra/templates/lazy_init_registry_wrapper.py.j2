@@ -4,7 +4,14 @@
 from __future__ import annotations
 
 from flext_core.lazy import install_lazy_exports
+{% if public_exports_name -%}
+from {{ registry_module }} import (
+    {{ registry_name }},
+    {{ public_exports_name }},
+)
+{% else -%}
 from {{ registry_module }} import {{ registry_name }}
+{% endif %}
 
 {% if runtime_import_lines -%}
 {{ runtime_import_lines }}
@@ -16,7 +23,15 @@ from {{ registry_module }} import {{ registry_name }}
 {% if inline_constants %}
 
 {% endif -%}
+{% if public_exports_name %}
+_LAZY_IMPORTS = {
+    name: target
+    for name, target in {{ registry_name }}.items()
+    if name in {{ public_exports_name }}
+}
+{% else %}
 _LAZY_IMPORTS = {{ registry_name }}
+{% endif %}
 {% if publish_all %}
 {% if eager_export_names %}
 _EAGER_EXPORTS = (
@@ -25,11 +40,15 @@ _EAGER_EXPORTS = (
 {% endfor %}
 )
 {% endif %}
+{% if public_exports_name %}
+_PUBLIC_EXPORTS: tuple[str, ...] = {{ public_exports_name }}
+{% else %}
 _PUBLIC_EXPORTS: tuple[str, ...] = (
 {% for export_name in exports %}
     "{{ export_name }}",
 {% endfor %}
 )
+{% endif %}
 {% endif %}
 
 install_lazy_exports(

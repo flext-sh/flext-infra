@@ -151,6 +151,54 @@ class TestFlextInfraCodegenLazyInit:
         )
         assert '(".sub",)' in registry_content
 
+    def test_explicit_public_exports_block_child_export_leaks(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A root public ABI contract is the SSOT for root package exports."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+        )
+        sub_dir = package_root / "sub"
+        sub_dir.mkdir(parents=True)
+        (package_root / c.Infra.ROOT_EXPORTS_FILENAME).write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "from flext_core.lazy import build_lazy_import_map\n\n"
+                "FLEXT_TEST_PROJECT_LAZY_IMPORTS = build_lazy_import_map({\n"
+                '    ".models": ("FlextTestsModels", "m"),\n'
+                '    ".sub.service": ("FlextTestsService",),\n'
+                "})\n"
+                'FLEXT_TEST_PROJECT_PUBLIC_EXPORTS = ("FlextTestsModels", "m")\n\n'
+                "__all__ = (\n"
+                '    "FLEXT_TEST_PROJECT_LAZY_IMPORTS",\n'
+                '    "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS",\n'
+                ")\n"
+            ),
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextTestsModels",
+            alias="m",
+            docstring="Models.",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            sub_dir / "service.py",
+            class_name="FlextTestsService",
+            alias="s",
+            docstring="Service.",
+        )
+
+        result = u.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        stub_content = self._read_generated_file(package_root, c.Infra.INIT_PYI)
+        init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
+        assert "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS" in init_content
+        assert "FlextTestsModels" in stub_content
+        assert "FlextTestsService" not in stub_content
+
     def test_generate_rewrites_to_canonical_docstring(self, tmp_path: Path) -> None:
         """Generated wrappers use the canonical package docstring."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(

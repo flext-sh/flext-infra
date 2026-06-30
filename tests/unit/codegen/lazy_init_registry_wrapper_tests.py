@@ -89,6 +89,7 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         registry = m.Infra.LazyInitRegistryWrapper(
             module="flext_demo._exports",
             name="FLEXT_DEMO_LAZY_IMPORTS",
+            public_exports_name="FLEXT_DEMO_PUBLIC_EXPORTS",
         )
         generated_exports = tuple(
             f"FlextDemoGenerated{index}" for index in range(c.Infra.LOC_CAP_MAX + 1)
@@ -126,14 +127,43 @@ class TestsFlextInfraLazyInitRegistryWrapper:
             "from flext_demo.models import FlextDemoModels as FlextDemoModels"
             not in content
         )
-        assert "from flext_demo._exports import FLEXT_DEMO_LAZY_IMPORTS" in content
-        assert "_LAZY_IMPORTS = FLEXT_DEMO_LAZY_IMPORTS" in content
-        assert "_PUBLIC_EXPORTS: tuple[str, ...] = (" in content
-        assert '"FlextDemo",' in content
-        assert '"m"' in content
-        assert '"r"' in content
+        assert "from flext_demo._exports import (" in content
+        assert "FLEXT_DEMO_LAZY_IMPORTS" in content
+        assert "FLEXT_DEMO_PUBLIC_EXPORTS" in content
+        assert "for name, target in FLEXT_DEMO_LAZY_IMPORTS.items()" in content
+        assert "if name in FLEXT_DEMO_PUBLIC_EXPORTS" in content
+        assert "_PUBLIC_EXPORTS: tuple[str, ...] = FLEXT_DEMO_PUBLIC_EXPORTS" in content
+        assert '"FlextDemo",' not in content
+        assert '"m"' not in content
+        assert '"r"' not in content
         assert "__all__ =" not in content
         assert "public_exports=_PUBLIC_EXPORTS" in content
+
+    def test_existing_registry_wrapper_reads_public_export_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Existing root registries expose lazy map and public ABI SSOT separately."""
+        pkg_dir = tmp_path / "src" / "flext_demo"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME).write_text(
+            (
+                "__all__ = (\n"
+                '    "FLEXT_DEMO_LAZY_IMPORTS",\n'
+                '    "FLEXT_DEMO_PUBLIC_EXPORTS",\n'
+                ")\n"
+            ),
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        wrapper = FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
+            pkg_dir,
+            "flext_demo",
+        )
+
+        assert wrapper is not None
+        assert wrapper.name == "FLEXT_DEMO_LAZY_IMPORTS"
+        assert wrapper.public_exports_name == "FLEXT_DEMO_PUBLIC_EXPORTS"
 
     def test_generated_registry_files_use_split_templates(self) -> None:
         """Generated registries split lazy maps into bounded template parts."""

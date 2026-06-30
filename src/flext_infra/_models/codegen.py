@@ -234,6 +234,12 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
 
         module: t.NonEmptyStr = m.Field(description="Importable registry module.")
         name: t.NonEmptyStr = m.Field(description="Registry symbol exported by module.")
+        public_exports_name: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Optional public export contract symbol exported by module.",
+            ),
+        ] = None
         generated: Annotated[
             bool,
             m.Field(

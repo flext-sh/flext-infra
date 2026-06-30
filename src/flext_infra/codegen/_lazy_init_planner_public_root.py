@@ -94,7 +94,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             name
             for name in export_names
             if name in eager_names
-            or name in child_export_names
+            or (not explicit_exports and name in child_export_names)
             or (
                 not root_contract
                 or self._is_public_root_export(
