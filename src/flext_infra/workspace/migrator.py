@@ -136,6 +136,7 @@ class FlextInfraProjectMigrator(
                 dry_run=dry_run,
             ),
             self._migrate_makefile(project.path, dry_run=dry_run),
+            self._migrate_environment_files(project.path, dry_run=dry_run),
             self._migrate_pyproject(
                 project.path,
                 project_name=project.name,

@@ -118,6 +118,12 @@ class FlextInfraSyncService(
                 gitignore_result.error or ".gitignore sync failed",
             )
         changed += 1 if gitignore_result.value else 0
+        env_result = self._sync_environment_files(resolved)
+        if env_result.failure:
+            return r[m.Infra.SyncResult].fail(
+                env_result.error or "workspace environment sync failed",
+            )
+        changed += env_result.value
         if is_workspace_root:
             pre_commit_result = self._sync_pre_commit_config(resolved)
             if pre_commit_result.failure:
