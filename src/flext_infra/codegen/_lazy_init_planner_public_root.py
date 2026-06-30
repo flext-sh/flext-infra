@@ -154,12 +154,12 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         """Return whether a root-facade export belongs in the external API."""
         if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
             return False
+        if explicit_public_exports:
+            return name in explicit_public_exports
         module_path = lazy_map[name][0]
         if name in c.Infra.ALIAS_NAMES:
             return True
         if "_fixtures" in module_path.split("."):
-            return True
-        if name in explicit_public_exports:
             return True
         prefix = f"{root_pkg}."
         if not module_path.startswith(prefix):

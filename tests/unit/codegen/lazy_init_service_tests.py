@@ -198,6 +198,7 @@ class TestFlextInfraCodegenLazyInit:
         assert "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS" in init_content
         assert "FlextTestsModels" in stub_content
         assert "FlextTestsService" not in stub_content
+        assert '"sub"' not in stub_content
 
     def test_generate_rewrites_to_canonical_docstring(self, tmp_path: Path) -> None:
         """Generated wrappers use the canonical package docstring."""
