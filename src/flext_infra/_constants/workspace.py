@@ -94,12 +94,12 @@ WORKSPACE_ROOT="${PWD}"
 AI_HUB="${AI_HUB:-${HOME}/.ai-hub}"
 VENV_DIR="${WORKSPACE_ROOT}/.venv"
 MISE_SHIMS="${WORKSPACE_MISE_SHIMS:-${MISE_SHIMS:-${HOME}/.local/share/mise/shims}}"
+PYPROJECT_FILE="${WORKSPACE_ROOT}/pyproject.toml"
 
 export AI_HUB
 export WORKSPACE_ROOT
 export WORKSPACE_MISE_SHIMS="${MISE_SHIMS}"
 export MISE_SHIMS
-export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
 export PYTHON_KEYRING_BACKEND="keyring.backends.null.Keyring"
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONUNBUFFERED=1
@@ -125,17 +125,22 @@ fi
 
 path_prepend_once "${MISE_SHIMS}"
 
-if [[ -d "${VENV_DIR}" ]]; then
+if [[ -f "${PYPROJECT_FILE}" && -d "${VENV_DIR}" ]]; then
+  export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
   export VIRTUAL_ENV="${VENV_DIR}"
   path_prepend_once "${VENV_DIR}/bin"
   PYTHON_VERSION="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo '3.13')"
   export PYTHON_VERSION
-else
+  log_status "workspace activated (python ${PYTHON_VERSION:-?}, venv ${VENV_DIR})"
+elif [[ -f "${PYPROJECT_FILE}" ]]; then
   log_error ".venv not found - run: uv venv && uv sync"
+else
+  unset UV_PROJECT_ENVIRONMENT
+  unset VIRTUAL_ENV
+  log_status "workspace activated without Python project (pyproject.toml not found)"
 fi
 
 export PATH
-log_status "workspace activated (python ${PYTHON_VERSION:-?}, venv ${VENV_DIR})"
 """
     WORKSPACE_MISE_TOML_CONTENT: Final[
         str
