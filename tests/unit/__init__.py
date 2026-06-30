@@ -8,6 +8,7 @@ from tests.unit._exports import TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS
 
 _LAZY_IMPORTS = TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS
 
+
 install_lazy_exports(
     __name__,
     globals(),

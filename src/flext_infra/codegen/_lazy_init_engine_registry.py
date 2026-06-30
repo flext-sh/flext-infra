@@ -20,12 +20,27 @@ class FlextInfraCodegenLazyInitEngineRegistryMixin:
         plan: m.Infra.LazyInitPlan,
         generated_init: str,
     ) -> int:
-        """Write split registry files when the generated init uses them."""
+        """Write split registries and static stubs for generated init files."""
         registry = plan.registry_wrapper
-        if registry is None or not registry.generated:
+        if registry is None:
+            try:
+                self._write_generated_typing_stub(plan)
+            except c.EXC_OS_VALUE as exc:
+                u.Cli.error(f"generating typing stub for {plan.context.pkg_dir}: {exc}")
+                return -1
             return 0
         import_line = f"from {registry.module} import {registry.name}"
         if import_line not in generated_init:
+            self._remove_generated_typing_stub(plan)
+            return 0
+        if not registry.generated:
+            try:
+                self._write_generated_typing_stub(plan)
+            except c.EXC_OS_VALUE as exc:
+                u.Cli.error(
+                    f"generating registry stub for {plan.context.pkg_dir}: {exc}"
+                )
+                return -1
             return 0
         files = FlextInfraCodegenGeneration.generate_registry_files(
             plan.context.current_pkg,
@@ -33,8 +48,10 @@ class FlextInfraCodegenLazyInitEngineRegistryMixin:
             plan.lazy_map,
             plan.child_packages_for_lazy,
             plan.excluded_lazy_names,
+            registry_filename=f"{registry.module.rsplit('.', maxsplit=1)[-1]}.py",
         )
         if not files:
+            self._remove_generated_typing_stub(plan)
             return 0
         try:
             self._remove_stale_registry_parts(plan, frozenset(files))
@@ -43,10 +60,40 @@ class FlextInfraCodegenLazyInitEngineRegistryMixin:
                     plan.context.pkg_dir / relative_name,
                     content,
                 )
+            self._write_generated_typing_stub(plan)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating registry for {plan.context.pkg_dir}: {exc}")
             return -1
         return 0
+
+    def _write_generated_typing_stub(self, plan: m.Infra.LazyInitPlan) -> None:
+        """Write the static typing stub for generated lazy exports."""
+        type_map = {**plan.type_checking_map, **plan.eager_dunders}
+        stub = FlextInfraCodegenGeneration.generate_typing_stub(
+            plan.exports,
+            type_map,
+            plan.inline_constants,
+            include_all=(
+                plan.context.current_pkg.split(".", maxsplit=1)[0]
+                not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+            ),
+        )
+        if stub:
+            self._write_changed_generated_file(
+                plan.context.pkg_dir / c.Infra.INIT_PYI,
+                stub,
+            )
+            return
+        self._remove_generated_typing_stub(plan)
+
+    def _remove_generated_typing_stub(self, plan: m.Infra.LazyInitPlan) -> None:
+        """Remove stale codegen-owned typing stubs when no static contract exists."""
+        stub_path = plan.context.pkg_dir / c.Infra.INIT_PYI
+        previous = self._read_generated_file(stub_path)
+        if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
+            return
+        stub_path.unlink()
+        self._modified_files.add(str(stub_path))
 
     def _remove_stale_registry_parts(
         self,

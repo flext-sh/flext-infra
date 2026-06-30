@@ -62,6 +62,10 @@ class FlextInfraCodegenGenerationStandardMixin(
             return False
         if publish_all:
             return True
+        if current_pkg.split(".", maxsplit=1)[0].startswith(
+            c.Infra.PKG_PREFIX_UNDERSCORE
+        ):
+            return True
         return current_pkg in {
             c.Infra.DIR_EXAMPLES,
             c.Infra.DIR_TESTS,

@@ -87,11 +87,18 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
             tuple(sorted(c.Infra.INFRA_ONLY_EXPORTS | set(excluded_lazy_names or ()))),
         )
         content = FlextInfraCodegenGenerationFileMixin._render_standard_file(context)
-        if registry_wrapper is None or len(content.splitlines()) <= c.Infra.LOC_CAP_MAX:
+        if registry_wrapper is None or (
+            not publish_all and len(content.splitlines()) <= c.Infra.LOC_CAP_MAX
+        ):
             return content
         return FlextInfraCodegenGenerationFileMixin._generate_registry_wrapper_file(
             current_pkg,
             registry_wrapper,
+            context.runtime_import_lines,
+            context.inline_constants,
+            context.eager_export_names,
+            context.exports,
+            publish_all=publish_all,
         )
 
 

@@ -3,82 +3,10 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+from flext_core.lazy import install_lazy_exports
+from flext_infra._utilities._exports import FLEXT_INFRA__UTILITIES_LAZY_IMPORTS
 
-_LAZY_IMPORTS = build_lazy_import_map(
-    {
-        "._docs_audit_detectors": ("FlextInfraUtilitiesDocsAuditDetectorsMixin",),
-        "._docs_scope_build": ("FlextInfraUtilitiesDocsScopeBuildMixin",),
-        "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
-        "._github_pr_single": ("FlextInfraUtilitiesGithubPrSingleMixin",),
-        "._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
-        "._project_discovery_candidates": (
-            "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
-        ),
-        "._project_discovery_shape": ("FlextInfraUtilitiesProjectDiscoveryShapeMixin",),
-        "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
-        "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
-        "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
-        "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
-        ".base": ("FlextInfraUtilitiesBase",),
-        ".census": ("FlextInfraUtilitiesRefactorCensus",),
-        ".codegen": ("FlextInfraUtilitiesCodegen",),
-        ".dependencies": ("FlextInfraUtilitiesDependencies",),
-        ".deps_path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
-        ".deps_repos": ("FlextInfraInternalSyncRepoMixin",),
-        ".discovery": ("FlextInfraUtilitiesDiscovery",),
-        ".docs": ("FlextInfraUtilitiesDocs",),
-        ".docs_api": ("FlextInfraUtilitiesDocsApi",),
-        ".docs_audit": ("FlextInfraUtilitiesDocsAudit",),
-        ".docs_build": ("FlextInfraUtilitiesDocsBuild",),
-        ".docs_contract": ("FlextInfraUtilitiesDocsContract",),
-        ".docs_fix": ("FlextInfraUtilitiesDocsFix",),
-        ".docs_generate": ("FlextInfraUtilitiesDocsGenerate",),
-        ".docs_render": ("FlextInfraUtilitiesDocsRender",),
-        ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
-        ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
-        ".engine": ("FlextInfraUtilitiesRefactorEngine",),
-        ".git_scope": ("FlextInfraUtilitiesGitScope",),
-        ".github": ("FlextInfraUtilitiesGithub",),
-        ".github_pr": ("FlextInfraUtilitiesGithubPr",),
-        ".log_parser": ("FlextInfraUtilitiesLogParser",),
-        ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
-        ".mro_scan_catalog": ("FlextInfraUtilitiesMroScanCatalog",),
-        ".mro_scan_source": ("FlextInfraUtilitiesMroScanSource",),
-        ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
-        ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceMro",),
-        ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),
-        ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
-        ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
-        ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
-        ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
-        ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
-        ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
-        ".protected_edit_apply": ("FlextInfraUtilitiesProtectedEditApply",),
-        ".protected_edit_linting": ("FlextInfraUtilitiesProtectedEditLinting",),
-        ".protected_edit_preview": ("FlextInfraUtilitiesProtectedEditPreview",),
-        ".protected_edit_writes": ("FlextInfraUtilitiesProtectedEditWrites",),
-        ".pyproject": ("FlextInfraUtilitiesPyproject",),
-        ".refactor": ("FlextInfraUtilitiesRefactor",),
-        ".release": ("FlextInfraUtilitiesRelease",),
-        ".rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
-        ".rope_analysis_introspection": (
-            "FlextInfraUtilitiesRopeAnalysisIntrospection",
-        ),
-        ".rope_analysis_workspace": ("FlextInfraUtilitiesRopeAnalysisWorkspace",),
-        ".rope_core": ("FlextInfraUtilitiesRopeCore",),
-        ".rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
-        ".rope_imports": ("FlextInfraUtilitiesRopeImports",),
-        ".rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
-        ".rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
-        ".rope_mro_transform": ("FlextInfraUtilitiesRopeMroTransform",),
-        ".rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
-        ".rope_source": ("FlextInfraUtilitiesRopeSource",),
-        ".safety": ("FlextInfraUtilitiesSafety",),
-        ".snapshot": ("FlextInfraUtilitiesSnapshot",),
-        ".versioning": ("FlextInfraUtilitiesVersioning",),
-    },
-)
+_LAZY_IMPORTS = FLEXT_INFRA__UTILITIES_LAZY_IMPORTS
 
 
 install_lazy_exports(

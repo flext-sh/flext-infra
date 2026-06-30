@@ -61,5 +61,10 @@ class TestsFlextInfraExtraPathsUvSources:
 
         tm.that(
             result,
-            eq=[".", "../SkillOpt", "../flext/flext-cli/src", "../flext/flext-core/src"],
+            eq=[
+                ".",
+                "../SkillOpt",
+                "../flext/flext-cli/src",
+                "../flext/flext-core/src",
+            ],
         )

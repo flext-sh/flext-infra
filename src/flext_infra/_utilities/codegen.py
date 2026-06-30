@@ -13,12 +13,13 @@ class FlextInfraUtilitiesCodegen:
 
     @staticmethod
     def run_ruff_fix(path: Path, *, quiet: bool = False) -> p.Result[bool]:
-        """Run Ruff fix + format for one file path.
+        """Run Ruff post-processing for one generated file path.
 
-        Returns ``r.ok(True)`` on success, ``r.fail(...)`` carrying the
-        underlying CLI error when either ``ruff check --fix`` or
-        ``ruff format`` exits non-zero. ``quiet=True`` suppresses the
-        CLI error log; the failure still surfaces via ``r``.
+        Python modules use ``ruff check --fix`` plus ``ruff format``. Typing
+        stubs only apply safe import/blank-line fixes, then run ``ruff check``
+        without autofix so literal ``__all__`` entries remain valid stub
+        exports. ``quiet=True`` suppresses the CLI error log; the failure still
+        surfaces via ``r``.
         """
         cwd = path.parent if path.suffix else path
 
@@ -30,6 +31,34 @@ class FlextInfraUtilitiesCodegen:
                     lambda e: e or default_msg,
                 )
                 .tap_error(lambda e: None if quiet else u.Cli.error(e))
+            )
+
+        if path.suffix == ".pyi":
+            return (
+                _step(
+                    [
+                        c.Infra.RUFF,
+                        "check",
+                        "--fix",
+                        "--select",
+                        "I001,E303",
+                        str(path),
+                    ],
+                    f"ruff stub safe fix failed: {path}",
+                )
+                .flat_map(
+                    lambda _: _step(
+                        [c.Infra.RUFF, "format", str(path)],
+                        f"ruff format failed: {path}",
+                    )
+                )
+                .flat_map(
+                    lambda _: _step(
+                        [c.Infra.RUFF, "check", str(path)],
+                        f"ruff check failed: {path}",
+                    )
+                )
+                .map(lambda _: True)
             )
 
         return (

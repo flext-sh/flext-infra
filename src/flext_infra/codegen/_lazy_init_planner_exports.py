@@ -37,7 +37,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             target: t.StrPair,
         ) -> None: ...
 
-        def _publish(self, name: str, *, allow_main: bool) -> bool: ...
+        @staticmethod
+        def _publish(name: str, *, allow_main: bool) -> bool: ...
 
     def _package_exports(
         self,

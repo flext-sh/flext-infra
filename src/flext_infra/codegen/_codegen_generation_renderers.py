@@ -3,25 +3,27 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import override
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from flext_infra import c, m, p, t
-from flext_infra.codegen._codegen_generation_lazy_entries import (
-    FlextInfraCodegenGenerationLazyEntriesMixin,
+from flext_infra.codegen._codegen_generation_typing_stub import (
+    FlextInfraCodegenGenerationTypingStubMixin,
 )
 
 
 class FlextInfraCodegenGenerationRenderersMixin(
-    FlextInfraCodegenGenerationLazyEntriesMixin
+    FlextInfraCodegenGenerationTypingStubMixin
 ):
     """Jinja-backed renderer helper methods."""
 
     @classmethod
+    @override
     def _render_model(cls, template_name: str, context: m.ArbitraryTypesModel) -> str:
         """Render a typed template context with normalized trailing newline."""
         template = cls.get_template(template_name)
-        rendered = template.render(**context.model_dump(mode="python"))
+        rendered: str = template.render(**context.model_dump(mode="python"))
         return rendered.rstrip() + "\n"
 
     @classmethod
@@ -29,6 +31,12 @@ class FlextInfraCodegenGenerationRenderersMixin(
         cls,
         current_pkg: str,
         registry_wrapper: m.Infra.LazyInitRegistryWrapper,
+        runtime_import_lines: str,
+        inline_constants: t.StrPairSequence,
+        eager_export_names: t.StrSequence,
+        exports: t.StrSequence,
+        *,
+        publish_all: bool,
     ) -> str:
         """Generate a thin package initializer backed by a split lazy registry."""
         context = m.Infra.LazyInitRegistryWrapperRender(
@@ -38,6 +46,11 @@ class FlextInfraCodegenGenerationRenderersMixin(
             ),
             registry_module=registry_wrapper.module,
             registry_name=registry_wrapper.name,
+            runtime_import_lines=runtime_import_lines,
+            inline_constants=inline_constants,
+            eager_export_names=eager_export_names,
+            exports=exports,
+            publish_all=publish_all,
         )
         return cls._render_model(c.Infra.TEMPLATE_REGISTRY_WRAPPER, context)
 
@@ -60,6 +73,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
         lazy_map: t.LazyAliasMap,
         child_packages_for_lazy: t.StrSequence,
         excluded_lazy_names: t.StrSequence,
+        registry_filename: str = c.Infra.ROOT_EXPORTS_FILENAME,
     ) -> dict[str, str]:
         """Generate split lazy registry files for a registry-backed wrapper."""
         lazy_entries = cls._build_lazy_entries(
@@ -102,7 +116,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
                 sorted(c.Infra.INFRA_ONLY_EXPORTS | set(excluded_lazy_names)),
             ),
         )
-        generated[c.Infra.ROOT_EXPORTS_FILENAME] = cls._render_model(
+        generated[registry_filename] = cls._render_model(
             c.Infra.TEMPLATE_REGISTRY,
             registry_context,
         )

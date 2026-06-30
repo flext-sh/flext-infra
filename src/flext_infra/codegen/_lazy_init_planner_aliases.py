@@ -91,9 +91,18 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 *runtime_alias_names,
             ))
         )
+        local_alias_names = frozenset(
+            alias_name
+            for file_name, alias_name in self.lazy_init.public_file_aliases.items()
+            if (pkg_dir / file_name).is_file()
+        )
         for alias_name in alias_names:
             existing = lazy_map.get(alias_name)
-            if existing is not None and existing[0].startswith(current_pkg):
+            if (
+                existing is not None
+                and existing[0].startswith(current_pkg)
+                and alias_name in local_alias_names
+            ):
                 continue
             package_name = self._resolve_inherited_alias_source(
                 inherited_packages,
@@ -112,37 +121,38 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         pkg_dir: Path,
     ) -> None:
         """Inject public_file_aliases from the lazy-init config into the lazy map."""
-        alias_to_file = {
-            alias_name: file_name
-            for file_name, alias_name in self.lazy_init.public_file_aliases.items()
-        }
-        for alias_name, file_name in alias_to_file.items():
+        alias_to_files: dict[str, list[str]] = {}
+        for file_name, alias_name in self.lazy_init.public_file_aliases.items():
+            alias_to_files.setdefault(alias_name, []).append(file_name)
+        for alias_name, file_names in alias_to_files.items():
             existing = lazy_map.get(alias_name)
             if existing is not None and existing[0].startswith(current_pkg):
                 continue
-            base_name = Path(file_name).stem
-            module_file = pkg_dir / file_name
-            package_dir = pkg_dir / base_name
-            module_name = f"{current_pkg}.{base_name}"
-            if module_file.is_file() and alias_name in self._module_exports(
-                module_file,
-                module_name,
-                export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_assignments": True
-                }),
-            ):
-                lazy_map[alias_name] = (module_name, alias_name)
-                continue
-            if package_dir.is_dir() and (package_dir / c.Infra.INIT_PY).is_file():
-                package_exports = self._module_exports(
-                    package_dir / c.Infra.INIT_PY,
+            for file_name in file_names:
+                base_name = Path(file_name).stem
+                module_file = pkg_dir / file_name
+                package_dir = pkg_dir / base_name
+                module_name = f"{current_pkg}.{base_name}"
+                if module_file.is_file() and alias_name in self._module_exports(
+                    module_file,
                     module_name,
                     export_options=m.Infra.ExportOptions.model_validate({
                         "allow_assignments": True
                     }),
-                )
-                if alias_name in package_exports:
+                ):
                     lazy_map[alias_name] = (module_name, alias_name)
+                    break
+                if package_dir.is_dir() and (package_dir / c.Infra.INIT_PY).is_file():
+                    package_exports = self._module_exports(
+                        package_dir / c.Infra.INIT_PY,
+                        module_name,
+                        export_options=m.Infra.ExportOptions.model_validate({
+                            "allow_assignments": True
+                        }),
+                    )
+                    if alias_name in package_exports:
+                        lazy_map[alias_name] = (module_name, alias_name)
+                        break
 
     def _resolve_transitive_parent_packages(
         self,

@@ -26,14 +26,14 @@ class TestStubChain:
         projects: t.StrSequence | None = None,
         all_projects: bool = False,
     ) -> FlextInfraStubSupplyChain:
-        return FlextInfraStubSupplyChain.model_validate({
-            "workspace": workspace_root,
-            "selected_projects": projects,
-            "all_projects": all_projects,
-            "runner": u.Tests.DeptryRunner(
+        return FlextInfraStubSupplyChain(
+            workspace=workspace_root,
+            selected_projects=projects,
+            all_projects=all_projects,
+            runner=u.Tests.DeptryRunner(
                 r.ok(u.Tests.stub_run(stdout=stdout)),
             ),
-        })
+        )
 
     @staticmethod
     def _stub_output(*lines: str) -> str:

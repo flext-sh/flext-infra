@@ -25,9 +25,7 @@ class FlextInfraExtraPathsSourceMixin:
 
     def _uv_source_search_roots(self, source_root: Path) -> t.SequenceOf[Path]:
         """Return import roots for one path dependency source."""
-        source_dir = (
-            source_root / self._tool_config.tools.pyrefly.path_rules.source_dir
-        )
+        source_dir = source_root / self._tool_config.tools.pyrefly.path_rules.source_dir
         if source_dir.is_dir() and any(source_dir.rglob(c.Infra.EXT_PYTHON_GLOB)):
             return (source_dir,)
         skip_dirs = c.Infra.COMMON_EXCLUDED_DIRS | frozenset({c.Infra.DIR_TESTS})

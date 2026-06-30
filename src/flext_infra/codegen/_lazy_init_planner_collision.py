@@ -120,7 +120,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return False
 
     @staticmethod
-    def _module_parts(module_path: str) -> t.StrTuple:
+    def _module_parts(module_path: str) -> tuple[str, ...]:
         """Return normalized dotted module path parts."""
         return tuple(part for part in module_path.split(".") if part)
 
@@ -159,19 +159,23 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if a_index < 0 and b_index < 0:
             return False
         if a_index >= 0 and b_index >= 0:
-            return a_parts[: a_index + 1] == b_parts[: b_index + 1]
+            a_family: tuple[str, ...] = tuple(a_parts[: a_index + 1])
+            b_family: tuple[str, ...] = tuple(b_parts[: b_index + 1])
+            return a_family == b_family
         part_parts, part_index, facade_parts = (
             (a_parts, a_index, b_parts) if a_index >= 0 else (b_parts, b_index, a_parts)
         )
         owner_package = part_parts[:part_index]
         if facade_parts[:-1] == owner_package:
             return True
-        return (
-            bool(owner_package)
-            and owner_package[-1].startswith("_")
-            and facade_parts
-            == (*owner_package[:-1], owner_package[-1].removeprefix("_"))
+        if not owner_package or not owner_package[-1].startswith("_"):
+            return False
+        expected_facade_parts: tuple[str, ...] = (
+            *tuple(owner_package[:-1]),
+            owner_package[-1].removeprefix("_"),
         )
+        facade_tuple: tuple[str, ...] = tuple(facade_parts)
+        return facade_tuple == expected_facade_parts
 
     @classmethod
     def _is_root_typing_reexport(

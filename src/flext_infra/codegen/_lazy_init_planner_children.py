@@ -26,7 +26,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             target: t.StrPair,
         ) -> None: ...
 
-        def _publish(self, name: str, *, allow_main: bool) -> bool: ...
+        @staticmethod
+        def _publish(name: str, *, allow_main: bool) -> bool: ...
 
         def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
 
@@ -103,6 +104,34 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             if "main" not in self._merged_child_export_names(child_package, dir_exports)
         )
 
+    def _public_root_child_packages(
+        self,
+        child_packages: t.StrSequence,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+    ) -> t.StrSequence:
+        """Return child packages whose exports may flow through a public root."""
+        return tuple(
+            child_package
+            for child_package in child_packages
+            if self._is_public_root_child_package(
+                child_package,
+                self._merged_child_export_names(child_package, dir_exports),
+            )
+        )
+
+    def _public_root_child_export_names(
+        self,
+        child_packages: t.StrSequence,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+    ) -> frozenset[str]:
+        """Return child export names allowed to appear in a public root."""
+        return frozenset(
+            name
+            for child_package in child_packages
+            for name in self._merged_child_export_names(child_package, dir_exports)
+            if self._is_public_root_child_export(child_package, name)
+        )
+
     def _merged_child_export_names(
         self,
         child_package: str,
@@ -118,6 +147,44 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         if child_exports is None:
             return self._export_names_for_package(child_package)
         return frozenset(child_exports)
+
+    @staticmethod
+    def _is_public_root_child_package(
+        child_package: str,
+        export_names: frozenset[str],
+    ) -> bool:
+        """Return whether a child package may bubble into a public root."""
+        public_names = frozenset(
+            name
+            for name in export_names
+            if name not in c.Infra.ALIAS_NAMES and name != "main"
+        )
+        if not public_names:
+            return False
+        child_name = child_package.rsplit(".", maxsplit=1)[-1]
+        if child_name in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES:
+            return False
+        if child_name in c.Infra.LOCAL_INFERRED_SEGMENTS:
+            return True
+        return all(
+            FlextInfraCodegenLazyInitPlannerChildrenMixin._is_public_root_child_export(
+                child_package,
+                name,
+            )
+            for name in public_names
+        )
+
+    @staticmethod
+    def _is_public_root_child_export(child_package: str, name: str) -> bool:
+        """Return whether one child export may bubble into a public root."""
+        if name in c.Infra.ALIAS_NAMES or name == "main":
+            return False
+        child_name = child_package.rsplit(".", maxsplit=1)[-1]
+        if child_name in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES:
+            return False
+        if child_name in c.Infra.LOCAL_INFERRED_SEGMENTS:
+            return True
+        return name[:1].isupper() and not name.isupper()
 
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:

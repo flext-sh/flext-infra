@@ -66,6 +66,15 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
         return f"{package_name}.{file_path.stem}" if package_name else ""
 
+    @staticmethod
+    def _is_generated_init_stub(file_path: Path) -> bool:
+        """Return whether ``file_path`` is a codegen-owned package stub."""
+        if file_path.name != c.Infra.INIT_PYI:
+            return False
+        return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).startswith(
+            c.Infra.AUTOGEN_HEADER
+        )
+
     @classmethod
     def _collect_modules(
         cls,
@@ -86,6 +95,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         package_dirs: set[Path] = set()
         for file_path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project):
             resolved_file_path = file_path.resolve()
+            if cls._is_generated_init_stub(resolved_file_path):
+                continue
             try:
                 resource_path = resolved_file_path.relative_to(resolved_root).as_posix()
             except ValueError:

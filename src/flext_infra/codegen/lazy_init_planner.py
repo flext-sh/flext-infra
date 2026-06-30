@@ -127,45 +127,31 @@ class FlextInfraCodegenLazyInitPlanner(
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
-        export_names = {*lazy_map, *eager_dunders}
         excluded_lazy_names: t.StrSequence = ()
-        if (
+        is_public_project_root = (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and context.current_pkg
             and "." not in context.current_pkg
+            and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
             and u.Infra.matches_project_namespace_package(context.current_pkg)
-        ):
-            # Privacy rule: the public root facade exposes only external API
-            # symbols. Internal consumers must import their owning module.
-            eager_names = frozenset(eager_dunders)
-            explicit_public_exports = self._root_public_contract_exports(
-                context.pkg_dir,
+        )
+        if is_public_project_root:
+            self._promote_public_root_eager_aliases(
+                current_pkg=context.current_pkg,
+                lazy_map=lazy_map,
+                eager_imports=eager_dunders,
             )
-            export_names = {
-                name
-                for name in export_names
-                if name in eager_names
-                or self._is_public_root_export(
-                    name,
-                    lazy_map,
-                    root_pkg=context.current_pkg,
-                    root_namespace_files=self.lazy_init.root_namespace_files,
-                    explicit_public_exports=explicit_public_exports,
+        export_names = {*lazy_map, *eager_dunders}
+        if is_public_project_root:
+            export_names, lazy_map, child_lazy, excluded_lazy_names = (
+                self._filter_public_root_exports(
+                    context=context,
+                    export_names=export_names,
+                    lazy_map=lazy_map,
+                    eager_names=frozenset(eager_dunders),
+                    child_packages=child_lazy,
+                    dir_exports=dir_exports,
                 )
-            }
-            allowed_export_names = frozenset(export_names)
-            lazy_map = {
-                name: target
-                for name, target in lazy_map.items()
-                if name in allowed_export_names
-            }
-            runtime_lazy_names = frozenset(lazy_map)
-            child_lazy = ()
-            excluded_lazy_names = self._excluded_child_lazy_names(
-                child_lazy,
-                allowed_export_names,
-                runtime_lazy_names,
-                dir_exports,
             )
         type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))

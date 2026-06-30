@@ -90,9 +90,9 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([self._project])
 
+        @staticmethod
         @override
         def _prepare_projects(
-            self,
             projects: t.SequenceOf[m.Infra.ProjectInfo],
             *,
             workspace_root: Path,

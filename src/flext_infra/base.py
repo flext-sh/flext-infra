@@ -211,7 +211,8 @@ class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
     """Shared service foundation for commands that target workspace projects."""
 
     selected_projects: Annotated[
-        t.StrSequence | None, m.Field(alias="projects", description="Projects to process")
+        t.StrSequence | None,
+        m.Field(alias="projects", description="Projects to process"),
     ] = None
 
 

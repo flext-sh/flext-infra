@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import m, p, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
@@ -18,11 +17,14 @@ from flext_infra.detectors.manual_typing_alias_detector import (
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
+from flext_infra.refactor._census_apply_formatting import (
+    FlextInfraRefactorCensusApplyFormattingMixin,
+)
 
-_log = u.fetch_logger(__name__)
 
-
-class FlextInfraRefactorCensusApplyMixin:
+class FlextInfraRefactorCensusApplyMixin(
+    FlextInfraRefactorCensusApplyFormattingMixin,
+):
     """Apply supported auto-fixes + removal candidates, then regenerate inits.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
@@ -168,42 +170,10 @@ class FlextInfraRefactorCensusApplyMixin:
                     )
                 )
         if applied:
-            self._regenerate_inits_via_codegen()
             self._ruff_fix_touched_files(touched_paths)
+            self._regenerate_inits_via_codegen()
             rope.reload()
         return frozenset(applied)
-
-    @staticmethod
-    def _ruff_fix_touched_files(paths: Iterable[Path]) -> None:
-        """Normalize trailing newlines + import sort on touched files.
-
-        Scope is ``--select I,W`` only (not ``F``/``E``) so unused-import removal
-        does not fight the lazy-init ``TYPE_CHECKING`` re-exports; failures are
-        logged via the ``r[T]`` channel, never suppressed.
-        """
-        existing = sorted({str(path) for path in paths if path.is_file()})
-        if not existing:
-            return
-        check_result = u.Cli.run_raw(
-            ["ruff", "check", "--fix", "--select", "I,W", *existing],
-            timeout=c.Infra.TIMEOUT_SHORT,
-        )
-        if check_result.failure:
-            _log.warning(
-                "ruff_check_fix_cosmetic_failed",
-                error=check_result.error or "ruff check --fix failed",
-                files=len(existing),
-            )
-        format_result = u.Cli.run_raw(
-            ["ruff", "format", *existing],
-            timeout=c.Infra.TIMEOUT_SHORT,
-        )
-        if format_result.failure:
-            _log.warning(
-                "ruff_format_cosmetic_failed",
-                error=format_result.error or "ruff format failed",
-                files=len(existing),
-            )
 
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""

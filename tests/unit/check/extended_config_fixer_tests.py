@@ -17,13 +17,7 @@ from tests.utilities import u
 
 
 def _extra_paths_manager(workspace_root: Path) -> FlextInfraExtraPathsManager:
-    validated = FlextInfraExtraPathsManager.model_validate(
-        {"workspace": str(workspace_root)},
-    )
-    if isinstance(validated, FlextInfraExtraPathsManager):
-        return validated
-    msg = "FlextInfraExtraPathsManager validation returned an unexpected model"
-    raise TypeError(msg)
+    return FlextInfraExtraPathsManager(workspace=workspace_root)
 
 
 class TestConfigFixerProcessFile:

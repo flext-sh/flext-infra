@@ -3,134 +3,65 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, override
+from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_infra import c, m, p, r, t, u
 
-if TYPE_CHECKING:
-    class _ReleaseOrchestratorContract(Protocol):
+
+class FlextInfraReleaseOrchestratorDispatchMixin:
+    """Core release orchestrator flow and phase dispatch."""
+
+    if TYPE_CHECKING:
         phase: str
         tag: str
-
-        @property
-        def root(self) -> Path:
-            ...
-
-        @property
-        def logger(self) -> p.Logger:
-            ...
-
-        @property
-        def project_names(self) -> t.StrSequence | None:
-            ...
-
         version: str
         bump: str
         interactive: int
-
-        @property
-        def effective_dry_run(self) -> bool:
-            ...
         push: bool
         dev_suffix: bool
         create_branches: int
         next_dev: bool
         next_bump: str
 
-        def phase_validate(
-            self,
-            workspace_root: Path,
-            *,
-            dry_run: bool = False,
-        ) -> p.Result[bool]:
-            ...
+        @property
+        def root(self) -> Path: ...
+
+        @property
+        def logger(self) -> p.Logger: ...
+
+        @property
+        def project_names(self) -> t.StrSequence | None: ...
+
+        @property
+        def effective_dry_run(self) -> bool: ...
 
         def phase_version(
             self,
             ctx: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> p.Result[bool]:
-            ...
+        ) -> p.Result[bool]: ...
 
         def phase_build(
             self,
             ctx: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> p.Result[bool]:
-            ...
+        ) -> p.Result[bool]: ...
 
         def phase_publish(
             self,
             ctx: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> p.Result[bool]:
-            ...
+        ) -> p.Result[bool]: ...
 
-        def _resolve_tag(
-            self,
-            tag_arg: str,
-            version: str,
-        ) -> p.Result[str]:
-            ...
-
-        def _build_release_stages(
-            self,
-            phases: t.StrSequence,
-            dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
-            ...
-
-        def _make_phase_handler(
-            self,
-            phase_name: str,
-            dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> t.Cli.PipelineHandler:
-            ...
-
-        def _dispatch_phase(
-            self,
-            ctx: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> p.Result[bool]:
-            ...
-
-        def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-            ...
-
-        def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-            ...
-
-        def _collect_changes(
+        def _build_targets(
             self,
             workspace_root: Path,
-            previous: str,
-            tag: str,
-        ) -> p.Result[str]:
-            ...
-
-        def _previous_tag(self, workspace_root: Path, tag: str) -> p.Result[str]:
-            ...
-
-        def _generate_notes(
-            self,
-            ctx: m.Infra.ReleasePhaseDispatchConfig,
-            output_path: Path,
-        ) -> p.Result[bool]:
-            ...
-
-        def _create_branches(
-            self,
-            workspace_root: Path,
-            version: str,
             project_names: t.StrSequence,
-        ) -> p.Result[bool]:
-            ...
+        ) -> t.SequenceOf[t.Pair[str, Path]]: ...
 
-        def _bump_next_dev(
+        def _version_files(
             self,
             workspace_root: Path,
-            version: str,
             project_names: t.StrSequence,
-            bump: str,
-        ) -> p.Result[bool]:
-            ...
+        ) -> t.SequenceOf[Path]: ...
 
         def _version_update_files(
             self,
@@ -138,53 +69,15 @@ if TYPE_CHECKING:
             target: str,
             *,
             dry_run: bool,
-        ) -> int:
-            ...
-
-        def _build_targets(
-            self,
-            workspace_root: Path,
-            project_names: t.StrSequence,
-        ) -> t.SequenceOf[t.Pair[str, Path]]:
-            ...
-
-        def _version_files(
-            self,
-            workspace_root: Path,
-            project_names: t.StrSequence,
-        ) -> t.SequenceOf[Path]:
-            ...
-
-        @property
-        def phase_names(self) -> t.StrSequence:
-            ...
-
-        def _resolve_version(
-            self,
-            version_arg: str,
-            bump_arg: str,
-            interactive: int,
-            root_path: Path,
-        ) -> p.Result[str]:
-            ...
-
-        def run_release(
-            self,
-            release_config: m.Infra.ReleaseOrchestratorConfig,
-        ) -> p.Result[bool]:
-            ...
-
-
-class FlextInfraReleaseOrchestratorDispatchMixin:
-    """Core release orchestrator flow and phase dispatch."""
+        ) -> int: ...
 
     @property
-    def phase_names(self: _ReleaseOrchestratorContract) -> t.StrSequence:
+    def phase_names(self) -> t.StrSequence:
         """Return normalized phase sequence for release execution."""
         return u.Infra.resolve_phase_names(self.phase)
 
     def _resolve_version(
-        self: _ReleaseOrchestratorContract,
+        self,
         version_arg: str,
         bump_arg: str,
         interactive: int,
@@ -221,7 +114,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return r[str].ok(f"v{version}")
 
     def run_release(
-        self: _ReleaseOrchestratorContract,
+        self,
         release_config: m.Infra.ReleaseOrchestratorConfig,
     ) -> p.Result[bool]:
         """Run release workflow via the configured pipeline."""
@@ -305,8 +198,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                 final_result = r[bool].ok(True)
         return final_result
 
-    @override
-    def execute(self: _ReleaseOrchestratorContract) -> p.Result[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute release with resolved configuration."""
         root = self.root
         phases = self.phase_names
@@ -352,7 +244,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
 
     def _build_release_stages(
-        self: _ReleaseOrchestratorContract,
+        self,
         phases: t.StrSequence,
         dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
     ) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
@@ -374,7 +266,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return cli.linear_pipeline(active_stage_order, handlers)
 
     def phase_validate(
-        self: _ReleaseOrchestratorContract,
+        self,
         workspace_root: Path,
         *,
         dry_run: bool = False,
@@ -392,7 +284,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
 
     def _make_phase_handler(
-        self: _ReleaseOrchestratorContract,
+        self,
         phase_name: str,
         dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig,
     ) -> t.Cli.PipelineHandler:
@@ -412,7 +304,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return handler
 
     def _dispatch_phase(
-        self: _ReleaseOrchestratorContract,
+        self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
     ) -> p.Result[bool]:
         """Route to the configured release phase implementation."""
@@ -429,7 +321,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                 return r[bool].fail(f"unknown phase: {phase}")
 
     def _collect_changes(
-        self: _ReleaseOrchestratorContract,
+        self,
         workspace_root: Path,
         previous: str,
         tag: str,
@@ -446,7 +338,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
 
     def _create_branches(
-        self: _ReleaseOrchestratorContract,
+        self,
         workspace_root: Path,
         version: str,
         project_names: t.StrSequence,
@@ -470,8 +362,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                     return project_result
         return r[bool].ok(True)
 
-    @override
-    def _create_tag(self: _ReleaseOrchestratorContract, workspace_root: Path, tag: str) -> p.Result[bool]:
+    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
         """Create annotated Git tag if needed."""
         exists_capture = u.Cli.capture(
             [c.Infra.GIT, "tag", "-l", tag],
@@ -486,8 +377,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             cwd=workspace_root,
         )
 
-    @override
-    def _push_release(self: _ReleaseOrchestratorContract, workspace_root: Path, tag: str) -> p.Result[bool]:
+    def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
         """Push branch and tag to origin."""
         return u.Cli.run_checked(
             [c.Infra.GIT, "push", c.Infra.GIT_ORIGIN, c.Infra.GIT_HEAD, tag],
@@ -495,7 +385,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
 
     def _bump_next_dev(
-        self: _ReleaseOrchestratorContract,
+        self,
         workspace_root: Path,
         version: str,
         project_names: t.StrSequence,
@@ -520,7 +410,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return result
 
     def _generate_notes(
-        self: _ReleaseOrchestratorContract,
+        self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
         output_path: Path,
     ) -> p.Result[bool]:

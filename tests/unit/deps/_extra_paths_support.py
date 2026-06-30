@@ -17,13 +17,9 @@ class ExtraPathsTestSupport:
         workspace_root: Path | None = None,
     ) -> FlextInfraExtraPathsManager:
         """Return a manager built through the Pydantic validation path."""
-        validated = FlextInfraExtraPathsManager.model_validate(
-            {"workspace": str(workspace_root or _TEST_WORKSPACE_ROOT)},
+        return FlextInfraExtraPathsManager(
+            workspace=workspace_root or _TEST_WORKSPACE_ROOT,
         )
-        if isinstance(validated, FlextInfraExtraPathsManager):
-            return validated
-        msg = "FlextInfraExtraPathsManager validation returned unexpected model"
-        raise TypeError(msg)
 
 
 __all__: list[str] = ["ExtraPathsTestSupport"]

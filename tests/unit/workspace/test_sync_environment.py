@@ -171,7 +171,9 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         assert c.Infra.WORKSPACE_ENV_GENERATED_MARKER in envrc_text
         assert "old" not in envrc_text
 
-    def test_environment_sync_skips_workspace_without_pyproject(self, tmp_path: Path) -> None:
+    def test_environment_sync_skips_workspace_without_pyproject(
+        self, tmp_path: Path
+    ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
 
@@ -182,7 +184,9 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         assert not (project_root / ".envrc").exists()
         assert not (project_root / ".mise.toml").exists()
 
-    def test_environment_sync_removes_generated_files_without_pyproject(self, tmp_path: Path) -> None:
+    def test_environment_sync_removes_generated_files_without_pyproject(
+        self, tmp_path: Path
+    ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
         (project_root / ".envrc").write_text(
@@ -201,7 +205,9 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         assert not (project_root / ".envrc").exists()
         assert not (project_root / ".mise.toml").exists()
 
-    def test_environment_sync_preserves_custom_env_without_pyproject(self, tmp_path: Path) -> None:
+    def test_environment_sync_preserves_custom_env_without_pyproject(
+        self, tmp_path: Path
+    ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
         envrc_path = project_root / ".envrc"

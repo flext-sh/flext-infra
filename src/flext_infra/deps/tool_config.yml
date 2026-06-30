@@ -22,7 +22,7 @@ tools:
       - typings
       - vendor
       - venv
-    fix: true
+    fix: false
     line-length: 88
     preview: true
     respect-gitignore: true
@@ -721,6 +721,7 @@ lazy-init:
     - typings.py
     - utilities.py
   public-file-aliases:
+    base.py: s
     constants.py: c
     helpers.py: h
     models.py: m

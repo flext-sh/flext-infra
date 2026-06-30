@@ -3,38 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, u
 
 logger = u.fetch_logger(__name__)
-
-
-if TYPE_CHECKING:
-    class _ReleaseOrchestratorPublishContract(Protocol):
-        def _generate_notes(
-            self,
-            ctx: m.Infra.ReleasePhaseDispatchConfig,
-            output_path: Path,
-        ) -> p.Result[bool]:
-            ...
-
-        def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-            ...
-
-        def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-            ...
-
-        def _publish_apply(
-            self,
-            *,
-            workspace_root: Path,
-            version: str,
-            tag: str,
-            notes_path: Path,
-            push: bool,
-        ) -> p.Result[bool]:
-            ...
 
 
 class FlextInfraReleaseOrchestratorPublishMixin:
@@ -43,8 +16,20 @@ class FlextInfraReleaseOrchestratorPublishMixin:
     Delegates note generation and release side effects to upstream dispatch policy.
     """
 
+    if TYPE_CHECKING:
+
+        def _generate_notes(
+            self,
+            ctx: m.Infra.ReleasePhaseDispatchConfig,
+            output_path: Path,
+        ) -> p.Result[bool]: ...
+
+        def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
+
+        def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
+
     def phase_publish(
-        self: _ReleaseOrchestratorPublishContract,
+        self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
     ) -> p.Result[bool]:
         """Execute publish phase: notes, changelog, tag, optional push."""
@@ -84,7 +69,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         return r[bool].ok(True)
 
     def _publish_apply(
-        self: _ReleaseOrchestratorPublishContract,
+        self,
         *,
         workspace_root: Path,
         version: str,

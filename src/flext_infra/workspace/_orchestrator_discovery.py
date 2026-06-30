@@ -13,14 +13,13 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace.sync import FlextInfraSyncService
 
 if TYPE_CHECKING:
+
     class _WorkspaceOrchestratorProtocol(Protocol):
         @property
-        def root(self) -> Path:
-            ...
+        def root(self) -> Path: ...
 
         @property
-        def project_names(self) -> t.StrSequence | None:
-            ...
+        def project_names(self) -> t.StrSequence | None: ...
 
 
 class FlextInfraWorkspaceOrchestratorDiscoveryMixin:

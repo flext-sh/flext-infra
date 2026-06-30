@@ -217,7 +217,9 @@ class FlextInfraWorkspaceEnvironment:
             return r[bool].ok(True)
         delete_result = u.Cli.files_delete(target_path)
         if delete_result.failure:
-            return r[bool].fail(delete_result.error or f"{target_path.name} delete failed")
+            return r[bool].fail(
+                delete_result.error or f"{target_path.name} delete failed"
+            )
         return r[bool].ok(True)
 
     @classmethod

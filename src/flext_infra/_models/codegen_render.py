@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import t
@@ -15,8 +15,7 @@ class FlextInfraModelsCodegenRender:
         """Template context for standard lazy-init package rendering."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            validate_assignment=True,
+            extra="forbid", validate_assignment=True
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
@@ -67,8 +66,7 @@ class FlextInfraModelsCodegenRender:
         """Template context for thin registry-backed wrappers."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            validate_assignment=True,
+            extra="forbid", validate_assignment=True
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
@@ -77,6 +75,27 @@ class FlextInfraModelsCodegenRender:
             description="Importable lazy registry module.",
         )
         registry_name: t.NonEmptyStr = m.Field(description="Lazy registry symbol.")
+        runtime_import_lines: str = m.Field(
+            description="Rendered eager import block for non-lazy exports.",
+        )
+        inline_constants: t.StrPairSequence = m.Field(
+            default_factory=tuple,
+            description="Inline constant assignments.",
+        )
+        eager_export_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Eager names appended to public exports for root wrappers.",
+        )
+        exports: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Explicit public exports for root wrappers.",
+        )
+        publish_all: Annotated[
+            bool,
+            m.Field(
+                description="Whether the wrapper owns the package public __all__.",
+            ),
+        ] = False
 
     class LazyInitRegistryRender(m.ArbitraryTypesModel):
         """Template context for split lazy registry aggregators."""
@@ -119,6 +138,28 @@ class FlextInfraModelsCodegenRender:
         lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
             default_factory=tuple,
             description="Lazy alias imports grouped by module.",
+        )
+
+    class LazyInitTypingStubRender(m.ArbitraryTypesModel):
+        """Template context for a generated package typing stub."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            validate_assignment=True,
+        )
+
+        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
+        import_lines: str = m.Field(description="Rendered static import declarations.")
+        inline_constant_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Inline constant names declared directly in the stub.",
+        )
+        all_lines: str = m.Field(
+            default_factory=str,
+            description="Rendered ``__all__`` literal entries for the stub.",
+        )
+        exports: t.StrSequence = m.Field(
+            default_factory=tuple, description="Published generated exports."
         )
 
     class LazyInitDirectBootstrapRender(m.ArbitraryTypesModel):

@@ -24,8 +24,7 @@ class TestProcessDirectory:
         )
         if part_exports:
             return "\n".join(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                for path in part_exports
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in part_exports
             )
 
         exports_file = package_root / "_exports.py"
