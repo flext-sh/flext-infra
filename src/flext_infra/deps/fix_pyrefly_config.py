@@ -101,6 +101,14 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         if search_result.failure:
             return search_result
         all_fixes.extend(search_result.value)
+        includes_result = self._sync_project_includes(
+            pyrefly,
+            project_dir,
+            is_root=is_root,
+        )
+        if includes_result.failure:
+            return includes_result
+        all_fixes.extend(includes_result.value)
         sub_result = self._strip_ignored_sub_configs(pyrefly)
         if sub_result.failure:
             return r[t.StrSequence].fail(sub_result.error or "validate-sub-configs")

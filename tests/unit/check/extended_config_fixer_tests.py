@@ -71,6 +71,34 @@ class TestConfigFixerProcessFile:
             ),
         )
 
+    def test_process_file_syncs_project_includes_from_pyright_include(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "src").mkdir()
+        (tmp_path / "tests").mkdir()
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            (
+                "[tool.pyright]\n"
+                "include = ['src']\n\n"
+                "[tool.pyrefly]\n"
+                "search-path = ['src']\n"
+                "project-includes = ['src/**/*.py*', 'tests/**/*.py*']\n"
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+
+        tm.ok(result)
+        tm.that(result.value, has="synchronized project-includes from YAML rules")
+        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        tm.that(
+            payload["tool"]["pyrefly"]["project-includes"],
+            eq=["src/**/*.py*"],
+        )
+
     def test_process_file_preserves_unrelated_toml_comments_and_formatting(
         self,
         tmp_path: Path,

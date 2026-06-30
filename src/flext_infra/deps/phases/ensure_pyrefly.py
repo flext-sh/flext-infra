@@ -62,7 +62,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 pyrefly_rules.ignore_errors_in_generated_code,
             )
             .list(c.Infra.SEARCH_PATH, expected_search)
-            .list("project-includes", expected_includes)
+            .list(c.Infra.PROJECT_INCLUDES, expected_includes)
             .value(
                 "disable-project-excludes-heuristics",
                 pyrefly_rules.disable_project_excludes_heuristics,

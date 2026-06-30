@@ -220,6 +220,42 @@ class TestRunnerPublicBehavior:
             "--config",
         ]
 
+    def test_run_pyrefly_uses_project_includes_config(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        proj_dir = u.Tests.mk_project(
+            tmp_path,
+            "pyrefly-project",
+            pyproject="[tool.pyrefly]\nproject-includes = ['src/**/*.py*']\n",
+            with_src=True,
+        )
+        reports_dir = tmp_path / "reports"
+        reports_dir.mkdir()
+        (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        log_file = tmp_path / "pyrefly-config-command.txt"
+        original_path = self._install_fake_pyrefly(
+            tmp_path,
+            payload='{"errors": []}',
+            exit_code=0,
+            log_file=log_file,
+        )
+        try:
+            result = u.Tests.run_gate_check(
+                FlextInfraPyreflyGate,
+                tmp_path,
+                proj_dir,
+                reports_dir=reports_dir,
+            )
+        finally:
+            os.environ["PATH"] = original_path
+
+        assert result.result.passed
+        assert log_file.read_text(encoding="utf-8").splitlines()[0:2] == [
+            "check",
+            "--config",
+        ]
+
     def test_run_pyrefly_reports_command_failures_without_json(
         self,
         tmp_path: Path,

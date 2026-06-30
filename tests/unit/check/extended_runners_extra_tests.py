@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import c, r
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
@@ -42,6 +43,41 @@ class TestExtendedRunnerExtras:
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
+
+    def test_pyright_uses_project_config_target_when_configured(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "pyright-project",
+            pyproject="[tool.pyright]\ninclude = ['src']\n",
+            with_src=True,
+        )
+        _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.stub_run(stdout='{"generalDiagnostics": []}')),
+        ])
+
+        result = u.Tests.run_gate_check(
+            FlextInfraPyrightGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
+        )
+
+        tm.that(result.result.passed, eq=True)
+        command = runner.commands[0]
+        tm.that(
+            command[1:],
+            eq=(
+                "-m",
+                c.Infra.PYRIGHT,
+                c.Infra.PYRIGHT_PROJECT_ARG,
+                c.Infra.PYRIGHT_PROJECT_CONFIG_TARGET,
+                "--outputjson",
+            ),
+        )
 
     def test_pyright_handles_invalid_json(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)

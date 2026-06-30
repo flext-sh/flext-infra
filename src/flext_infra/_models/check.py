@@ -148,6 +148,14 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
+        @u.computed_field()
+        @property
+        def error_count(self) -> int:
+            """Number of diagnostics with error severity."""
+            return sum(
+                1 for issue in self.issues if issue.severity.lower() == c.Infra.ERROR
+            )
+
     class ProjectResult(
         mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
@@ -173,8 +181,8 @@ class FlextInfraModelsCheck:
         @u.computed_field()
         @property
         def total_errors(self) -> int:
-            """Total issue count across all gates."""
-            return sum(len(v.issues) for v in self.gates.values())
+            """Total error-severity diagnostic count across all gates."""
+            return sum(v.error_count for v in self.gates.values())
 
     # -- SARIF 2.1.0 report models -----------------------------------------
 

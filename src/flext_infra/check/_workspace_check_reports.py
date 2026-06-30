@@ -155,9 +155,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 if project.total_errors == 0:
                     continue
                 breakdown = ", ".join(
-                    f"{gate}={len(project.gates[gate].issues)}"
+                    f"{gate}={project.gates[gate].error_count}"
                     for gate in resolved_gates
-                    if gate in project.gates and project.gates[gate].issues
+                    if gate in project.gates and project.gates[gate].error_count
                 )
                 u.Cli.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",

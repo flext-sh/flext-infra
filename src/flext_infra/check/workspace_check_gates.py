@@ -276,7 +276,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
             )
             u.Cli.gate_result(
                 gate_id,
-                len(execution.issues),
+                execution.error_count,
                 passed=execution.result.passed,
                 elapsed=execution.result.duration,
             )
@@ -289,7 +289,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 cli.stage_result(
                     gate_id,
                     status=status,
-                    output={"issues": len(execution.issues)},
+                    output={"errors": execution.error_count},
                 ),
             )
 

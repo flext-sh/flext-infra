@@ -23,6 +23,21 @@ class FlextInfraPyrightGate(FlextInfraGate):
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYRIGHT][1]
 
     @override
+    def _get_check_dirs(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrSequence:
+        """Use the project pyright config as SSOT when it exists."""
+        _ = ctx
+        if self._has_project_pyright_config(project_dir):
+            return [
+                c.Infra.PYRIGHT_PROJECT_ARG,
+                c.Infra.PYRIGHT_PROJECT_CONFIG_TARGET,
+            ]
+        return super()._get_check_dirs(project_dir, ctx)
+
+    @override
     def _build_check_command(
         self,
         project_dir: Path,
@@ -39,6 +54,18 @@ class FlextInfraPyrightGate(FlextInfraGate):
             *ctx.pyright_args,
             "--outputjson",
         ]
+
+    @staticmethod
+    def _has_project_pyright_config(project_dir: Path) -> bool:
+        """Return whether pyproject.toml declares [tool.pyright]."""
+        doc = u.Cli.toml_read(project_dir / c.Infra.PYPROJECT_FILENAME)
+        if doc is None:
+            return False
+        tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
+        return (
+            tool_table is not None
+            and u.Cli.toml_table_child(tool_table, c.Infra.PYRIGHT) is not None
+        )
 
     @override
     def _check_timeout(

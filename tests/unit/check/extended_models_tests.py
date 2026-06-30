@@ -117,6 +117,32 @@ class TestProjectResultProperties:
         )
         tm.that(project.total_errors, eq=3)
 
+    def test_total_errors_ignores_warning_issues(self) -> None:
+        gate = m.Infra.GateResult(
+            gate="pyright",
+            project="p",
+            passed=True,
+            errors=[],
+            duration=0.0,
+        )
+        warning = m.Infra.Issue(
+            file="a.py",
+            line=1,
+            column=1,
+            code="reportPrivateUsage",
+            message="warning",
+            severity="warning",
+        )
+        execution = m.Infra.GateExecution(
+            result=gate,
+            issues=(warning,),
+            raw_output="",
+        )
+        project = m.Infra.ProjectResult(project="p", gates={"pyright": execution})
+
+        tm.that(execution.error_count, eq=0)
+        tm.that(project.total_errors, eq=0)
+
     def test_passed_all_gates_pass(self) -> None:
         gate1 = m.Infra.GateResult(
             gate="lint",

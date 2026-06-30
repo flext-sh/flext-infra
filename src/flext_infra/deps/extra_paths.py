@@ -169,6 +169,9 @@ class FlextInfraExtraPathsManager(
         is_root: bool,
     ) -> t.StrSequence:
         """Build pyrefly project-includes from auto-discovered top-level Python dirs."""
+        pyright_includes = self._pyright_include_globs(project_dir)
+        if pyright_includes:
+            return pyright_includes
         rules = self._tool_config.tools.pyrefly.path_rules
         includes: t.Infra.StrSet = set()
         local_dirs = [
@@ -188,6 +191,35 @@ class FlextInfraExtraPathsManager(
                 f"{child.name}/{directory}/**/*.py*" for directory in child_dirs
             )
         return sorted(includes)
+
+    @staticmethod
+    def _pyright_include_globs(project_dir: Path) -> t.StrSequence:
+        """Return pyrefly-compatible globs derived from [tool.pyright].include."""
+        pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+        if not pyproject.exists():
+            return ()
+        payload = u.Infra.pyproject_payload(pyproject)
+        tool_table = payload.get(c.Infra.TOOL)
+        if not isinstance(tool_table, Mapping):
+            return ()
+        pyright_table = tool_table.get(c.Infra.PYRIGHT)
+        if not isinstance(pyright_table, Mapping):
+            return ()
+        include_items = pyright_table.get(c.Infra.INCLUDE)
+        if not isinstance(include_items, list):
+            return ()
+        includes: t.Infra.StrSet = set()
+        for item in include_items:
+            if not isinstance(item, str):
+                continue
+            normalized = item.strip().rstrip("/")
+            if not normalized:
+                continue
+            if "*" in normalized or normalized.endswith((".py", ".pyi")):
+                includes.add(normalized)
+            else:
+                includes.add(f"{normalized}/**/*.py*")
+        return tuple(sorted(includes))
 
 
 __all__: list[str] = ["FlextInfraExtraPathsManager"]

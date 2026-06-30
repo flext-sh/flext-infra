@@ -55,6 +55,8 @@ class FlextInfraConstantsCheck:
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
 
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
+    PYRIGHT_PROJECT_ARG: Final[str] = "--project"
+    PYRIGHT_PROJECT_CONFIG_TARGET: Final[str] = "."
     BANDIT_RESULTS_KEY: Final[str] = "results"
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
 

@@ -10,6 +10,7 @@ from pathlib import Path
 import tomlkit
 from flext_tests import tm
 
+from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
 from tests.models import m
@@ -127,6 +128,39 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
         assert search_path == [".", "scripts", "src"]
+
+    def test_ensure_pyrefly_config_uses_pyright_include_when_available(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_dir = tmp_path / "flext-core"
+        project_dir.mkdir()
+        for directory in ("src", "tests"):
+            (project_dir / directory).mkdir()
+        (project_dir / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[tool.pyright]\ninclude = ['src']\n",
+            encoding="utf-8",
+        )
+
+        doc = tomlkit.document()
+        doc["tool"] = tomlkit.table()
+        tool = doc["tool"]
+        assert isinstance(tool, MutableMapping)
+        tm.that(tool, is_=MutableMapping)
+        tool["pyrefly"] = tomlkit.table()
+
+        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+            doc,
+            is_root=False,
+            project_dir=project_dir,
+            paths_manager=FlextInfraExtraPathsManager(workspace=tmp_path),
+        )
+
+        pyrefly = tool["pyrefly"]
+        assert isinstance(pyrefly, MutableMapping)
+        tm.that(pyrefly, is_=MutableMapping)
+        project_includes = u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES])
+        assert project_includes == ["src/**/*.py*"]
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
         self,

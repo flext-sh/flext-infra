@@ -48,10 +48,13 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
+        target_args: t.StrSequence = (
+            () if self._has_project_includes_config(project_dir) else tuple(check_dirs)
+        )
         return [
             c.Infra.PYREFLY,
             c.Infra.CHECK,
-            *check_dirs,
+            *target_args,
             "--config",
             c.Infra.PYPROJECT_FILENAME,
             "--python-interpreter-path",
@@ -207,6 +210,24 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             for err in error_items
             if "/.venv/" not in u.Cli.json_pick_str(err, "path", "")
             and "/site-packages/" not in u.Cli.json_pick_str(err, "path", "")
+        )
+
+    @staticmethod
+    def _has_project_includes_config(project_dir: Path) -> bool:
+        """Return whether pyproject.toml declares pyrefly project-includes."""
+        doc = u.Cli.toml_read(project_dir / c.Infra.PYPROJECT_FILENAME)
+        if doc is None:
+            return False
+        tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
+        pyrefly_table = (
+            None
+            if tool_table is None
+            else u.Cli.toml_table_child(tool_table, c.Infra.PYREFLY)
+        )
+        return (
+            pyrefly_table is not None
+            and u.Cli.toml_item_child(pyrefly_table, c.Infra.PROJECT_INCLUDES)
+            is not None
         )
 
 

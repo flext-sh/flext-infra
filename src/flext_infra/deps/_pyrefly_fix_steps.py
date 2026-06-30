@@ -53,6 +53,39 @@ class FlextInfraConfigFixerSteps:
             return r[t.StrSequence].ok(["synchronized search-path from YAML rules"])
         return r[t.StrSequence].ok([])
 
+    def _sync_project_includes(
+        self,
+        pyrefly: MutableMapping[str, t.Infra.InfraValue],
+        project_dir: Path,
+        *,
+        is_root: bool,
+    ) -> p.Result[t.StrSequence]:
+        """Synchronize tool.pyrefly.project-includes from canonical path rules."""
+        includes_raw = pyrefly.get(c.Infra.PROJECT_INCLUDES)
+        if not isinstance(includes_raw, list):
+            return r[t.StrSequence].ok([])
+        try:
+            current_items: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
+                list(includes_raw)
+            )
+        except c.ValidationError as err:
+            return r[t.StrSequence].fail_op("validate-project-includes", err)
+        current_includes = [
+            path_item for path_item in current_items if isinstance(path_item, str)
+        ]
+        expected_includes = FlextInfraExtraPathsManager(
+            workspace=self._workspace_root
+        ).pyrefly_project_includes(
+            project_dir=project_dir,
+            is_root=is_root,
+        )
+        if current_includes != expected_includes:
+            pyrefly[c.Infra.PROJECT_INCLUDES] = u.Cli.toml_array(expected_includes)
+            return r[t.StrSequence].ok([
+                "synchronized project-includes from YAML rules"
+            ])
+        return r[t.StrSequence].ok([])
+
     def _strip_ignored_sub_configs(
         self,
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
