@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m
+from flext_infra.codegen._lazy_init_generation_registry import (
+    FlextInfraCodegenLazyInitGenerationRegistryMixin,
+)
 from flext_infra.codegen._lazy_init_planner_public_api import (
     FlextInfraCodegenLazyInitPlannerPublicApiMixin,
 )
@@ -13,6 +16,36 @@ from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 class TestsFlextInfraLazyInitRegistryWrapper:
     """Validate generated wrappers backed by split lazy registries."""
+
+    @staticmethod
+    def _lazy_init_plan(tmp_path: Path, current_pkg: str) -> m.Infra.LazyInitPlan:
+        """Build a minimal lazy-init plan for registry policy tests."""
+        pkg_dir = tmp_path / current_pkg.replace(".", "/")
+        return m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=pkg_dir,
+                init_path=pkg_dir / c.Infra.INIT_PY,
+                current_pkg=current_pkg,
+                surface=current_pkg.split(".", maxsplit=1)[0],
+                generated_init=True,
+                importable=True,
+            ),
+        )
+
+    def test_typing_stub_emission_is_public_surface_only(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Only public runtime roots own generated static ``__init__.pyi`` stubs."""
+        assert FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
+            self._lazy_init_plan(tmp_path, "flext_core"),
+        )
+        assert not FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
+            self._lazy_init_plan(tmp_path, "tests"),
+        )
+        assert not FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
+            self._lazy_init_plan(tmp_path, "flext_core._root_typing_parts"),
+        )
 
     def test_tests_package_uses_split_registry_wrapper(self) -> None:
         """Test packages import a pre-split registry instead of inline maps."""

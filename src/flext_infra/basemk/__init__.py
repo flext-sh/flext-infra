@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        ".renderer": ("FlextInfraBaseMkTemplateRenderer",),
         ".generator": ("FlextInfraBaseMkGenerator",),
+        ".renderer": ("FlextInfraBaseMkTemplateRenderer",),
     },
 )
 

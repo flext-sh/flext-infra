@@ -22,11 +22,11 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-        ".unit.refactor.test_infra_refactor_project_classifier": (
-            "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
-        ),
         ".unit.refactor.test_infra_refactor_safety": (
             "TestsFlextInfraRefactorInfraRefactorSafety",
+        ),
+        ".unit.refactor.test_infra_refactor_service": (
+            "TestsFlextInfraRefactorInfraRefactorService",
         ),
         ".unit.refactor.test_infra_refactor_typing_unifier": (
             "TestsFlextInfraRefactorInfraRefactorTypingUnifier",

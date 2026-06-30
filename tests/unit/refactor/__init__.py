@@ -19,7 +19,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_refactor_cli_models_workflow": (
             "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
         ),
-        ".test_infra_refactor_service": ("TestsFlextInfraRefactorInfraRefactorService",),
         ".test_infra_refactor_import_modernizer": (
             "TestsFlextInfraRefactorInfraRefactorImportModernizer",
         ),
@@ -56,6 +55,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_refactor_safety": (
             "RefactorSafetyStub",
             "TestsFlextInfraRefactorInfraRefactorSafety",
+        ),
+        ".test_infra_refactor_service": (
+            "TestsFlextInfraRefactorInfraRefactorService",
         ),
         ".test_infra_refactor_typing_unifier": (
             "FlextInfraRefactorTypingUnificationRule",

@@ -72,15 +72,15 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
     def _write_generated_typing_stub(self, plan: m.Infra.LazyInitPlan) -> None:
         """Write the static typing stub for generated lazy exports."""
+        if not self._should_emit_typing_stub(plan):
+            self._remove_generated_typing_stub(plan)
+            return
         type_map = {**plan.type_checking_map, **plan.eager_dunders}
         stub = FlextInfraCodegenGeneration.generate_typing_stub(
             plan.exports,
             type_map,
             plan.inline_constants,
-            include_all=(
-                plan.context.current_pkg.split(".", maxsplit=1)[0]
-                not in c.Infra.NON_PUBLIC_LAZY_ROOTS
-            ),
+            include_all=True,
         )
         if stub:
             self._write_changed_generated_file(
@@ -89,6 +89,21 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             )
             return
         self._remove_generated_typing_stub(plan)
+
+    @staticmethod
+    def _should_emit_typing_stub(plan: m.Infra.LazyInitPlan) -> bool:
+        """Return whether a package owns a public static typing stub."""
+        segments = tuple(
+            segment for segment in plan.context.current_pkg.split(".") if segment
+        )
+        if not segments:
+            return False
+        if any(segment in c.Infra.NON_PUBLIC_LAZY_ROOTS for segment in segments):
+            return False
+        return not any(
+            segment.startswith("_") and not segment.startswith("__")
+            for segment in segments[1:]
+        )
 
     def _remove_generated_typing_stub(self, plan: m.Infra.LazyInitPlan) -> None:
         """Remove stale codegen-owned typing stubs when no static contract exists."""

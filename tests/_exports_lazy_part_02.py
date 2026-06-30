@@ -8,7 +8,6 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
     {
         ".constants": ("TestsFlextInfraConstants",),
-        ".unit.basemk.test_renderer": ("TestsFlextInfraBasemkRenderer",),
         ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
         ".unit.basemk.test_generator_edge_cases": (
             "TestsFlextInfraBasemkGeneratorEdgeCases",
@@ -16,6 +15,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".unit.basemk.test_init": ("TestsFlextInfraBasemkInit",),
         ".unit.basemk.test_main": ("TestsFlextInfraBasemkMain",),
         ".unit.basemk.test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
+        ".unit.basemk.test_renderer": ("TestsFlextInfraBasemkRenderer",),
         ".unit.check.extended_cli_entry_tests": ("TestWorkspaceCheckCLI",),
         ".unit.check.extended_models_tests": (
             "TestProjectResultProperties",
