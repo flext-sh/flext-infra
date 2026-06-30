@@ -3,22 +3,48 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING, Protocol
 
 from flext_infra import c, m, p, r, u
 
 logger = u.fetch_logger(__name__)
 
 
+if TYPE_CHECKING:
+    class _ReleaseOrchestratorPublishContract(Protocol):
+        def _generate_notes(
+            self,
+            ctx: m.Infra.ReleasePhaseDispatchConfig,
+            output_path: Path,
+        ) -> p.Result[bool]:
+            ...
+
+        def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
+            ...
+
+        def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
+            ...
+
+        def _publish_apply(
+            self,
+            *,
+            workspace_root: Path,
+            version: str,
+            tag: str,
+            notes_path: Path,
+            push: bool,
+        ) -> p.Result[bool]:
+            ...
+
+
 class FlextInfraReleaseOrchestratorPublishMixin:
     """Publish-phase implementation (parent of the release-phases class).
 
-    Borrows ``_generate_notes``/``_create_tag``/``_push_release`` from the
-    concrete orchestrator via MRO; those declarations raise when the mixin is
-    used standalone (never the case in production).
+    Delegates note generation and release side effects to upstream dispatch policy.
     """
 
     def phase_publish(
-        self,
+        self: _ReleaseOrchestratorPublishContract,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
     ) -> p.Result[bool]:
         """Execute publish phase: notes, changelog, tag, optional push."""
@@ -58,7 +84,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         return r[bool].ok(True)
 
     def _publish_apply(
-        self,
+        self: _ReleaseOrchestratorPublishContract,
         *,
         workspace_root: Path,
         version: str,
@@ -83,23 +109,6 @@ class FlextInfraReleaseOrchestratorPublishMixin:
             if push_result.failure:
                 return push_result
         return r[bool].ok(True)
-
-    # Resolved via MRO from the concrete FlextInfraReleaseOrchestrator.
-    def _generate_notes(
-        self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        output_path: Path,
-    ) -> p.Result[bool]:
-        """Generate notes."""
-        raise NotImplementedError
-
-    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-        """Create tag."""
-        raise NotImplementedError
-
-    def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-        """Push release."""
-        raise NotImplementedError
 
 
 __all__: list[str] = ["FlextInfraReleaseOrchestratorPublishMixin"]
