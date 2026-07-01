@@ -344,8 +344,10 @@ class TestRunnerPublicBehavior:
         tmp_path: Path,
     ) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        (proj_dir / "scripts").mkdir()
         (proj_dir / "tests").mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
+        (proj_dir / "scripts" / "tool.py").write_text("# code\n", encoding="utf-8")
         (proj_dir / "tests" / "test_main.py").write_text("# code\n", encoding="utf-8")
         (proj_dir / "conftest.py").write_text("# code\n", encoding="utf-8")
         log_file = tmp_path / "mypy-command.txt"
@@ -366,6 +368,7 @@ class TestRunnerPublicBehavior:
         assert result.result.passed
         command_args = log_file.read_text(encoding="utf-8").splitlines()
         assert command_args[0:4] == ["src", "tests", "conftest.py", "--config-file"]
+        assert "scripts" not in command_args
         assert Path(command_args[4]).name == "pyproject.toml"
 
     def test_run_mypy_skips_tmp_flow_test_fixture_roots(self, tmp_path: Path) -> None:

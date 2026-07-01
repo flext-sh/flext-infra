@@ -27,11 +27,10 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
         _ = ctx
-        discovered_dirs = [
-            directory
-            for directory in u.Infra.discover_python_dirs(project_dir)
-            if directory != "tmp_flow_test"
-        ]
+        discovered_dirs = self._dirs_with_py(
+            project_dir,
+            c.Infra.CHECK_DIRS_SUBPROJECT,
+        )
         root_files = [
             path.name
             for path in sorted(project_dir.iterdir())
