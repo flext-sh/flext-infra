@@ -21,6 +21,13 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         generated_init: str,
     ) -> int:
         """Write split registries and static stubs for generated init files."""
+        if plan.context.current_pkg == "flext_core":
+            try:
+                self._write_generated_typing_stub(plan)
+            except c.EXC_OS_VALUE as exc:
+                u.Cli.error(f"generating typing stub for {plan.context.pkg_dir}: {exc}")
+                return -1
+            return 0
         registry = plan.registry_wrapper
         if registry is None:
             try:
@@ -75,12 +82,15 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         if not self._should_emit_typing_stub(plan):
             self._remove_generated_typing_stub(plan)
             return
-        type_map = {**plan.type_checking_map, **plan.eager_dunders}
-        stub = FlextInfraCodegenGeneration.generate_typing_stub(
-            plan.exports,
-            type_map,
-            plan.inline_constants,
-            include_all=True,
+        stub = (
+            FlextInfraCodegenGeneration.generate_flext_core_root_typing_stub()
+            if plan.context.current_pkg == "flext_core"
+            else FlextInfraCodegenGeneration.generate_typing_stub(
+                plan.exports,
+                {**plan.type_checking_map, **plan.eager_dunders},
+                plan.inline_constants,
+                include_all=True,
+            )
         )
         if stub:
             self._write_changed_generated_file(

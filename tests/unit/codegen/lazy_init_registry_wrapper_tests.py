@@ -172,6 +172,36 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         assert "__all__ =" not in content
         assert "public_exports=_PUBLIC_EXPORTS" in content
 
+    def test_flext_core_root_writes_typing_stub_without_registry_import(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        writer = FlextInfraCodegenLazyInitGenerationRegistryMixin()
+        writer._modified_files = set()
+        plan = self._lazy_init_plan(tmp_path, "flext_core").model_copy(
+            update={
+                "exports": ("FlextUtilities", "u"),
+                "registry_wrapper": m.Infra.LazyInitRegistryWrapper(
+                    module="flext_core._exports_lazy",
+                    name="FLEXT_CORE_LAZY_IMPORTS",
+                    generated=True,
+                ),
+            }
+        )
+        plan.context.pkg_dir.mkdir(parents=True)
+
+        status = writer._write_generated_registry(
+            plan,
+            "from flext_core._root_exports import ROOT_ALL\n",
+        )
+
+        stub = plan.context.pkg_dir / c.Infra.INIT_PYI
+        assert status == 0
+        assert stub.exists()
+        assert "from flext_core._root_typing import" not in stub.read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
     def test_existing_registry_wrapper_reads_public_export_contract(
         self,
         tmp_path: Path,
