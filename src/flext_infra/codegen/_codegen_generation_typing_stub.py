@@ -125,15 +125,21 @@ class FlextInfraCodegenGenerationTypingStubMixin(
         )
         root_all: t.StrSequence = root_exports_module.ROOT_ALL
         root_metadata_names: t.StrSequence = root_exports_module.ROOT_METADATA_NAMES
+        root_typing_only_names: t.StrSequence = (
+            root_exports_module.ROOT_TYPING_ONLY_NAMES
+        )
         root_typing_parts_imports: t.StrMapping = (
             root_typing_parts_exports_module.FLEXT_CORE__ROOT_TYPING_PARTS_LAZY_IMPORTS
+        )
+        root_typing_names: tuple[str, ...] = tuple(root_all) + tuple(
+            root_typing_only_names
         )
         type_map: dict[str, t.StrPair] = {
             name: (
                 f"flext_core._root_typing_parts{root_typing_parts_imports[name]}",
                 name,
             )
-            for name in root_all
+            for name in root_typing_names
             if name in root_typing_parts_imports
         }
         type_map.update({

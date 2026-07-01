@@ -105,6 +105,7 @@ class TestGenerateTypeChecking:
         tm.that(content, contains="from flext_core._root_typing_parts.facades import (")
         tm.that(content, contains="FlextConstants as FlextConstants,")
         tm.that(content, contains="c as c,")
+        tm.that(content, contains="FlextSettingsBase as FlextSettingsBase")
         tm.that(content, contains='    "FlextUtilities",')
         tm.that(content, contains='    "u",')
         tm.that(content, lacks="from flext_core._root_typing import")
