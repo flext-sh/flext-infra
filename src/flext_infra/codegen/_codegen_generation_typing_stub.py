@@ -124,32 +124,21 @@ class FlextInfraCodegenGenerationTypingStubMixin(
             "flext_core._root_typing_parts._exports",
         )
         root_all: t.StrSequence = root_exports_module.ROOT_ALL
-        root_exclude_names: t.StrSequence = root_exports_module.ROOT_EXCLUDE_NAMES
-        root_lazy_modules: t.MappingKV[str, t.StrSequence] = (
-            root_exports_module.ROOT_LAZY_MODULES
-        )
         root_metadata_names: t.StrSequence = root_exports_module.ROOT_METADATA_NAMES
         root_typing_parts_imports: t.StrMapping = (
             root_typing_parts_exports_module.FLEXT_CORE__ROOT_TYPING_PARTS_LAZY_IMPORTS
         )
-        lazy_export_names = frozenset(
-            name
-            for module, names in root_lazy_modules.items()
-            for name in names
-            if name not in root_exclude_names
-            and (module != ".lazy" or name in root_all)
-        )
         type_map: dict[str, t.StrPair] = {
-            name: (f"flext_core._root_typing_parts{root_typing_parts_imports[name]}", name)
-            for name in lazy_export_names
+            name: (
+                f"flext_core._root_typing_parts{root_typing_parts_imports[name]}",
+                name,
+            )
+            for name in root_all
             if name in root_typing_parts_imports
         }
-        type_map.update(
-            {
-                name: ("flext_core.__version__", name)
-                for name in root_metadata_names
-            }
-        )
+        type_map.update({
+            name: ("flext_core.__version__", name) for name in root_metadata_names
+        })
         context = m.Infra.LazyInitFlextCoreRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             import_lines="\n".join(cls._generate_stub_import_lines(type_map)),

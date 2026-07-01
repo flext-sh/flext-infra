@@ -166,9 +166,11 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_MISE_SHIMS, mise_shims)
         monkeypatch.setenv(
             c.Infra.ORCHESTRATOR_ENV_PATH,
-            c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
-                ("/tmp/bin", mise_shims, "/usr/bin")
-            ),
+            c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join((
+                "/tmp/bin",
+                mise_shims,
+                "/usr/bin",
+            )),
         )
 
         def fake_run_to_file(

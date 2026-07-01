@@ -74,10 +74,8 @@ class FlextInfraUtilitiesRefactorDiscovery:
 
         Returns None on error.
         """
-        refactor_config = (
-            FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
-                settings,
-            )
+        refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
+            settings,
         )
         scan_dirs = frozenset(refactor_config.project_scan_dirs)
         ir = FlextInfraUtilitiesIteration.iter_python_files(
@@ -112,10 +110,8 @@ class FlextInfraUtilitiesRefactorDiscovery:
     ) -> t.SequenceOf[Path]:
         """Collect all candidate files under workspace projects."""
         root = workspace_root.resolve()
-        refactor_config = (
-            FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
-                settings,
-            )
+        refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
+            settings,
         )
         scan_dirs = frozenset(refactor_config.project_scan_dirs)
         projects = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
@@ -157,10 +153,8 @@ class FlextInfraUtilitiesRefactorDiscovery:
     ) -> t.SequenceOf[Path]:
         """Discover workspace projects using the typed refactor config."""
         root = workspace_root.resolve()
-        refactor_config = (
-            FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
-                settings,
-            )
+        refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
+            settings,
         )
         scan_dirs = frozenset(refactor_config.project_scan_dirs)
         return FlextInfraUtilitiesProjectDiscovery.discover_project_roots(

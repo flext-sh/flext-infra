@@ -37,8 +37,10 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         tmp_path: Path,
     ) -> None:
         """Only public runtime roots own generated static ``__init__.pyi`` stubs."""
-        assert FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
-            self._lazy_init_plan(tmp_path, "flext_core"),
+        assert (
+            FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
+                self._lazy_init_plan(tmp_path, "flext_core"),
+            )
         )
         assert not FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
             self._lazy_init_plan(tmp_path, "tests"),

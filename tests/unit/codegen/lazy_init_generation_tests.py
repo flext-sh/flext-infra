@@ -105,10 +105,10 @@ class TestGenerateTypeChecking:
         tm.that(content, contains="from flext_core._root_typing_parts.facades import (")
         tm.that(content, contains="FlextConstants as FlextConstants,")
         tm.that(content, contains="c as c,")
-        tm.that(content, contains="FlextModelsPydantic as FlextModelsPydantic")
         tm.that(content, contains='    "FlextUtilities",')
         tm.that(content, contains='    "u",')
         tm.that(content, lacks="from flext_core._root_typing import")
+        tm.that(content, lacks="FlextModelsPydantic as FlextModelsPydantic")
         tm.that(content, lacks='    "FlextModelsPydantic",')
         tm.that(content, lacks="build_lazy_import_map")
 

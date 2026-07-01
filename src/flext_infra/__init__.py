@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from flext_core import d, e, h, r, x
+from flext_cli import d, e, h, r, x
 from flext_core.lazy import install_lazy_exports
 from flext_infra.__version__ import (
     __author__,
