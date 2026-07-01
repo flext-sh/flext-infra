@@ -30,6 +30,10 @@ class FlextInfraConstantsCodegenRenderNames:
     "Direct-import bootstrap package initializer."
     TEMPLATE_FLEXT_CORE_ROOT: Final[str] = "lazy_init_flext_core_root.py.j2"
     "Canonical flext-core root package initializer."
+    TEMPLATE_FLEXT_CORE_ROOT_TYPING_STUB: Final[str] = (
+        "lazy_init_flext_core_root.pyi.j2"
+    )
+    "Canonical flext-core root package typing stub."
     TEMPLATE_VERSION_FILE: Final[str] = "version_file.py.j2"
     "Per-project ``__version__.py`` template."
     TEMPLATE_MKDOCS_PROJECT: Final[str] = "mkdocs_project.yml.j2"

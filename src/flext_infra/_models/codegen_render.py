@@ -198,6 +198,14 @@ class FlextInfraModelsCodegenRender:
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
+        import_lines: str = m.Field(
+            default_factory=str,
+            description="Rendered static import declarations.",
+        )
+        all_lines: str = m.Field(
+            default_factory=str,
+            description="Rendered public ``__all__`` entries.",
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenRender"]
