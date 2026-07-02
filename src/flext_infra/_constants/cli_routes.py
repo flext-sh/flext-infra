@@ -67,6 +67,7 @@ from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
 )
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
@@ -310,6 +311,11 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "inventory",
                 "Generate scripts inventory",
                 FlextInfraInventoryService,
+            ),
+            (
+                "runtime-census",
+                "Post-import Beartype enforcement census for flext_* modules",
+                FlextInfraRuntimeCensusValidator,
             ),
             (
                 "pytest-diag",
