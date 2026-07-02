@@ -22,6 +22,13 @@ class FlextInfraConstantsCheck:
         WARNING = "warning"
         NOTE = "note"
 
+    @unique
+    class GateMode(StrEnum):
+        """Gate enforcement posture — WARN reports without failing; STRICT fails."""
+
+        WARN = "warn"
+        STRICT = "strict"
+
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -41,6 +48,10 @@ class FlextInfraConstantsCheck:
         "boundary": (
             "Flext Abstraction Boundary Auditor",
             "internal://flext-infra/abstraction-boundary",
+        ),
+        "smells": (
+            "Flext Code Smell Detector",
+            "internal://flext-infra/smells",
         ),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
@@ -154,6 +165,35 @@ class FlextInfraConstantsCheck:
     TOKEI_PYTHON_LANG: Final[str] = "Python"
     "tokei language key the 200-LOC cap enforces — §3.1 is a Python-module law; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
+
+    # --- qlty smells gate (code-smell architecture violations) SSOT ---
+    SMELLS_GATE_MODE: Final[GateMode] = GateMode.WARN
+    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
+    QLTY_BINARY: Final[str] = "qlty"
+    QLTY_BINARY_FALLBACK_SUFFIX: Final[str] = ".qlty/bin/qlty"
+    "Joined to Path.home() when the binary is absent from PATH."
+    SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
+        "smells",
+        "--all",
+        "--sarif",
+        "--include-tests",
+        "--no-snippets",
+        "--quiet",
+        "--no-upgrade-check",
+    )
+    "Full-workspace scan: default qlty scope is changed-files-only; --all overrides."
+    SMELLS_RULE_PREFIX: Final[str] = "qlty:"
+    SMELLS_RULE_TAGS: Final[t.MappingKV[str, str]] = MappingProxyType({
+        "boolean-logic": "smell_boolean_logic",
+        "file-complexity": "smell_file_complexity",
+        "function-complexity": "smell_function_complexity",
+        "function-parameters": "smell_function_parameters",
+        "identical-code": "smell_identical_code",
+        "nested-control-flow": "smell_nested_control_flow",
+        "return-statements": "smell_return_statements",
+        "similar-code": "smell_similar_code",
+    })
+    "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
 
     # --- Manual-command blocker (§5 Make Contract) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset(
