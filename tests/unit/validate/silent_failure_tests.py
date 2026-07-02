@@ -127,9 +127,12 @@ class TestSilentFailureValidator:
         ).execute()
 
         tm.that(result.failure, eq=True)
-        report = cli_u.Cli.json_loads(result.error or "").unwrap()
+        report = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            cli_u.Cli.json_loads(result.error or "").unwrap(),
+        )
         tm.that(report["passed"], eq=False)
-        tm.that(len(report["violations"]), eq=3)
+        violations = t.Cli.JSON_LIST_ADAPTER.validate_python(report["violations"])
+        tm.that(len(violations), eq=3)
         tm.that(report["summary"], has="found 3 issue(s)")
 
     def test_execute_text_output_reports_all_findings_uncapped(

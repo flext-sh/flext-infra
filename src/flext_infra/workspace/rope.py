@@ -8,7 +8,8 @@ from time import perf_counter
 from types import TracebackType
 from typing import Annotated, ClassVar, Self, override
 
-from flext_core import r, s
+from flext_core import r
+from flext_infra import s
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
