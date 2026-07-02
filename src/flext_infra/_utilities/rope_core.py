@@ -79,6 +79,9 @@ class FlextInfraUtilitiesRopeCore(
             if (scan_path := project_root / dir_name).is_dir()
         })
         with warnings.catch_warnings():
+            # Why: rope's own Project.__init__ emits this DeprecationWarning
+            # internally; upstream noise we cannot fix, scoped to this call
+            # only via catch_warnings (auto-restored, never process-global).
             warnings.filterwarnings(
                 "ignore",
                 message="Delete once deprecated functions are gone",
