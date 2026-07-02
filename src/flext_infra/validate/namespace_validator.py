@@ -83,17 +83,19 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                 rel = filepath.relative_to(project_root)
                 is_test_file = self._is_test_file(rel)
                 if self._is_namespace_governed_file(rel):
+                    is_facade = self._is_facade_module(rel)
                     violations.extend(
                         self.check_rule_0(
                             tree,
                             rel,
                             prefix,
                             is_test_file=is_test_file,
-                            strict_top_level=not is_test_file,
-                            strict_single_class=not is_test_file,
+                            strict_top_level=is_facade,
+                            strict_single_class=is_facade,
+                            require_public_class=is_facade,
                         )
                     )
-                    if not is_test_file:
+                    if is_facade and not is_test_file:
                         violations.extend(self.check_rule_1(tree, rel))
                         violations.extend(self.check_rule_2(tree, rel))
                 if not is_test_file:
@@ -180,19 +182,39 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     def _is_namespace_governed_file(rel_path: Path) -> bool:
         """Return whether NS-000/001/002 structural rules apply to this file.
 
-        Governed files are any public Python module under ``src/`` or ``tests/``
-        that contains at least one class definition, excluding support dirs and
-        private modules.  The actual class-level checks live in the rule
-        implementations so the same loop covers canonical facades, runtime
-        modules and tests.
+        Governed files are the five canonical facade modules and any module
+        inside the corresponding private namespace directories.
         """
-        if any(part.startswith("_") for part in rel_path.parts[:-1]):
+        if FlextInfraNamespaceValidator._is_facade_module(rel_path):
+            return True
+        return any(
+            part
+            in {
+                "_constants",
+                "_models",
+                "_protocols",
+                "_typings",
+                "_utilities",
+            }
+            for part in rel_path.parts
+        )
+
+    @staticmethod
+    def _is_facade_module(rel_path: Path) -> bool:
+        """Return True for the five root facade modules under ``src/<pkg>/``."""
+        min_facade_depth = 2
+        if (
+            len(rel_path.parts) < min_facade_depth
+            or rel_path.parts[0] != c.Infra.DEFAULT_SRC_DIR
+        ):
             return False
-        if rel_path.name.startswith("_"):
-            return False
-        if rel_path.name in c.Infra.EXEMPT_FILENAMES:
-            return False
-        return rel_path.parts[0] in {c.Infra.DIR_TESTS, c.Infra.DEFAULT_SRC_DIR}
+        return rel_path.name in {
+            c.Infra.CONSTANTS_PY,
+            c.Infra.MODELS_PY,
+            c.Infra.PROTOCOLS_PY,
+            c.Infra.TYPINGS_PY,
+            c.Infra.UTILITIES_PY,
+        }
 
     @staticmethod
     def _is_test_file(rel_path: Path) -> bool:

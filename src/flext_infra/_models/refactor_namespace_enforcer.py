@@ -147,6 +147,10 @@ class FlextInfraModelsNamespaceEnforcer:
 
         alias_name: Annotated[t.NonEmptyStr, m.Field(description="Alias name")]
         target_name: Annotated[t.NonEmptyStr, m.Field(description="Target name")]
+        module_name: Annotated[
+            str,
+            m.Field(default="", description="Source module for import-kind violations"),
+        ]
 
     class ParseFailureViolation(
         mm.FilePathMixin,

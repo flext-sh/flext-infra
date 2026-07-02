@@ -118,12 +118,19 @@ class FlextInfraNamespaceRules:
         is_test_file: bool = False,
         strict_top_level: bool = True,
         strict_single_class: bool = True,
+        require_public_class: bool = True,
     ) -> t.StrSequence:
-        """Rule 0 — One public class per module + project prefix.
+        """Rule 0 — One public class per facade module + project prefix.
 
-        Test files are validated more loosely: they must still use the
-        ``Tests<Stem>`` prefix on public classes, but they are allowed to
-        contain helpers, fixtures and multiple test classes.
+        Facade modules (``constants.py``, ``models.py``, ``protocols.py``,
+        ``typings.py``, ``utilities.py``) are checked strictly: exactly one
+        public class, correct prefix, and only allowed module-level statements.
+
+        Family modules (files inside ``_constants/``, ``_models/``,
+        ``_protocols/``, ``_typings/``, ``_utilities/``) and test files are
+        validated loosely: every public class must use the right prefix, but
+        multiple classes, helper functions, and module-level assignments are
+        permitted.
         """
         outer_classes = self._outer_classes(tree)
         public_classes = [
@@ -132,9 +139,9 @@ class FlextInfraNamespaceRules:
             if not getattr(cls, "name", "").startswith("_")
         ]
         messages: list[str] = []
-        if not public_classes:
-            return self._accumulate_violations("NS-000", messages)
         expected_prefix = f"Tests{prefix}" if is_test_file else prefix
+        if require_public_class and not public_classes:
+            messages.append(f"{filepath}:1 — No outer class found")
         if strict_single_class and len(public_classes) > 1:
             first_line = getattr(public_classes[0], "lineno", 1)
             names = ", ".join(getattr(cls, "name", "") for cls in public_classes)
@@ -538,6 +545,8 @@ class FlextInfraNamespaceRules:
         typings_dir: str = c.Infra.FAMILY_DIRECTORIES["t"]
         target_id = self.target_name(getattr(node, "target", None))
         if target_id and target_id in c.Infra.DUNDER_ALLOWED:
+            return True
+        if target_id and target_id in c.Infra.ALIAS_NAMES:
             return True
         if self._annotation_contains(
             getattr(node, "annotation", None),

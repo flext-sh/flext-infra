@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import tokenize
 from collections import defaultdict
+from io import StringIO
 from pathlib import Path
+
+from rope.refactor.rename import Rename
 
 from flext_cli import u
 from flext_infra import c, m, t
@@ -213,15 +217,41 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> None:
         """Rewrite compatibility alias violations."""
         _ = parse_failures
-        grouped: t.MappingKV[Path, t.MutableStrMapping] = defaultdict(dict)
+        assignment_grouped: t.MappingKV[Path, t.MutableStrMapping] = defaultdict(dict)
+        import_grouped: t.MappingKV[
+            Path,
+            t.MutableSequenceOf[m.Infra.CompatibilityAliasViolation],
+        ] = defaultdict(list)
         for violation in violations:
-            grouped[Path(violation.file)][violation.alias_name] = violation.target_name
-        for file_path, alias_map in grouped.items():
+            if violation.module_name:
+                import_grouped[Path(violation.file)].append(violation)
+            else:
+                assignment_grouped[Path(violation.file)][
+                    violation.alias_name
+                ] = violation.target_name
+        for file_path, alias_map in assignment_grouped.items():
             FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_compat_aliases_in_file(
                 file_path=file_path,
                 alias_map=alias_map,
                 gates=gates,
             )
+        workspace_root = (
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
+                py_files=list(import_grouped.keys())
+            )
+            if import_grouped
+            else None
+        )
+        if workspace_root is None:
+            return
+        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as rope_project:
+            for file_path, file_violations in import_grouped.items():
+                FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_compat_import_aliases_in_file(
+                    rope_project=rope_project,
+                    file_path=file_path,
+                    violations=file_violations,
+                    gates=gates,
+                )
 
     @staticmethod
     def _rewrite_compat_aliases_in_file(
@@ -255,6 +285,65 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     gates=gates,
                 ),
             )
+
+    @staticmethod
+    def _rewrite_compat_import_aliases_in_file(
+        *,
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
+        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        gates: t.StrSequence | None,
+    ) -> None:
+        """Rewrite non-canonical facade imports using Rope rename (file-local)."""
+        _ = gates
+        resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+            rope_project,
+            file_path,
+        )
+        if resource is None:
+            return
+        source = resource.read()
+
+        def _names(source_text: str) -> set[str]:
+            return {
+                tok.string
+                for tok in tokenize.generate_tokens(StringIO(source_text).readline)
+                if tok.type == tokenize.NAME
+            }
+
+        names_in_file = _names(source)
+        changed = False
+        for violation in violations:
+            long_name = violation.alias_name
+            canonical_alias = violation.target_name
+            if canonical_alias in names_in_file and canonical_alias != long_name:
+                # Avoid shadowing an existing name in the file.
+                continue
+            offset = source.find(long_name)
+            if offset < 0:
+                continue
+            try:
+                renamer = Rename(rope_project, resource, offset)
+                changes = renamer.get_changes(canonical_alias, resources=[resource])
+            except (
+                *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
+                *FlextInfraUtilitiesRopeCore.SYNTAX_ERRORS,
+                TypeError,
+                ValueError,
+            ):
+                continue
+            rope_project.do(changes)
+            changed = True
+            source = resource.read()
+            names_in_file = _names(source)
+        if changed:
+            cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
+                rope_project,
+                file_paths=(file_path,),
+            )
+            if cleanup_result.failure:
+                msg = cleanup_result.error or "rope import cleanup failed"
+                raise RuntimeError(msg)
 
     @staticmethod
     def _move_named_blocks(
