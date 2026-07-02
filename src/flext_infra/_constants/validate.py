@@ -29,6 +29,8 @@ class FlextInfraConstantsSharedInfra:
         "__main__.py",
     })
     EXEMPT_PREFIXES: Final[frozenset[str]] = frozenset({"test_", "_"})
+    FACADE_MODULE_DEPTH: Final[int] = 3
+    "Relative path part count for root facade modules (src/<pkg>/<file>.py)."
     ALIAS_NAMES: Final[frozenset[str]] = frozenset({
         "c",
         "t",
@@ -50,6 +52,8 @@ class FlextInfraConstantsSharedInfra:
         "TypeVarTuple",
     })
     ENUM_BASES: Final[frozenset[str]] = frozenset({"StrEnum", "Enum", "IntEnum"})
+    CLASSVAR_ANNOTATION_NAMES: Final[frozenset[str]] = frozenset({"ClassVar"})
+    "Names treated as class-variable constant annotations."
     COLLECTION_CALLS: Final[frozenset[str]] = frozenset({
         "frozenset",
         "tuple",

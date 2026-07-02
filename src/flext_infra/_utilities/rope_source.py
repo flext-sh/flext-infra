@@ -109,9 +109,12 @@ class FlextInfraUtilitiesRopeSource:
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None:
             return False
-        return any(
-            line.strip().startswith(f"{family} = ") for line in source.splitlines()
-        )
+        for line in source.splitlines():
+            stripped = line.strip()
+            match = c.Infra.FACADE_ALIAS_RE.match(stripped)
+            if match is not None and match.group(1) == family:
+                return True
+        return False
 
     @staticmethod
     def find_import_line(*, lines: t.StrSequence, module_name: str) -> int:

@@ -202,9 +202,8 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     @staticmethod
     def _is_facade_module(rel_path: Path) -> bool:
         """Return True for the five root facade modules under ``src/<pkg>/``."""
-        min_facade_depth = 2
         if (
-            len(rel_path.parts) < min_facade_depth
+            len(rel_path.parts) != c.Infra.FACADE_MODULE_DEPTH
             or rel_path.parts[0] != c.Infra.DEFAULT_SRC_DIR
         ):
             return False
@@ -219,7 +218,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     @staticmethod
     def _is_test_file(rel_path: Path) -> bool:
         """Return True when the file lives under the project's ``tests/`` tree."""
-        return rel_path.parts[0] == c.Infra.DIR_TESTS
+        return any(part == c.Infra.DIR_TESTS for part in rel_path.parts)
 
 
 __all__: list[str] = ["FlextInfraNamespaceValidator"]

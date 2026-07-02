@@ -416,6 +416,136 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(violations, empty=True)
 
+    def test_loose_object_detector_flags_classvar_outside_constants_class(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "target.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "from pathlib import Path\n"
+            "from typing import ClassVar\n\n"
+            "class ServiceConfig:\n"
+            "    HOME: ClassVar[Path] = Path.home()\n"
+            "    AI_HUB: ClassVar[Path] = Path('.ai-hub')\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        classvar_violations = [v for v in violations if v.kind == "classvar"]
+        tm.that(len(classvar_violations), eq=2)
+        tm.that({v.name for v in classvar_violations}, eq={"HOME", "AI_HUB"})
+        tm.that(classvar_violations[0].suggestion, has="Constants")
+
+    def test_loose_object_detector_skips_classvar_in_constants_class(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "target.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "from pathlib import Path\n"
+            "from typing import ClassVar\n\n"
+            "class SampleConstants:\n"
+            "    HOME: ClassVar[Path] = Path.home()\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that([v for v in violations if v.kind == "classvar"], empty=True)
+
+    def test_loose_object_detector_skips_classvar_in_constants_module(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "_constants" / "service.py"
+        target.parent.mkdir(parents=True)
+        target.write_text(
+            "from __future__ import annotations\n"
+            "from pathlib import Path\n"
+            "from typing import ClassVar\n\n"
+            "class ServiceConfig:\n"
+            "    HOME: ClassVar[Path] = Path.home()\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that([v for v in violations if v.kind == "classvar"], empty=True)
+
+    def test_loose_object_detector_flags_typing_classvar(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "target.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "import typing\n\n"
+            "class ServiceConfig:\n"
+            "    HOME: typing.ClassVar[str] = 'home'\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        classvar_violations = [v for v in violations if v.kind == "classvar"]
+        tm.that(len(classvar_violations), eq=1)
+        tm.that(classvar_violations[0].name, eq="HOME")
+
+    def test_loose_object_detector_skips_private_classvar(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "target.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "from typing import ClassVar\n\n"
+            "class ServiceConfig:\n"
+            "    _INTERNAL: ClassVar[str] = 'secret'\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that([v for v in violations if v.kind == "classvar"], empty=True)
+
     def test_loose_object_detector_skips_init_module_exception(
         self,
         tmp_path: Path,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
@@ -12,6 +13,29 @@ from flext_core import t
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
+
+
+def _build_namespace_file_to_family(
+    mapping: Sequence[tuple[str, Sequence[str]]],
+) -> t.StrMapping:
+    """Build file name → family alias mapping from (alias, file_names) pairs."""
+    result: dict[str, str] = {}
+    for alias, file_names in mapping:
+        for file_name in file_names:
+            result[file_name] = alias
+    return MappingProxyType(result)
+
+
+def _build_namespace_family_expected_alias(
+    mapping: Sequence[tuple[str, Sequence[str]]],
+    suffixes: t.StrMapping,
+) -> t.MappingKV[str, t.StrPair]:
+    """Build file name → (alias, suffix) mapping from family specs."""
+    result: dict[str, t.StrPair] = {}
+    for alias, file_names in mapping:
+        for file_name in file_names:
+            result[file_name] = (alias, suffixes[alias])
+    return MappingProxyType(result)
 
 
 class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
@@ -345,6 +369,27 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "u": "*utilities.py",
     })
     "Facade family letter → file glob mapping."
+    NAMESPACE_FILE_TO_FAMILY: Final[t.StrMapping] = _build_namespace_file_to_family((
+        ("c", tuple(MRO_CONSTANTS_FILE_NAMES)),
+        ("t", tuple(MRO_TYPINGS_FILE_NAMES)),
+        ("p", tuple(MRO_PROTOCOLS_FILE_NAMES)),
+        ("m", tuple(MRO_MODELS_FILE_NAMES)),
+        ("u", tuple(MRO_UTILITIES_FILE_NAMES)),
+    ))
+    "Canonical facade file name → family alias mapping."
+    NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[t.MappingKV[str, t.StrPair]] = (
+        _build_namespace_family_expected_alias(
+            (
+                ("c", tuple(MRO_CONSTANTS_FILE_NAMES)),
+                ("t", tuple(MRO_TYPINGS_FILE_NAMES)),
+                ("p", tuple(MRO_PROTOCOLS_FILE_NAMES)),
+                ("m", tuple(MRO_MODELS_FILE_NAMES)),
+                ("u", tuple(MRO_UTILITIES_FILE_NAMES)),
+            ),
+            FAMILY_SUFFIXES,
+        )
+    )
+    "Canonical facade file name → expected (alias, suffix) pair."
     MRO_FAMILIES: Final[frozenset[str]] = frozenset({"c", "t", "p", "m", "u"})
     "All MRO families."
     MRO_FAMILY_PACKAGE_DIRS: Final[t.StrMapping] = MappingProxyType({
@@ -447,7 +492,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Regex: namespace constant candidate names."
     NAMESPACE_MIN_ALIAS_LENGTH: Final[int] = 2
     FACADE_ALIAS_RE: Final[t.RegexPattern] = re.compile(
-        r"^(\w)\s*=\s*(\w+)",
+        r"^(\w)\b[^=]*=\s*(\w+)",
         re.MULTILINE,
     )
     "Matches ``m = FlextFooModels`` alias assignments in facade files."
@@ -500,16 +545,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         r'^("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*$',
     )
     "Matches files that contain only a module docstring."
-    NAMESPACE_FILE_TO_FAMILY: Final[t.StrMapping] = MappingProxyType({
-        f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
-    })
-    NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[t.MappingKV[str, t.StrPair]] = (
-        MappingProxyType({
-            f"{suffix.lower()}.py": (alias, suffix)
-            for alias, suffix in FAMILY_SUFFIXES.items()
-        })
-    )
-
     MIN_METHODS_FOR_REORDER: Final[int] = 2
     "Minimum method count before class method reordering is attempted."
 

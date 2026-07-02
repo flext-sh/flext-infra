@@ -189,6 +189,8 @@ class FlextInfraLooseObjectDetector:
             return
         if kind == "ClassDef":
             cls._check_loose_enum(node, file_path, add)
+            cls._check_loose_classvar(node, file_path, add)
+            return
 
     @classmethod
     def _annotation_contains(cls, annotation: object | None, name: str) -> bool:
@@ -322,6 +324,43 @@ class FlextInfraLooseObjectDetector:
                     "enum",
                     "Constants",
                 )
+
+    @classmethod
+    def _check_loose_classvar(
+        cls,
+        node: object,
+        file_path: Path,
+        add: Callable[[int, str, str, str], None],
+    ) -> None:
+        """Flag ``ClassVar[...] = ...`` attributes outside Constants classes."""
+        if file_path.name == c.Infra.CONSTANTS_PY:
+            return
+        if file_path.parent.name == "_constants":
+            return
+        class_name = getattr(node, "name", "")
+        if isinstance(class_name, str) and class_name.endswith(
+            c.Infra.CONSTANTS_CLASS_SUFFIX,
+        ):
+            return
+        base_names = cls._base_text_set(node)
+        if any(base.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX) for base in base_names):
+            return
+        body = getattr(node, "body", []) or []
+        for inner in body:
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(inner) != "AnnAssign":
+                continue
+            annotation = getattr(inner, "annotation", None)
+            if not cls._annotation_contains(annotation, "ClassVar"):
+                continue
+            target = cls._target_name(getattr(inner, "target", None))
+            if not target or target.startswith("_"):
+                continue
+            add(
+                getattr(inner, "lineno", 1),
+                target,
+                "classvar",
+                "Constants",
+            )
 
     @staticmethod
     def _detect_logger_assignments(
