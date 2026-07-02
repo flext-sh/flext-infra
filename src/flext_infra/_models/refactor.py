@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_core import FlextUtilities
+from flext_core import u
 from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
@@ -172,7 +172,7 @@ class FlextInfraModelsRefactor(
         updated_at: Annotated[
             str,
             m.Field(description="ISO 8601 timestamp of last update"),
-        ] = m.Field(default_factory=lambda: FlextUtilities.now().isoformat())
+        ] = m.Field(default_factory=lambda: u.now().isoformat())
 
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""

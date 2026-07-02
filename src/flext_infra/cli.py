@@ -8,9 +8,11 @@ from typing import ClassVar
 
 from flext_cli import cli as cli_facade, p as cli_p
 from flext_infra import c, m, p, r, t, u
-from flext_infra._cli_routes_codegen import ROUTES as _ROUTES_CODEGEN
-from flext_infra._cli_routes_validate import ROUTES as _ROUTES_VALIDATE
-from flext_infra._cli_routes_workspace import ROUTES as _ROUTES_WORKSPACE
+from flext_infra._constants.cli_routes import (
+    CODEGEN_ROUTES as _ROUTES_CODEGEN,
+    VALIDATE_ROUTES as _ROUTES_VALIDATE,
+    WORKSPACE_ROUTES as _ROUTES_WORKSPACE,
+)
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 _CLI_GROUP_ITEMS: tuple[tuple[str, str], ...] = (
