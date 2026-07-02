@@ -101,7 +101,7 @@ class FlextInfraCodegenCensus(s[str]):
         violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate(
                 project.path,
-                scan_tests=False,
+                scan_tests=True,
             ),
         )
         violations = (

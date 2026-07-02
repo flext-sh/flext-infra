@@ -114,35 +114,51 @@ class FlextInfraNamespaceRules:
         tree: object,
         filepath: Path,
         prefix: str,
+        *,
+        is_test_file: bool = False,
+        strict_top_level: bool = True,
+        strict_single_class: bool = True,
     ) -> t.StrSequence:
-        """Rule 0 — One namespace class per module + allowed top-level statements."""
+        """Rule 0 — One public class per module + project prefix.
+
+        Test files are validated more loosely: they must still use the
+        ``Tests<Stem>`` prefix on public classes, but they are allowed to
+        contain helpers, fixtures and multiple test classes.
+        """
         outer_classes = self._outer_classes(tree)
-        class_count = len(outer_classes)
+        public_classes = [
+            cls
+            for cls in outer_classes
+            if not getattr(cls, "name", "").startswith("_")
+        ]
         messages: list[str] = []
-        if class_count != 1:
-            first_line = getattr(outer_classes[0], "lineno", 1) if outer_classes else 1
+        if not public_classes:
+            return self._accumulate_violations("NS-000", messages)
+        expected_prefix = f"Tests{prefix}" if is_test_file else prefix
+        if strict_single_class and len(public_classes) > 1:
+            first_line = getattr(public_classes[0], "lineno", 1)
+            names = ", ".join(getattr(cls, "name", "") for cls in public_classes)
             messages.append(
                 f"{filepath}:{first_line} — Multiple outer classes found "
-                f"(expected 1, got {class_count})"
-                if class_count > 1
-                else f"{filepath}:1 — No outer class found (expected 1, got 0)",
+                f"(expected 1, got {len(public_classes)}: {names})",
             )
-        for cls in outer_classes:
+        for cls in public_classes:
             cls_name = getattr(cls, "name", "")
-            if prefix and not cls_name.startswith(prefix):
+            if expected_prefix and not cls_name.startswith(expected_prefix):
                 messages.append(
                     f"{filepath}:{getattr(cls, 'lineno', 0)} — Class "
-                    f"{cls_name!r} does not start with prefix {prefix!r}",
+                    f"{cls_name!r} does not start with prefix {expected_prefix!r}",
                 )
-        body = getattr(tree, "body", []) or []
-        for node in body:
-            if self._kind(node) == "ClassDef":
-                continue
-            if not self._is_allowed_module_level(node, filepath):
-                messages.append(
-                    f"{filepath}:{getattr(node, 'lineno', 0)} — "
-                    f"Disallowed top-level statement: {self._kind(node)}",
-                )
+        if strict_top_level:
+            body = getattr(tree, "body", []) or []
+            for node in body:
+                if self._kind(node) == "ClassDef":
+                    continue
+                if not self._is_allowed_module_level(node, filepath):
+                    messages.append(
+                        f"{filepath}:{getattr(node, 'lineno', 0)} — "
+                        f"Disallowed top-level statement: {self._kind(node)}",
+                    )
         return self._accumulate_violations("NS-000", messages)
 
     def check_rule_1(

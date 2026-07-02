@@ -11,6 +11,7 @@ from flext_infra._constants.base import FlextInfraConstantsBase
 from flext_infra._constants.basemk import FlextInfraConstantsBasemk
 from flext_infra._constants.census import FlextInfraConstantsCensus
 from flext_infra._constants.check import FlextInfraConstantsCheck
+from flext_infra._constants.cli import FlextInfraConstantsCli
 from flext_infra._constants.codegen import FlextInfraConstantsCodegen
 from flext_infra._constants.deps import FlextInfraConstantsDeps
 from flext_infra._constants.docs import FlextInfraConstantsDocs
@@ -18,7 +19,6 @@ from flext_infra._constants.github import FlextInfraConstantsGithub
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
 from flext_infra._constants.release import FlextInfraConstantsRelease
 from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 
 
@@ -30,6 +30,7 @@ class FlextInfraConstants(c):
         FlextInfraConstantsCensus,
         FlextInfraConstantsBasemk,
         FlextInfraConstantsCheck,
+        FlextInfraConstantsCli,
         FlextInfraConstantsCodegen,
         FlextInfraConstantsRope,
         FlextInfraConstantsDeps,
@@ -37,7 +38,6 @@ class FlextInfraConstants(c):
         FlextInfraConstantsGithub,
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRelease,
-        FlextInfraConstantsSharedInfra,
         FlextInfraConstantsWorkspace,
     ):
         """Infra-domain constants — merged mixin namespace."""

@@ -64,7 +64,7 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
         files = [
             py_file
             for py_file in files_result.value
-            if not self._is_exempt_file(py_file)
+            if not self._is_exempt_file(py_file, scan_tests=scan_tests)
         ]
         layout = u.Infra.layout(project_root)
         prefix = layout.class_stem if layout is not None else ""
@@ -81,18 +81,30 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
                     continue
                 tree = tree_result.value
                 rel = filepath.relative_to(project_root)
+                is_test_file = self._is_test_file(rel)
                 if self._is_namespace_governed_file(rel):
-                    violations.extend(self.check_rule_0(tree, rel, prefix))
-                    violations.extend(self.check_rule_1(tree, rel))
-                    violations.extend(self.check_rule_2(tree, rel))
-                violations.extend(
-                    self.check_rule_3(
-                        tree,
-                        rel,
-                        class_stem=prefix,
-                        package_name=package_name,
+                    violations.extend(
+                        self.check_rule_0(
+                            tree,
+                            rel,
+                            prefix,
+                            is_test_file=is_test_file,
+                            strict_top_level=not is_test_file,
+                            strict_single_class=not is_test_file,
+                        )
                     )
-                )
+                    if not is_test_file:
+                        violations.extend(self.check_rule_1(tree, rel))
+                        violations.extend(self.check_rule_2(tree, rel))
+                if not is_test_file:
+                    violations.extend(
+                        self.check_rule_3(
+                            tree,
+                            rel,
+                            class_stem=prefix,
+                            package_name=package_name,
+                        )
+                    )
         return self._validation_report(files=files, violations=violations)
 
     @staticmethod
@@ -116,12 +128,26 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
             ),
         )
 
-    def _is_exempt_file(self, filepath: Path) -> bool:
-        """Check whether a file should be skipped from validation."""
+    def _is_exempt_file(
+        self,
+        filepath: Path,
+        *,
+        scan_tests: bool = False,
+    ) -> bool:
+        """Check whether a file should be skipped from validation.
+
+        When ``scan_tests`` is active we still skip dunder/conftest files, but
+        we no longer drop ``test_*.py`` modules so they can be checked for the
+        ``Tests<Stem>`` prefix and the single-public-class rule.
+        """
         name = filepath.name
         if name in c.Infra.EXEMPT_FILENAMES:
             return True
-        return any(name.startswith(prefix) for prefix in c.Infra.EXEMPT_PREFIXES)
+        return any(
+            name.startswith(prefix)
+            for prefix in c.Infra.EXEMPT_PREFIXES
+            if not (scan_tests and prefix == "test_")
+        )
 
     def _parse_file(
         self,
@@ -150,27 +176,28 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
             return r[ast.AST].fail(f"pymodule has no AST for {path}")
         return r[ast.AST].ok(ast_module)
 
-    def _is_namespace_governed_file(self, rel_path: Path) -> bool:
-        """Return whether NS-000/001/002 structural rules apply to this file."""
-        if rel_path.name in {
-            c.Infra.CONSTANTS_PY,
-            c.Infra.MODELS_PY,
-            c.Infra.PROTOCOLS_PY,
-            c.Infra.TYPINGS_PY,
-            c.Infra.UTILITIES_PY,
-        }:
-            return True
-        return any(
-            part
-            in {
-                "_constants",
-                "_models",
-                "_protocols",
-                "_typings",
-                "_utilities",
-            }
-            for part in rel_path.parts
-        )
+    @staticmethod
+    def _is_namespace_governed_file(rel_path: Path) -> bool:
+        """Return whether NS-000/001/002 structural rules apply to this file.
+
+        Governed files are any public Python module under ``src/`` or ``tests/``
+        that contains at least one class definition, excluding support dirs and
+        private modules.  The actual class-level checks live in the rule
+        implementations so the same loop covers canonical facades, runtime
+        modules and tests.
+        """
+        if any(part.startswith("_") for part in rel_path.parts[:-1]):
+            return False
+        if rel_path.name.startswith("_"):
+            return False
+        if rel_path.name in c.Infra.EXEMPT_FILENAMES:
+            return False
+        return rel_path.parts[0] in {c.Infra.DIR_TESTS, c.Infra.DEFAULT_SRC_DIR}
+
+    @staticmethod
+    def _is_test_file(rel_path: Path) -> bool:
+        """Return True when the file lives under the project's ``tests/`` tree."""
+        return rel_path.parts[0] == c.Infra.DIR_TESTS
 
 
 __all__: list[str] = ["FlextInfraNamespaceValidator"]
