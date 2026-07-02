@@ -5,39 +5,15 @@ from __future__ import annotations
 
 from flext_core.lazy import build_lazy_import_map
 
-TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
+TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
-        ".integration.test_infra_integration": (
-            "TestsFlextInfraIntegrationInfraIntegration",
-        ),
-        ".integration.test_refactor_nesting_file": (
-            "TestsFlextInfraIntegrationRefactorNestingFile",
-        ),
-        ".integration.test_refactor_nesting_idempotency": (
-            "TestsFlextInfraIntegrationRefactorNestingIdempotency",
-        ),
-        ".integration.test_refactor_nesting_performance": (
-            "TestsFlextInfraIntegrationRefactorNestingPerformance",
-        ),
-        ".integration.test_refactor_nesting_project": (
-            "TestsFlextInfraIntegrationRefactorNestingProject",
-        ),
-        ".integration.test_refactor_nesting_workspace": (
-            "TestsFlextInfraIntegrationRefactorNestingWorkspace",
-        ),
-        ".integration.test_refactor_policy_mro": (
-            "TestsFlextInfraIntegrationRefactorPolicyMro",
-        ),
+        ".base": ("TestsFlextInfraServiceBase",),
         ".models": ("TestsFlextInfraModels",),
         ".protocols": ("TestsFlextInfraProtocols",),
-        ".unit.codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
-        ".unit.codegen.lazy_init_transforms_tests": (
-            "TestsFlextInfraLazyInitTransforms",
-        ),
+        ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
+        ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
+        ".settings": ("TestsFlextInfraSettings",),
         ".unit.deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
-        ".unit.io.test_infra_terminal_detection": (
-            "TestsFlextInfraIoInfraTerminalDetection",
-        ),
         ".unit.refactor.test_infra_refactor_census_preview_cache": (
             "TestsFlextInfraRefactorCensusPreviewCache",
         ),
@@ -80,20 +56,30 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".unit.refactor.test_infra_refactor_project_classifier": (
             "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
         ),
+        ".unit.refactor.test_infra_refactor_safety": (
+            "TestsFlextInfraRefactorInfraRefactorSafety",
+        ),
+        ".unit.refactor.test_infra_refactor_service": (
+            "TestsFlextInfraRefactorInfraRefactorService",
+        ),
+        ".unit.refactor.test_infra_refactor_typing_unifier": (
+            "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
+        ),
+        ".unit.refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
+        ".unit.release.test_release_dag": ("TestsFlextInfraReleaseDag",),
         ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
-        ".unit.test_infra_workspace_migrator_deps": (
-            "TestsFlextInfraInfraWorkspaceMigratorDeps",
+        ".unit.test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
+        ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
+        ".unit.transformers.test_infra_transformer_class_nesting": (
+            "TestsFlextInfraTransformersInfraTransformerClassNesting",
         ),
-        ".unit.test_infra_workspace_migrator_dryrun": (
-            "TestsFlextInfraInfraWorkspaceMigratorDryrun",
+        ".unit.transformers.test_infra_transformer_cli_modernizer": (
+            "TestsFlextInfraTransformersCliModernizer",
         ),
-        ".unit.test_infra_workspace_migrator_internal": (
-            "TestsFlextInfraInfraWorkspaceMigratorInternal",
-        ),
-        ".unit.test_infra_workspace_orchestrator": (
-            "TestsFlextInfraInfraWorkspaceOrchestrator",
+        ".unit.transformers.test_infra_transformer_helper_consolidation": (
+            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
         ),
     },
 )
 
-__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05"]
+__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06"]

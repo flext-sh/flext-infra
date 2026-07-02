@@ -7,6 +7,19 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
     {
+        ".deps.test_detection_discover": ("TestsFlextInfraDepsDetectionDiscover",),
+        ".deps.test_detection_models": ("TestsFlextInfraDepsDetectionModels",),
+        ".deps.test_detection_typings": ("TestsFlextInfraDepsDetectionTypings",),
+        ".deps.test_detection_typings_flow": (
+            "TestsFlextInfraDepsDetectionTypingsFlow",
+        ),
+        ".deps.test_detection_uncovered": ("TestsFlextInfraDepsDetectionUncovered",),
+        ".deps.test_detector_detect": ("TestsFlextInfraDepsDetectorDetect",),
+        ".deps.test_detector_detect_failures": (
+            "TestsFlextInfraDepsDetectorDetectFailures",
+        ),
+        ".deps.test_detector_init": ("TestsFlextInfraDepsDetectorInit",),
+        ".deps.test_detector_main": ("TestsFlextInfraDepsDetectorMain",),
         ".deps.test_detector_models": ("TestsFlextInfraDepsDetectorModels",),
         ".deps.test_detector_report": ("TestsFlextInfraDepsDetectorReport",),
         ".deps.test_detector_report_flags": ("TestsFlextInfraDepsDetectorReportFlags",),
@@ -46,15 +59,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
         ".deps.test_modernizer_helpers": ("TestsFlextInfraDepsModernizerHelpers",),
         ".deps.test_modernizer_main": ("TestsFlextInfraDepsModernizerMain",),
         ".deps.test_modernizer_main_extra": ("TestsFlextInfraDepsModernizerMainExtra",),
-        ".deps.test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
-        ".deps.test_modernizer_pyright": ("TestsFlextInfraDepsModernizerPyright",),
-        ".deps.test_modernizer_pytest": ("TestsFlextInfraDepsModernizerPytest",),
-        ".deps.test_modernizer_tooling": ("TestsFlextInfraDepsModernizerTooling",),
-        ".deps.test_modernizer_workspace": ("TestsFlextInfraDepsModernizerWorkspace",),
-        ".deps.test_path_sync_init": ("TestsFlextInfraDepsPathSyncInit",),
-        ".deps.test_path_sync_main": ("TestsFlextInfraDepsPathSyncMain",),
-        ".deps.test_path_sync_main_edges": ("TestsFlextInfraDepsPathSyncMainEdges",),
-        ".deps.test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
     },
 )
 

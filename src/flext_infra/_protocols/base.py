@@ -12,10 +12,9 @@ from collections.abc import (
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_core import FlextProtocols
-
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_core import p
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -287,7 +286,7 @@ class FlextInfraProtocolsBase(Protocol):
         runner: FlextInfraProtocolsBase.RunnerService
 
         @property
-        def log(self) -> FlextProtocols.Logger: ...
+        def log(self) -> p.Logger: ...
 
     @runtime_checkable
     class TemplateRenderer(Protocol):

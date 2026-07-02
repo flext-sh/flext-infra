@@ -315,14 +315,14 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 	fi; \
 	if [ "$(CHANGED_ONLY)" = "1" ]; then \
 		_files=$$( \
-			{ git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py' 2>/dev/null; \
-			  git ls-files --others --exclude-standard -- '*.py' 2>/dev/null; } \
+			{ git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py'; \
+			  git ls-files --others --exclude-standard -- '*.py'; } \
 			| tr '\n' ' ' \
 		); \
 	fi; \
 	if [ -n "$$_files" ]; then \
 		if [ -z "$(CHECK_GATES)" ]; then gates="lint,format,pyrefly,mypy,pyright"; fi; \
-		unsupported_gates=$$(printf '%s\n' "$$gates" | tr ',' '\n' | grep -E '^(security|markdown)$$' || true); \
+		unsupported_gates=$$(printf '%s\n' "$$gates" | tr ',' '\n' | awk '/^(security|markdown)$$/ {print}'); \
 		if [ -n "$$unsupported_gates" ]; then \
 			echo "ERROR: FILE/FILES/CHANGED_ONLY fast-path only supports lint,format,pyrefly,mypy,pyright"; \
 			exit 2; \
@@ -554,11 +554,15 @@ daemon-start-mypy: ## Start dmypy daemon for this project
 	fi
 
 daemon-stop-mypy: ## Stop dmypy daemon for this project
-	$(Q)$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" stop >/dev/null 2>&1 || true
+	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
+		$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" stop; \
+	else \
+		echo "dmypy daemon is not running"; \
+	fi
 	$(Q)rm -f "$(DMPY_SOCKET)"
 
 daemon-status-mypy: ## Show dmypy daemon status for this project
-	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status 2>/dev/null; then \
+	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
 		: ; \
 	else \
 		echo "dmypy daemon is not running"; \
@@ -585,9 +589,9 @@ daemon-stop-pyright: ## Stop pyright daemon
 		exit 0; \
 	fi
 	$(Q)pid=$$(cat "$(PYRIGHT_PIDFILE)"); \
-	if [ -n "$$pid" ] && kill -0 "$$pid" >/dev/null 2>&1; then \
-		kill "$$pid" >/dev/null 2>&1 || true; \
-		echo "Stopped pyright daemon (PID $$pid)"; \
+		if [ -n "$$pid" ] && kill -0 "$$pid"; then \
+			kill "$$pid"; \
+			echo "Stopped pyright daemon (PID $$pid)"; \
 	else \
 		echo "Pyright daemon PID file was stale"; \
 	fi; \
@@ -598,7 +602,7 @@ daemon-status-pyright: ## Show pyright daemon status
 		echo "Pyright daemon is not running"; \
 	else \
 		pid=$$(cat "$(PYRIGHT_PIDFILE)"); \
-		if [ -n "$$pid" ] && kill -0 "$$pid" >/dev/null 2>&1; then \
+		if [ -n "$$pid" ] && kill -0 "$$pid"; then \
 			echo "Pyright daemon running (PID $$pid), log: $(PYRIGHT_LOG)"; \
 		else \
 			echo "Pyright daemon not running (stale PID file cleaned)"; \

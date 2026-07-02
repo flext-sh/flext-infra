@@ -4,14 +4,30 @@
 from __future__ import annotations
 
 from flext_core.lazy import merge_lazy_imports
-from tests._exports_lazy_part_01 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01
-from tests._exports_lazy_part_02 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02
-from tests._exports_lazy_part_03 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03
-from tests._exports_lazy_part_04 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04
-from tests._exports_lazy_part_05 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05
-from tests._exports_lazy_part_06 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06
-from tests._exports_lazy_part_07 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07
-from tests._exports_lazy_part_08 import TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08
+from tests._constants._exports_lazy_part_01 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01,
+)
+from tests._constants._exports_lazy_part_02 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02,
+)
+from tests._constants._exports_lazy_part_03 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03,
+)
+from tests._constants._exports_lazy_part_04 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04,
+)
+from tests._constants._exports_lazy_part_05 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05,
+)
+from tests._constants._exports_lazy_part_06 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06,
+)
+from tests._constants._exports_lazy_part_07 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07,
+)
+from tests._constants._exports_lazy_part_08 import (
+    TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08,
+)
 
 _LOCAL_LAZY_IMPORTS = {
     **TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01,
@@ -26,6 +42,7 @@ _LOCAL_LAZY_IMPORTS = {
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS = merge_lazy_imports(
     (
+        "._constants",
         ".integration",
         ".refactor",
         ".unit",

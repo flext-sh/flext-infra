@@ -5,12 +5,13 @@ from __future__ import annotations
 
 from flext_core.lazy import build_lazy_import_map
 
-TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
+TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
-        ".base": ("TestsFlextInfraServiceBase",),
-        ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
-        ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
-        ".settings": ("TestsFlextInfraSettings",),
+        "._constants": ("_constants",),
+        ".conftest": ("conftest",),
+        ".constants": ("c",),
+        ".integration": ("integration",),
+        ".models": ("m",),
         ".typings": ("TestsFlextInfraTypes",),
         ".unit._utilities.test_discovery_consolidated": (
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
@@ -22,27 +23,11 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-        ".unit.refactor.test_infra_refactor_safety": (
-            "TestsFlextInfraRefactorInfraRefactorSafety",
-        ),
-        ".unit.refactor.test_infra_refactor_service": (
-            "TestsFlextInfraRefactorInfraRefactorService",
-        ),
-        ".unit.refactor.test_infra_refactor_typing_unifier": (
-            "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
-        ),
-        ".unit.refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
-        ".unit.release.test_release_dag": ("TestsFlextInfraReleaseDag",),
-        ".unit.test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
-        ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
-        ".unit.transformers.test_infra_transformer_class_nesting": (
-            "TestsFlextInfraTransformersInfraTransformerClassNesting",
-        ),
-        ".unit.transformers.test_infra_transformer_cli_modernizer": (
-            "TestsFlextInfraTransformersCliModernizer",
-        ),
-        ".unit.transformers.test_infra_transformer_helper_consolidation": (
-            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
+        ".unit.fixtures": (
+            "deptry_report_payload",
+            "models_resource",
+            "modernizer_workspace",
+            "modernizer_workspace_with_projects",
         ),
         ".unit.transformers.test_infra_transformer_logging_modernizer": (
             "TestsFlextInfraTransformersLoggingModernizer",
@@ -69,9 +54,18 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".unit.workspace.test_makefile_generator": (
             "TestsFlextInfraWorkspaceMakefileGenerator",
         ),
+        ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
+        ".unit.workspace.test_sync_environment": (
+            "TestsFlextInfraWorkspaceSyncEnvironment",
+        ),
         ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         ".utilities": ("TestsFlextInfraUtilities",),
+        "flext_tests": (
+            "d",
+            "e",
+            "h",
+        ),
     },
 )
 
-__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06"]
+__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07"]

@@ -41,6 +41,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".main_tests": ("main_tests",),
         ".pyrefly_tests": ("TestFlextInfraConfigFixer",),
         ".silent_failure_gate_tests": ("silent_failure_gate_tests",),
+        ".smells_gate_tests": ("smells_gate_tests",),
         ".tests_cli": ("TestWorkspaceCheckCli",),
         ".tests_workspace_check": ("tests_workspace_check",),
         ".workspace_tests": ("TestFlextInfraWorkspaceChecker",),

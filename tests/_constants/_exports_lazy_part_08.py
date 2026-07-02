@@ -5,21 +5,14 @@ from __future__ import annotations
 
 from flext_core.lazy import build_lazy_import_map
 
-TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
+TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
     {
         ".base": ("s",),
-        ".conftest": ("conftest",),
-        ".constants": ("c",),
-        ".integration": ("integration",),
-        ".models": ("m",),
         ".protocols": ("p",),
         ".refactor": ("refactor",),
         ".typings": ("t",),
+        ".unit": ("unit",),
         ".unit.fixtures": (
-            "deptry_report_payload",
-            "models_resource",
-            "modernizer_workspace",
-            "modernizer_workspace_with_projects",
             "real_docs_project",
             "real_makefile_project",
             "real_python_package",
@@ -30,22 +23,17 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "tool_config_document",
         ),
         ".unit.fixtures_git": ("real_git_repo",),
-        ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
-        ".unit.workspace.test_sync_environment": (
-            "TestsFlextInfraWorkspaceSyncEnvironment",
-        ),
+        ".utilities": ("u",),
         "flext_tests": (
-            "d",
-            "e",
-            "h",
             "r",
             "td",
             "tf",
             "tk",
             "tm",
             "tv",
+            "x",
         ),
     },
 )
 
-__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07"]
+__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08"]

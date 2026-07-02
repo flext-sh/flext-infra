@@ -5,10 +5,9 @@ from __future__ import annotations
 
 from flext_core.lazy import build_lazy_import_map
 
-TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
+TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
     {
         ".constants": ("TestsFlextInfraConstants",),
-        ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
         ".unit.basemk.test_generator_edge_cases": (
             "TestsFlextInfraBasemkGeneratorEdgeCases",
         ),
@@ -16,21 +15,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".unit.basemk.test_main": ("TestsFlextInfraBasemkMain",),
         ".unit.basemk.test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
         ".unit.basemk.test_renderer": ("TestsFlextInfraBasemkRenderer",),
-        ".unit.check.extended_cli_entry_tests": ("TestWorkspaceCheckCLI",),
-        ".unit.check.extended_models_tests": (
-            "TestProjectResultProperties",
-            "TestRunCommandGateParsing",
-            "TestWorkspaceCheckerErrorSummary",
-        ),
-        ".unit.check.extended_project_runners_tests": ("TestsExtendedProjectRunners",),
-        ".unit.check.extended_resolve_gates_tests": (
-            "TestWorkspaceCheckerResolveGates",
-        ),
-        ".unit.check.extended_run_projects_tests": ("TestRunProjectsPublicBehavior",),
-        ".unit.check.extended_runners_tests": ("TestRunnerPublicBehavior",),
-        ".unit.check.tests_cli": ("TestWorkspaceCheckCli",),
         ".unit.cli_what_selector_tests": ("TestsFlextInfraCliWhatSelector",),
-        ".unit.codegen.lazy_init_generation_tests": ("TestRunRuffFix",),
         ".unit.container.test_infra_container": (
             "TestsFlextInfraContainerInfraContainer",
         ),
@@ -50,10 +35,35 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
             "TestsFlextInfraDepsDetectorDetectFailures",
         ),
         ".unit.deps.test_detector_init": ("TestsFlextInfraDepsDetectorInit",),
-        ".unit.docs.auditor_budgets_tests": ("TestLoadAuditBudgets",),
-        ".unit.docs.shared_iter_tests": ("TestSelectedProjectNames",),
-        ".unit.validate.main_cli_tests": ("TestValidateCli",),
+        ".unit.deps.test_detector_main": ("TestsFlextInfraDepsDetectorMain",),
+        ".unit.deps.test_detector_models": ("TestsFlextInfraDepsDetectorModels",),
+        ".unit.deps.test_detector_report": ("TestsFlextInfraDepsDetectorReport",),
+        ".unit.deps.test_detector_report_flags": (
+            "TestsFlextInfraDepsDetectorReportFlags",
+        ),
+        ".unit.deps.test_extra_paths_sync": ("TestsFlextInfraDepsExtraPathsSync",),
+        ".unit.deps.test_init": ("TestsFlextInfraDepsInit",),
+        ".unit.deps.test_internal_sync_discovery": (
+            "TestsFlextInfraDepsInternalSyncDiscovery",
+        ),
+        ".unit.deps.test_internal_sync_discovery_edge": (
+            "TestsFlextInfraDepsInternalSyncDiscoveryEdge",
+        ),
+        ".unit.deps.test_internal_sync_main": ("TestsFlextInfraDepsInternalSyncMain",),
+        ".unit.deps.test_internal_sync_resolve": (
+            "TestsFlextInfraDepsInternalSyncResolve",
+        ),
+        ".unit.deps.test_internal_sync_sync": ("TestsFlextInfraDepsInternalSyncSync",),
+        ".unit.deps.test_internal_sync_sync_edge": (
+            "TestsFlextInfraDepsInternalSyncSyncEdge",
+        ),
+        ".unit.deps.test_internal_sync_sync_edge_more": (
+            "TestsFlextInfraDepsInternalSyncSyncEdgeMore",
+        ),
+        ".unit.deps.test_internal_sync_update": (
+            "TestsFlextInfraDepsInternalSyncUpdate",
+        ),
     },
 )
 
-__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02"]
+__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03"]

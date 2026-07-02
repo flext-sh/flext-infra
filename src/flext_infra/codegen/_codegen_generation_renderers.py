@@ -87,11 +87,18 @@ class FlextInfraCodegenGenerationRenderersMixin(
             return {}
         generated: dict[str, str] = {}
         part_imports: list[t.StrPair] = []
+        registry_path = Path(registry_filename)
+        part_dir = registry_path.parent
+        part_module_prefix = (
+            f"{current_pkg}.{'.'.join(part_dir.parts)}"
+            if part_dir.parts
+            else current_pkg
+        )
         for index, chunk in enumerate(chunks, start=1):
             suffix = f"{index:02d}"
             part_name = f"{registry_name}_PART_{suffix}"
-            part_file = f"_exports_lazy_part_{suffix}.py"
-            part_module = f"{current_pkg}.{part_file.removesuffix('.py')}"
+            part_file = str(part_dir / f"_exports_lazy_part_{suffix}.py")
+            part_module = f"{part_module_prefix}._exports_lazy_part_{suffix}"
             part_imports.append((part_module, part_name))
             lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(chunk)
             part_context = m.Infra.LazyInitRegistryPartRender(

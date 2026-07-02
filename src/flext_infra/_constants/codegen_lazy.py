@@ -19,6 +19,10 @@ class FlextInfraConstantsCodegenLazy:
     "Header prepended to every auto-generated ``__init__.py`` file."
     ROOT_EXPORTS_FILENAME: Final[str] = "_exports.py"
     "Root public ABI contract module consumed by lazy-init planning."
+    ROOT_EXPORTS_DIR: Final[str] = "_constants"
+    "Directory under each package where lazy-init registries must live."
+    INIT_PY: Final[str] = "__init__.py"
+    "Standard Python package initializer filename."
     INIT_PYI: Final[str] = "__init__.pyi"
     "Typing stub paired with generated thin package initializers."
     STUB_STRING_LITERAL_LIMIT: Final[int] = 50

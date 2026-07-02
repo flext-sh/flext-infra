@@ -50,7 +50,20 @@ class FlextInfraCompatibilityAliasDetector:
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return violations
         alias_renames = c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES
+        local_alias_targets = _local_alias_targets(source)
         imported_long_names: set[str] = set()
+        canonical_aliases_by_module: dict[str, set[str]] = {}
+        for from_import in u.Infra.get_absolute_from_imports(
+            ctx.rope_project,
+            resource,
+        ):
+            module_name = from_import.module_name
+            for name, alias in from_import.names_and_aliases:
+                bound_name = alias if alias is not None else name
+                if bound_name in alias_renames.values():
+                    canonical_aliases_by_module.setdefault(module_name, set()).add(
+                        bound_name
+                    )
         for from_import in u.Infra.get_absolute_from_imports(
             ctx.rope_project,
             resource,
@@ -61,6 +74,18 @@ class FlextInfraCompatibilityAliasDetector:
                 if canonical_alias is None or alias is not None:
                     continue
                 if name in imported_long_names:
+                    continue
+                if local_alias_targets.get(canonical_alias) == name:
+                    # The long name is intentionally imported to seed a local
+                    # canonical alias (e.g. ``c = FlextConstants``); not a
+                    # compatibility-alias violation.
+                    continue
+                if canonical_alias in canonical_aliases_by_module.get(
+                    module_name, set()
+                ):
+                    # The canonical short alias is also imported from the same
+                    # module; this is a re-export/facade file, not a consumer
+                    # compatibility-alias violation.
                     continue
                 imported_long_names.add(name)
                 line_number = u.Infra.find_import_line(
@@ -77,6 +102,16 @@ class FlextInfraCompatibilityAliasDetector:
                     )
                 )
         return violations
+
+
+def _local_alias_targets(source: str) -> t.StrMapping:
+    """Collect ``canonical_alias = LongFacadeName`` assignments in source."""
+    targets: dict[str, str] = {}
+    for match in c.Infra.FACADE_ALIAS_RE.finditer(source):
+        alias = match.group(1)
+        target = match.group(2)
+        targets[alias] = target
+    return targets
 
 
 __all__: list[str] = ["FlextInfraCompatibilityAliasDetector"]

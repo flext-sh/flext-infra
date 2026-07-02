@@ -17,10 +17,10 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
             "infra",
         ),
         ".base": (
-            "FlextInfraProjectSelectionServiceBase",
             "FlextInfraServiceBase",
             "s",
         ),
+        "._base_selection": ("FlextInfraProjectSelectionServiceBase",),
         ".basemk": ("basemk",),
         ".check": ("check",),
         ".cli": (

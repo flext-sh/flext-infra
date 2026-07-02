@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
+        "._constants": ("_constants",),
         "._utilities": ("_utilities",),
         "._utilities.test_discovery_consolidated": (
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
@@ -18,13 +19,25 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
         ".basemk": ("basemk",),
         ".check": ("check",),
-        ".codegen": ("codegen",),
-        ".container": ("container",),
-        ".deps": ("deps",),
-        ".discovery": ("discovery",),
-        ".docs": ("docs",),
-        ".fixtures": ("deptry_report_payload",),
-        ".github": ("github",),
+        ".refactor.test_infra_refactor_service": (
+            "TestsFlextInfraRefactorInfraRefactorService",
+        ),
+        ".refactor.test_infra_refactor_typing_unifier": (
+            "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
+        ),
+        ".refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
+        ".release.test_release_dag": ("TestsFlextInfraReleaseDag",),
+        ".test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
+        ".test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
+        ".transformers.test_infra_transformer_class_nesting": (
+            "TestsFlextInfraTransformersInfraTransformerClassNesting",
+        ),
+        ".transformers.test_infra_transformer_cli_modernizer": (
+            "TestsFlextInfraTransformersCliModernizer",
+        ),
+        ".transformers.test_infra_transformer_helper_consolidation": (
+            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
+        ),
         ".transformers.test_infra_transformer_logging_modernizer": (
             "TestsFlextInfraTransformersLoggingModernizer",
         ),
@@ -53,12 +66,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
             "TestsFlextInfraWorkspaceSyncEnvironment",
         ),
         ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
-        "flext_tests": (
-            "c",
-            "d",
-            "e",
-            "h",
-        ),
+        "flext_tests": ("c",),
     },
 )
 

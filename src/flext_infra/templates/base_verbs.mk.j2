@@ -75,14 +75,14 @@ check: ## Run lint gates (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }} to 
 	fi; \
 	if [ "$(CHANGED_ONLY)" = "1" ]; then \
 		_files=$$( \
-			{ git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py' 2>/dev/null; \
-			  git ls-files --others --exclude-standard -- '*.py' 2>/dev/null; } \
+			{ git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py'; \
+			  git ls-files --others --exclude-standard -- '*.py'; } \
 			| tr '\n' ' ' \
 		); \
 	fi; \
 	if [ -n "$$_files" ]; then \
 		if [ -z "$(CHECK_GATES)" ]; then gates="lint,format,pyrefly,mypy,pyright"; fi; \
-		unsupported_gates=$$(printf '%s\n' "$$gates" | tr ',' '\n' | grep -E '^(security|markdown)$$' || true); \
+		unsupported_gates=$$(printf '%s\n' "$$gates" | tr ',' '\n' | awk '/^(security|markdown)$$/ {print}'); \
 		if [ -n "$$unsupported_gates" ]; then \
 			echo "ERROR: FILE/FILES/CHANGED_ONLY fast-path only supports {{ make.PROJECT_FAST_PATH_CHECK_GATES }}"; \
 			exit 2; \

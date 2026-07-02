@@ -19,7 +19,15 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
         """Return thin-wrapper registry metadata for a package."""
         if not current_pkg:
             return None
+        constants_dir = pkg_dir / c.Infra.ROOT_EXPORTS_DIR
+        processing_constants = current_pkg.endswith(f".{c.Infra.ROOT_EXPORTS_DIR}")
+        if processing_constants:
+            # The ``_constants`` package itself keeps its own (usually inline)
+            # init; the parent package owns ``_constants/_exports.py``.
+            return None
         exports_path = pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME
+        if not exports_path.is_file():
+            exports_path = constants_dir / c.Infra.ROOT_EXPORTS_FILENAME
         if exports_path.is_file():
             names = FlextInfraCodegenLazyInitPlannerRegistryMixin._all_exports(
                 exports_path
@@ -43,24 +51,55 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
                 )
                 raise ValueError(msg)
             if lazy_names:
+                module_suffix = (
+                    f".{c.Infra.ROOT_EXPORTS_DIR}.{exports_path.stem}"
+                    if exports_path.parent.name == c.Infra.ROOT_EXPORTS_DIR
+                    else f".{exports_path.stem}"
+                )
                 return m.Infra.LazyInitRegistryWrapper.model_validate({
-                    "module": f"{current_pkg}.{exports_path.stem}",
+                    "module": f"{current_pkg}{module_suffix}",
                     "name": next(iter(lazy_names)),
                     "public_exports_name": next(iter(public_exports_names), None),
                     "generated": exports_path.read_text(
                         encoding=c.Cli.ENCODING_DEFAULT,
                     ).startswith(c.Infra.AUTOGEN_HEADER),
                 })
-            if current_pkg == c.Infra.DIR_TESTS or current_pkg.startswith(
-                f"{c.Infra.DIR_TESTS}."
-            ):
+            is_tests_package = (
+                current_pkg == c.Infra.DIR_TESTS
+                or current_pkg.startswith(f"{c.Infra.DIR_TESTS}.")
+            )
+            if is_tests_package:
                 msg = (
                     f"{exports_path}: tests registry must export one LAZY_IMPORTS name"
                 )
                 raise ValueError(msg)
-        module_stem = "_exports_lazy" if exports_path.is_file() else exports_path.stem
+            # Public package with existing public-only _exports.py: lazy imports
+            # live in a generated _exports_lazy sidecar.
+            return m.Infra.LazyInitRegistryWrapper.model_validate({
+                "module": f"{current_pkg}._exports_lazy",
+                "name": FlextInfraCodegenLazyInitPlannerRegistryMixin._registry_name(
+                    pkg_dir,
+                    current_pkg,
+                ),
+                "public_exports_name": next(iter(public_exports_names), None),
+                "generated": True,
+            })
+        module_stem = c.Infra.ROOT_EXPORTS_FILENAME.removesuffix(".py")
+        if processing_constants:
+            return m.Infra.LazyInitRegistryWrapper.model_validate({
+                "module": f"{current_pkg}.{module_stem}",
+                "name": FlextInfraCodegenLazyInitPlannerRegistryMixin._registry_name(
+                    pkg_dir,
+                    current_pkg,
+                ),
+                "generated": True,
+            })
         return m.Infra.LazyInitRegistryWrapper.model_validate({
-            "module": f"{current_pkg}.{module_stem}",
+            "module": (
+                f"{current_pkg}.{c.Infra.ROOT_EXPORTS_DIR}.{module_stem}"
+                if constants_dir.is_dir()
+                else f"{current_pkg}.{module_stem}"
+            ),
             "name": FlextInfraCodegenLazyInitPlannerRegistryMixin._registry_name(
                 pkg_dir,
                 current_pkg,

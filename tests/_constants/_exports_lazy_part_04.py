@@ -5,35 +5,14 @@ from __future__ import annotations
 
 from flext_core.lazy import build_lazy_import_map
 
-TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
+TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
     {
-        ".unit.deps.test_detector_main": ("TestsFlextInfraDepsDetectorMain",),
-        ".unit.deps.test_detector_models": ("TestsFlextInfraDepsDetectorModels",),
-        ".unit.deps.test_detector_report": ("TestsFlextInfraDepsDetectorReport",),
-        ".unit.deps.test_detector_report_flags": (
-            "TestsFlextInfraDepsDetectorReportFlags",
+        ".unit.deps.test_extra_paths_manager": ("TestsFlextInfraExtraPathsManager",),
+        ".unit.deps.test_extra_paths_search_paths": (
+            "TestsFlextInfraExtraPathsSearchPaths",
         ),
-        ".unit.deps.test_extra_paths_sync": ("TestsFlextInfraDepsExtraPathsSync",),
-        ".unit.deps.test_init": ("TestsFlextInfraDepsInit",),
-        ".unit.deps.test_internal_sync_discovery": (
-            "TestsFlextInfraDepsInternalSyncDiscovery",
-        ),
-        ".unit.deps.test_internal_sync_discovery_edge": (
-            "TestsFlextInfraDepsInternalSyncDiscoveryEdge",
-        ),
-        ".unit.deps.test_internal_sync_main": ("TestsFlextInfraDepsInternalSyncMain",),
-        ".unit.deps.test_internal_sync_resolve": (
-            "TestsFlextInfraDepsInternalSyncResolve",
-        ),
-        ".unit.deps.test_internal_sync_sync": ("TestsFlextInfraDepsInternalSyncSync",),
-        ".unit.deps.test_internal_sync_sync_edge": (
-            "TestsFlextInfraDepsInternalSyncSyncEdge",
-        ),
-        ".unit.deps.test_internal_sync_sync_edge_more": (
-            "TestsFlextInfraDepsInternalSyncSyncEdgeMore",
-        ),
-        ".unit.deps.test_internal_sync_update": (
-            "TestsFlextInfraDepsInternalSyncUpdate",
+        ".unit.deps.test_extra_paths_uv_sources": (
+            "TestsFlextInfraExtraPathsUvSources",
         ),
         ".unit.deps.test_internal_sync_update_checkout_edge": (
             "TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge",
@@ -71,7 +50,28 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
         ".unit.deps.test_path_sync_main_edges": (
             "TestsFlextInfraDepsPathSyncMainEdges",
         ),
+        ".unit.deps.test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
+        ".unit.deps.test_path_sync_main_project_obj": (
+            "TestsFlextInfraDepsPathSyncMainProjectObj",
+        ),
+        ".unit.deps.test_path_sync_rewrite_deps": (
+            "TestsFlextInfraDepsPathSyncRewriteDeps",
+        ),
+        ".unit.deps.test_path_sync_rewrite_pep621": (
+            "TestsFlextInfraDepsPathSyncRewritePep621",
+        ),
+        ".unit.deps.test_path_sync_rewrite_poetry": (
+            "TestsFlextInfraDepsPathSyncRewritePoetry",
+        ),
+        ".unit.discovery.test_infra_discovery_edge_cases": (
+            "TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases",
+        ),
+        ".unit.test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
+        ".unit.test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
+        ".unit.test_infra_main": ("TestsFlextInfraInfraMain",),
+        ".unit.test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
+        ".unit.test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
     },
 )
 
-__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03"]
+__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04"]

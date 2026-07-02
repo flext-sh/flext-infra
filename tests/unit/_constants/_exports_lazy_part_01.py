@@ -7,6 +7,31 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
     {
+        "._constants._exports": ("TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS",),
+        "._constants._exports_lazy_part_01": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01",
+        ),
+        "._constants._exports_lazy_part_02": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02",
+        ),
+        "._constants._exports_lazy_part_03": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_03",
+        ),
+        "._constants._exports_lazy_part_04": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04",
+        ),
+        "._constants._exports_lazy_part_05": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05",
+        ),
+        "._constants._exports_lazy_part_06": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06",
+        ),
+        "._constants._exports_lazy_part_07": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07",
+        ),
+        "._constants._exports_lazy_part_08": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08",
+        ),
         ".check.extended_config_fixer_errors_tests": ("TestConfigFixerPublicBehavior",),
         ".check.extended_config_fixer_tests": (
             "TestConfigFixerExecute",
@@ -14,28 +39,15 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
             "TestConfigFixerRun",
             "TestConfigFixerToArray",
         ),
-        ".check.extended_error_reporting_tests": (
-            "TestGateErrorReportingPublicBehavior",
-        ),
         ".check.extended_models_tests": ("TestCheckIssueFormatted",),
         ".check.extended_runners_extra_tests": ("TestExtendedRunnerExtras",),
         ".check.init_tests": ("TestFlextInfraCheck",),
         ".check.pyrefly_tests": ("TestFlextInfraConfigFixer",),
-        ".check.workspace_tests": ("TestFlextInfraWorkspaceChecker",),
-        ".codegen.lazy_init_generation_tests": (
-            "TestGenerateFile",
-            "TestGenerateTypeChecking",
-            "TestLazyInitPlannerCollision",
-        ),
         ".codegen.lazy_init_tests": (
             "TestAllDirectoriesScanned",
             "TestCheckOnlyMode",
             "TestEdgeCases",
             "TestExcludedDirectories",
-        ),
-        ".codegen.scaffolder_naming_tests": (
-            "TestGeneratedClassNamingConvention",
-            "TestGeneratedFilesAreValidPython",
         ),
         ".docs.auditor_links_tests": (
             "TestAuditorBrokenLinks",
@@ -50,13 +62,11 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
             "TestAuditorNormalize",
         ),
         ".docs.builder_tests": ("TestBuilderCore",),
-        ".docs.shared_iter_tests": ("TestIterMarkdownFiles",),
         ".refactor.test_infra_refactor_safety": ("RefactorSafetyStub",),
         ".refactor.test_infra_refactor_typing_unifier": (
             "FlextInfraRefactorTypingUnificationRule",
         ),
         ".runner_service": ("RealSubprocessRunner",),
-        ".validate.namespace_validator_tests": ("TestFlextInfraNamespaceValidator",),
     },
 )
 

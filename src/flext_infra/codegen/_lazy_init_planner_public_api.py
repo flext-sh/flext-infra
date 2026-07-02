@@ -25,7 +25,11 @@ class FlextInfraCodegenLazyInitPlannerPublicApiMixin(
     @override
     def _root_public_contract_exports(pkg_dir: Path) -> frozenset[str]:
         """Read explicit public root exports from the package ``_exports.py`` file."""
-        exports_path = pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME
+        exports_path = (
+            pkg_dir / c.Infra.ROOT_EXPORTS_DIR / c.Infra.ROOT_EXPORTS_FILENAME
+        )
+        if not exports_path.is_file():
+            exports_path = pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME
         if not exports_path.is_file():
             return frozenset()
         source = exports_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)

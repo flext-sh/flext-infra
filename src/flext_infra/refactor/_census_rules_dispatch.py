@@ -134,6 +134,19 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             )
             violations.extend(v)
             fixes.extend(f)
+        if selected("class_placement"):
+            v, f = self._rule_class_placement(
+                rope,
+                file_path,
+                project_name=project_name,
+                objects=objects,
+                applied=applied,
+                selected_kinds=resolved_kinds,
+                symbol_index=symbol_index,
+                convention=resolved_convention,
+            )
+            violations.extend(v)
+            fixes.extend(f)
         if selected("compatibility_alias"):
             v, f = self._rule_compatibility_alias(
                 rope,

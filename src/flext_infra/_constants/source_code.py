@@ -603,10 +603,54 @@ class FlextInfraConstantsSourceCode:
         "TimestampedModel",
     })
     "Pydantic model base class names for placement detection."
+    PLACEMENT_PROTOCOL_BASE_NAMES: Final[frozenset[str]] = frozenset({
+        "Protocol",
+    })
+    "Protocol base class names for placement detection."
+    PLACEMENT_ENUM_BASE_NAMES: Final[frozenset[str]] = frozenset({
+        "StrEnum",
+        "IntEnum",
+        "Enum",
+    })
+    "Enum base class names for placement detection."
+    PLACEMENT_UTILITY_NAME_SUFFIXES: Final[frozenset[str]] = frozenset({
+        "Utilities",
+        "Utility",
+    })
+    "Class-name suffixes that identify a utility class for placement detection."
     PLACEMENT_CANONICAL_MODEL_FILES: Final[frozenset[str]] = frozenset({
         "models.py",
     })
     "Canonical file names where Pydantic models should live."
+    PLACEMENT_CANONICAL_PROTOCOL_FILES: Final[frozenset[str]] = frozenset({
+        "protocols.py",
+    })
+    "Canonical file names where Protocol classes should live."
+    PLACEMENT_CANONICAL_CONSTANTS_FILES: Final[frozenset[str]] = frozenset({
+        "constants.py",
+    })
+    "Canonical file names where Enum constants should live."
+    PLACEMENT_CANONICAL_UTILITY_FILES: Final[frozenset[str]] = frozenset({
+        "utilities.py",
+    })
+    "Canonical file names where utility classes should live."
+    PLACEMENT_CANONICAL_MODEL_DIRS: Final[frozenset[str]] = frozenset({
+        "_models",
+        "models",
+    })
+    "Canonical directory names where Pydantic models should live."
+    PLACEMENT_CANONICAL_PROTOCOL_DIRS: Final[frozenset[str]] = frozenset({
+        "_protocols",
+    })
+    "Canonical directory names where Protocol classes should live."
+    PLACEMENT_CANONICAL_CONSTANTS_DIRS: Final[frozenset[str]] = frozenset({
+        "_constants",
+    })
+    "Canonical directory names where Enum constants should live."
+    PLACEMENT_CANONICAL_UTILITY_DIRS: Final[frozenset[str]] = frozenset({
+        "_utilities",
+    })
+    "Canonical directory names where utility classes should live."
 
     # --- Shared threshold constants (was: class Thresholds) ---
     MIN_UNION_MEMBERS: Final[int] = 2

@@ -9,9 +9,6 @@ from flext_cli import cli, p as cli_p, u as cli_u
 from flext_core import s
 from flext_infra import c, m, p, t
 from flext_infra._base_payload import FlextInfraCommandPayloadMixin
-from flext_infra._base_projects import (
-    FlextInfraProjectSelectionMixin,
-)
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 
 
@@ -188,22 +185,9 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         return params.execute()
 
 
-class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
-    FlextInfraServiceBase[TDomainResult],
-    FlextInfraProjectSelectionMixin,
-):
-    """Shared service foundation for commands that target workspace projects."""
-
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        m.Field(alias="projects", description="Projects to process"),
-    ] = None
-
-
 s = FlextInfraServiceBase
 
 __all__: list[str] = [
-    "FlextInfraProjectSelectionServiceBase",
     "FlextInfraServiceBase",
     "s",
 ]

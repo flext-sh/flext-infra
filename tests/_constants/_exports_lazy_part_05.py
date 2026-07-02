@@ -5,36 +5,36 @@ from __future__ import annotations
 
 from flext_core.lazy import build_lazy_import_map
 
-TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
+TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
     {
-        ".unit.deps.test_extra_paths_manager": ("TestsFlextInfraExtraPathsManager",),
-        ".unit.deps.test_extra_paths_search_paths": (
-            "TestsFlextInfraExtraPathsSearchPaths",
+        ".integration.test_infra_integration": (
+            "TestsFlextInfraIntegrationInfraIntegration",
         ),
-        ".unit.deps.test_extra_paths_uv_sources": (
-            "TestsFlextInfraExtraPathsUvSources",
+        ".integration.test_refactor_nesting_file": (
+            "TestsFlextInfraIntegrationRefactorNestingFile",
         ),
-        ".unit.deps.test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
-        ".unit.deps.test_path_sync_main_project_obj": (
-            "TestsFlextInfraDepsPathSyncMainProjectObj",
+        ".integration.test_refactor_nesting_idempotency": (
+            "TestsFlextInfraIntegrationRefactorNestingIdempotency",
         ),
-        ".unit.deps.test_path_sync_rewrite_deps": (
-            "TestsFlextInfraDepsPathSyncRewriteDeps",
+        ".integration.test_refactor_nesting_performance": (
+            "TestsFlextInfraIntegrationRefactorNestingPerformance",
         ),
-        ".unit.deps.test_path_sync_rewrite_pep621": (
-            "TestsFlextInfraDepsPathSyncRewritePep621",
+        ".integration.test_refactor_nesting_project": (
+            "TestsFlextInfraIntegrationRefactorNestingProject",
         ),
-        ".unit.deps.test_path_sync_rewrite_poetry": (
-            "TestsFlextInfraDepsPathSyncRewritePoetry",
+        ".integration.test_refactor_nesting_workspace": (
+            "TestsFlextInfraIntegrationRefactorNestingWorkspace",
         ),
-        ".unit.discovery.test_infra_discovery_edge_cases": (
-            "TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases",
+        ".integration.test_refactor_policy_mro": (
+            "TestsFlextInfraIntegrationRefactorPolicyMro",
         ),
-        ".unit.test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
-        ".unit.test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
-        ".unit.test_infra_main": ("TestsFlextInfraInfraMain",),
-        ".unit.test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
-        ".unit.test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
+        ".unit.codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
+        ".unit.codegen.lazy_init_transforms_tests": (
+            "TestsFlextInfraLazyInitTransforms",
+        ),
+        ".unit.io.test_infra_terminal_detection": (
+            "TestsFlextInfraIoInfraTerminalDetection",
+        ),
         ".unit.test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
         ".unit.test_infra_maintenance_python_version": (
             "TestsFlextInfraInfraMaintenancePythonVersion",
@@ -61,7 +61,19 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
         ".unit.test_infra_workspace_migrator": (
             "TestsFlextInfraInfraWorkspaceMigrator",
         ),
+        ".unit.test_infra_workspace_migrator_deps": (
+            "TestsFlextInfraInfraWorkspaceMigratorDeps",
+        ),
+        ".unit.test_infra_workspace_migrator_dryrun": (
+            "TestsFlextInfraInfraWorkspaceMigratorDryrun",
+        ),
+        ".unit.test_infra_workspace_migrator_internal": (
+            "TestsFlextInfraInfraWorkspaceMigratorInternal",
+        ),
+        ".unit.test_infra_workspace_orchestrator": (
+            "TestsFlextInfraInfraWorkspaceOrchestrator",
+        ),
     },
 )
 
-__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04"]
+__all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05"]

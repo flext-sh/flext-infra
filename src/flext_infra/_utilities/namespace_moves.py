@@ -226,9 +226,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             if violation.module_name:
                 import_grouped[Path(violation.file)].append(violation)
             else:
-                assignment_grouped[Path(violation.file)][
-                    violation.alias_name
-                ] = violation.target_name
+                assignment_grouped[Path(violation.file)][violation.alias_name] = (
+                    violation.target_name
+                )
         for file_path, alias_map in assignment_grouped.items():
             FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_compat_aliases_in_file(
                 file_path=file_path,

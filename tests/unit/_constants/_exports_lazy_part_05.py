@@ -58,17 +58,18 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".refactor.test_infra_refactor_safety": (
             "TestsFlextInfraRefactorInfraRefactorSafety",
         ),
-        ".refactor.test_infra_refactor_service": (
-            "TestsFlextInfraRefactorInfraRefactorService",
-        ),
-        ".refactor.test_infra_refactor_typing_unifier": (
-            "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
-        ),
-        ".refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
-        ".release.test_release_dag": ("TestsFlextInfraReleaseDag",),
         ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
-        ".test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
-        ".test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
+        ".test_infra_selection": ("TestsFlextInfraInfraSelection",),
+        ".test_infra_typings": ("TestsFlextInfraInfraTypings",),
+        ".test_infra_utilities": ("TestsFlextInfraInfraUtilities",),
+        ".test_infra_version_core": ("TestsFlextInfraInfraVersionCore",),
+        ".test_infra_version_extra": ("TestsFlextInfraInfraVersionExtra",),
+        ".test_infra_versioning": ("TestsFlextInfraInfraVersioning",),
+        ".test_infra_workspace_detector": ("TestsFlextInfraInfraWorkspaceDetector",),
+        ".test_infra_workspace_migrator": ("TestsFlextInfraInfraWorkspaceMigrator",),
+        ".test_infra_workspace_migrator_deps": (
+            "TestsFlextInfraInfraWorkspaceMigratorDeps",
+        ),
         ".test_infra_workspace_migrator_dryrun": (
             "TestsFlextInfraInfraWorkspaceMigratorDryrun",
         ),
@@ -77,15 +78,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ),
         ".test_infra_workspace_orchestrator": (
             "TestsFlextInfraInfraWorkspaceOrchestrator",
-        ),
-        ".transformers.test_infra_transformer_class_nesting": (
-            "TestsFlextInfraTransformersInfraTransformerClassNesting",
-        ),
-        ".transformers.test_infra_transformer_cli_modernizer": (
-            "TestsFlextInfraTransformersCliModernizer",
-        ),
-        ".transformers.test_infra_transformer_helper_consolidation": (
-            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
         ),
     },
 )

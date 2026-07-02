@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.silent_failure import (
         FlextInfraSilentFailureGate as FlextInfraSilentFailureGate,
     )
+    from flext_infra.gates.smells import FlextInfraSmellsGate as FlextInfraSmellsGate
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
@@ -42,6 +43,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".ruff_format": ("FlextInfraRuffFormatGate",),
         ".ruff_lint": ("FlextInfraRuffLintGate",),
         ".silent_failure": ("FlextInfraSilentFailureGate",),
+        ".smells": ("FlextInfraSmellsGate",),
     },
 )
 

@@ -8,6 +8,15 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra._constants._exports import (
+        FLEXT_INFRA_LAZY_IMPORTS as FLEXT_INFRA_LAZY_IMPORTS,
+    )
+    from flext_infra._constants._exports_lazy_part_01 import (
+        FLEXT_INFRA_LAZY_IMPORTS_PART_01 as FLEXT_INFRA_LAZY_IMPORTS_PART_01,
+    )
+    from flext_infra._constants._exports_lazy_part_02 import (
+        FLEXT_INFRA_LAZY_IMPORTS_PART_02 as FLEXT_INFRA_LAZY_IMPORTS_PART_02,
+    )
     from flext_infra._constants.base import (
         FlextInfraConstantsBase as FlextInfraConstantsBase,
     )
@@ -19,6 +28,14 @@ if TYPE_CHECKING:
     )
     from flext_infra._constants.check import (
         FlextInfraConstantsCheck as FlextInfraConstantsCheck,
+    )
+    from flext_infra._constants.cli import (
+        FlextInfraConstantsCli as FlextInfraConstantsCli,
+    )
+    from flext_infra._constants.cli_routes import (
+        CODEGEN_ROUTES as CODEGEN_ROUTES,
+        VALIDATE_ROUTES as VALIDATE_ROUTES,
+        WORKSPACE_ROUTES as WORKSPACE_ROUTES,
     )
     from flext_infra._constants.codegen import (
         FlextInfraConstantsCodegen as FlextInfraConstantsCodegen,
@@ -67,10 +84,19 @@ if TYPE_CHECKING:
     )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        "._exports": ("FLEXT_INFRA_LAZY_IMPORTS",),
+        "._exports_lazy_part_01": ("FLEXT_INFRA_LAZY_IMPORTS_PART_01",),
+        "._exports_lazy_part_02": ("FLEXT_INFRA_LAZY_IMPORTS_PART_02",),
         ".base": ("FlextInfraConstantsBase",),
         ".basemk": ("FlextInfraConstantsBasemk",),
         ".census": ("FlextInfraConstantsCensus",),
         ".check": ("FlextInfraConstantsCheck",),
+        ".cli": ("FlextInfraConstantsCli",),
+        ".cli_routes": (
+            "CODEGEN_ROUTES",
+            "VALIDATE_ROUTES",
+            "WORKSPACE_ROUTES",
+        ),
         ".codegen": ("FlextInfraConstantsCodegen",),
         ".codegen_detection": ("FlextInfraConstantsCodegenDetection",),
         ".codegen_lazy": ("FlextInfraConstantsCodegenLazy",),

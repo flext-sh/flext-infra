@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, p, t
+from flext_infra.detectors.class_placement_detector import (
+    FlextInfraClassPlacementDetector,
+)
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
@@ -51,6 +54,61 @@ class FlextInfraRefactorCensusRulesStructMixin:
         def _named_object(
             objects: tuple[m.Infra.Census.Object, ...], name: str
         ) -> m.Infra.Census.Object | None: ...
+
+    def _rule_class_placement(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        *,
+        project_name: str,
+        objects: tuple[m.Infra.Census.Object, ...] | None,
+        applied: frozenset[str],
+        selected_kinds: frozenset[str],
+        symbol_index: dict[str, tuple[str, int]],
+        convention: m.Infra.RopeModuleConvention,
+    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+        """Detect + plan fixes for misplaced class declarations."""
+        ctx = self._detector_context(rope, file_path, convention=convention)
+        violations: list[m.Infra.Census.Violation] = []
+        fixes: list[m.Infra.Census.Fix] = []
+        for detector_violation in FlextInfraClassPlacementDetector.detect_file(ctx):
+            matched = (
+                self._named_object(objects, detector_violation.name)
+                if objects is not None
+                else None
+            )
+            object_kind = matched.kind if matched is not None else "class"
+            if selected_kinds and object_kind not in selected_kinds:
+                continue
+            action = "relocate_class_placement"
+            violations.append(
+                self._raw_violation(
+                    project=project_name,
+                    object_name=detector_violation.name,
+                    object_kind=object_kind,
+                    kind="class_placement",
+                    file_path=file_path,
+                    line=detector_violation.line,
+                    description=detector_violation.suggestion,
+                    fixable=False,
+                    fix_action=action,
+                )
+            )
+            fixes.append(
+                m.Infra.Census.Fix(
+                    object_name=detector_violation.name,
+                    action=action,
+                    source_file=str(file_path),
+                    files_changed=1,
+                    applied=self._fix_key(
+                        file_path,
+                        detector_violation.name,
+                        action,
+                    )
+                    in applied,
+                )
+            )
+        return violations, fixes
 
     def _rule_compatibility_alias(
         self,

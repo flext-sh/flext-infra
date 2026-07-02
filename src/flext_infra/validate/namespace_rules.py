@@ -134,9 +134,7 @@ class FlextInfraNamespaceRules:
         """
         outer_classes = self._outer_classes(tree)
         public_classes = [
-            cls
-            for cls in outer_classes
-            if not getattr(cls, "name", "").startswith("_")
+            cls for cls in outer_classes if not getattr(cls, "name", "").startswith("_")
         ]
         messages: list[str] = []
         expected_prefix = f"Tests{prefix}" if is_test_file else prefix

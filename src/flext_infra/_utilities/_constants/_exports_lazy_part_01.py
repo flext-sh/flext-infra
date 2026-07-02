@@ -7,13 +7,19 @@ from flext_core.lazy import build_lazy_import_map
 
 FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
     {
+        "._constants._exports": ("FLEXT_INFRA__UTILITIES_LAZY_IMPORTS",),
+        "._constants._exports_lazy_part_01": (
+            "FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_01",
+        ),
+        "._constants._exports_lazy_part_02": (
+            "FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_02",
+        ),
+        "._constants._exports_lazy_part_03": (
+            "FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_03",
+        ),
         "._docs_audit_detectors": ("FlextInfraUtilitiesDocsAuditDetectorsMixin",),
         "._docs_scope_build": ("FlextInfraUtilitiesDocsScopeBuildMixin",),
         "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
-        "._exports": ("FLEXT_INFRA__UTILITIES_LAZY_IMPORTS",),
-        "._exports_lazy_part_01": ("FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_01",),
-        "._exports_lazy_part_02": ("FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_02",),
-        "._exports_lazy_part_03": ("FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_03",),
         "._github_pr_single": ("FlextInfraUtilitiesGithubPrSingleMixin",),
         "._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
         ".base": ("FlextInfraUtilitiesBase",),

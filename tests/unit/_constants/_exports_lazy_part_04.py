@@ -12,6 +12,15 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
             "TestsFlextInfraExtraPathsSearchPaths",
         ),
         ".deps.test_extra_paths_uv_sources": ("TestsFlextInfraExtraPathsUvSources",),
+        ".deps.test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
+        ".deps.test_modernizer_pyright": ("TestsFlextInfraDepsModernizerPyright",),
+        ".deps.test_modernizer_pytest": ("TestsFlextInfraDepsModernizerPytest",),
+        ".deps.test_modernizer_tooling": ("TestsFlextInfraDepsModernizerTooling",),
+        ".deps.test_modernizer_workspace": ("TestsFlextInfraDepsModernizerWorkspace",),
+        ".deps.test_path_sync_init": ("TestsFlextInfraDepsPathSyncInit",),
+        ".deps.test_path_sync_main": ("TestsFlextInfraDepsPathSyncMain",),
+        ".deps.test_path_sync_main_edges": ("TestsFlextInfraDepsPathSyncMainEdges",),
+        ".deps.test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
         ".deps.test_path_sync_main_project_obj": (
             "TestsFlextInfraDepsPathSyncMainProjectObj",
         ),
@@ -46,17 +55,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
         ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
         ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
         ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
-        ".test_infra_selection": ("TestsFlextInfraInfraSelection",),
-        ".test_infra_typings": ("TestsFlextInfraInfraTypings",),
-        ".test_infra_utilities": ("TestsFlextInfraInfraUtilities",),
-        ".test_infra_version_core": ("TestsFlextInfraInfraVersionCore",),
-        ".test_infra_version_extra": ("TestsFlextInfraInfraVersionExtra",),
-        ".test_infra_versioning": ("TestsFlextInfraInfraVersioning",),
-        ".test_infra_workspace_detector": ("TestsFlextInfraInfraWorkspaceDetector",),
-        ".test_infra_workspace_migrator": ("TestsFlextInfraInfraWorkspaceMigrator",),
-        ".test_infra_workspace_migrator_deps": (
-            "TestsFlextInfraInfraWorkspaceMigratorDeps",
-        ),
     },
 )
 

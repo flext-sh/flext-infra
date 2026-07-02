@@ -4,13 +4,13 @@
 from __future__ import annotations
 
 from flext_core.lazy import merge_lazy_imports
-from flext_infra._utilities._exports_lazy_part_01 import (
+from flext_infra._utilities._constants._exports_lazy_part_01 import (
     FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_01,
 )
-from flext_infra._utilities._exports_lazy_part_02 import (
+from flext_infra._utilities._constants._exports_lazy_part_02 import (
     FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_02,
 )
-from flext_infra._utilities._exports_lazy_part_03 import (
+from flext_infra._utilities._constants._exports_lazy_part_03 import (
     FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_03,
 )
 
@@ -21,7 +21,7 @@ _LOCAL_LAZY_IMPORTS = {
 }
 
 FLEXT_INFRA__UTILITIES_LAZY_IMPORTS = merge_lazy_imports(
-    (),
+    ("._constants",),
     _LOCAL_LAZY_IMPORTS,
     exclude_names=(
         "cleanup_submodule_namespace",

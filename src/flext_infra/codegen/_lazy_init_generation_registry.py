@@ -53,18 +53,27 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 )
                 return -1
             return 0
+        registry_dir = self._registry_dir_for_module(
+            plan.context.pkg_dir,
+            registry.module,
+        )
+        registry_rel_module = registry.module.removeprefix(
+            f"{plan.context.current_pkg}."
+        )
+        registry_filename = f"{registry_rel_module.replace('.', '/')}.py"
         files = FlextInfraCodegenGeneration.generate_registry_files(
             plan.context.current_pkg,
             registry.name,
             plan.lazy_map,
             plan.child_packages_for_lazy,
             plan.excluded_lazy_names,
-            registry_filename=f"{registry.module.rsplit('.', maxsplit=1)[-1]}.py",
+            registry_filename=registry_filename,
         )
         if not files:
             self._remove_generated_typing_stub(plan)
             return 0
         try:
+            self._ensure_constants_init(registry_dir)
             self._remove_stale_registry_parts(plan, frozenset(files))
             for relative_name, content in files.items():
                 self._write_changed_generated_file(
@@ -130,14 +139,46 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         expected_names: frozenset[str],
     ) -> None:
         """Remove generated registry part files no longer referenced."""
-        for path in sorted(plan.context.pkg_dir.glob("_exports_lazy_part_*.py")):
-            if path.name in expected_names:
-                continue
-            previous = self._read_generated_file(path)
-            if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
-                continue
-            path.unlink()
-            self._modified_files.add(str(path))
+        registry_dir = self._registry_dir_for_module(
+            plan.context.pkg_dir,
+            plan.registry_wrapper.module if plan.registry_wrapper else "",
+        )
+        for base_dir in {plan.context.pkg_dir, registry_dir}:
+            for path in sorted(base_dir.glob("_exports_lazy_part_*.py")):
+                relative = str(path.relative_to(plan.context.pkg_dir))
+                if relative in expected_names:
+                    continue
+                previous = self._read_generated_file(path)
+                if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
+                    continue
+                path.unlink()
+                self._modified_files.add(str(path))
+
+    @staticmethod
+    def _registry_dir_for_module(pkg_dir: Path, module: str) -> Path:
+        """Return the directory where a registry module's files must live."""
+        suffix = f".{c.Infra.ROOT_EXPORTS_DIR}.{c.Infra.ROOT_EXPORTS_FILENAME.removesuffix('.py')}"
+        if module.endswith(suffix):
+            return pkg_dir / c.Infra.ROOT_EXPORTS_DIR
+        return pkg_dir
+
+    def _ensure_constants_init(self, registry_dir: Path) -> None:
+        """Create a minimal ``_constants/__init__.py`` when missing."""
+        if registry_dir.name != c.Infra.ROOT_EXPORTS_DIR:
+            return
+        init_path = registry_dir / c.Infra.INIT_PY
+        if init_path.is_file():
+            return
+        content = (
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            f'"""Constants package."""\n\n'
+            f"from __future__ import annotations\n"
+        )
+        write_result = u.Cli.atomic_write_text_file(init_path, content)
+        if write_result.failure:
+            message = f"writing {init_path}: {write_result.error}"
+            raise OSError(message)
+        self._modified_files.add(str(init_path))
 
     def _write_changed_generated_file(self, path: Path, generated: str) -> None:
         """Write generated support files when content changed."""
