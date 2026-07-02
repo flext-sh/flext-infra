@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_cli import u as cli_u
 from flext_infra import main as infra_main
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
@@ -113,6 +114,50 @@ class TestSilentFailureValidator:
         error = result.error or ""
         tm.that(error, has="silent-failure-guard")
         tm.that(error, has="silent-failure-except")
+
+    def test_execute_json_output_format_emits_full_report(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        _create_silent_failure_project(tmp_path)
+        result = FlextInfraSilentFailureValidator(
+            workspace=tmp_path,
+            project_filter="flext-infra",
+            output_format="json",
+        ).execute()
+
+        tm.that(result.failure, eq=True)
+        report = cli_u.Cli.json_loads(result.error or "").unwrap()
+        tm.that(report["passed"], eq=False)
+        tm.that(len(report["violations"]), eq=3)
+        tm.that(report["summary"], has="found 3 issue(s)")
+
+    def test_execute_text_output_reports_all_findings_uncapped(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        finding_count = 25
+        source = "from __future__ import annotations\n\n" + "\n".join(
+            f"def run_guard_{index:02d}(res: p.Result[bool]) -> p.Result[bool]:\n"
+            "    if res.failure:\n"
+            "        return False\n"
+            "    return r[bool].ok(True)\n"
+            for index in range(finding_count)
+        )
+        _ = u.Tests.create_codegen_project(
+            tmp_path=tmp_path,
+            name="flext-infra",
+            pkg_name="flext_infra",
+            files={"utilities.py": source},
+        )
+        result = FlextInfraSilentFailureValidator(
+            workspace=tmp_path,
+            project_filter="flext-infra",
+        ).execute()
+
+        tm.fail(result, has=f"found {finding_count} issue(s)")
+        error = result.error or ""
+        tm.that(error.count("silent-failure-guard"), eq=finding_count)
 
     def test_validate_cli_route_returns_non_zero_for_violations(
         self,

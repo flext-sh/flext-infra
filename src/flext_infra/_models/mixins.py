@@ -120,7 +120,17 @@ class FlextInfraModelsMixins:
                 },
             ),
         ] = False
-        diff: Annotated[bool, m.Field(description="Show diff without applying")] = False
+        diff: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Show the unified diff --apply would produce. WARNING: "
+                    "NOT read-only — the implementing verb (namespace-enforce) "
+                    "rewrites files in place, captures the diff, then restores "
+                    "originals. Never use for read-only baselines."
+                ),
+            ),
+        ] = False
         rollback: Annotated[
             bool, m.Field(description="Enable automatic rollback on gate failure")
         ] = True

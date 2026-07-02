@@ -19,7 +19,8 @@ class FlextInfraClassPlacementDetector:
         """Detect misplaced Pydantic model classes."""
         if (
             ctx.file_path.name in c.Infra.PLACEMENT_CANONICAL_MODEL_FILES
-            or "models" in ctx.file_path.parts
+            or c.Infra.MRO_MODELS_DIRECTORIES.intersection(ctx.file_path.parts)
+            or u.Infra.matches_root_namespace_file(ctx.file_path.name)
         ):
             return []
         res = u.Infra.fetch_python_resource(

@@ -258,12 +258,22 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Canonical protocols module file names."
     MRO_PROTOCOLS_DIRECTORY: Final[str] = "protocols"
     "Canonical protocols package directory name."
+    MRO_PROTOCOLS_DIRECTORIES: Final[frozenset[str]] = frozenset({
+        MRO_PROTOCOLS_DIRECTORY,
+        f"_{MRO_PROTOCOLS_DIRECTORY}",
+    })
+    "Sanctioned protocol package directory names (public and private)."
     MRO_MODELS_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "models.py",
     })
     "Canonical models module file names."
     MRO_MODELS_DIRECTORY: Final[str] = "models"
     "Canonical models package directory name."
+    MRO_MODELS_DIRECTORIES: Final[frozenset[str]] = frozenset({
+        MRO_MODELS_DIRECTORY,
+        f"_{MRO_MODELS_DIRECTORY}",
+    })
+    "Sanctioned model package directory names (public and private)."
     MRO_UTILITIES_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "utilities.py",
         "_utilities.py",

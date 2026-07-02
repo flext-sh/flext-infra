@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_infra import m, p, r, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
@@ -82,7 +82,11 @@ class FlextInfraSilentFailureValidator(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Execute silent-failure validation and collapse the report to `r[bool]`."""
+        """Execute silent-failure validation and collapse the report to `r[bool]`.
+
+        Failure details honor ``--output-format`` (json emits the full report
+        model) and always carry ALL findings — no display truncation.
+        """
         report_result = self.build_report()
         if report_result.failure:
             return r[bool].fail(
@@ -91,7 +95,11 @@ class FlextInfraSilentFailureValidator(s[bool]):
         report = report_result.value
         if report.passed:
             return r[bool].ok(True)
-        details = "\n".join([report.summary, *report.violations[:20]])
+        details = (
+            report.model_dump_json()
+            if self.output_format == c.Cli.OutputFormats.JSON
+            else "\n".join([report.summary, *report.violations])
+        )
         return r[bool].fail(details)
 
 

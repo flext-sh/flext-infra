@@ -19,7 +19,7 @@ class FlextInfraManualProtocolDetector:
         """Detect Protocol classes outside canonical locations."""
         if (
             ctx.file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
-            or c.Infra.MRO_PROTOCOLS_DIRECTORY in ctx.file_path.parts
+            or c.Infra.MRO_PROTOCOLS_DIRECTORIES.intersection(ctx.file_path.parts)
         ):
             return []
         if ctx.file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:

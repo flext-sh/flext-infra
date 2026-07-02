@@ -101,6 +101,51 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
 
         assert violations == []
 
+    def test_skips_private_models_directory(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        models_dir = tmp_path / "_models"
+        models_dir.mkdir(parents=True)
+        target = models_dir / "domain.py"
+        target.write_text(
+            "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraClassPlacementDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
+
+        assert violations == []
+
+    def test_skips_sanctioned_root_namespace_files(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        for file_name in ("result.py", "lazy.py", "mixins.py"):
+            target = tmp_path / file_name
+            target.write_text(
+                "from pydantic import BaseModel\n"
+                "class PublicModel(BaseModel):\n"
+                "    pass\n",
+                encoding="utf-8",
+            )
+
+            violations = FlextInfraClassPlacementDetector.detect_file(
+                m.Infra.DetectorContext(
+                    file_path=target,
+                    rope_project=rope_project,
+                ),
+            )
+
+            assert violations == [], file_name
+
     def test_skips_settings_file(
         self,
         tmp_path: Path,

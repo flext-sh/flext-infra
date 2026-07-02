@@ -52,7 +52,12 @@ class FlextInfraModelsRefactor(
         mm.WriteMixin,
         m.ContractModel,
     ):
-        """CLI/service request for namespace enforcement."""
+        """CLI/service request for namespace enforcement.
+
+        WARNING: ``--diff`` is NOT read-only — it applies rewrites, captures
+        the diff, then restores originals. Never use it for read-only
+        baselines; use the default dry-run scan instead.
+        """
 
     class ModernizeInput(
         mm.WriteMixin,

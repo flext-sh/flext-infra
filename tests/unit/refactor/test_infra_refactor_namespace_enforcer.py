@@ -7,7 +7,13 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
+from flext_infra.detectors.manual_protocol_detector import (
+    FlextInfraManualProtocolDetector,
+)
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_infra.refactor.namespace_enforcer_phases import (
+    FlextInfraNamespaceEnforcerPhasesMixin,
+)
 from tests.models import m
 from tests.typings import t
 
@@ -133,6 +139,156 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(report.total_internal_import_violations, gt=0)
         rendered = FlextInfraNamespaceEnforcer.render_text(report)
         tm.that(rendered, has="Internal import violations:")
+
+    def test_manual_protocol_detector_sanctions_private_protocols_directory(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        proto_dir = tmp_path / "_protocols"
+        proto_dir.mkdir(parents=True)
+        target = proto_dir / "base.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "from typing import Protocol\n\n"
+            "class BaseContract(Protocol):\n"
+            "    def run(self) -> str: ...\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraManualProtocolDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that(violations, empty=True)
+
+    def test_manual_protocol_detector_sanctions_canonical_protocols_file(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "protocols.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "from typing import Protocol\n\n"
+            "class BaseContract(Protocol):\n"
+            "    def run(self) -> str: ...\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraManualProtocolDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that(violations, empty=True)
+
+    def test_manual_protocol_detector_flags_protocol_in_service_module(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "service.py"
+        target.write_text(
+            "from __future__ import annotations\n"
+            "from typing import Protocol\n\n"
+            "class ServiceContract(Protocol):\n"
+            "    def run(self) -> str: ...\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraManualProtocolDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].name, eq="ServiceContract")
+
+    def test_namespace_enforcer_exempts_same_package_facade_assembly_imports(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        project = workspace / "sample-proj"
+        pkg = project / "src" / "sample_pkg"
+        parts_pkg = pkg / "_parts"
+        parts_pkg.mkdir(parents=True)
+        _ = (project / "pyproject.toml").write_text(
+            "[project]\nname='sample'\n",
+            encoding="utf-8",
+        )
+        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (parts_pkg / "impl.py").write_text(
+            "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
+            encoding="utf-8",
+        )
+        _ = (pkg / "service.py").write_text(
+            "from __future__ import annotations\n"
+            "from sample_pkg._parts.impl import PartsImpl\n\n"
+            "_ = PartsImpl\n",
+            encoding="utf-8",
+        )
+
+        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+            apply=False,
+        )
+
+        tm.that(report.total_internal_import_violations, eq=0)
+
+    def test_namespace_enforcer_flags_cross_package_private_import_from_tests_tree(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        project = workspace / "sample-proj"
+        pkg = project / "src" / "sample_pkg"
+        parts_pkg = pkg / "_parts"
+        tests_dir = project / "tests"
+        parts_pkg.mkdir(parents=True)
+        tests_dir.mkdir(parents=True)
+        _ = (project / "pyproject.toml").write_text(
+            "[project]\nname='sample'\n",
+            encoding="utf-8",
+        )
+        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (parts_pkg / "impl.py").write_text(
+            "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
+            encoding="utf-8",
+        )
+        _ = (tests_dir / "helper.py").write_text(
+            "from __future__ import annotations\n"
+            "from sample_pkg._parts.impl import PartsImpl\n\n"
+            "_ = PartsImpl\n",
+            encoding="utf-8",
+        )
+
+        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+            apply=False,
+        )
+
+        tm.that(report.total_internal_import_violations, eq=1)
+        violation = report.projects[0].internal_import_violations[0]
+        tm.that(violation.file.replace("\\", "/"), has="tests/helper.py")
+
+    def test_namespace_enforce_diff_documents_non_read_only_behavior(self) -> None:
+        description = (
+            m.Infra.RefactorNamespaceEnforceInput.model_fields["diff"].description or ""
+        )
+        tm.that(description, has="NOT read-only")
+        docstring = FlextInfraNamespaceEnforcerPhasesMixin.diff.__doc__ or ""
+        tm.that(docstring, has="NOT read-only")
 
     def test_loose_object_detector_detects_module_logger_assignment(
         self,

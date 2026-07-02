@@ -100,6 +100,12 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
     ) -> str:
         """Run enforce with apply in diff mode: apply, capture diff, restore originals.
 
+        WARNING: NOT read-only. This mode rewrites files in place with
+        ``enforce(apply=True)``, captures the unified diff, then restores the
+        original contents; files created during the run are deleted on the
+        restore path. Never use it for read-only baselines — use
+        ``enforce(apply=False)`` (the default dry-run scan) instead.
+
         Returns:
             Unified diff string showing all changes that --apply would make.
 
