@@ -13,6 +13,15 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
     """Resolve thin-wrapper registry metadata for generated lazy init files."""
 
     @staticmethod
+    def _wrapper_segment_index(current_pkg: str, wrapper_segment: str) -> int | None:
+        """Return the index of a project-root wrapper segment in ``current_pkg``."""
+        segments = tuple(segment for segment in current_pkg.split(".") if segment)
+        for index, segment in enumerate(segments):
+            if segment == wrapper_segment:
+                return index
+        return None
+
+    @staticmethod
     def _lazy_import_registry_wrapper(
         pkg_dir: Path,
         current_pkg: str,
@@ -66,8 +75,11 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
                     ).startswith(c.Infra.AUTOGEN_HEADER),
                 })
             is_tests_package = (
-                current_pkg == c.Infra.DIR_TESTS
-                or current_pkg.startswith(f"{c.Infra.DIR_TESTS}.")
+                FlextInfraCodegenLazyInitPlannerRegistryMixin._wrapper_segment_index(
+                    current_pkg,
+                    c.Infra.DIR_TESTS,
+                )
+                is not None
             )
             if is_tests_package:
                 msg = (
@@ -103,14 +115,23 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
     def _registry_name(pkg_dir: Path, current_pkg: str) -> str:
         """Return the canonical lazy registry symbol for a package."""
         segments = tuple(segment for segment in current_pkg.split(".") if segment)
-        if current_pkg == c.Infra.DIR_TESTS or current_pkg.startswith(
-            f"{c.Infra.DIR_TESTS}."
-        ):
-            project_dir = pkg_dir
-            for _segment in segments:
-                project_dir = project_dir.parent
-            project_token = project_dir.name.replace("-", "_").upper()
-            suffix_tokens = tuple(segment.upper() for segment in segments[1:])
+        tests_index = (
+            FlextInfraCodegenLazyInitPlannerRegistryMixin._wrapper_segment_index(
+                current_pkg,
+                c.Infra.DIR_TESTS,
+            )
+        )
+        if tests_index is not None:
+            if tests_index == 0:
+                project_dir = pkg_dir
+                for _segment in segments:
+                    project_dir = project_dir.parent
+                project_token = project_dir.name.replace("-", "_").upper()
+            else:
+                project_token = segments[0].upper()
+            suffix_tokens = tuple(
+                segment.upper() for segment in segments[tests_index + 1 :]
+            )
             return "_".join((
                 c.Infra.DIR_TESTS.upper(),
                 project_token,
