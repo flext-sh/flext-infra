@@ -65,6 +65,10 @@ class FlextInfraConstantsCheck:
             "Flext Code Smell Detector",
             "internal://flext-infra/smells",
         ),
+        "canonical-alias": (
+            "Flext Canonical Alias Detector",
+            "internal://flext-infra/canonical-alias",
+        ),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."

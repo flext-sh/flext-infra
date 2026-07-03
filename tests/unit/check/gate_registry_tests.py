@@ -1,7 +1,7 @@
 """Tests for gate registration of the new durissimas gates.
 
-`loc-cap` and `boundary` must be in the SSOT-derived ALLOWED_GATES and resolve
-through the registry.
+`loc-cap`, `boundary`, and `canonical-alias` must be in the SSOT-derived
+ALLOWED_GATES and resolve through the registry.
 """
 
 from __future__ import annotations
@@ -21,12 +21,19 @@ class TestGateRegistry:
     def test_new_gates_in_allowed(self) -> None:
         tm.that("loc-cap" in c.Infra.ALLOWED_GATES, eq=True)
         tm.that("boundary" in c.Infra.ALLOWED_GATES, eq=True)
+        tm.that("canonical-alias" in c.Infra.ALLOWED_GATES, eq=True)
 
     def test_registry_resolves_loc_cap(self) -> None:
         tm.that(FlextInfraGateRegistry.default().get("loc-cap") is not None, eq=True)
 
     def test_registry_resolves_boundary(self) -> None:
         tm.that(FlextInfraGateRegistry.default().get("boundary") is not None, eq=True)
+
+    def test_registry_resolves_canonical_alias(self) -> None:
+        tm.that(
+            FlextInfraGateRegistry.default().get("canonical-alias") is not None,
+            eq=True,
+        )
 
     def test_canonical_alias_fix_fails_on_read_error(
         self,

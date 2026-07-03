@@ -200,7 +200,12 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
             return cst.RemoveFromParent()
         if len(kept) == len(_import_aliases(updated_node)):
             return updated_node
-        return updated_node.with_changes(names=kept)
+        return updated_node.with_changes(
+            names=[
+                cst.ImportAlias(name=alias.name, asname=alias.asname)
+                for alias in kept
+            ],
+        )
 
 
 def _insert_local_imports(

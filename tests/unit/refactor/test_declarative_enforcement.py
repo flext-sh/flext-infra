@@ -165,10 +165,11 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         """Unsupported catalog wiring is a contract error, not an empty scan."""
         rule = FlextModelsEnforcement.EnforcementRuleSpec(
             id="ENFORCE-999",
-            title="Unsupported declarative source",
-            severity=FlextModelsEnforcement.EnforcementSeverity.ERROR,
-            category=FlextModelsEnforcement.EnforcementCategory.ARCHITECTURE,
-            source=FlextModelsEnforcement.EnforcementSourceSpec(kind="unknown"),
+            description="Unsupported declarative source",
+            severity=FlextModelsEnforcement.EnforcementRuleSeverity.HIGH,
+            source=FlextModelsEnforcement.EnforcementRuntimeWarningSource(
+                category="UserWarning",
+            ),
         )
         source = tmp_path / "consumer.py"
         source.write_text("", encoding="utf-8")
