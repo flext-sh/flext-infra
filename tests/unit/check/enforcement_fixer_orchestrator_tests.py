@@ -19,6 +19,7 @@ from flext_infra.fixers.orchestrator import (
     FlextInfraEnforcementFixerOrchestrator,
 )
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
+from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from tests.constants import c
 
 
@@ -127,6 +128,84 @@ class TestsEnforcementFixerOrchestrator:
             getattr(probe, "file_path", "") == str(source_file)
             for _rule, probe in violations
         )
+
+    def test_stub_file_rule_collects_pyi_probes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Stub-file enforcement receives concrete ``.pyi`` probes."""
+        project_dir = tmp_path / "demo"
+        stub_file = project_dir / "src" / "demo" / "__init__.pyi"
+        excluded_stub = project_dir / ".venv" / "ignored.pyi"
+        stub_file.parent.mkdir(parents=True)
+        excluded_stub.parent.mkdir(parents=True)
+        stub_file.write_text("from demo import x as x\n", encoding="utf-8")
+        excluded_stub.write_text("x: int\n", encoding="utf-8")
+        orchestrator = self._orchestrator(tmp_path)
+
+        violations, failures = orchestrator._collect_violations(
+            project_dir,
+            (self._rule("ENFORCE-090"),),
+        )
+
+        assert failures == []
+        assert [
+            Path(str(getattr(probe, "file_path", ""))) for _rule, probe in violations
+        ] == [stub_file.resolve()]
+
+    def test_remove_stub_file_dry_run_does_not_unlink(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The remove-stub adapter previews deletion in dry-run."""
+        project_dir = tmp_path / "demo"
+        stub_file = project_dir / "src" / "demo" / "__init__.pyi"
+        stub_file.parent.mkdir(parents=True)
+        stub_file.write_text("from demo import x as x\n", encoding="utf-8")
+        adapter = FlextInfraRopeFixerAdapter(tmp_path)
+        ctx = m.Infra.FixEnforcementCommand(
+            workspace=str(tmp_path),
+            projects=("demo",),
+            apply=False,
+        )
+
+        result = adapter.fix_project(
+            project_dir,
+            ((self._rule("ENFORCE-090"), SimpleNamespace(file_path=str(stub_file))),),
+            ctx,
+        )
+
+        assert stub_file.exists()
+        assert len(result.previewed) == 1
+        assert not result.fixed
+        assert not result.failed
+
+    def test_remove_stub_file_apply_unlinks_only_stub(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The remove-stub adapter deletes the reported ``.pyi`` in apply mode."""
+        project_dir = tmp_path / "demo"
+        stub_file = project_dir / "src" / "demo" / "__init__.pyi"
+        stub_file.parent.mkdir(parents=True)
+        stub_file.write_text("from demo import x as x\n", encoding="utf-8")
+        adapter = FlextInfraRopeFixerAdapter(tmp_path)
+        ctx = m.Infra.FixEnforcementCommand(
+            workspace=str(tmp_path),
+            projects=("demo",),
+            apply=True,
+        )
+
+        result = adapter.fix_project(
+            project_dir,
+            ((self._rule("ENFORCE-090"), SimpleNamespace(file_path=str(stub_file))),),
+            ctx,
+        )
+
+        assert not stub_file.exists()
+        assert len(result.fixed) == 1
+        assert result.files_modified == (str(stub_file),)
+        assert not result.failed
 
     def test_code_smell_gate_collects_project_probe(self, tmp_path: Path) -> None:
         """Gate-backed smell fixes get an explicit project-level probe."""

@@ -439,6 +439,67 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
 
         assert constants_module == "tests.unit._constants"
 
+    def test_classvar_constants_module_uses_existing_tests_root_constants(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ENFORCE-079 reuses an existing top-level tests constants SSOT."""
+        file_path = tmp_path / "tests" / "unit" / "test_execution_result.py"
+        constants_root = tmp_path / "tests" / "_constants"
+        constants_root.mkdir(parents=True)
+        (constants_root / "__init__.py").write_text("", encoding="utf-8")
+
+        constants_module = FlextInfraRopeFixerAdapter._constants_module_for_file(
+            file_path,
+            module_name="tests.unit.test_execution_result",
+            project_root=tmp_path,
+        )
+
+        assert constants_module == "tests._constants"
+
+    def test_autofix_dry_run_resolves_package_constants_module(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ENFORCE-079 writes package-backed _constants modules through __init__."""
+        tests_root = tmp_path / "tests"
+        tests_pkg = tests_root / "unit"
+        constants_root = tests_root / "_constants"
+        tests_pkg.mkdir(parents=True)
+        constants_root.mkdir(parents=True)
+        (tests_root / "__init__.py").write_text("", encoding="utf-8")
+        (tests_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (constants_root / "__init__.py").write_text(
+            '"""Constants."""\n',
+            encoding="utf-8",
+        )
+        (tests_pkg / "test_execution_result.py").write_text(
+            "class TestsDemo:\n"
+            "    TEST_VALUE = 1.5\n"
+            "    def test_value(self) -> None:\n"
+            "        assert self.TEST_VALUE == 1.5\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "tests.unit.test_execution_result.TestsDemo",
+            "TEST_VALUE",
+            "tests._constants",
+            dry_run=True,
+        )
+
+        target_text = result["target_text"]
+        source_text = result["source_text"]
+        touched_files = result["touched_files"]
+        assert isinstance(target_text, str) and isinstance(source_text, str)
+        assert isinstance(touched_files, (list, tuple))
+        assert "TEST_VALUE = 1.5" in target_text
+        assert "TEST_VALUE = 1.5" not in source_text
+        assert "tests/_constants/__init__.py" in " ".join(
+            str(path) for path in touched_files
+        )
+
     def test_autofix_apply_inserts_import_after_module_header(
         self,
         tmp_path: Path,

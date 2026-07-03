@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-{% if type_checking_lines -%}
+{% if public_exports_name and type_checking_lines -%}
 from typing import TYPE_CHECKING
 
 {% endif -%}
@@ -21,7 +21,7 @@ from {{ registry_module }} import {{ registry_name }}
 {{ runtime_import_lines }}
 
 {% endif -%}
-{% if type_checking_lines -%}
+{% if public_exports_name and type_checking_lines -%}
 {{ type_checking_lines }}
 
 {% endif -%}

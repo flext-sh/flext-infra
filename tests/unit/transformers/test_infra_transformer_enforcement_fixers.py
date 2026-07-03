@@ -462,7 +462,7 @@ class TestsFlextInfraTransformersCompatibilityAlias:
 
 
 class TestsFlextInfraTransformersPatternList:
-    """Pattern-driven rewrites for ENFORCE-085/086 typing.List."""
+    """Pattern-driven rewrites for ENFORCE-091/092 typing.List."""
 
     def test_typing_list_import_rewritten(self, tmp_path: Path) -> None:
         source = (
@@ -512,7 +512,7 @@ class TestsFlextInfraTransformersPatternList:
 
 
 class TestsFlextInfraTransformersPatternStructlog:
-    """Pattern-driven rewrite for ENFORCE-088 direct structlog."""
+    """Pattern-driven rewrite for ENFORCE-094 direct structlog."""
 
     def test_structlog_get_logger_rewritten(self, tmp_path: Path) -> None:
         source = (

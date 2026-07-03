@@ -1,16 +1,7 @@
-"""Rope-backed detector for ENFORCE-026..033 and ENFORCE-083/084 pattern smells.
+"""Declarative rope-backed detector for pattern/typing enforcement smells.
 
-Ports the retired ast-grep rules into the rope census:
-- bare_except: bare ``except:`` clause
-- print: ``print(...)`` call
-- breakpoint: ``breakpoint()`` / ``import pdb`` / ``pdb.set_trace()``
-- open_encoding: ``open(...)`` without ``encoding=``
-- dict_annotation: ``dict`` used as a type annotation
-- typing_dict_attr: ``typing.Dict`` attribute usage
-- typing_dict_import: ``from typing import Dict``
-- hardcoded_version: hardcoded ``__version__ = "..."`` assignment
-- type_ignore: ``# type: ignore`` suppression comment
-- noqa: ``# noqa`` suppression comment
+Replaces per-smell visitor methods with small canonical maps so adding a new
+rule is a one-line catalog + one-line map entry, not a new visitor method.
 """
 
 from __future__ import annotations
@@ -30,7 +21,105 @@ from flext_infra.utilities import u
 
 
 class FlextInfraPatternSmellDetector:
-    """Detect ENFORCE-026..033 pattern smells in one Python file."""
+    """Detect ENFORCE-026..033 / ENFORCE-083..084 / ENFORCE-091..096 smells."""
+
+    # module name -> (kind, detail)
+    _BANNED_MODULE_IMPORTS: ClassVar[t.MappingKV[str, t.StrPair]] = {
+        "pydantic": (
+            "direct_pydantic_import",
+            (
+                "bare pydantic import FORBIDDEN — use m.BaseModel, m.ConfigDict, "
+                "m.TypeAdapter, u.Field, u.field_validator, u.model_validator, "
+                "u.computed_field, u.PrivateAttr"
+            ),
+        ),
+        "structlog": (
+            "direct_structlog_import",
+            "bare structlog import FORBIDDEN — use u.fetch_logger(__name__)",
+        ),
+        "oracledb": (
+            "direct_oracledb_import",
+            (
+                "bare oracledb import FORBIDDEN — route through flext-db-oracle / "
+                "flext-oracle-* facades"
+            ),
+        ),
+        "ldap3": (
+            "direct_ldap3_import",
+            (
+                "bare ldap3 import FORBIDDEN — route through flext-ldap / "
+                "flext-target-ldap facades"
+            ),
+        ),
+        "pdb": (
+            "breakpoint",
+            "import pdb is forbidden — remove debugging code",
+        ),
+    }
+
+    # module name -> {imported name -> (kind, detail)}; "*" bans any name.
+    _BANNED_FROM_IMPORTS: ClassVar[t.MappingKV[str, t.MappingKV[str, t.StrPair]]] = {
+        "typing": {
+            "Dict": (
+                "typing_dict_import",
+                "from typing import Dict is banned — use dict / Mapping",
+            ),
+            "List": (
+                "typing_list_import",
+                "from typing import List is banned — use list / Sequence",
+            ),
+        },
+        "pdb": {
+            "*": (
+                "breakpoint",
+                "from pdb import ... is forbidden — remove debugging code",
+            ),
+        },
+    }
+
+    # (canonical module name, attribute name) -> (kind, detail)
+    _BANNED_ATTRIBUTES: ClassVar[t.MappingKV[t.StrPair, t.StrPair]] = {
+        ("typing", "Dict"): (
+            "typing_dict_attr",
+            "typing.Dict attribute usage — use collections.abc.Mapping family",
+        ),
+        ("typing", "List"): (
+            "typing_list_attr",
+            (
+                "typing.List attribute usage — use t.SequenceOf or "
+                "collections.abc.Sequence"
+            ),
+        ),
+    }
+
+    # bare call name -> (kind, detail)
+    _BANNED_BARE_CALLS: ClassVar[t.MappingKV[str, t.StrPair]] = {
+        "print": (
+            "print",
+            "print() call in source code — use structured logging",
+        ),
+        "breakpoint": (
+            "breakpoint",
+            "breakpoint() left in code",
+        ),
+    }
+
+    # call name -> (kind, required kwarg, detail)
+    _BANNED_CALLS_MISSING_KWARG: ClassVar[t.MappingKV[str, tuple[str, str, str]]] = {
+        "open": (
+            "open_encoding",
+            "encoding",
+            'open() without explicit encoding — add encoding="utf-8"',
+        ),
+    }
+
+    # annotation root name -> (kind, detail)
+    _BANNED_ANNOTATIONS: ClassVar[t.MappingKV[str, t.StrPair]] = {
+        "dict": (
+            "dict_annotation",
+            "`dict` in type annotation — prefer Mapping / MutableMapping / TypedDict",
+        ),
+    }
 
     _SMELL_KINDS: ClassVar[frozenset[str]] = frozenset({
         "bare_except",
@@ -72,7 +161,7 @@ class FlextInfraPatternSmellDetector:
                     stage="pattern_smell",
                     error_type=type(exc).__name__,
                     detail=str(exc),
-                )
+                ),
             )
             return ()
         if not isinstance(tree, ast.Module):
@@ -82,6 +171,12 @@ class FlextInfraPatternSmellDetector:
         visitor = _PatternSmellVisitor(
             file_path=display_path,
             source=source,
+            banned_module_imports=cls._BANNED_MODULE_IMPORTS,
+            banned_from_imports=cls._BANNED_FROM_IMPORTS,
+            banned_attributes=cls._BANNED_ATTRIBUTES,
+            banned_bare_calls=cls._BANNED_BARE_CALLS,
+            banned_calls_missing_kwarg=cls._BANNED_CALLS_MISSING_KWARG,
+            banned_annotations=cls._BANNED_ANNOTATIONS,
         )
         visitor.visit(tree)
         visitor.violations.extend(cls._detect_comment_smells(source, display_path))
@@ -120,7 +215,7 @@ class FlextInfraPatternSmellDetector:
                             "# type: ignore suppression is forbidden "
                             "— fix the underlying typing issue"
                         ),
-                    )
+                    ),
                 )
             if noqa_re.search(comment):
                 violations.append(
@@ -132,115 +227,73 @@ class FlextInfraPatternSmellDetector:
                             "# noqa suppression is forbidden "
                             "— fix the underlying lint issue"
                         ),
-                    )
+                    ),
                 )
         return violations
 
 
 class _PatternSmellVisitor(ast.NodeVisitor):
-    """AST visitor collecting ENFORCE-026..033 pattern smells."""
-
-    _BANNED_MODULE_IMPORTS: ClassVar[t.MappingKV[str, t.StrPair]] = {
-        "pydantic": (
-            "direct_pydantic_import",
-            "bare pydantic import FORBIDDEN — use m.BaseModel, m.ConfigDict, m.TypeAdapter, u.Field, u.field_validator, u.model_validator, u.computed_field, u.PrivateAttr",
-        ),
-        "structlog": (
-            "direct_structlog_import",
-            "bare structlog import FORBIDDEN — use u.fetch_logger(__name__)",
-        ),
-        "oracledb": (
-            "direct_oracledb_import",
-            "bare oracledb import FORBIDDEN — route through flext-db-oracle / flext-oracle-* facades",
-        ),
-        "ldap3": (
-            "direct_ldap3_import",
-            "bare ldap3 import FORBIDDEN — route through flext-ldap / flext-target-ldap facades",
-        ),
-    }
-    _BANNED_TYPING_ATTRS: ClassVar[t.MappingKV[str, t.StrPair]] = {
-        "Dict": (
-            "typing_dict_attr",
-            "typing.Dict attribute usage — use collections.abc.Mapping family",
-        ),
-        "List": (
-            "typing_list_attr",
-            "typing.List attribute usage — use t.SequenceOf or collections.abc.Sequence",
-        ),
-    }
-    _BANNED_TYPING_FROM_IMPORTS: ClassVar[t.MappingKV[str, t.StrPair]] = {
-        "Dict": (
-            "typing_dict_import",
-            "from typing import Dict is banned — use dict / Mapping",
-        ),
-        "List": (
-            "typing_list_import",
-            "from typing import List is banned — use list / Sequence",
-        ),
-    }
+    """AST visitor driven by declarative smell maps."""
 
     def __init__(
         self,
         *,
         file_path: Path,
         source: str,
+        banned_module_imports: t.MappingKV[str, t.StrPair],
+        banned_from_imports: t.MappingKV[str, t.MappingKV[str, t.StrPair]],
+        banned_attributes: t.MappingKV[t.StrPair, t.StrPair],
+        banned_bare_calls: t.MappingKV[str, t.StrPair],
+        banned_calls_missing_kwarg: t.MappingKV[str, tuple[str, str, str]],
+        banned_annotations: t.MappingKV[str, t.StrPair],
     ) -> None:
         self.file_path = file_path
         self.source = source
         self.violations: list[m.Infra.PatternSmellViolation] = []
-        self._typing_alias: str | None = None
+        self._module_aliases: dict[str, str] = {}
+        self._banned_module_imports = banned_module_imports
+        self._banned_from_imports = banned_from_imports
+        self._banned_attributes = banned_attributes
+        self._banned_bare_calls = banned_bare_calls
+        self._banned_calls_missing_kwarg = banned_calls_missing_kwarg
+        self._banned_annotations = banned_annotations
 
     @override
     def visit_Import(self, node: ast.Import) -> None:
+        tracked_modules = {module for module, _attr in self._banned_attributes}
         for alias in node.names:
-            if alias.name == "typing":
-                self._typing_alias = alias.asname or "typing"
-            if alias.name == "pdb":
-                self._add_violation(
-                    node.lineno,
-                    "breakpoint",
-                    "import pdb is forbidden — remove debugging code",
-                )
-            if alias.name in self._BANNED_MODULE_IMPORTS:
-                kind, detail = self._BANNED_MODULE_IMPORTS[alias.name]
+            canonical = alias.name
+            if canonical in self._banned_module_imports:
+                kind, detail = self._banned_module_imports[canonical]
                 self._add_violation(node.lineno, kind, detail)
+            if canonical in tracked_modules:
+                local = alias.asname or canonical
+                self._module_aliases[local] = canonical
         self.generic_visit(node)
 
     @override
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         module = node.module or ""
-        if module == "typing":
+        banned_from = self._banned_from_imports.get(module)
+        if banned_from:
             for alias in node.names:
-                if alias.name in self._BANNED_TYPING_FROM_IMPORTS:
-                    kind, detail = self._BANNED_TYPING_FROM_IMPORTS[alias.name]
+                key = "*" if "*" in banned_from else alias.name
+                if key in banned_from:
+                    kind, detail = banned_from[key]
                     self._add_violation(node.lineno, kind, detail)
-        if module in self._BANNED_MODULE_IMPORTS:
-            kind, detail = self._BANNED_MODULE_IMPORTS[module]
+        if module in self._banned_module_imports:
+            kind, detail = self._banned_module_imports[module]
             self._add_violation(node.lineno, kind, detail)
-        if module == "pdb":
-            self._add_violation(
-                node.lineno,
-                "breakpoint",
-                "from pdb import ... is forbidden — remove debugging code",
-            )
         self.generic_visit(node)
 
     @override
     def visit_Expr(self, node: ast.Expr) -> None:
         value = node.value
         if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
-            if value.func.id == "print":
-                self._add_violation(
-                    node.lineno,
-                    "print",
-                    "print() call in source code — use structured logging",
-                )
-            elif value.func.id == "breakpoint":
-                self._add_violation(
-                    node.lineno,
-                    "breakpoint",
-                    "breakpoint() left in code",
-                )
+            func_id = value.func.id
+            if func_id in self._banned_bare_calls:
+                kind, detail = self._banned_bare_calls[func_id]
+                self._add_violation(node.lineno, kind, detail)
         self.generic_visit(node)
 
     @override
@@ -255,27 +308,19 @@ class _PatternSmellVisitor(ast.NodeVisitor):
 
     @override
     def visit_Call(self, node: ast.Call) -> None:
-        if (
-            isinstance(node.func, ast.Name)
-            and node.func.id == "open"
-            and not any(kw.arg == "encoding" for kw in node.keywords)
-        ):
-            self._add_violation(
-                node.lineno,
-                "open_encoding",
-                'open() without explicit encoding — add encoding="utf-8"',
-            )
+        if isinstance(node.func, ast.Name):
+            func_id = node.func.id
+            if func_id in self._banned_calls_missing_kwarg:
+                kind, required_kwarg, detail = self._banned_calls_missing_kwarg[func_id]
+                if not any(kw.arg == required_kwarg for kw in node.keywords):
+                    self._add_violation(node.lineno, kind, detail)
         self.generic_visit(node)
 
     @override
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        annotation = node.annotation
-        if self._is_dict_annotation(annotation):
-            self._add_violation(
-                node.lineno,
-                "dict_annotation",
-                "`dict` in type annotation — prefer Mapping / MutableMapping / TypedDict",
-            )
+        if self._is_banned_annotation(node.annotation):
+            kind, detail = self._banned_annotations["dict"]
+            self._add_violation(node.lineno, kind, detail)
         if (
             isinstance(node.target, ast.Name)
             and node.target.id == "__version__"
@@ -291,23 +336,22 @@ class _PatternSmellVisitor(ast.NodeVisitor):
 
     @override
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        if (
-            isinstance(node.value, ast.Name)
-            and node.value.id == "typing"
-            and node.attr in self._BANNED_TYPING_ATTRS
-        ):
-            kind, detail = self._BANNED_TYPING_ATTRS[node.attr]
-            self._add_violation(node.lineno, kind, detail)
+        if isinstance(node.value, ast.Name):
+            canonical = self._module_aliases.get(node.value.id)
+            key = (canonical, node.attr) if canonical else None
+            if key and key in self._banned_attributes:
+                kind, detail = self._banned_attributes[key]
+                self._add_violation(node.lineno, kind, detail)
         self.generic_visit(node)
 
-    def _is_dict_annotation(self, node: ast.expr | None) -> bool:
-        """Return True for bare ``dict`` or ``dict[...]`` annotations."""
-        if isinstance(node, ast.Name) and node.id == "dict":
+    def _is_banned_annotation(self, node: ast.expr | None) -> bool:
+        """Return True for banned root annotations like ``dict`` or ``dict[...]``."""
+        if isinstance(node, ast.Name) and node.id in self._banned_annotations:
             return True
         return (
             isinstance(node, ast.Subscript)
             and isinstance(node.value, ast.Name)
-            and node.value.id == "dict"
+            and node.value.id in self._banned_annotations
         )
 
     def _add_violation(
@@ -322,7 +366,7 @@ class _PatternSmellVisitor(ast.NodeVisitor):
                 line=line,
                 kind=kind,
                 detail=detail,
-            )
+            ),
         )
 
 

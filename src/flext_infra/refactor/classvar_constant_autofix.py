@@ -291,12 +291,32 @@ def _target_resource_for_module(
         raise TypeError(msg) from None
     target_resource = target_mod.get_resource()
     if not isinstance(target_resource, File):
-        msg = f"constants module {constants_module} did not resolve to a file resource"
-        raise TypeError(msg)
+        target_resource = _target_package_init_resource(project, constants_module)
+        if target_resource is None:
+            msg = (
+                f"constants module {constants_module} did not resolve "
+                "to a file resource"
+            )
+            raise TypeError(msg)
     if not Path(target_resource.real_path).is_file():
         msg = f"constants module {constants_module} does not exist"
         raise TypeError(msg)
     return target_resource
+
+
+def _target_package_init_resource(
+    project: Project,
+    constants_module: str,
+) -> File | None:
+    """Return ``__init__.py`` for a package-backed constants module."""
+    root_real_path = getattr(getattr(project, "root", None), "real_path", None)
+    if not isinstance(root_real_path, str):
+        return None
+    init_path = Path(root_real_path).joinpath(
+        *constants_module.split("."),
+        "__init__.py",
+    )
+    return FlextInfraUtilitiesRopeCore.get_resource_from_path(project, init_path)
 
 
 def _extract_declaration_line(

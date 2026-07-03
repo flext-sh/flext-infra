@@ -66,9 +66,8 @@ def ensure_future_annotations(source: str) -> str:
     The future import is placed after any module docstring and after any
     shebang/encoding/comment header. Existing duplicates are removed.
     """
-    lines = source.splitlines(keepends=True)
-    body = [line for line in lines if line.strip() != c.Infra.FUTURE_ANNOTATIONS]
-    normalized = "".join(body)
+    normalized = _remove_future_annotations_lines(source)
+    body = normalized.splitlines(keepends=True)
     info = _parse_header(normalized)
     offset = info.span.future_insert_offset
     line_index = normalized[:offset].count("\n")

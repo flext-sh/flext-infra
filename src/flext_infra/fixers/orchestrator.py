@@ -345,6 +345,16 @@ class FlextInfraEnforcementFixerOrchestrator(
                 )
                 violations.extend(collected)
                 failures.extend(errors)
+            elif (
+                source.kind == "flext_infra_detector"
+                and source.violation_field == "stub_file_violations"
+            ):
+                collected, errors = self._collect_stub_file_violations(
+                    project_dir,
+                    rule,
+                )
+                violations.extend(collected)
+                failures.extend(errors)
             elif source.kind in {"flext_infra_detector", "beartype"}:
                 collected, errors = self._collect_python_file_violations(
                     project_dir,
@@ -501,6 +511,34 @@ class FlextInfraEnforcementFixerOrchestrator(
             [(rule, self._probe_for_path(path)) for path in files_result.value],
             [],
         )
+
+    def _collect_stub_file_violations(
+        self,
+        project_dir: Path,
+        rule: me.EnforcementRuleSpec,
+    ) -> tuple[
+        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        list[fr.FailedFix],
+    ]:
+        """Return one probe per prohibited source ``.pyi`` file."""
+        probes = [
+            (rule, self._probe_for_path(path))
+            for path in self._stub_file_paths(project_dir)
+        ]
+        return probes, []
+
+    @staticmethod
+    def _stub_file_paths(project_dir: Path) -> tuple[Path, ...]:
+        """Return source stub files while respecting canonical excluded dirs."""
+        paths: set[Path] = set()
+        for path in project_dir.rglob("*.pyi"):
+            if not path.is_file():
+                continue
+            relative_parts = path.relative_to(project_dir).parts
+            if any(part in c.Infra.ITERATION_EXCLUDED_PARTS for part in relative_parts):
+                continue
+            paths.add(path.resolve())
+        return tuple(sorted(paths))
 
     def _collect_project_violations(
         self,
