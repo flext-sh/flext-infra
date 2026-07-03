@@ -49,6 +49,18 @@ class FlextInfraConstantsCheck:
             "Flext Abstraction Boundary Auditor",
             "internal://flext-infra/abstraction-boundary",
         ),
+        "runtime-census": (
+            "Flext Runtime Enforcement Census",
+            "internal://flext-infra/runtime-census",
+        ),
+        "namespace": (
+            "Flext Namespace Rule Gate",
+            "internal://flext-infra/namespace",
+        ),
+        "tier-whitelist": (
+            "Flext Tier Whitelist Gate",
+            "internal://flext-infra/tier-whitelist",
+        ),
         "smells": (
             "Flext Code Smell Detector",
             "internal://flext-infra/smells",
