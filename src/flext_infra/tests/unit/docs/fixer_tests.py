@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.tests.models import m
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def test_fix_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:

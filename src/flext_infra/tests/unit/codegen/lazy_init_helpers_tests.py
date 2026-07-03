@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.tests.constants import c
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestsFlextInfraLazyInitHelpers:

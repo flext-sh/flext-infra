@@ -9,9 +9,9 @@ import pytest
 from flext_cli import u as cli_u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.tests.constants import c
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.models import m
+from flext_infra.tests.typings import t
+from flext_infra.tests.utilities import u
 
 
 def make_config(

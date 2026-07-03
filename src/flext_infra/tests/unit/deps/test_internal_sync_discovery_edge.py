@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from flext_infra.tests.protocols import p
-from tests.typings import t
+from flext_infra.tests.typings import t
 
 
 def _set_toml_sequence(

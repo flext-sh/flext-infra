@@ -11,7 +11,7 @@ from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
 from flext_infra.tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def _apply_transformer(

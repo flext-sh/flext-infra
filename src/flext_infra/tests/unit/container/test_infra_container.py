@@ -16,7 +16,7 @@ import pytest
 
 from flext_core import FlextContainer
 from flext_infra.tests.constants import c
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestsFlextInfraContainerInfraContainer:

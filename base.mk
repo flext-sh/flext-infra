@@ -9,7 +9,7 @@
 PROJECT_NAME ?= unnamed
 PYTHON_VERSION ?= 3.13
 SRC_DIR ?= src
-TESTS_DIR ?= tests
+TESTS_DIR ?= src/flext_infra/tests
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
 PYTEST_ARGS ?= 

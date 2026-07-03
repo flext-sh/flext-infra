@@ -9,8 +9,8 @@ from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_infra.tests.constants import c
-from tests.models import m
-from tests.utilities import u
+from flext_infra.tests.models import m
+from flext_infra.tests.utilities import u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 

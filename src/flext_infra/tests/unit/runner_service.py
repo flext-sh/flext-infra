@@ -5,8 +5,8 @@ from __future__ import annotations
 from flext_tests import r
 
 from flext_infra.tests.protocols import p
-from tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.typings import t
+from flext_infra.tests.utilities import u
 
 
 class RealSubprocessRunner:

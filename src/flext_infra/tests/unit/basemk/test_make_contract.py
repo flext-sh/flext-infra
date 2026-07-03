@@ -10,7 +10,7 @@ from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.tests.models import m
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 _MAKE_ISOLATION_ENV_KEYS = (
     "FLEXT_ROOT",

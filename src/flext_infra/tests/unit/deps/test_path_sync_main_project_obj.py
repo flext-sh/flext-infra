@@ -11,8 +11,8 @@ from flext_tests import tm
 from flext_infra import r
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 from flext_infra.tests.models import m
-from tests.protocols import p
-from tests.typings import t
+from flext_infra.tests.protocols import p
+from flext_infra.tests.typings import t
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:

@@ -8,7 +8,7 @@ from flext_infra.transformers.helper_consolidation import (
     FlextInfraHelperConsolidationTransformer,
 )
 from flext_infra.tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def _transform_source(

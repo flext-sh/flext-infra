@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_infra import main
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.tests.constants import c
-from tests.utilities import TestsFlextInfraUtilities as u
+from flext_infra.tests.utilities import TestsFlextInfraUtilities as u
 
 
 def test_release_group_help_returns_zero() -> None:

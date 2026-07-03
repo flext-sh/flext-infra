@@ -11,9 +11,9 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_infra.tests.constants import c
-from tests.models import m
-from tests.protocols import p
-from tests.typings import t
+from flext_infra.tests.models import m
+from flext_infra.tests.protocols import p
+from flext_infra.tests.typings import t
 
 
 def _write_project(project_root: Path, name: str) -> None:

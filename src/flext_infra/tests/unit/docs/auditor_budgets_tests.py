@@ -12,7 +12,7 @@ from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestLoadAuditBudgets:

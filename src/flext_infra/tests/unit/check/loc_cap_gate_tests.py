@@ -12,7 +12,7 @@ from flext_tests import tm
 
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 _OVER_CAP = (
     "from __future__ import annotations\n\n"

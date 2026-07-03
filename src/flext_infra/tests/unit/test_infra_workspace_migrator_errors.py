@@ -11,9 +11,9 @@ from flext_infra import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.tests.constants import c
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.models import m
+from flext_infra.tests.typings import t
+from flext_infra.tests.utilities import u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:

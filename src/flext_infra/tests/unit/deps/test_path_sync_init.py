@@ -6,7 +6,7 @@ from flext_tests import tm
 
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 from flext_infra.tests.constants import c
-from tests.models import m
+from flext_infra.tests.models import m
 
 
 class TestsFlextInfraDepsPathSyncInit:

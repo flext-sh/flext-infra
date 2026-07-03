@@ -10,8 +10,8 @@ import pytest
 
 import flext_infra as infra_pkg
 from flext_infra.tests.base import s
-from tests.constants import c
-from tests.models import m
+from flext_infra.tests.constants import c
+from flext_infra.tests.models import m
 
 
 class TestsFlextInfraPublicApi:

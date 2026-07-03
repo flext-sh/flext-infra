@@ -8,7 +8,7 @@ from flext_tests import tm
 
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_infra.tests.models import m
-from tests.typings import t
+from flext_infra.tests.typings import t
 
 
 def _extractor(

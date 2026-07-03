@@ -5,7 +5,7 @@ from pathlib import Path
 import tomlkit
 
 from flext_infra.tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestsFlextInfraUtilitiesiteration:

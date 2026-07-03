@@ -13,8 +13,8 @@ from flext_infra.detectors.silent_failure_detector import (
 )
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from flext_infra.tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.typings import t
+from flext_infra.tests.utilities import u
 
 
 def _create_silent_failure_project(

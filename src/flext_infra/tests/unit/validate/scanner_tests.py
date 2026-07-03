@@ -13,7 +13,7 @@ from flext_tests import tm
 
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from flext_infra.tests.constants import c
-from tests.typings import t
+from flext_infra.tests.typings import t
 
 
 def _scanner() -> FlextInfraTextPatternScanner:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.tests.constants import c
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def test_docs_has_adr_reference_detects_marker(tmp_path: Path) -> None:

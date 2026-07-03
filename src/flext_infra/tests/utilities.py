@@ -27,9 +27,9 @@ from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.tests.constants import c
-from tests.models import m
-from tests.protocols import p
-from tests.typings import t
+from flext_infra.tests.models import m
+from flext_infra.tests.protocols import p
+from flext_infra.tests.typings import t
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):

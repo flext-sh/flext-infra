@@ -13,7 +13,7 @@ from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEd
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from flext_infra.tests.typings import t
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestsFlextInfraRefactorCensusPreviewCache:

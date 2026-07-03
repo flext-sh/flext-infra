@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra import main as infra_main
 from flext_infra.tests.constants import c
-from tests.utilities import TestsFlextInfraUtilities as u
+from flext_infra.tests.utilities import TestsFlextInfraUtilities as u
 
 
 def run_release_main(workspace: Path, *extra: str) -> int:

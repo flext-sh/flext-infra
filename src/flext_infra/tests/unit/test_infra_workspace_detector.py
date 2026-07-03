@@ -8,7 +8,7 @@ from flext_tests import tm
 
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.tests.constants import c
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestsFlextInfraInfraWorkspaceDetector:

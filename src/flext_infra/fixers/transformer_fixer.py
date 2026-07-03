@@ -13,7 +13,7 @@ from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
-from flext_infra.transformers.base import FlextInfraChangeTrackingTransformer
+from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -36,7 +36,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     _TRANSFORMERS: ClassVar[
         dict[
             str,
-            type[FlextInfraChangeTrackingTransformer],
+            type[FlextInfraRopeTransformer],
         ]
     ] = {
         "typing_unifier": FlextInfraRefactorTypingUnifier,
@@ -103,7 +103,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     def _fix_file(
         self,
         file_path: Path,
-        transformer_cls: type[FlextInfraChangeTrackingTransformer],
+        transformer_cls: type[FlextInfraRopeTransformer],
         fix_action: me.EnforcementFixAction,
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:

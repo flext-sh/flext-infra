@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.tests.models import m
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:

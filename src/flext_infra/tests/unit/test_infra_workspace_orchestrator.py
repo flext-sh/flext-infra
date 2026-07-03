@@ -9,8 +9,8 @@ from flext_tests import r, tm
 from flext_infra import c, u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.tests.models import m
-from tests.protocols import p
-from tests.typings import t
+from flext_infra.tests.protocols import p
+from flext_infra.tests.typings import t
 
 
 @pytest.fixture

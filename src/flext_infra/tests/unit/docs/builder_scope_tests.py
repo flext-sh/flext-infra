@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.tests.constants import c
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def test_build_returns_root_and_selected_project_reports(tmp_path: Path) -> None:

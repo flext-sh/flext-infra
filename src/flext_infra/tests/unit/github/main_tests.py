@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 from flext_infra.tests.models import m
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def test_sync_github_workflows_reports_create_operations(

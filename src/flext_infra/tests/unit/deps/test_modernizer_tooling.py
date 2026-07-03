@@ -15,7 +15,7 @@ from flext_infra.deps.phases.ensure_namespace import (
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from flext_infra.tests.models import m
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestsFlextInfraDepsModernizerTooling:
