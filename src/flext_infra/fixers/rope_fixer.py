@@ -283,6 +283,107 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Return the first rule id in a grouped violation batch."""
         return violations[0][0].id if violations else ""
 
+    def _detect_and_rewrite_files[V](
+        self,
+        *,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+        detector: Callable[[m.Infra.DetectorContext], t.SequenceOf[V]],
+        filter_violations: Callable[[t.SequenceOf[V]], t.SequenceOf[V]],
+        rewrite: Callable[[t.SequenceOf[V]], None],
+        empty_reason: str,
+        change_message: Callable[[int, bool], str],
+        detector_error_detail: str,
+        rewrite_error_detail: str,
+    ) -> fr.ProjectFixResult:
+        """Detect violations per file and apply a deterministic rewrite."""
+        rule_id = self._rule_id(violations)
+        fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
+        skipped: list[fr.SkippedViolation] = []
+        failed: list[fr.FailedFix] = []
+        files_modified: set[str] = set()
+        file_paths = self._collect_file_paths(project_dir, violations)
+        if not file_paths:
+            return fr.ProjectFixResult(
+                project=project_dir.name,
+                skipped=(
+                    fr.SkippedViolation(
+                        rule_id=rule_id,
+                        file_path=str(project_dir),
+                        reason="no files in violation batch",
+                    ),
+                ),
+            )
+        with u.Infra.open_project(self._workspace_root) as rope_project:
+            for file_path in file_paths:
+                detect_ctx = m.Infra.DetectorContext(
+                    file_path=file_path,
+                    rope_project=rope_project,
+                    project_name=project_dir.name,
+                    project_root=project_dir,
+                )
+                try:
+                    file_violations = detector(detect_ctx)
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"{detector_error_detail}: {exc}",
+                        ),
+                    )
+                    continue
+                selected = filter_violations(file_violations)
+                if not selected:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason=empty_reason,
+                        ),
+                    )
+                    continue
+                try:
+                    rewrite(selected)
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"{rewrite_error_detail}: {exc}",
+                        ),
+                    )
+                    continue
+                if ctx.apply:
+                    files_modified.add(str(file_path))
+                message = change_message(len(selected), ctx.apply)
+                if ctx.apply:
+                    fixed.append(
+                        fr.FixedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        ),
+                    )
+                else:
+                    previewed.append(
+                        fr.PreviewedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        ),
+                    )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            previewed=tuple(previewed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
     def _fix_silent_failure_sentinels(
         self,
         project_dir: Path,
@@ -370,97 +471,28 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Rewrite compatibility aliases using the canonical detector + rewriter."""
-        rule_id = self._rule_id(violations)
-        fixed: list[fr.FixedViolation] = []
-        previewed: list[fr.PreviewedViolation] = []
-        skipped: list[fr.SkippedViolation] = []
-        failed: list[fr.FailedFix] = []
-        files_modified: set[str] = set()
-        file_paths = self._collect_file_paths(project_dir, violations)
-        if not file_paths:
-            return fr.ProjectFixResult(
-                project=project_dir.name,
-                skipped=(
-                    fr.SkippedViolation(
-                        rule_id=rule_id,
-                        file_path=str(project_dir),
-                        reason="no files in violation batch",
-                    ),
-                ),
-            )
-        with u.Infra.open_project(self._workspace_root) as rope_project:
-            for file_path in file_paths:
-                detect_ctx = m.Infra.DetectorContext(
-                    file_path=file_path,
-                    rope_project=rope_project,
-                    project_name=project_dir.name,
-                    project_root=project_dir,
+
+        def _rewrite(file_violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation]) -> None:
+            if ctx.apply:
+                u.Infra.rewrite_compatibility_alias_violations(
+                    violations=file_violations,
+                    parse_failures=[],
                 )
-                try:
-                    file_violations = FlextInfraCompatibilityAliasDetector.detect_file(
-                        detect_ctx,
-                    )
-                except c.EXC_BROAD_RUNTIME as exc:
-                    failed.append(
-                        fr.FailedFix(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            error=f"compatibility alias detector failed: {exc}",
-                        )
-                    )
-                    continue
-                if not file_violations:
-                    skipped.append(
-                        fr.SkippedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            reason="no compatibility alias violations",
-                        )
-                    )
-                    continue
-                if ctx.apply:
-                    try:
-                        u.Infra.rewrite_compatibility_alias_violations(
-                            violations=file_violations,
-                            parse_failures=[],
-                        )
-                    except c.EXC_BROAD_RUNTIME as exc:
-                        failed.append(
-                            fr.FailedFix(
-                                rule_id=rule_id,
-                                file_path=str(file_path),
-                                error=f"compatibility alias rewrite failed: {exc}",
-                            )
-                        )
-                        continue
-                    files_modified.add(str(file_path))
-                message = (
-                    f"{'rewrote' if ctx.apply else 'would rewrite'} "
-                    f"{len(file_violations)} compatibility alias violation(s)"
-                )
-                if ctx.apply:
-                    fixed.append(
-                        fr.FixedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        )
-                    )
-                else:
-                    previewed.append(
-                        fr.PreviewedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        )
-                    )
-        return fr.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+
+        return self._detect_and_rewrite_files(
+            project_dir=project_dir,
+            violations=violations,
+            ctx=ctx,
+            detector=FlextInfraCompatibilityAliasDetector.detect_file,
+            filter_violations=lambda v: v,
+            rewrite=_rewrite,
+            empty_reason="no compatibility alias violations",
+            change_message=lambda count, applying: (
+                f"{'rewrote' if applying else 'would rewrite'} "
+                f"{count} compatibility alias violation(s)"
+            ),
+            detector_error_detail="compatibility alias detector failed",
+            rewrite_error_detail="compatibility alias rewrite failed",
         )
 
     def _fix_remove_stub_file(

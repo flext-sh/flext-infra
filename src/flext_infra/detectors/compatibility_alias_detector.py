@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 from rope.refactor.importutils.importinfo import FromImport
 
 from flext_infra.constants import c
@@ -37,8 +40,9 @@ class FlextInfraCompatibilityAliasDetector:
             return "rewrite_foreign_canonical_alias"
         return "rewrite_compatibility_alias"
 
-    @staticmethod
+    @classmethod
     def detect_file(
+        cls,
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file.
@@ -76,12 +80,12 @@ class FlextInfraCompatibilityAliasDetector:
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return violations
         alias_renames = c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES
-        local_alias_targets = _local_alias_targets(source)
+        local_alias_targets = cls._local_alias_targets(source)
         imported_long_names: set[str] = set()
         canonical_aliases_by_module: dict[str, set[str]] = {}
         current_module = u.Infra.package_name(file_path)
-        for from_import in _all_from_imports(ctx.rope_project, resource):
-            module_name = _resolve_imported_module(
+        for from_import in cls._all_from_imports(ctx.rope_project, resource):
+            module_name = cls._resolve_imported_module(
                 current_module=current_module,
                 from_import=from_import,
             )
@@ -91,8 +95,8 @@ class FlextInfraCompatibilityAliasDetector:
                     canonical_aliases_by_module.setdefault(module_name, set()).add(
                         bound_name
                     )
-        for from_import in _all_from_imports(ctx.rope_project, resource):
-            module_name = _resolve_imported_module(
+        for from_import in cls._all_from_imports(ctx.rope_project, resource):
+            module_name = cls._resolve_imported_module(
                 current_module=current_module,
                 from_import=from_import,
             )
@@ -115,7 +119,7 @@ class FlextInfraCompatibilityAliasDetector:
                     # compatibility-alias violation.
                     continue
                 imported_long_names.add(name)
-                line_number = _find_import_line(
+                line_number = cls._find_import_line(
                     lines=lines,
                     module_name=module_name,
                     imported_name=name,
@@ -131,42 +135,63 @@ class FlextInfraCompatibilityAliasDetector:
                     )
                 )
 
-        # ENFORCE-080: canonical alias imported from flext_core when the
-        # current project re-exports the same slot locally.
-        project_alias_owners = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
-        current_package = current_module.split(".")[0]
-        local_aliases = project_alias_owners.get(current_package)
-        if local_aliases and not u.Infra.looks_like_facade_file(
-            file_path=file_path,
-            source=source,
-        ):
-            for from_import in _all_from_imports(ctx.rope_project, resource):
-                module_name = _resolve_imported_module(
-                    current_module=current_module,
-                    from_import=from_import,
-                )
-                if module_name != c.Infra.PKG_CORE_UNDERSCORE:
-                    continue
-                for name, alias in from_import.names_and_aliases:
-                    bound_name = alias if alias is not None else name
-                    if bound_name not in local_aliases:
-                        continue
-                    line_number = _find_import_line(
-                        lines=lines,
-                        module_name=module_name,
-                        imported_name=name,
-                        alias_name=alias,
-                    )
-                    violations.append(
-                        m.Infra.CompatibilityAliasViolation(
-                            file=str(file_path),
-                            line=line_number,
-                            alias_name=bound_name,
-                            target_name=bound_name,
-                            module_name=current_package,
-                        )
-                    )
+        violations.extend(
+            cls._detect_foreign_canonical_aliases(
+                source=source,
+                file_path=file_path,
+            )
+        )
         return violations
+
+
+def _detect_foreign_canonical_aliases(
+    *,
+    source: str,
+    file_path: Path,
+) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
+    """Detect ENFORCE-080: canonical alias owned locally imported from flext_core.
+
+    Uses AST instead of regex so it understands parenthesized imports, explicit
+    aliases, and submodule imports such as ``from flext_core.typings import
+    FlextTypes as t``. Only flags aliases the current project declares in
+    ``c.ENFORCEMENT_PROJECT_ALIAS_OWNERS``.
+    """
+    current_module = u.Infra.package_name(file_path)
+    current_package = current_module.split(".", maxsplit=1)[0]
+    local_aliases = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS.get(current_package)
+    if not local_aliases:
+        return ()
+    if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
+        return ()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return ()
+
+    local_aliases_set = frozenset(local_aliases)
+    violations: list[m.Infra.CompatibilityAliasViolation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        module = node.module or ""
+        if module != c.Infra.PKG_CORE_UNDERSCORE and not module.startswith(
+            f"{c.Infra.PKG_CORE_UNDERSCORE}."
+        ):
+            continue
+        for alias in node.names:
+            bound_name = alias.asname or alias.name
+            if bound_name not in local_aliases_set:
+                continue
+            violations.append(
+                m.Infra.CompatibilityAliasViolation(
+                    file=str(file_path),
+                    line=node.lineno,
+                    alias_name=bound_name,
+                    target_name=bound_name,
+                    module_name=current_package,
+                )
+            )
+    return violations
 
 
 def _all_from_imports(
