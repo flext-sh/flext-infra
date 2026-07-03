@@ -179,10 +179,20 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         return lines
 
     def _current_project_from_source(self, source: str) -> str:
-        """Heuristic: infer current project from existing local imports."""
+        """Return current project from init/path or existing local imports."""
+        if self._current_project:
+            return self._current_project
         for module in sorted(self._local_aliases_by_project, key=len, reverse=True):
             if f"from {module}." in source or f"import {module}" in source:
                 return module
+        return ""
+
+    def _project_from_path(self, file_path: str) -> str:
+        """Infer project package from a workspace file path."""
+        parts = file_path.replace("\\", "/").split("/")
+        for part in parts:
+            if part.startswith("flext_"):
+                return part
         return ""
 
 
