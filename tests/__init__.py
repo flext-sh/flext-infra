@@ -12,17 +12,21 @@ from flext_core.lazy import (
 )
 
 if _t.TYPE_CHECKING:
-    from flext_tests import td as td, tf as tf, tk as tk, tm as tm, tv as tv
+    from flext_tests import (
+        d,
+        e,
+        h,
+        r,
+        td as td,
+        tf as tf,
+        tk as tk,
+        tm as tm,
+        tv as tv,
+        x,
+    )
 
-    from flext_infra import d as d, e as e, h as h, r as r, x as x
-    from tests.base import (
-        TestsFlextInfraServiceBase as TestsFlextInfraServiceBase,
-        s as s,
-    )
-    from tests.constants import (
-        TestsFlextInfraConstants as TestsFlextInfraConstants,
-        c as c,
-    )
+    from tests.base import TestsFlextInfraServiceBase as TestsFlextInfraServiceBase, s
+    from tests.constants import TestsFlextInfraConstants as TestsFlextInfraConstants, c
     from tests.integration.test_infra_integration import (
         TestsFlextInfraIntegrationInfraIntegration as TestsFlextInfraIntegrationInfraIntegration,
     )
@@ -44,11 +48,8 @@ if _t.TYPE_CHECKING:
     from tests.integration.test_refactor_policy_mro import (
         TestsFlextInfraIntegrationRefactorPolicyMro as TestsFlextInfraIntegrationRefactorPolicyMro,
     )
-    from tests.models import TestsFlextInfraModels as TestsFlextInfraModels, m as m
-    from tests.protocols import (
-        TestsFlextInfraProtocols as TestsFlextInfraProtocols,
-        p as p,
-    )
+    from tests.models import TestsFlextInfraModels as TestsFlextInfraModels, m
+    from tests.protocols import TestsFlextInfraProtocols as TestsFlextInfraProtocols, p
     from tests.refactor.test_rope_semantic import (
         TestsFlextInfraRefactorRopeSemantic as TestsFlextInfraRefactorRopeSemantic,
     )
@@ -56,7 +57,7 @@ if _t.TYPE_CHECKING:
         TestsFlextInfraRefactorRopeStubs as TestsFlextInfraRefactorRopeStubs,
     )
     from tests.settings import TestsFlextInfraSettings as TestsFlextInfraSettings
-    from tests.typings import TestsFlextInfraTypes as TestsFlextInfraTypes, t as t
+    from tests.typings import TestsFlextInfraTypes as TestsFlextInfraTypes, t
     from tests.unit._utilities.test_discovery_consolidated import (
         TestsFlextInfraUtilitiesdiscoveryconsolidated as TestsFlextInfraUtilitiesdiscoveryconsolidated,
     )
@@ -547,10 +548,7 @@ if _t.TYPE_CHECKING:
     from tests.unit.workspace_factory import (
         TestsFlextInfraWorkspaceFactory as TestsFlextInfraWorkspaceFactory,
     )
-    from tests.utilities import (
-        TestsFlextInfraUtilities as TestsFlextInfraUtilities,
-        u as u,
-    )
+    from tests.utilities import TestsFlextInfraUtilities as TestsFlextInfraUtilities, u
 _LAZY_IMPORTS = merge_lazy_imports(
     (
         ".integration",
@@ -603,6 +601,16 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraTypes",
                 "t",
             ),
+            ".unit._utilities.test_discovery_consolidated": (
+                "TestsFlextInfraUtilitiesdiscoveryconsolidated",
+            ),
+            ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+            ".unit._utilities.test_protected_edit": (
+                "TestsFlextInfraUtilitiesProtectedEdit",
+            ),
+            ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
+            ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
+            ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
             ".unit.basemk.test_engine": ("TestsFlextInfraBasemkEngine",),
             ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
             ".unit.basemk.test_generator_edge_cases": (
@@ -975,19 +983,17 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "TestsFlextInfraUtilities",
                 "u",
             ),
-            "flext_infra": (
+            "flext_tests": (
                 "d",
                 "e",
                 "h",
                 "r",
-                "x",
-            ),
-            "flext_tests": (
                 "td",
                 "tf",
                 "tk",
                 "tm",
                 "tv",
+                "x",
             ),
         },
     ),

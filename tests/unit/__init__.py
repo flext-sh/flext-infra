@@ -11,6 +11,304 @@ from flext_core.lazy import (
     merge_lazy_imports,
 )
 
+if _t.TYPE_CHECKING:
+    from flext_tests import (
+        c,
+        d,
+        e,
+        h,
+        m,
+        p,
+        r,
+        s,
+        t,
+        td as td,
+        tf as tf,
+        tk as tk,
+        tm as tm,
+        tv as tv,
+        u,
+        x,
+    )
+
+    from tests.unit._utilities import (
+        TestsFlextInfraUtilitiesdiscoveryconsolidated as TestsFlextInfraUtilitiesdiscoveryconsolidated,
+        TestsFlextInfraUtilitiesformatting as TestsFlextInfraUtilitiesformatting,
+        TestsFlextInfraUtilitiesProtectedEdit as TestsFlextInfraUtilitiesProtectedEdit,
+        TestsFlextInfraUtilitiesRopeHooks as TestsFlextInfraUtilitiesRopeHooks,
+        TestsFlextInfraUtilitiessafety as TestsFlextInfraUtilitiessafety,
+        TestsFlextInfraUtilitiesscanning as TestsFlextInfraUtilitiesscanning,
+    )
+    from tests.unit.basemk import (
+        TestsFlextInfraBasemkEngine as TestsFlextInfraBasemkEngine,
+        TestsFlextInfraBasemkGenerator as TestsFlextInfraBasemkGenerator,
+        TestsFlextInfraBasemkGeneratorEdgeCases as TestsFlextInfraBasemkGeneratorEdgeCases,
+        TestsFlextInfraBasemkInit as TestsFlextInfraBasemkInit,
+        TestsFlextInfraBasemkMain as TestsFlextInfraBasemkMain,
+        TestsFlextInfraBasemkMakeContract as TestsFlextInfraBasemkMakeContract,
+    )
+    from tests.unit.check import (
+        TestCheckIssueFormatted as TestCheckIssueFormatted,
+        TestConfigFixerExecute as TestConfigFixerExecute,
+        TestConfigFixerProcessFile as TestConfigFixerProcessFile,
+        TestConfigFixerPublicBehavior as TestConfigFixerPublicBehavior,
+        TestConfigFixerRun as TestConfigFixerRun,
+        TestConfigFixerToArray as TestConfigFixerToArray,
+        TestExtendedRunnerExtras as TestExtendedRunnerExtras,
+        TestFlextInfraCheck as TestFlextInfraCheck,
+        TestFlextInfraConfigFixer as TestFlextInfraConfigFixer,
+        TestFlextInfraWorkspaceChecker as TestFlextInfraWorkspaceChecker,
+        TestGateErrorReportingPublicBehavior as TestGateErrorReportingPublicBehavior,
+        TestProjectResultProperties as TestProjectResultProperties,
+        TestRunCommandGateParsing as TestRunCommandGateParsing,
+        TestRunnerPublicBehavior as TestRunnerPublicBehavior,
+        TestRunProjectsPublicBehavior as TestRunProjectsPublicBehavior,
+        TestsExtendedProjectRunners as TestsExtendedProjectRunners,
+        TestWorkspaceCheckCLI as TestWorkspaceCheckCLI,
+        TestWorkspaceCheckCli as TestWorkspaceCheckCli,
+        TestWorkspaceCheckerErrorSummary as TestWorkspaceCheckerErrorSummary,
+        TestWorkspaceCheckerResolveGates as TestWorkspaceCheckerResolveGates,
+    )
+    from tests.unit.cli_what_selector_tests import (
+        TestsFlextInfraCliWhatSelector as TestsFlextInfraCliWhatSelector,
+    )
+    from tests.unit.codegen import (
+        TestAllDirectoriesScanned as TestAllDirectoriesScanned,
+        TestCheckOnlyMode as TestCheckOnlyMode,
+        TestEdgeCases as TestEdgeCases,
+        TestExcludedDirectories as TestExcludedDirectories,
+        TestGeneratedClassNamingConvention as TestGeneratedClassNamingConvention,
+        TestGeneratedFilesAreValidPython as TestGeneratedFilesAreValidPython,
+        TestGenerateFile as TestGenerateFile,
+        TestGenerateTypeChecking as TestGenerateTypeChecking,
+        TestRunRuffFix as TestRunRuffFix,
+        TestsFlextInfraLazyInitHelpers as TestsFlextInfraLazyInitHelpers,
+        TestsFlextInfraLazyInitTransforms as TestsFlextInfraLazyInitTransforms,
+    )
+    from tests.unit.container import (
+        TestsFlextInfraContainerInfraContainer as TestsFlextInfraContainerInfraContainer,
+    )
+    from tests.unit.deps import (
+        TestsFlextInfraDepsDetectionClassify as TestsFlextInfraDepsDetectionClassify,
+        TestsFlextInfraDepsDetectionDeptry as TestsFlextInfraDepsDetectionDeptry,
+        TestsFlextInfraDepsDetectionDiscover as TestsFlextInfraDepsDetectionDiscover,
+        TestsFlextInfraDepsDetectionModels as TestsFlextInfraDepsDetectionModels,
+        TestsFlextInfraDepsDetectionTypings as TestsFlextInfraDepsDetectionTypings,
+        TestsFlextInfraDepsDetectionTypingsFlow as TestsFlextInfraDepsDetectionTypingsFlow,
+        TestsFlextInfraDepsDetectionUncovered as TestsFlextInfraDepsDetectionUncovered,
+        TestsFlextInfraDepsDetectorDetect as TestsFlextInfraDepsDetectorDetect,
+        TestsFlextInfraDepsDetectorDetectFailures as TestsFlextInfraDepsDetectorDetectFailures,
+        TestsFlextInfraDepsDetectorInit as TestsFlextInfraDepsDetectorInit,
+        TestsFlextInfraDepsDetectorMain as TestsFlextInfraDepsDetectorMain,
+        TestsFlextInfraDepsDetectorModels as TestsFlextInfraDepsDetectorModels,
+        TestsFlextInfraDepsDetectorReport as TestsFlextInfraDepsDetectorReport,
+        TestsFlextInfraDepsDetectorReportFlags as TestsFlextInfraDepsDetectorReportFlags,
+        TestsFlextInfraDepsExtraPathsSync as TestsFlextInfraDepsExtraPathsSync,
+        TestsFlextInfraDepsInit as TestsFlextInfraDepsInit,
+        TestsFlextInfraDepsInternalSyncDiscovery as TestsFlextInfraDepsInternalSyncDiscovery,
+        TestsFlextInfraDepsInternalSyncDiscoveryEdge as TestsFlextInfraDepsInternalSyncDiscoveryEdge,
+        TestsFlextInfraDepsInternalSyncMain as TestsFlextInfraDepsInternalSyncMain,
+        TestsFlextInfraDepsInternalSyncResolve as TestsFlextInfraDepsInternalSyncResolve,
+        TestsFlextInfraDepsInternalSyncSync as TestsFlextInfraDepsInternalSyncSync,
+        TestsFlextInfraDepsInternalSyncSyncEdge as TestsFlextInfraDepsInternalSyncSyncEdge,
+        TestsFlextInfraDepsInternalSyncSyncEdgeMore as TestsFlextInfraDepsInternalSyncSyncEdgeMore,
+        TestsFlextInfraDepsInternalSyncUpdate as TestsFlextInfraDepsInternalSyncUpdate,
+        TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge as TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge,
+        TestsFlextInfraDepsInternalSyncValidation as TestsFlextInfraDepsInternalSyncValidation,
+        TestsFlextInfraDepsInternalSyncWorkspace as TestsFlextInfraDepsInternalSyncWorkspace,
+        TestsFlextInfraDepsMainDispatch as TestsFlextInfraDepsMainDispatch,
+        TestsFlextInfraDepsModernizerComments as TestsFlextInfraDepsModernizerComments,
+        TestsFlextInfraDepsModernizerConsolidate as TestsFlextInfraDepsModernizerConsolidate,
+        TestsFlextInfraDepsModernizerCoverage as TestsFlextInfraDepsModernizerCoverage,
+        TestsFlextInfraDepsModernizerHelpers as TestsFlextInfraDepsModernizerHelpers,
+        TestsFlextInfraDepsModernizerMain as TestsFlextInfraDepsModernizerMain,
+        TestsFlextInfraDepsModernizerMainExtra as TestsFlextInfraDepsModernizerMainExtra,
+        TestsFlextInfraDepsModernizerMypy as TestsFlextInfraDepsModernizerMypy,
+        TestsFlextInfraDepsModernizerPyright as TestsFlextInfraDepsModernizerPyright,
+        TestsFlextInfraDepsModernizerPytest as TestsFlextInfraDepsModernizerPytest,
+        TestsFlextInfraDepsModernizerTooling as TestsFlextInfraDepsModernizerTooling,
+        TestsFlextInfraDepsModernizerWorkspace as TestsFlextInfraDepsModernizerWorkspace,
+        TestsFlextInfraDepsPathSyncInit as TestsFlextInfraDepsPathSyncInit,
+        TestsFlextInfraDepsPathSyncMain as TestsFlextInfraDepsPathSyncMain,
+        TestsFlextInfraDepsPathSyncMainEdges as TestsFlextInfraDepsPathSyncMainEdges,
+        TestsFlextInfraDepsPathSyncMainMore as TestsFlextInfraDepsPathSyncMainMore,
+        TestsFlextInfraDepsPathSyncMainProjectObj as TestsFlextInfraDepsPathSyncMainProjectObj,
+        TestsFlextInfraDepsPathSyncRewriteDeps as TestsFlextInfraDepsPathSyncRewriteDeps,
+        TestsFlextInfraDepsPathSyncRewritePep621 as TestsFlextInfraDepsPathSyncRewritePep621,
+        TestsFlextInfraDepsPathSyncRewritePoetry as TestsFlextInfraDepsPathSyncRewritePoetry,
+        TestsFlextInfraExtraPathsManager as TestsFlextInfraExtraPathsManager,
+        TestsFlextInfraModernizerPyrefly as TestsFlextInfraModernizerPyrefly,
+    )
+    from tests.unit.discovery import (
+        TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases as TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases,
+    )
+    from tests.unit.docs import (
+        TestAuditorBrokenLinks as TestAuditorBrokenLinks,
+        TestAuditorCore as TestAuditorCore,
+        TestAuditorForbiddenTerms as TestAuditorForbiddenTerms,
+        TestAuditorNormalize as TestAuditorNormalize,
+        TestAuditorScope as TestAuditorScope,
+        TestAuditorToMarkdown as TestAuditorToMarkdown,
+        TestBuilderCore as TestBuilderCore,
+        TestIterMarkdownFiles as TestIterMarkdownFiles,
+        TestLoadAuditBudgets as TestLoadAuditBudgets,
+        TestSelectedProjectNames as TestSelectedProjectNames,
+    )
+    from tests.unit.fixtures import (
+        deptry_report_payload as deptry_report_payload,
+        models_resource as models_resource,
+        modernizer_workspace as modernizer_workspace,
+        modernizer_workspace_with_projects as modernizer_workspace_with_projects,
+        real_docs_project as real_docs_project,
+        real_makefile_project as real_makefile_project,
+        real_python_package as real_python_package,
+        real_toml_project as real_toml_project,
+        real_workspace as real_workspace,
+        rope_workspace as rope_workspace,
+        services_resource as services_resource,
+        tool_config_document as tool_config_document,
+    )
+    from tests.unit.fixtures_git import real_git_repo as real_git_repo
+    from tests.unit.io import (
+        TestsFlextInfraIoInfraTerminalDetection as TestsFlextInfraIoInfraTerminalDetection,
+    )
+    from tests.unit.refactor import (
+        EngineSafetyStub as EngineSafetyStub,
+        FlextInfraRefactorTypingUnificationRule as FlextInfraRefactorTypingUnificationRule,
+        TestsFlextInfraRefactorCensusPreviewCache as TestsFlextInfraRefactorCensusPreviewCache,
+        TestsFlextInfraRefactorInfraRefactorClassAndPropagation as TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
+        TestsFlextInfraRefactorInfraRefactorClassPlacement as TestsFlextInfraRefactorInfraRefactorClassPlacement,
+        TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow as TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
+        TestsFlextInfraRefactorInfraRefactorEngine as TestsFlextInfraRefactorInfraRefactorEngine,
+        TestsFlextInfraRefactorInfraRefactorImportModernizer as TestsFlextInfraRefactorInfraRefactorImportModernizer,
+        TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations as TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations,
+        TestsFlextInfraRefactorInfraRefactorMigrateToClassMro as TestsFlextInfraRefactorInfraRefactorMigrateToClassMro,
+        TestsFlextInfraRefactorInfraRefactorMroCompleteness as TestsFlextInfraRefactorInfraRefactorMroCompleteness,
+        TestsFlextInfraRefactorInfraRefactorNamespaceAliases as TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
+        TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer as TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer,
+        TestsFlextInfraRefactorInfraRefactorNamespaceMoves as TestsFlextInfraRefactorInfraRefactorNamespaceMoves,
+        TestsFlextInfraRefactorInfraRefactorPatternCorrections as TestsFlextInfraRefactorInfraRefactorPatternCorrections,
+        TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules as TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules,
+        TestsFlextInfraRefactorInfraRefactorProjectClassifier as TestsFlextInfraRefactorInfraRefactorProjectClassifier,
+        TestsFlextInfraRefactorInfraRefactorSafety as TestsFlextInfraRefactorInfraRefactorSafety,
+        TestsFlextInfraRefactorInfraRefactorTypingUnifier as TestsFlextInfraRefactorInfraRefactorTypingUnifier,
+        TestsFlextInfraRefactorMainCli as TestsFlextInfraRefactorMainCli,
+    )
+    from tests.unit.release import (
+        TestsFlextInfraReleaseDag as TestsFlextInfraReleaseDag,
+    )
+    from tests.unit.runner_service import RealSubprocessRunner as RealSubprocessRunner
+    from tests.unit.test_infra_constants_core import (
+        TestsFlextInfraInfraConstantsCore as TestsFlextInfraInfraConstantsCore,
+    )
+    from tests.unit.test_infra_constants_extra import (
+        TestsFlextInfraInfraConstantsExtra as TestsFlextInfraInfraConstantsExtra,
+    )
+    from tests.unit.test_infra_main import (
+        TestsFlextInfraInfraMain as TestsFlextInfraInfraMain,
+    )
+    from tests.unit.test_infra_maintenance_cli import (
+        TestsFlextInfraInfraMaintenanceCli as TestsFlextInfraInfraMaintenanceCli,
+    )
+    from tests.unit.test_infra_maintenance_init import (
+        TestsFlextInfraInfraMaintenanceInit as TestsFlextInfraInfraMaintenanceInit,
+    )
+    from tests.unit.test_infra_maintenance_main import (
+        TestsFlextInfraInfraMaintenanceMain as TestsFlextInfraInfraMaintenanceMain,
+    )
+    from tests.unit.test_infra_maintenance_python_version import (
+        TestsFlextInfraInfraMaintenancePythonVersion as TestsFlextInfraInfraMaintenancePythonVersion,
+    )
+    from tests.unit.test_infra_paths import (
+        TestsFlextInfraInfraPaths as TestsFlextInfraInfraPaths,
+    )
+    from tests.unit.test_infra_patterns_core import (
+        TestsFlextInfraInfraPatternsCore as TestsFlextInfraInfraPatternsCore,
+    )
+    from tests.unit.test_infra_patterns_extra import (
+        TestsFlextInfraInfraPatternsExtra as TestsFlextInfraInfraPatternsExtra,
+    )
+    from tests.unit.test_infra_protocols import (
+        TestsFlextInfraInfraProtocols as TestsFlextInfraInfraProtocols,
+    )
+    from tests.unit.test_infra_public_api import (
+        TestsFlextInfraPublicApi as TestsFlextInfraPublicApi,
+    )
+    from tests.unit.test_infra_refactor_rope_migrations import (
+        TestsFlextInfraInfraRefactorRopeMigrations as TestsFlextInfraInfraRefactorRopeMigrations,
+    )
+    from tests.unit.test_infra_reporting_core import (
+        TestsFlextInfraInfraReportingCore as TestsFlextInfraInfraReportingCore,
+    )
+    from tests.unit.test_infra_reporting_extra import (
+        TestsFlextInfraInfraReportingExtra as TestsFlextInfraInfraReportingExtra,
+    )
+    from tests.unit.test_infra_rope_imports import (
+        TestsFlextInfraRopeImports as TestsFlextInfraRopeImports,
+    )
+    from tests.unit.test_infra_rope_service import (
+        TestsFlextInfraInfraRopeService as TestsFlextInfraInfraRopeService,
+    )
+    from tests.unit.test_infra_selection import (
+        TestsFlextInfraInfraSelection as TestsFlextInfraInfraSelection,
+    )
+    from tests.unit.test_infra_typings import (
+        TestsFlextInfraInfraTypings as TestsFlextInfraInfraTypings,
+    )
+    from tests.unit.test_infra_utilities import (
+        TestsFlextInfraInfraUtilities as TestsFlextInfraInfraUtilities,
+    )
+    from tests.unit.test_infra_version_core import (
+        TestsFlextInfraInfraVersionCore as TestsFlextInfraInfraVersionCore,
+    )
+    from tests.unit.test_infra_version_extra import (
+        TestsFlextInfraInfraVersionExtra as TestsFlextInfraInfraVersionExtra,
+    )
+    from tests.unit.test_infra_versioning import (
+        TestsFlextInfraInfraVersioning as TestsFlextInfraInfraVersioning,
+    )
+    from tests.unit.test_infra_workspace_detector import (
+        TestsFlextInfraInfraWorkspaceDetector as TestsFlextInfraInfraWorkspaceDetector,
+    )
+    from tests.unit.test_infra_workspace_migrator import (
+        TestsFlextInfraInfraWorkspaceMigrator as TestsFlextInfraInfraWorkspaceMigrator,
+    )
+    from tests.unit.test_infra_workspace_migrator_deps import (
+        TestsFlextInfraInfraWorkspaceMigratorDeps as TestsFlextInfraInfraWorkspaceMigratorDeps,
+    )
+    from tests.unit.test_infra_workspace_migrator_dryrun import (
+        TestsFlextInfraInfraWorkspaceMigratorDryrun as TestsFlextInfraInfraWorkspaceMigratorDryrun,
+    )
+    from tests.unit.test_infra_workspace_migrator_internal import (
+        TestsFlextInfraInfraWorkspaceMigratorInternal as TestsFlextInfraInfraWorkspaceMigratorInternal,
+    )
+    from tests.unit.test_infra_workspace_orchestrator import (
+        TestsFlextInfraInfraWorkspaceOrchestrator as TestsFlextInfraInfraWorkspaceOrchestrator,
+    )
+    from tests.unit.transformers import (
+        TestsFlextInfraTransformersCliModernizer as TestsFlextInfraTransformersCliModernizer,
+        TestsFlextInfraTransformersInfraTransformerClassNesting as TestsFlextInfraTransformersInfraTransformerClassNesting,
+        TestsFlextInfraTransformersInfraTransformerHelperConsolidation as TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
+        TestsFlextInfraTransformersInfraTransformerNestedClassPropagation as TestsFlextInfraTransformersInfraTransformerNestedClassPropagation,
+        TestsFlextInfraTransformersLoggingModernizer as TestsFlextInfraTransformersLoggingModernizer,
+        TestsFlextInfraTransformersPatternModernizer as TestsFlextInfraTransformersPatternModernizer,
+        TestsFlextInfraTransformersPydanticModernizer as TestsFlextInfraTransformersPydanticModernizer,
+        TestsFlextInfraTransformersResultDiModernizer as TestsFlextInfraTransformersResultDiModernizer,
+        TestsFlextInfraTransformersTestsModernizer as TestsFlextInfraTransformersTestsModernizer,
+    )
+    from tests.unit.validate import (
+        TestFlextInfraNamespaceValidator as TestFlextInfraNamespaceValidator,
+        TestValidateCli as TestValidateCli,
+    )
+    from tests.unit.workspace import (
+        TestsFlextInfraWorkspaceMain as TestsFlextInfraWorkspaceMain,
+        TestsFlextInfraWorkspaceMakefileDryRun as TestsFlextInfraWorkspaceMakefileDryRun,
+        TestsFlextInfraWorkspaceMakefileGenerator as TestsFlextInfraWorkspaceMakefileGenerator,
+        TestsFlextInfraWorkspaceSync as TestsFlextInfraWorkspaceSync,
+    )
+    from tests.unit.workspace_factory import (
+        TestsFlextInfraWorkspaceFactory as TestsFlextInfraWorkspaceFactory,
+    )
 _LAZY_IMPORTS = merge_lazy_imports(
     (
         "._utilities",
@@ -386,6 +684,24 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
             ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
+            ),
         },
     ),
     exclude_names=(
