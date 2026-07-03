@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -35,30 +36,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
 
     kind: ClassVar[str] = "rope"
 
-    _TARGET_DISPATCH: ClassVar[
-        dict[
-            str,
-            t.Callable[
-                [
-                    "FlextInfraRopeFixerAdapter",
-                    Path,
-                    t.SequenceOf[
-                        tuple[me.EnforcementRuleSpec, p.AttributeProbe]
-                    ],
-                    m.Infra.FixEnforcementCommand,
-                ],
-                fr.ProjectFixResult,
-            ],
-        ]
-    ] = {}
-
     def __init__(self, workspace_root: Path) -> None:
         """Bind the workspace root used to open rope projects."""
         super().__init__(workspace_root)
-        # Populate dispatch table lazily so method references are stable.
-        self._TARGET_DISPATCH = {
-            "classvar_relocation": self._fix_classvar_relocation,
-        }
 
     @override
     def can_fix(
@@ -83,7 +63,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
         for target, target_violations in self._group_by_target(violations).items():
-            handler = self._TARGET_DISPATCH.get(target)
+            handler = self._target_dispatch().get(target)
             if handler is None:
                 rule_id = target_violations[0][0].id
                 failed.append(
@@ -106,6 +86,53 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             failed=tuple(failed),
             files_modified=tuple(files_modified),
         )
+
+    def _target_dispatch(
+        self,
+    ) -> dict[
+        str,
+        Callable[
+            [
+                Path,
+                t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+                m.Infra.FixEnforcementCommand,
+            ],
+            fr.ProjectFixResult,
+        ],
+    ]:
+        """Return bound rope target handlers for this adapter instance."""
+        return {
+            "classvar_relocation": self._fix_classvar_relocation,
+        }
+
+    @staticmethod
+    def _package_name_for_dir(package_dir: Path, *, project_root: Path) -> str:
+        """Return the import package for a directory inside a project."""
+        try:
+            relative_parts = package_dir.relative_to(project_root).parts
+        except ValueError:
+            return ""
+        if not relative_parts:
+            return ""
+        root_name = relative_parts[0]
+        if root_name == c.Infra.DEFAULT_SRC_DIR:
+            package_parts = relative_parts[1:]
+        elif root_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
+            package_parts = relative_parts
+        else:
+            package_parts = ()
+        return ".".join(package_parts)
+
+    @classmethod
+    def _module_name_for_file(cls, file_path: Path, *, project_root: Path) -> str:
+        """Return the import module for a Python file inside a project."""
+        package_name = cls._package_name_for_dir(
+            file_path.parent,
+            project_root=project_root,
+        )
+        if file_path.name == c.Infra.INIT_PY:
+            return package_name
+        return f"{package_name}.{file_path.stem}" if package_name else ""
 
     def _group_by_target(
         self,
@@ -169,7 +196,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 ]
                 if not classvar_violations:
                     continue
-                module_name = u.Infra._module_name_for_file(
+                module_name = self._module_name_for_file(
                     file_path,
                     project_root=project_dir,
                 )
@@ -206,7 +233,17 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             ),
                         )
                         continue
-                    touched = result.get("touched_files", [])
+                    touched_raw = result.get("touched_files", ())
+                    if not isinstance(touched_raw, (list, tuple)):
+                        failed.append(
+                            fr.FailedFix(
+                                rule_id="ENFORCE-079",
+                                file_path=file_path_str,
+                                error="autofix returned invalid touched_files",
+                            ),
+                        )
+                        continue
+                    touched = tuple(str(path) for path in touched_raw)
                     if ctx.apply:
                         files_modified.update(str(project_dir / p) for p in touched)
                     fixed.append(

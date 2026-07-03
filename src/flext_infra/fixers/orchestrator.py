@@ -40,6 +40,7 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     _ADAPTER_CLASSES: ClassVar[tuple[type[FlextInfraFixerAdapter], ...]] = (
         FlextInfraGateFixerAdapter,
+        FlextInfraRopeFixerAdapter,
         FlextInfraTransformerFixerAdapter,
     )
 
