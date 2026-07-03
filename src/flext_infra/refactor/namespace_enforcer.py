@@ -133,6 +133,7 @@ class FlextInfraNamespaceEnforcer(
             f"Future violations: {report.total_future_violations}",
             f"Manual typing violations: {report.total_manual_typing_violations}",
             f"Compatibility alias violations: {report.total_compatibility_alias_violations}",
+            f"Foreign canonical alias violations: {report.total_foreign_canonical_alias_violations}",
             f"Class placement violations: {report.total_class_placement_violations}",
             f"MRO completeness violations: {report.total_mro_completeness_violations}",
             f"Bare except violations: {report.total_bare_except_violations}",

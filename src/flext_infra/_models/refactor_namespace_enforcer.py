@@ -359,6 +359,15 @@ class FlextInfraModelsNamespaceEnforcer:
                 description="Compatibility alias violations collected for the project.",
             ),
         ]
+        foreign_canonical_alias_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.CompatibilityAliasViolation],
+            m.Field(
+                default_factory=tuple,
+                description=(
+                    "Foreign canonical alias imports collected for the project."
+                ),
+            ),
+        ]
         class_placement_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ClassPlacementViolation],
             m.Field(
@@ -485,6 +494,7 @@ class FlextInfraModelsNamespaceEnforcer:
                 self.future_violations,
                 self.manual_typing_violations,
                 self.compatibility_alias_violations,
+                self.foreign_canonical_alias_violations,
                 self.class_placement_violations,
                 self.mro_completeness_violations,
                 self.bare_except_violations,
@@ -551,6 +561,10 @@ class FlextInfraModelsNamespaceEnforcer:
         total_compatibility_alias_violations: Annotated[
             t.NonNegativeInt,
             m.Field(description="Total compatibility alias violations"),
+        ] = 0
+        total_foreign_canonical_alias_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total foreign canonical alias import violations"),
         ] = 0
         total_class_placement_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Total class placement violations")
@@ -650,6 +664,9 @@ class FlextInfraModelsNamespaceEnforcer:
                 ),
                 total_compatibility_alias_violations=sum(
                     len(p.compatibility_alias_violations) for p in projects
+                ),
+                total_foreign_canonical_alias_violations=sum(
+                    len(p.foreign_canonical_alias_violations) for p in projects
                 ),
                 total_class_placement_violations=sum(
                     len(p.class_placement_violations) for p in projects

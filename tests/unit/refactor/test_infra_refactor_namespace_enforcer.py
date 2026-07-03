@@ -82,6 +82,42 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(report.total_manual_typing_violations, gt=0)
         tm.that(report.total_compatibility_alias_violations, gt=0)
 
+    def test_namespace_enforcer_splits_foreign_canonical_aliases(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ENFORCE-080 has a distinct report field from legacy aliases."""
+        workspace = tmp_path / "workspace"
+        project = workspace / "flext-infra"
+        pkg = project / "src" / "flext_infra"
+        pkg.mkdir(parents=True)
+        _ = (project / "pyproject.toml").write_text(
+            "[project]\nname='flext-infra'\n",
+            encoding="utf-8",
+        )
+        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (pkg / "service.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core import c, r, t\n\n"
+            "VALUE = c.MAX_SIZE\n"
+            "RESULT: r.Result[str] | None = None\n"
+            "NAMES: t.StrSequence = ()\n",
+            encoding="utf-8",
+        )
+
+        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+            apply=False,
+        )
+
+        project_report = report.projects[0]
+        tm.that(report.total_compatibility_alias_violations, eq=0)
+        tm.that(report.total_foreign_canonical_alias_violations, gt=0)
+        tm.that(project_report.compatibility_alias_violations, empty=True)
+        tm.that(project_report.foreign_canonical_alias_violations, empty=False)
+        rendered = FlextInfraNamespaceEnforcer.render_text(report)
+        tm.that(rendered, has="Foreign canonical alias violations:")
+
     def test_namespace_enforcer_detects_manual_protocol_outside_canonical_files(
         self,
         tmp_path: Path,

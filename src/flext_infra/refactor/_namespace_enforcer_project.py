@@ -302,6 +302,13 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             ),
             apply=apply,
         )
+        (
+            compatibility_alias_violations,
+            foreign_canonical_alias_violations,
+        ) = self._split_compatibility_alias_violations(
+            compatibility_alias_violations,
+            package_name=package_name,
+        )
         class_placement_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraClassPlacementDetector.detect_file(
@@ -373,6 +380,9 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             future_violations=list(future_violations),
             manual_typing_violations=list(manual_typing_violations),
             compatibility_alias_violations=list(compatibility_alias_violations),
+            foreign_canonical_alias_violations=list(
+                foreign_canonical_alias_violations,
+            ),
             class_placement_violations=list(class_placement_violations),
             mro_completeness_violations=list(mro_completeness_violations),
             bare_except_violations=smell_buckets["bare_except"],
@@ -388,6 +398,29 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             parse_failures=list(parse_failures),
             files_scanned=len(py_files),
         )
+
+    @staticmethod
+    def _split_compatibility_alias_violations(
+        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        *,
+        package_name: str,
+    ) -> tuple[
+        list[m.Infra.CompatibilityAliasViolation],
+        list[m.Infra.CompatibilityAliasViolation],
+    ]:
+        """Split legacy compatibility aliases from foreign canonical imports."""
+        compatibility_aliases: list[m.Infra.CompatibilityAliasViolation] = []
+        foreign_canonical_aliases: list[m.Infra.CompatibilityAliasViolation] = []
+        for violation in violations:
+            action = FlextInfraCompatibilityAliasDetector.fix_action_for(
+                violation,
+                current_project=package_name,
+            )
+            if action == "rewrite_foreign_canonical_alias":
+                foreign_canonical_aliases.append(violation)
+                continue
+            compatibility_aliases.append(violation)
+        return compatibility_aliases, foreign_canonical_aliases
 
 
 __all__: list[str] = ["FlextInfraNamespaceEnforcerProjectMixin"]
