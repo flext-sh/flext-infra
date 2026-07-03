@@ -108,7 +108,9 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         if plan.action == c.Infra.LazyInitAction.SKIP:
             return (None, dict(plan.lazy_map))
         if plan.action == c.Infra.LazyInitAction.REMOVE:
-            return self._check_remove_init(plan) if check_only else self._remove_init(plan)
+            return (
+                self._check_remove_init(plan) if check_only else self._remove_init(plan)
+            )
         if check_only:
             return self._check_write_init(plan)
         return self._write_init(plan)

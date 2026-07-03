@@ -16,6 +16,7 @@ FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".class_nesting": ("FlextInfraRefactorClassNestingTransformer",),
         ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),
         ".cli_modernizer": ("FlextInfraRefactorCliModernizer",),
+        ".compatibility_alias": ("FlextInfraRefactorCompatibilityAlias",),
         ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
         ".future_import": ("FlextInfraRefactorFutureImport",),
         ".hardcoded_version": ("FlextInfraRefactorHardcodedVersion",),
@@ -40,7 +41,6 @@ FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".tests_modernizer": ("FlextInfraRefactorTestsModernizer",),
         ".typing_dict_attr": ("FlextInfraRefactorTypingDictAttr",),
         ".typing_dict_import": ("FlextInfraRefactorTypingDictImport",),
-        ".typing_unifier": ("FlextInfraRefactorTypingUnifier",),
     },
 )
 

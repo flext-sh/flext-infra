@@ -199,7 +199,7 @@ extra_checks = true
 follow_imports = "normal"
 ignore_missing_imports = true
 local_partial_types = true
-mypy_path = [ ".", "../typings", "../typings/generated", "src" ]
+mypy_path = [ ".", "src" ]
 namespace_packages = true
 no_implicit_reexport = true
 overrides = [  ]
@@ -368,8 +368,8 @@ exclude = [
   ".reports",
   ".venv",
 ]
-extraPaths = [ ".", "../typings", "../typings/generated", "src" ]
-ignore = [ "**/*.pyi", "../typings", "../typings/generated" ]
+extraPaths = [ ".", "src" ]
+ignore = [ "**/*.pyi" ]
 include = [ "src", "tests" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
@@ -401,7 +401,6 @@ reportUnusedClass = "error"
 reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
-stubPath = "../typings"
 typeCheckingMode = "strict"
 venv = ".venv"
 venvPath = ".."

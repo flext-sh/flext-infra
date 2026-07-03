@@ -267,8 +267,30 @@ class FlextInfraGate(ABC):
         result: m.Infra.GateResult,
         issues: t.SequenceOf[m.Infra.Issue],
         raw_output: str = "",
+        ctx: m.Infra.GateContext | None = None,
     ) -> m.Infra.GateExecution:
-        """Build gate result."""
+        """Build gate result.
+
+        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
+        marked passed so advisory enforcement gates do not fail the check
+        pipeline.
+        """
+        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not result.passed:
+            warn_issues = [
+                issue.model_copy(update={"severity": "WARNING"}) if hasattr(issue, "model_copy") else issue
+                for issue in issues
+            ]
+            return m.Infra.GateExecution(
+                result=m.Infra.GateResult(
+                    gate=result.gate,
+                    project=result.project,
+                    passed=True,
+                    errors=[],
+                    duration=result.duration,
+                ),
+                issues=tuple(warn_issues),
+                raw_output=raw_output,
+            )
         return m.Infra.GateExecution(
             result=result,
             issues=tuple(issues),

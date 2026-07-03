@@ -58,6 +58,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
             ),
             issues=[],
             raw_output="\n".join(errors),
+            ctx=ctx,
         )
 
     @override

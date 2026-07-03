@@ -7,8 +7,6 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
-        "._constants": ("_constants",),
-        ".constants": ("c",),
         ".typings": ("TestsFlextInfraTypes",),
         ".unit._utilities.test_discovery_consolidated": (
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
@@ -27,6 +25,8 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "TestsFlextInfraTransformersCliModernizer",
         ),
         ".unit.transformers.test_infra_transformer_enforcement_fixers": (
+            "TestsFlextInfraTransformersBareExcept",
+            "TestsFlextInfraTransformersCompatibilityAlias",
             "TestsFlextInfraTransformersFutureImport",
             "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",

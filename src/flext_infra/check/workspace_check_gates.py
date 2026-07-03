@@ -279,7 +279,17 @@ class FlextInfraWorkspaceCheckGatesMixin:
             _pipeline_ctx: m.Cli.PipelineStageContext,
         ) -> p.Result[m.Cli.PipelineStageResult]:
             """Handler."""
-            execution = self._execute_gate(gate_instance, project_dir, ctx)
+            gate_ctx = m.Infra.GateContext(
+                workspace=ctx.workspace_root,
+                reports_dir=ctx.reports_dir,
+                apply_fixes=ctx.apply_fixes,
+                check_only=ctx.check_only,
+                fail_fast=ctx.fail_fast,
+                ruff_args=ctx.ruff_args,
+                pyright_args=ctx.pyright_args,
+                gate_mode="warn" if gate_id in c.Infra.ENFORCEMENT_ADVISORY_GATES else "error",
+            )
+            execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             gates_sink[gate_id] = execution
             self._gate_logger.debug(
                 "gate_executed",

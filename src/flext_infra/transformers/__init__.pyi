@@ -20,6 +20,9 @@ from flext_infra.transformers.class_reconstructor import (
 from flext_infra.transformers.cli_modernizer import (
     FlextInfraRefactorCliModernizer as FlextInfraRefactorCliModernizer,
 )
+from flext_infra.transformers.compatibility_alias import (
+    FlextInfraRefactorCompatibilityAlias as FlextInfraRefactorCompatibilityAlias,
+)
 from flext_infra.transformers.deprecated_remover import (
     FlextInfraRefactorDeprecatedRemover as FlextInfraRefactorDeprecatedRemover,
 )
@@ -119,6 +122,7 @@ __all__ = (
     "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorCliModernizer",
+    "FlextInfraRefactorCompatibilityAlias",
     "FlextInfraRefactorDeprecatedRemover",
     "FlextInfraRefactorFutureImport",
     "FlextInfraRefactorHardcodedVersion",

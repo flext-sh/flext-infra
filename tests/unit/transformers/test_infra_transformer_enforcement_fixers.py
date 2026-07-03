@@ -10,6 +10,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
+from flext_infra.transformers.compatibility_alias import (
+    FlextInfraRefactorCompatibilityAlias,
+)
 from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
 from flext_infra.transformers.hardcoded_version import (
     FlextInfraRefactorHardcodedVersion,
@@ -30,6 +33,7 @@ from flext_infra.transformers.typing_dict_import import (
 def _transform(
     source: str,
     transformer: FlextInfraRefactorBareExcept
+    | FlextInfraRefactorCompatibilityAlias
     | FlextInfraRefactorFutureImport
     | FlextInfraRefactorHardcodedVersion
     | FlextInfraRefactorOpenEncoding
@@ -284,5 +288,45 @@ class TestsFlextInfraTransformersHardcodedVersion:
     def test_no_version_unchanged(self) -> None:
         source = "x = 1\n"
         code, changes = _transform(source, FlextInfraRefactorHardcodedVersion())
+        assert code == source
+        assert changes == []
+
+
+class TestsFlextInfraTransformersCompatibilityAlias:
+    """Behavior contract for FlextInfraRefactorCompatibilityAlias."""
+
+    def test_compat_assignment_removed_and_references_rewritten(self) -> None:
+        source = (
+            "from flext_core import FlextConstants\n\n"
+            "FC = FlextConstants\n\n"
+            "def foo():\n"
+            "    return FC.SOME_VALUE\n"
+        )
+        code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
+        assert "FC = FlextConstants\n" not in code
+        assert "FlextConstants.SOME_VALUE" in code
+        assert changes
+
+    def test_compat_import_rewritten_to_canonical_alias(self) -> None:
+        source = (
+            "from flext_core import FlextConstants\n\n"
+            "def foo():\n"
+            "    return FlextConstants.SOME_VALUE\n"
+        )
+        code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
+        assert "from flext_core import c\n" in code
+        assert "FlextConstants.SOME_VALUE" not in code
+        assert "c.SOME_VALUE" in code
+        assert changes
+
+    def test_skip_names_preserved(self) -> None:
+        source = "__version__ = __version_info__\n"
+        code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
+        assert code == source
+        assert changes == []
+
+    def test_same_name_assignment_preserved(self) -> None:
+        source = "Foo = Foo\n"
+        code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
         assert code == source
         assert changes == []

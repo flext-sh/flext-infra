@@ -21,6 +21,10 @@ class FlextInfraModelsGithub:
 
         report: Annotated[str | None, m.Field(description="Output report file")] = None
         prune: Annotated[bool, m.Field(description="Remove unknown files")] = False
+        projects: Annotated[
+            t.StrSequence | None,
+            m.Field(description="Optional selected project names"),
+        ] = None
 
         @property
         def report_path(self) -> Path | None:

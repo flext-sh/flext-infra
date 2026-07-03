@@ -60,6 +60,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
             ),
             issues=issues,
             raw_output="\n".join(errors),
+            ctx=ctx,
         )
 
     @override

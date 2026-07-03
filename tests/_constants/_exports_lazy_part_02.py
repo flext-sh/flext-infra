@@ -7,12 +7,12 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
     {
-        ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
         ".unit.check.extended_cli_entry_tests": ("TestWorkspaceCheckCLI",),
         ".unit.check.extended_config_fixer_errors_tests": (
             "TestConfigFixerPublicBehavior",
         ),
         ".unit.check.extended_config_fixer_tests": (
+            "TestConfigFixerExecute",
             "TestConfigFixerProcessFile",
             "TestConfigFixerRun",
             "TestConfigFixerToArray",

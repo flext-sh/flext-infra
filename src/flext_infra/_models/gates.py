@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 from flext_infra.typings import t
@@ -38,6 +38,10 @@ class FlextInfraModelsGates:
                 description="Never write files even when fix mode is requested",
             ),
         ] = False
+        gate_mode: Annotated[
+            Literal["error", "warn"],
+            m.Field(description="Gate failure mode: error fails the pipeline, warn reports only"),
+        ] = "error"
         ruff_args: Annotated[
             t.StrSequence,
             m.Field(description="Extra arguments for Ruff"),

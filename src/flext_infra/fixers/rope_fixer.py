@@ -7,10 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, override
 
+from rope.refactor.move import MoveGlobal, create_move
+
+from flext_core import r
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.constants import c
 from flext_infra.detectors.class_placement_detector import (
@@ -59,7 +63,10 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         fix_action: me.EnforcementFixAction,
     ) -> bool:
         """Return whether this adapter handles ``fix_action``."""
-        return fix_action.kind == self.kind
+        return (
+            fix_action.kind == self.kind
+            and fix_action.target in self._target_dispatch()
+        )
 
     @override
     def fix_project(
@@ -72,6 +79,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         if not violations:
             return fr.ProjectFixResult(project=project_dir.name)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -89,12 +97,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 continue
             result = handler(project_dir, target_violations, ctx)
             fixed.extend(result.fixed)
+            previewed.extend(result.previewed)
             skipped.extend(result.skipped)
             failed.extend(result.failed)
             files_modified.update(result.files_modified)
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
@@ -121,6 +131,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             "hoist_inline_import": self._fix_hoist_inline_import,
             "rewrite_private_import_bypass": self._fix_private_import_bypass,
             "rewrite_library_abstraction": self._fix_library_abstraction,
+            "one_class_per_module": self._fix_one_class_per_module,
         }
 
     @staticmethod
@@ -202,6 +213,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Rewrite foreign canonical aliases to the owning project facade."""
         rule_id = self._rule_id(violations)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -238,8 +250,8 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 )
                 continue
             if not ctx.apply:
-                fixed.append(
-                    fr.FixedViolation(
+                previewed.append(
+                    fr.PreviewedViolation(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         message=f"would rewrite {len(changes)} alias import(s)",
@@ -267,6 +279,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
@@ -281,6 +294,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Rewrite deterministic silent-failure sentinels to failed Results."""
         rule_id = self._rule_id(violations)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -322,19 +336,30 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     continue
                 if ctx.apply:
                     files_modified.add(str(file_path))
-                fixed.append(
-                    fr.FixedViolation(
-                        rule_id=rule_id,
-                        file_path=str(file_path),
-                        message=(
-                            f"{'rewrote' if ctx.apply else 'would rewrite'} "
-                            f"{len(changes)} silent sentinel fix(es)"
-                        ),
-                    )
+                message = (
+                    f"{'rewrote' if ctx.apply else 'would rewrite'} "
+                    f"{len(changes)} silent sentinel fix(es)"
                 )
+                if ctx.apply:
+                    fixed.append(
+                        fr.FixedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
+                else:
+                    previewed.append(
+                        fr.PreviewedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
@@ -349,6 +374,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Rewrite compatibility aliases using the canonical detector + rewriter."""
         rule_id = self._rule_id(violations)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -410,19 +436,30 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         )
                         continue
                     files_modified.add(str(file_path))
-                fixed.append(
-                    fr.FixedViolation(
-                        rule_id=rule_id,
-                        file_path=str(file_path),
-                        message=(
-                            f"{'rewrote' if ctx.apply else 'would rewrite'} "
-                            f"{len(file_violations)} compatibility alias violation(s)"
-                        ),
-                    )
+                message = (
+                    f"{'rewrote' if ctx.apply else 'would rewrite'} "
+                    f"{len(file_violations)} compatibility alias violation(s)"
                 )
+                if ctx.apply:
+                    fixed.append(
+                        fr.FixedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
+                else:
+                    previewed.append(
+                        fr.PreviewedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
@@ -437,6 +474,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Rewrite private-module imports to their canonical facade equivalents."""
         rule_id = self._rule_id(violations)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -501,19 +539,30 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     continue
                 if ctx.apply:
                     files_modified.add(str(file_path))
-                fixed.append(
-                    fr.FixedViolation(
-                        rule_id=rule_id,
-                        file_path=str(file_path),
-                        message=(
-                            f"{'rewrote' if ctx.apply else 'would rewrite'} "
-                            f"{len(auto_fixable)} private import bypass violation(s)"
-                        ),
-                    )
+                message = (
+                    f"{'rewrote' if ctx.apply else 'would rewrite'} "
+                    f"{len(auto_fixable)} private import bypass violation(s)"
                 )
+                if ctx.apply:
+                    fixed.append(
+                        fr.FixedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
+                else:
+                    previewed.append(
+                        fr.PreviewedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
@@ -525,25 +574,13 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
-        """Library abstraction rewrites require human review; report skipped."""
-        _ = ctx
-        rule_id = self._rule_id(violations)
-        skipped: list[fr.SkippedViolation] = []
-        for _rule, probe in violations:
-            file_path = getattr(probe, "file_path", "") or getattr(probe, "file", "")
-            skipped.append(
-                fr.SkippedViolation(
-                    rule_id=rule_id,
-                    file_path=str(file_path),
-                    reason=(
-                        "library abstraction rewrite must be reviewed manually "
-                        "(hoist + facade routing)"
-                    ),
-                )
-            )
-        return fr.ProjectFixResult(
-            project=project_dir.name,
-            skipped=tuple(skipped),
+        """Hoist detector-approved FLEXT library imports to module scope."""
+        return self._fix_inline_import_action(
+            project_dir,
+            violations,
+            ctx,
+            target_action="rewrite_library_abstraction",
+            empty_reason="no library abstraction inline imports",
         )
 
     def _fix_hoist_inline_import(
@@ -553,8 +590,27 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Hoist detector-approved inline stdlib imports to module scope."""
+        return self._fix_inline_import_action(
+            project_dir,
+            violations,
+            ctx,
+            target_action="hoist_inline_import",
+            empty_reason="no hoistable inline imports",
+        )
+
+    def _fix_inline_import_action(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+        *,
+        target_action: str,
+        empty_reason: str,
+    ) -> fr.ProjectFixResult:
+        """Apply one detector-approved inline-import fix action."""
         rule_id = self._rule_id(violations)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -584,14 +640,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         module_name=violation.module_name,
                         is_importlib=violation.is_importlib,
                     )
-                    == "hoist_inline_import"
+                    == target_action
                 )
                 if not hoistable:
                     skipped.append(
                         fr.SkippedViolation(
                             rule_id=rule_id,
                             file_path=str(file_path),
-                            reason="no hoistable inline imports",
+                            reason=empty_reason,
                         )
                     )
                     continue
@@ -632,19 +688,30 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if ctx.apply:
                     resource.write(updated)
                     files_modified.add(str(file_path))
-                fixed.append(
-                    fr.FixedViolation(
-                        rule_id=rule_id,
-                        file_path=str(file_path),
-                        message=(
-                            f"{'hoisted' if ctx.apply else 'would hoist'} "
-                            f"{len(changes)} inline import(s)"
-                        ),
-                    )
+                message = (
+                    f"{'hoisted' if ctx.apply else 'would hoist'} "
+                    f"{len(changes)} inline import(s) for {target_action}"
                 )
+                if ctx.apply:
+                    fixed.append(
+                        fr.FixedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
+                else:
+                    previewed.append(
+                        fr.PreviewedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            message=message,
+                        )
+                    )
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
@@ -735,6 +802,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     ) -> fr.ProjectFixResult:
         """Move class-level constants to canonical _constants modules."""
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -826,22 +894,275 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     touched = tuple(str(path) for path in touched_raw)
                     if ctx.apply:
                         files_modified.update(str(project_dir / p) for p in touched)
-                    fixed.append(
-                        fr.FixedViolation(
-                            rule_id="ENFORCE-079",
-                            file_path=file_path_str,
-                            message=(
-                                f"{'would move' if not ctx.apply else 'moved'} "
-                                f"{violation.base_class}.{violation.name} -> "
-                                f"{constants_module}"
-                            ),
-                        ),
+                    message = (
+                        f"{'would move' if not ctx.apply else 'moved'} "
+                        f"{violation.base_class}.{violation.name} -> "
+                        f"{constants_module}"
                     )
+                    if ctx.apply:
+                        fixed.append(
+                            fr.FixedViolation(
+                                rule_id="ENFORCE-079",
+                                file_path=file_path_str,
+                                message=message,
+                            ),
+                        )
+                    else:
+                        previewed.append(
+                            fr.PreviewedViolation(
+                                rule_id="ENFORCE-079",
+                                file_path=file_path_str,
+                                message=message,
+                            ),
+                        )
 
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
         )
+
+    def _fix_one_class_per_module(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+    ) -> fr.ProjectFixResult:
+        """Move extra governed classes to their own canonical modules."""
+        rule_id = self._rule_id(violations)
+        fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
+        skipped: list[fr.SkippedViolation] = []
+        failed: list[fr.FailedFix] = []
+        files_modified: set[str] = set()
+        file_paths = self._collect_file_paths(project_dir, violations)
+        if not file_paths:
+            return fr.ProjectFixResult(
+                project=project_dir.name,
+                skipped=(
+                    fr.SkippedViolation(
+                        rule_id=rule_id,
+                        file_path=str(project_dir),
+                        reason="no files in violation batch",
+                    ),
+                ),
+            )
+        layout = u.Infra.layout(project_dir)
+        if layout is None:
+            return fr.ProjectFixResult(
+                project=project_dir.name,
+                failed=(
+                    fr.FailedFix(
+                        rule_id=rule_id,
+                        file_path=str(project_dir),
+                        error="could not resolve project layout",
+                    ),
+                ),
+            )
+        package_dir = layout.package_dir
+        with u.Infra.open_project(self._workspace_root) as rope_project:
+            for file_path in file_paths:
+                resource = u.Infra.fetch_python_resource(
+                    rope_project,
+                    file_path,
+                    skip_protected=True,
+                    skip_settings=True,
+                )
+                if resource is None:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="rope resource not found",
+                        ),
+                    )
+                    continue
+                detect_ctx = m.Infra.DetectorContext(
+                    file_path=file_path,
+                    rope_project=rope_project,
+                    project_name=project_dir.name,
+                    project_root=project_dir,
+                )
+                try:
+                    all_violations = FlextInfraClassPlacementDetector.detect_file(
+                        detect_ctx,
+                    )
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"class placement detector failed: {exc}",
+                        ),
+                    )
+                    continue
+                ocpm_violations = [
+                    v for v in all_violations if v.action == "one_class_per_module"
+                ]
+                if not ocpm_violations:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="no one_class_per_module violations",
+                        ),
+                    )
+                    continue
+                governed_classes = [
+                    ci
+                    for ci in u.Infra.get_class_info(rope_project, resource)
+                    if not ci.name.startswith("_")
+                    and any(v.name == ci.name for v in ocpm_violations)
+                ]
+                if len(governed_classes) <= 1:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="only one governed class; no extras to move",
+                        ),
+                    )
+                    continue
+                governed_classes.sort(key=lambda ci: ci.line)
+                extras = governed_classes[1:]
+                moved_any = False
+                for extra_ci in extras:
+                    extra_violation = next(
+                        (v for v in ocpm_violations if v.name == extra_ci.name),
+                        None,
+                    )
+                    family = extra_violation.family if extra_violation else ""
+                    target_file = self._target_file_for_extra_class(
+                        package_dir=package_dir,
+                        file_path=file_path,
+                        class_name=extra_ci.name,
+                        family=family,
+                    )
+                    move_result = self._move_class_to_module(
+                        rope_project=rope_project,
+                        source_file=file_path,
+                        target_file=target_file,
+                        class_name=extra_ci.name,
+                        apply=ctx.apply,
+                    )
+                    if move_result.failure:
+                        failed.append(
+                            fr.FailedFix(
+                                rule_id=rule_id,
+                                file_path=str(file_path),
+                                error=move_result.error or "failed to move class",
+                            ),
+                        )
+                        continue
+                    moved_any = True
+                    if ctx.apply:
+                        files_modified.add(str(file_path))
+                        files_modified.add(str(target_file))
+                    message = (
+                        f"{'would move' if not ctx.apply else 'moved'} "
+                        f"{extra_ci.name} -> "
+                        f"{target_file.relative_to(project_dir)}"
+                    )
+                    if ctx.apply:
+                        fixed.append(
+                            fr.FixedViolation(
+                                rule_id=rule_id,
+                                file_path=str(file_path),
+                                message=message,
+                            ),
+                        )
+                    else:
+                        previewed.append(
+                            fr.PreviewedViolation(
+                                rule_id=rule_id,
+                                file_path=str(file_path),
+                                message=message,
+                            ),
+                        )
+                if not moved_any:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="no classes could be moved",
+                        ),
+                    )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            previewed=tuple(previewed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
+    def _target_file_for_extra_class(
+        self,
+        *,
+        package_dir: Path,
+        file_path: Path,
+        class_name: str,
+        family: str,
+    ) -> Path:
+        """Return the target module path for an extra governed class."""
+        snake_name = self._to_snake_case(class_name)
+        if family:
+            family_dir = c.Infra.FAMILY_DIRECTORIES.get(family)
+            if family_dir:
+                return package_dir / family_dir / f"{snake_name}.py"
+        return file_path.parent / f"_{file_path.stem}_{snake_name}.py"
+
+    @staticmethod
+    def _to_snake_case(name: str) -> str:
+        """Convert a PascalCase class name to a snake_case module name."""
+        return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+    def _move_class_to_module(
+        self,
+        *,
+        rope_project: t.Infra.RopeProject,
+        source_file: Path,
+        target_file: Path,
+        class_name: str,
+        apply: bool,
+    ) -> p.Result[str]:
+        """Move a single top-level class from ``source_file`` to ``target_file``."""
+        source_resource = u.Infra.get_resource_from_path(rope_project, source_file)
+        if source_resource is None:
+            return r[str].fail("source rope resource not found")
+        source = source_resource.read()
+        prefix = f"class {class_name}"
+        offset = source.find(prefix)
+        if offset < 0:
+            return r[str].fail(f"class {class_name} not found in source")
+        offset += len("class ")
+
+        if not apply:
+            return r[str].ok(str(target_file))
+
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        if not target_file.exists():
+            target_file.write_text(
+                f"{c.Infra.FUTURE_ANNOTATIONS}\n",
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+            rope_project.validate()
+
+        target_resource = u.Infra.get_resource_from_path(rope_project, target_file)
+        if target_resource is None:
+            return r[str].fail("target rope resource not found")
+        try:
+            mover = create_move(rope_project, source_resource, offset)
+        except c.EXC_BROAD_RUNTIME as exc:
+            return r[str].fail(f"create_move failed: {exc}")
+        if not isinstance(mover, MoveGlobal):
+            return r[str].fail("rope move is not a MoveGlobal")
+        try:
+            changes = mover.get_changes(target_resource)
+            rope_project.do(changes)
+        except c.EXC_BROAD_RUNTIME as exc:
+            return r[str].fail(f"rope move failed: {exc}")
+        return r[str].ok(str(target_file))

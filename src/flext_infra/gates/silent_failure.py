@@ -62,6 +62,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
                 ),
                 issues=[issue],
                 raw_output=issue.message,
+                ctx=ctx,
             )
         rope_project = u.Infra.init_rope_project(project_dir)
         try:
@@ -88,6 +89,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
             ),
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
+            ctx=ctx,
         )
 
     @override

@@ -48,7 +48,10 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         fix_action: me.EnforcementFixAction,
     ) -> bool:
         """Return whether this adapter handles ``fix_action``."""
-        return fix_action.kind == self.kind
+        if fix_action.kind != self.kind:
+            return False
+        gate_cls = self._registry().get(fix_action.target)
+        return gate_cls is not None and gate_cls.can_fix
 
     @override
     def fix_project(
@@ -91,9 +94,21 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         reports_dir = project_dir / c.Infra.REPORTS_DIR_NAME / "fix-enforcement"
         if ctx.apply:
             reports_dir_result = u.Cli.ensure_dir(reports_dir)
-            reports_dir = (
-                reports_dir_result.value if reports_dir_result.success else reports_dir
-            )
+            if reports_dir_result.failure:
+                return fr.ProjectFixResult(
+                    project=project_dir.name,
+                    failed=(
+                        fr.FailedFix(
+                            rule_id=rule.id,
+                            file_path=str(project_dir),
+                            error=(
+                                reports_dir_result.error
+                                or "unable to create report dir"
+                            ),
+                        ),
+                    ),
+                )
+            reports_dir = reports_dir_result.value
         gate_ctx = m.Infra.GateContext(
             workspace=self._workspace_root,
             reports_dir=reports_dir,
@@ -103,19 +118,32 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         )
         execution = gate.fix(project_dir, gate_ctx)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         if execution.result.passed:
-            fixed = [
-                fr.FixedViolation(
+            message = (
+                f"gate {fix_action.target} fix "
+                f"{'applied' if ctx.apply else 'previewed'}"
+            )
+            if ctx.apply:
+                fixed_violation: fr.FixedViolation = fr.FixedViolation(
                     rule_id=rule.id,
                     file_path=str(project_dir),
-                    message=(
-                        f"gate {fix_action.target} fix "
-                        f"{'applied' if ctx.apply else 'previewed'}"
-                    ),
+                    message=message,
                 )
-            ]
+                fixed = [
+                    fixed_violation,
+                ]
+            else:
+                previewed_violation: fr.PreviewedViolation = fr.PreviewedViolation(
+                    rule_id=rule.id,
+                    file_path=str(project_dir),
+                    message=message,
+                )
+                previewed = [
+                    previewed_violation,
+                ]
         else:
             failed = [
                 fr.FailedFix(
@@ -127,6 +155,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
         )

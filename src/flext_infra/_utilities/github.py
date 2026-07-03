@@ -92,7 +92,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
             )
         projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
             workspace_root,
-            [],
+            list(request.projects or []),
         )
         if projects_result.failure:
             return r[m.Infra.GithubWorkflowSyncReport].fail(

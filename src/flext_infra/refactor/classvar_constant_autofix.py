@@ -200,11 +200,16 @@ class FlextInfraRefactorClassvarConstantAutofix:
         )
 
         # 5. Apply collected rewrites to the source module as well; we skipped
-        # them above to avoid editing stale cached text.
-        new_source = _apply_edits(
+        # them above to avoid editing stale cached text.  Also handle
+        # ``self.__class__.NAME`` which rope's occurrence finder does not bind.
+        source_rewrites = rewrites.pop(plan.source_resource.path, [])
+        new_source = _rewrite_class_access_in_source(
             new_source,
-            rewrites.pop(plan.source_resource.path, []),
+            plan.class_name,
+            plan.constant_name,
+            constants_alias,
         )
+        new_source = _apply_edits(new_source, source_rewrites)
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
         Path(plan.target_resource.real_path).write_text(new_target, encoding="utf-8")
 
@@ -304,13 +309,7 @@ def _attribute_prefix(source: str, offset: int) -> str:
 
 def _should_rewrite_prefix(prefix: str, class_name: str) -> bool:
     """Return whether an attribute prefix should be rewritten to _constants."""
-    if prefix == class_name:
-        return True
-    if prefix == "cls":
-        return True
-    if prefix.endswith(".__class__"):
-        return True
-    return False
+    return prefix in {class_name, "cls"} or prefix.endswith(".__class__")
 
 
 def _ensure_constants_import(
@@ -322,24 +321,28 @@ def _ensure_constants_import(
     """Add an import for the canonical _constants module if absent.
 
     Computes a relative import from ``class_module`` to ``constants_module``.
+    The import binds the module itself so consumers write
+    ``_constants.NAME``.
     """
     if constants_module == class_module:
-        # Same module: impossible for a _constants sibling, but keep safe.
         return source
     class_parts = class_module.split(".")
     constants_parts = constants_module.split(".")
-    # Find common prefix.
     common = 0
-    for a, b in zip(class_parts, constants_parts):
+    for a, b in zip(class_parts, constants_parts, strict=False):
         if a != b:
             break
         common += 1
     ups = len(class_parts) - common - 1  # minus the source module itself
     rel_parts = constants_parts[common:]
-    if ups == 0 and rel_parts:
+    if ups == 0 and rel_parts == [constants_alias]:
+        import_line = f"from . import {constants_alias}\n"
+    elif ups == 0 and rel_parts:
         import_line = f"from .{'.'.join(rel_parts)} import {constants_alias}\n"
     elif ups > 0 and rel_parts:
-        import_line = f"from {'.' * ups}{'.'.join(rel_parts)} import {constants_alias}\n"
+        import_line = (
+            f"from {'.' * ups}{'.'.join(rel_parts)} import {constants_alias}\n"
+        )
     elif ups > 0:
         import_line = f"from {'.' * ups} import {constants_alias}\n"
     else:
@@ -352,21 +355,19 @@ def _ensure_constants_import(
     docstring_quote = ""
     for idx, line in enumerate(lines):
         stripped = line.strip()
-        if stripped.startswith('"""') or stripped.startswith("'''"):
+        if stripped.startswith(('"""', "'''")):
             if not in_docstring:
                 in_docstring = True
                 docstring_quote = stripped[:3]
-                if stripped.count(docstring_quote) >= 2:
+                if stripped.endswith(docstring_quote) and stripped != docstring_quote:
                     in_docstring = False
                     docstring_end = idx
-            else:
-                if stripped.startswith(docstring_quote):
-                    in_docstring = False
-                    docstring_end = idx
+            elif stripped.startswith(docstring_quote):
+                in_docstring = False
+                docstring_end = idx
         if stripped.startswith("from __future__ import"):
             future_idx = idx
     insert_after = max(future_idx, docstring_end)
-    # Check existing import to avoid duplicates.
     existing = {line.strip() for line in lines}
     if import_line.strip() in existing:
         return source
@@ -375,6 +376,36 @@ def _ensure_constants_import(
     else:
         lines.insert(0, import_line)
     return "".join(lines)
+
+
+def _rewrite_class_access_in_source(
+    source: str,
+    class_name: str,
+    constant_name: str,
+    constants_alias: str,
+) -> str:
+    """Rewrite class-qualified constant access inside the source module itself.
+
+    Rope's occurrence finder binds ``ClassName.NAME`` and ``cls.NAME`` but not
+    ``self.__class__.NAME``.  We perform a fast textual pass over the source
+    (after the declaration was removed) and rewrite the known patterns.
+    """
+    patterns = (
+        f"{class_name}.{constant_name}",
+        f"cls.{constant_name}",
+        f"self.__class__.{constant_name}",
+    )
+    replacement = f"{constants_alias}.{constant_name}"
+    edits: list[tuple[int, int, str]] = []
+    for pattern in patterns:
+        start = 0
+        while True:
+            idx = source.find(pattern, start)
+            if idx < 0:
+                break
+            edits.append((idx, idx + len(pattern), replacement))
+            start = idx + len(replacement)
+    return _apply_edits(source, edits)
 
 
 __all__: list[str] = ["FlextInfraRefactorClassvarConstantAutofix"]

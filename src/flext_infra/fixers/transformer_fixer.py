@@ -17,6 +17,9 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
 from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.transformers.compatibility_alias import (
+    FlextInfraRefactorCompatibilityAlias,
+)
 from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
 from flext_infra.transformers.hardcoded_version import (
     FlextInfraRefactorHardcodedVersion,
@@ -65,6 +68,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         ]
     ] = {
         "bare_except": FlextInfraRefactorBareExcept,
+        "compatibility_alias": FlextInfraRefactorCompatibilityAlias,
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
         "import_modernizer": FlextInfraRefactorImportModernizer,
@@ -85,7 +89,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         fix_action: me.EnforcementFixAction,
     ) -> bool:
         """Return whether this adapter handles ``fix_action``."""
-        return fix_action.kind == self.kind
+        return (
+            fix_action.kind == self.kind
+            and fix_action.target in self._TRANSFORMERS
+        )
 
     @override
     def fix_project(
@@ -98,6 +105,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         if not violations:
             return fr.ProjectFixResult(project=project_dir.name)
         fixed: list[fr.FixedViolation] = []
+        previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
@@ -126,12 +134,14 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                     rule_id=target_violations[0][0].id,
                 )
                 fixed.extend(result.fixed)
+                previewed.extend(result.previewed)
                 skipped.extend(result.skipped)
                 failed.extend(result.failed)
                 files_modified.update(result.files_modified)
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
+            previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
             files_modified=tuple(files_modified),
@@ -191,8 +201,8 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         if not ctx.apply:
             return fr.ProjectFixResult(
                 project=file_path.parent.name,
-                fixed=(
-                    fr.FixedViolation(
+                previewed=(
+                    fr.PreviewedViolation(
                         rule_id=rule_id,
                         file_path=str(file_path),
                         message=f"would apply {len(changes)} change(s)",

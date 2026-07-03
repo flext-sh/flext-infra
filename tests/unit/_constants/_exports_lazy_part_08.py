@@ -8,6 +8,7 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
     {
         ".fixtures": (
+            "real_toml_project",
             "real_workspace",
             "rope_workspace",
             "services_resource",

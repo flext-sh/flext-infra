@@ -24,7 +24,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "real_docs_project",
             "real_makefile_project",
             "real_python_package",
-            "real_toml_project",
         ),
         ".fixtures_git": ("real_git_repo",),
         ".github": ("github",),
@@ -38,6 +37,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".workspace.test_sync_environment": (
             "TestsFlextInfraWorkspaceSyncEnvironment",
         ),
+        ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         "flext_tests": (
             "c",
             "d",

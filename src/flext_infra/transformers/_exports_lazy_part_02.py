@@ -16,6 +16,7 @@ FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
             "smell_fixer_for",
         ),
         ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),
+        ".typing_unifier": ("FlextInfraRefactorTypingUnifier",),
         ".violation_census_visitor": ("FlextInfraViolationCensusVisitor",),
     },
 )

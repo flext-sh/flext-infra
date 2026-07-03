@@ -22,6 +22,13 @@ class FlextInfraFixersResult:
         file_path: Annotated[str, m.Field(description="File that was modified")]
         message: Annotated[str, m.Field(description="Human-readable fix summary")]
 
+    class PreviewedViolation(m.ArbitraryTypesModel):
+        """One violation with a non-mutating dry-run fix preview."""
+
+        rule_id: Annotated[str, m.Field(description="Enforcement rule ID")]
+        file_path: Annotated[str, m.Field(description="File that would change")]
+        message: Annotated[str, m.Field(description="Human-readable preview summary")]
+
     class SkippedViolation(m.ArbitraryTypesModel):
         """One violation that was skipped."""
 
@@ -43,6 +50,12 @@ class FlextInfraFixersResult:
         fixed: t.SequenceOf[FlextInfraFixersResult.FixedViolation] = m.Field(
             default_factory=tuple,
             description="Fixed violations",
+        )
+        previewed: t.SequenceOf[
+            FlextInfraFixersResult.PreviewedViolation
+        ] = m.Field(
+            default_factory=tuple,
+            description="Dry-run previews",
         )
         skipped: t.SequenceOf[FlextInfraFixersResult.SkippedViolation] = m.Field(
             default_factory=tuple,
