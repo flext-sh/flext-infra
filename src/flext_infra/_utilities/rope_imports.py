@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 from typing import cast
 
@@ -21,6 +22,7 @@ from rope.refactor.importutils.importinfo import (
 from flext_cli import u
 from flext_infra import (
     c,
+    m,
     p,
     r,
     t,
@@ -613,6 +615,90 @@ class FlextInfraUtilitiesRopeImports:
         if apply:
             resource.write(updated)
         return updated
+
+    @staticmethod
+    def rewrite_private_import_bypass_violations(
+        rope_project: t.Infra.RopeProject,
+        violations: t.SequenceOf[m.Infra.PrivateImportBypassViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+    ) -> None:
+        """Rewrite private-module imports to their canonical facade equivalents.
+
+        Only auto-fixable violations (``symbol_exported=True``) are rewritten;
+        callers already filter the violation list before invoking this helper.
+        """
+        _ = parse_failures
+        removals: t.MappingKV[tuple[Path, str], set[str]] = defaultdict(set)
+        additions: t.MappingKV[tuple[Path, str], set[str]] = defaultdict(set)
+        for violation in violations:
+            file_path = Path(violation.file)
+            removals[file_path, violation.private_module].add(
+                violation.imported_symbol,
+            )
+            additions[file_path, violation.suggested_facade].add(
+                violation.imported_symbol,
+            )
+        for (file_path, private_module), names in removals.items():
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project,
+                file_path,
+            )
+            if resource is None:
+                continue
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project,
+                resource,
+            )
+            if module_imports is None:
+                continue
+            names_to_remove = frozenset(names)
+            changed = False
+            stmts_to_drop: list[t.Infra.RopeImportStatement] = []
+            for import_stmt in FlextInfraUtilitiesRopeImports.import_statements(
+                module_imports,
+            ):
+                import_info = import_stmt.import_info
+                if (
+                    not isinstance(import_info, FromImport)
+                    or import_info.module_name != private_module
+                ):
+                    continue
+                kept = [
+                    (name, alias)
+                    for name, alias in import_info.names_and_aliases
+                    if name not in names_to_remove
+                ]
+                if len(kept) == len(import_info.names_and_aliases):
+                    continue
+                if kept:
+                    import_stmt.import_info = FromImport(private_module, 0, kept)
+                else:
+                    stmts_to_drop.append(import_stmt)
+                changed = True
+            imports_list = cast("list[ImportStatement]", module_imports.imports)
+            for import_stmt in stmts_to_drop:
+                imports_list.remove(import_stmt)
+            if not changed:
+                continue
+            module_imports.remove_duplicates()
+            module_imports.sort_imports()
+            updated = module_imports.get_changed_source()
+            if updated != resource.read():
+                resource.write(updated)
+        for (file_path, facade_module), names in additions.items():
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project,
+                file_path,
+            )
+            if resource is None:
+                continue
+            FlextInfraUtilitiesRopeImports.add_import(
+                rope_project,
+                resource,
+                facade_module,
+                sorted(names),
+                apply=True,
+            )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeImports"]

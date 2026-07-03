@@ -93,6 +93,29 @@ class FlextInfraModelsNamespaceEnforcer:
 
         pass
 
+    class PrivateImportBypassViolation(
+        mm.ViolationDetailMixin,
+        ImportViolationBase,
+    ):
+        """Private-module import that should use the canonical facade."""
+
+        private_module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Fully-qualified private module being imported"),
+        ]
+        imported_symbol: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Symbol imported from the private module"),
+        ]
+        suggested_facade: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical facade module to import from"),
+        ]
+        symbol_exported: Annotated[
+            bool,
+            m.Field(description="Whether the symbol is already exported by the facade"),
+        ] = False
+
     class ManualProtocolViolation(FileLineViolation):
         """Manual protocol violation."""
 

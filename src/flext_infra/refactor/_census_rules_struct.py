@@ -15,6 +15,9 @@ from flext_infra.detectors.compatibility_alias_detector import (
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
+from flext_infra.detectors.private_import_bypass_detector import (
+    FlextInfraPrivateImportBypassDetector,
+)
 
 
 class FlextInfraRefactorCensusRulesStructMixin:
@@ -68,6 +71,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect + plan fixes for misplaced class declarations."""
+        _ = symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
@@ -108,6 +112,65 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     in applied,
                 )
             )
+        return violations, fixes
+
+    def _rule_private_import_bypass(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        *,
+        project_name: str,
+        objects: tuple[m.Infra.Census.Object, ...] | None,
+        applied: frozenset[str],
+        selected_kinds: frozenset[str],
+        symbol_index: dict[str, tuple[str, int]],
+        convention: m.Infra.RopeModuleConvention,
+    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+        """Detect + plan fixes for private-import bypass violations."""
+        _ = objects, symbol_index
+        ctx = self._detector_context(rope, file_path, convention=convention)
+        violations: list[m.Infra.Census.Violation] = []
+        fixes: list[m.Infra.Census.Fix] = []
+        for detector_violation in FlextInfraPrivateImportBypassDetector.detect_file(
+            ctx,
+        ):
+            object_kind = "import"
+            if selected_kinds and object_kind not in selected_kinds:
+                continue
+            fixable = detector_violation.symbol_exported
+            action = (
+                "rewrite_private_import_bypass"
+                if fixable
+                else "manual"
+            )
+            violations.append(
+                self._raw_violation(
+                    project=project_name,
+                    object_name=detector_violation.imported_symbol,
+                    object_kind=object_kind,
+                    kind="private_import_bypass",
+                    file_path=file_path,
+                    line=detector_violation.line,
+                    description=detector_violation.detail,
+                    fixable=fixable,
+                    fix_action=action,
+                )
+            )
+            if fixable:
+                fixes.append(
+                    m.Infra.Census.Fix(
+                        object_name=detector_violation.imported_symbol,
+                        action=action,
+                        source_file=str(file_path),
+                        files_changed=1,
+                        applied=self._fix_key(
+                            file_path,
+                            detector_violation.imported_symbol,
+                            action,
+                        )
+                        in applied,
+                    )
+                )
         return violations, fixes
 
     def _rule_compatibility_alias(

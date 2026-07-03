@@ -66,6 +66,18 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
         ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        def _rule_private_import_bypass(
+            self,
+            rope: p.Infra.RopeWorkspaceDsl,
+            file_path: Path,
+            *,
+            project_name: str,
+            objects: tuple[m.Infra.Census.Object, ...] | None,
+            applied: frozenset[str],
+            selected_kinds: frozenset[str],
+            symbol_index: dict[str, tuple[str, int]],
+            convention: m.Infra.RopeModuleConvention,
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
         def _rule_compatibility_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -148,6 +160,19 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             fixes.extend(f)
         if selected("class_placement"):
             v, f = self._rule_class_placement(
+                rope,
+                file_path,
+                project_name=project_name,
+                objects=objects,
+                applied=applied,
+                selected_kinds=resolved_kinds,
+                symbol_index=symbol_index,
+                convention=resolved_convention,
+            )
+            violations.extend(v)
+            fixes.extend(f)
+        if selected("private_import_bypass"):
+            v, f = self._rule_private_import_bypass(
                 rope,
                 file_path,
                 project_name=project_name,

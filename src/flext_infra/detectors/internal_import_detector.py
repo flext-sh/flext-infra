@@ -39,6 +39,11 @@ class FlextInfraInternalImportDetector:
         public_prefix = fqn_parts[:private_index]
         return importer_parts[: len(public_prefix)] == public_prefix
 
+    @classmethod
+    def facade_assembly_exempt(cls, importer_module: str, fqn: str) -> bool:
+        """Public accessor for same-package facade-assembly exemption."""
+        return cls._facade_assembly_exempt(importer_module, fqn)
+
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,

@@ -17,6 +17,9 @@ from flext_infra.detectors.manual_typing_alias_detector import (
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
+from flext_infra.detectors.private_import_bypass_detector import (
+    FlextInfraPrivateImportBypassDetector,
+)
 from flext_infra.refactor._census_apply_formatting import (
     FlextInfraRefactorCensusApplyFormattingMixin,
 )
@@ -119,6 +122,23 @@ class FlextInfraRefactorCensusApplyMixin(
                 if not violations:
                     continue
                 u.Infra.rewrite_compatibility_alias_violations(
+                    violations=violations,
+                    parse_failures=parse_failures,
+                )
+                changed = True
+            elif action == "rewrite_private_import_bypass":
+                violations = tuple(
+                    violation
+                    for violation in FlextInfraPrivateImportBypassDetector.detect_file(
+                        ctx,
+                    )
+                    if violation.imported_symbol in object_names
+                    and violation.symbol_exported
+                )
+                if not violations:
+                    continue
+                u.Infra.rewrite_private_import_bypass_violations(
+                    rope_project=ctx.rope_project,
                     violations=violations,
                     parse_failures=parse_failures,
                 )
