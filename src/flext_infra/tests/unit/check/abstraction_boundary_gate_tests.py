@@ -12,7 +12,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
-from tests.typings import t
+from flext_infra.tests.typings import t
 from tests.utilities import u
 
 

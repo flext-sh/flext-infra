@@ -15,7 +15,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.utilities import u
 
 

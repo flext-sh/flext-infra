@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.utilities import u
 
 

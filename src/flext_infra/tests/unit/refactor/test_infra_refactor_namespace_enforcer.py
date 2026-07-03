@@ -14,7 +14,7 @@ from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from flext_infra.refactor.namespace_enforcer_phases import (
     FlextInfraNamespaceEnforcerPhasesMixin,
 )
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.typings import t
 
 

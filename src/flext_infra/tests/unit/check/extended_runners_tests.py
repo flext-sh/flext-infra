@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestRunnerPublicBehavior:

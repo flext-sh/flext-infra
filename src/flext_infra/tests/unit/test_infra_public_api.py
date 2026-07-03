@@ -9,7 +9,7 @@ from types import ModuleType
 import pytest
 
 import flext_infra as infra_pkg
-from tests.base import s
+from flext_infra.tests.base import s
 from tests.constants import c
 from tests.models import m
 

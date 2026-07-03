@@ -11,7 +11,7 @@ import flext_infra
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.models import m
 from tests.protocols import p
 from tests.typings import t

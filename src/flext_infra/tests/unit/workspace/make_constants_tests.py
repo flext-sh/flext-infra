@@ -9,7 +9,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra import c
-from tests.typings import t
+from flext_infra.tests.typings import t
 
 _PHASED_VERBS = frozenset({
     "boot",

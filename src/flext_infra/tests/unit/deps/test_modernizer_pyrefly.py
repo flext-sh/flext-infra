@@ -13,7 +13,7 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.utilities import u
 
 

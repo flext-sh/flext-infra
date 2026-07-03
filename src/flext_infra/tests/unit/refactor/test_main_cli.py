@@ -10,7 +10,7 @@ from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.protocols import p
 from tests.typings import t
 from tests.utilities import u

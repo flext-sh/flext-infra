@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests.models import m
+from flext_infra.tests.models import m
 
 
 @pytest.fixture

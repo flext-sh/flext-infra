@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.typings import t
 from tests.utilities import u
 

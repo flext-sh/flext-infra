@@ -10,7 +10,7 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.protocols import p
 from tests.typings import t
 

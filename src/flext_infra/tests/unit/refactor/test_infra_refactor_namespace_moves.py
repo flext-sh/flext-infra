@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.utilities import u
 
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.utilities import u
 
 _MAKE_ISOLATION_ENV_KEYS = (

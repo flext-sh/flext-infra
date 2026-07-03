@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestConfigFixerPublicBehavior:

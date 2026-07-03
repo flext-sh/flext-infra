@@ -9,7 +9,7 @@ import pytest
 
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.typings import t
 from tests.utilities import u
 

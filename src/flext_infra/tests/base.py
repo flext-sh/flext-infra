@@ -7,7 +7,7 @@ from typing import override
 from flext_tests import s as tests_s
 
 from flext_infra import m
-from tests.settings import TestsFlextInfraSettings
+from flext_infra.tests.settings import TestsFlextInfraSettings
 
 
 class TestsFlextInfraServiceBase(tests_s):

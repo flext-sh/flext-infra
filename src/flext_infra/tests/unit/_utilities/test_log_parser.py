@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.typings import t
 
 

@@ -26,7 +26,7 @@ from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.models import m
 from tests.protocols import p
 from tests.typings import t

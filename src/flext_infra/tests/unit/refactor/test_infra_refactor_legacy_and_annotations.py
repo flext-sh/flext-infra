@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra import c
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
-from tests.typings import t
+from flext_infra.tests.typings import t
 
 
 class _TextRuleHarness:

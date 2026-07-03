@@ -6,7 +6,7 @@ from typing import TypeGuard
 import tomlkit
 from flext_tests import tm
 
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.models import m
 from tests.utilities import u
 

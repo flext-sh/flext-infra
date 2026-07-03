@@ -9,7 +9,7 @@ from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.typings import t
+from flext_infra.tests.typings import t
 from tests.utilities import u
 
 

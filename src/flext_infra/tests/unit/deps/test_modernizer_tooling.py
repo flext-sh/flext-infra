@@ -14,7 +14,7 @@ from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.utilities import u
 
 

@@ -10,7 +10,7 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.protocols import p
 from tests.typings import t
 from tests.utilities import TestsFlextInfraUtilities as u

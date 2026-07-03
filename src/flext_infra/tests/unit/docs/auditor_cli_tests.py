@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import main
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 def test_auditor_main_help_exits_zero() -> None:

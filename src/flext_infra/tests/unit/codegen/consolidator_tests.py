@@ -9,7 +9,7 @@ from flext_tests import tm
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from tests.typings import t
+from flext_infra.tests.typings import t
 from tests.utilities import u
 
 

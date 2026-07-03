@@ -8,7 +8,7 @@ from flext_tests import r, tm
 
 from flext_infra import c, u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.protocols import p
 from tests.typings import t
 

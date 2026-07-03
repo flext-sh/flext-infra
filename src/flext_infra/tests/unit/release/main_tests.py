@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra import main
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.utilities import TestsFlextInfraUtilities as u
 
 

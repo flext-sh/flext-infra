@@ -16,7 +16,7 @@ from flext_infra import main as infra_main
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.typings import t
 
 

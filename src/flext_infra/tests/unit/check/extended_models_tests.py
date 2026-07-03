@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests.models import m
+from flext_infra.tests.models import m
 
 
 class TestCheckIssueFormatted:

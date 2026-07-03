@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.typings import t
+from flext_infra.tests.typings import t
 from tests.utilities import u
 
 __all__: t.StrSequence = []

@@ -10,7 +10,7 @@ from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.models import m
 from tests.protocols import p
 from tests.typings import t

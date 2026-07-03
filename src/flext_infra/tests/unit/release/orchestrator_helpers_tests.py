@@ -8,7 +8,7 @@ import pytest
 
 from flext_cli import u as cli_u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
+from flext_infra.tests.constants import c
 from tests.models import m
 from tests.typings import t
 from tests.utilities import u

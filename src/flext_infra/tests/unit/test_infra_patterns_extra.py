@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests.constants import c
+from flext_infra.tests.constants import c
 
 
 class TestsFlextInfraInfraPatternsExtra:

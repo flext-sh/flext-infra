@@ -12,7 +12,7 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.constants import c
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests.models import m
+from flext_infra.tests.models import m
 from tests.protocols import p
 from tests.typings import t
 from tests.utilities import u

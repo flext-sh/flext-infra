@@ -7,7 +7,7 @@ from flext_tests import tm
 
 from flext_infra import m, p, r as tr
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests.typings import t
+from flext_infra.tests.typings import t
 
 
 class _StubToml:

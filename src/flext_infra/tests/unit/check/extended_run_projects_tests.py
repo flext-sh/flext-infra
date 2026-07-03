@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.utilities import u
+from flext_infra.tests.utilities import u
 
 
 class TestRunProjectsPublicBehavior:
