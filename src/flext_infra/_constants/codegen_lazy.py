@@ -88,6 +88,7 @@ class FlextInfraConstantsCodegenLazy:
         "deps",
         "detectors",
         "docs",
+        "fixers",
         "gates",
         "maintenance",
         "refactor",

@@ -53,7 +53,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
         for every issue whose code has ``auto=true`` in flext-core metadata.
         Only rewrites files when a fixer actually changes the source.
         """
-        _ = ctx
+        if ctx.check_only or not ctx.apply_fixes:
+            return self._check_only_fix_result(project_dir)
         started = time.monotonic()
         scan = self._workspace_scan()
         issues = self._issues_from_sarif(scan.stdout or "{}", project_dir.name)

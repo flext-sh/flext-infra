@@ -204,6 +204,42 @@ class TestsFlextInfraLazyInitRegistryWrapper:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
+    def test_check_only_reports_stale_generated_registry_without_removing(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Stale generated registry wrappers are reported, not removed, in checks."""
+        writer = FlextInfraCodegenLazyInitGenerationRegistryMixin()
+        writer._modified_files = set()
+        plan = self._lazy_init_plan(tmp_path, "tests").model_copy(
+            update={
+                "registry_wrapper": m.Infra.LazyInitRegistryWrapper(
+                    module="tests._exports",
+                    name="TESTS_LAZY_IMPORTS",
+                    generated=True,
+                ),
+            }
+        )
+        plan.context.pkg_dir.mkdir(parents=True)
+        registry_path = plan.context.pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME
+        registry_part_path = plan.context.pkg_dir / "_exports_lazy_part_01.py"
+        stale_content = f"{c.Infra.AUTOGEN_HEADER}\n"
+        registry_path.write_text(stale_content, encoding=c.Cli.ENCODING_DEFAULT)
+        registry_part_path.write_text(stale_content, encoding=c.Cli.ENCODING_DEFAULT)
+
+        status = writer._write_generated_registry(
+            plan,
+            "from flext_core.lazy import install_lazy_exports\n",
+            check_only=True,
+        )
+
+        assert status == 0
+        assert registry_path.exists()
+        assert registry_part_path.exists()
+        assert {registry_path, registry_part_path} <= {
+            Path(path) for path in writer._modified_files
+        }
+
     def test_existing_registry_wrapper_reads_public_export_contract(
         self,
         tmp_path: Path,

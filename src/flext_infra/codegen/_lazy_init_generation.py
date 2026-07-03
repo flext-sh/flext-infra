@@ -107,11 +107,21 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         """Process a resolved lazy-init plan."""
         if plan.action == c.Infra.LazyInitAction.SKIP:
             return (None, dict(plan.lazy_map))
-        if check_only:
-            return (0, dict(plan.lazy_map))
         if plan.action == c.Infra.LazyInitAction.REMOVE:
-            return self._remove_init(plan)
+            return self._check_remove_init(plan) if check_only else self._remove_init(plan)
+        if check_only:
+            return self._check_write_init(plan)
         return self._write_init(plan)
+
+    def _check_remove_init(
+        self,
+        plan: m.Infra.LazyInitPlan,
+    ) -> t.Infra.LazyInitWriteResult:
+        """Record generated init removals without mutating check-only runs."""
+        init_path = plan.context.init_path
+        if init_path.is_file():
+            self._modified_files.add(str(init_path))
+        return (0, dict(plan.lazy_map))
 
     def _remove_init(
         self,
@@ -157,6 +167,35 @@ class FlextInfraCodegenLazyInitGenerationMixin(
             else init_path
         )
         u.Cli.info(f"  OK: {rel_path} — {len(plan.exports)} exports")
+        return (0, dict(plan.lazy_map))
+
+    def _check_write_init(
+        self,
+        plan: m.Infra.LazyInitPlan,
+    ) -> t.Infra.LazyInitWriteResult:
+        """Record generated file drift without mutating check-only runs."""
+        init_path = plan.context.init_path
+        try:
+            generated = self._render_init(plan)
+            previous = self._read_previous_init(plan)
+            registry_exit = self._write_generated_registry(
+                plan,
+                generated,
+                check_only=True,
+            )
+        except c.EXC_OS_VALUE as exc:
+            u.Cli.error(f"checking generated init {init_path}: {exc}")
+            return (-1, dict(plan.lazy_map))
+        if registry_exit < 0:
+            return (-1, dict(plan.lazy_map))
+        if previous != generated:
+            self._modified_files.add(str(init_path))
+        rel_path = (
+            init_path.relative_to(self.workspace_root)
+            if self.workspace_root in init_path.parents
+            else init_path
+        )
+        u.Cli.info(f"  CHECK: {rel_path} — {len(plan.exports)} exports")
         return (0, dict(plan.lazy_map))
 
     @staticmethod

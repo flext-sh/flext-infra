@@ -118,6 +118,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             "classvar_relocation": self._fix_classvar_relocation,
             "rewrite_compatibility_alias": self._fix_compatibility_alias,
             "fix_silent_failure_sentinels": self._fix_silent_failure_sentinels,
+            "hoist_inline_import": self._fix_hoist_inline_import,
             "rewrite_private_import_bypass": self._fix_private_import_bypass,
             "rewrite_library_abstraction": self._fix_library_abstraction,
         }

@@ -1,4 +1,4 @@
-"""Rope-backed detector for ENFORCE-026..033 pattern smells.
+"""Rope-backed detector for ENFORCE-026..033 and ENFORCE-083/084 pattern smells.
 
 Ports the retired ast-grep rules into the rope census:
 - bare_except: bare ``except:`` clause
@@ -98,7 +98,7 @@ class FlextInfraPatternSmellDetector:
         noqa_re = re.compile(r"#\s*noqa\b", re.IGNORECASE)
         try:
             tokens = tokenize.generate_tokens(io.StringIO(source).readline)
-        except tokenize.TokenizeError:
+        except tokenize.TokenError:
             return violations
         for tok in tokens:
             if tok.type != tokenize.COMMENT:

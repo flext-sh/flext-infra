@@ -166,6 +166,8 @@ class FlextInfraGate(ABC):
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         """Template method: timing + targets + skip + run fix + result."""
+        if ctx.check_only or not ctx.apply_fixes:
+            return self._check_only_fix_result(project_dir)
         if not self.can_fix:
             return self._build_gate_result(
                 result=m.Infra.GateResult(
@@ -194,6 +196,23 @@ class FlextInfraGate(ABC):
             ),
             issues=[],
             raw_output=self._fix_raw_output(result),
+        )
+
+    def _check_only_fix_result(
+        self,
+        project_dir: Path,
+    ) -> m.Infra.GateExecution:
+        """Return a non-mutating fix preview for check-only gate contexts."""
+        return self._build_gate_result(
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=True,
+                errors=[],
+                duration=0.0,
+            ),
+            issues=[],
+            raw_output=f"Gate {self.gate_id} fix preview only; no files written",
         )
 
     # ------------------------------------------------------------------

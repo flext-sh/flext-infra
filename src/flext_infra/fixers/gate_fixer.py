@@ -88,14 +88,12 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
-        reports_dir_result = u.Cli.ensure_dir(
-            project_dir / c.Infra.REPORTS_DIR_NAME / "fix-enforcement",
-        )
-        reports_dir = (
-            reports_dir_result.value
-            if reports_dir_result.success
-            else project_dir / c.Infra.REPORTS_DIR_NAME / "fix-enforcement"
-        )
+        reports_dir = project_dir / c.Infra.REPORTS_DIR_NAME / "fix-enforcement"
+        if ctx.apply:
+            reports_dir_result = u.Cli.ensure_dir(reports_dir)
+            reports_dir = (
+                reports_dir_result.value if reports_dir_result.success else reports_dir
+            )
         gate_ctx = m.Infra.GateContext(
             workspace=self._workspace_root,
             reports_dir=reports_dir,
@@ -112,7 +110,10 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 fr.FixedViolation(
                     rule_id=rule.id,
                     file_path=str(project_dir),
-                    message=f"gate {fix_action.target} fix applied",
+                    message=(
+                        f"gate {fix_action.target} fix "
+                        f"{'applied' if ctx.apply else 'previewed'}"
+                    ),
                 )
             ]
         else:

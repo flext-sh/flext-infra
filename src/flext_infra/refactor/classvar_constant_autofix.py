@@ -144,8 +144,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
         # 2. Append the constant to the target _constants module.
         new_target = _append_constant(target_text, plan.declaration_line)
 
-        # 3. Rewrite internal references from ClassName.NAME / cls.NAME to the
-        # canonical constants module access.
+        # 3. Rewrite internal references from ClassName.NAME / cls.NAME /
+        # self.__class__.NAME to the canonical constants module access.
         class_module_obj = project.get_module(plan.class_module)
         pyclass = class_module_obj.get_attribute(plan.class_name).get_object()
         pyname = pyclass.get_attribute(plan.constant_name)
@@ -156,45 +156,65 @@ class FlextInfraRefactorClassvarConstantAutofix:
             imports=True,
             in_hierarchy=False,
         )
-        rewrites: dict[t.Infra.RopeResource, list[tuple[int, int, str]]] = {}
+        rewrites: dict[str, list[tuple[int, int, str]]] = {}
         # Iterate over concrete project resources to avoid rope crashing when
         # an occurrence cannot be resolved to a resource (resource=None).
         for resource in project.get_python_files():
             for occurrence in finder.find_occurrences(resource=resource):
-                start, end = occurrence.get_word_range()
-                # Determine whether this occurrence is an attribute access on the
-                # original class or on ``cls``.  We inspect the source around the
-                # occurrence using rope's worder utilities.
                 offset = occurrence.offset
                 source = resource.read()
                 prefix = _attribute_prefix(source, offset)
-                if prefix in {plan.class_name, "cls"}:
+                if _should_rewrite_prefix(prefix, plan.class_name):
+                    word_finder = worder.Worder(source, True)
+                    try:
+                        start, end = word_finder.get_primary_range(offset)
+                    except Exception:
+                        start, end = occurrence.get_word_range()
                     replacement = (
                         f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
                     )
-                    rewrites.setdefault(resource, []).append((start, end, replacement))
+                    rewrites.setdefault(resource.path, []).append(
+                        (start, end, replacement),
+                    )
                     touched.add(resource.path)
 
         if dry_run:
             return {
                 "touched_files": sorted(touched),
-                "source_text": new_source,
+                "source_text": _apply_edits(
+                    new_source,
+                    rewrites.get(plan.source_resource.path, ()),
+                ),
                 "target_text": new_target,
-                "rewrites": {
-                    resource.path: edits for resource, edits in rewrites.items()
-                },
+                "rewrites": dict(rewrites),
             }
 
-        # Apply resource edits directly to disk; rope's ChangeContents can
-        # mis-apply offsets when the in-memory source has already been edited.
+        # 4. Inject ``from . import _constants`` (or equivalent) into the source
+        # module so the rewritten references resolve.
+        constants_alias = plan.constants_module.split(".")[-1]
+        new_source = _ensure_constants_import(
+            new_source,
+            constants_alias,
+            plan.class_module,
+            plan.constants_module,
+        )
+
+        # 5. Apply collected rewrites to the source module as well; we skipped
+        # them above to avoid editing stale cached text.
+        new_source = _apply_edits(
+            new_source,
+            rewrites.pop(plan.source_resource.path, []),
+        )
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
         Path(plan.target_resource.real_path).write_text(new_target, encoding="utf-8")
-        for resource, edits in rewrites.items():
-            if resource is plan.source_resource:
-                continue  # already applied above
+
+        # 6. Apply remaining rewrites to other resources.
+        for resource in project.get_python_files():
+            edits = rewrites.get(resource.path)
+            if not edits:
+                continue
             text = resource.read()
-            for start, end, replacement in sorted(edits, reverse=True):
-                text = text[:start] + replacement + text[end:]
+            text = _apply_edits(text, edits)
             Path(resource.real_path).write_text(text, encoding="utf-8")
 
         return {
@@ -250,24 +270,111 @@ def _remove_declaration_line(
     return source
 
 
+def _apply_edits(
+    text: str,
+    edits: t.SequenceOf[tuple[int, int, str]],
+) -> str:
+    """Apply (start, end, replacement) edits to ``text`` in reverse order."""
+    for start, end, replacement in sorted(edits, reverse=True):
+        text = text[:start] + replacement + text[end:]
+    return text
+
+
 def _append_constant(target_text: str, declaration_line: str) -> str:
     """Append the constant declaration to the target module source."""
     trimmed = target_text.rstrip()
-    return f"{trimmed}\n\n{declaration_line}\n"
+    dedented = declaration_line.lstrip()
+    return f"{trimmed}\n\n{dedented}\n"
 
 
 def _attribute_prefix(source: str, offset: int) -> str:
-    """Return the prefix object name for an attribute access at ``offset``.
+    """Return the primary expression for an attribute access at ``offset``.
 
     For ``Foo.BAR`` at the position of ``BAR`` this returns ``"Foo"``.
-    For bare ``BAR`` returns the empty string.
+    For ``cls.BAR`` returns ``"cls"``.  For ``self.__class__.BAR`` returns
+    ``"self.__class__"``.  For bare ``BAR`` returns the empty string.
     """
     word_finder = worder.Worder(source, True)
     try:
         primary = word_finder.get_primary_at(offset)
     except Exception:
         primary = ""
-    return primary
+    return str(primary)
+
+
+def _should_rewrite_prefix(prefix: str, class_name: str) -> bool:
+    """Return whether an attribute prefix should be rewritten to _constants."""
+    if prefix == class_name:
+        return True
+    if prefix == "cls":
+        return True
+    if prefix.endswith(".__class__"):
+        return True
+    return False
+
+
+def _ensure_constants_import(
+    source: str,
+    constants_alias: str,
+    class_module: str,
+    constants_module: str,
+) -> str:
+    """Add an import for the canonical _constants module if absent.
+
+    Computes a relative import from ``class_module`` to ``constants_module``.
+    """
+    if constants_module == class_module:
+        # Same module: impossible for a _constants sibling, but keep safe.
+        return source
+    class_parts = class_module.split(".")
+    constants_parts = constants_module.split(".")
+    # Find common prefix.
+    common = 0
+    for a, b in zip(class_parts, constants_parts):
+        if a != b:
+            break
+        common += 1
+    ups = len(class_parts) - common - 1  # minus the source module itself
+    rel_parts = constants_parts[common:]
+    if ups == 0 and rel_parts:
+        import_line = f"from .{'.'.join(rel_parts)} import {constants_alias}\n"
+    elif ups > 0 and rel_parts:
+        import_line = f"from {'.' * ups}{'.'.join(rel_parts)} import {constants_alias}\n"
+    elif ups > 0:
+        import_line = f"from {'.' * ups} import {constants_alias}\n"
+    else:
+        import_line = f"from {constants_module} import {constants_alias}\n"
+
+    lines = source.splitlines(keepends=True)
+    future_idx = -1
+    docstring_end = -1
+    in_docstring = False
+    docstring_quote = ""
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('"""') or stripped.startswith("'''"):
+            if not in_docstring:
+                in_docstring = True
+                docstring_quote = stripped[:3]
+                if stripped.count(docstring_quote) >= 2:
+                    in_docstring = False
+                    docstring_end = idx
+            else:
+                if stripped.startswith(docstring_quote):
+                    in_docstring = False
+                    docstring_end = idx
+        if stripped.startswith("from __future__ import"):
+            future_idx = idx
+    insert_after = max(future_idx, docstring_end)
+    # Check existing import to avoid duplicates.
+    existing = {line.strip() for line in lines}
+    if import_line.strip() in existing:
+        return source
+    if insert_after >= 0:
+        lines.insert(insert_after + 1, import_line)
+    else:
+        lines.insert(0, import_line)
+    return "".join(lines)
 
 
 __all__: list[str] = ["FlextInfraRefactorClassvarConstantAutofix"]

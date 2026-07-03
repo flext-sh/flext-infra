@@ -29,11 +29,8 @@ class FlextInfraSilentFailureDetector:
         if not source.strip():
             return []
         display_path = file_path
-        if ctx.project_root is not None:
-            try:
-                display_path = file_path.relative_to(ctx.project_root)
-            except ValueError:
-                display_path = file_path
+        if ctx.project_root is not None and file_path.is_relative_to(ctx.project_root):
+            display_path = file_path.relative_to(ctx.project_root)
         tree = _rope_module_ast(ctx.rope_project, resource)
         if tree is None:
             return []

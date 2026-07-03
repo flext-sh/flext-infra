@@ -85,7 +85,10 @@ class FlextInfraEnforcementFixerOrchestrator(
     def execute(self) -> p.Result[str]:
         """Run the enforcement fix pipeline and return a human-readable report."""
         catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
-        selected_rules = self._selected_rules(catalog)
+        try:
+            selected_rules = self._selected_rules(catalog)
+        except ValueError as exc:
+            return r[str].fail(str(exc))
         if not selected_rules:
             return r[str].ok("No fixable enforcement rules selected.")
         projects = self._resolve_projects()
@@ -102,18 +105,60 @@ class FlextInfraEnforcementFixerOrchestrator(
         self,
         catalog: me.EnforcementCatalog,
     ) -> tuple[me.EnforcementRuleSpec, ...]:
-        """Return enabled rules with fix actions matching the CLI filter."""
+        """Return enabled rules with fix actions matching the CLI filter.
+
+        In the default mode (no explicit ``--rules``) rules whose fix action
+        has no registered adapter are silently discarded. When ``--rules`` is
+        used, every requested rule must be enabled, declare a fix action, and
+        have an available adapter; otherwise a ``ValueError`` is raised so the
+        caller can surface a clear failure.
+        """
         wanted = frozenset(self.rules) if self.rules else frozenset()
-        results: list[me.EnforcementRuleSpec] = []
+        candidates: list[me.EnforcementRuleSpec] = []
         for rule in catalog.enabled_rules():
             if not rule.fix_action:
                 continue
             if wanted and rule.id not in wanted:
                 continue
-            if self.safe_only and not rule.fix_action.safe:
+            candidates.append(rule)
+
+        if wanted:
+            requested_ids = {rule.id for rule in candidates}
+            unrequestable = wanted - requested_ids
+            if unrequestable:
+                unrequestable_msg = (
+                    "Requested rules are not enabled or have no fix action: "
+                    f"{', '.join(sorted(unrequestable))}"
+                )
+                raise ValueError(unrequestable_msg)
+            adapterless = {
+                rule.id for rule in candidates if not self._has_adapter(rule)
+            }
+            if adapterless:
+                adapterless_msg = (
+                    "Requested rules have no available fixer adapter: "
+                    f"{', '.join(sorted(adapterless))}"
+                )
+                raise ValueError(adapterless_msg)
+
+        results: list[me.EnforcementRuleSpec] = []
+        for rule in candidates:
+            fix_action = rule.fix_action
+            if fix_action is None:
+                continue
+            if self.safe_only and not fix_action.safe:
+                continue
+            if not self._has_adapter(rule):
                 continue
             results.append(rule)
         return tuple(results)
+
+    def _has_adapter(self, rule: me.EnforcementRuleSpec) -> bool:
+        """Return whether ``rule`` has a registered fixer adapter."""
+        fix_action = rule.fix_action
+        if fix_action is None:
+            return False
+        return self._adapter_for(fix_action) is not None
 
     def _resolve_projects(
         self,
@@ -312,9 +357,10 @@ class FlextInfraEnforcementFixerOrchestrator(
         total_fixed = sum(len(r.fixed) for r in results)
         total_skipped = sum(len(r.skipped) for r in results)
         total_failed = sum(len(r.failed) for r in results)
+        project_count = len({r.project for r in results})
         lines = [
             "Enforcement fix report:",
-            f"  projects: {len(results)}",
+            f"  projects: {project_count}",
             f"  fixed: {total_fixed}",
             f"  skipped: {total_skipped}",
             f"  failed: {total_failed}",

@@ -74,6 +74,32 @@ class TestFlextInfraCodegenLazyInit:
         """Test run() respects check_only flag without modifying files."""
         assert u.Tests.run_lazy_init(tmp_path, check_only=True) == 0
 
+    def test_check_only_reports_stale_generated_files_without_writing(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Check-only mode reports generated drift while preserving disk content."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextTestsModels",
+            alias="m",
+        )
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        init_path = package_root / c.Infra.INIT_PY
+        init_before = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "services.py",
+            class_name="FlextTestsServices",
+            alias="s",
+        )
+
+        generator = u.Tests.create_lazy_init_service(workspace_root)
+
+        assert generator.generate_inits(check_only=True) == 0
+        assert init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT) == init_before
+        assert init_path in {Path(path) for path in generator.modified_files}
+
     def test_modified_files_starts_empty(self, tmp_path: Path) -> None:
         """Modified files is empty before any generation occurs."""
         generator = u.Tests.create_lazy_init_service(tmp_path)

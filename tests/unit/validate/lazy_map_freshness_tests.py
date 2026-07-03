@@ -19,6 +19,7 @@ from flext_tests import tm
 from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFreshness
 from tests.models import m
 from tests.typings import t
+from tests.utilities import u
 
 
 @pytest.fixture
@@ -55,6 +56,31 @@ class TestLazyMapFreshnessValidatorCore:
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
+
+    def test_stale_generated_lazy_map_fails_report(
+        self,
+        tmp_path: Path,
+        v: FlextInfraValidateLazyMapFreshness,
+    ) -> None:
+        """Freshness validation fails when generated lazy maps drift."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextTestsModels",
+            alias="m",
+        )
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "services.py",
+            class_name="FlextTestsServices",
+            alias="s",
+        )
+
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(workspace_root))
+
+        tm.that(report.passed, eq=False)
+        tm.that(report.summary, has="stale")
+        tm.that(len(tuple(report.violations)), gte=1)
 
 
 __all__: t.StrSequence = []

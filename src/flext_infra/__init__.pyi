@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-from flext_core import d as d, e as e, h as h, r as r, x as x
+from flext_cli import d as d, e as e, h as h, r as r, x as x
 from flext_infra.__version__ import (
     __author__ as __author__,
     __author_email__ as __author_email__,
@@ -17,17 +17,6 @@ from flext_infra.base_selection import (
 )
 from flext_infra.cli import FlextInfraCli as FlextInfraCli, main as main
 from flext_infra.constants import FlextInfraConstants as FlextInfraConstants, c as c
-from flext_infra.fixers.base import FlextInfraFixerAdapter as FlextInfraFixerAdapter
-from flext_infra.fixers.gate_fixer import (
-    FlextInfraGateFixerAdapter as FlextInfraGateFixerAdapter,
-)
-from flext_infra.fixers.orchestrator import (
-    FlextInfraEnforcementFixerOrchestrator as FlextInfraEnforcementFixerOrchestrator,
-)
-from flext_infra.fixers.result import FlextInfraFixersResult as FlextInfraFixersResult
-from flext_infra.fixers.transformer_fixer import (
-    FlextInfraTransformerFixerAdapter as FlextInfraTransformerFixerAdapter,
-)
 from flext_infra.models import FlextInfraModels as FlextInfraModels, m as m
 from flext_infra.protocols import (
     FlextInfraProtocols as FlextInfraProtocols,
@@ -42,17 +31,12 @@ __all__ = (
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
-    "FlextInfraEnforcementFixerOrchestrator",
-    "FlextInfraFixerAdapter",
-    "FlextInfraFixersResult",
-    "FlextInfraGateFixerAdapter",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
-    "FlextInfraTransformerFixerAdapter",
     "FlextInfraTypes",
     "FlextInfraUtilities",
     "__author__",

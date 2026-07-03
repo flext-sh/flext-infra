@@ -260,24 +260,32 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         if transformer_cls is FlextInfraRefactorImportModernizer:
             imports_to_remove = tuple(
                 name
-                for name in params.get("imports_to_remove", ())
+                for name in u.Cli.json_as_sequence(
+                    params.get("imports_to_remove"),
+                )
                 if isinstance(name, str)
             )
             symbols_to_replace = {
-                str(k): str(v)
-                for k, v in dict(params.get("symbols_to_replace", {})).items()
-                if isinstance(k, (str, int, float)) and isinstance(v, (str, int, float))
+                k: str(v)
+                for k, v in u.Cli.json_as_mapping(
+                    params.get("symbols_to_replace"),
+                ).items()
+                if isinstance(k, str) and isinstance(v, (str, int, float))
             }
-            runtime_aliases = frozenset(
+            runtime_aliases = {
                 name
-                for name in params.get("runtime_aliases", ())
+                for name in u.Cli.json_as_sequence(
+                    params.get("runtime_aliases"),
+                )
                 if isinstance(name, str)
-            )
-            blocked_aliases = frozenset(
+            }
+            blocked_aliases = {
                 name
-                for name in params.get("blocked_aliases", ())
+                for name in u.Cli.json_as_sequence(
+                    params.get("blocked_aliases"),
+                )
                 if isinstance(name, str)
-            )
+            }
             return FlextInfraRefactorImportModernizer(
                 imports_to_remove=imports_to_remove,
                 symbols_to_replace=symbols_to_replace,
