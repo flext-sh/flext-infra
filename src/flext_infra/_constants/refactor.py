@@ -9,7 +9,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Final
 
-from flext_core import c, t
+from flext_core import t
+from flext_core._constants.enforcement import FlextConstantsEnforcement as _fce
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
