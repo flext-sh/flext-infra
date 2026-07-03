@@ -28,6 +28,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             description="Resolved workspace root requested by the caller",
         ),
     ]
+    rope_workspace_root_override: Annotated[
+        Path | None,
+        m.Field(
+            description="Optional Rope project root; defaults to workspace_root",
+        ),
+    ] = None
 
     project_prefix: Annotated[
         str,
@@ -88,13 +94,17 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def model_post_init(self, __context: t.ScalarMapping | None, /) -> None:
         """Resolve the canonical Rope root once for the full session."""
         super().model_post_init(__context)
-        self._rope_workspace_root = u.Infra.rope_workspace_root(self.workspace_root)
+        self._rope_workspace_root = (
+            self.rope_workspace_root_override
+            or u.Infra.rope_workspace_root(self.workspace_root)
+        )
 
     @classmethod
     def open_workspace(
         cls,
         workspace_root: Path,
         *,
+        rope_workspace_root: Path | None = None,
         project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
         src_dir: str = c.Infra.DEFAULT_SRC_DIR,
         ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
@@ -102,6 +112,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         """Create one ready-to-use Rope workspace session."""
         workspace = cls(
             workspace_root=workspace_root,
+            rope_workspace_root_override=rope_workspace_root,
             project_prefix=project_prefix,
             src_dir=src_dir,
             ignored_resources=ignored_resources,
