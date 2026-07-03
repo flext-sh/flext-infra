@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib
 from collections import defaultdict
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Annotated, ClassVar, override
 
 from flext_core import r
@@ -66,14 +67,16 @@ class FlextInfraEnforcementFixerOrchestrator(
         params: m.Infra.FixEnforcementCommand,
     ) -> p.Result[str]:
         """Execute enforcement fixes from the canonical CLI payload."""
-        instance = cls(
-            workspace_root=params.workspace_path,
-            selected_projects=params.project_names,
-            apply=params.apply,
-            rules=params.rules,
-            safe_only=params.safe_only,
-            check_after=params.check_after,
-            fail_fast=params.fail_fast,
+        instance = cls.model_validate(
+            {
+                "workspace_root": params.workspace_path,
+                "selected_projects": params.projects,
+                "apply": params.apply,
+                "rules": params.rules,
+                "safe_only": params.safe_only,
+                "check_after": params.check_after,
+                "fail_fast": params.fail_fast,
+            },
         )
         return instance.execute()
 
@@ -189,19 +192,23 @@ class FlextInfraEnforcementFixerOrchestrator(
         self,
         project_dir: Path,
         rules: t.SequenceOf[me.EnforcementRuleSpec],
-    ) -> list[tuple[me.EnforcementRuleSpec, t.AttributeProbe]]:
+    ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
         """Collect violations for ``rules`` inside ``project_dir``.
 
         For ``flext_tests_validator`` rules this delegates to
         ``FlextTestsValidator``. Other source kinds currently return empty and
         are expected to be wired as adapters mature.
         """
-        violations: list[tuple[me.EnforcementRuleSpec, t.AttributeProbe]] = []
+        violations: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
         for rule in rules:
             source = rule.source
             if source.kind == "flext_tests_validator":
                 violations.extend(
                     self._collect_tests_validator_violations(project_dir, rule),
+                )
+            elif source.kind == "flext_infra_detector":
+                violations.extend(
+                    self._collect_infra_detector_violations(project_dir, rule),
                 )
             elif source.kind == "ruff":
                 violations.extend(
@@ -217,7 +224,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         self,
         project_dir: Path,
         rule: me.EnforcementRuleSpec,
-    ) -> list[tuple[me.EnforcementRuleSpec, t.AttributeProbe]]:
+    ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
         """Run the flext-tests validator method for ``rule``."""
         source = rule.source
         if source.kind != "flext_tests_validator":
@@ -242,18 +249,44 @@ class FlextInfraEnforcementFixerOrchestrator(
         if scan is None:
             return []
         wanted_ids = frozenset(source.rule_ids)
-        out: list[tuple[me.EnforcementRuleSpec, t.AttributeProbe]] = []
+        out: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
         for violation in getattr(scan, "violations", ()):
             if wanted_ids and getattr(violation, "rule_id", "") not in wanted_ids:
                 continue
             out.append((rule, violation))
         return out
 
+    def _collect_infra_detector_violations(
+        self,
+        project_dir: Path,
+        rule: me.EnforcementRuleSpec,
+    ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
+        """Return one probe per Python file for transformer-backed detector rules.
+
+        ``flext_infra_detector`` rules backed by a deterministic source
+        transformer are applied project-wide; the transformer itself decides
+        whether each file needs a change. This keeps the orchestrator from
+        silently skipping rules whose detectors do not emit per-file probes.
+        """
+        files_result = u.Infra.iter_python_files(
+            workspace_root=self.workspace_root,
+            project_roots=[project_dir],
+            include_tests=True,
+            include_examples=False,
+            include_scripts=False,
+            include_dynamic_dirs=False,
+        )
+        if files_result.failure:
+            return []
+        return [
+            (rule, SimpleNamespace(file_path=str(path))) for path in files_result.value
+        ]
+
     def _collect_ruff_violations(
         self,
         project_dir: Path,
         rule: me.EnforcementRuleSpec,
-    ) -> list[tuple[me.EnforcementRuleSpec, t.AttributeProbe]]:
+    ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
         """Ruff violations are handled gate-side; no per-violation collection."""
         _ = project_dir, rule
         return []
@@ -288,13 +321,18 @@ class FlextInfraEnforcementFixerOrchestrator(
         for result in results:
             if not (result.fixed or result.skipped or result.failed):
                 continue
+            interesting_skipped = [
+                skipped
+                for skipped in result.skipped
+                if skipped.reason != "no changes produced"
+            ]
             lines.append(f"  {result.project}:")
             lines.extend(
                 f"    + {fixed.rule_id}: {fixed.file_path}" for fixed in result.fixed
             )
             lines.extend(
                 f"    ~ {skipped.rule_id}: {skipped.reason}"
-                for skipped in result.skipped
+                for skipped in interesting_skipped
             )
             lines.extend(
                 f"    ! {failed.rule_id}: {failed.error}" for failed in result.failed

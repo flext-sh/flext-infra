@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -13,6 +14,7 @@ from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
@@ -83,44 +85,44 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, t.AttributeProbe]],
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply transformer fixes file-by-file for the given violations."""
         if not violations:
             return fr.ProjectFixResult(project=project_dir.name)
-        rule, _probe = violations[0]
-        fix_action = rule.fix_action
-        if fix_action is None:
-            return fr.ProjectFixResult(project=project_dir.name)
-        transformer_cls = self._TRANSFORMERS.get(fix_action.target)
-        if transformer_cls is None:
-            return fr.ProjectFixResult(
-                project=project_dir.name,
-                failed=(
-                    fr.FailedFix(
-                        rule_id=rule.id,
-                        file_path=str(project_dir),
-                        error=f"transformer {fix_action.target} not registered",
-                    ),
-                ),
-            )
         fixed: list[fr.FixedViolation] = []
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
-        file_paths = self._collect_file_paths(violations, project_dir)
-        for file_path in file_paths:
-            result = self._fix_file(
-                file_path=file_path,
-                transformer_cls=transformer_cls,
-                fix_action=fix_action,
-                ctx=ctx,
-            )
-            fixed.extend(result.fixed)
-            skipped.extend(result.skipped)
-            failed.extend(result.failed)
-            files_modified.update(result.files_modified)
+        for target, target_violations in self._group_violations_by_target(
+            violations,
+        ).items():
+            transformer_cls = self._TRANSFORMERS.get(target)
+            if transformer_cls is None:
+                rule_id = target_violations[0][0].id
+                failed.append(
+                    fr.FailedFix(
+                        rule_id=rule_id,
+                        file_path=str(project_dir),
+                        error=f"transformer {target} not registered",
+                    ),
+                )
+                continue
+            fix_action = target_violations[0][0].fix_action
+            file_paths = self._collect_file_paths(target_violations, project_dir)
+            for file_path in file_paths:
+                result = self._fix_file(
+                    file_path=file_path,
+                    transformer_cls=transformer_cls,
+                    fix_action=fix_action,
+                    ctx=ctx,
+                    rule_id=target_violations[0][0].id,
+                )
+                fixed.extend(result.fixed)
+                skipped.extend(result.skipped)
+                failed.extend(result.failed)
+                files_modified.update(result.files_modified)
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
@@ -133,17 +135,30 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         self,
         file_path: Path,
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction,
+        fix_action: me.EnforcementFixAction | None,
         ctx: m.Infra.FixEnforcementCommand,
+        *,
+        rule_id: str = "",
     ) -> fr.ProjectFixResult:
         """Run one transformer against one file."""
+        if fix_action is None:
+            return fr.ProjectFixResult(
+                project=file_path.parent.name,
+                skipped=(
+                    fr.SkippedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        reason="missing fix_action in catalog",
+                    ),
+                ),
+            )
         read = u.Cli.files_read_text(file_path)
         if read.failure:
             return fr.ProjectFixResult(
                 project=file_path.parent.name,
                 failed=(
                     fr.FailedFix(
-                        rule_id="",
+                        rule_id=rule_id,
                         file_path=str(file_path),
                         error=read.error or "unable to read file",
                     ),
@@ -161,18 +176,18 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 project=file_path.parent.name,
                 skipped=(
                     fr.SkippedViolation(
-                        rule_id="",
+                        rule_id=rule_id,
                         file_path=str(file_path),
                         reason="no changes produced",
                     ),
                 ),
             )
-        if ctx.dry_run:
+        if not ctx.apply:
             return fr.ProjectFixResult(
                 project=file_path.parent.name,
                 fixed=(
                     fr.FixedViolation(
-                        rule_id="",
+                        rule_id=rule_id,
                         file_path=str(file_path),
                         message=f"would apply {len(changes)} change(s)",
                     ),
@@ -184,7 +199,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 project=file_path.parent.name,
                 failed=(
                     fr.FailedFix(
-                        rule_id="",
+                        rule_id=rule_id,
                         file_path=str(file_path),
                         error=write.error or "unable to write file",
                     ),
@@ -194,7 +209,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             project=file_path.parent.name,
             fixed=(
                 fr.FixedViolation(
-                    rule_id="",
+                    rule_id=rule_id,
                     file_path=str(file_path),
                     message=f"applied {len(changes)} change(s)",
                 ),
@@ -213,7 +228,9 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         if transformer_cls is FlextInfraRefactorTypingUnifier:
             targets_value = params.get("targets", [])
             targets: t.StrSequence = (
-                targets_value if isinstance(targets_value, (list, tuple)) else []
+                tuple(item for item in targets_value if isinstance(item, str))
+                if isinstance(targets_value, (list, tuple))
+                else ()
             )
             canonical_map: dict[frozenset[str], str] = {}
             if "dict" in targets:
@@ -239,7 +256,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _collect_file_paths(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, t.AttributeProbe]],
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         project_dir: Path,
     ) -> tuple[Path, ...]:
         """Extract unique file paths from violation probes."""
@@ -257,6 +274,22 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 seen.add(path)
                 paths.append(path)
         return tuple(paths)
+
+    @staticmethod
+    def _group_violations_by_target(
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+    ) -> dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]]:
+        """Group violations by the transformer target declared in ``fix_action``."""
+        grouped: dict[
+            str,
+            list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ] = defaultdict(list)
+        for rule, probe in violations:
+            fix_action = rule.fix_action
+            if fix_action is None:
+                continue
+            grouped[fix_action.target].append((rule, probe))
+        return grouped
 
 
 __all__: list[str] = ["FlextInfraTransformerFixerAdapter"]

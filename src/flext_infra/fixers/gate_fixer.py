@@ -18,6 +18,7 @@ from flext_infra.constants import c
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
@@ -53,7 +54,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, t.AttributeProbe]],
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply gate fixes for the first violation group (all share target)."""
@@ -87,11 +88,17 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
+        reports_dir_result = u.Cli.ensure_dir(
+            project_dir / c.Infra.REPORTS_DIR_NAME / "fix-enforcement",
+        )
+        reports_dir = (
+            reports_dir_result.value
+            if reports_dir_result.success
+            else project_dir / c.Infra.REPORTS_DIR_NAME / "fix-enforcement"
+        )
         gate_ctx = m.Infra.GateContext(
             workspace=self._workspace_root,
-            reports_dir=u.Cli.ensure_dir(
-                project_dir / c.Infra.REPORTS_DIR_NAME / "fix-enforcement",
-            ),
+            reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=ctx.dry_run,
             fail_fast=ctx.fail_fast,

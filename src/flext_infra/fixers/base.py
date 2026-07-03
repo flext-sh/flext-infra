@@ -12,6 +12,7 @@ from typing import ClassVar
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.typings import t
 
 
@@ -38,7 +39,7 @@ class FlextInfraFixerAdapter:
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, t.AttributeProbe]],
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply fixes for the given violations in ``project_dir``."""
