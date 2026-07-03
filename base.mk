@@ -232,7 +232,7 @@ help: ## Show commands
 	$(Q)echo ""
 	$(Q)echo "Selectors and options:"
 
-	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,type"
+	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
 
 	$(Q)echo "  VALIDATE_GATES=complexity,docstring"
 
@@ -294,17 +294,17 @@ build: ## Build distributable artifacts
 	$(POETRY) build; \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
-check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,type to select)
+check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)
 	$(Q)gates="$(CHECK_GATES)"; \
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
 			case "$$g" in \
 				lint|format|pyrefly|mypy|pyright|security|markdown|type) ;; \
-				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,type)"; exit 2;; \
+				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells,type)"; exit 2;; \
 			esac; \
 		done; \
 	else \
-		gates="lint,format,pyrefly,mypy,pyright,security,markdown"; \
+		gates="lint,format,pyrefly,mypy,pyright,security,markdown,smells"; \
 	fi; \
 	gates=$$(echo "$$gates" | tr ',' ' ' | sed 's/\btype\b/pyrefly/g' | tr ' ' ','); \
 	_files=""; \

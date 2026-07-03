@@ -1,7 +1,7 @@
 """Tests for the qlty code-smells gate (report-only posture, warnings always).
 
 The gate parses a qlty SARIF payload into per-project issues, emits one
-``FlextMroViolation`` warning per finding on every run, and passes while
+``FlextSmellViolation`` warning per finding on every run, and passes while
 ``SMELLS_GATE_MODE`` is WARN. A failed/absent scanner surfaces as a visible
 issue instead of a silent pass. All assertions run against a literal SARIF
 fixture seeded into the process-level scan cache — no subprocess.
@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import FlextMroViolation
+from flext_core import FlextSmellViolation, c as core_c
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
@@ -115,7 +115,7 @@ class TestSmellsGate:
         project_dir = tmp_path / "demo-project"
         project_dir.mkdir()
 
-        with pytest.warns(FlextMroViolation):
+        with pytest.warns(FlextSmellViolation):
             execution = gate.check(project_dir, _ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=True)
@@ -127,7 +127,7 @@ class TestSmellsGate:
         project_dir = tmp_path / "demo-project"
         project_dir.mkdir()
 
-        with pytest.warns(FlextMroViolation):
+        with pytest.warns(FlextSmellViolation):
             execution = gate.check(project_dir, _ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=True)
@@ -139,6 +139,15 @@ class TestSmellsGate:
             FlextInfraSmellsGate._severity(),
             eq=c.Infra.GateSeverity.WARNING.value,
         )
+
+    def test_smell_tags_have_core_rule_text(self) -> None:
+        """Every qlty smell tag mapped by the gate has a FLEXT problem/fix text."""
+        missing = [
+            enforcement_tag
+            for enforcement_tag in c.Infra.SMELLS_RULE_TAGS.values()
+            if enforcement_tag not in core_c.ENFORCEMENT_RULES_TEXT
+        ]
+        tm.that(missing, eq=[])
 
 
 __all__: t.StrSequence = []

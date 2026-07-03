@@ -15,7 +15,7 @@ import warnings
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_core import FlextMroViolation, c as core_c
+from flext_core import FlextSmellViolation, c as core_c
 from flext_infra import c, m, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -51,7 +51,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         if not issues and scan.exit_code != 0:
             issues = (self._tool_failure_issue(scan),)
         for issue in issues:
-            warnings.warn(issue.formatted, FlextMroViolation, stacklevel=2)
+            warnings.warn(issue.formatted, FlextSmellViolation, stacklevel=2)
         passed = c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.WARN or not issues
         return self._build_gate_result(
             result=m.Infra.GateResult(
