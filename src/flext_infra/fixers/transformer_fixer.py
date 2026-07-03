@@ -44,6 +44,11 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             type[FlextInfraRopeTransformer],
         ]
     ] = {
+        "bare_except": FlextInfraRefactorBareExcept,
+        "future_import": FlextInfraRefactorFutureImport,
+        "open_encoding": FlextInfraRefactorOpenEncoding,
+        "print_to_logger": FlextInfraRefactorPrintToLogger,
+        "remove_breakpoint": FlextInfraRefactorRemoveBreakpoint,
         "typing_unifier": FlextInfraRefactorTypingUnifier,
     }
 
