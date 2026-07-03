@@ -330,7 +330,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         if resource is None:
             return
         original_source = resource.read()
-        backup_path = file_path.with_suffix(file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX)
+        backup_path = file_path.with_suffix(
+            file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
+        )
         if not backup_path.exists():
             backup_path.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
         transformer = FlextInfraRefactorProjectAliasMigrator(

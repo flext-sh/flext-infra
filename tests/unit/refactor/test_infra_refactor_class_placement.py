@@ -5,6 +5,9 @@ from pathlib import Path
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
+from flext_infra.refactor.classvar_constant_autofix import (
+    FlextInfraRefactorClassvarConstantAutofix,
+)
 from tests.constants import c
 from tests.models import m
 from tests.typings import t
@@ -256,3 +259,102 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         )
 
         assert violations == []
+
+    def test_detects_classvar_constant_outside_constants(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "consumer.py"
+        target.write_text(
+            "from typing import ClassVar\n"
+            "class PlainClass:\n"
+            "    GROUPS: ClassVar[frozenset[str]] = frozenset({'a'})\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraClassPlacementDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
+
+        assert len(violations) == 1
+        assert violations[0].name == "GROUPS"
+        assert violations[0].action == "classvar_relocation"
+
+    def test_detects_implicit_constant_without_classvar(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "consumer.py"
+        target.write_text(
+            "class PlainClass:\n    GROUPS = frozenset({'a'})\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraClassPlacementDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
+
+        assert len(violations) == 1
+        assert violations[0].name == "GROUPS"
+        assert violations[0].action == "classvar_relocation"
+
+    def test_skips_implicit_constant_inside_constants_directory(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        constants_dir = tmp_path / "_constants"
+        constants_dir.mkdir(parents=True)
+        target = constants_dir / "domain.py"
+        target.write_text(
+            "class PlainClass:\n    GROUPS = frozenset({'a'})\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraClassPlacementDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=rope_project,
+            ),
+        )
+
+        assert violations == []
+
+    def test_autofix_moves_implicit_constant(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Autofix can relocate an implicit UPPER_CASE class constant."""
+        pkg = tmp_path / "src" / "demo"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        (pkg / "service.py").write_text(
+            "class DemoService:\n"
+            "    GROUPS = frozenset({'a'})\n"
+            "    def run(self) -> None:\n"
+            "        print(DemoService.GROUPS)\n",
+            encoding="utf-8",
+        )
+        constants_mod = pkg / "_constants.py"
+        constants_mod.write_text("\"\"\"Constants.\"\"\"\n", encoding="utf-8")
+
+        result = FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "demo.service.DemoService",
+            "GROUPS",
+            "demo._constants",
+            dry_run=True,
+        )
+
+        assert "demo/service.py" in " ".join(result["touched_files"])
+        assert "demo/_constants.py" in " ".join(result["touched_files"])
+        assert "GROUPS = frozenset({'a'})" in result["target_text"]
+        assert "GROUPS = frozenset({'a'})" not in result["source_text"]

@@ -384,8 +384,8 @@ class FlextInfraRefactorCensusRulesStructMixin:
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
-        """Detect exception-silencing patterns (always manual fix)."""
-        _ = objects, symbol_index, applied
+        """Detect exception-silencing patterns; auto-fix deterministic sentinels."""
+        _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
@@ -396,6 +396,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             if selected_kinds and object_kind not in selected_kinds:
                 continue
             action = detector_violation.fix_action
+            fixable = action == "fix_silent_failure_sentinels"
             violations.append(
                 self._raw_violation(
                     project=project_name,
@@ -405,10 +406,25 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     file_path=file_path,
                     line=detector_violation.line,
                     description=detector_violation.detail,
-                    fixable=False,
+                    fixable=fixable,
                     fix_action=action,
                 )
             )
+            if fixable:
+                fixes.append(
+                    m.Infra.Census.Fix(
+                        object_name=detector_violation.kind,
+                        action=action,
+                        source_file=str(file_path),
+                        files_changed=1,
+                        applied=self._fix_key(
+                            file_path,
+                            detector_violation.kind,
+                            action,
+                        )
+                        in applied,
+                    )
+                )
         return violations, fixes
 
 

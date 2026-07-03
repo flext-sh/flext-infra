@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, override
+
+from rope.base import ast
 
 from flext_infra._constants.detectors import FlextInfraConstantsDetectors
 from flext_infra.constants import c
