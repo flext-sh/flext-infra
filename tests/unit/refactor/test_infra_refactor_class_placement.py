@@ -479,6 +479,55 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         assert '"""Return value."""\nfrom . import _constants' not in source_text
         assert "return _constants.VALUE" in source_text
 
+    def test_autofix_apply_removes_alias_to_existing_constant_owner(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Apply mode removes class aliases without duplicating constants."""
+        pkg = tmp_path / "src" / "demo"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        constants_mod = pkg / "_constants.py"
+        constants_text = '"""Constants."""\n\nVALUE = 1.5\n'
+        constants_mod.write_text(constants_text, encoding="utf-8")
+        service = pkg / "service.py"
+        source_text = (
+            '"""Demo service."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from . import _constants\n\n"
+            "class DemoService:\n"
+            "    VALUE = _constants.VALUE\n\n"
+            "    def run(self) -> float:\n"
+            "        return self.VALUE\n"
+        )
+        service.write_text(source_text, encoding="utf-8")
+
+        dry_run_result = FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "demo.service.DemoService",
+            "VALUE",
+            "demo._constants",
+            dry_run=True,
+        )
+
+        assert dry_run_result["target_text"] == constants_text
+        assert constants_mod.read_text(encoding="utf-8") == constants_text
+        assert service.read_text(encoding="utf-8") == source_text
+
+        FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "demo.service.DemoService",
+            "VALUE",
+            "demo._constants",
+            dry_run=False,
+        )
+
+        updated_source = service.read_text(encoding="utf-8")
+        updated_constants = constants_mod.read_text(encoding="utf-8")
+        assert updated_constants == constants_text
+        assert "    VALUE = _constants.VALUE" not in updated_source
+        assert "return _constants.VALUE" in updated_source
+
     def test_autofix_apply_moves_multiline_classvar_to_src_constants(
         self,
         tmp_path: Path,
@@ -541,3 +590,43 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         assert "PRESETS: Mapping[str, t.JsonMapping]" in constants_text
         assert '    "development": {' in constants_text
         assert '"batch_size": 100' in constants_text
+
+    def test_autofix_dry_run_removes_alias_when_constants_owner_exists(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Class-level aliases to an existing constants owner are not duplicated."""
+        pkg = tmp_path / "src" / "demo"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        (pkg / "_constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "GROUPS: frozenset[str] = frozenset({'a'})\n",
+            encoding="utf-8",
+        )
+        (pkg / "service.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from typing import ClassVar\n\n"
+            "from . import _constants\n\n\n"
+            "class DemoService:\n"
+            "    GROUPS: ClassVar[frozenset[str]] = _constants.GROUPS\n\n"
+            "    def groups(self) -> frozenset[str]:\n"
+            "        return self.GROUPS\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "demo.service.DemoService",
+            "GROUPS",
+            "demo._constants",
+            dry_run=True,
+        )
+
+        source_text = result["source_text"]
+        target_text = result["target_text"]
+        assert isinstance(source_text, str)
+        assert isinstance(target_text, str)
+        assert "GROUPS: ClassVar" not in source_text
+        assert "_constants.GROUPS" in source_text
+        assert target_text.count("GROUPS") == 1

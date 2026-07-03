@@ -34,11 +34,7 @@ class FlextInfraRefactorFutureImport(FlextInfraRopeTransformer):
     def _normalized_source(cls, source: str) -> str:
         """Return source with exactly one canonical future import."""
         lines = source.splitlines(keepends=True)
-        body = [
-            line
-            for line in lines
-            if line.strip() != c.Infra.FUTURE_ANNOTATIONS
-        ]
+        body = [line for line in lines if line.strip() != c.Infra.FUTURE_ANNOTATIONS]
         insertion, has_docstring = cls._insertion_index(body)
         future_line = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         if has_docstring:

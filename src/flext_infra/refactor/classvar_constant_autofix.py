@@ -152,6 +152,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
             plan.source_resource.path,
             plan.target_resource.path,
         }
+        constants_alias = plan.constants_module.split(".")[-1]
 
         # 1. Remove the ClassVar declaration from the class body.
         new_source = _remove_declaration_line(
@@ -162,12 +163,26 @@ class FlextInfraRefactorClassvarConstantAutofix:
             plan.constant_name,
         )
 
-        # 2. Append the constant to the target _constants module.
-        new_target = _append_constant(
-            target_text,
-            plan.declaration_line,
-            plan.constants_module,
-        )
+        # 2. Append the constant to the target _constants module, unless the
+        # class declaration was only a typed alias to an existing owner.
+        if _module_declares_name(target_text, plan.constant_name):
+            if not _declaration_aliases_target_constant(
+                plan.declaration_line,
+                constants_alias,
+                plan.constant_name,
+            ):
+                msg = (
+                    f"{plan.constants_module} already declares "
+                    f"{plan.constant_name}; class declaration is not an owner alias"
+                )
+                raise TypeError(msg)
+            new_target = target_text
+        else:
+            new_target = _append_constant(
+                target_text,
+                plan.declaration_line,
+                plan.constants_module,
+            )
 
         # 3. Rewrite internal references from ClassName.NAME / cls.NAME /
         # self.__class__.NAME to the canonical constants module access.
@@ -220,7 +235,6 @@ class FlextInfraRefactorClassvarConstantAutofix:
         # 4. Rewrite source-module references textually. Rope occurrence offsets
         # target the original source and become stale after the declaration is
         # removed, so the modified source uses the known class-access forms.
-        constants_alias = plan.constants_module.split(".")[-1]
         rewrites.pop(plan.source_resource.path, None)
         new_source = _rewrite_class_access_in_source(
             new_source,
@@ -237,7 +251,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
             plan.constants_module,
         )
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
-        target_path.write_text(new_target, encoding="utf-8")
+        if new_target != target_text:
+            target_path.write_text(new_target, encoding="utf-8")
 
         # 6. Apply remaining rewrites to other resources.
         for resource in project.get_python_files():
@@ -334,6 +349,48 @@ def _statement_declares_name(statement: ast.stmt, constant_name: str) -> bool:
             for target in statement.targets
         )
     return False
+
+
+def _module_declares_name(source: str, constant_name: str) -> bool:
+    """Return whether module source already declares ``constant_name``."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as exc:
+        msg = f"target constants module is not parseable: {exc.msg}"
+        raise TypeError(msg) from exc
+    return any(
+        _statement_declares_name(statement, constant_name) for statement in tree.body
+    )
+
+
+def _declaration_aliases_target_constant(
+    declaration_line: str,
+    constants_alias: str,
+    constant_name: str,
+) -> bool:
+    """Return whether a class declaration points at the existing constants owner."""
+    try:
+        tree = ast.parse(textwrap.dedent(declaration_line).strip())
+    except SyntaxError:
+        return False
+    if len(tree.body) != 1:
+        return False
+    value = _assignment_value(tree.body[0])
+    return (
+        isinstance(value, ast.Attribute)
+        and value.attr == constant_name
+        and isinstance(value.value, ast.Name)
+        and value.value.id == constants_alias
+    )
+
+
+def _assignment_value(statement: ast.stmt) -> ast.expr | None:
+    """Return the right-hand side expression for supported assignments."""
+    if isinstance(statement, ast.AnnAssign):
+        return statement.value
+    if isinstance(statement, ast.Assign):
+        return statement.value
+    return None
 
 
 def _statement_source_by_lines(source: str, statement: ast.stmt) -> str:
