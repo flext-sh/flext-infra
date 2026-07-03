@@ -41,6 +41,8 @@ from flext_infra.refactor.classvar_constant_autofix import (
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
+_log = u.fetch_logger(__name__)
+
 
 class FlextInfraRefactorCensusApplyMixin(
     FlextInfraRefactorCensusApplyFormattingMixin,
@@ -247,7 +249,8 @@ class FlextInfraRefactorCensusApplyMixin(
                     "simple removal apply failed for "
                     f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
                 )
-                raise RuntimeError(msg)
+                _log.warning("census_apply_candidate_rejected", candidate=candidate.file_path, object_name=candidate.object_name, error=msg)
+                continue
             if apply_result.unwrap_or(False):
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)

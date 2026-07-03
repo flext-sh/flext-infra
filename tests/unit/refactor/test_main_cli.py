@@ -1173,7 +1173,7 @@ class TestsFlextInfraRefactorMainCli:
         )
         assert len(rejected) == 1, all_violations
 
-    def test_refactor_census_apply_raises_on_simple_removal_planning_failure(
+    def test_refactor_census_apply_skips_unplannable_removal_candidate(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -1198,17 +1198,18 @@ class TestsFlextInfraRefactorMainCli:
             staticmethod(_broken_build),
         )
 
-        with pytest.raises(
-            RuntimeError,
-            match=r"simple removal planning failed for .*only_for_tests",
-        ):
-            FlextInfraRefactorCensus(
-                workspace=workspace,
-                apply_changes=True,
-                include_local_scopes=False,
-                kinds=("function",),
-                rules=("test_only",),
-            ).execute()
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            apply_changes=True,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        service_file = workspace / "src" / "sample_pkg" / "service.py"
+        assert "only_for_tests" in service_file.read_text(encoding="utf-8")
+        assert report.total_violations >= 1
 
     def _assert_dry_run_one_violation_no_candidate(
         self,
