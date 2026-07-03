@@ -21,6 +21,10 @@ from flext_infra.transformers.future_import import FlextInfraRefactorFutureImpor
 from flext_infra.transformers.hardcoded_version import (
     FlextInfraRefactorHardcodedVersion,
 )
+from flext_infra.transformers.import_modernizer import (
+    FlextInfraRefactorImportModernizer,
+)
+from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
 from flext_infra.transformers.project_alias_migrator import (
@@ -63,6 +67,8 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         "bare_except": FlextInfraRefactorBareExcept,
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
+        "import_modernizer": FlextInfraRefactorImportModernizer,
+        "mro_remover": FlextInfraRefactorMRORemover,
         "open_encoding": FlextInfraRefactorOpenEncoding,
         "print_to_logger": FlextInfraRefactorPrintToLogger,
         "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,
@@ -251,6 +257,33 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             return transformer_cls(file_path=file_path)
         if transformer_cls is FlextInfraRefactorProjectAliasMigrator:
             return FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
+        if transformer_cls is FlextInfraRefactorImportModernizer:
+            imports_to_remove = tuple(
+                name
+                for name in params.get("imports_to_remove", ())
+                if isinstance(name, str)
+            )
+            symbols_to_replace = {
+                str(k): str(v)
+                for k, v in dict(params.get("symbols_to_replace", {})).items()
+                if isinstance(k, (str, int, float)) and isinstance(v, (str, int, float))
+            }
+            runtime_aliases = frozenset(
+                name
+                for name in params.get("runtime_aliases", ())
+                if isinstance(name, str)
+            )
+            blocked_aliases = frozenset(
+                name
+                for name in params.get("blocked_aliases", ())
+                if isinstance(name, str)
+            )
+            return FlextInfraRefactorImportModernizer(
+                imports_to_remove=imports_to_remove,
+                symbols_to_replace=symbols_to_replace,
+                runtime_aliases=runtime_aliases,
+                blocked_aliases=blocked_aliases,
+            )
         # Remaining enforcement transformers require no runtime params.
         return transformer_cls()
 
