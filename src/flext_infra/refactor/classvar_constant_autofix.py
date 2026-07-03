@@ -185,14 +185,17 @@ class FlextInfraRefactorClassvarConstantAutofix:
                 },
             }
 
-        # Apply resource edits.
-        plan.source_resource.write(new_source)
-        plan.target_resource.write(new_target)
+        # Apply resource edits directly to disk; rope's ChangeContents can
+        # mis-apply offsets when the in-memory source has already been edited.
+        Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
+        Path(plan.target_resource.real_path).write_text(new_target, encoding="utf-8")
         for resource, edits in rewrites.items():
+            if resource is plan.source_resource:
+                continue  # already applied above
             text = resource.read()
             for start, end, replacement in sorted(edits, reverse=True):
                 text = text[:start] + replacement + text[end:]
-            resource.write(text)
+            Path(resource.real_path).write_text(text, encoding="utf-8")
 
         return {
             "touched_files": sorted(touched),

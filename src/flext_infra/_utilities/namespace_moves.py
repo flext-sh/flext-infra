@@ -96,6 +96,62 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     msg = cleanup_result.error or "rope import cleanup failed"
                     raise RuntimeError(msg)
 
+    @staticmethod
+    def rewrite_namespace_source_violations(
+        *,
+        violations: t.SequenceOf[m.Infra.NamespaceSourceViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        gates: t.StrSequence | None = None,
+    ) -> None:
+        """Rewrite runtime aliases imported from a foreign FLEXT package source."""
+        _ = parse_failures, gates
+        grouped: t.MappingKV[Path, t.MutableMappingKV[tuple[str, str], set[str]]] = (
+            defaultdict(lambda: defaultdict(set))
+        )
+        for violation in violations:
+            grouped[Path(violation.file)][
+                violation.current_source, violation.correct_source
+            ].add(violation.alias)
+        if not grouped:
+            return
+        workspace_root = (
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
+                py_files=tuple(grouped)
+            )
+        )
+        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as rope_project:
+            for file_path, moves in grouped.items():
+                resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                    rope_project,
+                    file_path,
+                )
+                if resource is None:
+                    msg = (
+                        "rope resource unavailable for namespace source rewrite: "
+                        f"{file_path}"
+                    )
+                    raise RuntimeError(msg)
+                changed = False
+                for (current_source, correct_source), aliases in sorted(moves.items()):
+                    updated = FlextInfraUtilitiesRopeImports.relocate_from_import_aliases(
+                        rope_project,
+                        resource,
+                        source_module=current_source,
+                        target_module=correct_source,
+                        aliases=tuple(sorted(aliases)),
+                        apply=True,
+                    )
+                    changed = changed or updated is not None
+                if not changed:
+                    continue
+                cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
+                    rope_project,
+                    file_paths=(file_path,),
+                )
+                if cleanup_result.failure:
+                    msg = cleanup_result.error or "rope import cleanup failed"
+                    raise RuntimeError(msg)
+
     @classmethod
     def rewrite_runtime_alias_violations(
         cls,
@@ -201,6 +257,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         project_root: Path,
         violations: t.SequenceOf[m.Infra.ManualTypingAliasViolation],
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite manual typing alias violations."""
         _ = parse_failures
@@ -212,6 +269,29 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 project_root=project_root,
                 source_file=source_file,
                 alias_names=alias_names,
+                gates=gates,
+            )
+
+    @staticmethod
+    def rewrite_loose_object_violations(
+        *,
+        project_root: Path,
+        violations: t.SequenceOf[m.Infra.LooseObjectViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        gates: t.StrSequence | None = None,
+    ) -> None:
+        """Rewrite loose namespace objects whose canonical mover is deterministic."""
+        _ = parse_failures
+        typing_grouped: t.MappingKV[Path, t.Infra.StrSet] = defaultdict(set)
+        for violation in violations:
+            if violation.kind in {"typealias", "typevar"}:
+                typing_grouped[Path(violation.file)].add(violation.name)
+        for source_file, alias_names in typing_grouped.items():
+            FlextInfraUtilitiesRefactorNamespaceMoves._move_typing_alias_lines(
+                project_root=project_root,
+                source_file=source_file,
+                alias_names=alias_names,
+                gates=gates,
             )
 
     @staticmethod
@@ -471,7 +551,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
 
-        ok, _ = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+        ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
                 target_file: updated_target.rstrip() + "\n",
                 source_file: "\n".join(filtered_lines).rstrip() + "\n",
@@ -484,7 +564,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             ),
         )
         if not ok:
-            return None
+            msg = "named block move failed validation: " + "; ".join(reports)
+            raise RuntimeError(msg)
         return (source_file, target_file, tuple(moved))
 
     @staticmethod
@@ -541,6 +622,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         project_root: Path,
         source_file: Path,
         alias_names: t.Infra.StrSet,
+        gates: t.StrSequence | None,
     ) -> None:
         """Move typing alias lines."""
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -632,7 +714,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(source_file)])
             _ = u.Cli.run_checked(["ruff", "check", "--fix", str(target_file)])
 
-        ok, _ = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
+        ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             {
                 target_file: updated_target + "\n",
                 source_file: "\n".join(updated_source_lines).rstrip() + "\n",
@@ -640,11 +722,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=project_root,
                 keep_backup=True,
-                gates=("lint",),
+                gates=gates,
                 post_write=_post_write,
             ),
         )
-        _ = ok
+        if not ok:
+            msg = "typing alias move failed validation: " + "; ".join(reports)
+            raise RuntimeError(msg)
 
     @staticmethod
     def _typing_alias_source_imports(

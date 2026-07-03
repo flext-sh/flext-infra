@@ -126,6 +126,7 @@ class FlextInfraRefactorCensusApplyMixin(
                     project_root=ctx.project_root,
                     violations=violations,
                     parse_failures=parse_failures,
+                    gates=self.dry_run_gate_names,
                 )
                 changed = True
             elif action == "rewrite_compatibility_alias":
