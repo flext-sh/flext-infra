@@ -26,6 +26,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "TestsFlextInfraTransformersInfraTransformerClassNesting",
         ),
         ".unit.transformers.test_infra_transformer_enforcement_fixers": (
+            "TestsFlextInfraTransformersFutureImport",
             "TestsFlextInfraTransformersOpenEncoding",
             "TestsFlextInfraTransformersPrintToLogger",
             "TestsFlextInfraTransformersRemoveBreakpoint",
@@ -67,7 +68,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         "flext_tests": (
             "d",
             "e",
-            "h",
         ),
     },
 )

@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 from flext_core.lazy import install_lazy_exports
-from tests.unit._constants._exports import (
-    TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS,
-)
+from tests.unit._constants._exports import TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS
 
 _LAZY_IMPORTS = TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS
 

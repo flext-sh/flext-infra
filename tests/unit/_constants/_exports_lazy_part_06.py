@@ -16,6 +16,9 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         "._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         "._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
+        ".refactor.test_infra_refactor_service": (
+            "TestsFlextInfraRefactorInfraRefactorService",
+        ),
         ".refactor.test_infra_refactor_typing_unifier": (
             "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
         ),
@@ -63,9 +66,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
             "TestsFlextInfraWorkspaceMakefileGenerator",
         ),
         ".workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
-        ".workspace.test_sync_environment": (
-            "TestsFlextInfraWorkspaceSyncEnvironment",
-        ),
         ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
     },
 )

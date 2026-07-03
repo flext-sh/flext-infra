@@ -8,6 +8,7 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
         ".base": ("TestsFlextInfraServiceBase",),
+        ".models": ("TestsFlextInfraModels",),
         ".protocols": ("TestsFlextInfraProtocols",),
         ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
         ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
@@ -75,7 +76,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ),
         ".unit.transformers.test_infra_transformer_enforcement_fixers": (
             "TestsFlextInfraTransformersBareExcept",
-            "TestsFlextInfraTransformersFutureImport",
         ),
     },
 )

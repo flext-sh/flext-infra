@@ -14,6 +14,9 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
         ".unit.deps.test_extra_paths_uv_sources": (
             "TestsFlextInfraExtraPathsUvSources",
         ),
+        ".unit.deps.test_internal_sync_update_checkout_edge": (
+            "TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge",
+        ),
         ".unit.deps.test_internal_sync_validation": (
             "TestsFlextInfraDepsInternalSyncValidation",
         ),
@@ -68,7 +71,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
         ".unit.test_infra_main": ("TestsFlextInfraInfraMain",),
         ".unit.test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
         ".unit.test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
-        ".unit.test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
     },
 )
 

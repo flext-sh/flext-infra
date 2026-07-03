@@ -3,33 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if TYPE_CHECKING:
-    from tests.unit.codegen.lazy_init_generation_tests import (
-        TestGenerateFile as TestGenerateFile,
-        TestGenerateTypeChecking as TestGenerateTypeChecking,
-        TestLazyInitPlannerCollision as TestLazyInitPlannerCollision,
-        TestRunRuffFix as TestRunRuffFix,
-    )
-    from tests.unit.codegen.lazy_init_helpers_tests import (
-        TestsFlextInfraLazyInitHelpers as TestsFlextInfraLazyInitHelpers,
-    )
-    from tests.unit.codegen.lazy_init_tests import (
-        TestAllDirectoriesScanned as TestAllDirectoriesScanned,
-        TestCheckOnlyMode as TestCheckOnlyMode,
-        TestEdgeCases as TestEdgeCases,
-        TestExcludedDirectories as TestExcludedDirectories,
-    )
-    from tests.unit.codegen.lazy_init_transforms_tests import (
-        TestsFlextInfraLazyInitTransforms as TestsFlextInfraLazyInitTransforms,
-    )
-    from tests.unit.codegen.scaffolder_naming_tests import (
-        TestGeneratedClassNamingConvention as TestGeneratedClassNamingConvention,
-        TestGeneratedFilesAreValidPython as TestGeneratedFilesAreValidPython,
-    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".autofix_workspace_tests": ("autofix_workspace_tests",),
@@ -65,6 +40,24 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_codegen_py_typed": ("test_codegen_py_typed",),
         ".test_codegen_version_file": ("test_codegen_version_file",),
         ".test_violation_key": ("test_violation_key",),
+        "flext_tests": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "td",
+            "tf",
+            "tk",
+            "tm",
+            "tv",
+            "u",
+            "x",
+        ),
     },
 )
 

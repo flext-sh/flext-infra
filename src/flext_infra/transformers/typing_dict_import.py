@@ -56,7 +56,7 @@ class FlextInfraRefactorTypingDictImport(FlextInfraRopeTransformer):
     def _remove_dict_import(self, source: str) -> str:
         """Drop ``Dict`` from ``from typing import ...`` lines."""
 
-        def replacer(_match: re.Match[str]) -> str:
+        def replacer(match: re.Match[str]) -> str:
             items = match.group("items")
             cleaned = self._remove_dict_item(items)
             if not cleaned:

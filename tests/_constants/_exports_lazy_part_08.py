@@ -30,6 +30,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
         ".unit.fixtures_git": ("real_git_repo",),
         ".utilities": ("u",),
         "flext_tests": (
+            "h",
             "r",
             "td",
             "tf",

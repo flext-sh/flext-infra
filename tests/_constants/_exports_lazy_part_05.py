@@ -28,7 +28,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".integration.test_refactor_policy_mro": (
             "TestsFlextInfraIntegrationRefactorPolicyMro",
         ),
-        ".models": ("TestsFlextInfraModels",),
         ".unit.codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
         ".unit.codegen.lazy_init_transforms_tests": (
             "TestsFlextInfraLazyInitTransforms",
@@ -36,6 +35,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".unit.io.test_infra_terminal_detection": (
             "TestsFlextInfraIoInfraTerminalDetection",
         ),
+        ".unit.test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
         ".unit.test_infra_maintenance_python_version": (
             "TestsFlextInfraInfraMaintenancePythonVersion",
         ),

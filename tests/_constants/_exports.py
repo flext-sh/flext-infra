@@ -67,7 +67,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS = merge_lazy_imports(
         "pytest_terminal_summary",
         "pytest_warning_recorded",
     ),
-    module_name="flext_infra.tests",
+    module_name="tests",
 )
 
 __all__: list[str] = ["TESTS_FLEXT_INFRA_LAZY_IMPORTS"]

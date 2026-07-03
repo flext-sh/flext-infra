@@ -232,6 +232,8 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             FlextInfraRefactorTypingDictAttr,
         }:
             return transformer_cls(file_path=file_path)
+        if transformer_cls is FlextInfraRefactorProjectAliasMigrator:
+            return FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
         # Remaining enforcement transformers require no runtime params.
         return transformer_cls()
 

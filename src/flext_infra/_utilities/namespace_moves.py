@@ -12,6 +12,9 @@ from rope.refactor.rename import Rename
 from flext_cli import u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )

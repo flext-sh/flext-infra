@@ -54,10 +54,10 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".unit._constants._exports_lazy_part_07": (
             "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07",
         ),
-        ".unit.check.extended_config_fixer_tests": (
-            "TestConfigFixerExecute",
-            "TestConfigFixerProcessFile",
+        ".unit._constants._exports_lazy_part_08": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08",
         ),
+        ".unit.check.extended_config_fixer_tests": ("TestConfigFixerExecute",),
         ".unit.check.extended_models_tests": ("TestCheckIssueFormatted",),
         ".unit.codegen.lazy_init_tests": (
             "TestAllDirectoriesScanned",

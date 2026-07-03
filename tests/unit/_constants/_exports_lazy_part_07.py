@@ -27,24 +27,24 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "real_toml_project",
             "real_workspace",
             "rope_workspace",
-            "services_resource",
-            "tool_config_document",
         ),
         ".fixtures_git": ("real_git_repo",),
         ".github": ("github",),
         ".io": ("io",),
         ".refactor": ("refactor",),
         ".release": ("release",),
-        ".test_infra_workspace_migrator_errors": (
-            "test_infra_workspace_migrator_errors",
+        ".workspace.test_sync_environment": (
+            "TestsFlextInfraWorkspaceSyncEnvironment",
         ),
-        ".test_infra_workspace_migrator_pyproject": (
-            "test_infra_workspace_migrator_pyproject",
+        "flext_tests": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
         ),
-        ".test_mro_service_base_alias": ("test_mro_service_base_alias",),
-        ".test_version_diag": ("test_version_diag",),
-        ".test_version_diag2": ("test_version_diag2",),
-        ".transformers": ("transformers",),
     },
 )
 

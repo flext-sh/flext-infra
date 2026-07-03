@@ -3,45 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if TYPE_CHECKING:
-    from tests.unit.transformers.test_infra_transformer_class_nesting import (
-        TestsFlextInfraTransformersInfraTransformerClassNesting as TestsFlextInfraTransformersInfraTransformerClassNesting,
-    )
-    from tests.unit.transformers.test_infra_transformer_cli_modernizer import (
-        TestsFlextInfraTransformersCliModernizer as TestsFlextInfraTransformersCliModernizer,
-    )
-    from tests.unit.transformers.test_infra_transformer_enforcement_fixers import (
-        TestsFlextInfraTransformersBareExcept as TestsFlextInfraTransformersBareExcept,
-        TestsFlextInfraTransformersFutureImport as TestsFlextInfraTransformersFutureImport,
-        TestsFlextInfraTransformersOpenEncoding as TestsFlextInfraTransformersOpenEncoding,
-        TestsFlextInfraTransformersPrintToLogger as TestsFlextInfraTransformersPrintToLogger,
-        TestsFlextInfraTransformersRemoveBreakpoint as TestsFlextInfraTransformersRemoveBreakpoint,
-    )
-    from tests.unit.transformers.test_infra_transformer_helper_consolidation import (
-        TestsFlextInfraTransformersInfraTransformerHelperConsolidation as TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
-    )
-    from tests.unit.transformers.test_infra_transformer_logging_modernizer import (
-        TestsFlextInfraTransformersLoggingModernizer as TestsFlextInfraTransformersLoggingModernizer,
-    )
-    from tests.unit.transformers.test_infra_transformer_nested_class_propagation import (
-        TestsFlextInfraTransformersInfraTransformerNestedClassPropagation as TestsFlextInfraTransformersInfraTransformerNestedClassPropagation,
-    )
-    from tests.unit.transformers.test_infra_transformer_pattern_modernizer import (
-        TestsFlextInfraTransformersPatternModernizer as TestsFlextInfraTransformersPatternModernizer,
-    )
-    from tests.unit.transformers.test_infra_transformer_pydantic_modernizer import (
-        TestsFlextInfraTransformersPydanticModernizer as TestsFlextInfraTransformersPydanticModernizer,
-    )
-    from tests.unit.transformers.test_infra_transformer_result_di_modernizer import (
-        TestsFlextInfraTransformersResultDiModernizer as TestsFlextInfraTransformersResultDiModernizer,
-    )
-    from tests.unit.transformers.test_infra_transformer_tests_modernizer import (
-        TestsFlextInfraTransformersTestsModernizer as TestsFlextInfraTransformersTestsModernizer,
-    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".test_infra_transformer_class_nesting": (
@@ -77,6 +40,24 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".test_infra_transformer_tests_modernizer": (
             "TestsFlextInfraTransformersTestsModernizer",
+        ),
+        "flext_tests": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "td",
+            "tf",
+            "tk",
+            "tm",
+            "tv",
+            "u",
+            "x",
         ),
     },
 )

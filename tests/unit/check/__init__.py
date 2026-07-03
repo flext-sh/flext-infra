@@ -3,59 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if TYPE_CHECKING:
-    from tests.unit.check.extended_cli_entry_tests import (
-        TestWorkspaceCheckCLI as TestWorkspaceCheckCLI,
-    )
-    from tests.unit.check.extended_config_fixer_errors_tests import (
-        TestConfigFixerPublicBehavior as TestConfigFixerPublicBehavior,
-    )
-    from tests.unit.check.extended_config_fixer_tests import (
-        TestConfigFixerExecute as TestConfigFixerExecute,
-        TestConfigFixerProcessFile as TestConfigFixerProcessFile,
-        TestConfigFixerRun as TestConfigFixerRun,
-        TestConfigFixerToArray as TestConfigFixerToArray,
-    )
-    from tests.unit.check.extended_error_reporting_tests import (
-        TestGateErrorReportingPublicBehavior as TestGateErrorReportingPublicBehavior,
-    )
-    from tests.unit.check.extended_models_tests import (
-        TestCheckIssueFormatted as TestCheckIssueFormatted,
-        TestProjectResultProperties as TestProjectResultProperties,
-        TestRunCommandGateParsing as TestRunCommandGateParsing,
-        TestWorkspaceCheckerErrorSummary as TestWorkspaceCheckerErrorSummary,
-    )
-    from tests.unit.check.extended_project_runners_tests import (
-        TestsExtendedProjectRunners as TestsExtendedProjectRunners,
-    )
-    from tests.unit.check.extended_resolve_gates_tests import (
-        TestWorkspaceCheckerResolveGates as TestWorkspaceCheckerResolveGates,
-    )
-    from tests.unit.check.extended_run_projects_tests import (
-        TestRunProjectsPublicBehavior as TestRunProjectsPublicBehavior,
-    )
-    from tests.unit.check.extended_runners_extra_tests import (
-        TestExtendedRunnerExtras as TestExtendedRunnerExtras,
-    )
-    from tests.unit.check.extended_runners_tests import (
-        TestRunnerPublicBehavior as TestRunnerPublicBehavior,
-    )
-    from tests.unit.check.init_tests import (
-        TestFlextInfraCheck as TestFlextInfraCheck,
-    )
-    from tests.unit.check.pyrefly_tests import (
-        TestFlextInfraConfigFixer as TestFlextInfraConfigFixer,
-    )
-    from tests.unit.check.tests_cli import (
-        TestWorkspaceCheckCli as TestWorkspaceCheckCli,
-    )
-    from tests.unit.check.workspace_tests import (
-        TestFlextInfraWorkspaceChecker as TestFlextInfraWorkspaceChecker,
-    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".abstraction_boundary_gate_tests": ("abstraction_boundary_gate_tests",),
@@ -96,6 +45,24 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".tests_cli": ("TestWorkspaceCheckCli",),
         ".tests_workspace_check": ("tests_workspace_check",),
         ".workspace_tests": ("TestFlextInfraWorkspaceChecker",),
+        "flext_tests": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "td",
+            "tf",
+            "tk",
+            "tm",
+            "tv",
+            "u",
+            "x",
+        ),
     },
 )
 

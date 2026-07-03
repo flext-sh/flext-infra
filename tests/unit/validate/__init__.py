@@ -3,17 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if TYPE_CHECKING:
-    from tests.unit.validate.main_cli_tests import (
-        TestValidateCli as TestValidateCli,
-    )
-    from tests.unit.validate.namespace_validator_tests import (
-        TestFlextInfraNamespaceValidator as TestFlextInfraNamespaceValidator,
-    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".basemk_validator_tests": ("basemk_validator_tests",),
@@ -35,6 +26,24 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".skill_validator_tests": ("skill_validator_tests",),
         ".stub_chain_tests": ("stub_chain_tests",),
         ".tier_whitelist_tests": ("tier_whitelist_tests",),
+        "flext_tests": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "td",
+            "tf",
+            "tk",
+            "tm",
+            "tv",
+            "u",
+            "x",
+        ),
     },
 )
 
