@@ -22,6 +22,9 @@ from flext_infra.protocols import p
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
+from flext_infra.transformers.compatibility_alias import (
+    FlextInfraRefactorCompatibilityAlias,
+)
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
@@ -103,6 +106,10 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Return bound rope target handlers for this adapter instance."""
         return {
             "classvar_relocation": self._fix_classvar_relocation,
+            "rewrite_compatibility_alias": self._fix_compatibility_alias,
+            "fix_silent_failure_sentinels": self._fix_silent_failure_sentinels,
+            "rewrite_private_import_bypass": self._fix_private_import_bypass,
+            "rewrite_library_abstraction": self._fix_library_abstraction,
         }
 
     @staticmethod
@@ -146,6 +153,362 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 continue
             grouped.setdefault(fix_action.target, []).append((rule, probe))
         return grouped
+
+    @staticmethod
+    def _collect_file_paths(
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+    ) -> tuple[Path, ...]:
+        """Extract unique existing file paths from violation probes."""
+        seen: set[Path] = set()
+        paths: list[Path] = []
+        for _rule, probe in violations:
+            raw_path = getattr(probe, "file_path", None) or getattr(probe, "file", "")
+            if not raw_path:
+                continue
+            file_path = Path(str(raw_path))
+            if not file_path.is_absolute():
+                file_path = project_dir / file_path
+            file_path = file_path.resolve()
+            if file_path.is_file() and file_path not in seen:
+                seen.add(file_path)
+                paths.append(file_path)
+        return tuple(paths)
+
+    @staticmethod
+    def _rule_id(
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+    ) -> str:
+        """Return the first rule id in a grouped violation batch."""
+        return violations[0][0].id if violations else ""
+
+    def _fix_foreign_canonical_alias(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+    ) -> fr.ProjectFixResult:
+        """Rewrite foreign canonical aliases to the owning project facade."""
+        rule_id = self._rule_id(violations)
+        fixed: list[fr.FixedViolation] = []
+        skipped: list[fr.SkippedViolation] = []
+        failed: list[fr.FailedFix] = []
+        files_modified: set[str] = set()
+        for file_path in self._collect_file_paths(project_dir, violations):
+            read = u.Cli.files_read_text(file_path)
+            if read.failure:
+                failed.append(
+                    fr.FailedFix(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        error=read.error or "unable to read file",
+                    )
+                )
+                continue
+            transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
+            try:
+                updated, changes = transformer.apply_to_source(read.value)
+            except c.EXC_BROAD_RUNTIME as exc:
+                failed.append(
+                    fr.FailedFix(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        error=f"alias migration failed: {exc}",
+                    )
+                )
+                continue
+            if not changes:
+                skipped.append(
+                    fr.SkippedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        reason="no changes produced",
+                    )
+                )
+                continue
+            if not ctx.apply:
+                fixed.append(
+                    fr.FixedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        message=f"would rewrite {len(changes)} alias import(s)",
+                    )
+                )
+                continue
+            write = u.Cli.files_write_text(file_path, updated)
+            if write.failure:
+                failed.append(
+                    fr.FailedFix(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        error=write.error or "unable to write file",
+                    )
+                )
+                continue
+            files_modified.add(str(file_path))
+            fixed.append(
+                fr.FixedViolation(
+                    rule_id=rule_id,
+                    file_path=str(file_path),
+                    message=f"rewrote {len(changes)} alias import(s)",
+                )
+            )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
+    def _fix_silent_failure_sentinels(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+    ) -> fr.ProjectFixResult:
+        """Rewrite deterministic silent-failure sentinels to failed Results."""
+        rule_id = self._rule_id(violations)
+        fixed: list[fr.FixedViolation] = []
+        skipped: list[fr.SkippedViolation] = []
+        failed: list[fr.FailedFix] = []
+        files_modified: set[str] = set()
+        with u.Infra.open_project(self._workspace_root) as rope_project:
+            for file_path in self._collect_file_paths(project_dir, violations):
+                resource = u.Infra.get_resource_from_path(rope_project, file_path)
+                if resource is None:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="rope resource not found",
+                        )
+                    )
+                    continue
+                try:
+                    _updated, changes = u.Infra.fix_silent_failure_sentinels(
+                        rope_project,
+                        resource,
+                        apply=ctx.apply,
+                    )
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"silent failure sentinel fix failed: {exc}",
+                        )
+                    )
+                    continue
+                if not changes:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="no changes produced",
+                        )
+                    )
+                    continue
+                if ctx.apply:
+                    files_modified.add(str(file_path))
+                fixed.append(
+                    fr.FixedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        message=(
+                            f"{'rewrote' if ctx.apply else 'would rewrite'} "
+                            f"{len(changes)} silent sentinel fix(es)"
+                        ),
+                    )
+                )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
+    def _fix_hoist_inline_import(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+    ) -> fr.ProjectFixResult:
+        """Hoist detector-approved inline stdlib imports to module scope."""
+        rule_id = self._rule_id(violations)
+        fixed: list[fr.FixedViolation] = []
+        skipped: list[fr.SkippedViolation] = []
+        failed: list[fr.FailedFix] = []
+        files_modified: set[str] = set()
+        with u.Infra.open_project(self._workspace_root) as rope_project:
+            for file_path in self._collect_file_paths(project_dir, violations):
+                detect_ctx = m.Infra.DetectorContext(
+                    file_path=file_path,
+                    rope_project=rope_project,
+                    project_name=project_dir.name,
+                    project_root=project_dir,
+                )
+                try:
+                    detected = FlextInfraInlineImportDetector.detect_file(detect_ctx)
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"inline import detector failed: {exc}",
+                        )
+                    )
+                    continue
+                hoistable = tuple(
+                    violation
+                    for violation in detected
+                    if FlextInfraInlineImportDetector.fix_action_for(
+                        module_name=violation.module_name,
+                        is_importlib=violation.is_importlib,
+                    )
+                    == "hoist_inline_import"
+                )
+                if not hoistable:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="no hoistable inline imports",
+                        )
+                    )
+                    continue
+                resource = u.Infra.get_resource_from_path(rope_project, file_path)
+                if resource is None:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="rope resource not found",
+                        )
+                    )
+                    continue
+                try:
+                    updated, changes = self._hoist_inline_import_source(
+                        resource.read(),
+                        hoistable,
+                        file_path=file_path,
+                    )
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"inline import hoist failed: {exc}",
+                        )
+                    )
+                    continue
+                if not changes:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="no changes produced",
+                        )
+                    )
+                    continue
+                if ctx.apply:
+                    resource.write(updated)
+                    files_modified.add(str(file_path))
+                fixed.append(
+                    fr.FixedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        message=(
+                            f"{'hoisted' if ctx.apply else 'would hoist'} "
+                            f"{len(changes)} inline import(s)"
+                        ),
+                    )
+                )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
+    @classmethod
+    def _hoist_inline_import_source(
+        cls,
+        source: str,
+        violations: t.SequenceOf[m.Infra.InlineImportViolation],
+        *,
+        file_path: Path,
+    ) -> t.Infra.TransformResult:
+        """Return source with hoistable inline import statements at module scope."""
+        tree = ast.parse(source, filename=str(file_path))
+        lines = source.splitlines(keepends=True)
+        line_ranges: list[tuple[int, int]] = []
+        import_lines: list[str] = []
+        for violation in violations:
+            node = cls._find_inline_import_node(tree, violation.line)
+            if node is None:
+                continue
+            start_line = node.lineno
+            end_line = getattr(node, "end_lineno", start_line) or start_line
+            line_ranges.append((start_line, end_line))
+            import_lines.append(cls._import_line_for_node(node))
+        if not line_ranges:
+            return source, []
+        updated_lines = list(lines)
+        for start_line, end_line in sorted(line_ranges, reverse=True):
+            del updated_lines[start_line - 1 : end_line]
+        insert_at = u.Infra.find_import_insert_position(updated_lines)
+        unique_imports = cls._unique_new_imports(updated_lines, import_lines)
+        for index, import_line in enumerate(unique_imports):
+            updated_lines.insert(insert_at + index, import_line)
+        updated = "".join(updated_lines)
+        compile(updated, str(file_path), "exec")
+        return updated, unique_imports
+
+    @staticmethod
+    def _find_inline_import_node(
+        tree: ast.Module,
+        line: int,
+    ) -> ast.Import | ast.ImportFrom | None:
+        """Find the import statement at a detector-reported line."""
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)) and node.lineno == line:
+                return node
+        return None
+
+    @staticmethod
+    def _import_line_for_node(node: ast.Import | ast.ImportFrom) -> str:
+        """Render a top-level import line from an AST import node."""
+        if isinstance(node, ast.Import):
+            names = ", ".join(
+                f"{alias.name} as {alias.asname}" if alias.asname else alias.name
+                for alias in node.names
+            )
+            return f"import {names}\n"
+        module_prefix = "." * node.level
+        module_name = f"{module_prefix}{node.module or ''}"
+        names = ", ".join(
+            f"{alias.name} as {alias.asname}" if alias.asname else alias.name
+            for alias in node.names
+        )
+        return f"from {module_name} import {names}\n"
+
+    @staticmethod
+    def _unique_new_imports(
+        lines: t.StrSequence,
+        import_lines: t.StrSequence,
+    ) -> list[str]:
+        """Return import lines that are not already present."""
+        existing = {line.strip() for line in lines if line.strip()}
+        unique: list[str] = []
+        for import_line in import_lines:
+            stripped = import_line.strip()
+            if stripped in existing or stripped in {line.strip() for line in unique}:
+                continue
+            unique.append(import_line)
+        return unique
 
     def _fix_classvar_relocation(
         self,

@@ -429,10 +429,12 @@ class FlextInfraUtilitiesRopeSource:
                 resource,
             )
             tree = pymodule.get_ast()
-        except Exception:
-            return source, []
+        except c.EXC_BROAD_RUNTIME as exc:
+            msg = f"silent failure sentinel AST collection failed for {resource.path}"
+            raise RuntimeError(msg) from exc
         if not isinstance(tree, ast.Module):
-            return source, []
+            msg = f"silent failure sentinel AST collection returned {type(tree).__name__}"
+            raise TypeError(msg)
         changes = collect_silent_failure_fixes(tree, source, kinds=kinds)
         if not changes:
             return source, []

@@ -622,6 +622,8 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         violations: t.SequenceOf[m.Infra.PrivateImportBypassViolation],
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        *,
+        apply: bool = True,
     ) -> None:
         """Rewrite private-module imports to their canonical facade equivalents.
 
@@ -684,7 +686,7 @@ class FlextInfraUtilitiesRopeImports:
             module_imports.remove_duplicates()
             module_imports.sort_imports()
             updated = module_imports.get_changed_source()
-            if updated != resource.read():
+            if apply and updated != resource.read():
                 resource.write(updated)
         for (file_path, facade_module), names in additions.items():
             resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
@@ -698,7 +700,7 @@ class FlextInfraUtilitiesRopeImports:
                 resource,
                 facade_module,
                 sorted(names),
-                apply=True,
+                apply=apply,
             )
 
     @staticmethod

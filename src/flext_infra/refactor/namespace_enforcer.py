@@ -126,6 +126,7 @@ class FlextInfraNamespaceEnforcer(
             f"Import violations: {report.total_import_violations}",
             f"Namespace source violations: {report.total_namespace_source_violations}",
             f"Internal import violations: {report.total_internal_import_violations}",
+            f"Private import bypass violations: {report.total_private_import_bypass_violations}",
             f"Manual protocol violations: {report.total_manual_protocol_violations}",
             f"Cyclic imports: {report.total_cyclic_imports}",
             f"Runtime alias violations: {report.total_runtime_alias_violations}",
@@ -160,6 +161,7 @@ class FlextInfraNamespaceEnforcer(
         report = enforcer.enforce(
             apply=params.apply,
             project_names=params.project_names,
+            gates=params.gates,
         )
         if not params.diff:
             cli.display_text(cls.render_text(report))

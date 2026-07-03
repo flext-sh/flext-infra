@@ -48,9 +48,10 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         *,
         apply: bool = False,
         project_names: t.StrSequence | None = None,
+        gates: t.StrSequence | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Enforce namespace rules across the workspace."""
-        _ = apply, project_names
+        _ = apply, project_names, gates
         msg = "enforce must be provided by the concrete enforcer"
         raise NotImplementedError(msg)
 
@@ -91,7 +92,10 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             src_dirs=u.Infra.namespace_scan_dirs(project_root),
         )
         if py_files_result.failure:
-            return []
+            msg = py_files_result.error or (
+                f"failed to collect Python files for {project_root}"
+            )
+            raise RuntimeError(msg)
         files: t.SequenceOf[Path] = py_files_result.value
         return files
 

@@ -36,6 +36,9 @@ from flext_infra.detectors.namespace_source_detector import (
 from flext_infra.detectors.pattern_smell_detector import (
     FlextInfraPatternSmellDetector,
 )
+from flext_infra.detectors.private_import_bypass_detector import (
+    FlextInfraPrivateImportBypassDetector,
+)
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -141,7 +144,12 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     project_name=project_name,
                 ),
             ),
-            rewrite_fn=None,
+            rewrite_fn=lambda vs: u.Infra.rewrite_loose_object_violations(
+                project_root=project_root,
+                violations=vs,
+                parse_failures=parse_failures,
+                gates=gates,
+            ),
             apply=apply,
         )
         import_violations = self._detect_and_apply(
@@ -171,7 +179,11 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     project_root=project_root,
                 ),
             ),
-            rewrite_fn=lambda _vs: None,
+            rewrite_fn=lambda vs: u.Infra.rewrite_namespace_source_violations(
+                violations=vs,
+                parse_failures=parse_failures,
+                gates=gates,
+            ),
             apply=apply,
         )
         cyclic_imports = FlextInfraCyclicImportDetector.scan_project(
@@ -190,6 +202,23 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 ),
             ),
             rewrite_fn=None,
+            apply=apply,
+        )
+        private_import_bypass_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraPrivateImportBypassDetector.detect_file(
+                self._detector_context(
+                    file_path=f,
+                    rope_project=rope_project,
+                    parse_failures=parse_failures,
+                    project_root=project_root,
+                ),
+            ),
+            rewrite_fn=lambda vs: u.Infra.rewrite_private_import_bypass_violations(
+                rope_project=rope_project,
+                violations=tuple(v for v in vs if v.symbol_exported),
+                parse_failures=parse_failures,
+            ),
             apply=apply,
         )
         runtime_alias_violations = self._detect_and_apply(
@@ -253,6 +282,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                 project_root=project_root,
                 violations=vs,
                 parse_failures=parse_failures,
+                gates=gates,
             ),
             apply=apply,
         )
@@ -334,6 +364,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             import_violations=list(import_violations),
             namespace_source_violations=list(namespace_source_violations),
             internal_import_violations=list(internal_import_violations),
+            private_import_bypass_violations=list(private_import_bypass_violations),
             manual_protocol_violations=list(manual_protocol_violations),
             cyclic_imports=list(cyclic_imports),
             runtime_alias_violations=list(runtime_alias_violations),

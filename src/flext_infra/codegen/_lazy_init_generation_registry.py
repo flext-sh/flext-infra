@@ -45,6 +45,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             import_block in generated_init and f"    {registry.name}," in generated_init
         )
         if not imports_registry:
+            self._remove_generated_registry_wrapper(plan, registry)
             self._remove_generated_typing_stub(plan)
             return 0
         if not registry.generated:
@@ -156,6 +157,24 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                     continue
                 path.unlink()
                 self._modified_files.add(str(path))
+
+    def _remove_generated_registry_wrapper(
+        self,
+        plan: m.Infra.LazyInitPlan,
+        registry: m.Infra.LazyInitRegistryWrapper,
+    ) -> None:
+        """Remove stale generated registry files no longer imported by ``__init__``."""
+        registry_relative = registry.module.removeprefix(
+            f"{plan.context.current_pkg}."
+        )
+        registry_path = (
+            plan.context.pkg_dir / f"{registry_relative.replace('.', '/')}.py"
+        )
+        previous = self._read_generated_file(registry_path)
+        if previous is not None and previous.startswith(c.Infra.AUTOGEN_HEADER):
+            registry_path.unlink()
+            self._modified_files.add(str(registry_path))
+        self._remove_stale_registry_parts(plan, frozenset())
 
     @staticmethod
     def _registry_dir_for_module(pkg_dir: Path, module: str) -> Path:

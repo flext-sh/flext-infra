@@ -287,6 +287,15 @@ class FlextInfraModelsNamespaceEnforcer:
                 description="Internal import violations collected for the project.",
             ),
         ]
+        private_import_bypass_violations: Annotated[
+            t.SequenceOf[
+                FlextInfraModelsNamespaceEnforcer.PrivateImportBypassViolation
+            ],
+            m.Field(
+                default_factory=tuple,
+                description="Private-import bypass violations collected for the project.",
+            ),
+        ]
         manual_protocol_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ManualProtocolViolation],
             m.Field(
@@ -434,6 +443,7 @@ class FlextInfraModelsNamespaceEnforcer:
                 self.import_violations,
                 self.namespace_source_violations,
                 self.internal_import_violations,
+                self.private_import_bypass_violations,
                 self.manual_protocol_violations,
                 self.cyclic_imports,
                 self.runtime_alias_violations,
@@ -481,6 +491,10 @@ class FlextInfraModelsNamespaceEnforcer:
         ] = 0
         total_internal_import_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Total internal import violations")
+        ] = 0
+        total_private_import_bypass_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total private-import bypass violations"),
         ] = 0
         total_manual_protocol_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Total manual protocol violations")
@@ -574,6 +588,9 @@ class FlextInfraModelsNamespaceEnforcer:
                 ),
                 total_internal_import_violations=sum(
                     len(p.internal_import_violations) for p in projects
+                ),
+                total_private_import_bypass_violations=sum(
+                    len(p.private_import_bypass_violations) for p in projects
                 ),
                 total_manual_protocol_violations=sum(
                     len(p.manual_protocol_violations) for p in projects
