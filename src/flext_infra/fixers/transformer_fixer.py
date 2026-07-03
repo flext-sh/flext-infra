@@ -175,14 +175,19 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _build_transformer(
-        transformer_cls: type[FlextInfraChangeTrackingTransformer],
+        transformer_cls: type[FlextInfraRopeTransformer],
         fix_action: me.EnforcementFixAction,
         file_path: Path,
-    ) -> FlextInfraChangeTrackingTransformer:
+    ) -> FlextInfraRopeTransformer:
         """Instantiate a transformer with any params declared in the catalog."""
         params = dict(fix_action.params)
         if transformer_cls is FlextInfraRefactorTypingUnifier:
-            targets = params.get("targets", [])
+            targets_value = params.get("targets", [])
+            targets = (
+                targets_value
+                if isinstance(targets_value, (list, tuple))
+                else []
+            )
             canonical_map: dict[frozenset[str], str] = {}
             if "dict" in targets:
                 canonical_map[frozenset({"dict[K, V]"})] = "t.MappingKV[K, V]"
@@ -193,7 +198,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 canonical_map=canonical_map,
                 file_path=file_path,
             )
-        return transformer_cls(**params)
+        # Transformer params are declared in the enforcement catalog as JSON.
+        # The base constructor only accepts ``on_change``; concrete subclasses
+        # validate their own params inside this method.
+        return transformer_cls(on_change=None)
 
     @staticmethod
     def _collect_file_paths(
