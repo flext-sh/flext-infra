@@ -18,6 +18,9 @@ if TYPE_CHECKING:
         FlextInfraMarkdownGate as FlextInfraMarkdownGate,
     )
     from flext_infra.gates.mypy import FlextInfraMypyGate as FlextInfraMypyGate
+    from flext_infra.gates.namespace import (
+        FlextInfraNamespaceGate as FlextInfraNamespaceGate,
+    )
     from flext_infra.gates.pyrefly import FlextInfraPyreflyGate as FlextInfraPyreflyGate
     from flext_infra.gates.pyright import FlextInfraPyrightGate as FlextInfraPyrightGate
     from flext_infra.gates.ruff_format import (
@@ -26,10 +29,16 @@ if TYPE_CHECKING:
     from flext_infra.gates.ruff_lint import (
         FlextInfraRuffLintGate as FlextInfraRuffLintGate,
     )
+    from flext_infra.gates.runtime_census import (
+        FlextInfraRuntimeCensusGate as FlextInfraRuntimeCensusGate,
+    )
     from flext_infra.gates.silent_failure import (
         FlextInfraSilentFailureGate as FlextInfraSilentFailureGate,
     )
     from flext_infra.gates.smells import FlextInfraSmellsGate as FlextInfraSmellsGate
+    from flext_infra.gates.tier_whitelist import (
+        FlextInfraTierWhitelistGate as FlextInfraTierWhitelistGate,
+    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
@@ -38,12 +47,15 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".loc_cap": ("FlextInfraLocCapGate",),
         ".markdown": ("FlextInfraMarkdownGate",),
         ".mypy": ("FlextInfraMypyGate",),
+        ".namespace": ("FlextInfraNamespaceGate",),
         ".pyrefly": ("FlextInfraPyreflyGate",),
         ".pyright": ("FlextInfraPyrightGate",),
         ".ruff_format": ("FlextInfraRuffFormatGate",),
         ".ruff_lint": ("FlextInfraRuffLintGate",),
+        ".runtime_census": ("FlextInfraRuntimeCensusGate",),
         ".silent_failure": ("FlextInfraSilentFailureGate",),
         ".smells": ("FlextInfraSmellsGate",),
+        ".tier_whitelist": ("FlextInfraTierWhitelistGate",),
     },
 )
 

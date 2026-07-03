@@ -32,7 +32,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraNamespaceValidator()
-        report_result = validator.validate(project_dir, scan_tests=False)
+        report_result = validator.validate_project(project_dir, scan_tests=False)
         passed = report_result.success and report_result.value.passed
         errors: list[str] = []
         if report_result.failure:

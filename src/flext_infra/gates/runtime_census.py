@@ -36,7 +36,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraRuntimeCensusValidator(
-            workspace_root=self._workspace_root,
+            workspace=self._workspace_root,
             project_filter=project_dir.name,
             include_tests=False,
             include_examples=False,
