@@ -202,8 +202,7 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
             return updated_node
         return updated_node.with_changes(
             names=[
-                cst.ImportAlias(name=alias.name, asname=alias.asname)
-                for alias in kept
+                cst.ImportAlias(name=alias.name, asname=alias.asname) for alias in kept
             ],
         )
 
