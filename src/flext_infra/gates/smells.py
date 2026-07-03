@@ -62,7 +62,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
         auto_issues = [issue for issue in issues if self._is_auto_fixable(issue)]
         changes: list[str] = []
         for issue in auto_issues:
-            fixer = smell_fixer_for(issue.code)
+            tag = c.Infra.SMELLS_RULE_TAGS.get(issue.code, "")
+            fixer = smell_fixer_for(tag)
             if fixer is None:
                 continue
             fixed, fix_changes = fixer.fix(project_dir, issue)

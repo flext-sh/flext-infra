@@ -100,7 +100,7 @@ class TestSmellsGate:
             file="src/sample.py",
             line=1,
             column=0,
-            code="smell_boolean_logic",
+            code="boolean-logic",
             message="boolean logic",
             severity=c.Infra.GateSeverity.WARNING.value,
         )
@@ -108,7 +108,7 @@ class TestSmellsGate:
             file="src/sample.py",
             line=1,
             column=0,
-            code="smell_function_parameters",
+            code="function-parameters",
             message="too many params",
             severity=c.Infra.GateSeverity.WARNING.value,
         )

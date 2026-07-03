@@ -85,7 +85,7 @@ class FlextInfraBooleanLogicFixer(FlextInfraSmellFixer):
         simplified = _BooleanSimplifier().visit(tree)
         ast.fix_missing_locations(simplified)
         updated = ast.unparse(simplified)
-        if updated == source:
+        if updated.rstrip("\n") == source.rstrip("\n"):
             return False, []
         source_path.write_text(updated, encoding="utf-8")
         message = (

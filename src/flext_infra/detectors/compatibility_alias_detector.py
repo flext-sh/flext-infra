@@ -131,7 +131,10 @@ class FlextInfraCompatibilityAliasDetector:
                     bound_name = alias if alias is not None else name
                     if bound_name not in local_aliases:
                         continue
-                    if local_alias_targets.get(bound_name) == f"Flext{bound_name.upper()}Constants":
+                    if (
+                        local_alias_targets.get(bound_name)
+                        == f"Flext{bound_name.upper()}Constants"
+                    ):
                         # intentionally seeding a local canonical alias
                         continue
                     line_number = _find_import_line(

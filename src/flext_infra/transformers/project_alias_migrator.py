@@ -108,7 +108,10 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         """Process one flext_core import line/block, migrating local aliases."""
         # Parenthesized multi-line import.
         paren_match = c.Infra.FROM_IMPORT_CAPTURE_PAREN_OPEN_RE.match(stripped_line)
-        if paren_match is not None and paren_match.group(1) == c.Infra.PKG_CORE_UNDERSCORE:
+        if (
+            paren_match is not None
+            and paren_match.group(1) == c.Infra.PKG_CORE_UNDERSCORE
+        ):
             end = start
             import_lines = [lines[start]]
             while end + 1 < len(lines) and ")" not in lines[end]:
@@ -120,8 +123,13 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
 
         # Single-line import.
         single_match = c.Infra.FROM_IMPORT_LINE_TRIM_RE.match(stripped_line)
-        if single_match is not None and single_match.group(1) == c.Infra.PKG_CORE_UNDERSCORE:
-            rewritten = self._filter_core_import_names(lines[start], local_imports_to_add)
+        if (
+            single_match is not None
+            and single_match.group(1) == c.Infra.PKG_CORE_UNDERSCORE
+        ):
+            rewritten = self._filter_core_import_names(
+                lines[start], local_imports_to_add
+            )
             return start + 1, rewritten, True
 
         return start, None, False
@@ -142,11 +150,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
 
         kept: t.MutableSequenceOf[str] = []
         for bare_name, bound in u.Infra.parse_import_names(names_part):
-            display = (
-                bare_name
-                if bare_name == bound
-                else f"{bare_name} as {bound}"
-            )
+            display = bare_name if bare_name == bound else f"{bare_name} as {bound}"
             if bound in local_aliases and bound in _ALIAS_TO_LOCAL_MODULE:
                 module_suffix = _ALIAS_TO_LOCAL_MODULE[bound]
                 local_module = f"{current_project}.{module_suffix}"
