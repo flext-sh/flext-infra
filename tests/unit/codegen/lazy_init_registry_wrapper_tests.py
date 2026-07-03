@@ -115,16 +115,16 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         )
         unit_wrapper = FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
             unit_dir,
-            "flext_infra.tests.unit",
+            "tests.unit",
         )
 
         assert root_wrapper is not None
         assert root_wrapper.generated is True
-        assert root_wrapper.module == "flext_infra.tests._exports"
+        assert root_wrapper.module == "tests._exports"
         assert root_wrapper.name == "TESTS_FLEXT_INFRA_LAZY_IMPORTS"
         assert unit_wrapper is not None
         assert unit_wrapper.generated is True
-        assert unit_wrapper.module == "flext_infra.tests.unit._exports"
+        assert unit_wrapper.module == "tests.unit._exports"
         assert unit_wrapper.name == "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS"
 
     def test_public_package_uses_generated_lazy_sidecar(self, tmp_path: Path) -> None:
@@ -264,7 +264,7 @@ class TestsFlextInfraLazyInitRegistryWrapper:
             for index in range(c.Infra.LAZY_REGISTRY_PART_SIZE + 1)
         )
         filtered = {
-            name: (f"flext_infra.tests.generated_{index}", name)
+            name: (f"tests.generated_{index}", name)
             for index, name in enumerate(exports)
         }
 
@@ -280,7 +280,7 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         assert "_exports_lazy_part_01.py" in files
         assert "_exports_lazy_part_02.py" in files
         assert (
-            "from flext_infra.tests._exports_lazy_part_01 import "
+            "from tests._exports_lazy_part_01 import "
             "TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01"
         ) in files[c.Infra.ROOT_EXPORTS_FILENAME]
         assert "build_lazy_import_map(" in files["_exports_lazy_part_01.py"]

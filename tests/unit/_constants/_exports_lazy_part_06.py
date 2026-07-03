@@ -7,8 +7,6 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
-        "._constants": ("_constants",),
-        "._utilities": ("_utilities",),
         "._utilities.test_discovery_consolidated": (
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
         ),
@@ -18,9 +16,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         "._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         "._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-        ".basemk": ("basemk",),
-        ".check": ("check",),
-        ".codegen": ("codegen",),
         ".refactor.test_infra_refactor_typing_unifier": (
             "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
         ),
@@ -33,6 +28,13 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ),
         ".transformers.test_infra_transformer_cli_modernizer": (
             "TestsFlextInfraTransformersCliModernizer",
+        ),
+        ".transformers.test_infra_transformer_enforcement_fixers": (
+            "TestsFlextInfraTransformersBareExcept",
+            "TestsFlextInfraTransformersFutureImport",
+            "TestsFlextInfraTransformersOpenEncoding",
+            "TestsFlextInfraTransformersPrintToLogger",
+            "TestsFlextInfraTransformersRemoveBreakpoint",
         ),
         ".transformers.test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",

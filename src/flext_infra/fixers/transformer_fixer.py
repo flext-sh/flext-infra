@@ -16,10 +16,19 @@ from flext_infra.models import m
 from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
+from flext_infra.transformers.hardcoded_version import (
+    FlextInfraRefactorHardcodedVersion,
+)
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
 from flext_infra.transformers.remove_breakpoint import (
     FlextInfraRefactorRemoveBreakpoint,
+)
+from flext_infra.transformers.typing_dict_attr import (
+    FlextInfraRefactorTypingDictAttr,
+)
+from flext_infra.transformers.typing_dict_import import (
+    FlextInfraRefactorTypingDictImport,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_infra.typings import t
@@ -48,9 +57,12 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     ] = {
         "bare_except": FlextInfraRefactorBareExcept,
         "future_import": FlextInfraRefactorFutureImport,
+        "hardcoded_version": FlextInfraRefactorHardcodedVersion,
         "open_encoding": FlextInfraRefactorOpenEncoding,
         "print_to_logger": FlextInfraRefactorPrintToLogger,
         "remove_breakpoint": FlextInfraRefactorRemoveBreakpoint,
+        "typing_dict_attr": FlextInfraRefactorTypingDictAttr,
+        "typing_dict_import": FlextInfraRefactorTypingDictImport,
         "typing_unifier": FlextInfraRefactorTypingUnifier,
     }
 
@@ -210,6 +222,11 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             )
         if transformer_cls is FlextInfraRefactorPrintToLogger:
             return FlextInfraRefactorPrintToLogger(file_path=file_path)
+        if transformer_cls in (
+            FlextInfraRefactorTypingDictImport,
+            FlextInfraRefactorTypingDictAttr,
+        ):
+            return transformer_cls(file_path=file_path)
         # Remaining enforcement transformers require no runtime params.
         return transformer_cls()
 

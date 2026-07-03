@@ -4,20 +4,20 @@
 from __future__ import annotations
 
 from flext_core.lazy import merge_lazy_imports
-from tests.unit.deps._exports_lazy_part_01 import (
-    FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS_PART_01,
+from flext_infra.transformers._exports_lazy_part_01 import (
+    FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_01,
 )
-from tests.unit.deps._exports_lazy_part_02 import (
-    FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS_PART_02,
+from flext_infra.transformers._exports_lazy_part_02 import (
+    FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_02,
 )
 
 _LOCAL_LAZY_IMPORTS = {
-    **FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS_PART_01,
-    **FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS_PART_02,
+    **FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_01,
+    **FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_02,
 }
 
-FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS = merge_lazy_imports(
-    (),
+FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS = merge_lazy_imports(
+    (".smells",),
     _LOCAL_LAZY_IMPORTS,
     exclude_names=(
         "cleanup_submodule_namespace",
@@ -38,7 +38,7 @@ FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS = merge_lazy_imports(
         "pytest_terminal_summary",
         "pytest_warning_recorded",
     ),
-    module_name="tests.unit.deps",
+    module_name="flext_infra.transformers",
 )
 
-__all__: list[str] = ["FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS"]
+__all__: list[str] = ["FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS"]

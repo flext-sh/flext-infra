@@ -14,6 +14,13 @@ if TYPE_CHECKING:
     from tests.unit.transformers.test_infra_transformer_cli_modernizer import (
         TestsFlextInfraTransformersCliModernizer as TestsFlextInfraTransformersCliModernizer,
     )
+    from tests.unit.transformers.test_infra_transformer_enforcement_fixers import (
+        TestsFlextInfraTransformersBareExcept as TestsFlextInfraTransformersBareExcept,
+        TestsFlextInfraTransformersFutureImport as TestsFlextInfraTransformersFutureImport,
+        TestsFlextInfraTransformersOpenEncoding as TestsFlextInfraTransformersOpenEncoding,
+        TestsFlextInfraTransformersPrintToLogger as TestsFlextInfraTransformersPrintToLogger,
+        TestsFlextInfraTransformersRemoveBreakpoint as TestsFlextInfraTransformersRemoveBreakpoint,
+    )
     from tests.unit.transformers.test_infra_transformer_helper_consolidation import (
         TestsFlextInfraTransformersInfraTransformerHelperConsolidation as TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
     )
@@ -42,6 +49,13 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".test_infra_transformer_cli_modernizer": (
             "TestsFlextInfraTransformersCliModernizer",
+        ),
+        ".test_infra_transformer_enforcement_fixers": (
+            "TestsFlextInfraTransformersBareExcept",
+            "TestsFlextInfraTransformersFutureImport",
+            "TestsFlextInfraTransformersOpenEncoding",
+            "TestsFlextInfraTransformersPrintToLogger",
+            "TestsFlextInfraTransformersRemoveBreakpoint",
         ),
         ".test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",

@@ -70,14 +70,12 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
         ".unit.test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
         ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
-        ".unit.transformers.test_infra_transformer_class_nesting": (
-            "TestsFlextInfraTransformersInfraTransformerClassNesting",
-        ),
         ".unit.transformers.test_infra_transformer_cli_modernizer": (
             "TestsFlextInfraTransformersCliModernizer",
         ),
-        ".unit.transformers.test_infra_transformer_helper_consolidation": (
-            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
+        ".unit.transformers.test_infra_transformer_enforcement_fixers": (
+            "TestsFlextInfraTransformersBareExcept",
+            "TestsFlextInfraTransformersFutureImport",
         ),
     },
 )

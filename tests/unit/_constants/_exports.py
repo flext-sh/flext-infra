@@ -25,6 +25,9 @@ from tests.unit._constants._exports_lazy_part_06 import (
 from tests.unit._constants._exports_lazy_part_07 import (
     TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07,
 )
+from tests.unit._constants._exports_lazy_part_08 import (
+    TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08,
+)
 
 _LOCAL_LAZY_IMPORTS = {
     **TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01,
@@ -34,6 +37,7 @@ _LOCAL_LAZY_IMPORTS = {
     **TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05,
     **TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06,
     **TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07,
+    **TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08,
 }
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS = merge_lazy_imports(

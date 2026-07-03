@@ -8,11 +8,16 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
     {
         ".base": ("s",),
+        ".integration": ("integration",),
+        ".models": ("m",),
         ".protocols": ("p",),
         ".refactor": ("refactor",),
         ".typings": ("t",),
         ".unit": ("unit",),
         ".unit.fixtures": (
+            "models_resource",
+            "modernizer_workspace",
+            "modernizer_workspace_with_projects",
             "real_docs_project",
             "real_makefile_project",
             "real_python_package",

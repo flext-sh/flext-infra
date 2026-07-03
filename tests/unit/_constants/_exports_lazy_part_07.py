@@ -7,6 +7,11 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
+        "._constants": ("_constants",),
+        "._utilities": ("_utilities",),
+        ".basemk": ("basemk",),
+        ".check": ("check",),
+        ".codegen": ("codegen",),
         ".container": ("container",),
         ".deps": ("deps",),
         ".discovery": ("discovery",),
@@ -40,8 +45,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".test_version_diag": ("test_version_diag",),
         ".test_version_diag2": ("test_version_diag2",),
         ".transformers": ("transformers",),
-        ".validate": ("validate",),
-        ".workspace": ("workspace",),
     },
 )
 

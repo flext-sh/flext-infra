@@ -10,8 +10,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         "._constants": ("_constants",),
         ".conftest": ("conftest",),
         ".constants": ("c",),
-        ".integration": ("integration",),
-        ".models": ("m",),
         ".typings": ("TestsFlextInfraTypes",),
         ".unit._utilities.test_discovery_consolidated": (
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
@@ -23,11 +21,17 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-        ".unit.fixtures": (
-            "deptry_report_payload",
-            "models_resource",
-            "modernizer_workspace",
-            "modernizer_workspace_with_projects",
+        ".unit.fixtures": ("deptry_report_payload",),
+        ".unit.transformers.test_infra_transformer_class_nesting": (
+            "TestsFlextInfraTransformersInfraTransformerClassNesting",
+        ),
+        ".unit.transformers.test_infra_transformer_enforcement_fixers": (
+            "TestsFlextInfraTransformersOpenEncoding",
+            "TestsFlextInfraTransformersPrintToLogger",
+            "TestsFlextInfraTransformersRemoveBreakpoint",
+        ),
+        ".unit.transformers.test_infra_transformer_helper_consolidation": (
+            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
         ),
         ".unit.transformers.test_infra_transformer_logging_modernizer": (
             "TestsFlextInfraTransformersLoggingModernizer",

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
@@ -27,31 +26,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 return workspace_root
         return None
 
-    _ROOT_PACKAGE_CACHE: ClassVar[dict[Path, str | None] | None] = None
-
-    @classmethod
-    def _project_root_package_name(cls, project_root: Path) -> str | None:
-        """Return the single source package under <project_root>/src, if any."""
-        cache = cls._ROOT_PACKAGE_CACHE
-        if cache is None:
-            cache = {}
-            cls._ROOT_PACKAGE_CACHE = cache
-        cached = cache.get(project_root)
-        if cached is not None:
-            return cached
-        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            cache[project_root] = None
-            return None
-        candidates = [
-            child.name
-            for child in src_dir.iterdir()
-            if child.is_dir() and (child / c.Infra.INIT_PY).is_file()
-        ]
-        result: str | None = candidates[0] if len(candidates) == 1 else None
-        cache[project_root] = result
-        return result
-
     @classmethod
     def _package_name_for_dir(
         cls,
@@ -69,11 +43,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         root_name = relative_parts[0]
         if root_name == c.Infra.DEFAULT_SRC_DIR:
             package_parts = relative_parts[1:]
-        elif root_name in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES}:
-            root_pkg = cls._project_root_package_name(project_root)
-            package_parts = (
-                (root_pkg, *relative_parts) if root_pkg is not None else relative_parts
-            )
         elif root_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
             package_parts = relative_parts
         else:
