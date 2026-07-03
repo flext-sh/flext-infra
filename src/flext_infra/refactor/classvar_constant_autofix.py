@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from rope.base.project import Project
 
 
+_DOCSTRING_DELIMITER_COUNT = 2
+
+
 @dataclass(frozen=True)
 class ClassvarConstantAutofixPlan:
     """Planned edits for one ENFORCE-079 autofix."""
@@ -188,37 +191,38 @@ class FlextInfraRefactorClassvarConstantAutofix:
                     touched.add(resource.path)
 
         if dry_run:
+            source_preview = _rewrite_class_access_in_source(
+                new_source,
+                plan.class_name,
+                plan.constant_name,
+                plan.constants_module.split(".")[-1],
+            )
             return {
                 "touched_files": sorted(touched),
-                "source_text": _apply_edits(
-                    new_source,
-                    rewrites.get(plan.source_resource.path, ()),
-                ),
+                "source_text": source_preview,
                 "target_text": new_target,
                 "rewrites": dict(rewrites),
             }
 
-        # 4. Inject ``from . import _constants`` (or equivalent) into the source
-        # module so the rewritten references resolve.
+        # 4. Rewrite source-module references textually. Rope occurrence offsets
+        # target the original source and become stale after the declaration is
+        # removed, so the modified source uses the known class-access forms.
         constants_alias = plan.constants_module.split(".")[-1]
-        new_source = _ensure_constants_import(
-            new_source,
-            constants_alias,
-            plan.class_module,
-            plan.constants_module,
-        )
-
-        # 5. Apply collected rewrites to the source module as well; we skipped
-        # them above to avoid editing stale cached text.  Also handle
-        # ``self.__class__.NAME`` which rope's occurrence finder does not bind.
-        source_rewrites = rewrites.pop(plan.source_resource.path, [])
+        rewrites.pop(plan.source_resource.path, None)
         new_source = _rewrite_class_access_in_source(
             new_source,
             plan.class_name,
             plan.constant_name,
             constants_alias,
         )
-        new_source = _apply_edits(new_source, source_rewrites)
+        # 5. Inject ``from . import _constants`` (or equivalent) into the source
+        # module so the rewritten references resolve.
+        new_source = _ensure_constants_import(
+            new_source,
+            constants_alias,
+            plan.class_module,
+            plan.constants_module,
+        )
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
         target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_text(new_target, encoding="utf-8")
@@ -383,33 +387,49 @@ def _ensure_constants_import(
         import_line = f"from {constants_module} import {constants_alias}\n"
 
     lines = source.splitlines(keepends=True)
-    future_idx = -1
-    docstring_end = -1
-    in_docstring = False
-    docstring_quote = ""
-    for idx, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith(('"""', "'''")):
-            if not in_docstring:
-                in_docstring = True
-                docstring_quote = stripped[:3]
-                if stripped.endswith(docstring_quote) and stripped != docstring_quote:
-                    in_docstring = False
-                    docstring_end = idx
-            elif stripped.startswith(docstring_quote):
-                in_docstring = False
-                docstring_end = idx
-        if stripped.startswith("from __future__ import"):
-            future_idx = idx
-    insert_after = max(future_idx, docstring_end)
     existing = {line.strip() for line in lines}
     if import_line.strip() in existing:
         return source
+    insert_after = _module_import_insert_after(lines)
     if insert_after >= 0:
         lines.insert(insert_after + 1, import_line)
     else:
         lines.insert(0, import_line)
     return "".join(lines)
+
+
+def _module_import_insert_after(lines: t.StrSequence) -> int:
+    """Return index after module docstring and future imports only."""
+    idx = 0
+    while idx < len(lines) and not lines[idx].strip():
+        idx += 1
+    insert_after = -1
+    if idx < len(lines):
+        stripped = lines[idx].strip()
+        if stripped.startswith(('"""', "'''")):
+            quote = stripped[:3]
+            insert_after = idx
+            if stripped.count(quote) < _DOCSTRING_DELIMITER_COUNT:
+                idx += 1
+                while idx < len(lines):
+                    insert_after = idx
+                    if quote in lines[idx]:
+                        idx += 1
+                        break
+                    idx += 1
+            else:
+                idx += 1
+    while idx < len(lines):
+        stripped = lines[idx].strip()
+        if not stripped:
+            idx += 1
+            continue
+        if stripped.startswith("from __future__ import"):
+            insert_after = idx
+            idx += 1
+            continue
+        break
+    return insert_after
 
 
 def _rewrite_class_access_in_source(
@@ -427,6 +447,7 @@ def _rewrite_class_access_in_source(
     patterns = (
         f"{class_name}.{constant_name}",
         f"cls.{constant_name}",
+        f"self.{constant_name}",
         f"self.__class__.{constant_name}",
     )
     replacement = f"{constants_alias}.{constant_name}"

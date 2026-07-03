@@ -439,3 +439,36 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         )
 
         assert constants_module == "tests.unit._constants"
+
+    def test_autofix_apply_inserts_import_after_module_header(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Apply mode inserts constants import at module scope."""
+        pkg = tmp_path / "src" / "demo"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        service = pkg / "service.py"
+        service.write_text(
+            '"""Demo service."""\n\n'
+            "from __future__ import annotations\n\n"
+            "class DemoService:\n"
+            "    VALUE = 1.5\n\n"
+            "    def run(self) -> float:\n"
+            '        """Return value."""\n'
+            "        return self.VALUE\n",
+            encoding="utf-8",
+        )
+
+        FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "demo.service.DemoService",
+            "VALUE",
+            "demo._constants",
+            dry_run=False,
+        )
+
+        source_text = service.read_text(encoding="utf-8")
+        assert '"""Demo service."""\n\nfrom __future__ import annotations\nfrom . import _constants\n' in source_text
+        assert '"""Return value."""\nfrom . import _constants' not in source_text
+        assert "return _constants.VALUE" in source_text
