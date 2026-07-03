@@ -12,6 +12,7 @@ from typing import ClassVar, override
 
 import libcst as cst
 
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
@@ -187,11 +188,7 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
                 continue
 
             local_module = f"{self._current_project}.{suffix}"
-            display = (
-                bound
-                if alias.evaluated_name == bound
-                else f"{alias.evaluated_name} as {bound}"
-            )
+            display = bound
             if bound not in self._existing_local.get(local_module, set()):
                 self.imports_to_add.setdefault(local_module, {})[bound] = display
             message = f"Migrated {display} from flext_core to {local_module}"
@@ -281,12 +278,17 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             else c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
         )
         self._project_alias_owners = dict(owners)
+        self._file_path = file_path
         self._current_project = current_project or self._project_from_path(file_path)
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply alias migration to source text."""
         self.changes.clear()
+        if self._file_path is not None and self._is_private_facade_implementation(
+            self._file_path
+        ):
+            return source, []
         if not self._current_project or self._current_project in _ALIAS_SOURCE_PACKAGES:
             return source, []
         local_aliases = self._project_alias_owners.get(self._current_project)
@@ -320,7 +322,13 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         if file_path is None:
             return ""
         path = Path(file_path) if isinstance(file_path, str) else file_path
-        return u.Infra.package_name(path).split(".", maxsplit=1)[0]
+        return FlextInfraUtilitiesDiscovery.package_name(path).split(".", maxsplit=1)[0]
+
+    @staticmethod
+    def _is_private_facade_implementation(file_path: Path) -> bool:
+        """Return whether ``file_path`` implements a project facade namespace."""
+        family_dirs = frozenset(c.Infra.FAMILY_DIRECTORIES.values())
+        return bool(family_dirs.intersection(file_path.parts))
 
 
 __all__: list[str] = ["FlextInfraRefactorProjectAliasMigrator"]

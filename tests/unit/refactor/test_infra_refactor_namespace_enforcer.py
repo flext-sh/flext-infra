@@ -97,6 +97,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        models_dir = pkg / "_models"
+        typings_dir = pkg / "_typings"
+        models_dir.mkdir()
+        typings_dir.mkdir()
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\n\n"
             "from flext_core import c, r, t\n\n"
@@ -113,6 +117,20 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             "NAMES: t.StrSequence = ()\n",
             encoding="utf-8",
         )
+        _ = (models_dir / "base.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core import m\n\n"
+            "class DemoModel(m.Base):\n"
+            "    value: str\n",
+            encoding="utf-8",
+        )
+        _ = (typings_dir / "base.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core import m, t\n\n"
+            "Payload = t.StrMapping\n"
+            "ModelBase = m.Base\n",
+            encoding="utf-8",
+        )
 
         report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
             apply=False,
@@ -123,11 +141,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(report.total_foreign_canonical_alias_violations, gt=0)
         tm.that(project_report.compatibility_alias_violations, empty=True)
         tm.that(project_report.foreign_canonical_alias_violations, empty=False)
-        violation_files = {
-            Path(violation.file).name
+        violation_paths = {
+            Path(violation.file).relative_to(pkg).as_posix()
             for violation in project_report.foreign_canonical_alias_violations
         }
-        tm.that(violation_files, has="submodule_consumer.py")
+        tm.that(violation_paths, has="submodule_consumer.py")
+        tm.that(violation_paths, lacks="_models/base.py")
+        tm.that(violation_paths, lacks="_typings/base.py")
         rendered = FlextInfraNamespaceEnforcer.render_text(report)
         tm.that(rendered, has="Foreign canonical alias violations:")
 

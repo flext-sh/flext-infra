@@ -59,7 +59,14 @@ class FlextInfraRefactorDeclarativeEnforcement:
             predicate_kind = getattr(source, "predicate_kind", None)
             if getattr(predicate_kind, "value", predicate_kind) == "classvar_constant":
                 return cls._detect_classvar_constants(ctx)
-        return ()
+        violation_field = getattr(source, "violation_field", "")
+        predicate_kind = getattr(source, "predicate_kind", "")
+        msg = (
+            f"unsupported declarative enforcement source for {rule.id}: "
+            f"kind={source.kind!r} violation_field={violation_field!r} "
+            f"predicate_kind={predicate_kind!r}"
+        )
+        raise ValueError(msg)
 
     @classmethod
     def _detect_stub_files(
@@ -83,14 +90,26 @@ class FlextInfraRefactorDeclarativeEnforcement:
             ctx.file_path,
         )
         if res is None:
-            return ()
+            msg = (
+                f"declarative enforcement {ctx.file_path} failed: "
+                "unable to resolve rope resource"
+            )
+            raise RuntimeError(msg)
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
             tree = pymodule.get_ast()
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
-            return ()
+        except FlextInfraConstantsRope.RUNTIME_ERRORS as exc:
+            msg = (
+                f"declarative enforcement {ctx.file_path} failed: "
+                f"unable to parse rope AST: {type(exc).__name__}: {exc}"
+            )
+            raise RuntimeError(msg) from exc
         if tree is None:
-            return ()
+            msg = (
+                f"declarative enforcement {ctx.file_path} failed: "
+                "rope returned an empty AST"
+            )
+            raise RuntimeError(msg)
         probes: list[p.AttributeProbe] = []
         parent_map = cls._rope_parent_map(tree)
         for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):
@@ -122,8 +141,12 @@ class FlextInfraRefactorDeclarativeEnforcement:
         """Delegate ClassVar-outside-_constants detection to the canonical scanner."""
         try:
             violations = FlextInfraClassPlacementDetector.detect_file(ctx)
-        except c.EXC_BROAD_RUNTIME:
-            return ()
+        except c.EXC_BROAD_RUNTIME as exc:
+            msg = (
+                f"declarative enforcement {ctx.file_path} failed: "
+                f"class placement detector failed: {type(exc).__name__}: {exc}"
+            )
+            raise RuntimeError(msg) from exc
         return tuple(
             cls._probe(
                 Path(v.file),

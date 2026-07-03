@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_core import FlextModelsEnforcement, FlextUtilitiesEnforcement
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.detectors.class_placement_detector import (
+    FlextInfraClassPlacementDetector,
+)
 from flext_infra.models import m
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
@@ -121,3 +126,55 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         assert len(probes) == 1
         assert getattr(probes[0], "object_name", "") == "GROUPS"
         assert getattr(probes[0], "rule_id", "") == "079"
+
+    def test_missing_rope_resource_fails_loud(self, tmp_path: Path) -> None:
+        """Missing source resources are detector failures, not clean scans."""
+        missing = tmp_path / "missing.py"
+        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+            with pytest.raises(RuntimeError, match="unable to resolve rope resource"):
+                FlextInfraRefactorDeclarativeEnforcement.detect(
+                    self._rule("ENFORCE-097"),
+                    self._ctx(rope_project, missing),
+                )
+
+    def test_classvar_detector_failure_fails_loud(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Class-placement detector failures propagate to the orchestrator."""
+        source = tmp_path / "consumer.py"
+        source.write_text("from typing import ClassVar\n", encoding="utf-8")
+
+        def _fail(
+            ctx: m.Infra.DetectorContext,
+        ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
+            _ = ctx
+            msg = "class placement exploded"
+            raise RuntimeError(msg)
+
+        monkeypatch.setattr(FlextInfraClassPlacementDetector, "detect_file", _fail)
+        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+            with pytest.raises(RuntimeError, match="class placement detector failed"):
+                FlextInfraRefactorDeclarativeEnforcement.detect(
+                    self._rule("ENFORCE-079"),
+                    self._ctx(rope_project, source),
+                )
+
+    def test_unsupported_source_fails_loud(self, tmp_path: Path) -> None:
+        """Unsupported catalog wiring is a contract error, not an empty scan."""
+        rule = FlextModelsEnforcement.EnforcementRuleSpec(
+            id="ENFORCE-999",
+            title="Unsupported declarative source",
+            severity=FlextModelsEnforcement.EnforcementSeverity.ERROR,
+            category=FlextModelsEnforcement.EnforcementCategory.ARCHITECTURE,
+            source=FlextModelsEnforcement.EnforcementSourceSpec(kind="unknown"),
+        )
+        source = tmp_path / "consumer.py"
+        source.write_text("", encoding="utf-8")
+        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+            with pytest.raises(ValueError, match="unsupported declarative"):
+                FlextInfraRefactorDeclarativeEnforcement.detect(
+                    rule,
+                    self._ctx(rope_project, source),
+                )
