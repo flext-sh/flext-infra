@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, override
@@ -15,12 +16,24 @@ from flext_infra.constants import c
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
+from flext_infra.detectors.compatibility_alias_detector import (
+    FlextInfraCompatibilityAliasDetector,
+)
+from flext_infra.detectors.inline_import_detector import (
+    FlextInfraInlineImportDetector,
+)
+from flext_infra.detectors.private_import_bypass_detector import (
+    FlextInfraPrivateImportBypassDetector,
+)
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
+)
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
 )
 from flext_infra.typings import t
 from flext_infra.utilities import u
