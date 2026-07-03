@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import ast
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rope.refactor.move import MoveGlobal, create_move
+
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.constants import c
+from flext_infra.detectors.class_placement_detector import (
+    FlextInfraClassPlacementDetector,
+)
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
@@ -27,6 +34,9 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.refactor._census_apply_formatting import (
     FlextInfraRefactorCensusApplyFormattingMixin,
+)
+from flext_infra.refactor.classvar_constant_autofix import (
+    FlextInfraRefactorClassvarConstantAutofix,
 )
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -163,13 +173,48 @@ class FlextInfraRefactorCensusApplyMixin(
                     parse_failures=parse_failures,
                 )
                 changed = True
-            elif action == "hoist_inline_import":
+            elif action in {"hoist_inline_import", "rewrite_library_abstraction"}:
                 changed = self._apply_hoist_inline_imports(
                     rope=rope,
                     file_path=file_path,
                     object_names=object_names,
+                    action=action,
                 )
-            elif action == "manual":
+            elif action == "rewrite_foreign_canonical_alias":
+                violations = tuple(
+                    violation
+                    for violation in FlextInfraCompatibilityAliasDetector.detect_file(
+                        ctx,
+                    )
+                    if violation.alias_name in object_names
+                    and FlextInfraCompatibilityAliasDetector.fix_action_for(
+                        violation,
+                        current_project=u.Infra.package_name(file_path).split(".")[0],
+                    )
+                    == "rewrite_foreign_canonical_alias"
+                )
+                if not violations:
+                    continue
+                u.Infra.rewrite_foreign_canonical_alias_violations(
+                    rope_project=ctx.rope_project,
+                    violations=violations,
+                    parse_failures=parse_failures,
+                )
+                changed = True
+            elif action == "classvar_relocation":
+                changed = self._apply_classvar_relocation(
+                    rope=rope,
+                    file_path=file_path,
+                    object_names=object_names,
+                )
+            elif action == "one_class_per_module":
+                changed = self._apply_one_class_per_module(
+                    rope=rope,
+                    file_path=file_path,
+                    object_names=object_names,
+                )
+            elif action in {"deep_namespace_refactor", "manual"}:
+                # Manual-only actions: reported in dry-run, no-op during apply.
                 pass
             if not changed:
                 continue
@@ -216,11 +261,14 @@ class FlextInfraRefactorCensusApplyMixin(
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         object_names: set[str],
+        action: str = "hoist_inline_import",
     ) -> bool:
-        """Hoist safe inline imports to module top using rope + AST offsets.
+        """Hoist inline imports to module top using rope + AST offsets.
 
-        Only stdlib imports are eligible (no cycle risk); callers already
-        filter via ``FlextInfraInlineImportDetector.fix_action_for``.
+        Callers filter via ``FlextInfraInlineImportDetector.fix_action_for``:
+        ``hoist_inline_import`` for stdlib imports (no cycle risk) and
+        ``rewrite_library_abstraction`` for libraries owned by another FLEXT
+        project.
         """
         resource = rope.resource(file_path)
         if resource is None:
@@ -234,7 +282,7 @@ class FlextInfraRefactorCensusApplyMixin(
                 module_name=violation.module_name,
                 is_importlib=violation.is_importlib,
             )
-            == "hoist_inline_import"
+            == action
         ]
         if not violations:
             return False
@@ -292,6 +340,146 @@ class FlextInfraRefactorCensusApplyMixin(
                         (top_module,),
                         apply=True,
                     )
+        return True
+
+    def _apply_classvar_relocation(
+        self,
+        *,
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        object_names: set[str],
+    ) -> bool:
+        """Apply ENFORCE-079: move ClassVar constants to the _constants module."""
+        ctx = self._detector_context(rope, file_path)
+        violations = [
+            violation
+            for violation in FlextInfraClassPlacementDetector.detect_file(ctx)
+            if violation.action == "classvar_relocation"
+            and violation.name in object_names
+        ]
+        if not violations or ctx.project_root is None:
+            return False
+        convention = rope.convention(file_path)
+        constants_module = self._derive_constants_module(convention)
+        if not constants_module:
+            return False
+        changed = False
+        for violation in violations:
+            class_full_name = f"{convention.module_name}.{violation.base_class}"
+            applied_one = False
+            try:
+                FlextInfraRefactorClassvarConstantAutofix.apply(
+                    workspace_root=ctx.project_root,
+                    class_full_name=class_full_name,
+                    constant_name=violation.name,
+                    constants_module=constants_module,
+                    dry_run=False,
+                )
+                applied_one = True
+            except Exception:
+                applied_one = False
+            changed = changed or applied_one
+        return changed
+
+    def _apply_one_class_per_module(
+        self,
+        *,
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        object_names: set[str],
+    ) -> bool:
+        """Apply ENFORCE-067: split a single misplaced class to its own module."""
+        ctx = self._detector_context(rope, file_path)
+        violations = [
+            violation
+            for violation in FlextInfraClassPlacementDetector.detect_file(ctx)
+            if violation.action == "one_class_per_module"
+            and violation.name in object_names
+            and violation.fixable
+        ]
+        if not violations or ctx.project_root is None:
+            return False
+        convention = rope.convention(file_path)
+        package_dir = (
+            convention.project_layout.package_dir
+            if convention.project_layout is not None
+            else convention.package_dir
+        )
+        changed = False
+        for violation in violations:
+            family = violation.family
+            if not family:
+                continue
+            family_dir = c.Infra.FAMILY_DIRECTORIES.get(family)
+            if family_dir is None:
+                continue
+            target_file = (
+                package_dir / family_dir / f"{self._to_snake_case(violation.name)}.py"
+            )
+            if self._move_class_to_file(
+                rope=rope,
+                source_file=file_path,
+                target_file=target_file,
+                class_name=violation.name,
+            ):
+                changed = True
+        return changed
+
+    @staticmethod
+    def _derive_constants_module(
+        convention: m.Infra.RopeModuleConvention,
+    ) -> str:
+        """Return the canonical _constants module for a source convention."""
+        base_package = convention.package_name.split(".")[0]
+        return f"{base_package}._constants"
+
+    @staticmethod
+    def _to_snake_case(name: str) -> str:
+        """Convert a PascalCase class name to a snake_case module name."""
+        return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+    def _move_class_to_file(
+        self,
+        *,
+        rope: p.Infra.RopeWorkspaceDsl,
+        source_file: Path,
+        target_file: Path,
+        class_name: str,
+    ) -> bool:
+        """Move a single top-level class from ``source_file`` to ``target_file``."""
+        source_resource = rope.resource(source_file)
+        if source_resource is None:
+            return False
+        source = source_resource.read()
+        prefix = f"class {class_name}"
+        offset = source.find(prefix)
+        if offset < 0:
+            return False
+        # Place the cursor on the class name, not on the ``class`` keyword.
+        offset += len("class ")
+
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        if not target_file.exists():
+            target_file.write_text(
+                f"{c.Infra.FUTURE_ANNOTATIONS}\n",
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+            rope.reload()
+
+        target_resource = rope.resource(target_file)
+        if target_resource is None:
+            return False
+        try:
+            mover = create_move(rope.rope_project, source_resource, offset)
+        except Exception:
+            return False
+        if not isinstance(mover, MoveGlobal):
+            return False
+        try:
+            changes = mover.get_changes(target_resource)
+            rope.rope_project.do(changes)
+        except Exception:
+            return False
         return True
 
     @staticmethod
