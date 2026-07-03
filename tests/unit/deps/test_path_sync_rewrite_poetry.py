@@ -4,8 +4,8 @@ import tomlkit
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra.tests.constants import c
-from flext_infra.tests.utilities import u
+from tests.constants import c
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsPathSyncRewritePoetry:

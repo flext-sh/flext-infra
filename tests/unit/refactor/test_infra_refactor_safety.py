@@ -13,8 +13,8 @@ from flext_tests import r
 from flext_infra import t
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.service import FlextInfraRefactorService
-from flext_infra.tests.protocols import p
-from flext_infra.tests.utilities import u
+from tests.protocols import p
+from tests.utilities import u
 
 
 class RefactorSafetyStub(FlextInfraRefactorSafetyManager):

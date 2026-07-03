@@ -8,7 +8,7 @@ from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_infra.tests.constants import c
+from tests.constants import c
 
 
 class TestsFlextInfraDepsModernizerMain:

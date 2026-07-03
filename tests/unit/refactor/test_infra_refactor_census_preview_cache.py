@@ -11,8 +11,8 @@ from flext_infra import c, m, p, r, u as infra_u
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import u
+from tests.typings import t
+from tests.utilities import u
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 

@@ -7,8 +7,8 @@ import tomlkit
 from flext_tests import tm
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.tests.typings import t
-from flext_infra.tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
+from tests.typings import t
+from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
 
 def _manager(

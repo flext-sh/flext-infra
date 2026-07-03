@@ -11,8 +11,8 @@ from pathlib import Path
 import pytest
 
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.tests.constants import c
-from flext_infra.tests.typings import t
+from tests.constants import c
+from tests.typings import t
 
 
 class TestsFlextInfraCodegenPyTyped:

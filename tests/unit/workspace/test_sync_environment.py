@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
-from flext_infra.tests.protocols import p
+from tests.protocols import p
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.sync import FlextInfraSyncService
 

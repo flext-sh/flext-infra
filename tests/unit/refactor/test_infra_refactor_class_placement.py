@@ -5,9 +5,9 @@ from pathlib import Path
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
-from flext_infra.tests.constants import c
-from flext_infra.tests.models import m
-from flext_infra.tests.typings import t
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
 
 
 class TestsFlextInfraRefactorInfraRefactorClassPlacement:

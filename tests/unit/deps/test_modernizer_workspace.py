@@ -8,8 +8,8 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import main
-from flext_infra.tests.constants import c
-from flext_infra.tests.utilities import u
+from tests.constants import c
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsModernizerWorkspace:

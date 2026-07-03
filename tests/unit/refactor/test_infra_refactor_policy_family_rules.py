@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra.tests.utilities import u
+from tests.utilities import u
 
 
 class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:

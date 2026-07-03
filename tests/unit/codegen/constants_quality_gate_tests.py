@@ -17,7 +17,7 @@ from flext_tests import tm
 from flext_infra import m, main, u
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_infra.tests.typings import t
+from tests.typings import t
 
 
 class TestConstantsQualityGateCLIDispatch:

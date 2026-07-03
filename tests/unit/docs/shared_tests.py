@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.tests.constants import c
-from flext_infra.tests.models import m
-from flext_infra.tests.utilities import u
+from tests.constants import c
+from tests.models import m
+from tests.utilities import u
 
 
 def test_doc_scope_creation(tmp_path: Path) -> None:

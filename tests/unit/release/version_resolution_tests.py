@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_infra.tests.constants import c
+from tests.constants import c
 
 
 def make_command(

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.tests.utilities import u
+from tests.utilities import u
 
 
 class TestsFlextInfraInfraReportingCore:

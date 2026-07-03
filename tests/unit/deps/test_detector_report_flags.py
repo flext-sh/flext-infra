@@ -10,9 +10,9 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.tests.protocols import p
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import TestsFlextInfraUtilities as u
+from tests.protocols import p
+from tests.typings import t
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class _ReportStub:

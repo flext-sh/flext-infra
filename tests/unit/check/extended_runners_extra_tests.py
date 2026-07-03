@@ -10,7 +10,7 @@ from flext_infra import c, r
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.tests.utilities import u
+from tests.utilities import u
 
 
 class TestExtendedRunnerExtras:

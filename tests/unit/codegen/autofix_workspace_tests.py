@@ -13,9 +13,9 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.tests.models import m
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import u
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 def _project_info(

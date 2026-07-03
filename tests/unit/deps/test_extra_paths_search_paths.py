@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
+from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
 
 class TestsFlextInfraExtraPathsSearchPaths:

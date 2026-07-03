@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra.tests.models import m
+from tests.models import m
 
 
 class TestsFlextInfraDepsDetectorModels:

@@ -10,7 +10,7 @@ from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
-from flext_infra.tests.typings import t
+from tests.typings import t
 
 
 class TestGateRegistry:

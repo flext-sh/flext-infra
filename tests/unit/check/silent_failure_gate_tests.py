@@ -12,8 +12,8 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import u
+from tests.typings import t
+from tests.utilities import u
 
 _DIRTY_UTILITIES = (
     "from __future__ import annotations\n\n"

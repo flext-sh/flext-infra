@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import main
-from flext_infra.tests.utilities import u
+from tests.utilities import u
 
 
 def test_workflows_subcommand_applies_templates(

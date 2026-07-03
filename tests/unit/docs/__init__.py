@@ -8,25 +8,25 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.tests.unit.docs.auditor_budgets_tests import (
+    from tests.unit.docs.auditor_budgets_tests import (
         TestLoadAuditBudgets as TestLoadAuditBudgets,
     )
-    from flext_infra.tests.unit.docs.auditor_links_tests import (
+    from tests.unit.docs.auditor_links_tests import (
         TestAuditorBrokenLinks as TestAuditorBrokenLinks,
         TestAuditorToMarkdown as TestAuditorToMarkdown,
     )
-    from flext_infra.tests.unit.docs.auditor_scope_tests import (
+    from tests.unit.docs.auditor_scope_tests import (
         TestAuditorForbiddenTerms as TestAuditorForbiddenTerms,
         TestAuditorScope as TestAuditorScope,
     )
-    from flext_infra.tests.unit.docs.auditor_tests import (
+    from tests.unit.docs.auditor_tests import (
         TestAuditorCore as TestAuditorCore,
         TestAuditorNormalize as TestAuditorNormalize,
     )
-    from flext_infra.tests.unit.docs.builder_tests import (
+    from tests.unit.docs.builder_tests import (
         TestBuilderCore as TestBuilderCore,
     )
-    from flext_infra.tests.unit.docs.shared_iter_tests import (
+    from tests.unit.docs.shared_iter_tests import (
         TestIterMarkdownFiles as TestIterMarkdownFiles,
         TestSelectedProjectNames as TestSelectedProjectNames,
     )

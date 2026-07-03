@@ -18,8 +18,8 @@ from flext_tests import tm
 import flext_infra as mod
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import u
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestGenerateTypeChecking:

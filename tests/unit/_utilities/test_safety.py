@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.tests.constants import c
-from flext_infra.tests.utilities import u
+from tests.constants import c
+from tests.utilities import u
 
 
 def _run_git(repo: Path, *args: str) -> None:

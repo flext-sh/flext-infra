@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 from flext_core.lazy import merge_lazy_imports
-from flext_infra.tests.unit.deps._exports_lazy_part_01 import (
+from tests.unit.deps._exports_lazy_part_01 import (
     FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS_PART_01,
 )
-from flext_infra.tests.unit.deps._exports_lazy_part_02 import (
+from tests.unit.deps._exports_lazy_part_02 import (
     FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS_PART_02,
 )
 
@@ -38,7 +38,7 @@ FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS = merge_lazy_imports(
         "pytest_terminal_summary",
         "pytest_warning_recorded",
     ),
-    module_name="flext_infra.tests.unit.deps",
+    module_name="tests.unit.deps",
 )
 
 __all__: list[str] = ["FLEXT_INFRA_TESTS_UNIT_DEPS_LAZY_IMPORTS"]

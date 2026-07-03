@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra.tests.constants import c
+from tests.constants import c
 
 
 class TestsFlextInfraInfraConstantsExtra:

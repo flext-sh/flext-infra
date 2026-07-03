@@ -11,7 +11,7 @@ from flext_infra import m, p, r
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.tests.utilities import TestsFlextInfraUtilities as u
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class TestTypeGates:

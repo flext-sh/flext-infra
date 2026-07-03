@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra.tests.models import m
+from tests.models import m
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
 )

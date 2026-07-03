@@ -5,9 +5,9 @@ from pathlib import Path
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
-from flext_infra.tests.models import m
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import u
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:

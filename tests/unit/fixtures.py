@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.tests.constants import c
-from flext_infra.tests.models import m
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import u
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 

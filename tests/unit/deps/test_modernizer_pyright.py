@@ -11,8 +11,8 @@ import tomlkit
 from flext_tests._utilities.matchers import tm
 
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.tests.models import m
-from flext_infra.tests.utilities import u
+from tests.models import m
+from tests.utilities import u
 
 
 class TestsFlextInfraDepsModernizerPyright:

@@ -12,8 +12,8 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
-from flext_infra.tests.typings import t
-from flext_infra.tests.utilities import u
+from tests.typings import t
+from tests.utilities import u
 
 
 def _project(tmp_path: Path, *, name: str, filename: str, src: str) -> Path:

@@ -6,9 +6,9 @@ from typing import TypeGuard
 import tomlkit
 from flext_tests import tm
 
-from flext_infra.tests.constants import c
-from flext_infra.tests.models import m
-from flext_infra.tests.utilities import u
+from tests.constants import c
+from tests.models import m
+from tests.utilities import u
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:

@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import m, p, r, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_infra.tests.utilities import TestsFlextInfraUtilities as u
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
 class TestBanditAndMarkdownGates:

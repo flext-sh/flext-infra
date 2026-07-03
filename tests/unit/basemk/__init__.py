@@ -8,22 +8,22 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.tests.unit.basemk.test_generator import (
+    from tests.unit.basemk.test_generator import (
         TestsFlextInfraBasemkGenerator as TestsFlextInfraBasemkGenerator,
     )
-    from flext_infra.tests.unit.basemk.test_generator_edge_cases import (
+    from tests.unit.basemk.test_generator_edge_cases import (
         TestsFlextInfraBasemkGeneratorEdgeCases as TestsFlextInfraBasemkGeneratorEdgeCases,
     )
-    from flext_infra.tests.unit.basemk.test_init import (
+    from tests.unit.basemk.test_init import (
         TestsFlextInfraBasemkInit as TestsFlextInfraBasemkInit,
     )
-    from flext_infra.tests.unit.basemk.test_main import (
+    from tests.unit.basemk.test_main import (
         TestsFlextInfraBasemkMain as TestsFlextInfraBasemkMain,
     )
-    from flext_infra.tests.unit.basemk.test_make_contract import (
+    from tests.unit.basemk.test_make_contract import (
         TestsFlextInfraBasemkMakeContract as TestsFlextInfraBasemkMakeContract,
     )
-    from flext_infra.tests.unit.basemk.test_renderer import (
+    from tests.unit.basemk.test_renderer import (
         TestsFlextInfraBasemkRenderer as TestsFlextInfraBasemkRenderer,
     )
 _LAZY_IMPORTS = build_lazy_import_map(

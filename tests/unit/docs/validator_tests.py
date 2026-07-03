@@ -6,8 +6,8 @@ from pathlib import Path
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.tests.models import m
-from flext_infra.tests.utilities import u
+from tests.models import m
+from tests.utilities import u
 
 
 def test_validate_report_model_fields() -> None:

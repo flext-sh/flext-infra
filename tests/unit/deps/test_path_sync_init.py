@@ -5,8 +5,8 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
-from flext_infra.tests.constants import c
-from flext_infra.tests.models import m
+from tests.constants import c
+from tests.models import m
 
 
 class TestsFlextInfraDepsPathSyncInit:

@@ -8,25 +8,25 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.tests.unit.codegen.lazy_init_generation_tests import (
+    from tests.unit.codegen.lazy_init_generation_tests import (
         TestGenerateFile as TestGenerateFile,
         TestGenerateTypeChecking as TestGenerateTypeChecking,
         TestLazyInitPlannerCollision as TestLazyInitPlannerCollision,
         TestRunRuffFix as TestRunRuffFix,
     )
-    from flext_infra.tests.unit.codegen.lazy_init_helpers_tests import (
+    from tests.unit.codegen.lazy_init_helpers_tests import (
         TestsFlextInfraLazyInitHelpers as TestsFlextInfraLazyInitHelpers,
     )
-    from flext_infra.tests.unit.codegen.lazy_init_tests import (
+    from tests.unit.codegen.lazy_init_tests import (
         TestAllDirectoriesScanned as TestAllDirectoriesScanned,
         TestCheckOnlyMode as TestCheckOnlyMode,
         TestEdgeCases as TestEdgeCases,
         TestExcludedDirectories as TestExcludedDirectories,
     )
-    from flext_infra.tests.unit.codegen.lazy_init_transforms_tests import (
+    from tests.unit.codegen.lazy_init_transforms_tests import (
         TestsFlextInfraLazyInitTransforms as TestsFlextInfraLazyInitTransforms,
     )
-    from flext_infra.tests.unit.codegen.scaffolder_naming_tests import (
+    from tests.unit.codegen.scaffolder_naming_tests import (
         TestGeneratedClassNamingConvention as TestGeneratedClassNamingConvention,
         TestGeneratedFilesAreValidPython as TestGeneratedFilesAreValidPython,
     )

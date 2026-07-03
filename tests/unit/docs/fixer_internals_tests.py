@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.tests.utilities import u
+from tests.utilities import u
 
 
 def test_docs_maybe_fix_link_adds_md_suffix_when_target_exists(tmp_path: Path) -> None:

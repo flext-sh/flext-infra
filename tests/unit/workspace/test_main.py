@@ -7,10 +7,10 @@ from pathlib import Path
 from flext_tests import r
 
 from flext_infra import main as infra_main
-from flext_infra.tests.constants import c
-from flext_infra.tests.models import m
-from flext_infra.tests.protocols import p
-from flext_infra.tests.typings import t
+from tests.constants import c
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService

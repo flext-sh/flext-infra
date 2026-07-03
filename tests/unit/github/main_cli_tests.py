@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import main as infra_main
-from flext_infra.tests.utilities import u
+from tests.utilities import u
 
 
 def test_main_returns_zero_on_help() -> None:
