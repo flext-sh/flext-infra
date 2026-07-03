@@ -50,7 +50,7 @@ class FlextInfraRefactorTypingDictAttr(FlextInfraRopeTransformer):
     def _rewrite_dict_annotations(self, source: str) -> str:
         """Rewrite every ``typing.Dict[K, V]`` occurrence to ``t.MappingKV[K, V]``."""
 
-        def replacer(match: re.Match[str]) -> str:
+        def replacer(_match: re.Match[str]) -> str:
             self._record_change(
                 "Rewrote typing.Dict[...] annotation to t.MappingKV[...]"
             )

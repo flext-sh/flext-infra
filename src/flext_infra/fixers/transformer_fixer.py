@@ -21,6 +21,9 @@ from flext_infra.transformers.hardcoded_version import (
 )
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.transformers.remove_breakpoint import (
     FlextInfraRefactorRemoveBreakpoint,
 )
@@ -60,7 +63,9 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
         "open_encoding": FlextInfraRefactorOpenEncoding,
         "print_to_logger": FlextInfraRefactorPrintToLogger,
+        "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,
         "remove_breakpoint": FlextInfraRefactorRemoveBreakpoint,
+        "rewrite_foreign_canonical_alias": FlextInfraRefactorProjectAliasMigrator,
         "typing_dict_attr": FlextInfraRefactorTypingDictAttr,
         "typing_dict_import": FlextInfraRefactorTypingDictImport,
         "typing_unifier": FlextInfraRefactorTypingUnifier,
@@ -222,10 +227,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             )
         if transformer_cls is FlextInfraRefactorPrintToLogger:
             return FlextInfraRefactorPrintToLogger(file_path=file_path)
-        if transformer_cls in (
+        if transformer_cls in {
             FlextInfraRefactorTypingDictImport,
             FlextInfraRefactorTypingDictAttr,
-        ):
+        }:
             return transformer_cls(file_path=file_path)
         # Remaining enforcement transformers require no runtime params.
         return transformer_cls()

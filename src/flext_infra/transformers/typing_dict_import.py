@@ -56,7 +56,7 @@ class FlextInfraRefactorTypingDictImport(FlextInfraRopeTransformer):
     def _remove_dict_import(self, source: str) -> str:
         """Drop ``Dict`` from ``from typing import ...`` lines."""
 
-        def replacer(match: re.Match[str]) -> str:
+        def replacer(_match: re.Match[str]) -> str:
             items = match.group("items")
             cleaned = self._remove_dict_item(items)
             if not cleaned:
@@ -79,7 +79,7 @@ class FlextInfraRefactorTypingDictImport(FlextInfraRopeTransformer):
     def _rewrite_dict_annotations(self, source: str) -> str:
         """Rewrite every ``Dict[K, V]`` occurrence to ``t.MappingKV[K, V]``."""
 
-        def replacer(match: re.Match[str]) -> str:
+        def replacer(_match: re.Match[str]) -> str:
             self._record_change("Rewrote Dict[...] annotation to t.MappingKV[...]")
             return "t.MappingKV["
 

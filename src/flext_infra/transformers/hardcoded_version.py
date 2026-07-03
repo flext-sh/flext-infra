@@ -14,7 +14,7 @@ from flext_infra.typings import t
 
 
 class FlextInfraRefactorHardcodedVersion(FlextInfraRopeTransformer):
-    """Detect hardcoded ``__version__ = \"...\"`` assignments.
+    r"""Detect hardcoded ``__version__ = \"...\"`` assignments.
 
     This transformer is **not safe**: it only reports the violation because
     the canonical fix requires reading the version from ``importlib.metadata``

@@ -7,6 +7,7 @@ it from the local facade instead of from flext_core.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import override
 
 from flext_infra.constants import c
@@ -27,21 +28,36 @@ _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {
 class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     """Rewrite ``from flext_core import c`` to ``from <proj>.constants import c``."""
 
+    _description = "rewrite foreign canonical alias imports to local project facade"
+
     def __init__(
         self,
-        project_alias_owners: t.StrSequenceMapping,
         *,
+        file_path: Path | None = None,
+        project_alias_owners: t.StrSequenceMapping | None = None,
         current_project: str = "",
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
-        """Initialize with project → local aliases SSOT from flext-core."""
+        """Initialize with project → local aliases SSOT from flext-core.
+
+        Args:
+            file_path: Optional file path used to infer the owning project.
+            project_alias_owners: SSOT mapping project package → local aliases.
+                Defaults to ``c.ENFORCEMENT_PROJECT_ALIAS_OWNERS``.
+            current_project: Explicit project package; overrides inference.
+            on_change: Optional callback invoked for each recorded change.
+        """
         super().__init__(on_change=on_change)
-        self._project_alias_owners = dict(project_alias_owners)
+        owners = (
+            project_alias_owners
+            if project_alias_owners is not None
+            else c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
+        )
+        self._project_alias_owners = dict(owners)
         self._local_aliases_by_project: dict[str, frozenset[str]] = {
-            project: frozenset(aliases)
-            for project, aliases in project_alias_owners.items()
+            project: frozenset(aliases) for project, aliases in owners.items()
         }
-        self._current_project = current_project
+        self._current_project = current_project or self._project_from_path(file_path)
 
     @override
     def transform(
@@ -50,6 +66,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Apply alias migration via rope utilities."""
+        _ = rope_project
         source = resource.read()
         if not self._current_project:
             self._current_project = self._project_from_path(
@@ -182,7 +199,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         return lines
 
     def _current_project_from_source(self, source: str) -> str:
-        """Return current project from init/path or existing local imports."""
+        """Return current project from explicit value or existing local imports."""
         if self._current_project:
             return self._current_project
         for module in sorted(self._local_aliases_by_project, key=len, reverse=True):
@@ -190,13 +207,13 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
                 return module
         return ""
 
-    def _project_from_path(self, file_path: str) -> str:
+    def _project_from_path(self, file_path: Path | str | None) -> str:
         """Infer project package from a workspace file path."""
-        parts = file_path.replace("\\", "/").split("/")
-        for part in parts:
-            if part.startswith("flext_"):
-                return part
-        return ""
+        if file_path is None:
+            return ""
+        path = Path(file_path) if isinstance(file_path, str) else file_path
+        package_name = u.Infra.package_name(path)
+        return package_name.split(".", maxsplit=1)[0]
 
 
 __all__: list[str] = ["FlextInfraRefactorProjectAliasMigrator"]
