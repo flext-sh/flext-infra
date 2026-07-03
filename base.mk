@@ -341,7 +341,7 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 			*,lint,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run ruff check $$_files $(RUFF_ARGS) $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,format,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run ruff format $$_files $(if $(filter 1,$(CHECK_ONLY)),--check,--quiet) || status=$$?;; \
+			*,format,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run ruff format $$_files $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),--check,--quiet),--check) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
 			*,pyright,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run pyright $$_files $(PYRIGHT_ARGS) || status=$$?;; \

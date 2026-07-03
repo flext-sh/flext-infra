@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
 )
@@ -18,9 +17,8 @@ from flext_infra.transformers.hardcoded_version import (
     FlextInfraRefactorHardcodedVersion,
 )
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
-from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
-from flext_infra.transformers.remove_breakpoint import (
-    FlextInfraRefactorRemoveBreakpoint,
+from flext_infra.transformers.pattern import (
+    FlextInfraRefactorPatternTransformer,
 )
 from flext_infra.transformers.typing_dict_attr import (
     FlextInfraRefactorTypingDictAttr,
@@ -35,27 +33,16 @@ from flext_infra.transformers.typing_unifier import (
 
 def _transform(
     source: str,
-    transformer: FlextInfraRefactorBareExcept
-    | FlextInfraRefactorCompatibilityAlias
+    transformer: FlextInfraRefactorCompatibilityAlias
     | FlextInfraRefactorFutureImport
     | FlextInfraRefactorHardcodedVersion
     | FlextInfraRefactorOpenEncoding
-    | FlextInfraRefactorRemoveBreakpoint
+    | FlextInfraRefactorPatternTransformer
     | FlextInfraRefactorTypingDictAttr
     | FlextInfraRefactorTypingDictImport
     | FlextInfraRefactorTypingUnifier,
 ) -> tuple[str, Sequence[str]]:
     """Apply a stateless transformer to source text."""
-    result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
-    return result
-
-
-def _transform_print(tmp_path: Path, source: str) -> tuple[str, Sequence[str]]:
-    """Apply the print-to-logger transformer with a synthetic package path."""
-    package_root = tmp_path / "flext_core" / "src" / "flext_core"
-    package_root.mkdir(parents=True)
-    file_path = package_root / "module.py"
-    transformer = FlextInfraRefactorPrintToLogger(file_path=file_path)
     result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
     return result
 
@@ -116,57 +103,6 @@ class TestsFlextInfraTransformersFutureImport:
         assert changes
 
 
-class TestsFlextInfraTransformersBareExcept:
-    """Behavior contract for FlextInfraRefactorBareExcept."""
-
-    def test_bare_except_rewritten_to_exception(self) -> None:
-        source = "def foo():\n    try:\n        pass\n    except:\n        pass\n"
-        code, changes = _transform(source, FlextInfraRefactorBareExcept())
-        assert "    except Exception:\n" in code
-        assert "    except:\n" not in code
-        assert changes
-
-    def test_bare_except_preserves_indentation(self) -> None:
-        source = "try:\n    pass\nexcept:\n    pass\n"
-        code, _ = _transform(source, FlextInfraRefactorBareExcept())
-        assert "except Exception:\n" in code
-        assert "except:\n" not in code
-
-    def test_specific_except_unchanged(self) -> None:
-        source = (
-            "def foo():\n    try:\n        pass\n    except ValueError:\n        pass\n"
-        )
-        code, changes = _transform(source, FlextInfraRefactorBareExcept())
-        assert code == source
-        assert changes == []
-
-
-class TestsFlextInfraTransformersRemoveBreakpoint:
-    """Behavior contract for FlextInfraRefactorRemoveBreakpoint."""
-
-    def test_breakpoint_call_removed(self) -> None:
-        source = "def foo():\n    breakpoint()\n    x = 1\n"
-        code, changes = _transform(source, FlextInfraRefactorRemoveBreakpoint())
-        assert "breakpoint()" not in code
-        assert "x = 1\n" in code
-        assert changes
-
-    def test_import_pdb_set_trace_removed(self) -> None:
-        source = "import pdb; pdb.set_trace()\n"
-        code, changes = _transform(source, FlextInfraRefactorRemoveBreakpoint())
-        assert "import pdb" not in code
-        assert "pdb.set_trace()" not in code
-        assert changes
-
-    def test_adjacent_blank_lines_preserved(self) -> None:
-        source = "x = 1\n\nbreakpoint()\n\ny = 2\n"
-        code, _ = _transform(source, FlextInfraRefactorRemoveBreakpoint())
-        assert "breakpoint()" not in code
-        assert "x = 1\n" in code
-        assert "y = 2\n" in code
-        assert "\n" in code
-
-
 class TestsFlextInfraTransformersOpenEncoding:
     """Behavior contract for FlextInfraRefactorOpenEncoding."""
 
@@ -193,31 +129,6 @@ class TestsFlextInfraTransformersOpenEncoding:
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
         assert code == source
         assert changes == []
-
-
-class TestsFlextInfraTransformersPrintToLogger:
-    """Behavior contract for FlextInfraRefactorPrintToLogger."""
-
-    def test_print_rewritten_to_fetch_logger_info(self, tmp_path: Path) -> None:
-        source = 'print("hello")\n'
-        code, changes = _transform_print(tmp_path, source)
-        assert 'u.fetch_logger(__name__).info("hello")' in code
-        assert "print(" not in code
-        assert changes
-
-    def test_u_import_added_when_missing(self, tmp_path: Path) -> None:
-        source = 'print("hello")\n'
-        code, changes = _transform_print(tmp_path, source)
-        assert "from flext_core import u" in code
-        assert changes
-
-    def test_u_import_not_duplicated(self, tmp_path: Path) -> None:
-        source = 'from flext_core import c, u\n\nprint("hello")\n'
-        code, changes = _transform_print(tmp_path, source)
-        assert code.count("from flext_core import") == 1
-        assert "from flext_core import c, u" in code
-        assert 'u.fetch_logger(__name__).info("hello")' in code
-        assert changes
 
 
 class TestsFlextInfraTransformersTypingDictImport:
@@ -355,6 +266,138 @@ class TestsFlextInfraTransformersTypingUnifier:
         transformer = FlextInfraRefactorTypingUnifier(
             canonical_map={},
             file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code == source
+        assert changes == []
+
+
+class TestsFlextInfraTransformersPattern:
+    """Behavior contract for FlextInfraRefactorPatternTransformer."""
+
+    def test_bare_except_pattern(self) -> None:
+        source = "try:\n    pass\nexcept:\n    pass\n"
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
+                    "replacement": r"\g<indent>except Exception:\g<trail>",
+                    "change_message": "Rewrote bare except to except Exception",
+                    "flags": ["MULTILINE"],
+                },
+            ],
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "except Exception:" in code
+        assert "except:" not in code
+        assert changes
+
+    def test_specific_except_pattern_unchanged(self) -> None:
+        source = (
+            "def foo():\n    try:\n        pass\n    except ValueError:\n        pass\n"
+        )
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
+                    "replacement": r"\g<indent>except Exception:\g<trail>",
+                    "change_message": "Rewrote bare except to except Exception",
+                    "flags": ["MULTILINE"],
+                },
+            ],
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code == source
+        assert changes == []
+
+    def test_breakpoint_patterns_remove_debuggers(self) -> None:
+        source = "x = 1\n\nbreakpoint()\n\nimport pdb; pdb.set_trace()\n\ny = 2\n"
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"^[ \t]*breakpoint\s*\(\s*\)\s*[;\n]",
+                    "replacement": "\n",
+                    "change_message": "Removed debugger statement",
+                    "flags": ["MULTILINE"],
+                },
+                {
+                    "regex": r"^[ \t]*import\s+pdb\s*;\s*pdb\.set_trace\s*\(\s*\)\s*[;\n]",
+                    "replacement": "\n",
+                    "change_message": "Removed debugger statement",
+                    "flags": ["MULTILINE"],
+                },
+            ],
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "breakpoint()" not in code
+        assert "pdb.set_trace()" not in code
+        assert "x = 1\n" in code
+        assert "y = 2\n" in code
+        assert changes
+
+    def test_open_encoding_pattern(self) -> None:
+        source = 'with open("x.txt") as f:\n    pass\n'
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"\bopen\s*\(\s*(?P<args>[^)]*)\s*\)",
+                    "replacement": r'open(\g<args>, encoding="utf-8")',
+                    "change_message": 'Added encoding="utf-8" to open() call',
+                },
+            ],
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert 'open("x.txt", encoding="utf-8")' in code
+        assert changes
+
+    def test_pattern_with_required_alias(self, tmp_path: Path) -> None:
+        source = "def foo(x):\n    return print(x)\n"
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
+                    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
+                    "change_message": "Rewrote print() to logger",
+                },
+            ],
+            required_alias="u",
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "u.fetch_logger(__name__).info" in code
+        assert "from flext_core import u" in code
+        assert changes
+
+    def test_pattern_required_alias_not_duplicated(self, tmp_path: Path) -> None:
+        source = 'from flext_core import c, u\n\nprint("hello")\n'
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
+                    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
+                    "change_message": "Rewrote print() to logger",
+                },
+            ],
+            required_alias="u",
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code.count("from flext_core import") == 1
+        assert "from flext_core import c, u" in code
+        assert 'u.fetch_logger(__name__).info("hello")' in code
+        assert changes
+
+    def test_pattern_no_match_leaves_source_unchanged(self) -> None:
+        source = "x = 1\n"
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
+                    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
+                    "change_message": "Rewrote print() to logger",
+                },
+            ],
+            required_alias="u",
         )
         code, changes = transformer.apply_to_source(source)
         assert code == source

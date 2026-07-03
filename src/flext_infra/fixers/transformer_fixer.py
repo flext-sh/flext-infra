@@ -16,7 +16,6 @@ from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
 from flext_infra.protocols import p
-from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
@@ -30,12 +29,9 @@ from flext_infra.transformers.import_modernizer import (
 )
 from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
-from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
+from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
-)
-from flext_infra.transformers.remove_breakpoint import (
-    FlextInfraRefactorRemoveBreakpoint,
 )
 from flext_infra.transformers.typing_dict_attr import (
     FlextInfraRefactorTypingDictAttr,
@@ -68,16 +64,14 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             type[FlextInfraRopeTransformer],
         ]
     ] = {
-        "bare_except": FlextInfraRefactorBareExcept,
         "compatibility_alias": FlextInfraRefactorCompatibilityAlias,
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
         "import_modernizer": FlextInfraRefactorImportModernizer,
         "mro_remover": FlextInfraRefactorMRORemover,
         "open_encoding": FlextInfraRefactorOpenEncoding,
-        "print_to_logger": FlextInfraRefactorPrintToLogger,
+        "pattern": FlextInfraRefactorPatternTransformer,
         "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,
-        "remove_breakpoint": FlextInfraRefactorRemoveBreakpoint,
         "rewrite_foreign_canonical_alias": FlextInfraRefactorProjectAliasMigrator,
         "typing_dict_attr": FlextInfraRefactorTypingDictAttr,
         "typing_dict_import": FlextInfraRefactorTypingDictImport,
@@ -284,8 +278,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 canonical_map=canonical_map,
                 file_path=file_path,
             )
-        if transformer_cls is FlextInfraRefactorPrintToLogger:
-            return FlextInfraRefactorPrintToLogger(file_path=file_path)
         if transformer_cls in {
             FlextInfraRefactorTypingDictImport,
             FlextInfraRefactorTypingDictAttr,
@@ -327,6 +319,18 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 symbols_to_replace=symbols_to_replace,
                 runtime_aliases=runtime_aliases,
                 blocked_aliases=blocked_aliases,
+            )
+        if transformer_cls is FlextInfraRefactorPatternTransformer:
+            patterns = tuple(
+                item
+                for item in u.Cli.json_as_sequence(params.get("patterns"))
+                if isinstance(item, dict)
+            )
+            return FlextInfraRefactorPatternTransformer(
+                patterns=patterns,
+                required_alias=str(params.get("required_alias") or ""),
+                alias_module=str(params.get("alias_module") or ""),
+                file_path=file_path,
             )
         # Remaining enforcement transformers require no runtime params.
         return transformer_cls()

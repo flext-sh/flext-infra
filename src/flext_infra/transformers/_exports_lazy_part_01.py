@@ -7,7 +7,6 @@ from flext_core.lazy import build_lazy_import_map
 
 FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
     {
-        ".bare_except": ("FlextInfraRefactorBareExcept",),
         ".base": ("FlextInfraChangeTrackingTransformer",),
         ".census_visitors": (
             "FlextInfraCensusImportDiscoveryVisitor",
@@ -29,11 +28,10 @@ FLEXT_INFRA_TRANSFORMERS_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".mro_symbol_propagator": ("FlextInfraRefactorMROSymbolPropagator",),
         ".nested_class_propagation": ("FlextInfraNestedClassPropagationTransformer",),
         ".open_encoding": ("FlextInfraRefactorOpenEncoding",),
+        ".pattern": ("FlextInfraRefactorPatternTransformer",),
         ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
-        ".print_to_logger": ("FlextInfraRefactorPrintToLogger",),
         ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
         ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
-        ".remove_breakpoint": ("FlextInfraRefactorRemoveBreakpoint",),
         ".result_di_modernizer": ("FlextInfraRefactorResultDiModernizer",),
         ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
         ".smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
