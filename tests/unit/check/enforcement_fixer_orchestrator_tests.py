@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import importlib
-import subprocess
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import ClassVar, override
 
 import pytest
 
+from flext_cli import cli
 from flext_core import FlextUtilitiesEnforcement, r
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import m, p, t, u
@@ -19,6 +19,7 @@ from flext_infra.fixers.orchestrator import (
     FlextInfraEnforcementFixerOrchestrator,
 )
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
+from tests.constants import c
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -356,16 +357,15 @@ class TestsEnforcementFixerOrchestrator:
         workspace_root = project_dir.parent
 
         def git_status() -> str:
-            result = subprocess.run(
-                ["git", "-C", str(project_dir), "status", "--short"],
-                capture_output=True,
-                text=True,
-                check=True,
+            capture_result: p.Result[str] = cli.capture(
+                [c.Infra.GIT, "-C", str(project_dir), "status", "--short"],
+                cwd=workspace_root,
             )
-            return result.stdout
+            stdout: str = capture_result.value
+            return stdout
 
         pre_status = git_status()
-        result = subprocess.run(
+        result = cli.run_raw(
             [
                 "uv",
                 "run",
@@ -382,18 +382,15 @@ class TestsEnforcementFixerOrchestrator:
                 "ENFORCE-079",
                 "--no-check-after",
             ],
-            cwd=str(workspace_root),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+            cwd=workspace_root,
+        ).value
         post_status = git_status()
-        assert result.returncode == 0, (
+        assert result.exit_code == 0, (
             f"dry-run failed\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
         assert pre_status == post_status, (
             f"dry-run mutated the worktree\n"
             f"stdout: {result.stdout}\n"
             f"stderr: {result.stderr}\n"
-            f"exit: {result.returncode}"
+            f"exit: {result.exit_code}"
         )
