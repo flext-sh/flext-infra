@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -365,11 +367,11 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         assert "GROUPS = frozenset({'a'})" in target_text
         assert "GROUPS = frozenset({'a'})" not in source_text
 
-    def test_autofix_dry_run_creates_missing_constants_module(
+    def test_autofix_dry_run_fails_missing_constants_module(
         self,
         tmp_path: Path,
     ) -> None:
-        """Dry-run can plan a constants module that does not exist yet."""
+        """Dry-run fails loud when the canonical constants module is absent."""
         pkg = tmp_path / "src" / "demo"
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -382,19 +384,15 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             encoding="utf-8",
         )
 
-        result = FlextInfraRefactorClassvarConstantAutofix.apply(
-            tmp_path,
-            "demo.service.DemoService",
-            "GROUPS",
-            "demo._constants",
-            dry_run=True,
-        )
+        with pytest.raises(TypeError, match=r"constants module demo\._constants"):
+            FlextInfraRefactorClassvarConstantAutofix.apply(
+                tmp_path,
+                "demo.service.DemoService",
+                "GROUPS",
+                "demo._constants",
+                dry_run=True,
+            )
 
-        target_text = result["target_text"]
-        assert isinstance(target_text, str)
-        assert '"""Constants for demo._constants."""' in target_text
-        assert "from __future__ import annotations" in target_text
-        assert "GROUPS = frozenset({'a'})" in target_text
         assert not constants_mod.exists()
 
     def test_autofix_dry_run_resolves_project_tests_package(
@@ -406,6 +404,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         tests_pkg.mkdir(parents=True)
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
         (tests_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (tests_pkg / "_constants.py").write_text('"""Constants."""\n', encoding="utf-8")
         (tests_pkg / "test_execution_result.py").write_text(
             "class TestsDemo:\n"
             "    TEST_VALUE = 1.5\n"
@@ -448,6 +447,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         pkg = tmp_path / "src" / "demo"
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").write_text("", encoding="utf-8")
+        (pkg / "_constants.py").write_text('"""Constants."""\n', encoding="utf-8")
         service = pkg / "service.py"
         service.write_text(
             '"""Demo service."""\n\n'
@@ -469,9 +469,73 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         )
 
         source_text = service.read_text(encoding="utf-8")
-        assert (
-            '"""Demo service."""\n\nfrom __future__ import annotations\nfrom . import _constants\n'
-            in source_text
+        assert "from __future__ import annotations" in source_text
+        assert "from . import _constants" in source_text
+        assert source_text.index("from __future__ import annotations") < source_text.index(
+            "from . import _constants",
         )
         assert '"""Return value."""\nfrom . import _constants' not in source_text
         assert "return _constants.VALUE" in source_text
+
+    def test_autofix_apply_moves_multiline_classvar_to_src_constants(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Apply mode moves multiline constants to the package src tree."""
+        pkg = tmp_path / "src" / "demo"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        constants_pkg = pkg / "_constants"
+        constants_pkg.mkdir()
+        (constants_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (constants_pkg / "factory.py").write_text(
+            '"""Factory constants."""\n',
+            encoding="utf-8",
+        )
+        (pkg / "typings.py").write_text(
+            "from typing import TypeAlias\n\n"
+            "JsonMapping: TypeAlias = dict[str, int | bool]\n",
+            encoding="utf-8",
+        )
+        service = pkg / "service.py"
+        service.write_text(
+            '"""Demo service."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from collections.abc import Mapping\n"
+            "from typing import ClassVar\n\n"
+            "from demo.typings import t\n\n"
+            "class DemoService:\n"
+            "    PRESETS: ClassVar[Mapping[str, t.JsonMapping]] = {\n"
+            '        "development": {\n'
+            '            "batch_size": 100,\n'
+            '            "enabled": True,\n'
+            "        },\n"
+            "    }\n\n"
+            "    def run(self) -> t.JsonMapping:\n"
+            '        return self.PRESETS["development"]\n',
+            encoding="utf-8",
+        )
+
+        FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "demo.service.DemoService",
+            "PRESETS",
+            "demo._constants.factory",
+            dry_run=False,
+        )
+
+        constants = pkg / "_constants" / "factory.py"
+        constants_init = pkg / "_constants" / "__init__.py"
+        source_text = service.read_text(encoding="utf-8")
+        constants_text = constants.read_text(encoding="utf-8")
+        assert constants.exists()
+        assert constants_init.exists()
+        assert "PRESETS: ClassVar" not in source_text
+        assert 'return factory.PRESETS["development"]' in source_text
+        assert "from ._constants import factory" in source_text
+        assert "from collections.abc import Mapping" in constants_text
+        assert "from typing import ClassVar" not in constants_text
+        assert "from demo.typings import t" in constants_text
+        assert "PRESETS: Mapping[str, t.JsonMapping]" in constants_text
+        assert '    "development": {' in constants_text
+        assert '"batch_size": 100' in constants_text

@@ -5,16 +5,20 @@ from __future__ import annotations
 import importlib
 import subprocess
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import ClassVar, override
 
 import pytest
 
 from flext_core import FlextUtilitiesEnforcement, r
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import m, p, t, u
+from flext_infra.fixers.base import FlextInfraFixerAdapter
+from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.orchestrator import (
     FlextInfraEnforcementFixerOrchestrator,
 )
+from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -137,6 +141,44 @@ class TestsEnforcementFixerOrchestrator:
         assert len(violations) == 1
         assert getattr(violations[0][1], "file_path", "") == str(project_dir)
 
+    def test_missing_selected_project_fails_resolution(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A typoed project filter is a hard failure, not a zero-project success."""
+        demo = m.Infra.ProjectInfo(name="demo", path=tmp_path / "demo", stack="python")
+
+        def fake_projects(
+            workspace_root: Path,
+        ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
+            _ = workspace_root
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].ok((demo,))
+
+        monkeypatch.setattr(u.Infra, "projects", staticmethod(fake_projects))
+        orchestrator = FlextInfraEnforcementFixerOrchestrator(
+            workspace=tmp_path,
+            selected_projects=("missing",),
+        )
+
+        result = orchestrator._resolve_projects()
+
+        assert result.failure
+        assert "missing" in (result.error or "")
+
+    def test_explicit_unsafe_rule_fails_under_safe_only(self) -> None:
+        """Explicit unsafe fix requests must fail instead of becoming no-op success."""
+        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
+        orchestrator = FlextInfraEnforcementFixerOrchestrator(
+            workspace=Path("/tmp"),
+            selected_projects=("demo",),
+            rules=("ENFORCE-067",),
+            safe_only=True,
+        )
+
+        with pytest.raises(ValueError, match="unsafe under --safe-only"):
+            orchestrator._selected_rules(catalog)
+
     def test_unhandled_fix_action_fails_project(self, tmp_path: Path) -> None:
         """Adapterless selected rules are explicit failures, not dropped work."""
         project_dir = tmp_path / "demo"
@@ -152,6 +194,125 @@ class TestsEnforcementFixerOrchestrator:
         assert len(results) == 1
         assert len(results[0].failed) == 1
         assert "no registered fixer adapter" in results[0].failed[0].error
+
+    def test_adapter_exception_is_failed_fix(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Adapter exceptions are structured failures, never orchestrator crashes."""
+
+        class ExplodingAdapter(FlextInfraFixerAdapter):
+            kind: ClassVar[str] = "transformer"
+
+            @override
+            def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+                return fix_action.kind == self.kind
+
+            @override
+            def fix_project(
+                self,
+                project_dir: Path,
+                violations: t.SequenceOf[
+                    tuple[me.EnforcementRuleSpec, p.AttributeProbe]
+                ],
+                ctx: m.Infra.FixEnforcementCommand,
+            ) -> fr.ProjectFixResult:
+                _ = project_dir, violations, ctx
+                msg = "adapter exploded"
+                raise RuntimeError(msg)
+
+        monkeypatch.setattr(
+            FlextInfraEnforcementFixerOrchestrator,
+            "_ADAPTER_CLASSES",
+            (ExplodingAdapter,),
+        )
+        project_dir = tmp_path / "demo"
+        source_file = project_dir / "src" / "demo" / "sample.py"
+        source_file.parent.mkdir(parents=True)
+        source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
+        project = m.Infra.ProjectInfo(name="demo", path=project_dir, stack="python")
+        orchestrator = self._orchestrator(tmp_path)
+        monkeypatch.setattr(
+            orchestrator,
+            "_collect_violations",
+            lambda project_dir, rules: ([(rules[0], SimpleNamespace(file_path=str(source_file)))], []),
+        )
+
+        results = orchestrator._fix_project(project, (self._rule("ENFORCE-008"),))
+
+        assert len(results) == 1
+        assert len(results[0].failed) == 1
+        assert "adapter exploded" in results[0].failed[0].error
+
+    def test_gate_dry_run_uses_non_mutating_fix_preview(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Gate dry-run uses the non-mutating fix preview path."""
+
+        class FakeGate:
+            can_fix: ClassVar[bool] = True
+            checked: ClassVar[bool] = False
+            previewed: ClassVar[bool] = False
+
+            def __init__(self, workspace_root: Path) -> None:
+                self.workspace_root = workspace_root
+
+            def check(
+                self,
+                project_dir: Path,
+                ctx: m.Infra.GateContext,
+            ) -> m.Infra.GateExecution:
+                _ = self.workspace_root, ctx
+                msg = "dry-run must not execute gate checks"
+                raise AssertionError(msg)
+
+            def fix(
+                self,
+                project_dir: Path,
+                ctx: m.Infra.GateContext,
+            ) -> m.Infra.GateExecution:
+                assert ctx.check_only is True
+                assert ctx.apply_fixes is False
+                FakeGate.previewed = True
+                return m.Infra.GateExecution(
+                    result=m.Infra.GateResult(
+                        gate="smells",
+                        project=project_dir.name,
+                        passed=True,
+                    ),
+                    issues=(),
+                    raw_output="preview only",
+                )
+
+        class FakeRegistry:
+            def get(self, target: str) -> type[FakeGate] | None:
+                return FakeGate if target == "smells" else None
+
+        def fake_registry(self: FlextInfraGateFixerAdapter) -> FakeRegistry:
+            _ = self
+            return FakeRegistry()
+
+        monkeypatch.setattr(FlextInfraGateFixerAdapter, "_registry", fake_registry)
+        adapter = FlextInfraGateFixerAdapter(tmp_path)
+        project_dir = tmp_path / "demo"
+
+        result = adapter.fix_project(
+            project_dir,
+            ((self._rule("ENFORCE-074"), SimpleNamespace(file_path=str(project_dir))),),
+            m.Infra.FixEnforcementCommand(
+                workspace=str(tmp_path),
+                projects=("demo",),
+                apply=False,
+            ),
+        )
+
+        assert FakeGate.checked is False
+        assert FakeGate.previewed is True
+        assert len(result.previewed) == 1
+        assert result.failed == ()
 
     def test_command_ctx_forces_check_after_false_in_dry_run(self) -> None:
         """Dry-run must not request post-fix checks that could rewrite files."""
@@ -214,6 +375,8 @@ class TestsEnforcementFixerOrchestrator:
                 str(workspace_root),
                 "--projects",
                 project_dir.name,
+                "--rules",
+                "ENFORCE-079",
                 "--no-check-after",
             ],
             cwd=str(workspace_root),
@@ -222,6 +385,11 @@ class TestsEnforcementFixerOrchestrator:
             check=False,
         )
         post_status = git_status()
+        assert result.returncode == 0, (
+            f"dry-run failed\n"
+            f"stdout: {result.stdout}\n"
+            f"stderr: {result.stderr}"
+        )
         assert pre_status == post_status, (
             f"dry-run mutated the worktree\n"
             f"stdout: {result.stdout}\n"

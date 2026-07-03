@@ -113,10 +113,33 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
             workspace=self._workspace_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
-            check_only=ctx.dry_run,
+            check_only=not ctx.apply,
             fail_fast=ctx.fail_fast,
         )
-        execution = gate.fix(project_dir, gate_ctx)
+        try:
+            execution = gate.fix(project_dir, gate_ctx)
+        except c.EXC_BROAD_RUNTIME as exc:
+            return fr.ProjectFixResult(
+                project=project_dir.name,
+                failed=(
+                    fr.FailedFix(
+                        rule_id=rule.id,
+                        file_path=str(project_dir),
+                        error=(
+                            f"gate {fix_action.target} execution failed: "
+                            f"{type(exc).__name__}: {exc}"
+                        ),
+                    ),
+                ),
+            )
+        if not ctx.apply:
+            return self._preview_from_violations(
+                project_dir=project_dir,
+                rule=rule,
+                target=fix_action.target,
+                violations=violations,
+                execution=execution,
+            )
         fixed: list[fr.FixedViolation] = []
         previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
@@ -158,6 +181,47 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
             previewed=tuple(previewed),
             skipped=tuple(skipped),
             failed=tuple(failed),
+        )
+
+    def _preview_from_violations(
+        self,
+        *,
+        project_dir: Path,
+        rule: me.EnforcementRuleSpec,
+        target: str,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        execution: m.Infra.GateExecution,
+    ) -> fr.ProjectFixResult:
+        """Build a dry-run result from the non-mutating gate fix preview."""
+        if execution.result.passed:
+            violation_count = len(violations)
+            if violation_count:
+                return fr.ProjectFixResult(
+                    project=project_dir.name,
+                    previewed=(
+                        fr.PreviewedViolation(
+                            rule_id=rule.id,
+                            file_path=str(project_dir),
+                            message=(
+                                f"would run gate {target} fix for "
+                                f"{violation_count} collected violation(s)"
+                            ),
+                        ),
+                    ),
+                )
+            return fr.ProjectFixResult(project=project_dir.name)
+        details = execution.raw_output or "; ".join(
+            issue.formatted for issue in execution.issues
+        )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            failed=(
+                fr.FailedFix(
+                    rule_id=rule.id,
+                    file_path=str(project_dir),
+                    error=details or f"gate {target} check failed",
+                ),
+            ),
         )
 
 

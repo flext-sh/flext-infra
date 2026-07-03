@@ -134,6 +134,18 @@ class FlextInfraEnforcementFixerOrchestrator(
                     f"{', '.join(sorted(unrequestable))}"
                 )
                 raise ValueError(unrequestable_msg)
+            if self.safe_only:
+                unsafe = {
+                    rule.id
+                    for rule in candidates
+                    if rule.fix_action is not None and not rule.fix_action.safe
+                }
+                if unsafe:
+                    unsafe_msg = (
+                        "Requested rules are unsafe under --safe-only: "
+                        f"{', '.join(sorted(unsafe))}"
+                    )
+                    raise ValueError(unsafe_msg)
             adapterless = {
                 rule.id for rule in candidates if not self._has_adapter(rule)
             }
@@ -172,8 +184,20 @@ class FlextInfraEnforcementFixerOrchestrator(
             )
         discovered = tuple(projects_result.unwrap())
         scope = frozenset(self.project_names or ())
+        available_names = {
+            name
+            for project in discovered
+            for name in (project.name, project.path.name)
+            if name
+        }
+        missing = scope - available_names
+        if missing:
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
+                "Requested projects were not discovered: "
+                f"{', '.join(sorted(missing))}",
+            )
         selected = (
-            tuple(p for p in discovered if p.path.name in scope)
+            tuple(p for p in discovered if p.name in scope or p.path.name in scope)
             if scope
             else discovered
         )
@@ -223,7 +247,32 @@ class FlextInfraEnforcementFixerOrchestrator(
                     return tuple(results)
             if not violations:
                 continue
-            result = adapter.fix_project(project_dir, violations, self._command_ctx())
+            try:
+                result = adapter.fix_project(
+                    project_dir,
+                    violations,
+                    self._command_ctx(),
+                )
+            except c.EXC_BROAD_RUNTIME as exc:
+                rule_id = violations[0][0].id
+                results.append(
+                    fr.ProjectFixResult(
+                        project=project_dir.name,
+                        failed=(
+                            fr.FailedFix(
+                                rule_id=rule_id,
+                                file_path=str(project_dir),
+                                error=(
+                                    f"{adapter_cls.__name__} failed: "
+                                    f"{type(exc).__name__}: {exc}"
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+                if self.fail_fast:
+                    return tuple(results)
+                continue
             results.append(result)
             if result.failed and self.fail_fast:
                 return tuple(results)

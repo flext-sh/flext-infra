@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+import re
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -24,6 +27,10 @@ if TYPE_CHECKING:
 
 
 _DOCSTRING_DELIMITER_COUNT = 2
+_CLASSVAR_DECLARATION_PATTERN = re.compile(
+    r"^([A-Z][A-Z0-9_]*:\s*)ClassVar\[(.*)\](\s*=)",
+    re.DOTALL,
+)
 
 
 @dataclass(frozen=True)
@@ -74,14 +81,18 @@ class FlextInfraRefactorClassvarConstantAutofix:
         class_module, class_name = class_full_name.rsplit(".", maxsplit=1)
         source_mod = project.get_module(class_module)
         source_resource = source_mod.get_resource()
+        if not isinstance(source_resource, File):
+            msg = f"{class_module} did not resolve to a file resource"
+            raise TypeError(msg)
         pyclass = source_mod.get_attribute(class_name).get_object()
         if not isinstance(pyclass, PyClass):
             # Expected PyClass; if rope gives something else, fail loud.
             msg = f"{class_full_name} did not resolve to a class"
             raise TypeError(msg)
-        class_lineno = _class_start_lineno(source_resource.read(), class_name)
+        source_text = source_resource.read()
+        class_lineno = _class_start_lineno(source_text, class_name)
         declaration_line = _extract_declaration_line(
-            source_resource.read(),
+            source_text,
             class_name,
             constant_name,
             class_lineno,
@@ -89,6 +100,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
         target_resource = _target_resource_for_module(
             project,
             constants_module,
+            class_module,
+            source_resource,
         )
         return ClassvarConstantAutofixPlan(
             class_module=class_module,
@@ -151,10 +164,16 @@ class FlextInfraRefactorClassvarConstantAutofix:
             source_text,
             plan.declaration_line,
             plan.class_lineno,
+            plan.class_name,
+            plan.constant_name,
         )
 
         # 2. Append the constant to the target _constants module.
-        new_target = _append_constant(target_text, plan.declaration_line)
+        new_target = _append_constant(
+            target_text,
+            plan.declaration_line,
+            plan.constants_module,
+        )
 
         # 3. Rewrite internal references from ClassName.NAME / cls.NAME /
         # self.__class__.NAME to the canonical constants module access.
@@ -224,8 +243,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
             plan.constants_module,
         )
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(new_target, encoding="utf-8")
+        _write_target_module(target_path, new_target)
 
         # 6. Apply remaining rewrites to other resources.
         for resource in project.get_python_files():
@@ -255,17 +273,42 @@ def _class_start_lineno(source: str, class_name: str) -> int:
 def _target_resource_for_module(
     project: Project,
     constants_module: str,
+    class_module: str,
+    source_resource: File,
 ) -> t.Infra.RopeResource:
     """Return the existing or creatable sibling constants module resource."""
     try:
         target_mod = project.get_module(constants_module)
-        target_resource = target_mod.get_resource()
-        if isinstance(target_resource, File):
-            return target_resource
     except RopeModuleNotFoundError:
-        pass
-    constants_file = Path(*constants_module.split(".")).with_suffix(".py")
-    return project.get_file(str(constants_file))
+        constants_file = _missing_module_path(
+            constants_module,
+            class_module,
+            source_resource.path,
+        )
+        return project.get_file(str(constants_file))
+    target_resource = target_mod.get_resource()
+    if not isinstance(target_resource, File):
+        msg = f"constants module {constants_module} did not resolve to a file resource"
+        raise TypeError(msg)
+    return target_resource
+
+
+def _missing_module_path(
+    constants_module: str,
+    class_module: str,
+    source_resource_path: str,
+) -> Path:
+    """Return the project-relative file for a missing constants module."""
+    source_path = Path(source_resource_path)
+    class_file = Path(*class_module.split(".")).with_suffix(".py")
+    source_parts = source_path.parts
+    class_parts = class_file.parts
+    if len(source_parts) >= len(class_parts) and (
+        source_parts[-len(class_parts) :] == class_parts
+    ):
+        prefix = source_parts[: -len(class_parts)]
+        return Path(*prefix, *constants_module.split(".")).with_suffix(".py")
+    return Path(*constants_module.split(".")).with_suffix(".py")
 
 
 def _new_constants_module_source(constants_module: str) -> str:
@@ -276,6 +319,16 @@ def _new_constants_module_source(constants_module: str) -> str:
     )
 
 
+def _write_target_module(target_path: Path, target_text: str) -> None:
+    """Write a generated constants module and package marker."""
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    if target_path.parent.name == "_constants":
+        init_path = target_path.parent / "__init__.py"
+        if not init_path.exists():
+            init_path.write_text('"""Constants package."""\n', encoding="utf-8")
+    target_path.write_text(target_text, encoding="utf-8")
+
+
 def _extract_declaration_line(
     source: str,
     class_name: str,
@@ -283,6 +336,24 @@ def _extract_declaration_line(
     class_lineno: int,
 ) -> str:
     """Return the exact source line that declares the class-level constant."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        tree = None
+    if tree is not None:
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef) or node.name != class_name:
+                continue
+            for statement in node.body:
+                if not _statement_declares_name(statement, constant_name):
+                    continue
+                segment = ast.get_source_segment(source, statement)
+                if segment is not None:
+                    return _normalize_declaration_source(segment)
+                return _normalize_declaration_source(
+                    _statement_source_by_lines(source, statement),
+                )
+            break
     lines = source.splitlines()
     for idx in range(class_lineno, len(lines)):
         line = lines[idx]
@@ -295,22 +366,117 @@ def _extract_declaration_line(
     raise ValueError(msg)
 
 
+def _statement_declares_name(statement: ast.stmt, constant_name: str) -> bool:
+    """Return whether ``statement`` declares ``constant_name``."""
+    if isinstance(statement, ast.AnnAssign):
+        return (
+            isinstance(statement.target, ast.Name)
+            and statement.target.id == constant_name
+        )
+    if isinstance(statement, ast.Assign):
+        return any(
+            isinstance(target, ast.Name) and target.id == constant_name
+            for target in statement.targets
+        )
+    return False
+
+
+def _statement_source_by_lines(source: str, statement: ast.stmt) -> str:
+    """Return statement source using AST line metadata."""
+    lines = source.splitlines()
+    start = max(getattr(statement, "lineno", 1), 1)
+    end = max(getattr(statement, "end_lineno", start), start)
+    return "\n".join(lines[start - 1 : end])
+
+
+def _normalize_declaration_source(source: str) -> str:
+    """Return declaration source normalized for module-level placement."""
+    lines = textwrap.dedent(source.rstrip()).splitlines()
+    if len(lines) <= 1 or lines[0].startswith((" ", "\t")):
+        return "\n".join(lines)
+    tail = lines[1:]
+    indents = [len(line) - len(line.lstrip()) for line in tail if line.strip()]
+    if not indents:
+        return "\n".join(lines)
+    trim = min(indents)
+    if trim <= 0:
+        return "\n".join(lines)
+    return "\n".join((lines[0], *(line[trim:] if line.strip() else line for line in tail)))
+
+
 def _remove_declaration_line(
     source: str,
     declaration_line: str,
     class_lineno: int,
+    class_name: str,
+    constant_name: str,
 ) -> str:
     """Remove the constant declaration from the class body, preserving layout."""
     lines = source.splitlines(keepends=True)
+    ast_removed = _remove_declaration_by_ast(
+        source,
+        lines,
+        class_name,
+        constant_name,
+    )
+    if ast_removed is not None:
+        return ast_removed
     for idx in range(class_lineno - 1, len(lines)):
-        if lines[idx].rstrip() == declaration_line:
+        if _declaration_block_matches(lines, declaration_line, idx):
             # Also remove the blank line that typically precedes it, if any.
+            end_idx = idx + len(declaration_line.splitlines())
             if idx > 0 and not lines[idx - 1].strip():
-                del lines[idx - 1 : idx + 1]
+                del lines[idx - 1 : end_idx]
             else:
-                del lines[idx : idx + 1]
+                del lines[idx:end_idx]
             return "".join(lines)
     return source
+
+
+def _remove_declaration_by_ast(
+    source: str,
+    lines: list[str],
+    class_name: str,
+    constant_name: str,
+) -> str | None:
+    """Remove a class-body declaration using AST line metadata."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for statement in node.body:
+            if not _statement_declares_name(statement, constant_name):
+                continue
+            start = max(statement.lineno - 1, 0)
+            end = max(
+                getattr(statement, "end_lineno", statement.lineno),
+                statement.lineno,
+            )
+            delete_start = (
+                start - 1 if start > 0 and not lines[start - 1].strip() else start
+            )
+            del lines[delete_start:end]
+            return "".join(lines)
+    return None
+
+
+def _declaration_block_matches(
+    lines: t.SequenceOf[str],
+    declaration_line: str,
+    start: int,
+) -> bool:
+    """Return whether source lines at ``start`` match the declaration block."""
+    declaration_lines = declaration_line.splitlines()
+    if not declaration_lines or start + len(declaration_lines) > len(lines):
+        return False
+    source_block = "".join(lines[start : start + len(declaration_lines)]).rstrip()
+    return source_block == declaration_line or (
+        textwrap.dedent(source_block).rstrip()
+        == textwrap.dedent(declaration_line).rstrip()
+    )
 
 
 def _apply_edits(
@@ -323,11 +489,82 @@ def _apply_edits(
     return text
 
 
-def _append_constant(target_text: str, declaration_line: str) -> str:
+def _append_constant(
+    target_text: str,
+    declaration_line: str,
+    constants_module: str,
+) -> str:
     """Append the constant declaration to the target module source."""
-    trimmed = target_text.rstrip()
-    dedented = declaration_line.lstrip()
+    module_declaration = _module_level_declaration_source(declaration_line)
+    with_imports = _ensure_declaration_imports(
+        target_text,
+        module_declaration,
+        constants_module,
+    )
+    trimmed = with_imports.rstrip()
+    dedented = textwrap.dedent(module_declaration).strip()
     return f"{trimmed}\n\n{dedented}\n"
+
+
+def _module_level_declaration_source(declaration_line: str) -> str:
+    """Return a declaration valid at module level."""
+    return _CLASSVAR_DECLARATION_PATTERN.sub(r"\1\2\3", declaration_line, count=1)
+
+
+def _ensure_declaration_imports(
+    target_text: str,
+    declaration_line: str,
+    constants_module: str,
+) -> str:
+    """Add imports needed by the moved declaration."""
+    stdlib_imports: list[str] = []
+    typing_names: list[str] = []
+    project_imports: list[str] = []
+    if "Mapping[" in declaration_line:
+        stdlib_imports.append("from collections.abc import Mapping\n")
+    if "MappingProxyType(" in declaration_line:
+        stdlib_imports.append("from types import MappingProxyType\n")
+    if "ClassVar[" in declaration_line:
+        typing_names.append("ClassVar")
+    if "Final[" in declaration_line:
+        typing_names.append("Final")
+    if "t." in declaration_line:
+        package_name = constants_module.split(".", maxsplit=1)[0]
+        project_imports.append(f"from {package_name}.typings import t\n")
+    if typing_names:
+        names = ", ".join(sorted(set(typing_names)))
+        stdlib_imports.append(f"from typing import {names}\n")
+    return _insert_missing_import_lines(
+        target_text,
+        (*sorted(stdlib_imports), *sorted(project_imports)),
+    )
+
+
+def _insert_missing_import_lines(source: str, import_lines: t.StrSequence) -> str:
+    """Insert missing import lines after the module header/future imports."""
+    missing = [line for line in import_lines if line.strip() not in source]
+    if not missing:
+        return source
+    lines = source.splitlines(keepends=True)
+    insert_after = _module_import_insert_after(lines)
+    stdlib = [line for line in missing if not _is_project_import_line(line)]
+    project = [line for line in missing if _is_project_import_line(line)]
+    block: list[str] = ["\n"]
+    block.extend(stdlib)
+    if project:
+        block.append("\n")
+        block.extend(project)
+    block.append("\n")
+    if insert_after >= 0:
+        lines[insert_after + 1 : insert_after + 1] = block
+    else:
+        lines[0:0] = block
+    return "".join(lines)
+
+
+def _is_project_import_line(import_line: str) -> bool:
+    """Return whether an import line targets the moved constant package."""
+    return ".typings import t" in import_line
 
 
 def _attribute_prefix(source: str, offset: int) -> str:
@@ -375,8 +612,14 @@ def _ensure_constants_import(
     rel_parts = constants_parts[common:]
     if ups == 0 and rel_parts == [constants_alias]:
         import_line = f"from . import {constants_alias}\n"
+    elif ups == 0 and len(rel_parts) > 1:
+        import_line = f"from .{'.'.join(rel_parts[:-1])} import {constants_alias}\n"
     elif ups == 0 and rel_parts:
         import_line = f"from .{'.'.join(rel_parts)} import {constants_alias}\n"
+    elif ups > 0 and len(rel_parts) > 1:
+        import_line = (
+            f"from {'.' * ups}{'.'.join(rel_parts[:-1])} import {constants_alias}\n"
+        )
     elif ups > 0 and rel_parts:
         import_line = (
             f"from {'.' * ups}{'.'.join(rel_parts)} import {constants_alias}\n"
@@ -390,12 +633,47 @@ def _ensure_constants_import(
     existing = {line.strip() for line in lines}
     if import_line.strip() in existing:
         return source
-    insert_after = _module_import_insert_after(lines)
-    if insert_after >= 0:
-        lines.insert(insert_after + 1, import_line)
-    else:
-        lines.insert(0, import_line)
+    _insert_local_import_line(lines, import_line)
     return "".join(lines)
+
+
+def _insert_local_import_line(lines: list[str], import_line: str) -> None:
+    """Insert a relative import after the module import block."""
+    insert_after = _module_import_block_end(lines)
+    insert_at = insert_after + 1 if insert_after >= 0 else 0
+    block = []
+    if insert_at > 0 and lines[insert_at - 1].strip():
+        block.append("\n")
+    block.append(import_line)
+    if insert_at < len(lines) and lines[insert_at].strip():
+        block.append("\n")
+    lines[insert_at:insert_at] = block
+
+
+def _module_import_block_end(lines: t.StrSequence) -> int:
+    """Return the last line index of the module import block."""
+    idx = _module_import_insert_after(lines) + 1
+    last_import = idx - 1
+    paren_depth = 0
+    while idx < len(lines):
+        stripped = lines[idx].strip()
+        if paren_depth > 0:
+            paren_depth += lines[idx].count("(") - lines[idx].count(")")
+            last_import = idx
+            idx += 1
+            continue
+        if not stripped:
+            idx += 1
+            continue
+        if stripped.startswith(("import ", "from ")) and not stripped.startswith(
+            "from __future__ import",
+        ):
+            paren_depth += lines[idx].count("(") - lines[idx].count(")")
+            last_import = idx
+            idx += 1
+            continue
+        break
+    return last_import
 
 
 def _module_import_insert_after(lines: t.StrSequence) -> int:
