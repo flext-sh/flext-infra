@@ -125,8 +125,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=target_violations[0][0].id,
                             file_path=str(file_path),
                             reason=(
-                                f"project {project_dir.name} owns library "
-                                "abstraction"
+                                f"project {project_dir.name} owns library abstraction"
                             ),
                         ),
                     )

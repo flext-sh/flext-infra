@@ -91,7 +91,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             and not set(path.relative_to(resolved_root).parts)
             & c.Infra.ITERATION_EXCLUDED_PARTS
         }
-        return tuple(sorted(python_paths | stub_paths, key=lambda path: path.as_posix()))
+        return tuple(
+            sorted(python_paths | stub_paths, key=lambda path: path.as_posix())
+        )
 
     @classmethod
     def _collect_modules(

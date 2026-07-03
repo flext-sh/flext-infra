@@ -418,8 +418,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
         else:
             raw = rule.id.lower().replace("-", "_")
         return (
-            raw.removesuffix("_violations").removesuffix("_violation")
-            or "declarative"
+            raw.removesuffix("_violations").removesuffix("_violation") or "declarative"
         )
 
     @staticmethod

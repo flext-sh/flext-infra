@@ -180,13 +180,11 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         """Return synthetic module entries for selected workspace ``.pyi`` files."""
         known_paths = frozenset(module.file_path.resolve() for module in modules)
         roots = tuple(
-            sorted(
-                {
-                    module.project_root.resolve()
-                    for module in modules
-                    if module.project_root is not None
-                }
-            )
+            sorted({
+                module.project_root.resolve()
+                for module in modules
+                if module.project_root is not None
+            })
         )
         project_filter = frozenset(project_names or ())
         entries: list[m.Infra.RopeModuleIndexEntry] = []

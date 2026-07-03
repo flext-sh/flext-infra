@@ -219,9 +219,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             encoding="utf-8",
         )
         (workspace / "pyproject.toml").write_text(
-            "[project]\n"
-            f'name = "{project_name}"\n'
-            'version = "0.1.0"\n',
+            f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
         return workspace
