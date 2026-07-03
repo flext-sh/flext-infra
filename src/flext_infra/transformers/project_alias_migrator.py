@@ -14,7 +14,6 @@ from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
-
 # Map canonical alias → local facade module suffix inside a FLEXT project.
 _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {
     "c": "constants",
