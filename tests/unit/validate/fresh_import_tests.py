@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from flext_tests import tm
 
@@ -84,6 +86,16 @@ class TestFreshImportValidatorCore:
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys", "os")))
         tm.that(report.summary, has="import")
+
+    def test_workspace_src_package_passes(self, tmp_path: Path) -> None:
+        package_root = tmp_path / "src" / "demo_external"
+        package_root.mkdir(parents=True)
+        package_root.joinpath("__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+        validator = FlextInfraValidateFreshImport(workspace=tmp_path)
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(packages=("demo_external",))
+        )
+        assert report.passed, report.violations
 
 
 class TestFreshImportValidatorFlextPackages:

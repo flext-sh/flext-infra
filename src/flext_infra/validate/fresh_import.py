@@ -63,12 +63,17 @@ class FlextInfraValidateFreshImport(s[bool]):
 
         """
         violations: t.MutableSequenceOf[str] = []
+        env = self._workspace_import_env()
         for package in packages:
-            smoke_result = u.Cli.run_raw([
-                sys.executable,
-                "-c",
-                f"import {package}",
-            ])
+            smoke_result = u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    f"import {package}",
+                ],
+                cwd=self.workspace_root,
+                env=env,
+            )
             if smoke_result.failure:
                 violations.append(
                     f"{package}: {smoke_result.error or 'execution error'}"
@@ -94,6 +99,21 @@ class FlextInfraValidateFreshImport(s[bool]):
                 violations=list(violations),
                 summary=summary,
             ),
+        )
+
+    def _workspace_import_env(self) -> t.StrMapping:
+        """Return subprocess env that can import the selected workspace package."""
+        inherited_env = u.Cli.process_env()
+        import_roots = (
+            str(self.workspace_root),
+            str(self.workspace_root / c.Infra.DEFAULT_SRC_DIR),
+        )
+        existing_pythonpath = inherited_env.get(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, "")
+        pythonpath = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
+            part for part in (*import_roots, existing_pythonpath) if part
+        )
+        return u.Cli.process_env(
+            overrides={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: pythonpath},
         )
 
     @override

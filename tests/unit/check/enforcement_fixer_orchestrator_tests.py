@@ -15,6 +15,7 @@ from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import m, p, t, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
+from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import (
     FlextInfraEnforcementFixerOrchestrator,
 )
@@ -207,6 +208,75 @@ class TestsEnforcementFixerOrchestrator:
         assert result.files_modified == (str(stub_file),)
         assert not result.failed
 
+    def test_manual_fix_dry_run_previews_without_mutation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Manual fix actions produce explicit previews in dry-run."""
+        rule = self._rule("ENFORCE-097")
+        assert rule.fix_action is not None
+        adapter = FlextInfraManualFixerAdapter(tmp_path)
+        assert adapter.can_fix(rule.fix_action)
+        source_file = tmp_path / "demo" / "src" / "demo" / "sample.py"
+        source_file.parent.mkdir(parents=True)
+        source_file.write_text("VALUE = 42\n", encoding="utf-8")
+
+        result = adapter.fix_project(
+            tmp_path / "demo",
+            (
+                (
+                    rule,
+                    SimpleNamespace(
+                        file_path=str(source_file),
+                        line=1,
+                        literal="42",
+                    ),
+                ),
+            ),
+            m.Infra.FixEnforcementCommand(
+                workspace=str(tmp_path),
+                projects=("demo",),
+                apply=False,
+            ),
+        )
+
+        assert source_file.read_text(encoding="utf-8") == "VALUE = 42\n"
+        assert len(result.previewed) == 1
+        assert "magic literal 42" in result.previewed[0].message
+        assert result.fixed == ()
+        assert result.failed == ()
+
+    def test_manual_fix_apply_fails_loudly(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Manual fix actions cannot be reported as applied automatically."""
+        rule = self._rule("ENFORCE-097")
+        adapter = FlextInfraManualFixerAdapter(tmp_path)
+
+        result = adapter.fix_project(
+            tmp_path / "demo",
+            (
+                (
+                    rule,
+                    SimpleNamespace(
+                        file_path=str(tmp_path / "demo" / "sample.py"),
+                        line=7,
+                        literal="42",
+                    ),
+                ),
+            ),
+            m.Infra.FixEnforcementCommand(
+                workspace=str(tmp_path),
+                projects=("demo",),
+                apply=True,
+            ),
+        )
+
+        assert result.previewed == ()
+        assert len(result.failed) == 1
+        assert "manual fix required for ENFORCE-097" in result.failed[0].error
+
     def test_code_smell_gate_collects_project_probe(self, tmp_path: Path) -> None:
         """Gate-backed smell fixes get an explicit project-level probe."""
         project_dir = tmp_path / "demo"
@@ -268,8 +338,17 @@ class TestsEnforcementFixerOrchestrator:
             selected_projects=("demo",),
             safe_only=False,
         )
+        unsupported_rule = me.EnforcementRuleSpec(
+            id="ENFORCE-999",
+            description="Unsupported fix action",
+            severity=me.EnforcementRuleSeverity.HIGH,
+            source=me.EnforcementRuntimeWarningSource(category="UserWarning"),
+            fix_action=me.EnforcementFixAction(
+                kind="transformer", target="unregistered"
+            ),
+        )
 
-        results = orchestrator._fix_project(project, (self._rule("ENFORCE-069"),))
+        results = orchestrator._fix_project(project, (unsupported_rule,))
 
         assert len(results) == 1
         assert len(results[0].failed) == 1

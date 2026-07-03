@@ -18,6 +18,7 @@ from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.constants import c
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
+from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
@@ -43,6 +44,7 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     _ADAPTER_CLASSES: ClassVar[tuple[type[FlextInfraFixerAdapter], ...]] = (
         FlextInfraGateFixerAdapter,
+        FlextInfraManualFixerAdapter,
         FlextInfraRopeFixerAdapter,
         FlextInfraTransformerFixerAdapter,
     )

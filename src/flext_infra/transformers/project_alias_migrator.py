@@ -13,6 +13,7 @@ from typing import ClassVar, override
 import libcst as cst
 
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
@@ -289,8 +290,12 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply alias migration to source text."""
         self.changes.clear()
-        if self._file_path is not None and self._is_private_facade_implementation(
-            self._file_path
+        if self._file_path is not None and (
+            self._is_private_facade_implementation(self._file_path)
+            or FlextInfraUtilitiesRopeSource.looks_like_facade_file(
+                file_path=self._file_path,
+                source=source,
+            )
         ):
             return source, []
         if not self._current_project or self._current_project in _ALIAS_SOURCE_PACKAGES:

@@ -75,6 +75,7 @@ class FlextInfraConstantsMake:
     "Environment keys removed before project-level make orchestration."
     ORCHESTRATOR_ENV_NO_COLOR: Final[str] = "NO_COLOR"
     ORCHESTRATOR_ENV_PATH: Final[str] = "PATH"
+    ORCHESTRATOR_ENV_PYTHONPATH: Final[str] = "PYTHONPATH"
     ORCHESTRATOR_ENV_PATH_SEPARATOR: Final[str] = ":"
     ORCHESTRATOR_ENV_MISE_SHIMS: Final[str] = "MISE_SHIMS"
     ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
@@ -183,6 +185,38 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
             current_project="flext_core"
+        )
+        updated, changes = transformer.apply_to_source(source)
+        assert updated == source
+        assert changes == []
+
+    def test_keeps_core_aliases_inside_private_facade_implementation(self) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "from flext_core import m, t\n\n"
+            "class Demo(m.Base):\n"
+            "    names: t.StrSequence = ()\n"
+        )
+        transformer = FlextInfraRefactorProjectAliasMigrator(
+            file_path=Path("/workspace/flext-ldif/src/flext_ldif/_models/base.py"),
+        )
+        updated, changes = transformer.apply_to_source(source)
+        assert updated == source
+        assert changes == []
+
+    def test_keeps_core_aliases_inside_public_facade_file(self) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "from flext_core import c\n\n"
+            "class FlextObservabilityConstants(c):\n"
+            "    class Observability:\n"
+            "        VALUE = 1\n\n"
+            "c = FlextObservabilityConstants\n"
+        )
+        transformer = FlextInfraRefactorProjectAliasMigrator(
+            file_path=Path(
+                "/workspace/flext-observability/src/flext_observability/constants.py"
+            ),
         )
         updated, changes = transformer.apply_to_source(source)
         assert updated == source
