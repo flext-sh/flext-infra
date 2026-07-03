@@ -20,13 +20,11 @@ from rope.refactor.importutils.importinfo import (
 )
 
 from flext_cli import u
-from flext_core import (
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_core import r
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
