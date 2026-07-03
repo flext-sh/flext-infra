@@ -57,7 +57,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         project_root: Path,
     ) -> str:
         """Module name for file."""
-        if file_path.name == c.Infra.INIT_PY:
+        if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
             return cls._package_name_for_dir(
                 file_path.parent,
                 project_root=project_root,
@@ -77,6 +77,22 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             c.Infra.AUTOGEN_HEADER
         )
 
+    @staticmethod
+    def _python_and_stub_file_paths(
+        rope_project: t.Infra.RopeProject,
+        resolved_root: Path,
+    ) -> tuple[Path, ...]:
+        """Return indexed Python sources plus hand-written typing stubs."""
+        python_paths = set(FlextInfraUtilitiesRopeCore.python_file_paths(rope_project))
+        stub_paths = {
+            path.resolve()
+            for path in resolved_root.rglob("*.pyi")
+            if path.is_file()
+            and not set(path.relative_to(resolved_root).parts)
+            & c.Infra.ITERATION_EXCLUDED_PARTS
+        }
+        return tuple(sorted(python_paths | stub_paths, key=lambda path: path.as_posix()))
+
     @classmethod
     def _collect_modules(
         cls,
@@ -95,7 +111,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         package_dir_by_name: dict[str, Path] = {}
         project_package_by_root: dict[str, str] = {}
         package_dirs: set[Path] = set()
-        for file_path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project):
+        for file_path in cls._python_and_stub_file_paths(rope_project, resolved_root):
             resolved_file_path = file_path.resolve()
             if cls._is_generated_init_stub(resolved_file_path):
                 continue
@@ -104,7 +120,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             except ValueError:
                 continue
             package_dir = resolved_file_path.parent
-            is_package_init = resolved_file_path.name == c.Infra.INIT_PY
+            is_package_init = resolved_file_path.name in {
+                c.Infra.INIT_PY,
+                c.Infra.INIT_PYI,
+            }
             project_root = cls._project_root_for_file(
                 resolved_root,
                 resolved_file_path,

@@ -40,6 +40,27 @@ class FlextInfraRefactorDeclarativeEnforcement:
         float,
     })
     _MAGIC_STRING_TYPES: ClassVar[frozenset[type[str]]] = frozenset({str})
+    _INFRA_VIOLATION_FIELDS: ClassVar[frozenset[str]] = frozenset({
+        "magic_literal_violations",
+        "stub_file_violations",
+    })
+    _BEARTYPE_PREDICATES: ClassVar[frozenset[str]] = frozenset({
+        "classvar_constant",
+    })
+
+    @classmethod
+    def supports(cls, rule: me.EnforcementRuleSpec) -> bool:
+        """Return whether this engine can evaluate ``rule`` from source metadata."""
+        source = rule.source
+        if source.kind == "flext_infra_detector":
+            return source.violation_field in cls._INFRA_VIOLATION_FIELDS
+        if source.kind == "beartype":
+            predicate_kind = source.predicate_kind
+            return (
+                str(getattr(predicate_kind, "value", predicate_kind))
+                in cls._BEARTYPE_PREDICATES
+            )
+        return False
 
     @classmethod
     def detect(

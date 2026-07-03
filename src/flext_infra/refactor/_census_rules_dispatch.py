@@ -5,8 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_core import FlextUtilitiesEnforcement
+from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.models import m
 from flext_infra.protocols import p
+from flext_infra.refactor.declarative_enforcement import (
+    FlextInfraRefactorDeclarativeEnforcement,
+)
 from flext_infra.typings import t
 
 
@@ -140,6 +145,30 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
         ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        @staticmethod
+        def _detector_context(
+            rope: p.Infra.RopeWorkspaceDsl,
+            file_path: Path,
+            *,
+            convention: m.Infra.RopeModuleConvention | None = None,
+            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
+            | None = None,
+        ) -> m.Infra.DetectorContext: ...
+        @staticmethod
+        def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
+        @staticmethod
+        def _raw_violation(
+            *,
+            project: str,
+            object_name: str,
+            object_kind: str,
+            kind: str,
+            file_path: Path,
+            line: int,
+            description: str,
+            fixable: bool = False,
+            fix_action: str = "",
+        ) -> m.Infra.Census.Violation: ...
 
     def _module_rules(
         self,
@@ -287,7 +316,145 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             )
             violations.extend(v)
             fixes.extend(f)
+        v, f = self._rule_declarative(
+            rope,
+            file_path,
+            project_name=project_name,
+            applied=applied,
+            selected_kinds=resolved_kinds,
+            selected_rules=selected_rules,
+            rule_names=rule_names,
+            convention=resolved_convention,
+        )
+        violations.extend(v)
+        fixes.extend(f)
         return (tuple(violations), tuple(fixes))
+
+    @staticmethod
+    def _declarative_catalog_rules() -> tuple[me.EnforcementRuleSpec, ...]:
+        """Return enabled catalog rules handled by the declarative engine."""
+        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
+        return tuple(
+            rule
+            for rule in catalog.enabled_rules()
+            if FlextInfraRefactorDeclarativeEnforcement.supports(rule)
+        )
+
+    def _rule_declarative(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        *,
+        project_name: str,
+        applied: frozenset[str],
+        selected_kinds: frozenset[str],
+        selected_rules: frozenset[str] | None,
+        rule_names: t.StrSequence | None,
+        convention: m.Infra.RopeModuleConvention,
+    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+        """Run catalog-driven declarative rules for one module."""
+        violations: list[m.Infra.Census.Violation] = []
+        fixes: list[m.Infra.Census.Fix] = []
+        rules = self._declarative_catalog_rules()
+        if not rules:
+            return violations, fixes
+        ctx = self._detector_context(rope, file_path, convention=convention)
+        for rule in rules:
+            if not self._include_rule(
+                rule.id,
+                rule_names=rule_names,
+                selected_rules=selected_rules,
+            ):
+                continue
+            kind = self._declarative_kind(rule)
+            object_kind = self._declarative_object_kind(kind)
+            if selected_kinds and kind not in selected_kinds:
+                continue
+            probes = FlextInfraRefactorDeclarativeEnforcement.detect(rule, ctx)
+            fix_action = rule.fix_action
+            fixable = fix_action is not None and fix_action.safe
+            action = fix_action.target if fix_action is not None else ""
+            for probe in probes:
+                line = getattr(probe, "line", 0)
+                if not isinstance(line, int) or line < 0:
+                    line = 0
+                object_name = self._declarative_object_name(probe, kind)
+                description = self._declarative_description(rule, probe, object_name)
+                violations.append(
+                    self._raw_violation(
+                        project=project_name,
+                        object_name=object_name,
+                        object_kind=object_kind,
+                        kind=kind,
+                        file_path=file_path,
+                        line=line,
+                        description=description,
+                        fixable=fixable,
+                        fix_action=action,
+                    )
+                )
+                if action:
+                    fixes.append(
+                        m.Infra.Census.Fix(
+                            object_name=object_name,
+                            action=action,
+                            source_file=str(file_path),
+                            files_changed=1,
+                            applied=self._fix_key(file_path, object_name, action)
+                            in applied,
+                        )
+                    )
+        return violations, fixes
+
+    @staticmethod
+    def _declarative_kind(rule: me.EnforcementRuleSpec) -> str:
+        """Return the violation kind declared by the catalog source metadata."""
+        source = rule.source
+        if source.kind == "flext_infra_detector":
+            raw = source.violation_field
+        elif source.kind == "beartype":
+            predicate_kind = source.predicate_kind
+            raw = str(getattr(predicate_kind, "value", predicate_kind))
+        else:
+            raw = rule.id.lower().replace("-", "_")
+        return (
+            raw.removesuffix("_violations").removesuffix("_violation")
+            or "declarative"
+        )
+
+    @staticmethod
+    def _declarative_object_kind(kind: str) -> str:
+        """Return a stable object kind from a normalized violation kind."""
+        return kind.rsplit("_", maxsplit=1)[-1] if kind else "object"
+
+    @staticmethod
+    def _declarative_object_name(probe: p.AttributeProbe, kind: str) -> str:
+        """Return a stable object name from a declarative probe."""
+        name = getattr(probe, "object_name", "")
+        if name:
+            return str(name)
+        literal = getattr(probe, "literal", "")
+        if literal:
+            return f"{kind}_{literal}"
+        file_path = getattr(probe, "file_path", "")
+        if file_path:
+            return Path(str(file_path)).name
+        return kind or "declarative"
+
+    @staticmethod
+    def _declarative_description(
+        rule: me.EnforcementRuleSpec,
+        probe: p.AttributeProbe,
+        object_name: str,
+    ) -> str:
+        """Return a human-readable description for a declarative violation."""
+        base = rule.description
+        literal = getattr(probe, "literal", "")
+        if literal:
+            return f"{base}: {literal}"
+        if object_name and object_name != rule.id.lower().replace("-", "_"):
+            return f"{base}: {object_name}"
+        return base
 
 
 __all__: list[str] = ["FlextInfraRefactorCensusRulesDispatchMixin"]

@@ -580,6 +580,8 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         _fce.ENFORCEMENT_PROJECT_ALIAS_OWNERS
     )
     "Project package → canonical aliases it re-exports locally (SSOT: flext-core)."
+    ENFORCEMENT_LIBRARY_OWNERS: Final[t.StrMapping] = _fce.ENFORCEMENT_LIBRARY_OWNERS
+    "External library → project that owns its abstraction facade (SSOT: flext-core)."
     FUTURE_ANNOTATIONS_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+__future__\s+import\s+annotations\b",
         re.MULTILINE,

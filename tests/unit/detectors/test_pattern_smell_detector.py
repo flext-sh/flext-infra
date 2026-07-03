@@ -107,3 +107,41 @@ class TestsFlextInfraPatternSmellDetector:
             encoding="utf-8",
         )
         assert "direct_ldap3_import" in self._kinds(sample, rope_project)
+
+    def test_exempts_owned_library_in_owning_project(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        sample = tmp_path / "sample.py"
+        sample.write_text(
+            "from __future__ import annotations\nfrom pydantic import BaseModel\n",
+            encoding="utf-8",
+        )
+        violations = FlextInfraPatternSmellDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=sample,
+                rope_project=rope_project,
+                project_name="flext-core",
+            ),
+        )
+        assert not any(v.kind == "direct_pydantic_import" for v in violations)
+
+    def test_detects_owned_library_in_consumer_project(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        sample = tmp_path / "sample.py"
+        sample.write_text(
+            "from __future__ import annotations\nfrom pydantic import BaseModel\n",
+            encoding="utf-8",
+        )
+        violations = FlextInfraPatternSmellDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=sample,
+                rope_project=rope_project,
+                project_name="flext-target-ldap",
+            ),
+        )
+        assert any(v.kind == "direct_pydantic_import" for v in violations)

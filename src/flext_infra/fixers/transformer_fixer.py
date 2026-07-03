@@ -12,6 +12,7 @@ from typing import ClassVar, override
 
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra.constants import c
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
@@ -118,6 +119,18 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             fix_action = target_violations[0][0].fix_action
             file_paths = self._collect_file_paths(target_violations, project_dir)
             for file_path in file_paths:
+                if self._is_owned_library_exempt(project_dir, fix_action, file_path):
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=target_violations[0][0].id,
+                            file_path=str(file_path),
+                            reason=(
+                                f"project {project_dir.name} owns library "
+                                "abstraction"
+                            ),
+                        ),
+                    )
+                    continue
                 result = self._fix_file(
                     file_path=file_path,
                     transformer_cls=transformer_cls,
@@ -148,6 +161,32 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             failed=tuple(failed),
             files_modified=tuple(files_modified),
         )
+
+    @staticmethod
+    def _is_owned_library_exempt(
+        project_dir: Path,
+        fix_action: me.EnforcementFixAction | None,
+        file_path: Path,
+    ) -> bool:
+        """Skip import modernization inside the library's owning project.
+
+        Direct imports of pydantic/structlog/oracledb/ldap3 are allowed within
+        the project that owns the abstraction facade; consumers must route
+        through that facade.
+        """
+        _ = file_path
+        if fix_action is None or fix_action.target != "import_modernizer":
+            return False
+        imports_to_remove = u.Cli.json_as_sequence(
+            fix_action.params.get("imports_to_remove"),
+        )
+        for module in imports_to_remove:
+            if not isinstance(module, str):
+                continue
+            owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(module)
+            if owner == project_dir.name:
+                return True
+        return False
 
     def _normalize_imports(
         self,

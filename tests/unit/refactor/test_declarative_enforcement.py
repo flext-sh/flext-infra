@@ -12,6 +12,7 @@ from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
 from flext_infra.models import m
+from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
@@ -50,6 +51,29 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         assert len(probes) == 1
         assert getattr(probes[0], "file_path", "") == str(stub)
         assert getattr(probes[0], "rule_id", "") == "090"
+
+    def test_supported_rules_are_selected_by_source_metadata(
+        self, tmp_path: Path
+    ) -> None:
+        """Declarative support is source-driven, not tied to catalog IDs."""
+        rule = FlextModelsEnforcement.EnforcementRuleSpec(
+            id="ENFORCE-999",
+            description="Synthetic stub-file rule",
+            severity=FlextModelsEnforcement.EnforcementRuleSeverity.HIGH,
+            source=FlextModelsEnforcement.EnforcementInfraDetectorSource(
+                violation_field="stub_file_violations",
+            ),
+        )
+        stub = tmp_path / "demo.pyi"
+        stub.write_text("x: int\n", encoding="utf-8")
+        assert FlextInfraRefactorDeclarativeEnforcement.supports(rule)
+        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+            probes = FlextInfraRefactorDeclarativeEnforcement.detect(
+                rule,
+                self._ctx(rope_project, stub),
+            )
+        assert len(probes) == 1
+        assert getattr(probes[0], "file_path", "") == str(stub)
 
     def test_magic_literal_in_function_body(self, tmp_path: Path) -> None:
         """ENFORCE-097 detects a bare integer inside a function body."""
@@ -173,9 +197,118 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         )
         source = tmp_path / "consumer.py"
         source.write_text("", encoding="utf-8")
+        assert not FlextInfraRefactorDeclarativeEnforcement.supports(rule)
         with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
             with pytest.raises(ValueError, match="unsupported declarative"):
                 FlextInfraRefactorDeclarativeEnforcement.detect(
                     rule,
                     self._ctx(rope_project, source),
                 )
+
+
+class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
+    """Declarative rules surface in the census report."""
+
+    @staticmethod
+    def _build_workspace(tmp_path: Path, project_name: str) -> Path:
+        workspace = tmp_path / "workspace"
+        src = workspace / "src" / project_name
+        src.mkdir(parents=True)
+        (src / "__init__.py").write_text(
+            "from __future__ import annotations\n",
+            encoding="utf-8",
+        )
+        (workspace / "pyproject.toml").write_text(
+            "[project]\n"
+            f'name = "{project_name}"\n'
+            'version = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        return workspace
+
+    def test_census_reports_enforce_079_classvar_constant(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ENFORCE-079 appears in the census when classvar_constant is selected."""
+        workspace = self._build_workspace(tmp_path, "demo_pkg")
+        source = workspace / "src" / "demo_pkg" / "domain.py"
+        source.write_text(
+            "from __future__ import annotations\n"
+            "from typing import ClassVar\n\n"
+            "class DemoService:\n"
+            "    GROUPS: ClassVar[frozenset[str]] = frozenset({'a'})\n",
+            encoding="utf-8",
+        )
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-079",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert violations[0].kind == "classvar_constant"
+        assert violations[0].object_name == "GROUPS"
+        assert violations[0].fix_action == "classvar_relocation"
+        assert violations[0].fixable
+
+    def test_census_reports_enforce_090_stub_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ENFORCE-090 appears in the census for prohibited ``.pyi`` files."""
+        workspace = self._build_workspace(tmp_path, "demo_pkg")
+        stub = workspace / "src" / "demo_pkg" / "service.pyi"
+        stub.write_text("x: int\n", encoding="utf-8")
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-090",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert violations[0].kind == "stub_file"
+        assert violations[0].fix_action == "remove_stub_file"
+        assert violations[0].fixable
+
+    def test_census_reports_enforce_097_magic_literal(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ENFORCE-097 appears in the census for magic literals."""
+        workspace = self._build_workspace(tmp_path, "demo_pkg")
+        source = workspace / "src" / "demo_pkg" / "service.py"
+        source.write_text(
+            "from __future__ import annotations\n\n"
+            "def compute() -> int:\n"
+            "    return 42\n",
+            encoding="utf-8",
+        )
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-097",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert violations[0].kind == "magic_literal"
+        assert violations[0].fix_action == "extract_magic_literal"
+        assert not violations[0].fixable

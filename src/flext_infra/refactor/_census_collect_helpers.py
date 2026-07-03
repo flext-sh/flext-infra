@@ -6,9 +6,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import FlextUtilitiesEnforcement
+from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
+from flext_infra.refactor.declarative_enforcement import (
+    FlextInfraRefactorDeclarativeEnforcement,
+)
 from flext_infra.typings import t
 
 
@@ -26,6 +31,8 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         "compatibility_alias",
         "mro_completeness",
     })
+    _PYI_GLOB: ClassVar[str] = "*.pyi"
+    _PYI_SUFFIX: ClassVar[str] = ".pyi"
 
     if TYPE_CHECKING:
 
@@ -77,7 +84,34 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             selected_rules = frozenset(rule_names) if rule_names else None
         if not selected_rules:
             return True
+        declarative_rules = cls._declarative_rules_for_selection(rule_names)
+        declarative_rule_ids = frozenset(rule.id for rule in declarative_rules)
+        if declarative_rule_ids and selected_rules <= declarative_rule_ids:
+            return False
         return not selected_rules <= cls._LIGHTWEIGHT_MODULE_RULES
+
+    @staticmethod
+    def _declarative_rules_for_selection(
+        rule_names: t.StrSequence | None,
+    ) -> tuple[me.EnforcementRuleSpec, ...]:
+        """Return catalog declarative rules selected by the census request."""
+        selected = frozenset(rule_names) if rule_names else None
+        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
+        return tuple(
+            rule
+            for rule in catalog.enabled_rules()
+            if (selected is None or rule.id in selected)
+            and FlextInfraRefactorDeclarativeEnforcement.supports(rule)
+        )
+
+    @staticmethod
+    def _rule_requires_stub_file(rule: me.EnforcementRuleSpec) -> bool:
+        """Return whether ``rule`` must scan ``.pyi`` files outside Rope modules."""
+        source = rule.source
+        return (
+            source.kind == "flext_infra_detector"
+            and source.violation_field == "stub_file_violations"
+        )
 
     @staticmethod
     def _project_name_for_module(
@@ -122,6 +156,9 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
         """Modules for rules."""
         modules = tuple(rope.modules(project_names=project_names))
+        declarative_rules = self._declarative_rules_for_selection(rule_names)
+        if any(self._rule_requires_stub_file(rule) for rule in declarative_rules):
+            modules = (*modules, *self._stub_modules(rope, modules, project_names))
         if rule_names is None or set(rule_names) != {"mro_completeness"}:
             return modules
         facade_module_names = self._mro_facade_module_names(selected_families)
@@ -131,6 +168,65 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             if module.module_name
             and module.module_name.count(".") == 1
             and module.file_path.name in facade_module_names
+        )
+
+    @classmethod
+    def _stub_modules(
+        cls,
+        rope: p.Infra.RopeWorkspaceDsl,
+        modules: t.SequenceOf[m.Infra.RopeModuleIndexEntry],
+        project_names: t.StrSequence | None,
+    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
+        """Return synthetic module entries for selected workspace ``.pyi`` files."""
+        known_paths = frozenset(module.file_path.resolve() for module in modules)
+        roots = tuple(
+            sorted(
+                {
+                    module.project_root.resolve()
+                    for module in modules
+                    if module.project_root is not None
+                }
+            )
+        )
+        project_filter = frozenset(project_names or ())
+        entries: list[m.Infra.RopeModuleIndexEntry] = []
+        for root in roots:
+            if project_filter and root.name not in project_filter:
+                continue
+            src_root = root / c.Infra.DEFAULT_SRC_DIR
+            if not src_root.is_dir():
+                continue
+            for stub_path in sorted(src_root.rglob(cls._PYI_GLOB)):
+                resolved = stub_path.resolve()
+                if resolved in known_paths:
+                    continue
+                entries.append(cls._stub_module_entry(rope, root, src_root, resolved))
+        return tuple(entries)
+
+    @classmethod
+    def _stub_module_entry(
+        cls,
+        rope: p.Infra.RopeWorkspaceDsl,
+        project_root: Path,
+        src_root: Path,
+        stub_path: Path,
+    ) -> m.Infra.RopeModuleIndexEntry:
+        """Build a RopeModuleIndexEntry for a ``.pyi`` file."""
+        relative = stub_path.relative_to(src_root)
+        module_parts = relative.with_suffix("").parts
+        if relative.name == c.Infra.INIT_PYI:
+            module_parts = module_parts[:-1]
+        module_name = ".".join(module_parts)
+        package_name = module_parts[0] if module_parts else project_root.name
+        resource_path = str(stub_path.relative_to(rope.rope_workspace_root))
+        return m.Infra.RopeModuleIndexEntry(
+            file_path=stub_path,
+            resource_path=resource_path,
+            module_name=module_name,
+            package_name=package_name,
+            package_dir=stub_path.parent,
+            project_root=project_root,
+            is_package_init=stub_path.name == c.Infra.INIT_PYI,
         )
 
     def _collect_report(

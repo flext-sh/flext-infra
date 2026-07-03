@@ -10,11 +10,13 @@ import ast
 import io
 import re
 import tokenize
+from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, override
 
 from rope.base.exceptions import ModuleSyntaxError
 
+from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -141,6 +143,23 @@ class FlextInfraPatternSmellDetector:
     })
 
     @classmethod
+    def _is_owned_library_exempt(
+        cls,
+        project_name: str | None,
+        module_name: str,
+    ) -> bool:
+        """Return True when the current project owns the library abstraction.
+
+        Direct imports of pydantic/structlog/oracledb/ldap3 are allowed inside
+        the owning project's facade definition; consumers must route through the
+        canonical project facade.
+        """
+        owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(module_name)
+        if owner is None or project_name is None:
+            return False
+        return project_name == owner
+
+    @classmethod
     def detect_file(
         cls,
         ctx: m.Infra.DetectorContext,
@@ -171,6 +190,8 @@ class FlextInfraPatternSmellDetector:
         visitor = _PatternSmellVisitor(
             file_path=display_path,
             source=source,
+            project_name=ctx.project_name,
+            owned_exempt=cls._is_owned_library_exempt,
             banned_module_imports=cls._BANNED_MODULE_IMPORTS,
             banned_from_imports=cls._BANNED_FROM_IMPORTS,
             banned_attributes=cls._BANNED_ATTRIBUTES,
@@ -240,6 +261,8 @@ class _PatternSmellVisitor(ast.NodeVisitor):
         *,
         file_path: Path,
         source: str,
+        project_name: str | None,
+        owned_exempt: Callable[[str | None, str], bool],
         banned_module_imports: t.MappingKV[str, t.StrPair],
         banned_from_imports: t.MappingKV[str, t.MappingKV[str, t.StrPair]],
         banned_attributes: t.MappingKV[t.StrPair, t.StrPair],
@@ -249,6 +272,8 @@ class _PatternSmellVisitor(ast.NodeVisitor):
     ) -> None:
         self.file_path = file_path
         self.source = source
+        self.project_name = project_name
+        self._owned_exempt = owned_exempt
         self.violations: list[m.Infra.PatternSmellViolation] = []
         self._module_aliases: dict[str, str] = {}
         self._banned_module_imports = banned_module_imports
@@ -263,7 +288,9 @@ class _PatternSmellVisitor(ast.NodeVisitor):
         tracked_modules = {module for module, _attr in self._banned_attributes}
         for alias in node.names:
             canonical = alias.name
-            if canonical in self._banned_module_imports:
+            if canonical in self._banned_module_imports and not self._owned_exempt(
+                self.project_name, canonical
+            ):
                 kind, detail = self._banned_module_imports[canonical]
                 self._add_violation(node.lineno, kind, detail)
             if canonical in tracked_modules:
@@ -281,7 +308,9 @@ class _PatternSmellVisitor(ast.NodeVisitor):
                 if key in banned_from:
                     kind, detail = banned_from[key]
                     self._add_violation(node.lineno, kind, detail)
-        if module in self._banned_module_imports:
+        if module in self._banned_module_imports and not self._owned_exempt(
+            self.project_name, module
+        ):
             kind, detail = self._banned_module_imports[module]
             self._add_violation(node.lineno, kind, detail)
         self.generic_visit(node)
