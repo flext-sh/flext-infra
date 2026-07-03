@@ -78,7 +78,7 @@ class FlextInfraRefactorCensusValidateMixin:
                         "simple removal preview failed for "
                         f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
                     )
-                    if self.dry_run or self.fail_fast:
+                    if self.fail_fast:
                         raise RuntimeError(msg)
                     _log.warning(
                         "census_preview_candidate_rejected",
