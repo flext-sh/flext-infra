@@ -311,6 +311,36 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         assert violations[0].fix_action == "remove_stub_file"
         assert violations[0].fixable
 
+    def test_census_apply_enforce_090_removes_stub_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ENFORCE-090 apply removes the reported ``.pyi`` file."""
+        workspace = self._build_workspace(tmp_path, "demo_pkg")
+        stub = workspace / "src" / "demo_pkg" / "service.pyi"
+        stub.write_text("x: int\n", encoding="utf-8")
+
+        dry_run_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            apply_changes=True,
+            dry_run=True,
+            include_local_scopes=False,
+            rules=("ENFORCE-090",),
+        ).execute()
+
+        assert dry_run_result.success, dry_run_result.error
+        assert stub.exists()
+
+        apply_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            apply_changes=True,
+            include_local_scopes=False,
+            rules=("ENFORCE-090",),
+        ).execute()
+
+        assert apply_result.success, apply_result.error
+        assert not stub.exists()
+
     def test_census_reports_enforce_097_magic_literal(
         self,
         tmp_path: Path,

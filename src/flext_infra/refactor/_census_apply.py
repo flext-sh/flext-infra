@@ -210,6 +210,10 @@ class FlextInfraRefactorCensusApplyMixin(
                     file_path=file_path,
                     object_names=object_names,
                 )
+            elif action == "remove_stub_file":
+                if file_path.suffix == ".pyi" and file_path.exists():
+                    file_path.unlink()
+                    changed = True
             elif action == "one_class_per_module":
                 changed = self._apply_one_class_per_module(
                     rope=rope,
