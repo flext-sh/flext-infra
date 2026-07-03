@@ -105,6 +105,14 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             "NAMES: t.StrSequence = ()\n",
             encoding="utf-8",
         )
+        _ = (pkg / "submodule_consumer.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core.typings import (\n"
+            "    FlextTypes as t,\n"
+            ")\n\n"
+            "NAMES: t.StrSequence = ()\n",
+            encoding="utf-8",
+        )
 
         report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
             apply=False,
@@ -115,6 +123,11 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(report.total_foreign_canonical_alias_violations, gt=0)
         tm.that(project_report.compatibility_alias_violations, empty=True)
         tm.that(project_report.foreign_canonical_alias_violations, empty=False)
+        violation_files = {
+            Path(violation.file).name
+            for violation in project_report.foreign_canonical_alias_violations
+        }
+        tm.that(violation_files, has="submodule_consumer.py")
         rendered = FlextInfraNamespaceEnforcer.render_text(report)
         tm.that(rendered, has="Foreign canonical alias violations:")
 

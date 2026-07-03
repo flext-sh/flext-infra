@@ -86,9 +86,10 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                         project_name=project_dir.name,
                     )
                 ):
-                    if violation.module_name != u.Infra.package_name(
-                        file_path
-                    ).split(".", maxsplit=1)[0]:
+                    if (
+                        violation.module_name
+                        != u.Infra.package_name(file_path).split(".", maxsplit=1)[0]
+                    ):
                         continue
                     issues.append(
                         m.Infra.Issue(
@@ -131,6 +132,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
         started = time.monotonic()
+        if project_dir.name in self._ALIAS_SOURCE_PACKAGES:
+            return self._skip_result(project_dir, started)
         files_result = u.Infra.iter_python_files(
             project_dir,
             project_roots=[project_dir],
@@ -161,9 +164,10 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                         project_name=project_dir.name,
                     )
                 ):
-                    if violation.module_name != u.Infra.package_name(
-                        file_path
-                    ).split(".", maxsplit=1)[0]:
+                    if (
+                        violation.module_name
+                        != u.Infra.package_name(file_path).split(".", maxsplit=1)[0]
+                    ):
                         continue
                     violations.append(violation)
 

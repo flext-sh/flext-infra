@@ -15,6 +15,7 @@ from flext_infra.constants import c
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
@@ -56,6 +57,7 @@ class FlextInfraGateRegistry:
             FlextInfraMarkdownGate,
             FlextInfraLocCapGate,
             FlextInfraAbstractionBoundaryGate,
+            FlextInfraCanonicalAliasGate,
             FlextInfraRuntimeCensusGate,
             FlextInfraNamespaceGate,
             FlextInfraTierWhitelistGate,

@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     )
     from flext_infra.gates.bandit import FlextInfraBanditGate as FlextInfraBanditGate
     from flext_infra.gates.base_gate import FlextInfraGate as FlextInfraGate
+    from flext_infra.gates.canonical_alias import (
+        FlextInfraCanonicalAliasGate as FlextInfraCanonicalAliasGate,
+    )
     from flext_infra.gates.loc_cap import FlextInfraLocCapGate as FlextInfraLocCapGate
     from flext_infra.gates.markdown import (
         FlextInfraMarkdownGate as FlextInfraMarkdownGate,
@@ -44,6 +47,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
         ".bandit": ("FlextInfraBanditGate",),
         ".base_gate": ("FlextInfraGate",),
+        ".canonical_alias": ("FlextInfraCanonicalAliasGate",),
         ".loc_cap": ("FlextInfraLocCapGate",),
         ".markdown": ("FlextInfraMarkdownGate",),
         ".mypy": ("FlextInfraMypyGate",),

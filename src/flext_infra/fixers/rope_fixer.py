@@ -472,7 +472,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     ) -> fr.ProjectFixResult:
         """Rewrite compatibility aliases using the canonical detector + rewriter."""
 
-        def _rewrite(file_violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation]) -> None:
+        def _rewrite(
+            file_violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        ) -> None:
             if ctx.apply:
                 u.Infra.rewrite_compatibility_alias_violations(
                     violations=file_violations,
