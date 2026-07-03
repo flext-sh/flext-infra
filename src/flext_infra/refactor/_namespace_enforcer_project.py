@@ -33,6 +33,9 @@ from flext_infra.detectors.mro_completeness_detector import (
 from flext_infra.detectors.namespace_source_detector import (
     FlextInfraNamespaceSourceDetector,
 )
+from flext_infra.detectors.pattern_smell_detector import (
+    FlextInfraPatternSmellDetector,
+)
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -296,6 +299,33 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             ),
             apply=apply,
         )
+        pattern_smells = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraPatternSmellDetector.detect_file(
+                self._detector_context(
+                    file_path=f,
+                    rope_project=rope_project,
+                    parse_failures=parse_failures,
+                    project_root=project_root,
+                ),
+            ),
+            rewrite_fn=None,
+            apply=apply,
+        )
+        smell_buckets: dict[str, list[m.Infra.PatternSmellViolation]] = {
+            "bare_except": [],
+            "print": [],
+            "breakpoint": [],
+            "open_encoding": [],
+            "dict_annotation": [],
+            "typing_dict_attr": [],
+            "typing_dict_import": [],
+            "hardcoded_version": [],
+        }
+        for smell in pattern_smells:
+            bucket = smell_buckets.get(smell.kind)
+            if bucket is not None:
+                bucket.append(smell)
         return m.Infra.ProjectEnforcementReport(
             project=project_name,
             project_root=str(project_root),
@@ -312,6 +342,14 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             compatibility_alias_violations=list(compatibility_alias_violations),
             class_placement_violations=list(class_placement_violations),
             mro_completeness_violations=list(mro_completeness_violations),
+            bare_except_violations=smell_buckets["bare_except"],
+            print_violations=smell_buckets["print"],
+            breakpoint_violations=smell_buckets["breakpoint"],
+            open_encoding_violations=smell_buckets["open_encoding"],
+            dict_annotation_violations=smell_buckets["dict_annotation"],
+            typing_dict_attr_violations=smell_buckets["typing_dict_attr"],
+            typing_dict_import_violations=smell_buckets["typing_dict_import"],
+            hardcoded_version_violations=smell_buckets["hardcoded_version"],
             parse_failures=list(parse_failures),
             files_scanned=len(py_files),
         )

@@ -74,6 +74,22 @@ class FlextInfraModelsNamespaceEnforcer:
         name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         base_class: Annotated[t.NonEmptyStr, m.Field(description="Base class name")]
         suggestion: Annotated[str, m.Field(description="Fix suggestion")]
+        action: Annotated[
+            str,
+            m.Field(description="Recommended fix action identifier"),
+        ] = "manual"
+        fixable: Annotated[
+            bool,
+            m.Field(description="Whether the violation can be auto-fixed"),
+        ] = False
+        target_facade: Annotated[
+            str,
+            m.Field(description="Target facade class suggestion"),
+        ] = ""
+        family: Annotated[
+            str,
+            m.Field(description="Canonical family letter (c/m/p/t/u)"),
+        ] = ""
 
     class MROCompletenessViolation(FileLineViolation):
         """M r o completeness violation."""
@@ -200,6 +216,15 @@ class FlextInfraModelsNamespaceEnforcer:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Alias name")]
 
+    class PatternSmellViolation(FileLineViolation):
+        """Generic rope-detected pattern smell (ENFORCE-026..033)."""
+
+        kind: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Pattern smell kind (e.g. bare_except, print)"),
+        ]
+        detail: Annotated[str, m.Field(description="Human-readable description")] = ""
+
     class CompatibilityAliasViolation(FileLineViolation):
         """Compatibility alias violation."""
 
@@ -318,6 +343,62 @@ class FlextInfraModelsNamespaceEnforcer:
                 description="MRO completeness violations collected for the project.",
             ),
         ]
+        bare_except_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="Bare `except:` violations collected for the project.",
+            ),
+        ]
+        print_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`print()` violations collected for the project.",
+            ),
+        ]
+        breakpoint_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`breakpoint()` / pdb violations collected for the project.",
+            ),
+        ]
+        open_encoding_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`open()` without encoding violations collected for the project.",
+            ),
+        ]
+        dict_annotation_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`dict` annotation violations collected for the project.",
+            ),
+        ]
+        typing_dict_attr_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`typing.Dict` attribute violations collected for the project.",
+            ),
+        ]
+        typing_dict_import_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`from typing import Dict` violations collected for the project.",
+            ),
+        ]
+        hardcoded_version_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="Hardcoded `__version__` violations collected for the project.",
+            ),
+        ]
         parse_failures: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation],
             m.Field(
@@ -347,6 +428,14 @@ class FlextInfraModelsNamespaceEnforcer:
                 self.compatibility_alias_violations,
                 self.class_placement_violations,
                 self.mro_completeness_violations,
+                self.bare_except_violations,
+                self.print_violations,
+                self.breakpoint_violations,
+                self.open_encoding_violations,
+                self.dict_annotation_violations,
+                self.typing_dict_attr_violations,
+                self.typing_dict_import_violations,
+                self.hardcoded_version_violations,
                 self.parse_failures,
             )
             return missing_facades or any(v for v in violation_fields)
@@ -402,6 +491,35 @@ class FlextInfraModelsNamespaceEnforcer:
         total_mro_completeness_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Total MRO completeness violations")
         ] = 0
+        total_bare_except_violations: Annotated[
+            t.NonNegativeInt, m.Field(description="Total bare `except:` violations")
+        ] = 0
+        total_print_violations: Annotated[
+            t.NonNegativeInt, m.Field(description="Total `print()` violations")
+        ] = 0
+        total_breakpoint_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total `breakpoint()` / pdb violations"),
+        ] = 0
+        total_open_encoding_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total `open()` without encoding violations"),
+        ] = 0
+        total_dict_annotation_violations: Annotated[
+            t.NonNegativeInt, m.Field(description="Total `dict` annotation violations")
+        ] = 0
+        total_typing_dict_attr_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total `typing.Dict` attribute violations"),
+        ] = 0
+        total_typing_dict_import_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total `from typing import Dict` violations"),
+        ] = 0
+        total_hardcoded_version_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total hardcoded `__version__` violations"),
+        ] = 0
         total_parse_failures: Annotated[
             t.NonNegativeInt, m.Field(description="Total parse failures")
         ] = 0
@@ -452,6 +570,28 @@ class FlextInfraModelsNamespaceEnforcer:
                 ),
                 total_mro_completeness_violations=sum(
                     len(p.mro_completeness_violations) for p in projects
+                ),
+                total_bare_except_violations=sum(
+                    len(p.bare_except_violations) for p in projects
+                ),
+                total_print_violations=sum(len(p.print_violations) for p in projects),
+                total_breakpoint_violations=sum(
+                    len(p.breakpoint_violations) for p in projects
+                ),
+                total_open_encoding_violations=sum(
+                    len(p.open_encoding_violations) for p in projects
+                ),
+                total_dict_annotation_violations=sum(
+                    len(p.dict_annotation_violations) for p in projects
+                ),
+                total_typing_dict_attr_violations=sum(
+                    len(p.typing_dict_attr_violations) for p in projects
+                ),
+                total_typing_dict_import_violations=sum(
+                    len(p.typing_dict_import_violations) for p in projects
+                ),
+                total_hardcoded_version_violations=sum(
+                    len(p.hardcoded_version_violations) for p in projects
                 ),
                 total_parse_failures=sum(len(p.parse_failures) for p in projects),
                 total_files_scanned=sum(p.files_scanned for p in projects),
