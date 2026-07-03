@@ -13,7 +13,12 @@ from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
+from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
 from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
+from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
+from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
+from flext_infra.transformers.remove_breakpoint import FlextInfraRefactorRemoveBreakpoint
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_infra.typings import t
 from flext_infra.utilities import u
