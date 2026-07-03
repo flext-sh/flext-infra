@@ -119,8 +119,7 @@ class TestSmellsGate:
         """BooleanLogicFixer rewrites a long or-chain into any()."""
         source_file = tmp_path / "sample.py"
         source_file.write_text(
-            "def f(p):\n"
-            "    return p.a or p.b or p.c or p.d or p.e\n",
+            "def f(p):\n    return p.a or p.b or p.c or p.d or p.e\n",
             encoding="utf-8",
         )
         issue = m.Infra.Issue(
@@ -152,7 +151,7 @@ class TestSmellsGate:
             severity=c.Infra.GateSeverity.WARNING.value,
         )
         fixer = FlextInfraBooleanLogicFixer()
-        fixed, changes = fixer.fix(tmp_path, issue)
+        fixed, _changes = fixer.fix(tmp_path, issue)
         tm.that(fixed, eq=False)
         tm.that(source_file.read_text(encoding="utf-8"), eq=original)
 

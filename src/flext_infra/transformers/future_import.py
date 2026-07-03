@@ -24,9 +24,7 @@ class FlextInfraRefactorFutureImport(FlextInfraRopeTransformer):
         if stripped.startswith("from __future__ import annotations"):
             return source, list(self.changes)
         insertion = self._insertion_offset(source)
-        updated = (
-            f"{source[:insertion]}from __future__ import annotations\n{source[insertion:]}"
-        )
+        updated = f"{source[:insertion]}from __future__ import annotations\n{source[insertion:]}"
         self._record_change("Inserted from __future__ import annotations")
         return updated, list(self.changes)
 

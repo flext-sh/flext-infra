@@ -8,28 +8,28 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.tests.unit._constants._exports import (
+    from tests.unit._constants._exports import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS,
     )
-    from flext_infra.tests.unit._constants._exports_lazy_part_01 import (
+    from tests.unit._constants._exports_lazy_part_01 import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01 as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01,
     )
-    from flext_infra.tests.unit._constants._exports_lazy_part_02 import (
+    from tests.unit._constants._exports_lazy_part_02 import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02 as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02,
     )
-    from flext_infra.tests.unit._constants._exports_lazy_part_03 import (
+    from tests.unit._constants._exports_lazy_part_03 import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_03 as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_03,
     )
-    from flext_infra.tests.unit._constants._exports_lazy_part_04 import (
+    from tests.unit._constants._exports_lazy_part_04 import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04,
     )
-    from flext_infra.tests.unit._constants._exports_lazy_part_05 import (
+    from tests.unit._constants._exports_lazy_part_05 import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05,
     )
-    from flext_infra.tests.unit._constants._exports_lazy_part_06 import (
+    from tests.unit._constants._exports_lazy_part_06 import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06,
     )
-    from flext_infra.tests.unit._constants._exports_lazy_part_07 import (
+    from tests.unit._constants._exports_lazy_part_07 import (
         TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 as TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07,
     )
 _LAZY_IMPORTS = build_lazy_import_map(
