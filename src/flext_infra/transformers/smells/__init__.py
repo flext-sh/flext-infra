@@ -36,8 +36,3 @@ install_lazy_exports(
     _LAZY_IMPORTS,
     publish_all=False,
 )
-
-# Eagerly load fixer modules so their @register_smell_fixer decorators run.
-# This keeps the registry populated even when consumers only import the
-# accessor functions.
-from flext_infra.transformers.smells import boolean_logic  # noqa: E402

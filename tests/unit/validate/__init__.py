@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from tests.unit.validate.main_cli_tests import (
+    from flext_infra.tests.unit.validate.main_cli_tests import (
         TestValidateCli as TestValidateCli,
     )
-    from tests.unit.validate.namespace_validator_tests import (
+    from flext_infra.tests.unit.validate.namespace_validator_tests import (
         TestFlextInfraNamespaceValidator as TestFlextInfraNamespaceValidator,
     )
 _LAZY_IMPORTS = build_lazy_import_map(

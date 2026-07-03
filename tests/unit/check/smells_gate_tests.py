@@ -19,6 +19,7 @@ from flext_core import FlextSmellViolation, c as core_c
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
+from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
 from tests.typings import t
 
 _SMELL_CODES: t.StrSequence = tuple(sorted(c.Infra.SMELLS_RULE_TAGS))
@@ -91,7 +92,69 @@ pytestmark = pytest.mark.usefixtures("clean_scan_cache")
 class TestSmellsGate:
     def test_gate_identity(self) -> None:
         tm.that(FlextInfraSmellsGate.gate_id, eq="smells")
-        tm.that(FlextInfraSmellsGate.can_fix, eq=False)
+        tm.that(FlextInfraSmellsGate.can_fix, eq=True)
+
+    def test_is_auto_fixable_reads_core_strategy(self) -> None:
+        """Only smells marked auto=true in flext-core are auto-fixable."""
+        boolean_issue = m.Infra.Issue(
+            file="src/sample.py",
+            line=1,
+            column=0,
+            code="smell_boolean_logic",
+            message="boolean logic",
+            severity=c.Infra.GateSeverity.WARNING.value,
+        )
+        params_issue = m.Infra.Issue(
+            file="src/sample.py",
+            line=1,
+            column=0,
+            code="smell_function_parameters",
+            message="too many params",
+            severity=c.Infra.GateSeverity.WARNING.value,
+        )
+        tm.that(FlextInfraSmellsGate._is_auto_fixable(boolean_issue), eq=True)
+        tm.that(FlextInfraSmellsGate._is_auto_fixable(params_issue), eq=False)
+
+    def test_boolean_logic_fixer_simplifies_or_chain(self, tmp_path: Path) -> None:
+        """BooleanLogicFixer rewrites a long or-chain into any()."""
+        source_file = tmp_path / "sample.py"
+        source_file.write_text(
+            "def f(p):\n"
+            "    return p.a or p.b or p.c or p.d or p.e\n",
+            encoding="utf-8",
+        )
+        issue = m.Infra.Issue(
+            file="sample.py",
+            line=2,
+            column=0,
+            code="smell_boolean_logic",
+            message="boolean logic",
+            severity=c.Infra.GateSeverity.WARNING.value,
+        )
+        fixer = FlextInfraBooleanLogicFixer()
+        fixed, changes = fixer.fix(tmp_path, issue)
+        tm.that(fixed, eq=True)
+        tm.that(len(changes), eq=1)
+        updated = source_file.read_text(encoding="utf-8")
+        tm.that("any((p.a, p.b, p.c, p.d, p.e))" in updated, eq=True)
+
+    def test_boolean_logic_fixer_ignores_short_chain(self, tmp_path: Path) -> None:
+        """BooleanLogicFixer leaves short chains untouched."""
+        original = "def f(p):\n    return p.a or p.b or p.c\n"
+        source_file = tmp_path / "sample.py"
+        source_file.write_text(original, encoding="utf-8")
+        issue = m.Infra.Issue(
+            file="sample.py",
+            line=2,
+            column=0,
+            code="smell_boolean_logic",
+            message="boolean logic",
+            severity=c.Infra.GateSeverity.WARNING.value,
+        )
+        fixer = FlextInfraBooleanLogicFixer()
+        fixed, changes = fixer.fix(tmp_path, issue)
+        tm.that(fixed, eq=False)
+        tm.that(source_file.read_text(encoding="utf-8"), eq=original)
 
     def test_registered_and_allowed(self) -> None:
         tm.that("smells" in c.Infra.ALLOWED_GATES, eq=True)
