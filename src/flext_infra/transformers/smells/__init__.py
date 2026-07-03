@@ -1,0 +1,43 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+"""Smells package."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+
+if TYPE_CHECKING:
+    from flext_infra.transformers.smells.base import (
+        FlextInfraSmellFixer as FlextInfraSmellFixer,
+        auto_fixable_smell_tags as auto_fixable_smell_tags,
+        register_smell_fixer as register_smell_fixer,
+        smell_fixer_for as smell_fixer_for,
+    )
+    from flext_infra.transformers.smells.boolean_logic import (
+        FlextInfraBooleanLogicFixer as FlextInfraBooleanLogicFixer,
+    )
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".base": (
+            "FlextInfraSmellFixer",
+            "auto_fixable_smell_tags",
+            "register_smell_fixer",
+            "smell_fixer_for",
+        ),
+        ".boolean_logic": ("FlextInfraBooleanLogicFixer",),
+    },
+)
+
+
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    publish_all=False,
+)
+
+# Eagerly load fixer modules so their @register_smell_fixer decorators run.
+# This keeps the registry populated even when consumers only import the
+# accessor functions.
+from flext_infra.transformers.smells import boolean_logic  # noqa: E402

@@ -19,6 +19,7 @@ from flext_core import FlextSmellViolation, c as core_c
 from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
+from flext_infra.transformers.smells import smell_fixer_for
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
@@ -34,11 +35,63 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = "smells"
     gate_name: ClassVar[str] = "Code Smells"
-    can_fix: ClassVar[bool] = False
+    can_fix: ClassVar[bool] = True
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][1]
 
     _scan_cache: ClassVar[dict[str, m.Cli.CommandOutput]] = {}
+
+    @override
+    def fix(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Apply AST-based fixers for auto-fixable smell findings.
+
+        Runs the same scan as ``check()``, then attempts a registered fixer
+        for every issue whose code has ``auto=true`` in flext-core metadata.
+        Only rewrites files when a fixer actually changes the source.
+        """
+        _ = ctx
+        started = time.monotonic()
+        scan = self._workspace_scan()
+        issues = self._issues_from_sarif(scan.stdout or "{}", project_dir.name)
+        if not issues and scan.exit_code != 0:
+            issues = (self._tool_failure_issue(scan),)
+        auto_issues = [
+            issue
+            for issue in issues
+            if self._is_auto_fixable(issue)
+        ]
+        changes: list[str] = []
+        for issue in auto_issues:
+            fixer = smell_fixer_for(issue.code)
+            if fixer is None:
+                continue
+            fixed, fix_changes = fixer.fix(project_dir, issue)
+            if fixed:
+                changes.extend(fix_changes)
+        for issue in issues:
+            warnings.warn(issue.formatted, FlextSmellViolation, stacklevel=2)
+        return self._build_gate_result(
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=True,
+                errors=changes,
+                duration=round(time.monotonic() - started, 3),
+            ),
+            issues=issues,
+            raw_output="\n".join(changes) if changes else scan.stderr,
+        )
+
+    @staticmethod
+    def _is_auto_fixable(issue: m.Infra.Issue) -> bool:
+        """Return True when flext-core marks this smell tag as auto-fixable."""
+        tag = c.Infra.SMELLS_RULE_TAGS.get(issue.code, "")
+        strategy = core_c.ENFORCEMENT_SMELL_FIX_STRATEGIES.get(tag)
+        return bool(strategy and strategy.get("auto"))
 
     @override
     def check(
