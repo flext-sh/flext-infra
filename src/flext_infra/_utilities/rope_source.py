@@ -9,9 +9,12 @@ from operator import itemgetter
 from pathlib import Path
 from typing import ClassVar
 
+from rope.base import ast
+
 from flext_cli import u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -405,173 +408,6 @@ class FlextInfraUtilitiesRopeSource:
             resource.write(source)
         return source
 
-    @staticmethod
-    def _indent_width(line: str) -> int:
-        """Indent width."""
-        return len(line) - len(line.lstrip())
-
-    @classmethod
-    def _silent_failure_block_return(
-        cls,
-        lines: t.StrSequence,
-        *,
-        start_index: int,
-        block_indent: int,
-    ) -> tuple[int, str, str] | None:
-        """Silent failure block return."""
-        index = start_index + 1
-        while index < len(lines):
-            line = lines[index]
-            stripped = line.strip()
-            if not stripped:
-                index += 1
-                continue
-            if cls._indent_width(line) <= block_indent:
-                return None
-            match = c.Infra.SILENT_FAILURE_RETURN_RE.match(line)
-            if match is not None:
-                return index, match.group("indent"), match.group("sentinel")
-            return None
-        return None
-
-    @classmethod
-    def _enclosing_result_inner(
-        cls,
-        lines: t.StrSequence,
-        *,
-        line_index: int,
-    ) -> str | None:
-        """Enclosing result inner."""
-        target_indent = cls._indent_width(lines[line_index])
-        for index in range(line_index, -1, -1):
-            line = lines[index]
-            stripped = line.lstrip()
-            if not stripped.startswith(("def ", "async def ")):
-                continue
-            if cls._indent_width(line) >= target_indent:
-                continue
-            signature_lines = [line.strip()]
-            tail = index
-            while tail + 1 < len(lines) and not lines[tail].rstrip().endswith(":"):
-                tail += 1
-                signature_lines.append(lines[tail].strip())
-            signature = " ".join(signature_lines)
-            match = c.Infra.FUNCTION_SIGNATURE_RE.search(signature)
-            if match is None:
-                return None
-            inner_result: str | None = match.group("legacy_inner") or match.group(
-                "result_inner"
-            )
-            return inner_result
-        return None
-
-    @classmethod
-    def collect_silent_failure_findings(
-        cls,
-        source: str,
-    ) -> t.SequenceOf[tuple[int, int, str, str, tuple[int, int, str] | None]]:
-        """Collect silent failure findings."""
-        lines = source.splitlines(keepends=True)
-        offsets: list[int] = []
-        current_offset = 0
-        for line in lines:
-            offsets.append(current_offset)
-            current_offset += len(line)
-        findings: list[tuple[int, int, str, str, tuple[int, int, str] | None]] = []
-        for index, line in enumerate(lines):
-            unwrap_match = c.Infra.SILENT_FAILURE_UNWRAP_RE.match(line)
-            if unwrap_match is not None:
-                sentinel = unwrap_match.group("sentinel")
-                findings.append(
-                    (
-                        index + 1,
-                        1,
-                        "silent-failure-unwrap-or",
-                        f"unwrap_or({sentinel}) hides a failure path",
-                        None,
-                    ),
-                )
-                continue
-            guard_match = c.Infra.SILENT_FAILURE_IF_RE.match(line)
-            if guard_match is not None:
-                block = cls._silent_failure_block_return(
-                    lines,
-                    start_index=index,
-                    block_indent=cls._indent_width(line),
-                )
-                if block is None:
-                    continue
-                block_index, indent, sentinel = block
-                result_name = (
-                    guard_match.group("failure_name")
-                    or guard_match.group("success_name")
-                    or "result"
-                )
-                replacement: tuple[int, int, str] | None = None
-                result_inner = cls._enclosing_result_inner(
-                    lines, line_index=block_index
-                )
-                if result_inner is not None:
-                    lbl = result_name.removesuffix("_result").replace("_", " ").strip()
-                    failure_label = f"{lbl} failed" if lbl else "operation failed"
-                    replacement = (
-                        offsets[block_index],
-                        offsets[block_index] + len(lines[block_index]),
-                        (
-                            f"{indent}return r[{result_inner}].fail("
-                            f"{result_name}.error or {failure_label!r})\n"
-                        ),
-                    )
-                findings.append(
-                    (
-                        block_index + 1,
-                        1,
-                        "silent-failure-guard",
-                        (
-                            f"failure branch for '{result_name}' returns {sentinel} "
-                            "instead of propagating the error"
-                        ),
-                        replacement,
-                    ),
-                )
-                continue
-            except_match = c.Infra.SILENT_FAILURE_EXCEPT_RE.match(line)
-            if except_match is None:
-                continue
-            block = cls._silent_failure_block_return(
-                lines,
-                start_index=index,
-                block_indent=cls._indent_width(line),
-            )
-            if block is None:
-                continue
-            block_index, indent, sentinel = block
-            exception_name = except_match.group("exception_name")
-            replacement = None
-            result_inner = cls._enclosing_result_inner(lines, line_index=block_index)
-            if result_inner is not None and exception_name is not None:
-                replacement = (
-                    offsets[block_index],
-                    offsets[block_index] + len(lines[block_index]),
-                    (
-                        f"{indent}return r[{result_inner}].fail("
-                        f"str({exception_name}), exception={exception_name})\n"
-                    ),
-                )
-            findings.append(
-                (
-                    block_index + 1,
-                    1,
-                    "silent-failure-except",
-                    (
-                        f"exception branch returns {sentinel} instead of "
-                        "propagating the caught error"
-                    ),
-                    replacement,
-                ),
-            )
-        return findings
-
     @classmethod
     def fix_silent_failure_sentinels(
         cls,
@@ -580,12 +416,23 @@ class FlextInfraUtilitiesRopeSource:
         *,
         apply: bool = True,
     ) -> t.Infra.TransformResult:
-        """Fix silent failure sentinels."""
+        """Fix silent failure sentinels using rope-backed AST detection.
+
+        Only deterministic replacements (guard / except-sentinel with an
+        inferrable ``r[T]`` / ``Result[T]`` return type) are rewritten.
+        """
         source = resource.read()
-        findings = cls.collect_silent_failure_findings(source)
-        changes: list[tuple[int, int, str]] = [
-            change for *_, change in findings if change is not None
-        ]
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project,
+                resource,
+            )
+            tree = pymodule.get_ast()
+        except Exception:
+            return source, []
+        if not isinstance(tree, ast.Module):
+            return source, []
+        changes = collect_silent_failure_fixes(tree, source)
         if not changes:
             return source, []
         updated = cls.rewrite_source_at_offsets(

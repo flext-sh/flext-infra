@@ -651,6 +651,14 @@ class FlextInfraConstantsSourceCode:
         "_utilities",
     })
     "Canonical directory names where utility classes should live."
+    PLACEMENT_CANONICAL_TYPING_FILES: Final[frozenset[str]] = frozenset({
+        "typings.py",
+    })
+    "Canonical file names where type aliases should live."
+    PLACEMENT_CANONICAL_TYPING_DIRS: Final[frozenset[str]] = frozenset({
+        "_typings",
+    })
+    "Canonical directory names where type aliases should live."
 
     # --- Shared threshold constants (was: class Thresholds) ---
     MIN_UNION_MEMBERS: Final[int] = 2
@@ -683,28 +691,6 @@ class FlextInfraConstantsSourceCode:
         r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$"
     )
     "Regex: ruff summary line (Found N errors / N fixable)."
-
-    # --- Result/r[T] signature patterns ---
-    SILENT_FAILURE_RETURN_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<indent>\s*)return\s+(?P<sentinel>False|None|\[\]|\{\})\s*(?:#.*)?$",
-    )
-    "Regex: silent-failure return sentinel (False/None/[]/{}})."
-    SILENT_FAILURE_UNWRAP_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<indent>\s*)return\s+.+?\.unwrap_or\((?P<sentinel>False|None|\[\]|\{\})\)\s*(?:#.*)?$",
-    )
-    "Regex: unwrap_or with sentinel value."
-    SILENT_FAILURE_IF_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<indent>\s*)if\s+(?:(?P<failure_name>[A-Za-z_]\w*)\.failure|not\s+(?P<success_name>[A-Za-z_]\w*)\.success)\s*:\s*(?P<inline>.*)$",
-    )
-    "Regex: failure/success guard pattern."
-    SILENT_FAILURE_EXCEPT_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<indent>\s*)except(?:\s+.+?)?(?:\s+as\s+(?P<exception_name>[A-Za-z_]\w*))?\s*:\s*(?P<inline>.*)$",
-    )
-    "Regex: except clause with optional exception name."
-    FUNCTION_SIGNATURE_RE: Final[t.RegexPattern] = re.compile(
-        r"->\s*(?:r\[(?P<legacy_inner>.+)\]|p\.Result\[(?P<result_inner>.+)\])\s*:",
-    )
-    "Regex: p.Result[T] or p.Result[T] return annotation."
 
     # --- Semantic versioning (was: class Versioning) ---
     SEMVER_PROJECT_SECTION: Final[str] = "[project]"
