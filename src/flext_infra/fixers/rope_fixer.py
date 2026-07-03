@@ -22,9 +22,6 @@ from flext_infra.protocols import p
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-from flext_infra.transformers.compatibility_alias import (
-    FlextInfraRefactorCompatibilityAlias,
-)
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
