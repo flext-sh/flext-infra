@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import io
-import re
 import token
 import tokenize
 from dataclasses import dataclass
@@ -30,9 +29,14 @@ class _HeaderSpan:
     def future_insert_offset(self) -> int:
         """Offset where ``from __future__ import annotations`` belongs.
 
-        After shebang/encoding/comments, before the module docstring.
+        After shebang/encoding/comments and any module docstring.
         """
-        return max(self.shebang_end, self.encoding_end, self.comments_end)
+        return max(
+            self.shebang_end,
+            self.encoding_end,
+            self.comments_end,
+            self.docstring_end,
+        )
 
     @property
     def import_insert_offset(self) -> int:
@@ -56,27 +60,29 @@ class _HeaderInfo:
     span: _HeaderSpan
 
 
-_ENCODING_COOKIE_RE: re.Pattern[str] = re.compile(
-    r"^[ \t]*#\s*-*\s*coding[:=]\s*([-\w.]+)\s*-*\s*$",
-)
-
-
 def ensure_future_annotations(source: str) -> str:
     """Return source with exactly one ``from __future__ import annotations``.
 
-    The future import is placed before the module docstring and after any
+    The future import is placed after any module docstring and after any
     shebang/encoding/comment header. Existing duplicates are removed.
     """
-    info = _parse_header(source)
-    if info.has_future_annotations:
-        normalized = _remove_future_annotations_lines(source)
-    else:
-        normalized = source
+    lines = source.splitlines(keepends=True)
+    body = [line for line in lines if line.strip() != c.Infra.FUTURE_ANNOTATIONS]
+    normalized = "".join(body)
+    info = _parse_header(normalized)
     offset = info.span.future_insert_offset
-    insertion = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
-    if offset < len(normalized) and not normalized[offset:].startswith("\n"):
-        insertion = f"{insertion}\n"
-    return f"{normalized[:offset]}{insertion}{normalized[offset:]}"
+    line_index = normalized[:offset].count("\n")
+    future_line = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
+    if info.span.docstring_end:
+        while line_index < len(body) and not body[line_index].strip():
+            del body[line_index]
+        insert_lines = ["\n", future_line]
+        if line_index < len(body):
+            insert_lines.append("\n")
+        body[line_index:line_index] = insert_lines
+    else:
+        body.insert(line_index, future_line)
+    return "".join(body)
 
 
 def ensure_alias_import(
@@ -157,7 +163,7 @@ def _parse_header(source: str) -> _HeaderInfo:
             and not seen_non_header_token
             and docstring_end == 0
         ):
-            docstring_end = tok.end[1]
+            docstring_end = _line_end_offset(source, tok.end)
             continue
         seen_non_header_token = True
         if tok.type != token.NAME or tok.string != "from":
@@ -171,7 +177,7 @@ def _parse_header(source: str) -> _HeaderInfo:
         if import_tok.type != token.NAME or import_tok.string != "import":
             continue
         module_name = module_tok.string
-        import_end = _find_import_line_end(tokens, index)
+        import_end = _find_import_line_end(source, tokens, index)
         if module_name == "__future__":
             if _imports_name(tokens, index, "annotations"):
                 has_future_annotations = True
@@ -198,7 +204,7 @@ def _encoding_end(source: str, start: int) -> int:
     if start >= len(source):
         return start
     head = source[start:]
-    match = _ENCODING_COOKIE_RE.match(head)
+    match = c.Infra.ENCODING_COOKIE_RE.match(head)
     if match is None:
         return start
     line_end = head.find("\n")
@@ -206,32 +212,57 @@ def _encoding_end(source: str, start: int) -> int:
 
 
 def _leading_comments_end(source: str, start: int) -> int:
-    """Return byte offset after leading full-line comments and their blank gap."""
+    """Return byte offset at the first non-comment, non-blank line.
+
+    Blank lines are consumed only when they follow a leading comment block,
+    matching the canonical placement of ``from __future__ import annotations``.
+    """
     index = start
     saw_comment = False
     while index < len(source):
         line_end = source.find("\n", index)
-        chunk = source[index:] if line_end == -1 else source[index : line_end + 1]
-        stripped = chunk.strip()
+        line = source[index:] if line_end == -1 else source[index:line_end]
+        stripped = line.strip()
         if stripped.startswith("#"):
             saw_comment = True
-            index += len(chunk)
+            index = len(source) if line_end == -1 else line_end + 1
             continue
         if not stripped and saw_comment:
-            index += len(chunk)
+            index = len(source) if line_end == -1 else line_end + 1
             continue
         break
     return index
 
 
 def _find_import_line_end(
-    tokens: t.SequenceOf[tokenize.TokenInfo], from_index: int
+    source: str, tokens: t.SequenceOf[tokenize.TokenInfo], from_index: int
 ) -> int:
     """Return the byte offset just after the import statement starting at from_index."""
     for tok in tokens[from_index:]:
         if tok.type in {token.NEWLINE, token.ENDMARKER}:
-            return tok.end[1]
+            return _position_offset(source, tok.end)
     return 0
+
+
+def _line_end_offset(source: str, position: tuple[int, int]) -> int:
+    """Return the source offset after the line containing ``position``."""
+    offset = _position_offset(source, position)
+    newline = source.find("\n", offset)
+    return len(source) if newline == -1 else newline + 1
+
+
+def _position_offset(source: str, position: tuple[int, int]) -> int:
+    """Convert a ``tokenize`` line/column position into a source offset."""
+    line, column = position
+    if line <= 1:
+        return min(column, len(source))
+    offset = 0
+    for _line_number in range(1, line):
+        newline = source.find("\n", offset)
+        if newline == -1:
+            return len(source)
+        offset = newline + 1
+    return min(offset + column, len(source))
 
 
 def _imports_name(
