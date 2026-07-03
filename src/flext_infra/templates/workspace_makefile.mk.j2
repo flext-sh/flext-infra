@@ -664,6 +664,8 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) import-cycles
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) lazy-map-freshness
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) tier-whitelist
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) namespace
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) runtime-census
 	$(Q)$(WORKSPACE_INFRA_VALIDATE) metadata-discipline
 	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --audit
 	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.reports/**' ':!**/*.bak' ':!docs/**'; then \
