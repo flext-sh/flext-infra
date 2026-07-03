@@ -311,83 +311,122 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=route_name,
             help_text=help_text,
             model_cls=model_cls,
-            handler=lambda params, mc=model_cls: mc.execute_command(params),
+            handler=handler,
         )
-        for route_name, help_text, model_cls in (
+        for route_name, help_text, model_cls, handler in (
             (
                 "basemk-validate",
                 "Validate base.mk sync",
                 FlextInfraBaseMkValidator,
+                lambda params, mc=FlextInfraBaseMkValidator: mc.execute_command(params),
             ),
             (
                 "inventory",
                 "Generate scripts inventory",
                 FlextInfraInventoryService,
+                lambda params, mc=FlextInfraInventoryService: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "runtime-census",
                 "Post-import Beartype enforcement census for flext_* modules",
                 FlextInfraRuntimeCensusValidator,
+                lambda params, mc=FlextInfraRuntimeCensusValidator: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "pytest-diag",
                 "Extract pytest diagnostics",
                 FlextInfraPytestDiagExtractor,
+                lambda params, mc=FlextInfraPytestDiagExtractor: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "scan",
                 "Scan text files for patterns",
                 FlextInfraTextPatternScanner,
+                lambda params, mc=FlextInfraTextPatternScanner: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "skill-validate",
                 "Validate a skill",
                 FlextInfraSkillValidator,
+                lambda params, mc=FlextInfraSkillValidator: mc.execute_command(params),
             ),
             (
                 "silent-failure",
                 "Validate silent failure sentinel returns",
                 FlextInfraSilentFailureValidator,
+                lambda params, mc=FlextInfraSilentFailureValidator: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "stub-validate",
                 "Validate stub supply chain",
                 FlextInfraStubSupplyChain,
+                lambda params, mc=FlextInfraStubSupplyChain: mc.execute_command(params),
             ),
             (
                 "fresh-import",
                 "Guard 7: fresh-process import smoke test",
                 FlextInfraValidateFreshImport,
+                lambda params, mc=FlextInfraValidateFreshImport: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "import-cycles",
                 "Guard 1: ROPE-backed import cycle detector",
                 FlextInfraValidateImportCycles,
+                lambda params, mc=FlextInfraValidateImportCycles: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "lazy-map-freshness",
                 "Guard 2/3: lazy-map freshness validator",
                 FlextInfraValidateLazyMapFreshness,
+                lambda params, mc=FlextInfraValidateLazyMapFreshness: (
+                    mc.execute_command(params)
+                ),
             ),
             (
                 "namespace",
                 "Guard: static namespace rules (NS-000..003) via rope",
                 FlextInfraNamespaceValidator,
+                lambda params, mc=FlextInfraNamespaceValidator: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "tier-whitelist",
                 "Guard 5: tier-whitelist/abstraction-boundary enforcer",
                 FlextInfraValidateTierWhitelist,
+                lambda params, mc=FlextInfraValidateTierWhitelist: mc.execute_command(
+                    params
+                ),
             ),
             (
                 "metadata-discipline",
                 "Guard 8: centralized metadata parser discipline",
                 FlextInfraValidateMetadataDiscipline,
+                lambda params, mc=FlextInfraValidateMetadataDiscipline: (
+                    mc.execute_command(params)
+                ),
             ),
             (
                 "manual-cmd",
                 "Manual-command blocker (§5): pre-commit config drift gate",
                 FlextInfraManualCommandValidator,
+                lambda params, mc=FlextInfraManualCommandValidator: mc.execute_command(
+                    params
+                ),
             ),
         )
     ),

@@ -8,9 +8,13 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
     {
         ".fixtures": (
+            "real_workspace",
+            "rope_workspace",
             "services_resource",
             "tool_config_document",
         ),
+        ".refactor": ("refactor",),
+        ".release": ("release",),
         ".test_infra_workspace_migrator_errors": (
             "test_infra_workspace_migrator_errors",
         ),

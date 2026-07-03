@@ -28,7 +28,7 @@ def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
             _ = settings
             return r[str].fail(content) if fail else r[str].ok(content)
 
-    return _Gen(workspace_root=Path.cwd())
+    return _Gen(workspace=Path.cwd())
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -99,7 +99,7 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -120,7 +120,7 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -132,7 +132,7 @@ class TestsFlextInfraWorkspaceSync:
         _write_project(project_root, "demo-project")
         service = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         )
 
         first_result = service.execute()
@@ -154,7 +154,7 @@ class TestsFlextInfraWorkspaceSync:
         )
         service = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         )
 
         result = service.execute()
@@ -189,11 +189,11 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         ).execute()
         second_result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -209,7 +209,7 @@ class TestsFlextInfraWorkspaceSync:
     def test_sync_fails_when_workspace_root_is_missing(self) -> None:
         missing_root = Path("/nonexistent/path")
 
-        result = FlextInfraSyncService(workspace_root=missing_root).execute()
+        result = FlextInfraSyncService(workspace=missing_root).execute()
 
         assert result.failure
         assert "does not exist" in _error_text(result)
@@ -220,7 +220,7 @@ class TestsFlextInfraWorkspaceSync:
 
         service = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         )
         service.generator = _stub_gen("Generation failed", fail=True)
         result = service.execute()
@@ -235,7 +235,7 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         ).execute()
 
         assert result.failure
@@ -249,7 +249,7 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=workspace_root,
-            workspace_root=workspace_root,
+            workspace=workspace_root,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -268,7 +268,7 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=workspace_root,
-            workspace_root=workspace_root,
+            workspace=workspace_root,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -292,7 +292,7 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace_root=project_root,
+            workspace=project_root,
         ).execute()
 
         assert result.success, _error_text(result)

@@ -6,13 +6,11 @@ from collections.abc import (
     Callable,
     MutableMapping,
 )
+from importlib import import_module
 from pathlib import Path
+from types import ModuleType
 
-import mkdocs.commands.build
-import mkdocs.config
-import mkdocs.exceptions
-
-from flext_cli import u
+from flext_cli.utilities import u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -21,6 +19,50 @@ from flext_infra.protocols import p
 
 class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
+
+    @staticmethod
+    def _module_callable(module: ModuleType, name: str) -> Callable[..., object]:
+        """Return a named callable from a lazily loaded module."""
+        value: object = getattr(module, name)
+        if callable(value):
+            return value
+        msg = f"{module.__name__}.{name} is not callable"
+        raise OSError(msg)
+
+    @staticmethod
+    def _mkdocs_exception_types(module: ModuleType) -> tuple[type[BaseException], ...]:
+        """Return MkDocs exception classes from a lazily loaded module."""
+        names = (
+            "Abort",
+            "BuildError",
+            "ConfigurationError",
+            "MkDocsException",
+            "PluginError",
+        )
+        errors: list[type[BaseException]] = []
+        for name in names:
+            value: object = getattr(module, name)
+            if not isinstance(value, type) or not issubclass(value, BaseException):
+                msg = f"{module.__name__}.{name} is not an exception type"
+                raise OSError(msg)
+            errors.append(value)
+        return tuple(errors)
+
+    @staticmethod
+    def _load_mkdocs_config(
+        load: Callable[..., object],
+        settings: Path,
+        site_dir: Path,
+    ) -> MutableMapping[str, object]:
+        """Load and validate a MkDocs config mapping."""
+        config_raw = load(
+            config_file_path=str(settings),
+            site_dir=str(site_dir),
+        )
+        if not isinstance(config_raw, MutableMapping):
+            msg = "mkdocs.config.load_config did not return a mutable mapping"
+            raise OSError(msg)
+        return config_raw
 
     @staticmethod
     def docs_run_mkdocs(
@@ -120,25 +162,26 @@ class FlextInfraUtilitiesDocsBuild:
         Converts mkdocs-specific exceptions to ``OSError`` so callers only
         need to catch standard exception types.
         """
-        load: Callable[..., MutableMapping[str, bool]] = getattr(
-            mkdocs.config, "load_config"
+        mkdocs_build = import_module("mkdocs.commands.build")
+        mkdocs_config = import_module("mkdocs.config")
+        mkdocs_exceptions = import_module("mkdocs.exceptions")
+        load = FlextInfraUtilitiesDocsBuild._module_callable(
+            mkdocs_config, "load_config"
         )
-        build: Callable[..., None] = mkdocs.commands.build.build
+        build = FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build")
+        mkdocs_error_types = FlextInfraUtilitiesDocsBuild._mkdocs_exception_types(
+            mkdocs_exceptions
+        )
+        site_dir.parent.mkdir(parents=True, exist_ok=True)
         try:
-            site_dir.parent.mkdir(parents=True, exist_ok=True)
-            config_obj: MutableMapping[str, bool] = load(
-                config_file_path=str(settings),
-                site_dir=str(site_dir),
+            config_obj = FlextInfraUtilitiesDocsBuild._load_mkdocs_config(
+                load,
+                settings,
+                site_dir,
             )
             config_obj["strict"] = True
-            build(config_obj, dirty=False)
-        except (
-            mkdocs.exceptions.Abort,
-            mkdocs.exceptions.BuildError,
-            mkdocs.exceptions.ConfigurationError,
-            mkdocs.exceptions.MkDocsException,
-            mkdocs.exceptions.PluginError,
-        ) as exc:
+            _ = build(config_obj, dirty=False)
+        except mkdocs_error_types as exc:
             msg = str(exc) or "mkdocs build failed"
             raise OSError(msg) from exc
 

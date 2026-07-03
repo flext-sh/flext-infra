@@ -35,9 +35,12 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".transformers.test_infra_transformer_enforcement_fixers": (
             "TestsFlextInfraTransformersBareExcept",
             "TestsFlextInfraTransformersFutureImport",
+            "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",
             "TestsFlextInfraTransformersPrintToLogger",
             "TestsFlextInfraTransformersRemoveBreakpoint",
+            "TestsFlextInfraTransformersTypingDictAttr",
+            "TestsFlextInfraTransformersTypingDictImport",
         ),
         ".transformers.test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
@@ -60,12 +63,9 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".transformers.test_infra_transformer_tests_modernizer": (
             "TestsFlextInfraTransformersTestsModernizer",
         ),
-        ".workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
-        ".workspace.test_makefile_dry_run": ("TestsFlextInfraWorkspaceMakefileDryRun",),
-        ".workspace.test_makefile_generator": (
-            "TestsFlextInfraWorkspaceMakefileGenerator",
+        ".transformers.test_project_alias_migrator": (
+            "TestsFlextInfraRefactorProjectAliasMigrator",
         ),
-        ".workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
         ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
     },
 )

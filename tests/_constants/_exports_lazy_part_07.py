@@ -8,7 +8,6 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
         "._constants": ("_constants",),
-        ".conftest": ("conftest",),
         ".constants": ("c",),
         ".typings": ("TestsFlextInfraTypes",),
         ".unit._utilities.test_discovery_consolidated": (
@@ -21,15 +20,20 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-        ".unit.fixtures": ("deptry_report_payload",),
         ".unit.transformers.test_infra_transformer_class_nesting": (
             "TestsFlextInfraTransformersInfraTransformerClassNesting",
         ),
+        ".unit.transformers.test_infra_transformer_cli_modernizer": (
+            "TestsFlextInfraTransformersCliModernizer",
+        ),
         ".unit.transformers.test_infra_transformer_enforcement_fixers": (
             "TestsFlextInfraTransformersFutureImport",
+            "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",
             "TestsFlextInfraTransformersPrintToLogger",
             "TestsFlextInfraTransformersRemoveBreakpoint",
+            "TestsFlextInfraTransformersTypingDictAttr",
+            "TestsFlextInfraTransformersTypingDictImport",
         ),
         ".unit.transformers.test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
@@ -65,10 +69,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ),
         ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         ".utilities": ("TestsFlextInfraUtilities",),
-        "flext_tests": (
-            "d",
-            "e",
-        ),
     },
 )
 

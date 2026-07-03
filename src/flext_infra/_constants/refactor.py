@@ -491,11 +491,10 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         r"^_?[A-Z][A-Z0-9_]+$",
     )
     "Regex: namespace constant candidate names."
-    CLASSVAR_EXEMPT_NAMES: Final[frozenset[str]] = frozenset({
-        "model_config",
-        "logger",
-    })
-    "ClassVar attribute names that are framework idioms and stay in place."
+    CLASSVAR_EXEMPT_NAMES: Final[frozenset[str]] = (
+        _fce.ENFORCEMENT_CLASSVAR_EXEMPT_NAMES
+    )
+    "ClassVar attribute names that are framework idioms and stay in place (SSOT: flext-core)."
     CLASSVAR_ALLOWED_CALLS: Final[frozenset[str]] = frozenset({
         "Path",
         "PurePath",
@@ -504,6 +503,8 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "frozenset",
         "tuple",
         "dict",
+        "list",
+        "set",
         "MappingProxyType",
     })
     "Canonical factory calls allowed as ClassVar default values."

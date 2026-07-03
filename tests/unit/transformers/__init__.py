@@ -16,9 +16,12 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_infra_transformer_enforcement_fixers": (
             "TestsFlextInfraTransformersBareExcept",
             "TestsFlextInfraTransformersFutureImport",
+            "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",
             "TestsFlextInfraTransformersPrintToLogger",
             "TestsFlextInfraTransformersRemoveBreakpoint",
+            "TestsFlextInfraTransformersTypingDictAttr",
+            "TestsFlextInfraTransformersTypingDictImport",
         ),
         ".test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
@@ -40,6 +43,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".test_infra_transformer_tests_modernizer": (
             "TestsFlextInfraTransformersTestsModernizer",
+        ),
+        ".test_project_alias_migrator": (
+            "TestsFlextInfraRefactorProjectAliasMigrator",
         ),
         "flext_tests": (
             "c",

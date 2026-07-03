@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from flext_cli import d, e, h, r, x
 from flext_core.lazy import install_lazy_exports
 from flext_infra.__version__ import (
     __author__,
@@ -29,11 +28,6 @@ _EAGER_EXPORTS = (
     __url__,
     __version__,
     __version_info__,
-    d,
-    e,
-    h,
-    r,
-    x,
 )
 
 
@@ -41,17 +35,12 @@ _PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
-    "FlextInfraEnforcementFixerOrchestrator",
-    "FlextInfraFixerAdapter",
-    "FlextInfraFixersResult",
-    "FlextInfraGateFixerAdapter",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
-    "FlextInfraTransformerFixerAdapter",
     "FlextInfraTypes",
     "FlextInfraUtilities",
     "__author__",

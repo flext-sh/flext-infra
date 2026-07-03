@@ -45,7 +45,9 @@ class FlextInfraCodegenFixerResultsMixin:
     ) -> t.SequenceOf[m.Infra.CensusViolation]:
         """Read the initial namespace violations and record skip reason on failure."""
         initial_violations_result = u.Infra.parse_namespace_validation(
-            FlextInfraNamespaceValidator().validate(project_path),
+            FlextInfraNamespaceValidator().validate_project(
+                project_path, scan_tests=False
+            ),
         )
         if initial_violations_result.failure:
             _log.warning(
@@ -71,7 +73,9 @@ class FlextInfraCodegenFixerResultsMixin:
     ) -> None:
         """Re-run validation and split outstanding violations into fixed vs skipped."""
         remaining_result = u.Infra.parse_namespace_validation(
-            FlextInfraNamespaceValidator().validate(project_path),
+            FlextInfraNamespaceValidator().validate_project(
+                project_path, scan_tests=False
+            ),
         )
         if remaining_result.failure:
             ctx.skip(

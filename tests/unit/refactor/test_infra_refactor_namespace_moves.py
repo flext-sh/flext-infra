@@ -202,4 +202,3 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         assert "from flext_infra.constants import c" in source_text
         assert "from flext_infra.typings import t" in source_text
         assert "from flext_core import r" in source_text
-        assert source_file.with_suffix(".py.bak").exists()

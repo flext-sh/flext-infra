@@ -344,7 +344,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             encoding="utf-8",
         )
         constants_mod = pkg / "_constants.py"
-        constants_mod.write_text("\"\"\"Constants.\"\"\"\n", encoding="utf-8")
+        constants_mod.write_text('"""Constants."""\n', encoding="utf-8")
 
         result = FlextInfraRefactorClassvarConstantAutofix.apply(
             tmp_path,
@@ -354,7 +354,12 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             dry_run=True,
         )
 
-        assert "demo/service.py" in " ".join(result["touched_files"])
-        assert "demo/_constants.py" in " ".join(result["touched_files"])
-        assert "GROUPS = frozenset({'a'})" in result["target_text"]
-        assert "GROUPS = frozenset({'a'})" not in result["source_text"]
+        touched_files = result["touched_files"]
+        assert isinstance(touched_files, (list, tuple))
+        assert "demo/service.py" in " ".join(str(p) for p in touched_files)
+        assert "demo/_constants.py" in " ".join(str(p) for p in touched_files)
+        target_text = result["target_text"]
+        source_text = result["source_text"]
+        assert isinstance(target_text, str) and isinstance(source_text, str)
+        assert "GROUPS = frozenset({'a'})" in target_text
+        assert "GROUPS = frozenset({'a'})" not in source_text

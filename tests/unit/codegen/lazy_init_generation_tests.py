@@ -22,6 +22,27 @@ from tests.typings import t
 from tests.utilities import u
 
 
+def test_public_root_keeps_flext_core_aliases_lazy() -> None:
+    """Public root generation must not eager-load flext_core aliases."""
+    lazy_map: t.MutableLazyAliasMap = {
+        "r": ("flext_core", "r"),
+        "u": ("flext_core", "u"),
+        "tc": ("flext_tests", "tc"),
+    }
+    eager_imports: t.MutableLazyAliasMap = {}
+
+    FlextInfraCodegenLazyInitPlanner._promote_public_root_eager_aliases(
+        current_pkg="flext_cli",
+        lazy_map=lazy_map,
+        eager_imports=eager_imports,
+    )
+
+    assert lazy_map["r"] == ("flext_core", "r")
+    assert lazy_map["u"] == ("flext_core", "u")
+    assert "tc" not in lazy_map
+    assert eager_imports == {"tc": ("flext_tests", "tc")}
+
+
 class TestGenerateTypeChecking:
     """Test generate_type_checking function."""
 

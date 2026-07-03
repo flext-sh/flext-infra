@@ -105,7 +105,7 @@ class FlextInfraCodegenCensus(s[str]):
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         violations_result = u.Infra.parse_namespace_validation(
-            FlextInfraNamespaceValidator().validate(
+            FlextInfraNamespaceValidator().validate_project(
                 project.path,
                 scan_tests=True,
             ),

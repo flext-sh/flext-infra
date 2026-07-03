@@ -10,10 +10,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
-from flext_infra.utilities import u
 
 # Map canonical alias → local facade module suffix inside a FLEXT project.
 _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {
@@ -167,14 +168,16 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         names_part = names_part.strip().strip("()")
 
         kept: t.MutableSequenceOf[str] = []
-        for bare_name, bound in u.Infra.parse_import_names(names_part):
+        for bare_name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+            names_part
+        ):
             display = bare_name if bare_name == bound else f"{bare_name} as {bound}"
-            if bound in local_aliases and bound in _ALIAS_TO_LOCAL_MODULE:
-                module_suffix = _ALIAS_TO_LOCAL_MODULE[bound]
+            if bare_name in local_aliases and bare_name in _ALIAS_TO_LOCAL_MODULE:
+                module_suffix = _ALIAS_TO_LOCAL_MODULE[bare_name]
                 local_module = f"{current_project}.{module_suffix}"
                 local_imports_to_add.setdefault(local_module, set()).add(display)
                 self._record_change(
-                    f"Migrated {bound} from flext_core to {local_module}"
+                    f"Migrated {display} from flext_core to {local_module}"
                 )
                 continue
             kept.append(display)
@@ -194,7 +197,9 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             names = sorted(local_imports_to_add[module])
             new_imports.append(f"from {module} import {', '.join(names)}\n")
 
-        insert_pos = u.Infra.find_import_insert_position(lines, past_existing=False)
+        insert_pos = FlextInfraUtilitiesRopeSource.find_import_insert_position(
+            lines, past_existing=False
+        )
         for idx, imp in enumerate(new_imports):
             lines.insert(insert_pos + idx, imp)
         return lines
@@ -213,7 +218,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         if file_path is None:
             return ""
         path = Path(file_path) if isinstance(file_path, str) else file_path
-        package_name = u.Infra.package_name(path)
+        package_name = FlextInfraUtilitiesDiscovery.package_name(path)
         return package_name.split(".", maxsplit=1)[0]
 
 

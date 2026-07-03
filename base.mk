@@ -205,6 +205,8 @@ help: ## Show commands
 
 	$(Q)printf "  %-14s %s\n" "check" "Run lint gates (CHECK_GATES= to select)"
 
+	$(Q)printf "  %-14s %s\n" "fix-enforcement" "Auto-fix enforcement violations (APPLY=1, PROJECTS=..., RULES=...)"
+
 	$(Q)printf "  %-14s %s\n" "scan" "Run all security checks"
 
 	$(Q)printf "  %-14s %s\n" "fmt" "Run all formatting"
@@ -259,6 +261,12 @@ help: ## Show commands
 	$(Q)echo "  DOCS_PHASE=all|generate|fix|audit|build|validate"
 
 	$(Q)echo "  FIX=1                       Auto-fix supported gates"
+
+	$(Q)echo "  APPLY=1                     Apply enforcement fixes (default dry-run)"
+
+	$(Q)echo "  PROJECTS=p1,p2              Scope fix-enforcement to projects"
+
+	$(Q)echo "  RULES=ENFORCE-XXX,...       Scope fix-enforcement to rules"
 
 	$(Q)echo "  VERBOSE=1                   Show executed commands"
 

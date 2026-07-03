@@ -214,7 +214,9 @@ class TestsFlextInfraTransformersTypingDictImport:
         self,
         tmp_path: Path,
     ) -> None:
-        source = "from typing import Dict\n\ndef foo(x: Dict[str, int]) -> None:\n    pass\n"
+        source = (
+            "from typing import Dict\n\ndef foo(x: Dict[str, int]) -> None:\n    pass\n"
+        )
         transformer = FlextInfraRefactorTypingDictImport(
             file_path=tmp_path / "module.py",
         )
@@ -243,8 +245,7 @@ class TestsFlextInfraTransformersTypingDictAttr:
 
     def test_typing_dict_attr_rewritten(self, tmp_path: Path) -> None:
         source = (
-            "import typing\n\n"
-            "def foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
+            "import typing\n\ndef foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
         )
         transformer = FlextInfraRefactorTypingDictAttr(
             file_path=tmp_path / "module.py",

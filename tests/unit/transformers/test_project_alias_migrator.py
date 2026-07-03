@@ -56,11 +56,11 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             current_project="flext_infra"
         )
         updated, changes = transformer.apply_to_source(source)
-        assert "from flext_core import" not in updated
+        assert "from flext_core import (" not in updated
         assert "from flext_infra.constants import c" in updated
         assert "from flext_infra.models import m" in updated
         assert "from flext_core import r" in updated
-        assert len(changes) == 3
+        assert len(changes) == 2
 
     def test_no_change_when_project_owns_no_aliases(self) -> None:
         source = (

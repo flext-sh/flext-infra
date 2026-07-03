@@ -141,6 +141,26 @@ class FlextInfraModelsCheck:
                 )
             return tuple(normalized)
 
+        @m.field_validator("projects", mode="before")
+        @classmethod
+        def _parse_projects(
+            cls,
+            value: str | t.SequenceOf[str] | None,
+        ) -> t.StrSequence | None:
+            """Accept CSV string, sequence, or None; normalize to StrSequence."""
+            if value is None:
+                return None
+            if isinstance(value, str):
+                return tuple(part.strip() for part in value.split(",") if part.strip())
+            normalized: list[str] = []
+            for part in value:
+                if not part:
+                    continue
+                normalized.extend(
+                    token.strip() for token in part.split(",") if token.strip()
+                )
+            return tuple(normalized) or None
+
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""
 

@@ -12,10 +12,7 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         "._protocols": ("_protocols",),
         "._typings": ("_typings",),
         "._utilities": ("_utilities",),
-        ".api": (
-            "FlextInfra",
-            "infra",
-        ),
+        ".api": ("FlextInfra",),
         ".base": ("FlextInfraServiceBase",),
         ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
         ".basemk": ("basemk",),
@@ -30,16 +27,8 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".detectors": ("detectors",),
         ".docs": ("docs",),
         ".fixers": ("fixers",),
-        ".fixers.base": ("FlextInfraFixerAdapter",),
-        ".fixers.gate_fixer": ("FlextInfraGateFixerAdapter",),
-        ".fixers.orchestrator": ("FlextInfraEnforcementFixerOrchestrator",),
-        ".fixers.result": ("FlextInfraFixersResult",),
-        ".fixers.transformer_fixer": ("FlextInfraTransformerFixerAdapter",),
         ".gates": ("gates",),
-        ".models": (
-            "FlextInfraModels",
-            "m",
-        ),
+        ".models": ("FlextInfraModels",),
         ".protocols": (
             "FlextInfraProtocols",
             "FlextInfraProtocolsBase",
@@ -47,6 +36,10 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".settings": ("FlextInfraSettings",),
         ".typings": ("FlextInfraTypes",),
         ".utilities": ("FlextInfraUtilities",),
+        "flext_core": (
+            "d",
+            "e",
+        ),
     },
 )
 

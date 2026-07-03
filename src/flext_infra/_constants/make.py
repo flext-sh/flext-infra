@@ -167,6 +167,10 @@ class FlextInfraConstantsMake:
         ("boot", "Install dependencies and hooks"),
         ("build", "Build distributable artifacts"),
         ("check", "Run lint gates (CHECK_GATES= to select)"),
+        (
+            "fix-enforcement",
+            "Auto-fix enforcement violations (APPLY=1, PROJECTS=..., RULES=...)",
+        ),
         ("scan", "Run all security checks"),
         ("fmt", "Run all formatting"),
         ("docs", "Build docs (DOCS_PHASE= to select)"),
@@ -195,6 +199,9 @@ class FlextInfraConstantsMake:
         "DIAG=1                      Emit extended pytest diagnostics",
         "DOCS_PHASE=all|generate|fix|audit|build|validate",
         "FIX=1                       Auto-fix supported gates",
+        "APPLY=1                     Apply enforcement fixes (default dry-run)",
+        "PROJECTS=p1,p2              Scope fix-enforcement to projects",
+        "RULES=ENFORCE-XXX,...       Scope fix-enforcement to rules",
         "VERBOSE=1                   Show executed commands",
     )
     PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (

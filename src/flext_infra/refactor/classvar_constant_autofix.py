@@ -10,14 +10,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rope.base.pyobjects import PyClass
 from rope.refactor import occurrences
 from rope.refactor.occurrences import worder
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from rope.base.project import Project
-    from rope.base.resources import Resource
 
 
 @dataclass(frozen=True)
@@ -28,8 +29,8 @@ class ClassvarConstantAutofixPlan:
     class_name: str
     constant_name: str
     constants_module: str
-    source_resource: Resource
-    target_resource: Resource
+    source_resource: t.Infra.RopeResource
+    target_resource: t.Infra.RopeResource
     declaration_line: str
     class_lineno: int
 
@@ -69,7 +70,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         source_mod = project.get_module(class_module)
         source_resource = source_mod.get_resource()
         pyclass = source_mod.get_attribute(class_name).get_object()
-        if not isinstance(pyclass, type(project.get_pymodule(source_resource))):
+        if not isinstance(pyclass, PyClass):
             # Expected PyClass; if rope gives something else, fail loud.
             msg = f"{class_full_name} did not resolve to a class"
             raise TypeError(msg)
@@ -155,24 +156,24 @@ class FlextInfraRefactorClassvarConstantAutofix:
             imports=True,
             in_hierarchy=False,
         )
-        rewrites: dict[Resource, list[tuple[int, int, str]]] = {}
-        for occurrence in finder.find_occurrences():
-            resource = occurrence.resource
-            if resource is None:
-                continue
-            start, end = occurrence.get_word_range()
-            # Determine whether this occurrence is an attribute access on the
-            # original class or on ``cls``.  We inspect the source around the
-            # occurrence using rope's worder utilities.
-            offset = occurrence.offset
-            source = resource.read()
-            prefix = _attribute_prefix(source, offset)
-            if prefix in {plan.class_name, "cls"}:
-                replacement = (
-                    f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
-                )
-                rewrites.setdefault(resource, []).append((start, end, replacement))
-                touched.add(resource.path)
+        rewrites: dict[t.Infra.RopeResource, list[tuple[int, int, str]]] = {}
+        # Iterate over concrete project resources to avoid rope crashing when
+        # an occurrence cannot be resolved to a resource (resource=None).
+        for resource in project.get_python_files():
+            for occurrence in finder.find_occurrences(resource=resource):
+                start, end = occurrence.get_word_range()
+                # Determine whether this occurrence is an attribute access on the
+                # original class or on ``cls``.  We inspect the source around the
+                # occurrence using rope's worder utilities.
+                offset = occurrence.offset
+                source = resource.read()
+                prefix = _attribute_prefix(source, offset)
+                if prefix in {plan.class_name, "cls"}:
+                    replacement = (
+                        f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
+                    )
+                    rewrites.setdefault(resource, []).append((start, end, replacement))
+                    touched.add(resource.path)
 
         if dry_run:
             return {
@@ -215,16 +216,16 @@ def _extract_declaration_line(
     constant_name: str,
     class_lineno: int,
 ) -> str:
-    """Return the exact source line that declares the ClassVar constant."""
+    """Return the exact source line that declares the class-level constant."""
     lines = source.splitlines()
     for idx in range(class_lineno, len(lines)):
         line = lines[idx]
         stripped = line.lstrip()
         if stripped.startswith("class "):
             break
-        if stripped.startswith(f"{constant_name}:") and "ClassVar" in line:
+        if stripped.startswith((f"{constant_name}:", f"{constant_name} =")):
             return line.rstrip()
-    msg = f"Could not find ClassVar declaration for {constant_name} in {class_name}"
+    msg = f"Could not find constant declaration for {constant_name} in {class_name}"
     raise ValueError(msg)
 
 

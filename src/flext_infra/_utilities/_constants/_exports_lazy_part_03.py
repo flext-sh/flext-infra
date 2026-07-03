@@ -12,6 +12,10 @@ FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
         ".rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
         ".rope_source": ("FlextInfraUtilitiesRopeSource",),
         ".safety": ("FlextInfraUtilitiesSafety",),
+        ".silent_failure_ast": (
+            "collect_silent_failure_findings",
+            "collect_silent_failure_fixes",
+        ),
         ".snapshot": ("FlextInfraUtilitiesSnapshot",),
         ".versioning": ("FlextInfraUtilitiesVersioning",),
     },
