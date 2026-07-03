@@ -351,6 +351,8 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             "typing_dict_attr": [],
             "typing_dict_import": [],
             "hardcoded_version": [],
+            "type_ignore": [],
+            "noqa": [],
         }
         for smell in pattern_smells:
             bucket = smell_buckets.get(smell.kind)
@@ -381,6 +383,8 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             typing_dict_attr_violations=smell_buckets["typing_dict_attr"],
             typing_dict_import_violations=smell_buckets["typing_dict_import"],
             hardcoded_version_violations=smell_buckets["hardcoded_version"],
+            type_ignore_violations=smell_buckets["type_ignore"],
+            noqa_violations=smell_buckets["noqa"],
             parse_failures=list(parse_failures),
             files_scanned=len(py_files),
         )

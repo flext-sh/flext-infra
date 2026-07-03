@@ -9,13 +9,20 @@ Ports the retired ast-grep rules into the rope census:
 - typing_dict_attr: ``typing.Dict`` attribute usage
 - typing_dict_import: ``from typing import Dict``
 - hardcoded_version: hardcoded ``__version__ = "..."`` assignment
+- type_ignore: ``# type: ignore`` suppression comment
+- noqa: ``# noqa`` suppression comment
 """
 
 from __future__ import annotations
 
 import ast
+import io
+import re
+import tokenize
 from pathlib import Path
 from typing import ClassVar, override
+
+from rope.base.exceptions import ModuleSyntaxError
 
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -34,6 +41,8 @@ class FlextInfraPatternSmellDetector:
         "typing_dict_attr",
         "typing_dict_import",
         "hardcoded_version",
+        "type_ignore",
+        "noqa",
     })
 
     @classmethod
@@ -48,7 +57,17 @@ class FlextInfraPatternSmellDetector:
         try:
             pymodule = u.Infra.get_pymodule(ctx.rope_project, resource)
             tree = pymodule.get_ast()
-        except Exception:
+        except (ModuleSyntaxError, SyntaxError) as exc:
+            if ctx.parse_failures is None:
+                raise
+            ctx.parse_failures.append(
+                m.Infra.ParseFailureViolation(
+                    file=str(ctx.file_path),
+                    stage="pattern_smell",
+                    error_type=type(exc).__name__,
+                    detail=str(exc),
+                )
+            )
             return ()
         if not isinstance(tree, ast.Module):
             return ()
@@ -59,16 +78,59 @@ class FlextInfraPatternSmellDetector:
             source=source,
         )
         visitor.visit(tree)
+        visitor.violations.extend(
+            cls._detect_comment_smells(source, display_path)
+        )
         return tuple(visitor.violations)
 
     @staticmethod
     def _display_path(file_path: Path, project_root: Path | None) -> Path:
-        if project_root is not None:
-            try:
-                return file_path.relative_to(project_root)
-            except ValueError:
-                pass
+        if project_root is not None and file_path.is_relative_to(project_root):
+            return file_path.relative_to(project_root)
         return file_path
+
+    @staticmethod
+    def _detect_comment_smells(
+        source: str,
+        file_path: Path,
+    ) -> list[m.Infra.PatternSmellViolation]:
+        """Detect suppression-comment smells in ``source``."""
+        violations: list[m.Infra.PatternSmellViolation] = []
+        type_ignore_re = re.compile(r"#\s*type:\s*ignore\b", re.IGNORECASE)
+        noqa_re = re.compile(r"#\s*noqa\b", re.IGNORECASE)
+        try:
+            tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+        except tokenize.TokenizeError:
+            return violations
+        for tok in tokens:
+            if tok.type != tokenize.COMMENT:
+                continue
+            comment = tok.string
+            if type_ignore_re.search(comment):
+                violations.append(
+                    m.Infra.PatternSmellViolation(
+                        file=str(file_path),
+                        line=tok.start[0],
+                        kind="type_ignore",
+                        detail=(
+                            "# type: ignore suppression is forbidden "
+                            "— fix the underlying typing issue"
+                        ),
+                    )
+                )
+            if noqa_re.search(comment):
+                violations.append(
+                    m.Infra.PatternSmellViolation(
+                        file=str(file_path),
+                        line=tok.start[0],
+                        kind="noqa",
+                        detail=(
+                            "# noqa suppression is forbidden "
+                            "— fix the underlying lint issue"
+                        ),
+                    )
+                )
+        return violations
 
 
 class _PatternSmellVisitor(ast.NodeVisitor):

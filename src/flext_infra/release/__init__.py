@@ -20,6 +20,19 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".orchestrator_phases": ("FlextInfraReleaseOrchestratorPhases",),
     },
 )
+    from flext_core.typings import FlextTypes
+    from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "FlextInfraReleaseOrchestrator": (
+        "flext_infra.release.orchestrator",
+        "FlextInfraReleaseOrchestrator",
+    ),
+}
+
+__all__ = [
+    "FlextInfraReleaseOrchestrator",
+]
 
 
 install_lazy_exports(

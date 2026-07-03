@@ -408,6 +408,20 @@ class FlextInfraModelsNamespaceEnforcer:
                 description="Hardcoded `__version__` violations collected for the project.",
             ),
         ]
+        type_ignore_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`# type: ignore` suppression violations collected for the project.",
+            ),
+        ]
+        noqa_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
+            m.Field(
+                default_factory=tuple,
+                description="`# noqa` suppression violations collected for the project.",
+            ),
+        ]
         inline_import_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.InlineImportViolation],
             m.Field(
@@ -460,6 +474,8 @@ class FlextInfraModelsNamespaceEnforcer:
                 self.typing_dict_attr_violations,
                 self.typing_dict_import_violations,
                 self.hardcoded_version_violations,
+                self.type_ignore_violations,
+                self.noqa_violations,
                 self.inline_import_violations,
                 self.silent_failure_violations,
                 self.parse_failures,
@@ -550,6 +566,14 @@ class FlextInfraModelsNamespaceEnforcer:
             t.NonNegativeInt,
             m.Field(description="Total hardcoded `__version__` violations"),
         ] = 0
+        total_type_ignore_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total `# type: ignore` violations"),
+        ] = 0
+        total_noqa_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total `# noqa` violations"),
+        ] = 0
         total_inline_import_violations: Annotated[
             t.NonNegativeInt,
             m.Field(description="Total inline/lazy import violations"),
@@ -633,6 +657,12 @@ class FlextInfraModelsNamespaceEnforcer:
                 ),
                 total_hardcoded_version_violations=sum(
                     len(p.hardcoded_version_violations) for p in projects
+                ),
+                total_type_ignore_violations=sum(
+                    len(p.type_ignore_violations) for p in projects
+                ),
+                total_noqa_violations=sum(
+                    len(p.noqa_violations) for p in projects
                 ),
                 total_inline_import_violations=sum(
                     len(p.inline_import_violations) for p in projects

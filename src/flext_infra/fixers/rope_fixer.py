@@ -339,6 +339,214 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             files_modified=tuple(files_modified),
         )
 
+    def _fix_compatibility_alias(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+    ) -> fr.ProjectFixResult:
+        """Rewrite compatibility aliases using the canonical detector + rewriter."""
+        rule_id = self._rule_id(violations)
+        fixed: list[fr.FixedViolation] = []
+        skipped: list[fr.SkippedViolation] = []
+        failed: list[fr.FailedFix] = []
+        files_modified: set[str] = set()
+        file_paths = self._collect_file_paths(project_dir, violations)
+        if not file_paths:
+            return fr.ProjectFixResult(
+                project=project_dir.name,
+                skipped=(
+                    fr.SkippedViolation(
+                        rule_id=rule_id,
+                        file_path=str(project_dir),
+                        reason="no files in violation batch",
+                    ),
+                ),
+            )
+        with u.Infra.open_project(self._workspace_root) as rope_project:
+            for file_path in file_paths:
+                detect_ctx = m.Infra.DetectorContext(
+                    file_path=file_path,
+                    rope_project=rope_project,
+                    project_name=project_dir.name,
+                    project_root=project_dir,
+                )
+                try:
+                    file_violations = FlextInfraCompatibilityAliasDetector.detect_file(
+                        detect_ctx,
+                    )
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"compatibility alias detector failed: {exc}",
+                        )
+                    )
+                    continue
+                if not file_violations:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="no compatibility alias violations",
+                        )
+                    )
+                    continue
+                if ctx.apply:
+                    try:
+                        u.Infra.rewrite_compatibility_alias_violations(
+                            violations=file_violations,
+                            parse_failures=[],
+                        )
+                    except c.EXC_BROAD_RUNTIME as exc:
+                        failed.append(
+                            fr.FailedFix(
+                                rule_id=rule_id,
+                                file_path=str(file_path),
+                                error=f"compatibility alias rewrite failed: {exc}",
+                            )
+                        )
+                        continue
+                    files_modified.add(str(file_path))
+                fixed.append(
+                    fr.FixedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        message=(
+                            f"{'rewrote' if ctx.apply else 'would rewrite'} "
+                            f"{len(file_violations)} compatibility alias violation(s)"
+                        ),
+                    )
+                )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
+    def _fix_private_import_bypass(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+    ) -> fr.ProjectFixResult:
+        """Rewrite private-module imports to their canonical facade equivalents."""
+        rule_id = self._rule_id(violations)
+        fixed: list[fr.FixedViolation] = []
+        skipped: list[fr.SkippedViolation] = []
+        failed: list[fr.FailedFix] = []
+        files_modified: set[str] = set()
+        file_paths = self._collect_file_paths(project_dir, violations)
+        if not file_paths:
+            return fr.ProjectFixResult(
+                project=project_dir.name,
+                skipped=(
+                    fr.SkippedViolation(
+                        rule_id=rule_id,
+                        file_path=str(project_dir),
+                        reason="no files in violation batch",
+                    ),
+                ),
+            )
+        with u.Infra.open_project(self._workspace_root) as rope_project:
+            for file_path in file_paths:
+                detect_ctx = m.Infra.DetectorContext(
+                    file_path=file_path,
+                    rope_project=rope_project,
+                    project_name=project_dir.name,
+                    project_root=project_dir,
+                )
+                try:
+                    file_violations = FlextInfraPrivateImportBypassDetector.detect_file(
+                        detect_ctx,
+                    )
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"private import bypass detector failed: {exc}",
+                        )
+                    )
+                    continue
+                auto_fixable = tuple(
+                    v for v in file_violations if v.symbol_exported
+                )
+                if not auto_fixable:
+                    skipped.append(
+                        fr.SkippedViolation(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            reason="no auto-fixable private import bypass violations",
+                        )
+                    )
+                    continue
+                try:
+                    u.Infra.rewrite_private_import_bypass_violations(
+                        rope_project=rope_project,
+                        violations=auto_fixable,
+                        parse_failures=[],
+                        apply=ctx.apply,
+                    )
+                except c.EXC_BROAD_RUNTIME as exc:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id=rule_id,
+                            file_path=str(file_path),
+                            error=f"private import bypass rewrite failed: {exc}",
+                        )
+                    )
+                    continue
+                if ctx.apply:
+                    files_modified.add(str(file_path))
+                fixed.append(
+                    fr.FixedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        message=(
+                            f"{'rewrote' if ctx.apply else 'would rewrite'} "
+                            f"{len(auto_fixable)} private import bypass violation(s)"
+                        ),
+                    )
+                )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
+    def _fix_library_abstraction(
+        self,
+        project_dir: Path,
+        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        ctx: m.Infra.FixEnforcementCommand,
+    ) -> fr.ProjectFixResult:
+        """Library abstraction rewrites require human review; report skipped."""
+        _ = ctx
+        rule_id = self._rule_id(violations)
+        skipped: list[fr.SkippedViolation] = []
+        for _rule, probe in violations:
+            file_path = getattr(probe, "file_path", "") or getattr(probe, "file", "")
+            skipped.append(
+                fr.SkippedViolation(
+                    rule_id=rule_id,
+                    file_path=str(file_path),
+                    reason=(
+                        "library abstraction rewrite must be reviewed manually "
+                        "(hoist + facade routing)"
+                    ),
+                )
+            )
+        return fr.ProjectFixResult(
+            project=project_dir.name,
+            skipped=tuple(skipped),
+        )
+
     def _fix_hoist_inline_import(
         self,
         project_dir: Path,
