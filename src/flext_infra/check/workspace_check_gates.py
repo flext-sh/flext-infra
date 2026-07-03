@@ -36,28 +36,31 @@ from flext_infra.utilities import u
 class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
-    GATE_CLASSES: t.VariadicTuple[type[FlextInfraGate]] = (
-        FlextInfraRuffLintGate,
-        FlextInfraRuffFormatGate,
-        FlextInfraPyreflyGate,
-        FlextInfraMypyGate,
-        FlextInfraPyrightGate,
-        FlextInfraSilentFailureGate,
-        FlextInfraBanditGate,
-        FlextInfraMarkdownGate,
-        FlextInfraLocCapGate,
-        FlextInfraAbstractionBoundaryGate,
-        FlextInfraRuntimeCensusGate,
-        FlextInfraNamespaceGate,
-        FlextInfraTierWhitelistGate,
-        FlextInfraSmellsGate,
-    )
-
     def __init__(self) -> None:
         """Build the gate-id to gate-class mapping used by check execution."""
         self._gates: dict[str, type[FlextInfraGate]] = {
-            g.gate_id: g for g in self.GATE_CLASSES
+            gate_cls.gate_id: gate_cls for gate_cls in self._gate_classes()
         }
+
+    @staticmethod
+    def _gate_classes() -> t.VariadicTuple[type[FlextInfraGate]]:
+        """Return the runtime gate classes registered for workspace checks."""
+        return (
+            FlextInfraRuffLintGate,
+            FlextInfraRuffFormatGate,
+            FlextInfraPyreflyGate,
+            FlextInfraMypyGate,
+            FlextInfraPyrightGate,
+            FlextInfraSilentFailureGate,
+            FlextInfraBanditGate,
+            FlextInfraMarkdownGate,
+            FlextInfraLocCapGate,
+            FlextInfraAbstractionBoundaryGate,
+            FlextInfraRuntimeCensusGate,
+            FlextInfraNamespaceGate,
+            FlextInfraTierWhitelistGate,
+            FlextInfraSmellsGate,
+        )
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
         """Return the registered gate class for one gate id, when present."""

@@ -249,17 +249,17 @@ class TestsEnforcementFixerOrchestrator:
         assert len(results[0].failed) == 1
         assert "adapter exploded" in results[0].failed[0].error
 
-    def test_gate_dry_run_uses_non_mutating_fix_preview(
+    def test_gate_dry_run_uses_non_mutating_check_preview(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Gate dry-run uses the non-mutating fix preview path."""
+        """Gate dry-run uses the non-mutating check path."""
 
         class FakeGate:
             can_fix: ClassVar[bool] = True
             checked: ClassVar[bool] = False
-            previewed: ClassVar[bool] = False
+            fixed: ClassVar[bool] = False
 
             def __init__(self, workspace_root: Path) -> None:
                 self.workspace_root = workspace_root
@@ -269,27 +269,38 @@ class TestsEnforcementFixerOrchestrator:
                 project_dir: Path,
                 ctx: m.Infra.GateContext,
             ) -> m.Infra.GateExecution:
-                _ = self.workspace_root, ctx
-                msg = "dry-run must not execute gate checks"
-                raise AssertionError(msg)
-
-            def fix(
-                self,
-                project_dir: Path,
-                ctx: m.Infra.GateContext,
-            ) -> m.Infra.GateExecution:
+                _ = self.workspace_root
                 assert ctx.check_only is True
                 assert ctx.apply_fixes is False
-                FakeGate.previewed = True
+                FakeGate.checked = True
                 return m.Infra.GateExecution(
                     result=m.Infra.GateResult(
                         gate="smells",
                         project=project_dir.name,
                         passed=True,
                     ),
-                    issues=(),
-                    raw_output="preview only",
+                    issues=(
+                        m.Infra.Issue(
+                            file=str(project_dir / "src" / "demo.py"),
+                            line=1,
+                            column=1,
+                            code="boolean-logic",
+                            message="boolean logic",
+                            severity="error",
+                        ),
+                    ),
+                    raw_output="check only",
                 )
+
+            def fix(
+                self,
+                project_dir: Path,
+                ctx: m.Infra.GateContext,
+            ) -> m.Infra.GateExecution:
+                _ = project_dir, ctx
+                FakeGate.fixed = True
+                msg = "dry-run must not execute gate fixes"
+                raise AssertionError(msg)
 
         class FakeRegistry:
             def get(self, target: str) -> type[FakeGate] | None:
@@ -313,8 +324,8 @@ class TestsEnforcementFixerOrchestrator:
             ),
         )
 
-        assert FakeGate.checked is False
-        assert FakeGate.previewed is True
+        assert FakeGate.checked is True
+        assert FakeGate.fixed is False
         assert len(result.previewed) == 1
         assert result.failed == ()
 

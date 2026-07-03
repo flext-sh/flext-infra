@@ -91,6 +91,26 @@ class TestsFlextInfraTransformersFutureImport:
         assert code == expected
         assert changes
 
+    def test_future_import_normalizes_duplicate_before_docstring(self) -> None:
+        source = (
+            "from __future__ import annotations\n"
+            '"""Module docstring."""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "import os\n"
+        )
+        code, changes = _transform(source, FlextInfraRefactorFutureImport())
+        expected = (
+            '"""Module docstring."""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "import os\n"
+        )
+        assert code == expected
+        assert changes
+
 
 class TestsFlextInfraTransformersBareExcept:
     """Behavior contract for FlextInfraRefactorBareExcept."""

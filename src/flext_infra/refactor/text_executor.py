@@ -11,6 +11,7 @@ from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
 )
+from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
 from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
 )
@@ -32,8 +33,6 @@ from flext_infra.utilities import u
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     """Execute declarative text rules directly from kind + settings."""
-
-    _SINGLE_LINE_DOCSTRING_MIN_LENGTH = 3
 
     def _apply_text_rule_selection(
         self,
@@ -95,46 +94,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     @staticmethod
     def _apply_future_annotations(source: str) -> t.Infra.TransformResult:
         """Apply future annotations."""
-        future_import = c.Infra.FUTURE_ANNOTATIONS
-        lines = [line for line in source.splitlines() if line.strip() != future_import]
-        insert_idx = 0
-        in_docstring = False
-        docstring_char = ""
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if in_docstring:
-                if stripped.endswith(docstring_char):
-                    in_docstring = False
-                    insert_idx = index + 1
-                continue
-            if stripped.startswith(('"""', "'''")):
-                doc_char = '"""' if stripped.startswith('"""') else "'''"
-                if (
-                    stripped.endswith(doc_char)
-                    and len(stripped)
-                    > FlextInfraRefactorTextExecutor._SINGLE_LINE_DOCSTRING_MIN_LENGTH
-                ):
-                    insert_idx = index + 1
-                    continue
-                in_docstring = True
-                docstring_char = doc_char
-                continue
-            if not stripped:
-                continue
-            insert_idx = index
-            break
-        insert_idx = min(insert_idx, len(lines))
-        new_lines = list(lines)
-        if insert_idx > 0 and new_lines[insert_idx - 1].strip():
-            new_lines.insert(insert_idx, "")
-            insert_idx += 1
-        new_lines.insert(insert_idx, future_import)
-        if insert_idx + 1 < len(new_lines) and new_lines[insert_idx + 1].strip():
-            new_lines.insert(insert_idx + 1, "")
-        updated = "\n".join(new_lines) + "\n"
-        if updated == source:
-            return (source, list[str]())
-        return (updated, ["Ensured: from __future__ import annotations"])
+        return FlextInfraRefactorFutureImport().apply_to_source(source)
 
     @staticmethod
     def _apply_mro_class_migration(

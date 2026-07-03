@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -365,11 +367,11 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         assert "GROUPS = frozenset({'a'})" in target_text
         assert "GROUPS = frozenset({'a'})" not in source_text
 
-    def test_autofix_dry_run_plans_missing_constants_module(
+    def test_autofix_dry_run_fails_missing_constants_module(
         self,
         tmp_path: Path,
     ) -> None:
-        """Dry-run plans a derivable missing constants module without writing it."""
+        """Dry-run fails loud when the canonical constants module is absent."""
         pkg = tmp_path / "src" / "demo"
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -382,20 +384,15 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             encoding="utf-8",
         )
 
-        result = FlextInfraRefactorClassvarConstantAutofix.apply(
-            tmp_path,
-            "demo.service.DemoService",
-            "GROUPS",
-            "demo._constants",
-            dry_run=True,
-        )
+        with pytest.raises(TypeError, match=r"constants module demo\._constants"):
+            FlextInfraRefactorClassvarConstantAutofix.apply(
+                tmp_path,
+                "demo.service.DemoService",
+                "GROUPS",
+                "demo._constants",
+                dry_run=True,
+            )
 
-        target_text = result["target_text"]
-        touched_files = result["touched_files"]
-        assert isinstance(target_text, str)
-        assert isinstance(touched_files, (list, tuple))
-        assert "GROUPS = frozenset({'a'})" in target_text
-        assert "src/demo/_constants.py" in " ".join(str(p) for p in touched_files)
         assert not constants_mod.exists()
 
     def test_autofix_dry_run_resolves_project_tests_package(

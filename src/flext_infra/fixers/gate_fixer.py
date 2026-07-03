@@ -117,7 +117,11 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
             fail_fast=ctx.fail_fast,
         )
         try:
-            execution = gate.fix(project_dir, gate_ctx)
+            execution = (
+                gate.fix(project_dir, gate_ctx)
+                if ctx.apply
+                else gate.check(project_dir, gate_ctx)
+            )
         except c.EXC_BROAD_RUNTIME as exc:
             return fr.ProjectFixResult(
                 project=project_dir.name,
@@ -133,11 +137,10 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 ),
             )
         if not ctx.apply:
-            return self._preview_from_violations(
+            return self._preview_from_check(
                 project_dir=project_dir,
                 rule=rule,
                 target=fix_action.target,
-                violations=violations,
                 execution=execution,
             )
         fixed: list[fr.FixedViolation] = []
@@ -183,32 +186,31 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
             failed=tuple(failed),
         )
 
-    def _preview_from_violations(
+    def _preview_from_check(
         self,
         *,
         project_dir: Path,
         rule: me.EnforcementRuleSpec,
         target: str,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         execution: m.Infra.GateExecution,
     ) -> fr.ProjectFixResult:
-        """Build a dry-run result from the non-mutating gate fix preview."""
-        if execution.result.passed:
-            violation_count = len(violations)
-            if violation_count:
-                return fr.ProjectFixResult(
-                    project=project_dir.name,
-                    previewed=(
-                        fr.PreviewedViolation(
-                            rule_id=rule.id,
-                            file_path=str(project_dir),
-                            message=(
-                                f"would run gate {target} fix for "
-                                f"{violation_count} collected violation(s)"
-                            ),
+        """Build a dry-run result from the non-mutating gate check output."""
+        matching = self._matching_issues(rule, execution.issues)
+        if matching:
+            return fr.ProjectFixResult(
+                project=project_dir.name,
+                previewed=(
+                    fr.PreviewedViolation(
+                        rule_id=rule.id,
+                        file_path=str(project_dir),
+                        message=(
+                            f"would run gate {target} fix for "
+                            f"{len(matching)} matching issue(s)"
                         ),
                     ),
-                )
+                ),
+            )
+        if execution.result.passed:
             return fr.ProjectFixResult(project=project_dir.name)
         details = execution.raw_output or "; ".join(
             issue.formatted for issue in execution.issues
@@ -222,6 +224,24 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     error=details or f"gate {target} check failed",
                 ),
             ),
+        )
+
+    @staticmethod
+    def _matching_issues(
+        rule: me.EnforcementRuleSpec,
+        issues: t.SequenceOf[m.Infra.Issue],
+    ) -> tuple[m.Infra.Issue, ...]:
+        """Return gate issues that correspond to the selected rule fix action."""
+        fix_action = rule.fix_action
+        if fix_action is None:
+            return ()
+        smell_tag = str(fix_action.params.get("smell_tag", ""))
+        if not smell_tag:
+            return tuple(issues)
+        return tuple(
+            issue
+            for issue in issues
+            if c.Infra.SMELLS_RULE_TAGS.get(issue.code, "") == smell_tag
         )
 
 

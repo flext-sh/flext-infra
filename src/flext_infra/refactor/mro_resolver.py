@@ -14,8 +14,6 @@ from flext_infra import (
 class FlextInfraRefactorMROResolver:
     """Resolve MRO inheritance chains and detect loose classes needing absorption."""
 
-    CONSTANT_PATTERN: t.Infra.RegexPattern = c.Infra.CONSTANT_NAME_RE
-
     @classmethod
     def resolve(
         cls,
