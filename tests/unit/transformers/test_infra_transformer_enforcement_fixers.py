@@ -459,3 +459,80 @@ class TestsFlextInfraTransformersCompatibilityAlias:
         code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
         assert code == source
         assert changes == []
+
+
+class TestsFlextInfraTransformersPatternList:
+    """Pattern-driven rewrites for ENFORCE-085/086 typing.List."""
+
+    def test_typing_list_import_rewritten(self, tmp_path: Path) -> None:
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import List\n"
+            "x: List[int] = []\n"
+        )
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"\bList\s*\[",
+                    "replacement": "t.SequenceOf[",
+                    "change_message": "Rewrote List[...] to t.SequenceOf[...]",
+                },
+            ],
+            required_alias="t",
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "t.SequenceOf[int]" in code
+        assert "from flext_core import t" in code
+        assert "List[int]" not in code
+        assert changes
+
+    def test_typing_list_attr_rewritten(self, tmp_path: Path) -> None:
+        source = (
+            "from __future__ import annotations\n"
+            "import typing\n"
+            "x: typing.List[int] = []\n"
+        )
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"\btyping\s*\.\s*List\s*\[",
+                    "replacement": "t.SequenceOf[",
+                    "change_message": "Rewrote typing.List[...] to t.SequenceOf[...]",
+                },
+            ],
+            required_alias="t",
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "t.SequenceOf[int]" in code
+        assert "from flext_core import t" in code
+        assert "typing.List" not in code
+        assert changes
+
+
+class TestsFlextInfraTransformersPatternStructlog:
+    """Pattern-driven rewrite for ENFORCE-088 direct structlog."""
+
+    def test_structlog_get_logger_rewritten(self, tmp_path: Path) -> None:
+        source = (
+            "from __future__ import annotations\n"
+            "import structlog\n"
+            "logger = structlog.get_logger()\n"
+        )
+        transformer = FlextInfraRefactorPatternTransformer(
+            patterns=[
+                {
+                    "regex": r"\bstructlog\s*\.\s*get_logger\s*\(\s*\)",
+                    "replacement": "u.fetch_logger(__name__)",
+                    "change_message": "Rewrote structlog.get_logger() to u.fetch_logger()",
+                },
+            ],
+            required_alias="u",
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "u.fetch_logger(__name__)" in code
+        assert "from flext_core import u" in code
+        assert "structlog.get_logger()" not in code
+        assert changes

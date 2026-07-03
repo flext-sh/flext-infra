@@ -32,7 +32,8 @@ class FlextInfraSmellFixer:
 
     def can_fix(self, issue: m.Infra.Issue) -> bool:
         """Return True when this fixer handles the given issue code."""
-        return issue.code == self.tag
+        issue_code: str = issue.code
+        return issue_code == self.tag
 
     @abstractmethod
     def fix(

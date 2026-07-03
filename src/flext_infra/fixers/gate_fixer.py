@@ -6,14 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
 from flext_core._models.enforcement import FlextModelsEnforcement as me
-
-if TYPE_CHECKING:
-    from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
+from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.constants import c
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
@@ -39,8 +36,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     def _registry(self) -> FlextInfraGateRegistry:
         """Lazy import of the gate registry to avoid circular imports."""
-        mod = importlib.import_module("flext_infra.check.workspace_check_gates")
-        return mod.FlextInfraGateRegistry.default()
+        return FlextInfraGateRegistry.default()
 
     @override
     def can_fix(

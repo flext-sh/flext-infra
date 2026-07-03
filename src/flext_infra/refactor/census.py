@@ -156,7 +156,8 @@ class FlextInfraRefactorCensus(
         names = self.project_names
         if names is None or len(names) != 1:
             return None
-        project_path = self.root / names[0]
+        project_name: str = names[0]
+        project_path: Path = self.root / project_name
         if project_path.is_dir():
             return project_path
         return None

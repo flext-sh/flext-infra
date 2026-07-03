@@ -13,6 +13,7 @@ from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from tests.models import m
+from tests.typings import t
 
 
 @pytest.fixture
@@ -29,7 +30,7 @@ class TestBuilderCore:
         tmp_path: Path,
     ) -> None:
         """Test build with valid scope returns success."""
-        reports = tm.ok(builder.build(tmp_path))
+        reports: t.SequenceOf[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
         tm.that(len(reports), gte=0)
 
     def test_build_report_frozen(self) -> None:

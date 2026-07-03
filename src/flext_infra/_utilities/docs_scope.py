@@ -41,16 +41,19 @@ class FlextInfraUtilitiesDocsScope:
             )
         )
         if not payload:
-            return mw.ProjectPyprojectState.model_construct(
-                project_root=root,
-                pyproject_path=pyproject_path,
-                payload=payload,
-                docs_meta=docs_meta,
-                project_name="",
-                package_name="",
-                dependency_names=dependency_names,
+            empty_state: mw.ProjectPyprojectState = (
+                mw.ProjectPyprojectState.model_construct(
+                    project_root=root,
+                    pyproject_path=pyproject_path,
+                    payload=payload,
+                    docs_meta=docs_meta,
+                    project_name="",
+                    package_name="",
+                    dependency_names=dependency_names,
+                )
             )
-        return mw.ProjectPyprojectState.model_construct(
+            return empty_state
+        state: mw.ProjectPyprojectState = mw.ProjectPyprojectState.model_construct(
             project_root=root,
             pyproject_path=pyproject_path,
             payload=payload,
@@ -66,6 +69,7 @@ class FlextInfraUtilitiesDocsScope:
             ),
             dependency_names=dependency_names,
         )
+        return state
 
     @staticmethod
     def project_state(project_root: Path) -> mw.ProjectPyprojectState:
@@ -162,7 +166,7 @@ class FlextInfraUtilitiesDocsScope:
             if is_workspace_member
             else c.Infra.WorkspaceProjectRole.ATTACHED
         )
-        return mw.ProjectInfo.model_construct(
+        project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
             path=entry,
             name=project_state.project_name,
             stack="python/flext",
@@ -177,6 +181,7 @@ class FlextInfraUtilitiesDocsScope:
             package_name=project_state.package_name,
             workspace_role=workspace_role,
         )
+        return project_info
 
     @staticmethod
     def config_path(workspace_root: Path) -> Path:
@@ -196,13 +201,14 @@ class FlextInfraUtilitiesDocsScope:
     ) -> t.Infra.ContainerDict:
         """Load the minimal docs policy settings if present."""
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
+        empty: t.Infra.ContainerDict = {}
         if not path.exists():
-            empty: t.Infra.ContainerDict = {}
             return empty
         result = u.Cli.json_read(path)
         if result.success:
-            return result.value
-        empty: t.Infra.ContainerDict = {}
+            value = result.value
+            if isinstance(value, dict):
+                return dict(value)
         return empty
 
     @staticmethod

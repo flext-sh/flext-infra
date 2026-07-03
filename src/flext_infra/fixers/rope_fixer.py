@@ -167,11 +167,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     @staticmethod
     def _module_file_for_name(module_name: str, *, project_root: Path) -> Path:
         """Return the source file path for an importable module name."""
-        return (
-            project_root
-            / c.Infra.DEFAULT_SRC_DIR
-            / Path(*module_name.split(".")).with_suffix(".py")
-        )
+        src_dir: str = c.Infra.DEFAULT_SRC_DIR
+        module_path = Path(*module_name.split(".")).with_suffix(".py")
+        return project_root / src_dir / module_path
 
     @staticmethod
     def _constants_module_for_file(
@@ -1177,7 +1175,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         snake_name = self._to_snake_case(class_name)
         if family:
             family_dir = c.Infra.FAMILY_DIRECTORIES.get(family)
-            if family_dir:
+            if isinstance(family_dir, str) and family_dir:
                 return package_dir / family_dir / f"{snake_name}.py"
         return file_path.parent / f"_{file_path.stem}_{snake_name}.py"
 

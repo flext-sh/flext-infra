@@ -61,10 +61,11 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
             kept_lines.append(line)
 
         updated = "".join(kept_lines)
-        updated = u.Infra.apply_token_replacements(
+        rewritten: str = u.Infra.apply_token_replacements(
             source=updated,
             alias_map=alias_map,
         )
+        updated = rewritten
         for alias_name in sorted(removed):
             self._record_change(
                 f"Removed compatibility alias: {alias_name} = {alias_map[alias_name]}",

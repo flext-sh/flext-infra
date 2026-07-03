@@ -71,7 +71,8 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
         ) or (isinstance(value, ast.Attribute) and value.attr == "Result")
         if not is_result_shape:
             return None
-        return ast.unparse(returns.slice)
+        inner_type: str = ast.unparse(returns.slice)
+        return inner_type
 
     def _line_offsets(self, lineno: int) -> tuple[int, int]:
         start = sum(len(self.lines[i]) for i in range(lineno - 1))
@@ -80,7 +81,8 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
 
     def _indent_of(self, node: ast.Return) -> str:
         line = self.lines[node.lineno - 1]
-        return line[: len(line) - len(line.lstrip())]
+        indent: str = line[: len(line) - len(line.lstrip())]
+        return indent
 
     def _add_finding(
         self,

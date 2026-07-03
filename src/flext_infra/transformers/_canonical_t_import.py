@@ -65,12 +65,14 @@ class FlextInfraEnsureCanonicalTImportMixin:
     @staticmethod
     def _canonical_import_module(file_path: Path | None) -> str:
         """Return the root package name for a transformed file."""
+        default_module: str = c.Infra.PKG_CORE_UNDERSCORE
         if file_path is None:
-            return c.Infra.PKG_CORE_UNDERSCORE
+            return default_module
         package_name: str = u.Infra.package_name(file_path)
         if not package_name:
-            return c.Infra.PKG_CORE_UNDERSCORE
-        return package_name.split(".", maxsplit=1)[0]
+            return default_module
+        root_package: str = package_name.split(".", maxsplit=1)[0]
+        return root_package
 
 
 __all__: list[str] = ["FlextInfraEnsureCanonicalTImportMixin"]

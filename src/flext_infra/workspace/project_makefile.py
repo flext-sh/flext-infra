@@ -92,17 +92,13 @@ class FlextInfraProjectMakefileUpdater:
     @staticmethod
     def _tests_dir(project_root: Path, meta: m.ProjectMetadata) -> str:
         """Return the project test directory used by generated Makefiles."""
-        package_tests = (
-            project_root
-            / c.Infra.DEFAULT_SRC_DIR
-            / meta.package_name
-            / c.Infra.DIR_TESTS
-        )
-        if meta.package_name and package_tests.is_dir():
-            return (
-                Path(c.Infra.DEFAULT_SRC_DIR) / meta.package_name / c.Infra.DIR_TESTS
-            ).as_posix()
-        return c.Infra.DIR_TESTS
+        src_dir: str = c.Infra.DEFAULT_SRC_DIR
+        tests_dir: str = c.Infra.DIR_TESTS
+        package_name: str = meta.package_name
+        package_tests = project_root / src_dir / package_name / tests_dir
+        if package_name and package_tests.is_dir():
+            return (Path(src_dir) / package_name / tests_dir).as_posix()
+        return tests_dir
 
     @staticmethod
     def _build_makefile(

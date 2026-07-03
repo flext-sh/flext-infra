@@ -40,6 +40,12 @@ class FlextInfraPatternSmellDetector:
         "dict_annotation",
         "typing_dict_attr",
         "typing_dict_import",
+        "typing_list_attr",
+        "typing_list_import",
+        "direct_pydantic_import",
+        "direct_structlog_import",
+        "direct_oracledb_import",
+        "direct_ldap3_import",
         "hardcoded_version",
         "type_ignore",
         "noqa",
@@ -134,6 +140,45 @@ class FlextInfraPatternSmellDetector:
 class _PatternSmellVisitor(ast.NodeVisitor):
     """AST visitor collecting ENFORCE-026..033 pattern smells."""
 
+    _BANNED_MODULE_IMPORTS: ClassVar[t.MappingKV[str, t.StrPair]] = {
+        "pydantic": (
+            "direct_pydantic_import",
+            "bare pydantic import FORBIDDEN — use m.BaseModel, m.ConfigDict, m.TypeAdapter, u.Field, u.field_validator, u.model_validator, u.computed_field, u.PrivateAttr",
+        ),
+        "structlog": (
+            "direct_structlog_import",
+            "bare structlog import FORBIDDEN — use u.fetch_logger(__name__)",
+        ),
+        "oracledb": (
+            "direct_oracledb_import",
+            "bare oracledb import FORBIDDEN — route through flext-db-oracle / flext-oracle-* facades",
+        ),
+        "ldap3": (
+            "direct_ldap3_import",
+            "bare ldap3 import FORBIDDEN — route through flext-ldap / flext-target-ldap facades",
+        ),
+    }
+    _BANNED_TYPING_ATTRS: ClassVar[t.MappingKV[str, t.StrPair]] = {
+        "Dict": (
+            "typing_dict_attr",
+            "typing.Dict attribute usage — use collections.abc.Mapping family",
+        ),
+        "List": (
+            "typing_list_attr",
+            "typing.List attribute usage — use t.SequenceOf or collections.abc.Sequence",
+        ),
+    }
+    _BANNED_TYPING_FROM_IMPORTS: ClassVar[t.MappingKV[str, t.StrPair]] = {
+        "Dict": (
+            "typing_dict_import",
+            "from typing import Dict is banned — use dict / Mapping",
+        ),
+        "List": (
+            "typing_list_import",
+            "from typing import List is banned — use list / Sequence",
+        ),
+    }
+
     def __init__(
         self,
         *,
@@ -156,6 +201,9 @@ class _PatternSmellVisitor(ast.NodeVisitor):
                     "breakpoint",
                     "import pdb is forbidden — remove debugging code",
                 )
+            if alias.name in self._BANNED_MODULE_IMPORTS:
+                kind, detail = self._BANNED_MODULE_IMPORTS[alias.name]
+                self._add_violation(node.lineno, kind, detail)
         self.generic_visit(node)
 
     @override
@@ -163,12 +211,12 @@ class _PatternSmellVisitor(ast.NodeVisitor):
         module = node.module or ""
         if module == "typing":
             for alias in node.names:
-                if alias.name == "Dict":
-                    self._add_violation(
-                        node.lineno,
-                        "typing_dict_import",
-                        "from typing import Dict is banned — use dict / Mapping",
-                    )
+                if alias.name in self._BANNED_TYPING_FROM_IMPORTS:
+                    kind, detail = self._BANNED_TYPING_FROM_IMPORTS[alias.name]
+                    self._add_violation(node.lineno, kind, detail)
+        if module in self._BANNED_MODULE_IMPORTS:
+            kind, detail = self._BANNED_MODULE_IMPORTS[module]
+            self._add_violation(node.lineno, kind, detail)
         if module == "pdb":
             self._add_violation(
                 node.lineno,
@@ -246,13 +294,10 @@ class _PatternSmellVisitor(ast.NodeVisitor):
         if (
             isinstance(node.value, ast.Name)
             and node.value.id == "typing"
-            and node.attr == "Dict"
+            and node.attr in self._BANNED_TYPING_ATTRS
         ):
-            self._add_violation(
-                node.lineno,
-                "typing_dict_attr",
-                "typing.Dict attribute usage — use collections.abc.Mapping family",
-            )
+            kind, detail = self._BANNED_TYPING_ATTRS[node.attr]
+            self._add_violation(node.lineno, kind, detail)
         self.generic_visit(node)
 
     def _is_dict_annotation(self, node: ast.expr | None) -> bool:
