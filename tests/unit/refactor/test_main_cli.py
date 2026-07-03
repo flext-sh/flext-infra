@@ -1126,7 +1126,7 @@ class TestsFlextInfraRefactorMainCli:
         assert "only_for_tests" in service_file.read_text(encoding="utf-8")
         assert "only_for_tests" in test_file.read_text(encoding="utf-8")
 
-    def test_refactor_census_dry_run_raises_on_simple_removal_planning_failure(
+    def test_refactor_census_dry_run_surfaces_preview_rejected_on_planning_failure(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -1151,17 +1151,27 @@ class TestsFlextInfraRefactorMainCli:
             staticmethod(_broken_build),
         )
 
-        with pytest.raises(
-            RuntimeError,
-            match=r"simple removal planning failed for .*only_for_tests",
-        ):
-            FlextInfraRefactorCensus(
-                workspace=workspace,
-                dry_run=True,
-                include_local_scopes=False,
-                kinds=("function",),
-                rules=("test_only",),
-            ).execute()
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            dry_run=True,
+            include_local_scopes=False,
+            kinds=("function",),
+            rules=("test_only",),
+        ).execute()
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        all_violations = tuple(
+            violation
+            for project in report.projects
+            for violation in project.violations
+        )
+        rejected = tuple(
+            violation
+            for violation in all_violations
+            if violation.kind == "preview_rejected"
+            and "only_for_tests" in violation.object_name
+        )
+        assert len(rejected) == 1, all_violations
 
     def test_refactor_census_apply_raises_on_simple_removal_planning_failure(
         self,
