@@ -3,42 +3,8 @@
 
 from __future__ import annotations
 
-import typing as _t
-
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if _t.TYPE_CHECKING:
-    from flext_tests import (
-        c,
-        d,
-        e,
-        h,
-        m,
-        p,
-        r,
-        s,
-        t,
-        td as td,
-        tf as tf,
-        tk as tk,
-        tm as tm,
-        tv as tv,
-        u,
-        x,
-    )
-
-    from tests.unit.workspace.test_main import (
-        TestsFlextInfraWorkspaceMain as TestsFlextInfraWorkspaceMain,
-    )
-    from tests.unit.workspace.test_makefile_dry_run import (
-        TestsFlextInfraWorkspaceMakefileDryRun as TestsFlextInfraWorkspaceMakefileDryRun,
-    )
-    from tests.unit.workspace.test_makefile_generator import (
-        TestsFlextInfraWorkspaceMakefileGenerator as TestsFlextInfraWorkspaceMakefileGenerator,
-    )
-    from tests.unit.workspace.test_sync import (
-        TestsFlextInfraWorkspaceSync as TestsFlextInfraWorkspaceSync,
-    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".make_constants_tests": ("make_constants_tests",),
@@ -47,6 +13,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_makefile_dry_run": ("TestsFlextInfraWorkspaceMakefileDryRun",),
         ".test_makefile_generator": ("TestsFlextInfraWorkspaceMakefileGenerator",),
         ".test_sync": ("TestsFlextInfraWorkspaceSync",),
+        ".test_sync_environment": ("TestsFlextInfraWorkspaceSyncEnvironment",),
         "flext_tests": (
             "c",
             "d",

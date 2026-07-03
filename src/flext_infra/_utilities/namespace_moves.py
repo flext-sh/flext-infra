@@ -133,13 +133,15 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     raise RuntimeError(msg)
                 changed = False
                 for (current_source, correct_source), aliases in sorted(moves.items()):
-                    updated = FlextInfraUtilitiesRopeImports.relocate_from_import_aliases(
-                        rope_project,
-                        resource,
-                        source_module=current_source,
-                        target_module=correct_source,
-                        aliases=tuple(sorted(aliases)),
-                        apply=True,
+                    updated = (
+                        FlextInfraUtilitiesRopeImports.relocate_from_import_aliases(
+                            rope_project,
+                            resource,
+                            source_module=current_source,
+                            target_module=correct_source,
+                            aliases=tuple(sorted(aliases)),
+                            apply=True,
+                        )
                     )
                     changed = changed or updated is not None
                 if not changed:

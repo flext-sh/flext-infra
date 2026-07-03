@@ -164,9 +164,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         registry: m.Infra.LazyInitRegistryWrapper,
     ) -> None:
         """Remove stale generated registry files no longer imported by ``__init__``."""
-        registry_relative = registry.module.removeprefix(
-            f"{plan.context.current_pkg}."
-        )
+        registry_relative = registry.module.removeprefix(f"{plan.context.current_pkg}.")
         registry_path = (
             plan.context.pkg_dir / f"{registry_relative.replace('.', '/')}.py"
         )

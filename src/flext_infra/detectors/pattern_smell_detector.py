@@ -78,9 +78,7 @@ class FlextInfraPatternSmellDetector:
             source=source,
         )
         visitor.visit(tree)
-        visitor.violations.extend(
-            cls._detect_comment_smells(source, display_path)
-        )
+        visitor.violations.extend(cls._detect_comment_smells(source, display_path))
         return tuple(visitor.violations)
 
     @staticmethod

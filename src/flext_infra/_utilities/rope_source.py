@@ -433,7 +433,9 @@ class FlextInfraUtilitiesRopeSource:
             msg = f"silent failure sentinel AST collection failed for {resource.path}"
             raise RuntimeError(msg) from exc
         if not isinstance(tree, ast.Module):
-            msg = f"silent failure sentinel AST collection returned {type(tree).__name__}"
+            msg = (
+                f"silent failure sentinel AST collection returned {type(tree).__name__}"
+            )
             raise TypeError(msg)
         changes = collect_silent_failure_fixes(tree, source, kinds=kinds)
         if not changes:

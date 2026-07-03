@@ -472,9 +472,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         )
                     )
                     continue
-                auto_fixable = tuple(
-                    v for v in file_violations if v.symbol_exported
-                )
+                auto_fixable = tuple(v for v in file_violations if v.symbol_exported)
                 if not auto_fixable:
                     skipped.append(
                         fr.SkippedViolation(

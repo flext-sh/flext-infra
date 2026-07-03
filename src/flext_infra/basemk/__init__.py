@@ -20,25 +20,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".renderer": ("FlextInfraBaseMkTemplateRenderer",),
     },
 )
-    from flext_core.typings import FlextTypes
-    from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
-    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-
-_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "FlextInfraBaseMkGenerator": (
-        "flext_infra.basemk.generator",
-        "FlextInfraBaseMkGenerator",
-    ),
-    "FlextInfraBaseMkTemplateEngine": (
-        "flext_infra.basemk.engine",
-        "FlextInfraBaseMkTemplateEngine",
-    ),
-}
-
-__all__ = [
-    "FlextInfraBaseMkGenerator",
-    "FlextInfraBaseMkTemplateEngine",
-]
 
 
 install_lazy_exports(

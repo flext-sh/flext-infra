@@ -661,9 +661,7 @@ class FlextInfraModelsNamespaceEnforcer:
                 total_type_ignore_violations=sum(
                     len(p.type_ignore_violations) for p in projects
                 ),
-                total_noqa_violations=sum(
-                    len(p.noqa_violations) for p in projects
-                ),
+                total_noqa_violations=sum(len(p.noqa_violations) for p in projects),
                 total_inline_import_violations=sum(
                     len(p.inline_import_violations) for p in projects
                 ),
