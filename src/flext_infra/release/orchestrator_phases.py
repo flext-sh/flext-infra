@@ -6,17 +6,28 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, r, s, t, u
+from flext_core import r
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.release._orchestrator_publish import (
+    FlextInfraReleaseOrchestratorPublishMixin,
+)
+from flext_infra.typings import t
+from flext_infra.utilities import u
+
+logger = u.fetch_logger(__name__)
 
 
-class FlextInfraReleaseOrchestratorPhases(s[bool]):
-    """Build, publish, and version phase implementations."""
+class FlextInfraReleaseOrchestratorPhases(
+    FlextInfraReleaseOrchestratorPublishMixin,
+):
+    """Build and version phase implementations (publish via the mixin)."""
 
     @staticmethod
-    def _run_make(project_path: Path, verb: str) -> r[t.Infra.Pair[int, str]]:
+    def _run_make(project_path: Path, verb: str) -> p.Result[t.Pair[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
         result = u.Cli.run_raw([
             c.Infra.MAKE,
@@ -24,40 +35,38 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             str(project_path),
             verb,
         ])
-        if result.is_failure:
-            return r[t.Infra.Pair[int, str]].fail(
-                result.error or "make execution failed"
-            )
+        if result.failure:
+            return r[t.Pair[int, str]].fail(result.error or "make execution failed")
         output_model = result.value
         output = (output_model.stdout + "\n" + output_model.stderr).strip()
-        return r[t.Infra.Pair[int, str]].ok((output_model.exit_code, output))
+        return r[t.Pair[int, str]].ok((output_model.exit_code, output))
 
     def phase_build(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Execute the build phase and write build-report.json."""
         workspace_root = ctx.workspace_root
         version = ctx.version
         project_names = ctx.project_names
         output_dir = (
-            u.Infra.get_report_dir(
+            u.Cli.resolve_report_dir(
                 workspace_root,
                 c.Infra.PROJECT,
-                c.Infra.ReportKeys.RELEASE,
+                c.Infra.RK_RELEASE,
             )
             / f"v{version}"
         )
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            return r[bool].fail(f"report dir creation failed: {exc}")
+            return r[bool].fail_op("report dir creation", exc)
         targets = self._build_targets(workspace_root, project_names)
-        records: MutableSequence[m.Infra.BuildRecord] = []
+        records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
         failures = 0
         for name, path in targets:
-            make_result = self._run_make(path, c.Infra.Directories.BUILD)
-            if make_result.is_failure:
+            make_result = self._run_make(path, c.Infra.DIR_BUILD)
+            if make_result.failure:
                 code = 1
                 output = make_result.error or "make execution failed"
             else:
@@ -65,7 +74,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             if code != 0:
                 failures += 1
             log = output_dir / f"build-{name}.log"
-            u.write_file(log, output + "\n", encoding=c.Infra.Encoding.DEFAULT)
+            u.write_file(log, output + "\n", encoding=c.Cli.ENCODING_DEFAULT)
             records.append(
                 m.Infra.BuildRecord(
                     project=name,
@@ -74,7 +83,7 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
                     log=str(log),
                 ),
             )
-            self.logger.info(
+            logger.info(
                 "release_phase_build_project",
                 project=name,
                 exit_code=code,
@@ -88,9 +97,9 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         u.Cli.json_write(
             output_dir / "build-report.json",
             report.model_dump(mode="json"),
-            sort_keys=True,
+            m.Cli.JsonWriteOptions(sort_keys=True),
         )
-        self.logger.info(
+        logger.info(
             "release_phase_build_report",
             report=str(output_dir / "build-report.json"),
         )
@@ -98,92 +107,25 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
             return r[bool].fail(f"build failed: {failures} project(s)")
         return r[bool].ok(True)
 
-    def phase_publish(
-        self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> r[bool]:
-        """Execute publish phase: notes, changelog, tag, optional push."""
-        workspace_root = ctx.workspace_root
-        tag = ctx.tag
-        notes_dir = (
-            u.Infra.get_report_dir(
-                workspace_root,
-                c.Infra.PROJECT,
-                c.Infra.ReportKeys.RELEASE,
-            )
-            / tag
-        )
-        try:
-            notes_dir.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            return r[bool].fail(f"report dir creation failed: {exc}")
-        notes_path = notes_dir / "RELEASE_NOTES.md"
-        notes_result = self._generate_notes(ctx, notes_path)
-        if notes_result.is_failure:
-            return notes_result
-        if not notes_path.exists():
-            return r[bool].fail(
-                f"release notes generation did not create {notes_path}",
-            )
-        if not ctx.dry_run:
-            apply_result = self._publish_apply(
-                workspace_root=workspace_root,
-                version=ctx.version,
-                tag=tag,
-                notes_path=notes_path,
-                push=ctx.push,
-            )
-            if apply_result.is_failure:
-                return apply_result
-        self.logger.info("release_phase_publish", tag=tag, dry_run=ctx.dry_run)
-        return r[bool].ok(True)
-
-    def _publish_apply(
-        self,
-        *,
-        workspace_root: Path,
-        version: str,
-        tag: str,
-        notes_path: Path,
-        push: bool,
-    ) -> r[bool]:
-        """Apply changelog, tag, and optional push for publish phase."""
-        changelog_result = u.Infra.update_changelog(
-            workspace_root,
-            version,
-            tag,
-            notes_path,
-        )
-        if changelog_result.is_failure:
-            return changelog_result
-        tag_result = self._create_tag(workspace_root, tag)
-        if tag_result.is_failure:
-            return tag_result
-        if push:
-            push_result = self._push_release(workspace_root, tag)
-            if push_result.is_failure:
-                return push_result
-        return r[bool].ok(True)
-
     def phase_version(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Execute versioning phase across workspace and selected projects."""
         target = f"{ctx.version}-dev" if ctx.dev_suffix else ctx.version
         parse_result = u.Infra.parse_semver(ctx.version)
-        if parse_result.is_failure:
+        if parse_result.failure:
             return r[bool].fail(parse_result.error or "invalid version")
         files = self._version_files(ctx.workspace_root, ctx.project_names)
         changed = self._version_update_files(files, target, dry_run=ctx.dry_run)
         if ctx.dry_run:
-            self.logger.info("release_phase_version_checked", checked_version=target)
-        self.logger.info("release_phase_version_summary", files_changed=changed)
+            logger.info("release_phase_version_checked", checked_version=target)
+        logger.info("release_phase_version_summary", files_changed=changed)
         return r[bool].ok(True)
 
     def _version_update_files(
         self,
-        files: Sequence[Path],
+        files: t.SequenceOf[Path],
         target: str,
         *,
         dry_run: bool,
@@ -193,14 +135,14 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         for path in files:
             if not path.exists():
                 continue
-            content = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            content = u.Cli.files_read_text(path).unwrap()
             match = c.Infra.VERSION_RE.search(content)
             if match and match.group(1) == target:
                 continue
             changed += 1
             if not dry_run:
                 u.Infra.replace_project_version(path.parent, target)
-            self.logger.info(
+            logger.info(
                 "release_version_file_updated",
                 path=str(path),
                 target=target,
@@ -213,28 +155,17 @@ class FlextInfraReleaseOrchestratorPhases(s[bool]):
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[t.Infra.Pair[str, Path]]:
-        raise NotImplementedError
-
-    def _generate_notes(
-        self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        output_path: Path,
-    ) -> r[bool]:
-        raise NotImplementedError
-
-    def _create_tag(self, workspace_root: Path, tag: str) -> r[bool]:
-        raise NotImplementedError
-
-    def _push_release(self, workspace_root: Path, tag: str) -> r[bool]:
+    ) -> t.SequenceOf[t.Pair[str, Path]]:
+        """Build targets."""
         raise NotImplementedError
 
     def _version_files(
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[Path]:
+    ) -> t.SequenceOf[Path]:
+        """Version files."""
         raise NotImplementedError
 
 
-__all__ = ["FlextInfraReleaseOrchestratorPhases"]
+__all__: list[str] = ["FlextInfraReleaseOrchestratorPhases"]

@@ -1,201 +1,196 @@
-"""Shared service base for flext-infra command services.
-
-Two-class design mirroring flext-cli's base.py pattern:
-
-- ``FlextInfraServiceBase`` (~40 LOC) -- thin foundation with settings
-  access and bootstrap options only.  Suitable for services that need
-  no shared command-context fields (e.g. the API facade).
-
-- ``FlextInfraCommandContext`` (~90 LOC) -- mixin inheriting the thin
-  base and carrying domain fields used by every CLI command service
-  (workspace_root, apply_changes, dry_run, etc.).
-
-The module-level ``s`` alias points to ``FlextInfraCommandContext`` so
-that existing ``s[T]`` consumers keep working without import changes.
-"""
+"""Shared service foundation for flext-infra command services."""
 
 from __future__ import annotations
 
-from abc import ABC
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated, Self, TypeVar, override
+from typing import Annotated, ClassVar, Self, override
 
-from pydantic import ConfigDict, Field, field_validator
-from pydantic.config import JsonDict
-
-from flext_cli import FlextCliSettings
-from flext_core import (
-    FlextModels,
-    FlextProtocols,
-    FlextResult as r,
-    FlextService as core_service_base,
-    FlextSettings,
-)
-from flext_infra import FlextInfraConstantsBase, FlextInfraTypesBase
-
-TDomainResult = TypeVar("TDomainResult", bound=FlextInfraTypesBase.DomainOutput)
+from flext_cli import cli, p as cli_p, u as cli_u
+from flext_core import s
+from flext_infra._base_payload import FlextInfraCommandPayloadMixin
+from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
-def _apply_option_json_schema_extra(schema: JsonDict) -> None:
-    """Inject Typer dual-flag metadata without importing the facade root."""
-    schema["typer_param_decls"] = list(FlextInfraConstantsBase.Cli.APPLY_OPTION_DECLS)
-
-
-# ---------------------------------------------------------------------------
-# Thin service base (~40 LOC) -- mirrors FlextCliServiceBase
-# ---------------------------------------------------------------------------
-
-
-class FlextInfraServiceBase(
-    core_service_base[TDomainResult],
-    ABC,
-):
-    """Thin base class for flext-infra services.
-
-    Provides settings access and runtime bootstrap only.
-    Domain command fields live in :class:`FlextInfraCommandContext`.
-    """
-
-    @property
-    @override
-    def settings(self) -> FlextProtocols.Settings:
-        """Return the typed CLI settings namespace."""
-        return FlextSettings.get_global().get_namespace("cli", FlextCliSettings)
-
-    @classmethod
-    @override
-    def _runtime_bootstrap_options(cls) -> FlextProtocols.RuntimeBootstrapOptions:
-        """Bootstrap service runtime using the shared CLI settings namespace."""
-        return FlextModels.RuntimeBootstrapOptions(config_type=FlextCliSettings)
-
-
-# ---------------------------------------------------------------------------
-# Command context mixin (~90 LOC) -- carries all domain fields
-# ---------------------------------------------------------------------------
-
-
-class FlextInfraCommandContext(
-    FlextInfraServiceBase[TDomainResult],
+class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
+    s[TDomainResult],
+    FlextInfraCommandPayloadMixin,
 ):
     """Domain command context shared by all flext-infra CLI services.
 
-    Inherits settings + bootstrap from :class:`FlextInfraServiceBase`
-    and adds fields for workspace location, apply/dry-run toggles,
-    output formatting, and project filtering.
+    Provides settings/bootstrap and normalized fields for workspace location,
+    apply/dry-run toggles, output formatting, and project filtering.
     """
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+    settings_type: Annotated[
+        type | None,
+        m.Field(
+            exclude=True,
+            description="Internal settings type for runtime bootstrap",
+        ),
+    ] = None
+    runtime_settings: Annotated[
+        p.Settings | None,
+        m.Field(
+            exclude=True,
+            description="Internal runtime settings instance for service execution",
+        ),
+    ] = None
+    settings_overrides: Annotated[
+        t.JsonMapping | None,
+        m.Field(
+            exclude=True,
+            description="Internal settings override mapping for service bootstrap",
+        ),
+    ] = None
+    initial_context: Annotated[
+        p.Context | None,
+        m.Field(
+            exclude=True,
+            description="Internal execution context overrides for service bootstrap",
+        ),
+    ] = None
+
+    @property
+    @override
+    def settings(self) -> cli_p.Cli.Settings:
+        """Return the typed CLI settings via the canonical cli facade."""
+        return cli.settings
+
+    @classmethod
+    def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
+        """Bootstrap service runtime using the shared CLI settings namespace."""
+        return m.RuntimeBootstrapOptions(settings_type=type(cli.settings))
 
     workspace_root: Annotated[
         Path,
-        Field(
+        m.Field(
             default_factory=Path.cwd,
             alias="workspace",
             description="Workspace root",
         ),
+        m.BeforeValidator(
+            lambda v: (v if isinstance(v, Path) else Path(v)).resolve(),
+        ),
     ]
     apply_changes: Annotated[
         bool,
-        Field(
-            default=False,
+        m.Field(
             alias="apply",
             description="Apply changes",
-            json_schema_extra=_apply_option_json_schema_extra,
+            json_schema_extra={
+                "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
+            },
         ),
-    ]
+    ] = False
     check_only: Annotated[
         bool,
-        Field(
-            default=False,
+        m.Field(
             alias="check",
             description="Check mode",
         ),
-    ]
-    dry_run: Annotated[
-        bool,
-        Field(default=False, description="Dry-run mode"),
-    ]
-    fail_fast: Annotated[
-        bool,
-        Field(default=False, description="Stop on first failure"),
-    ]
+    ] = False
+    dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
+    fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     output_format: Annotated[
         str,
-        Field(default="text", description="Output format (json|text)"),
-    ]
+        m.Field(description="Output format (json|text)"),
+        m.BeforeValidator(lambda v: v.strip().lower()),
+    ] = "text"
     project_filter: Annotated[
         str | None,
-        Field(
-            default=None, description="Project filter (comma-separated)", exclude=True
+        m.Field(description="Project filter (comma-separated)", exclude=True),
+    ] = None
+    target_module: Annotated[
+        str | None,
+        m.Field(
+            alias="module",
+            description=(
+                "Dotted module path to scope the verb to a single module "
+                "(e.g. flext_core.result). Composes with --workspace/--projects."
+            ),
         ),
-    ]
+    ] = None
+    target_namespace: Annotated[
+        str | None,
+        m.Field(
+            alias="namespace",
+            description=(
+                "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope the "
+                "verb to a single facade slot."
+            ),
+        ),
+    ] = None
     report_path: Annotated[
         Path | None,
-        Field(default=None, description="Report output path", exclude=True),
-    ]
+        m.Field(description="Report output path", exclude=True),
+        m.BeforeValidator(ub.normalize_optional_path),
+    ] = None
     output_dir: Annotated[
-        Path | None,
-        Field(default=None, description="Output directory", exclude=True),
-    ]
+        Path | None, m.Field(description="Output directory", exclude=True)
+    ] = None
 
-    @field_validator("workspace_root", mode="before")
-    @classmethod
-    def _normalize_workspace_root(cls, value: str | Path) -> Path:
-        """Normalize workspace roots eagerly through Pydantic validation."""
-        path = value if isinstance(value, Path) else Path(value)
-        return path.resolve()
-
-    @field_validator("output_format", mode="before")
-    @classmethod
-    def _normalize_output_format(cls, value: str) -> str:
-        """Normalize CLI output format names once in the base layer."""
-        return value.strip().lower()
-
-    @field_validator("project_filter", mode="before")
+    @m.field_validator("project_filter", mode="before")
     @classmethod
     def _normalize_project_filter(
         cls,
-        value: str | Sequence[str] | None,
+        value: str | t.StrSequence | None,
     ) -> str | None:
         """Normalize project filters into a compact comma-separated string."""
         if value is None:
             return None
-        if isinstance(value, str):
-            values = [item.strip() for item in value.split(",") if item.strip()]
-            return ",".join(values) or None
-        values = [item.strip() for item in value if item.strip()]
-        return ",".join(values) or None
+        normalized_values = (
+            ub.normalize_cli_values(value)
+            if isinstance(value, str)
+            else ub.normalize_cli_values(*value)
+        )
+        return ",".join(normalized_values) or None
 
-    @field_validator("report_path", "output_dir", mode="before")
+    @m.field_validator("output_dir", mode="before")
     @classmethod
-    def _normalize_optional_path(cls, value: str | Path | None) -> Path | None:
-        """Resolve optional output paths in one place."""
+    def _normalize_output_dir(cls, value: str | Path | None) -> Path | None:
+        """Preserve relative output dirs so callers can scope them under workspace roots."""
         if value is None:
             return None
-        path = value if isinstance(value, Path) else Path(value)
-        return path.resolve()
+        path: Path = cli_u.Cli.resolve_optional_path(value, default=Path())
+        return path.resolve() if path.is_absolute() else path
+
+    @m.computed_field()
+    @property
+    def root(self) -> Path:
+        """Return the canonical normalized workspace root."""
+        return self.workspace_root
+
+    @m.computed_field()
+    @property
+    def effective_dry_run(self) -> bool:
+        """Return the normalized write-mode decision for CLI services."""
+        return self.dry_run or self.check_only or (not self.apply_changes)
+
+    @override
+    def execute(self) -> p.Result[TDomainResult]:
+        """Execute the service contract and return a typed result."""
+        raise NotImplementedError
+
+    @property
+    def log(self) -> p.Logger:
+        """Return the service logger through the canonical FlextService kernel."""
+        return self.logger
 
     @classmethod
-    def execute_command(
-        cls,
-        params: Self,
-    ) -> r[TDomainResult]:
+    def execute_command(cls, params: Self) -> p.Result[TDomainResult]:
         """Execute the validated CLI service instance directly."""
-        _ = cls
         return params.execute()
 
 
-# ---------------------------------------------------------------------------
-# Aliases & exports
-# ---------------------------------------------------------------------------
+s = FlextInfraServiceBase
 
-# ``s`` points to FlextInfraCommandContext for backward compatibility.
-# All existing ``s[T]`` consumers access domain fields and need them.
-s = FlextInfraCommandContext
-
-__all__ = [
-    "FlextInfraCommandContext",
+__all__: list[str] = [
     "FlextInfraServiceBase",
     "s",
 ]

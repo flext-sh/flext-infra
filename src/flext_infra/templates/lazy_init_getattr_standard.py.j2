@@ -1,3 +1,18 @@
+{%- if publish_all %}
+__all__: tuple[str, ...] = (
+{%- for export_name in exports %}
+    "{{ export_name }}",
+{%- endfor %}
+)
+
+
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    public_exports=__all__,
+)
+{%- else %}
 {%- if eager_export_names %}
 install_lazy_exports(
     __name__,
@@ -8,7 +23,14 @@ install_lazy_exports(
         "{{ export_name }}",
 {%- endfor %}
     ],
+    publish_all=False,
 )
 {%- else %}
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    publish_all=False,
+)
+{%- endif %}
 {%- endif %}

@@ -10,7 +10,7 @@ import pytest
 import flext_infra.deps as deps_mod
 
 
-class TestFlextInfraDeps:
+class TestsFlextInfraDepsInit:
     """Tests for flext_infra.deps module."""
 
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:

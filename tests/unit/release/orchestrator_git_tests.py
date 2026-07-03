@@ -1,207 +1,152 @@
-"""Tests for FlextInfraReleaseOrchestrator git operations.
-
-Tests _create_branches, _create_tag, _push_release, _previous_tag,
-and _collect_changes using monkeypatch and tmp_path fixtures.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public release tests covering real git effects."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
-from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
-import pytest
-from flext_tests import tm
-from tests import FakeUtilsNamespace, t
-
-import flext_infra.release.orchestrator as _orch_mod
-from flext_core import r
-from flext_infra import FlextInfraReleaseOrchestrator
-
-if TYPE_CHECKING:
-    from _pytest.monkeypatch import MonkeyPatch
+from flext_cli import cli
+from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from tests.constants import c
+from tests.models import m
+from tests.utilities import TestsFlextInfraUtilities as u
 
 
-@pytest.fixture
-def workspace_root(tmp_path: Path) -> Path:
-    """Create workspace root with pyproject.toml."""
-    root = tmp_path / "workspace"
-    root.mkdir()
-    (root / ".git").mkdir()
-    (root / "Makefile").touch()
-    (root / "pyproject.toml").write_text('version = "0.1.0"\n', encoding="utf-8")
-    return root
+def make_config(
+    workspace_root: Path,
+    *,
+    phase: str = c.Infra.VERB_VALIDATE,
+    project_names: list[str] | None = None,
+    push: bool = False,
+) -> m.Infra.ReleaseOrchestratorConfig:
+    return m.Infra.ReleaseOrchestratorConfig(
+        workspace_root=workspace_root,
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
+        phases=[phase],
+        project_names=project_names,
+        dry_run=False,
+        push=push,
+        dev_suffix=False,
+        create_branches=True,
+        next_dev=False,
+        next_bump=c.Tests.RELEASE_BUMP_MINOR,
+    )
 
 
-class TestCreateBranches:
-    """Tests for _create_branches."""
-
-    def test_workspace_only(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-
-        def _resolve_empty(
-            ws: Path,
-            names: t.StrSequence,
-        ) -> r[Sequence[SimpleNamespace]]:
-            return r[Sequence[SimpleNamespace]].ok([])
-
-        monkeypatch.setattr(
-            FakeUtilsNamespace.Infra,
-            "resolve_projects",
-            _resolve_empty,
-        )
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._create_branches(workspace_root, "1.0.0", []))
-
-    def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_checkout_result = r[bool].fail("git failed")
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._create_branches(workspace_root, "1.0.0", []))
-
-    def test_project_failure(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_checkout_side_effects = [
-            r[bool].ok(True),
-            r[bool].fail("project branch failed"),
-        ]
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        mock_project = SimpleNamespace(name="proj1", path=workspace_root / "proj1")
-
-        def _resolve_one(
-            ws: Path,
-            names: t.StrSequence,
-        ) -> r[Sequence[SimpleNamespace]]:
-            return r[Sequence[SimpleNamespace]].ok([mock_project])
-
-        monkeypatch.setattr(
-            FakeUtilsNamespace.Infra,
-            "resolve_projects",
-            _resolve_one,
-        )
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._create_branches(workspace_root, "1.0.0", ["proj1"]))
+def publish_ctx(
+    workspace_root: Path,
+    *,
+    push: bool = False,
+) -> m.Infra.ReleasePhaseDispatchConfig:
+    return m.Infra.ReleasePhaseDispatchConfig(
+        phase=c.Infra.VERB_PUBLISH,
+        workspace_root=workspace_root,
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
+        project_names=[],
+        dry_run=False,
+        push=push,
+        dev_suffix=False,
+    )
 
 
-class TestCreateTag:
-    """Tests for _create_tag."""
-
-    def test_creates_new_tag(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
-
-    def test_skips_existing(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_tag_exists_result = r[bool].ok(True)
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
-
-    def test_check_failure(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_tag_exists_result = r[bool].fail(
-            "tag check failed",
-        )
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._create_tag(workspace_root, "v1.0.0"))
+def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
+    result = u.Cli.capture(
+        ["git", "show-ref", "--verify", ref_name],
+        cwd=repo_root,
+    )
+    return not result.failure
 
 
-class TestPushRelease:
-    """Tests for _push_release."""
-
-    def test_pushes_branch_and_tag(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._push_release(workspace_root, "v1.0.0"))
-
-    def test_branch_failure(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_run_checked_result = r[bool].fail("push failed")
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._push_release(workspace_root, "v1.0.0"))
+def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
+    bare_remote = remote_root / "origin.git"
+    cli.run_checked([c.Infra.GIT, "init", "--bare", str(bare_remote)])
+    cli.run_checked(
+        [c.Infra.GIT, "remote", "add", c.Infra.GIT_ORIGIN, str(bare_remote)],
+        cwd=repo_root,
+    )
+    cli.run_checked(
+        [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
+        cwd=repo_root,
+    )
+    return bare_remote
 
 
-class TestPreviousTag:
-    """Tests for _previous_tag."""
+def test_run_release_creates_branches_for_root_and_selected_project(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a", "flext-b"),
+        initialize_root_git=True,
+        initialize_project_git=True,
+    )
 
-    def test_finds_tag(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_run_result = r[str].ok("v0.9.0")
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        result = orchestrator._previous_tag(workspace_root, "v1.0.0")
-        tm.ok(result, eq="v0.9.0")
+    result = FlextInfraReleaseOrchestrator().run_release(
+        make_config(
+            workspace,
+            project_names=["flext-a"],
+        ),
+    )
 
-    def test_no_previous(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_run_result = r[str].ok("")
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        result = orchestrator._previous_tag(workspace_root, "v1.0.0")
-        tm.ok(result, eq="")
-
-    def test_git_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_run_result = r[str].fail("git error")
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._previous_tag(workspace_root, "v1.0.0"))
+    assert result.success
+    assert git_ref_exists(
+        workspace, f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}"
+    )
+    assert git_ref_exists(
+        workspace / "flext-a",
+        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
+    )
+    assert not git_ref_exists(
+        workspace / "flext-b",
+        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
+    )
 
 
-class TestCollectChanges:
-    """Tests for _collect_changes."""
+def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
+    workspace = u.Tests.create_release_workspace(
+        tmp_path,
+        initialize_root_git=True,
+    )
+    assert u.Cli.run_checked(
+        [
+            "git",
+            "tag",
+            "-a",
+            c.Tests.RELEASE_TAG_TARGET,
+            "-m",
+            f"release: {c.Tests.RELEASE_TAG_TARGET}",
+        ],
+        cwd=workspace,
+    ).success
 
-    def test_with_tag(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_run_result = r[str].ok(
-            "- abc1234 fix: bug (author)",
-        )
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._collect_changes(workspace_root, "v0.9.0", "v1.0.0"))
+    result = FlextInfraReleaseOrchestrator().phase_publish(publish_ctx(workspace))
 
-    def test_git_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        FakeUtilsNamespace.Infra._git_run_result = r[str].fail("git error")
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._collect_changes(workspace_root, "", "HEAD"))
+    assert result.success
+    assert (workspace / "docs" / "CHANGELOG.md").is_file()
+    assert (
+        u.Cli.capture(
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+        ).unwrap()
+        == c.Tests.RELEASE_TAG_TARGET
+    )
+
+
+def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
+    workspace = u.Tests.create_release_workspace(
+        tmp_path,
+        initialize_root_git=True,
+    )
+    configure_local_origin(workspace, tmp_path / "remote")
+
+    result = FlextInfraReleaseOrchestrator().phase_publish(
+        publish_ctx(workspace, push=True),
+    )
+
+    assert result.success
+    assert (
+        u.Cli.capture(
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+        ).unwrap()
+        == c.Tests.RELEASE_TAG_TARGET
+    )

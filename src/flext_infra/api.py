@@ -1,129 +1,57 @@
-"""Public API facade for flext-infra.
-
-Factory-method composition over domain services.
-Each domain is accessed via a static factory that returns
-the domain's service **class** — ready for caller instantiation.
-
-MRO composition is infeasible because domain services use
-different type params (s[bool] vs s[str]).
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public API facade for flext-infra."""
 
 from __future__ import annotations
 
-import importlib
-from typing import TYPE_CHECKING, ClassVar, Self, override
+from pathlib import Path
+from typing import ClassVar, override
 
 from flext_core import r
-from flext_infra import FlextInfraServiceBase
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
-if TYPE_CHECKING:
-    from flext_infra import p
 
+class FlextInfra(
+    s[t.JsonDict],
+):
+    """Thin public MRO facade over infra services."""
 
-class FlextInfra(FlextInfraServiceBase[bool]):
-    """Coordinate infrastructure operations via factory-method accessors.
+    app_name: ClassVar[str] = "flext-infra"
 
-    Each domain is accessed via a static factory that returns the domain's
-    service **class**.  Callers instantiate with domain-specific kwargs::
-
-        Generator = FlextInfra.basemk()
-        gen = Generator(workspace_root=root)
-
-        Checker = FlextInfra.check()
-        result = Checker(workspace_root=root).execute()
-
-    Domain services have incompatible type parameters (``s[bool]`` vs
-    ``s[str]``), making MRO composition infeasible.  Factory methods
-    avoid the diamond while keeping a single discovery entry point.
-    """
-
-    _instance: ClassVar[Self | None] = None
-
-    @classmethod
-    def get_instance(cls) -> Self:
-        """Return the shared infra facade instance."""
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
+    def rope_workspace(
+        self,
+        workspace_root: Path | None = None,
+        *,
+        project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
+        src_dir: str = c.Infra.DEFAULT_SRC_DIR,
+        ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
+    ) -> p.Infra.RopeWorkspaceDsl:
+        """Open the public Rope workspace DSL directly from the facade."""
+        resolved_root = (
+            self.workspace_root if workspace_root is None else workspace_root
+        )
+        return FlextInfraRopeWorkspace.open_workspace(
+            resolved_root,
+            project_prefix=project_prefix,
+            src_dir=src_dir,
+            ignored_resources=ignored_resources,
+        )
 
     @override
-    def execute(self) -> r[bool]:
-        """Execute infrastructure service health check."""
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _load(module: str, name: str) -> type:
-        """Lazy-load a class from a module to avoid circular imports."""
-        cls: type = getattr(importlib.import_module(module), name)
-        return cls
-
-    # ------------------------------------------------------------------
-    # Domain factory accessors — return the class, caller instantiates
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def basemk() -> type[p.Infra.Generator]:
-        """Return the base.mk template generator class."""
-        return FlextInfra._load(
-            "flext_infra.basemk.generator", "FlextInfraBaseMkGenerator"
-        )
-
-    @staticmethod
-    def check() -> type[p.Infra.Checker]:
-        """Return the workspace quality-gate checker class."""
-        return FlextInfra._load(
-            "flext_infra.check.workspace_check", "FlextInfraWorkspaceChecker"
-        )
-
-    @staticmethod
-    def codegen() -> type[p.Infra.CodegenFixer]:
-        """Return the codegen fixer class."""
-        return FlextInfra._load("flext_infra.codegen.fixer", "FlextInfraCodegenFixer")
-
-    @staticmethod
-    def deps() -> type[p.Infra.PyprojectModernizer]:
-        """Return the pyproject.toml modernizer class."""
-        return FlextInfra._load(
-            "flext_infra.deps.modernizer", "FlextInfraPyprojectModernizer"
-        )
-
-    @staticmethod
-    def github() -> type[p.Infra.GithubService]:
-        """Return the GitHub operations service class."""
-        return FlextInfra._load("flext_infra.github.service", "FlextInfraGithubService")
-
-    @staticmethod
-    def refactor() -> type[p.Infra.RefactorEngine]:
-        """Return the rope-based refactor engine class."""
-        return FlextInfra._load(
-            "flext_infra.refactor.engine", "FlextInfraRefactorEngine"
-        )
-
-    @staticmethod
-    def release() -> type[p.Infra.ReleaseOrchestrator]:
-        """Return the release orchestrator class."""
-        return FlextInfra._load(
-            "flext_infra.release.orchestrator",
-            "FlextInfraReleaseOrchestrator",
-        )
-
-    @staticmethod
-    def validate_scanner() -> type[p.Infra.Scanner]:
-        """Return the text-pattern validation scanner class."""
-        return FlextInfra._load(
-            "flext_infra.validate.scanner", "FlextInfraTextPatternScanner"
-        )
-
-    @staticmethod
-    def workspace() -> type[p.Infra.Orchestrator]:
-        """Return the workspace orchestrator service class."""
-        return FlextInfra._load(
-            "flext_infra.workspace.orchestrator",
-            "FlextInfraOrchestratorService",
-        )
+    def execute(self) -> p.Result[t.JsonDict]:
+        """Execute a lightweight facade health report."""
+        report: t.JsonDict = {
+            "service": "flext-infra",
+            "status": "ok",
+            "workspace_root": str(self.workspace_root),
+            "apply_changes": self.apply_changes,
+        }
+        return r[t.JsonDict].ok(report)
 
 
-__all__ = ["FlextInfra"]
+infra = FlextInfra.fetch_global()
+
+
+__all__: list[str] = ["FlextInfra", "infra"]

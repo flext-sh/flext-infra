@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m
 
-from flext_infra import FlextInfraDocBuilder
+from flext_infra.docs.builder import FlextInfraDocBuilder
+from tests.models import m
 
 
 @pytest.fixture
@@ -23,38 +23,14 @@ def builder() -> FlextInfraDocBuilder:
 class TestBuilderCore:
     """Core build invocation tests."""
 
-    def test_build_returns_flext_result(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
-    ) -> None:
-        """Test that build returns r."""
-        result = builder.build(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
-
     def test_build_with_valid_scope_returns_success(
         self,
         builder: FlextInfraDocBuilder,
         tmp_path: Path,
     ) -> None:
         """Test build with valid scope returns success."""
-        result = builder.build(tmp_path)
-        tm.ok(result)
-        tm.that(len(result.value), gte=0)
-
-    def test_build_report_structure(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
-    ) -> None:
-        """Test BuildReport has required fields."""
-        result = builder.build(tmp_path)
-        if result.is_success and result.value:
-            report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "result"), eq=True)
-            tm.that(hasattr(report, "reason"), eq=True)
-            tm.that(hasattr(report, "site_dir"), eq=True)
+        reports = tm.ok(builder.build(tmp_path))
+        tm.that(len(reports), gte=0)
 
     def test_build_report_frozen(self) -> None:
         """Test BuildReport is frozen (immutable)."""
@@ -74,18 +50,15 @@ class TestBuilderCore:
         tmp_path: Path,
         kwargs: dict[str, str | list[str]],
     ) -> None:
+        """Build runs with each option variant and returns a railway result."""
         if "output_dir" in kwargs:
             output_dir = kwargs["output_dir"]
             assert isinstance(output_dir, str)
-            result = builder.build(
-                tmp_path,
-                output_dir=str(tmp_path / output_dir),
-            )
+            tm.ok(builder.build(tmp_path, output_dir=str(tmp_path / output_dir)))
         else:
             projects = kwargs.get("projects")
             assert isinstance(projects, list)
-            result = builder.build(tmp_path, projects=projects)
-        tm.that(result.is_success or result.is_failure, eq=True)
+            tm.ok(builder.build(tmp_path, projects=projects))
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
     def test_build_report_result_field_values(self, status: str) -> None:
@@ -117,5 +90,5 @@ class TestBuilderCore:
     ) -> None:
         """Test build with multiple projects returns list of reports."""
         result = builder.build(tmp_path, projects=["proj1", "proj2"])
-        if result.is_success:
+        if result.success:
             tm.that(len(result.value), gte=0)

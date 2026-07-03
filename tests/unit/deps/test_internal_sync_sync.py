@@ -1,38 +1,60 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import os
+from collections.abc import (
+    Callable,
+    Generator,
+)
+from contextlib import contextmanager
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
-from tests import t
 
-from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService, internal_sync
+from flext_infra import r
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
+from tests.protocols import p
+from tests.typings import t
 
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 
-    def _read(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _read(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
-        def __init__(self, fn: Callable[[Path], r[t.Infra.ContainerDict]]) -> None:
+        def __init__(
+            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+        ) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_read)
 
 
-class TestSync:
+@contextmanager
+def _temporary_env(overrides: dict[str, str]) -> Generator[None]:
+    original = {key: os.environ.get(key) for key in overrides}
+    try:
+        for key, value in overrides.items():
+            os.environ[key] = value
+        yield
+    finally:
+        for key, previous in original.items():
+            if previous is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = previous
+
+
+class TestsFlextInfraDepsInternalSyncSync:
     def test_sync_no_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -51,7 +73,6 @@ class TestSync:
     def test_sync_workspace_mode_symlink(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -78,24 +99,12 @@ class TestSync:
                 }),
             ],
         )
-        monkeypatch.setenv("FLEXT_STANDALONE", "")
-        monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
-
-        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
-            _ = cwd
-            return r[str].ok("")
-
-        monkeypatch.setattr(
-            internal_sync.u.Infra,
-            "git_run",
-            _git_run,
-        )
-        tm.ok(service.sync(project))
+        with _temporary_env({"FLEXT_STANDALONE": "", "FLEXT_WORKSPACE_ROOT": ""}):
+            tm.ok(service.sync(project))
 
     def test_sync_missing_repo_mapping(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project = tmp_path / "project"
         project.mkdir()
@@ -118,17 +127,6 @@ class TestSync:
                 r[t.Infra.ContainerDict].ok({"repo": {}}),
             ],
         )
-        monkeypatch.setenv("FLEXT_STANDALONE", "")
-        monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
-
-        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
-            _ = cwd
-            return r[str].ok("")
-
-        monkeypatch.setattr(
-            internal_sync.u.Infra,
-            "git_run",
-            _git_run,
-        )
-        error = tm.fail(service.sync(project))
+        with _temporary_env({"FLEXT_STANDALONE": "", "FLEXT_WORKSPACE_ROOT": ""}):
+            error = tm.fail(service.sync(project))
         tm.that(error, contains="missing repo mapping")

@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_tests import tm
-from tests import c
+
+from tests.constants import c
 
 
-class TestFlextInfraConstantsCheckNamespace:
+class TestsFlextInfraInfraConstantsExtra:
     """Tests for Check namespace constants."""
 
     def test_default_check_dirs_is_list(self) -> None:
@@ -39,10 +40,6 @@ class TestFlextInfraConstantsCheckNamespace:
         for d in c.Infra.CHECK_DIRS_SUBPROJECT:
             tm.that(d, is_=str)
 
-
-class TestFlextInfraConstantsGithubNamespace:
-    """Tests for Github namespace constants."""
-
     def test_github_repo_url_constant(self) -> None:
         tm.that(
             c.Infra.GITHUB_REPO_URL,
@@ -56,59 +53,33 @@ class TestFlextInfraConstantsGithubNamespace:
         tm.that(c.Infra.GITHUB_REPO_URL, is_=str)
         tm.that(c.Infra.GITHUB_REPO_NAME, is_=str)
 
-
-class TestFlextInfraConstantsEncodingNamespace:
-    """Tests for Encoding namespace constants."""
-
     def test_default_encoding_constant(self) -> None:
-        tm.that(c.Infra.Encoding.DEFAULT, eq="utf-8")
+        tm.that(c.Infra.ENCODING_DEFAULT, eq="utf-8")
 
     def test_encoding_constant_is_string(self) -> None:
-        tm.that(c.Infra.Encoding.DEFAULT, is_=str)
-
-
-class TestFlextInfraConstantsAlias:
-    """Tests for module-level alias."""
+        tm.that(c.Infra.ENCODING_DEFAULT, is_=str)
 
     def test_c_alias_is_string(self) -> None:
         tm.that(c, is_=type)
 
-    def test_c_alias_provides_access_to_namespaces(self) -> None:
-        tm.that(hasattr(c, "Infra"), eq=True)
-        tm.that(hasattr(c.Infra, "Paths"), eq=True)
-        tm.that(hasattr(c.Infra, "Files"), eq=True)
-        tm.that(hasattr(c.Infra, "Census"), eq=True)
-        tm.that(hasattr(c.Infra, "Status"), eq=True)
-        tm.that(hasattr(c.Infra, "Excluded"), eq=True)
-        tm.that(hasattr(c.Infra, "Encoding"), eq=True)
-        tm.that(hasattr(c.Infra, "GITHUB_REPO_URL"), eq=True)
-
     def test_c_alias_access_to_constants(self) -> None:
-        tm.that(c.Infra.Paths.VENV_BIN_REL, eq=".venv/bin")
-        tm.that(c.Infra.Status.PASSED, eq="PASS")
-        tm.that(c.Infra.Files.PYPROJECT_FILENAME, eq="pyproject.toml")
-
-
-class TestFlextInfraConstantsImmutability:
-    """Tests for constant immutability."""
+        tm.that(c.Infra.VENV_BIN_REL, eq=".venv/bin")
+        tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
+        tm.that(c.Infra.PYPROJECT_FILENAME, eq="pyproject.toml")
 
     def test_excluded_dirs_are_immutable(self) -> None:
-        excluded = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
-        tm.that(not hasattr(excluded, "add"), eq=True)
+        excluded = c.Infra.COMMON_EXCLUDED_DIRS
+        tm.that(excluded, is_=frozenset)
 
     def test_check_dirs_are_immutable(self) -> None:
         dirs = c.Infra.DEFAULT_CHECK_DIRS
-        tm.that(not hasattr(dirs, "append"), eq=True)
-
-
-class TestFlextInfraConstantsConsistency:
-    """Tests for consistency across namespaces."""
+        tm.that(dirs, is_=tuple)
 
     def test_all_status_values_are_uppercase(self) -> None:
-        tm.that(c.Infra.Status.PASSED.isupper(), eq=True)
-        tm.that(c.Infra.Status.FAIL.isupper(), eq=True)
-        tm.that(c.Infra.Status.OK.isupper(), eq=True)
-        tm.that(c.Infra.Status.WARN.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.PASSED.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.FAIL.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.OK.isupper(), eq=True)
+        tm.that(c.Infra.ResultStatus.WARN.isupper(), eq=True)
 
     def test_all_gate_values_are_lowercase(self) -> None:
         gates = [
@@ -119,13 +90,12 @@ class TestFlextInfraConstantsConsistency:
             c.Infra.PYRIGHT,
             c.Infra.SECURITY,
             c.Infra.MARKDOWN,
-            c.Infra.GO,
         ]
         for gate in gates:
             tm.that(gate.islower(), eq=True, msg=f"Gate {gate} should be lowercase")
 
     def test_excluded_dirs_no_duplicates(self) -> None:
-        common = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
-        doc = c.Infra.Excluded.DOC_EXCLUDED_DIRS
+        common = c.Infra.COMMON_EXCLUDED_DIRS
+        doc = c.Infra.DOC_EXCLUDED_DIRS
         tm.that(len(common), eq=len(set(common)))
         tm.that(len(doc), eq=len(set(doc)))

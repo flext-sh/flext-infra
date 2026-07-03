@@ -3,127 +3,108 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_core import FlextLogger
-from flext_infra import (
-    FlextInfraDependencyDetectionService,
-    FlextInfraDependencyDetectorRuntime,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
-class FlextInfraRuntimeDevDependencyDetector:
+class FlextInfraRuntimeDevDependencyDetector(
+    FlextInfraProjectSelectionServiceBase[bool]
+):
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
-    log: p.Logger = FlextLogger.create_module_logger(__name__)
-    reporting: p.Infra.ReportingService
-    deps: p.Infra.DepsService
-    runner: p.Infra.RunnerService
+    output_format: Annotated[
+        str,
+        m.Field(alias="format", description="Output format for dependency report"),
+    ] = "text"
+    output: Annotated[str | None, m.Field(None, description="Optional output path")] = (
+        None
+    )
+    quiet: Annotated[bool, m.Field(False, description="Reduce command output")] = False
+    no_fail: Annotated[
+        bool,
+        m.Field(alias="no-fail", description="Exit successfully even with issues"),
+    ] = False
+    typings: Annotated[
+        bool,
+        m.Field(False, description="Detect required typing packages"),
+    ] = False
+    apply_typings: Annotated[
+        bool,
+        m.Field(alias="apply-typings", description="Install missing typing packages"),
+    ] = False
+    no_pip_check: Annotated[
+        bool,
+        m.Field(alias="no-pip-check", description="Skip workspace pip check"),
+    ] = False
+    limits: Annotated[
+        str | None, m.Field(None, description="Dependency limits TOML")
+    ] = None
+    deps: Annotated[
+        p.Infra.DepsService,
+        m.Field(
+            default_factory=FlextInfraDependencyDetectionService,
+            exclude=True,
+            description="Dependency analysis service",
+        ),
+    ]
+    runner: Annotated[
+        p.Infra.RunnerService,
+        m.Field(
+            default_factory=lambda: u.Cli,
+            exclude=True,
+            description="Command runner for follow-up operations",
+        ),
+    ]
 
-    def __init__(self) -> None:
-        """Initialize detector runtime services."""
-        super().__init__()
-        infra_instance = u.Infra()
-        self.reporting = infra_instance
-        self.deps = FlextInfraDependencyDetectionService()
-        self.runner = infra_instance
+    @property
+    def output_path(self) -> Path | None:
+        """Return the resolved explicit output path when provided."""
+        if self.output is None:
+            return None
+        return Path(self.output).expanduser().resolve()
 
-    @staticmethod
-    def parser(default_limits_path: Path) -> t.Infra.CliArgumentParser:
-        """Create argument parser for CLI with deptry, pip-check, and typing options."""
-        parser = u.Infra.create_parser(
-            prog="flext-infra deps detect",
-            description="Detect runtime vs dev dependencies (deptry + pip check).",
-            flags=u.Infra.SharedFlags(
-                include_apply=True,
-                include_project=True,
-                include_format=True,
-            ),
-        )
-        _ = parser.add_argument(
-            "--no-pip-check",
-            action="store_true",
-            help="Skip pip check (workspace-level).",
-        )
-        _ = parser.add_argument(
-            "-o",
-            "--output",
-            metavar="FILE",
-            help="Write report to this path (default: .reports/dependencies/detect-runtime-dev-latest.json).",
-        )
-        _ = parser.add_argument(
-            "-q",
-            "--quiet",
-            action="store_true",
-            help="Minimal output (summary only).",
-        )
-        _ = parser.add_argument(
-            "--no-fail",
-            action="store_true",
-            help="Always exit 0 (report only).",
-        )
-        _ = parser.add_argument(
-            "--typings",
-            action="store_true",
-            help="Detect required typing libraries (types-*).",
-        )
-        _ = parser.add_argument(
-            "--apply-typings",
-            action="store_true",
-            help="Add missing typings with poetry add --group typings.",
-        )
-        _ = parser.add_argument(
-            "--limits",
-            metavar="FILE",
-            default=str(default_limits_path),
-            help="Path to dependency_limits.toml.",
-        )
-        return parser
+    @property
+    def limits_path(self) -> Path | None:
+        """Return the resolved dependency limits path when provided."""
+        if self.limits is None:
+            return None
+        return Path(self.limits).expanduser().resolve()
 
-    @staticmethod
-    def project_filter(cli: u.Infra.CliArgs) -> t.StrSequence | None:
-        """Extract project filter list from parsed CLI arguments."""
-        return cli.project_names()
-
-    def run(
-        self: FlextInfraRuntimeDevDependencyDetector,
-        argv: t.StrSequence | None = None,
-    ) -> r[int]:
+    @override
+    def execute(self) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report."""
+        payload: dict[str, t.Infra.InfraValue] = {
+            "workspace": str(self.root),
+            "apply": self.apply_changes,
+            "format": self.output_format,
+            "output": self.output,
+            "quiet": self.quiet,
+            "no-fail": self.no_fail,
+            "typings": self.typings,
+            "apply-typings": self.apply_typings,
+            "no-pip-check": self.no_pip_check,
+            "limits": self.limits,
+        }
+        if self.selected_projects is not None:
+            projects_list: t.JsonValueList = list(self.selected_projects)
+            payload["projects"] = projects_list
+        params = m.Infra.DetectCommand.model_validate(payload)
         runtime = FlextInfraDependencyDetectorRuntime(
             detector=self,
             workspace_report_factory=m.Infra.WorkspaceDependencyReport,
             dependency_limits_factory=m.Infra.DependencyLimitsInfo,
             pip_check_factory=m.Infra.PipCheckReport,
         )
-        return runtime.run(argv=argv)
-
-    @staticmethod
-    def main() -> int:
-        """Entry point for dependency detector CLI."""
-        detector = FlextInfraRuntimeDevDependencyDetector()
-        result = detector.run()
-        if result.is_failure:
-            detector.log.error(
-                "deps_detector_failed",
-                error=result.error or "unknown error",
-            )
-            return 1
-        return result.value
+        return runtime.run(params)
 
 
-main = FlextInfraRuntimeDevDependencyDetector.main
-
-
-if __name__ == "__main__":
-    raise SystemExit(FlextInfraRuntimeDevDependencyDetector.main())
-
-
-__all__ = [
+__all__: list[str] = [
     "FlextInfraRuntimeDevDependencyDetector",
-    "main",
 ]

@@ -6,34 +6,26 @@ warning usage in __init__, using regex analysis on source text.
 
 from __future__ import annotations
 
-import re
-from collections.abc import MutableSequence
-
-from flext_infra import c, t
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraRefactorDeprecatedRemover:
     """Remove classes marked as deprecated by name or warning usage."""
 
-    _CLASS_RE = re.compile(
-        r"^(class\s+(\w+)\b[^\n]*:\n(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
-        re.MULTILINE,
-    )
-    _DEPRECATION_WARN_RE = re.compile(r"\.warn\s*\(")
-
     def __init__(
         self,
-        changes: MutableSequence[str] | None = None,
+        changes: t.MutableSequenceOf[str] | None = None,
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize change sinks used by the transformer."""
-        self.changes: MutableSequence[str] = changes if changes is not None else []
+        self.changes: t.MutableSequenceOf[str] = changes if changes is not None else []
         self._on_change = on_change
 
     def apply_to_source(self, source: str) -> str:
         """Remove deprecated classes from source text."""
         result = source
-        for match in reversed(list(self._CLASS_RE.finditer(source))):
+        for match in reversed(list(c.Infra.CLASS_BLOCK_RE.finditer(source))):
             class_body = match.group(1)
             class_name = match.group(2)
             if self._is_deprecated(class_name, class_body):
@@ -45,14 +37,15 @@ class FlextInfraRefactorDeprecatedRemover:
         """Check if a class is deprecated by name or __init__ warning."""
         if "deprecated" in class_name.lower():
             return True
-        return c.Infra.Dunders.INIT in class_body and bool(
-            self._DEPRECATION_WARN_RE.search(class_body)
+        return c.Infra.DUNDER_INIT in class_body and bool(
+            c.Infra.DEPRECATION_WARN_RE.search(class_body)
         )
 
     def _record_change(self, message: str) -> None:
+        """Record change."""
         self.changes.append(message)
         if self._on_change is not None:
             self._on_change(message)
 
 
-__all__ = ["FlextInfraRefactorDeprecatedRemover"]
+__all__: list[str] = ["FlextInfraRefactorDeprecatedRemover"]

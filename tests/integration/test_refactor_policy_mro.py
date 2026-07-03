@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from tests import c
+from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
+from tests.constants import c
 
-from flext_infra import FlextInfraRefactorMROResolver
 
-
-class TestRefactorPolicyMRO:
+class TestsFlextInfraIntegrationRefactorPolicyMro:
     """Single top-level integration test class for MRO policy resolution."""
 
     class FlextLdapModels:
@@ -16,7 +15,7 @@ class TestRefactorPolicyMRO:
     class FlextCliModels:
         """Stub CLI models facade."""
 
-    class AlgarOudMigModels(FlextLdapModels, FlextCliModels):
+    class DemoMigrationModels(FlextLdapModels, FlextCliModels):
         """Stub composed models facade."""
 
     class FlextLdapConstants:
@@ -25,7 +24,7 @@ class TestRefactorPolicyMRO:
     class FlextCliConstants:
         """Stub CLI constants facade."""
 
-    class AlgarOudMigConstants(FlextLdapConstants, FlextCliConstants):
+    class DemoMigrationConstants(FlextLdapConstants, FlextCliConstants):
         """Stub composed constants facade."""
 
     class FlextLdapTypes:
@@ -34,7 +33,7 @@ class TestRefactorPolicyMRO:
     class FlextCliTypes:
         """Stub CLI typings facade."""
 
-    class AlgarOudMigTypes(FlextLdapTypes, FlextCliTypes):
+    class DemoMigrationTypes(FlextLdapTypes, FlextCliTypes):
         """Stub composed typings facade."""
 
     class FlextLdapProtocols:
@@ -43,7 +42,7 @@ class TestRefactorPolicyMRO:
     class FlextCliProtocols:
         """Stub CLI protocols facade."""
 
-    class AlgarOudMigProtocols(FlextLdapProtocols, FlextCliProtocols):
+    class DemoMigrationProtocols(FlextLdapProtocols, FlextCliProtocols):
         """Stub composed protocols facade."""
 
     class FlextLdapUtilities:
@@ -52,17 +51,17 @@ class TestRefactorPolicyMRO:
     class FlextCliUtilities:
         """Stub CLI utilities facade."""
 
-    class AlgarOudMigUtilities(FlextLdapUtilities, FlextCliUtilities):
+    class DemoMigrationUtilities(FlextLdapUtilities, FlextCliUtilities):
         """Stub composed utilities facade."""
 
     def test_mro_resolver_accepts_expected_order(self) -> None:
         resolutions = FlextInfraRefactorMROResolver.resolve(
             family_classes={
-                c.Infra.FacadeFamily.C: self.AlgarOudMigConstants,
-                c.Infra.FacadeFamily.T: self.AlgarOudMigTypes,
-                c.Infra.FacadeFamily.P: self.AlgarOudMigProtocols,
-                c.Infra.FacadeFamily.M: self.AlgarOudMigModels,
-                c.Infra.FacadeFamily.U: self.AlgarOudMigUtilities,
+                c.Infra.FacadeFamily.C: self.DemoMigrationConstants,
+                c.Infra.FacadeFamily.T: self.DemoMigrationTypes,
+                c.Infra.FacadeFamily.P: self.DemoMigrationProtocols,
+                c.Infra.FacadeFamily.M: self.DemoMigrationModels,
+                c.Infra.FacadeFamily.U: self.DemoMigrationUtilities,
             },
             expected_base_chains={
                 c.Infra.FacadeFamily.C: [
@@ -96,11 +95,11 @@ class TestRefactorPolicyMRO:
         try:
             FlextInfraRefactorMROResolver.resolve(
                 family_classes={
-                    c.Infra.FacadeFamily.C: (self.AlgarOudMigConstants),
-                    c.Infra.FacadeFamily.T: self.AlgarOudMigTypes,
-                    c.Infra.FacadeFamily.P: (self.AlgarOudMigProtocols),
-                    c.Infra.FacadeFamily.M: self.AlgarOudMigModels,
-                    c.Infra.FacadeFamily.U: (self.AlgarOudMigUtilities),
+                    c.Infra.FacadeFamily.C: (self.DemoMigrationConstants),
+                    c.Infra.FacadeFamily.T: self.DemoMigrationTypes,
+                    c.Infra.FacadeFamily.P: (self.DemoMigrationProtocols),
+                    c.Infra.FacadeFamily.M: self.DemoMigrationModels,
+                    c.Infra.FacadeFamily.U: (self.DemoMigrationUtilities),
                 },
                 expected_base_chains={
                     c.Infra.FacadeFamily.C: [

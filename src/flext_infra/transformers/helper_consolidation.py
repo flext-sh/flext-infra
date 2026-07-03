@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import re
-from collections import defaultdict
+import textwrap
 from typing import override
 
-from flext_infra import (
-    FlextInfraRopeTransformer,
-    m,
-    t,
-    u,
-)
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
@@ -36,33 +34,32 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply helper consolidation to in-memory source without persisting."""
         updated = source
-        collected: dict[str, list[str]] = defaultdict(list)
         for name, ns in self._mappings.items():
-            if not u.Infra.has_toplevel_definition(updated, name, kind="function"):
+            func_src = u.Infra.extract_definition(updated, name, kind="function")
+            if func_src is None:
                 continue
             if not self._policy_ok(name, ns, "enable_helper_consolidation"):
                 continue
             if not self._sig_allowed(updated, name):
                 continue
-            collected[ns].append(name)
-        for namespace, helpers in collected.items():
-            for name in helpers:
-                func_src = u.Infra.extract_definition(updated, name, kind="function")
-                if func_src is None:
-                    continue
-                updated = u.Infra.remove_definition(updated, name, kind="function")
-                func_src = u.Infra.ensure_decorator(func_src)
-                indented = u.Infra.indent_block(func_src)
-                updated = u.Infra.append_to_class_body(updated, namespace, indented)
-                self._record_change(f"Moved {name} into {namespace}")
+            updated = u.Infra.remove_definition(updated, name, kind="function")
+            if "@staticmethod" not in func_src:
+                func_src = f"@staticmethod\n{func_src}"
+            updated = u.Infra.append_to_class_body(
+                updated,
+                ns,
+                textwrap.indent(func_src, "    "),
+            )
+            self._record_change(f"Moved {name} into {ns}")
         updated = self._rewrite_calls(updated)
         return updated, list(self.changes)
 
     def _rewrite_calls(self, source: str) -> str:
+        """Rewrite calls."""
         for name, ns in self._mappings.items():
             if not self._policy_ok(name, ns, "allow_helper_call_rewrite"):
                 continue
-            pat = re.compile(rf"(?<!\.)(?<!class\s)(?<!def\s)\b{re.escape(name)}\s*\(")
+            pat = c.Infra.compile_helper_call_site(name)
             new = pat.sub(f"{ns}.{name}(", source)
             if new != source:
                 self._record_change(f"Rewritten call: {name}() -> {ns}.{name}()")
@@ -70,35 +67,44 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         return source
 
     def _policy_ok(self, name: str, target_ns: str, attr: str) -> bool:
+        """Policy ok."""
         policy = self._policy_for(name)
         if policy is None:
             return True
         if not getattr(policy, attr, True):
             return False
-        return u.Infra.target_allowed(
+        allowed: bool = u.Infra.target_allowed(
             policy=policy,
             target_namespace=target_ns,
         )
+        return allowed
 
     def _sig_allowed(self, source: str, name: str) -> bool:
+        """Sig allowed."""
         policy = self._policy_for(name)
+        result: bool
         if policy is None or not policy.require_signature_validation:
-            return True
-        sig_pat = re.compile(rf"def\s+{re.escape(name)}\s*\(([^)]*)\)", re.DOTALL)
-        match = sig_pat.search(source)
-        if match is None:
-            return True
-        params_str = match.group(1)
-        param_names = u.Infra.parse_param_names(params_str)
-        if any(r not in param_names for r in policy.required_parameters):
-            return False
-        if any(f in param_names for f in policy.forbidden_parameters):
-            return False
-        if not policy.allow_vararg and "*args" in params_str:
-            return False
-        return not (not policy.allow_kwarg and "**" in params_str)
+            result = True
+        else:
+            sig_pat = c.Infra.compile_function_signature(name)
+            match = sig_pat.search(source)
+            if match is None:
+                result = True
+            else:
+                params_str = match.group(1)
+                param_names = u.Infra.parse_param_names(params_str)
+                if (
+                    any(r not in param_names for r in policy.required_parameters)
+                    or any(f in param_names for f in policy.forbidden_parameters)
+                    or (not policy.allow_vararg and "*args" in params_str)
+                ):
+                    result = False
+                else:
+                    result = not (not policy.allow_kwarg and "**" in params_str)
+        return result
 
     def _policy_for(self, name: str) -> m.Infra.ClassNestingPolicy | None:
+        """Policy for."""
         return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._families,
@@ -106,4 +112,4 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         )
 
 
-__all__ = ["FlextInfraHelperConsolidationTransformer"]
+__all__: list[str] = ["FlextInfraHelperConsolidationTransformer"]

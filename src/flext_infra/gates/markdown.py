@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m, t
+from flext_infra.constants import c
+from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
@@ -18,17 +21,16 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
-    def _collect_markdown_files(self, project_dir: Path) -> Sequence[Path]:
+    def _collect_markdown_files(self, project_dir: Path) -> t.SequenceOf[Path]:
+        """Collect markdown files."""
         return [
             path
-            for path in project_dir.rglob("*.md")
-            if not any(
-                part in c.Infra.Excluded.CHECK_EXCLUDED_DIRS for part in path.parts
-            )
+            for path in u.Infra.iter_matching_files(project_dir, includes=["*.md"])
+            if not any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in path.parts)
         ]
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
-        """Resolve markdownlint config file args."""
+        """Resolve markdownlint settings file args."""
         root_config = self._workspace_root / ".markdownlint.json"
         local_config = project_dir / ".markdownlint.json"
         if root_config.exists():
@@ -57,6 +59,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = ctx
         return [
             c.Infra.MARKDOWNLINT,
@@ -70,9 +73,10 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:
@@ -95,6 +99,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
     ) -> t.StrSequence:
+        """Build fix command."""
         _ = ctx
         return [
             c.Infra.MARKDOWNLINT,
@@ -105,7 +110,8 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _fix_raw_output(self, result: m.Cli.CommandOutput) -> str:
+        """Fix raw output."""
         return "\n".join(part for part in (result.stdout, result.stderr) if part)
 
 
-__all__ = ["FlextInfraMarkdownGate"]
+__all__: list[str] = ["FlextInfraMarkdownGate"]

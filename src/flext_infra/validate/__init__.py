@@ -1,149 +1,114 @@
-# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make gen
-#
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Validate package."""
 
 from __future__ import annotations
 
-import typing as _t
+from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if _t.TYPE_CHECKING:
-    import flext_infra.validate.basemk_validator as _flext_infra_validate_basemk_validator
-
-    basemk_validator = _flext_infra_validate_basemk_validator
-    import flext_infra.validate.cli as _flext_infra_validate_cli
-    from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-
-    cli = _flext_infra_validate_cli
-    import flext_infra.validate.inventory as _flext_infra_validate_inventory
-    from flext_infra.validate.cli import FlextInfraCliValidate
-
-    inventory = _flext_infra_validate_inventory
-    import flext_infra.validate.namespace_rules as _flext_infra_validate_namespace_rules
-    from flext_infra.validate.inventory import FlextInfraInventoryService
-
-    namespace_rules = _flext_infra_validate_namespace_rules
-    import flext_infra.validate.namespace_validator as _flext_infra_validate_namespace_validator
-    from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
-
-    namespace_validator = _flext_infra_validate_namespace_validator
-    import flext_infra.validate.pytest_diag as _flext_infra_validate_pytest_diag
-    from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-
-    pytest_diag = _flext_infra_validate_pytest_diag
-    import flext_infra.validate.scanner as _flext_infra_validate_scanner
-    from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-
-    scanner = _flext_infra_validate_scanner
-    import flext_infra.validate.skill_validator as _flext_infra_validate_skill_validator
-    from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-
-    skill_validator = _flext_infra_validate_skill_validator
-    import flext_infra.validate.stub_chain as _flext_infra_validate_stub_chain
-    from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-
-    stub_chain = _flext_infra_validate_stub_chain
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-_LAZY_IMPORTS = {
-    "FlextInfraBaseMkValidator": (
-        "flext_infra.validate.basemk_validator",
-        "FlextInfraBaseMkValidator",
-    ),
-    "FlextInfraCliValidate": ("flext_infra.validate.cli", "FlextInfraCliValidate"),
-    "FlextInfraInventoryService": (
-        "flext_infra.validate.inventory",
-        "FlextInfraInventoryService",
-    ),
-    "FlextInfraNamespaceRules": (
-        "flext_infra.validate.namespace_rules",
-        "FlextInfraNamespaceRules",
-    ),
-    "FlextInfraNamespaceValidator": (
-        "flext_infra.validate.namespace_validator",
-        "FlextInfraNamespaceValidator",
-    ),
-    "FlextInfraPytestDiagExtractor": (
-        "flext_infra.validate.pytest_diag",
-        "FlextInfraPytestDiagExtractor",
-    ),
-    "FlextInfraSkillValidator": (
-        "flext_infra.validate.skill_validator",
-        "FlextInfraSkillValidator",
-    ),
-    "FlextInfraStubSupplyChain": (
-        "flext_infra.validate.stub_chain",
-        "FlextInfraStubSupplyChain",
-    ),
-    "FlextInfraTextPatternScanner": (
-        "flext_infra.validate.scanner",
-        "FlextInfraTextPatternScanner",
-    ),
-    "basemk_validator": "flext_infra.validate.basemk_validator",
-    "c": ("flext_core.constants", "FlextConstants"),
-    "cli": "flext_infra.validate.cli",
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "inventory": "flext_infra.validate.inventory",
-    "m": ("flext_core.models", "FlextModels"),
-    "namespace_rules": "flext_infra.validate.namespace_rules",
-    "namespace_validator": "flext_infra.validate.namespace_validator",
-    "p": ("flext_core.protocols", "FlextProtocols"),
-    "pytest_diag": "flext_infra.validate.pytest_diag",
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "scanner": "flext_infra.validate.scanner",
-    "skill_validator": "flext_infra.validate.skill_validator",
-    "stub_chain": "flext_infra.validate.stub_chain",
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
-    "x": ("flext_core.mixins", "FlextMixins"),
-}
-
-__all__ = [
-    "FlextInfraBaseMkValidator",
-    "FlextInfraCliValidate",
-    "FlextInfraInventoryService",
-    "FlextInfraNamespaceRules",
-    "FlextInfraNamespaceValidator",
-    "FlextInfraPytestDiagExtractor",
-    "FlextInfraSkillValidator",
-    "FlextInfraStubSupplyChain",
-    "FlextInfraTextPatternScanner",
-    "basemk_validator",
-    "c",
-    "cli",
-    "d",
-    "e",
-    "h",
-    "inventory",
-    "m",
-    "namespace_rules",
-    "namespace_validator",
-    "p",
-    "pytest_diag",
-    "r",
-    "s",
-    "scanner",
-    "skill_validator",
-    "stub_chain",
-    "t",
-    "u",
-    "x",
-]
+if TYPE_CHECKING:
+    from flext_infra.validate.basemk_validator import (
+        FlextInfraBaseMkValidator as FlextInfraBaseMkValidator,
+    )
+    from flext_infra.validate.fresh_import import (
+        FlextInfraValidateFreshImport as FlextInfraValidateFreshImport,
+    )
+    from flext_infra.validate.gate_contract import (
+        FlextInfraGateContractValidator as FlextInfraGateContractValidator,
+    )
+    from flext_infra.validate.gate_contract_checks import (
+        FlextInfraGateContractChecksMixin as FlextInfraGateContractChecksMixin,
+    )
+    from flext_infra.validate.gate_contract_content import (
+        FlextInfraGateContractContentMixin as FlextInfraGateContractContentMixin,
+    )
+    from flext_infra.validate.gate_contract_models import (
+        FlextInfraGateContractModels as FlextInfraGateContractModels,
+    )
+    from flext_infra.validate.gate_contract_report import (
+        FlextInfraGateContractReportMixin as FlextInfraGateContractReportMixin,
+    )
+    from flext_infra.validate.gate_contract_scan import (
+        FlextInfraGateContractScanMixin as FlextInfraGateContractScanMixin,
+    )
+    from flext_infra.validate.import_cycles import (
+        FlextInfraValidateImportCycles as FlextInfraValidateImportCycles,
+    )
+    from flext_infra.validate.inventory import (
+        FlextInfraInventoryService as FlextInfraInventoryService,
+    )
+    from flext_infra.validate.lazy_map_freshness import (
+        FlextInfraValidateLazyMapFreshness as FlextInfraValidateLazyMapFreshness,
+    )
+    from flext_infra.validate.loc_delta import (
+        FlextInfraLocDeltaValidator as FlextInfraLocDeltaValidator,
+    )
+    from flext_infra.validate.manual_command import (
+        FlextInfraManualCommandValidator as FlextInfraManualCommandValidator,
+    )
+    from flext_infra.validate.metadata_discipline import (
+        FlextInfraValidateMetadataDiscipline as FlextInfraValidateMetadataDiscipline,
+    )
+    from flext_infra.validate.namespace_rules import (
+        FlextInfraNamespaceRules as FlextInfraNamespaceRules,
+    )
+    from flext_infra.validate.namespace_validator import (
+        FlextInfraNamespaceValidator as FlextInfraNamespaceValidator,
+    )
+    from flext_infra.validate.pytest_diag import (
+        FlextInfraPytestDiagExtractor as FlextInfraPytestDiagExtractor,
+    )
+    from flext_infra.validate.runtime_census import (
+        FlextInfraRuntimeCensusValidator as FlextInfraRuntimeCensusValidator,
+    )
+    from flext_infra.validate.scanner import (
+        FlextInfraTextPatternScanner as FlextInfraTextPatternScanner,
+    )
+    from flext_infra.validate.silent_failure import (
+        FlextInfraSilentFailureValidator as FlextInfraSilentFailureValidator,
+    )
+    from flext_infra.validate.skill_validator import (
+        FlextInfraSkillValidator as FlextInfraSkillValidator,
+    )
+    from flext_infra.validate.stub_chain import (
+        FlextInfraStubSupplyChain as FlextInfraStubSupplyChain,
+    )
+    from flext_infra.validate.tier_whitelist import (
+        FlextInfraValidateTierWhitelist as FlextInfraValidateTierWhitelist,
+    )
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".basemk_validator": ("FlextInfraBaseMkValidator",),
+        ".fresh_import": ("FlextInfraValidateFreshImport",),
+        ".gate_contract": ("FlextInfraGateContractValidator",),
+        ".gate_contract_checks": ("FlextInfraGateContractChecksMixin",),
+        ".gate_contract_content": ("FlextInfraGateContractContentMixin",),
+        ".gate_contract_models": ("FlextInfraGateContractModels",),
+        ".gate_contract_report": ("FlextInfraGateContractReportMixin",),
+        ".gate_contract_scan": ("FlextInfraGateContractScanMixin",),
+        ".import_cycles": ("FlextInfraValidateImportCycles",),
+        ".inventory": ("FlextInfraInventoryService",),
+        ".lazy_map_freshness": ("FlextInfraValidateLazyMapFreshness",),
+        ".loc_delta": ("FlextInfraLocDeltaValidator",),
+        ".manual_command": ("FlextInfraManualCommandValidator",),
+        ".metadata_discipline": ("FlextInfraValidateMetadataDiscipline",),
+        ".namespace_rules": ("FlextInfraNamespaceRules",),
+        ".namespace_validator": ("FlextInfraNamespaceValidator",),
+        ".pytest_diag": ("FlextInfraPytestDiagExtractor",),
+        ".runtime_census": ("FlextInfraRuntimeCensusValidator",),
+        ".scanner": ("FlextInfraTextPatternScanner",),
+        ".silent_failure": ("FlextInfraSilentFailureValidator",),
+        ".skill_validator": ("FlextInfraSkillValidator",),
+        ".stub_chain": ("FlextInfraStubSupplyChain",),
+        ".tier_whitelist": ("FlextInfraValidateTierWhitelist",),
+    },
+)
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    publish_all=False,
+)

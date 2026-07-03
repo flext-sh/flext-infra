@@ -2,17 +2,17 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Class Policy v2 Schema",
   "description": "Schema for validating class refactoring policy v2 declarations",
-  "type": "t.NormalizedValue",
-  "required": ["version", "engine", "policy_matrix"],
+  "type": "object",
+  "required": ["version", "policy_id", "policy_matrix"],
   "properties": {
     "version": {
       "type": "integer",
       "description": "Policy version number",
       "enum": [2]
     },
-    "engine": {
+    "policy_id": {
       "type": "string",
-      "description": "Policy engine identifier",
+      "description": "Policy identifier",
       "enum": ["class_refactor_policy"]
     },
     "description": {
@@ -41,11 +41,11 @@
       }
     },
     "defaults": {
-      "type": "t.NormalizedValue",
+      "type": "object",
       "description": "Default enforcement behavior",
       "properties": {
         "enforcement": {
-          "type": "t.NormalizedValue",
+          "type": "object",
           "properties": {
             "unknown_family": {
               "type": "string",
@@ -70,7 +70,7 @@
   "additionalProperties": false,
   "definitions": {
     "policyEntry": {
-      "type": "t.NormalizedValue",
+      "type": "object",
       "required": [
         "family_name",
         "module_patterns",
@@ -84,7 +84,7 @@
         "family_name": {
           "type": "string",
           "description": "Module family identifier",
-          "enum": ["_models", "_utilities", "_dispatcher", "_decorators", "_runtime", "other_private"]
+          "enum": ["models", "_utilities", "_dispatcher", "_decorators", "_runtime", "other_private"]
         },
         "module_patterns": {
           "type": "array",
@@ -120,7 +120,7 @@
           }
         },
         "validation_requirements": {
-          "type": "t.NormalizedValue",
+          "type": "object",
           "required": ["pre_checks", "post_checks", "quality_gates"],
           "properties": {
             "pre_checks": {
@@ -150,7 +150,7 @@
       "additionalProperties": false
     },
     "whitelistEntry": {
-      "type": "t.NormalizedValue",
+      "type": "object",
       "required": ["transform_id", "source_module_pattern", "source_symbol", "target_namespace", "target_name", "rewrite_scope"],
       "properties": {
         "transform_id": {
@@ -182,7 +182,7 @@
       "additionalProperties": false
     },
     "classRule": {
-      "type": "t.NormalizedValue",
+      "type": "object",
       "required": ["project_kind", "facade_family", "module_family", "source_symbol", "target_facade_class", "confidence"],
       "properties": {
         "project_kind": {
@@ -198,7 +198,7 @@
         "module_family": {
           "type": "string",
           "description": "Source module family",
-          "enum": ["_models", "_utilities", "_dispatcher", "_decorators", "_runtime", "other_private"]
+          "enum": ["models", "_utilities", "_dispatcher", "_decorators", "_runtime", "other_private"]
         },
         "source_symbol": {
           "type": "string",
@@ -256,7 +256,7 @@
       "additionalProperties": false
     },
     "checkEntry": {
-      "type": "t.NormalizedValue",
+      "type": "object",
       "required": ["type"],
       "properties": {
         "type": {
@@ -264,7 +264,7 @@
           "description": "Check type identifier"
         },
         "params": {
-          "type": "t.NormalizedValue",
+          "type": "object",
           "description": "Check-specific parameters"
         }
       },

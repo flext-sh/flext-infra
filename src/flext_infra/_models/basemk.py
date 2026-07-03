@@ -4,63 +4,55 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
+from flext_cli import m
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.constants import c
+from flext_infra.typings import t
 
-from flext_core import FlextModels
-from flext_infra import FlextInfraModelsMixins, c, t
 
-
-class FlextInfraBasemkModels:
+class FlextInfraModelsBasemk:
     """Models for base.mk template rendering."""
 
     class BaseMkConfig(
-        FlextInfraModelsMixins.ProjectNameFieldMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.ProjectNameFieldMixin,
+        m.ArbitraryTypesModel,
     ):
         """Configuration model used to render base.mk templates."""
 
         python_version: Annotated[
             t.NonEmptyStr,
-            Field(description="Target Python version"),
-        ]
-        core_stack: Annotated[
-            t.NonEmptyStr,
-            Field(description="Core stack classification"),
+            m.Field(description="Target Python version"),
         ]
         package_manager: Annotated[
             str,
-            Field(
-                default=c.Infra.POETRY,
+            m.Field(
                 description="Dependency manager",
             ),
-        ]
+        ] = c.Infra.POETRY
         source_dir: Annotated[
             str,
-            Field(
-                default=c.Infra.Paths.DEFAULT_SRC_DIR,
+            m.Field(
                 description="Source directory path",
             ),
-        ]
+        ] = c.Infra.DEFAULT_SRC_DIR
         tests_dir: Annotated[
             str,
-            Field(
-                default=c.Infra.Directories.TESTS,
+            m.Field(
                 description="Tests directory path",
             ),
-        ]
+        ] = c.Infra.DIR_TESTS
         lint_gates: Annotated[
             t.StrSequence,
-            Field(
+            m.Field(
                 description="Enabled quality gates",
             ),
-        ] = Field(default_factory=list)
+        ] = m.Field(default_factory=tuple)
         test_command: Annotated[
             str,
-            Field(
-                default=c.Infra.PYTEST,
+            m.Field(
                 description="Default test command",
             ),
-        ]
+        ] = c.Infra.PYTEST
 
 
-__all__ = ["FlextInfraBasemkModels"]
+__all__: list[str] = ["FlextInfraModelsBasemk"]

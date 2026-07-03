@@ -9,58 +9,60 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import fnmatch
-import re
-from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import c, m, r, t
+from flext_core import r
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
-class FlextInfraTextPatternScanner:
+class FlextInfraTextPatternScanner(s[bool]):
     """Scans files for regex pattern matches and reports violations.
 
     Supports include/exclude glob filtering and configurable match
     modes (present = matches are violations, absent = no matches is a violation).
     """
 
-    _ENCODING = c.Infra.Encoding.DEFAULT
+    pattern: Annotated[str, m.Field(description="Regex pattern")]
+    include: Annotated[
+        t.StrSequence,
+        m.Field(
+            default_factory=tuple,
+            description="Glob patterns included in the scan.",
+        ),
+    ] = m.Field(default_factory=tuple)
+    exclude: Annotated[
+        t.StrSequence,
+        m.Field(
+            default_factory=tuple,
+            description="Glob patterns excluded from the scan.",
+        ),
+    ] = m.Field(default_factory=tuple)
+    match: Annotated[
+        c.Infra.MatchMode,
+        m.Field(
+            description="Violation mode (present or absent)",
+        ),
+    ] = c.Infra.MatchMode.PRESENT
 
     @staticmethod
-    def _collect_files(
-        scan_root: Path,
-        includes: t.StrSequence,
-        excludes: t.StrSequence,
-    ) -> Sequence[Path]:
-        """Collect files matching include/exclude globs."""
-        return [
-            path
-            for path in scan_root.rglob("*")
-            if path.is_file()
-            and any(
-                fnmatch.fnmatch(path.relative_to(scan_root).as_posix(), pat)
-                for pat in includes
-            )
-            and not any(
-                fnmatch.fnmatch(path.relative_to(scan_root).as_posix(), pat)
-                for pat in excludes
-            )
-        ]
-
-    @staticmethod
-    def _count_matches(files: Sequence[Path], regex: t.Infra.RegexPattern) -> int:
-        """Count regex matches across files."""
+    def _count_matches(
+        files: t.SequenceOf[Path],
+        regex: t.Infra.RegexPattern,
+    ) -> p.Result[int]:
+        """Count regex matches across files; surface any unreadable file as failure."""
         total = 0
         for file_path in files:
-            try:
-                text = file_path.read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
-                    errors=c.Infra.IGNORE,
-                )
-            except OSError:
-                continue
-            total += sum(1 for _ in regex.finditer(text))
-        return total
+            read = u.Cli.files_read_text(file_path)
+            if read.failure:
+                return r[int].fail(read.error or f"unreadable file: {file_path}")
+            total += sum(1 for _ in regex.finditer(read.value))
+        return r[int].ok(total)
 
     def scan(
         self,
@@ -69,8 +71,8 @@ class FlextInfraTextPatternScanner:
         *,
         includes: t.StrSequence,
         excludes: t.StrSequence | None = None,
-        match_mode: str = c.Infra.MatchModes.PRESENT,
-    ) -> r[t.ConfigurationMapping]:
+        match_mode: c.Infra.MatchMode = c.Infra.MatchMode.PRESENT,
+    ) -> p.Result[t.ConfigurationMapping]:
         """Scan files under scan_root for regex matches.
 
         Args:
@@ -85,41 +87,68 @@ class FlextInfraTextPatternScanner:
             r with violation count and match details.
 
         """
-        error = self._validate_scan_inputs(scan_root, includes, match_mode)
+        error = self._validate_scan_inputs(scan_root, includes)
         if error is not None:
             return r[t.ScalarMapping].fail(error)
         try:
-            regex = re.compile(pattern, flags=re.MULTILINE)
-            files = self._collect_files(scan_root, includes, excludes or [])
-            matches = self._count_matches(files, regex)
-            violation_count = (
-                matches
-                if match_mode == c.Infra.MatchModes.PRESENT
-                else 0
-                if matches > 0
-                else 1
+            return self._scan_validated(
+                scan_root,
+                pattern,
+                includes,
+                excludes or (),
+                match_mode,
             )
-            result: t.MutableConfigurationMapping = {
-                "violation_count": violation_count,
-                "match_count": matches,
-                "files_scanned": len(files),
-            }
-            return r[t.ScalarMapping].ok(result)
-        except re.error as exc:
+        except c.Infra.REGEX_ERROR as exc:
             return r[t.ScalarMapping].fail(f"invalid regex pattern: {exc}")
-        except (OSError, ValueError, TypeError) as exc:
-            return r[t.ScalarMapping].fail(f"text pattern scan failed: {exc}")
+        except c.EXC_OS_TYPE_VALUE as exc:
+            return r[t.ScalarMapping].fail_op("text pattern scan", exc)
 
-    def execute_command(self, params: m.Infra.ValidateScanInput) -> r[bool]:
-        """Execute the text-pattern scan CLI flow for the input model."""
-        result = self.scan(
-            params.workspace_path,
-            params.pattern,
-            includes=params.include_patterns,
-            excludes=params.exclude_patterns,
-            match_mode=params.match,
+    @staticmethod
+    def _violation_count(matches: int, match_mode: c.Infra.MatchMode) -> int:
+        """Return violation count for the selected match mode."""
+        if match_mode == c.Infra.MatchMode.PRESENT:
+            return matches
+        return 0 if matches > 0 else 1
+
+    def _scan_validated(
+        self,
+        scan_root: Path,
+        pattern: str,
+        includes: t.StrSequence,
+        excludes: t.StrSequence,
+        match_mode: c.Infra.MatchMode,
+    ) -> p.Result[t.ConfigurationMapping]:
+        """Scan a validated root with a compiled regex."""
+        regex = c.Infra.compile_multiline(pattern)
+        files = u.Infra.iter_matching_files(
+            scan_root,
+            includes=includes,
+            excludes=excludes,
         )
-        if result.is_failure:
+        matches_result = self._count_matches(files, regex)
+        if matches_result.failure:
+            return r[t.ScalarMapping].fail(
+                matches_result.error or "text pattern scan read failed",
+            )
+        matches = matches_result.value
+        result: t.MutableConfigurationMapping = {
+            "violation_count": self._violation_count(matches, match_mode),
+            "match_count": matches,
+            "files_scanned": len(files),
+        }
+        return r[t.ScalarMapping].ok(result)
+
+    @override
+    def execute(self) -> p.Result[bool]:
+        """Execute the text-pattern scan CLI flow."""
+        result = self.scan(
+            self.workspace_root,
+            self.pattern,
+            includes=self.include,
+            excludes=self.exclude,
+            match_mode=self.match,
+        )
+        if result.failure:
             return r[bool].fail(result.error or "scan failed")
         count = result.value.get("violation_count", 0)
         if isinstance(count, int) and count > 0:
@@ -130,16 +159,13 @@ class FlextInfraTextPatternScanner:
     def _validate_scan_inputs(
         scan_root: Path,
         includes: t.StrSequence,
-        match_mode: str,
     ) -> str | None:
         """Return an error message if scan inputs are invalid, else None."""
         if not scan_root.exists() or not scan_root.is_dir():
             return f"scan_root directory does not exist: {scan_root}"
         if not includes:
             return "at least one include glob required"
-        if match_mode not in {c.Infra.MatchModes.PRESENT, c.Infra.MatchModes.ABSENT}:
-            return f"invalid match_mode: {match_mode}"
         return None
 
 
-__all__ = ["FlextInfraTextPatternScanner"]
+__all__: list[str] = ["FlextInfraTextPatternScanner"]

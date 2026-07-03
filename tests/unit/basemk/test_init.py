@@ -8,10 +8,11 @@ from __future__ import annotations
 import pytest
 
 import flext_infra.basemk as basemk_module
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
 
-class TestFlextInfraBaseMk:
+class TestsFlextInfraBasemkInit:
     """Tests for flext_infra.basemk module."""
 
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:
@@ -19,9 +20,9 @@ class TestFlextInfraBaseMk:
         with pytest.raises(AttributeError):
             _ = getattr(basemk_module, "nonexistent_symbol_xyz")
 
-    def test_lazy_import_template_engine(self) -> None:
-        """Test lazy import of FlextInfraBaseMkTemplateEngine."""
-        assert FlextInfraBaseMkTemplateEngine is not None
+    def test_lazy_import_template_renderer(self) -> None:
+        """Test lazy import of FlextInfraBaseMkTemplateRenderer."""
+        assert FlextInfraBaseMkTemplateRenderer is not None
 
     def test_lazy_import_generator(self) -> None:
         """Test lazy import of FlextInfraBaseMkGenerator."""
@@ -30,5 +31,5 @@ class TestFlextInfraBaseMk:
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(basemk_module)
-        assert "FlextInfraBaseMkTemplateEngine" in exports
+        assert "FlextInfraBaseMkTemplateRenderer" in exports
         assert "FlextInfraBaseMkGenerator" in exports

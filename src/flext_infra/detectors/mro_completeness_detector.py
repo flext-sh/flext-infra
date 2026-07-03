@@ -6,49 +6,29 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
-from typing import ClassVar, override
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
 
-
-class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraMROCompletenessDetector:
     """Detect facade classes missing MRO bases via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.mro_completeness"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Facade '{facade_class}' missing base '{missing_base}' for family '{family}'"
-    )
-
-    @classmethod
-    def _declared_bases_from_source(
-        cls,
-        *,
-        rope_project: t.Infra.RopeProject,
-        file_path: Path,
-        facade: str,
-    ) -> set[str]:
-        """Parse declared facade bases directly from source to complement Rope results."""
-        source = cls._get_source_or_empty(rope_project, file_path)
-        if source is None:
-            return set()
-        return set(u.Infra.parse_class_bases(source, facade))
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.MROCompletenessViolation]:
+    ) -> t.SequenceOf[m.Infra.MROCompletenessViolation]:
         """Detect missing MRO bases: expected - declared = violations."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         parse_failures = ctx.parse_failures
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
-        if family is None or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
+        if family is None:
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        res = u.Infra.fetch_python_resource(
+            rope_project, file_path, skip_protected=True
+        )
         if res is None:
             if parse_failures is not None:
                 parse_failures.append(
@@ -60,31 +40,37 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
                     )
                 )
             return []
-        # Resolve facade class
-        facade = u.Infra.find_facade_alias(res, family)
+        # Resolve facade class from declared module classes.
+        module_classes = tuple(u.Infra.get_module_classes(rope_project, res))
+        facade = None
+        suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
+        if suffix:
+            facade = next(
+                (name for name in module_classes if name.endswith(suffix)),
+                None,
+            )
         if facade is None:
-            suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
-            if suffix:
-                facade = next(
-                    (
-                        n
-                        for n in u.Infra.get_module_classes(rope_project, res)
-                        if n.endswith(suffix)
-                    ),
-                    None,
-                )
+            metadata = u.read_project_constants("flext-infra")
+            facade = next(
+                (
+                    name
+                    for name in module_classes
+                    if name.startswith(metadata.TIER_FACADE_PREFIX["src"])
+                ),
+                None,
+            )
         if facade is None:
             return []
         # Expected: local family classes + dep-graph parents
         # get_class_info returns ClassInfo(name, line, bases) — reuse for declared bases
         expected: dict[str, int] = {}
         declared: set[str] = set()
-        scan_paths: list[Path] = [file_path]
+        scan_paths = [file_path]
         dn = c.Infra.FAMILY_DIRECTORIES.get(family, "")
         if dn:
             d = file_path.parent / dn
             if d.is_dir():
-                scan_paths.extend(sorted(d.glob(c.Infra.Extensions.PYTHON_GLOB)))
+                scan_paths.extend(sorted(d.glob(c.Infra.EXT_PYTHON_GLOB)))
             f = file_path.parent / f"{dn}.py"
             if f.is_file():
                 scan_paths.append(f)
@@ -97,13 +83,7 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
                     declared = set(ci.bases)
                 elif not ci.name.startswith("_") and ci.name.startswith(facade):
                     expected[ci.name] = ci.line
-        declared.update(
-            cls._declared_bases_from_source(
-                rope_project=rope_project,
-                file_path=file_path,
-                facade=facade,
-            )
-        )
+        declared.update(u.Infra.parse_class_bases(res.read(), facade))
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:
             for base in u.Infra.build_expected_base_chains(project_root=root).get(
@@ -124,4 +104,4 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         ]
 
 
-__all__ = ["FlextInfraMROCompletenessDetector"]
+__all__: list[str] = ["FlextInfraMROCompletenessDetector"]

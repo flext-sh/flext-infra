@@ -15,9 +15,8 @@ from typing import override
 import pytest
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraPythonVersionEnforcer,
-)
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from tests.utilities import u
 
 _MINOR: int = sys.version_info.minor
 _BAD: int = _MINOR + 1
@@ -29,28 +28,37 @@ def _ws(root: Path, *, minor: int = _MINOR) -> Path:
     (root / ".git").mkdir(exist_ok=True)
     (root / "Makefile").touch()
     (root / "pyproject.toml").write_text(
-        f'requires-python = ">=3.{minor}"\n',
+        (
+            "[project]\n"
+            'name = "workspace"\n'
+            'version = "0.1.0"\n'
+            f'requires-python = ">=3.{minor}"\n'
+        ),
         encoding="utf-8",
     )
     return root
 
 
 def _proj(root: Path, name: str, *, minor: int = _MINOR) -> Path:
-    """Create a sub-project inside workspace."""
     proj = root / name
     proj.mkdir(exist_ok=True)
     (proj / ".git").mkdir(exist_ok=True)
     (proj / "Makefile").touch()
     (proj / "src").mkdir(exist_ok=True)
     (proj / "pyproject.toml").write_text(
-        f'requires-python = ">=3.{minor}"\n',
+        (
+            "[project]\n"
+            f'name = "{name}"\n'
+            'version = "0.1.0"\n'
+            f'requires-python = ">=3.{minor}"\n'
+            'dependencies = ["flext-core>=0"]\n'
+        ),
         encoding="utf-8",
     )
     return proj
 
 
 def _svc(ws: Path) -> FlextInfraPythonVersionEnforcer:
-    """Create enforcer bound to given workspace."""
 
     class _TestEnforcer(FlextInfraPythonVersionEnforcer):
         @override
@@ -61,9 +69,7 @@ def _svc(ws: Path) -> FlextInfraPythonVersionEnforcer:
     return _TestEnforcer()
 
 
-class TestEnforcerExecute:
-    """Tests for execute() with real workspace structures."""
-
+class TestsFlextInfraInfraMaintenancePythonVersion:
     def test_check_only_success(self, tmp_path: Path) -> None:
         tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True, verbose=False), eq=0)
 
@@ -85,10 +91,6 @@ class TestEnforcerExecute:
 
     def test_empty_workspace(self, tmp_path: Path) -> None:
         tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True))
-
-
-class TestReadRequiredMinor:
-    """Tests for _read_required_minor()."""
 
     @pytest.fixture
     def enforcer(self) -> FlextInfraPythonVersionEnforcer:
@@ -121,14 +123,6 @@ class TestReadRequiredMinor:
         (d / "pyproject.toml").write_text("# No field\n", encoding="utf-8")
         tm.that(enforcer._read_required_minor(d), eq=13)
 
-
-class TestWorkspaceRoot:
-    """Tests for _workspace_root_from_file()."""
-
-    @pytest.fixture
-    def enforcer(self) -> FlextInfraPythonVersionEnforcer:
-        return FlextInfraPythonVersionEnforcer()
-
     def test_success(
         self,
         enforcer: FlextInfraPythonVersionEnforcer,
@@ -150,14 +144,6 @@ class TestWorkspaceRoot:
         f.touch()
         with pytest.raises(RuntimeError, match="workspace root not found"):
             enforcer._workspace_root_from_file(f)
-
-
-class TestEnsurePythonVersionFile:
-    """Tests for _ensure_python_version_file()."""
-
-    @pytest.fixture
-    def enforcer(self) -> FlextInfraPythonVersionEnforcer:
-        return FlextInfraPythonVersionEnforcer()
 
     def test_mismatch_check_mode(
         self,
@@ -208,12 +194,9 @@ class TestEnsurePythonVersionFile:
             eq=True,
         )
 
-
-class TestDiscoverProjects:
-    """Tests for _discover_projects()."""
-
     def test_empty_dir_returns_empty(self, tmp_path: Path) -> None:
         d = tmp_path / "empty"
         d.mkdir()
-        enforcer = FlextInfraPythonVersionEnforcer()
-        tm.that(enforcer._discover_projects(d), eq=[])
+        result = u.Infra.discover_projects(d)
+        tm.ok(result)
+        tm.that(result.value, empty=True)

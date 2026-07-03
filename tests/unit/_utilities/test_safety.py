@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, u
+from tests.constants import c
+from tests.utilities import u
 
 
 def _run_git(repo: Path, *args: str) -> None:
@@ -10,7 +11,7 @@ def _run_git(repo: Path, *args: str) -> None:
         [c.Infra.GIT, *args],
         cwd=repo,
     )
-    assert result.is_success
+    assert result.success
     assert result.value.exit_code == 0
 
 
@@ -23,7 +24,7 @@ def _init_git_repo(repo: Path) -> None:
     _run_git(repo, "commit", "-m", "initial commit")
 
 
-class TestSafetyCheckpoint:
+class TestsFlextInfraUtilitiessafety:
     def test_create_checkpoint_returns_empty_for_clean_repo(
         self,
         tmp_path: Path,
@@ -32,10 +33,10 @@ class TestSafetyCheckpoint:
 
         result = u.Infra.create_checkpoint(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value == ""
 
-    def test_create_checkpoint_creates_stash_for_dirty_repo(
+    def test_create_checkpoint_fails_for_dirty_repo(
         self,
         tmp_path: Path,
     ) -> None:
@@ -44,9 +45,8 @@ class TestSafetyCheckpoint:
 
         result = u.Infra.create_checkpoint(tmp_path, label="test-checkpoint")
 
-        assert result.is_success
-        assert "stash@{0}" in result.value
-        assert "test-checkpoint:" in result.value
+        assert result.failure
+        assert "dirty git worktree" in (result.error or "")
 
     def test_create_checkpoint_returns_empty_for_non_git_folder(
         self,
@@ -54,23 +54,24 @@ class TestSafetyCheckpoint:
     ) -> None:
         result = u.Infra.create_checkpoint(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value == ""
 
-
-class TestSafetyRollback:
-    def test_rollback_to_checkpoint_invalid_stash_ref_fails(
+    def test_rollback_to_checkpoint_rejects_repository_checkpoint(
         self,
         tmp_path: Path,
     ) -> None:
         _init_git_repo(tmp_path)
 
-        result = u.Infra.rollback_to_checkpoint(tmp_path, "stash@{999}")
+        result = u.Infra.rollback_to_checkpoint(tmp_path, "checkpoint-ref")
 
-        assert result.is_failure
+        assert result.failure
+        assert "repository-wide checkpoint rollback is unsupported" in (
+            result.error or ""
+        )
 
     def test_rollback_to_checkpoint_succeeds_for_non_repo(self, tmp_path: Path) -> None:
         result = u.Infra.rollback_to_checkpoint(tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value is True

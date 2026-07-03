@@ -1,67 +1,37 @@
-"""Tests for FlextInfraPathResolver.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Tests for public workspace path resolution utilities."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesPaths
+from flext_infra import u
 
 
-class TestFlextInfraPathResolver:
-    """Test suite for FlextInfraPathResolver."""
+class TestsFlextInfraInfraPaths:
+    """Verify workspace path resolution through the public utility."""
 
-    def test_workspace_root_with_current_directory(self) -> None:
-        """Test resolving workspace root from current directory."""
-        resolver = FlextInfraUtilitiesPaths()
-        result = resolver.workspace_root(".")
-        tm.ok(result)
-        assert isinstance(result.value, Path)
-        assert result.value.is_absolute()
+    def test_resolve_workspace_root_with_current_directory(self) -> None:
+        result = u.Infra.resolve_workspace_root_or_cwd(None)
+        tm.that(result.is_absolute(), eq=True)
 
-    def test_workspace_root_with_absolute_path(self, tmp_path: Path) -> None:
-        """Test resolving workspace root with absolute path."""
-        resolver = FlextInfraUtilitiesPaths()
-        result = resolver.workspace_root(str(tmp_path))
-        tm.ok(result)
-        assert isinstance(result.value, Path)
-        assert result.value.is_absolute()
+    def test_resolve_workspace_root_with_absolute_path(self, tmp_path: Path) -> None:
+        result = u.Infra.resolve_workspace_root_or_cwd(tmp_path)
+        tm.that(result.is_absolute(), eq=True)
 
-    def test_workspace_root_with_path_object(self, tmp_path: Path) -> None:
-        """Test resolving workspace root with Path t.NormalizedValue."""
-        resolver = FlextInfraUtilitiesPaths()
-        result = resolver.workspace_root(tmp_path)
-        tm.ok(result)
-        assert isinstance(result.value, Path)
-        assert result.value == tmp_path.resolve()
+    def test_resolve_workspace_root_returns_resolved_path(self, tmp_path: Path) -> None:
+        result = u.Infra.resolve_workspace_root_or_cwd(tmp_path)
+        tm.that(result, eq=tmp_path.resolve())
 
-    def test_workspace_root_invalid_path(self) -> None:
-        """Test workspace root resolution with invalid path."""
-        resolver = FlextInfraUtilitiesPaths()
-        result = resolver.workspace_root("/nonexistent/path/that/does/not/exist")
-        tm.ok(result)
+    def test_resolve_workspace_root_with_none_uses_cwd(self) -> None:
+        result = u.Infra.resolve_workspace_root_or_cwd(None)
+        tm.that(result, eq=Path.cwd().resolve())
 
-    def test_workspace_root_with_resolve_type_error(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
+    def test_resolve_workspace_root_with_file_returns_parent(
+        self, tmp_path: Path
     ) -> None:
-        resolver = FlextInfraUtilitiesPaths()
-
-        def _raise_type_error(self: Path, strict: bool | None = None) -> Path:
-            _ = self
-            _ = strict
-            msg = "invalid path type"
-            raise TypeError(msg)
-
-        monkeypatch.setattr(Path, "resolve", _raise_type_error)
-
-        result = resolver.workspace_root(".")
-        tm.fail(result)
-        assert isinstance(result.error, str)
-        assert "failed to resolve" in result.error.lower()
+        file_path = tmp_path / "some_file.txt"
+        file_path.write_text("", encoding="utf-8")
+        result = u.Infra.resolve_workspace_root_or_cwd(file_path)
+        tm.that(result, eq=tmp_path.resolve())

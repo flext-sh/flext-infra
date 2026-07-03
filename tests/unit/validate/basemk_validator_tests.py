@@ -9,22 +9,27 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Final
 
 import pytest
 from flext_tests import tf, tm
-from tests import m, t, u
 
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
-_ROOT = "# root content"
+_ROOT: Final[str] = "# root content"
 
 
 def _generated_content() -> str:
     """Get the canonical generated base.mk content for hash-matching tests."""
     gen = FlextInfraBaseMkGenerator()
     result = gen.generate_basemk()
-    assert result.is_success
-    return result.value
+    assert result.success
+    generated_content: str = result.value
+    return generated_content
 
 
 @pytest.fixture
@@ -41,7 +46,7 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        report = tm.ok(v.validate(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="missing root base.mk")
 
@@ -54,7 +59,7 @@ class TestBaseMkValidatorCore:
             _generated_content(),
             encoding="utf-8",
         )
-        report = tm.ok(v.validate(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -63,8 +68,8 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# stale content", "base.mk", tmp_path)
-        report = tm.ok(v.validate(tmp_path))
+        tf(base_dir=tmp_path).create("# stale content", "base.mk")
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="out of sync")
 
@@ -77,7 +82,7 @@ class TestBaseMkValidatorCore:
             _generated_content(),
             encoding="utf-8",
         )
-        report = tm.ok(v.validate(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="matches generated template")
 
@@ -86,7 +91,7 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        report = tm.ok(v.validate(tmp_path))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
 
 
@@ -98,8 +103,8 @@ class TestBaseMkValidatorEdgeCases:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# different", "base.mk", tmp_path)
-        report = tm.ok(v.validate(tmp_path))
+        tf(base_dir=tmp_path).create("# different", "base.mk")
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations[0], has="stale")
 
@@ -108,8 +113,8 @@ class TestBaseMkValidatorEdgeCases:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# mismatch", "base.mk", tmp_path)
-        report = tm.ok(v.validate(tmp_path))
+        tf(base_dir=tmp_path).create("# mismatch", "base.mk")
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
         tm.that(report.violations, length=1)
 
@@ -118,11 +123,11 @@ class TestBaseMkValidatorEdgeCases:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        basemk = tf.create_in("# content", "base.mk", tmp_path)
+        basemk = tf(base_dir=tmp_path).create("# content", "base.mk")
         basemk.chmod(0)
         try:
-            result = v.validate(tmp_path)
-            tm.that(result.is_failure, eq=True)
+            result = v.build_report(tmp_path)
+            tm.that(result.failure, eq=True)
         finally:
             basemk.chmod(0o644)
 
@@ -132,23 +137,24 @@ class TestBaseMkValidatorSha256:
 
     @staticmethod
     def _sha(path: Path) -> str:
-        return u.Cli.sha256_file(path)
+        sha_value: str = u.Cli.sha256_file(path)
+        return sha_value
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
-        f = tf.create_in("content", "test.txt", tmp_path)
+        f = tf(base_dir=tmp_path).create("content", "test.txt")
         h = self._sha(f)
         assert isinstance(h, str)
         tm.that(h, length=64)
 
     def test_same_content_same_hash(self, tmp_path: Path) -> None:
-        f1 = tf.create_in("same", "f1.txt", tmp_path)
-        f2 = tf.create_in("same", "f2.txt", tmp_path)
+        f1 = tf(base_dir=tmp_path).create("same", "f1.txt")
+        f2 = tf(base_dir=tmp_path).create("same", "f2.txt")
         tm.that(self._sha(f1), eq=self._sha(f2))
 
     def test_different_content_different_hash(self, tmp_path: Path) -> None:
-        f1 = tf.create_in("content1", "f1.txt", tmp_path)
-        f2 = tf.create_in("content2", "f2.txt", tmp_path)
-        tm.that(self._sha(f1), ne=self._sha(f2))
+        f1 = tf(base_dir=tmp_path).create("content1", "f1.txt")
+        f2 = tf(base_dir=tmp_path).create("content2", "f2.txt")
+        assert self._sha(f1) != self._sha(f2)
 
 
 __all__: t.StrSequence = []

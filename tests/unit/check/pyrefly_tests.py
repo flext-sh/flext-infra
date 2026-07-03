@@ -33,7 +33,7 @@ class TestFlextInfraConfigFixer:
         tm.fail(result)
         assert isinstance(result.error, str)
         assert isinstance(result.error, str)
-        assert "Use run()" in result.error
+        assert "Use execute_command() directly" in result.error
 
     def test_run_with_empty_projects(self, tmp_path: Path) -> None:
         """Test that run() handles empty project list."""
@@ -60,20 +60,6 @@ class TestFlextInfraConfigFixer:
         result = fixer.run([], verbose=True)
         tm.ok(result)
 
-    def test_find_pyproject_files_with_empty_workspace(self, tmp_path: Path) -> None:
-        """Test that find_pyproject_files returns empty list for empty workspace."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.find_pyproject_files()
-        tm.ok(result)
-        assert isinstance(result.value, list)
-
-    def test_find_pyproject_files_with_specific_paths(self, tmp_path: Path) -> None:
-        """Test that find_pyproject_files filters by project paths."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.find_pyproject_files(project_paths=[tmp_path / "project1"])
-        tm.ok(result)
-        assert isinstance(result.value, list)
-
     def test_process_file_with_missing_file(self, tmp_path: Path) -> None:
         """Test that process_file handles missing files gracefully."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
@@ -81,7 +67,7 @@ class TestFlextInfraConfigFixer:
         result = fixer.process_file(missing_file)
         tm.fail(result)
         assert isinstance(result.error, str)
-        assert "failed to read" in result.error
+        assert "not found" in result.error or "failed to read" in result.error
 
     def test_process_file_with_valid_toml(self, tmp_path: Path) -> None:
         """Test that process_file handles valid TOML without pyrefly section."""

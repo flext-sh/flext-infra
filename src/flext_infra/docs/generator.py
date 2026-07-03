@@ -2,97 +2,60 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
-from pydantic import Field
+from flext_infra.docs.base import FlextInfraDocServiceBase
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
-from flext_core import r
-from flext_infra import c, m, s, t, u
 
-
-class FlextInfraDocGenerator(s[bool]):
+class FlextInfraDocGenerator(FlextInfraDocServiceBase):
     """Generate managed docs artifacts from package exports and docstrings."""
-
-    selected_projects: Annotated[
-        t.StrSequence | None,
-        Field(default=None, description="Selected projects", exclude=True),
-    ] = None
-    docs_output_dir: Annotated[
-        str,
-        Field(
-            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-            description="Docs output dir",
-            exclude=True,
-        ),
-    ] = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
     def generate(
         self,
-        workspace_root: Path,
-        *,
-        projects: Sequence[str] | None = None,
-        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-        apply: bool = False,
-    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+        request: m.Infra.DocsGenerateRequest,
+    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Generate docs across the workspace root and governed FLEXT projects."""
-        return u.Infra.run_scoped(
-            workspace_root,
-            projects=projects,
-            output_dir=output_dir,
+        return self.run_scoped_docs(
+            request.workspace_root,
+            projects=request.projects,
+            output_dir=request.output_dir,
             handler=lambda scope: self._generate_scope(
                 scope,
-                apply=apply,
-                workspace_root=workspace_root,
-                projects=projects,
+                request=request,
             ),
         )
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute the configured docs generation flow."""
-        result = self.generate(
-            workspace_root=self.workspace_root,
-            projects=self.selected_projects,
-            output_dir=self.docs_output_dir,
-            apply=self.apply_changes,
+        return self._propagate_phase_outcome(
+            "generate",
+            self.generate(
+                m.Infra.DocsGenerateRequest(
+                    workspace_root=self.workspace_root,
+                    projects=self.selected_projects,
+                    output_dir=self.output_dir,
+                    apply=self.apply_changes,
+                ),
+            ),
         )
-        if result.is_failure:
-            return r[bool].fail(result.error or "generate failed")
-        return r[bool].ok(True)
-
-    @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: s[bool] | m.Infra.DocsGenerateInput,
-    ) -> r[bool]:
-        """Normalize docs CLI input into the canonical generator service model."""
-        if isinstance(params, m.Infra.DocsGenerateInput):
-            service = cls.model_validate({
-                "workspace_root": params.workspace_path,
-                "apply_changes": params.apply,
-                "selected_projects": params.project_names,
-                "docs_output_dir": params.output_dir,
-            })
-            return service.execute()
-        return params.execute()
 
     def _generate_scope(
         self,
         scope: m.Infra.DocScope,
         *,
-        apply: bool,
-        workspace_root: Path,
-        projects: Sequence[str] | None = None,
+        request: m.Infra.DocsGenerateRequest,
     ) -> m.Infra.DocsPhaseReport:
-        """Generate one scope via ``u.Infra`` and log the result."""
+        """Generate one scope via the docs generator utilities and log the result."""
         report = u.Infra.docs_generate_scope(
             scope,
-            apply=apply,
-            workspace_root=workspace_root,
-            projects=projects,
+            apply=request.apply,
+            workspace_root=request.workspace_root,
+            projects=request.projects,
         )
         self.logger.info(
             "docs_generate_scope_completed",
@@ -104,4 +67,4 @@ class FlextInfraDocGenerator(s[bool]):
         return report
 
 
-__all__ = ["FlextInfraDocGenerator"]
+__all__: list[str] = ["FlextInfraDocGenerator"]

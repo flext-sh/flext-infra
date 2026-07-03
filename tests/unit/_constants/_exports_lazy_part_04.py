@@ -1,0 +1,61 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+"""Lazy export map part."""
+
+from __future__ import annotations
+
+from flext_core.lazy import build_lazy_import_map
+
+TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
+    {
+        ".deps.test_extra_paths_manager": ("TestsFlextInfraExtraPathsManager",),
+        ".deps.test_extra_paths_search_paths": (
+            "TestsFlextInfraExtraPathsSearchPaths",
+        ),
+        ".deps.test_extra_paths_uv_sources": ("TestsFlextInfraExtraPathsUvSources",),
+        ".deps.test_modernizer_main_extra": ("TestsFlextInfraDepsModernizerMainExtra",),
+        ".deps.test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
+        ".deps.test_modernizer_pyright": ("TestsFlextInfraDepsModernizerPyright",),
+        ".deps.test_modernizer_pytest": ("TestsFlextInfraDepsModernizerPytest",),
+        ".deps.test_modernizer_tooling": ("TestsFlextInfraDepsModernizerTooling",),
+        ".deps.test_modernizer_workspace": ("TestsFlextInfraDepsModernizerWorkspace",),
+        ".deps.test_path_sync_init": ("TestsFlextInfraDepsPathSyncInit",),
+        ".deps.test_path_sync_main": ("TestsFlextInfraDepsPathSyncMain",),
+        ".deps.test_path_sync_main_edges": ("TestsFlextInfraDepsPathSyncMainEdges",),
+        ".deps.test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
+        ".deps.test_path_sync_main_project_obj": (
+            "TestsFlextInfraDepsPathSyncMainProjectObj",
+        ),
+        ".deps.test_path_sync_rewrite_deps": (
+            "TestsFlextInfraDepsPathSyncRewriteDeps",
+        ),
+        ".deps.test_path_sync_rewrite_pep621": (
+            "TestsFlextInfraDepsPathSyncRewritePep621",
+        ),
+        ".deps.test_path_sync_rewrite_poetry": (
+            "TestsFlextInfraDepsPathSyncRewritePoetry",
+        ),
+        ".discovery.test_infra_discovery_edge_cases": (
+            "TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases",
+        ),
+        ".test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
+        ".test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
+        ".test_infra_main": ("TestsFlextInfraInfraMain",),
+        ".test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
+        ".test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
+        ".test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
+        ".test_infra_maintenance_python_version": (
+            "TestsFlextInfraInfraMaintenancePythonVersion",
+        ),
+        ".test_infra_paths": ("TestsFlextInfraInfraPaths",),
+        ".test_infra_patterns_core": ("TestsFlextInfraInfraPatternsCore",),
+        ".test_infra_patterns_extra": ("TestsFlextInfraInfraPatternsExtra",),
+        ".test_infra_protocols": ("TestsFlextInfraInfraProtocols",),
+        ".test_infra_refactor_rope_migrations": (
+            "TestsFlextInfraInfraRefactorRopeMigrations",
+        ),
+        ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
+        ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
+    },
+)
+
+__all__: list[str] = ["TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04"]

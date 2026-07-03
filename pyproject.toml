@@ -22,15 +22,17 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
+  "defusedxml>=0.7.1",
   "flext-cli",
   "flext-core",
-  "libcst (>=1.5.1,<2)",
-  "mkdocs-exclude>=1",
-  "mkdocs-material>=9.5",
-  "mkdocs-section-index>=0.3",
-  "mkdocs>=1.6",
-  "mkdocstrings-python>=1.7",
-  "mkdocstrings>=0.24",
+  "gitpython>=3.1.49",
+  "libcst>=1.8.6",
+  "mkdocs-exclude>=1.0.2",
+  "mkdocs-material>=9.7.6",
+  "mkdocs-section-index>=0.3.12",
+  "mkdocs>=1.6.1",
+  "mkdocstrings-python>=2.0.3",
+  "mkdocstrings>=1.0.4",
   "rope>=1.14.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
@@ -55,6 +57,7 @@ dev = [
   "autoflake>=2.3.1",
   "bandit>=1.8",
   "black>=25.1",
+  "blacken-docs>=1.19",
   "codespell>=2.3",
   "deptry>=0.23",
   "django-stubs>=5.2.2",
@@ -65,7 +68,7 @@ dev = [
   "matplotlib-stubs>=0.3",
   "mkdocs-awesome-pages-plugin>=2.9",
   "mkdocs-encryptcontent-plugin>=2",
-  "mkdocs-exclude>=1",
+  "mkdocs-exclude>=1.0.2",
   "mkdocs-get-deps>=0.2",
   "mkdocs-git-revision-date-localized-plugin>=1.2",
   "mkdocs-literate-nav>=0.6",
@@ -74,20 +77,20 @@ dev = [
   "mkdocs-material>=9.5",
   "mkdocs-mermaid2-plugin>=1.1",
   "mkdocs-minify-plugin>=0.7",
-  "mkdocs-newsletter>=0.1",
   "mkdocs-print-site-plugin>=0.8",
   "mkdocs-redirects>=1.2",
-  "mkdocs-section-index>=0.3",
+  "mkdocs-section-index>=0.3.12",
   "mkdocs-versioning>=0.2",
   "mkdocs>=1.6",
   "mkdocstrings-python>=1.7",
   "mkdocstrings>=0.24",
   "pip-audit>=2.7.3",
-  "pre-commit>=4.0.1",
+  "pre-commit>=4.6.0",
   "pylint>=3.3",
-  "pyrefly>=0.58.0",
+  "pyrefly>=1.1.1,<1.2.0",
   "pytest-benchmark>=5.1",
   "pytest-clarity>=1.0.1",
+  "pytest-codeblocks>=0.17.0",
   "pytest-cov>=6.2",
   "pytest-deadfixtures>=2.2.1",
   "pytest-env>=1.1.5",
@@ -114,7 +117,7 @@ dev = [
   "types-pyasn1>=0.6",
   "types-pyopenssl>=24.1",
   "types-python-dateutil>=2.9",
-  "types-pyyaml>=6.0.12",
+  "types-pyyaml>=6.0.12.20260518",
   "types-redis>=4.6",
   "types-requests>=2.32.4",
   "types-setuptools>=80.9",
@@ -144,6 +147,7 @@ ignore-words-list = "crate,nd"
 
 # [MANAGED] coverage
 [tool.coverage.report]
+exclude_also = [ "if TYPE_CHECKING:", "if _t.TYPE_CHECKING:", "if typing.TYPE_CHECKING:" ]
 fail_under = 25
 precision = 2
 show_missing = true
@@ -179,40 +183,33 @@ ignore-property-decorators = true
 
 # [MANAGED] mypy
 [tool.mypy]
-disable_error_code = [ "assignment", "attr-defined", "call-arg", "name-defined", "prop-decorator" ]
-explicit_package_bases = true
-ignore_missing_imports = true
-mypy_path = [ ".", "../typings", "src" ]
-namespace_packages = true
-plugins = [ "pydantic.mypy" ]
-python_version = "3.13"
-
-[[tool.mypy.overrides]]
+check_untyped_defs = true
 disable_error_code = [
-  "arg-type",
   "assignment",
   "attr-defined",
   "call-arg",
-  "has-type",
   "misc",
-  "no-redef",
-  "return-value",
+  "name-defined",
+  "prop-decorator",
   "valid-type",
-  "var-annotated",
 ]
-module = [ "tests", "tests.*", "tests.integration.*", "tests.unit.*" ]
-
-[[tool.mypy.overrides]]
-disable_error_code = [ "attr-defined", "call-arg", "return-value" ]
-module = [ "tests.helpers.*" ]
-
-[[tool.mypy.overrides]]
-disable_error_code = [ "assignment", "attr-defined" ]
-module = [ "tests.integration.patterns.*" ]
-
-[[tool.mypy.overrides]]
-disable_error_code = [ "assignment" ]
-module = [ "tests.fixtures.*" ]
+exclude = "^tests/fixtures(?:/|$)"
+explicit_package_bases = true
+extra_checks = true
+follow_imports = "normal"
+ignore_missing_imports = true
+local_partial_types = true
+mypy_path = [ ".", "src" ]
+namespace_packages = true
+no_implicit_reexport = true
+overrides = [  ]
+plugins = [ "pydantic.mypy", "returns.contrib.mypy.returns_plugin" ]
+python_version = "3.13"
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
 
 [tool.poetry]
 
@@ -221,6 +218,7 @@ module = [ "tests.fixtures.*" ]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+warn_untyped_fields = true
 
 # [MANAGED] pyrefly
 [tool.pyrefly]
@@ -231,7 +229,9 @@ project-excludes = [
   "**/*_pb2_grpc*.py",
   "**/.venv/**",
   "**/__pycache__",
+  "**/__pyrefly_virtual__/**",
   "**/node_modules",
+  "**/site-packages/**",
   "**/typings/**",
   "**/vendor/**",
   "**/venv/**",
@@ -244,95 +244,106 @@ project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
 python-version = "3.13"
 search-path = [
   ".",
+  "../flext-cli/examples",
+  "../flext-cli/src",
+  "../flext-core/examples",
+  "../flext-core/scripts",
+  "../flext-core/src",
+  "../flext-infra/src",
+  "../flext-infra/tmp_flow_test",
+  "../flext-tests/src",
   "src",
 ]
+site-package-path = [ "../.venv/lib/python3.13/site-packages" ]
+skip-interpreter-query = true
 use-ignore-files = false
 
 [tool.pyrefly.errors]
 abstract-method-call = false
-annotation-mismatch = true
-bad-argument-count = true
-bad-argument-type = true
-bad-assignment = true
-bad-class-definition = true
-bad-context-manager = true
-bad-dunder-all = true
-bad-function-definition = true
-bad-index = true
-bad-instantiation = true
-bad-keyword-argument = true
-bad-match = true
+annotation-mismatch = "error"
+bad-argument-count = "error"
+bad-argument-type = "error"
+bad-assignment = "error"
+bad-class-definition = "error"
+bad-context-manager = "error"
+bad-dunder-all = "error"
+bad-function-definition = "error"
+bad-index = "error"
+bad-instantiation = "error"
+bad-keyword-argument = "error"
+bad-match = "error"
 bad-override = false
-bad-param-name-override = true
-bad-raise = true
-bad-return = true
-bad-specialization = true
-bad-typed-dict = true
-bad-typed-dict-key = true
-bad-unpacking = true
-deprecated = true
-implicit-abstract-class = true
-implicit-any = true
-implicit-import = true
-implicitly-defined-attribute = true
-inconsistent-inheritance = true
-inconsistent-overload = true
-inconsistent-overload-default = true
-invalid-annotation = true
-invalid-argument = true
-invalid-decorator = true
-invalid-inheritance = true
-invalid-literal = true
-invalid-overload = true
-invalid-param-spec = true
-invalid-pattern = true
-invalid-self-type = true
-invalid-super-call = true
-invalid-type-alias = true
-invalid-type-var = true
-invalid-type-var-tuple = true
-invalid-variance = true
-invalid-yield = true
-missing-argument = true
-missing-attribute = true
-missing-import = true
-missing-module-attribute = true
-missing-override-decorator = true
-missing-source = true
-missing-source-for-stubs = true
-no-access = true
-no-matching-overload = true
+bad-param-name-override = "error"
+bad-raise = "error"
+bad-return = "error"
+bad-specialization = "error"
+bad-typed-dict = "error"
+bad-typed-dict-key = "error"
+bad-unpacking = "error"
+deprecated = "error"
+implicit-abstract-class = "error"
+implicit-any = "error"
+implicit-import = "error"
+implicitly-defined-attribute = "error"
+inconsistent-inheritance = "error"
+inconsistent-overload = "error"
+inconsistent-overload-default = "error"
+invalid-annotation = "error"
+invalid-argument = "error"
+invalid-decorator = "error"
+invalid-inheritance = "error"
+invalid-literal = "error"
+invalid-overload = "error"
+invalid-param-spec = "error"
+invalid-pattern = "error"
+invalid-self-type = "error"
+invalid-super-call = "error"
+invalid-type-alias = "error"
+invalid-type-var = "error"
+invalid-type-var-tuple = "error"
+invalid-variance = "error"
+invalid-yield = "error"
+missing-argument = "error"
+missing-attribute = "error"
+missing-import = "error"
+missing-module-attribute = "error"
+missing-override-decorator = "error"
+missing-source = "error"
+missing-source-for-stubs = "error"
+no-access = "error"
+no-matching-overload = "error"
 non-convergent-recursion = false
 non-exhaustive-match = false
-not-a-type = true
-not-async = true
-not-callable = true
-not-iterable = true
-not-required-key-access = true
-open-unpacking = true
-protocol-implicitly-defined-attribute = true
-read-only = true
-redefinition = true
-redundant-cast = true
-redundant-condition = true
-unannotated-attribute = true
-unannotated-parameter = true
-unannotated-return = true
-unbound-name = true
-unexpected-keyword = true
-unexpected-positional-argument = true
-unknown-name = true
-unnecessary-comparison = true
-unreachable = true
-unresolvable-dunder-all = true
-unsafe-overlap = true
-unsupported = true
-unsupported-delete = true
-unsupported-operation = true
-untyped-import = true
-unused-coroutine = true
-unused-ignore = true
-variance-mismatch = true
+not-a-type = "error"
+not-async = "error"
+not-callable = "error"
+not-iterable = "error"
+not-required-key-access = "error"
+open-unpacking = "error"
+protocol-implicitly-defined-attribute = "error"
+read-only = "error"
+redefinition = "error"
+redundant-cast = "error"
+redundant-condition = "error"
+unannotated-attribute = "error"
+unannotated-parameter = "error"
+unannotated-return = "error"
+unbound-name = "error"
+unexpected-keyword = "error"
+unexpected-positional-argument = "error"
+unknown-name = "error"
+unnecessary-comparison = "error"
+unnecessary-type-conversion = "error"
+unreachable = "error"
+unresolvable-dunder-all = "error"
+unsafe-overlap = "error"
+unsupported = "error"
+unsupported-delete = "error"
+unsupported-operation = "error"
+untyped-import = "error"
+unused-coroutine = "error"
+unused-ignore = "error"
+variance-mismatch = "error"
 
 # [MANAGED] pyright
 [tool.pyright]
@@ -344,37 +355,52 @@ exclude = [
   "**/.venv",
   "**/.venv/**",
   "**/__pycache__",
+  "**/__pyrefly_virtual__/**",
   "**/dist-packages",
   "**/dist-packages/**",
   "**/node_modules",
   "**/site-packages",
   "**/site-packages/**",
+  "**/tests/fixtures",
+  "**/tests/fixtures/**",
   "**/venv",
   "**/venv/**",
-  ".sisyphus",
+  ".reports",
   ".venv",
 ]
-extraPaths = [ ".", "../typings", "src" ]
-ignore = [ "**/*.pyi", "../typings" ]
+extraPaths = [ ".", "src" ]
+ignore = [ "**/*.pyi" ]
+include = [ "src", "tests" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
+reportArgumentType = "none"
+reportAttributeAccessIssue = "none"
 reportCallIssue = "none"
 reportConstantRedefinition = "error"
 reportIncompatibleMethodOverride = "error"
-reportIncompatibleVariableOverride = "error"
+reportIncompatibleVariableOverride = "none"
 reportInconsistentConstructor = "error"
+reportInvalidTypeForm = "none"
 reportMissingImports = "error"
 reportMissingModuleSource = "error"
-reportMissingTypeStubs = "warning"
+reportMissingTypeStubs = "none"
 reportPrivateUsage = "warning"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
 reportUnnecessaryCast = "error"
 reportUnnecessaryComparison = "warning"
 reportUnnecessaryIsInstance = "warning"
+reportUnreachable = "none"
+reportUnsupportedDunderAll = "none"
+reportUntypedBaseClass = "none"
+reportUntypedFunctionDecorator = "none"
 reportUnusedClass = "error"
 reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
-stubPath = "../typings"
 typeCheckingMode = "strict"
 venv = ".venv"
 venvPath = ".."
@@ -391,9 +417,24 @@ root = "tests"
 
 # [MANAGED] pytest
 [tool.pytest.ini_options]
-addopts = [ "--strict-markers" ]
+addopts = [
+  "--durations=10",
+  "--ignore-glob=*/tests/_constants/*",
+  "--ignore-glob=*/tests/_models/*",
+  "--ignore-glob=*/tests/_protocols/*",
+  "--ignore-glob=*/tests/_typings/*",
+  "--ignore-glob=*/tests/_utilities/*",
+  "--ignore-glob=*/tests/constants.py",
+  "--ignore-glob=*/tests/models.py",
+  "--ignore-glob=*/tests/protocols.py",
+  "--ignore-glob=*/tests/typings.py",
+  "--ignore-glob=*/tests/utilities.py",
+  "--markdown-docs",
+  "--strict-markers",
+]
 enable_assertion_pass_hook = true
 filterwarnings = [
+  "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning",
   "ignore:Remove `format_exc_info` from your processor chain:UserWarning:structlog",
 ]
 markers = [
@@ -412,6 +453,9 @@ minversion = "8.0"
 python_classes = [ "Test*" ]
 python_files = [ "*_test.py", "*_tests.py", "test_*.py" ]
 
+[tool.pytest_env]
+FLEXT_INFRA_LINT_SNAPSHOT_GATES = "lint"
+
 [tool.radon]
 cc_min = "B"
 exclude = "tests/*,examples/*"
@@ -420,6 +464,7 @@ mi_min = "B"
 # [MANAGED] ruff
 [tool.ruff]
 exclude = [
+  "**/__pyrefly_virtual__/**",
   ".git",
   ".mypy_cache",
   ".pytest_cache",
@@ -432,11 +477,13 @@ exclude = [
   "dist",
   "htmlcov",
   "temp-backup",
+  "tests/fixtures",
+  "tests/fixtures/**",
   "typings",
   "vendor",
   "venv",
 ]
-fix = true
+fix = false
 line-length = 88
 preview = true
 respect-gitignore = true
@@ -506,6 +553,42 @@ ignore = [
   "W293",
 ]
 select = [ "ALL" ]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.argparse]
+msg = "Use cli.register_result_command + Pydantic model from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.click]
+msg = "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.colorama]
+msg = "Use cli.print with c.Cli.MessageStyles."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.getpass]
+msg = "Use cli.prompt_password from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.orjson]
+msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.prompt_toolkit]
+msg = "Use cli.prompt / cli.confirm / cli.prompt_choice / cli.prompt_password."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.rich]
+msg = "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.simplejson]
+msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.tabulate]
+msg = "Use cli.format_table / cli.show_table from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.tqdm]
+msg = "Use cli.display_progress from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.typer]
+msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api.ujson]
+msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -658,7 +741,6 @@ split-on-trailing-comma = true
 "**/_constants/*.py" = [ "S105" ]
 "**/_utilities/parser.py" = [ "ARG004", "FBT001" ]
 "**/alert_manager*.py" = [ "S310" ]
-"**/config.py" = [ "ANN401", "FBT001", "SLF001" ]
 "**/constants.py" = [ "S105" ]
 "**/container.py" = [ "ANN401", "SLF001" ]
 "**/context.py" = [  ]
@@ -672,7 +754,7 @@ split-on-trailing-comma = true
 "**/protocol_impls/*.py" = [ "SLF001" ]
 "**/providers/*.py" = [ "S106", "S107" ]
 "**/services/prompts.py" = [ "D102", "D107" ]
-"**/settings.py" = [ "ANN401", "PLC0415", "S105" ]
+"**/settings.py" = [ "ANN401", "FBT001", "SLF001" ]
 "**/singer/*.py" = [ "S404", "S603" ]
 "**/tools/*.py" = [ "FBT001", "FBT002", "N802", "S404", "S603", "S607", "T201" ]
 "**/tools/**/*.py" = [ "FBT001", "FBT002", "N802", "S404", "S603", "S607", "T201" ]

@@ -7,26 +7,29 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, override
 
-from pydantic import Field
-
-from flext_infra import (
-    FlextInfraBaseMkTemplateEngine,
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_core import r
+from flext_infra.base import s
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraBaseMkGenerator(s[str]):
     """Generate base.mk content and write to file or stream."""
 
-    template_engine: Annotated[
+    project_name: Annotated[
+        str | None, m.Field(description="Optional project name override")
+    ] = None
+    output: Annotated[
+        Path | None, m.Field(description="Optional file path for generated content")
+    ] = None
+
+    template_renderer: Annotated[
         p.Infra.TemplateRenderer | None,
-        Field(default=None, exclude=True, description="Template engine"),
+        m.Field(exclude=True, description="Template renderer"),
     ] = None
 
     @property
@@ -35,22 +38,40 @@ class FlextInfraBaseMkGenerator(s[str]):
         return u.Cli()
 
     @override
-    def execute(self) -> r[str]:
-        return self.generate_basemk()
+    def execute(self) -> p.Result[str]:
+        """Execute."""
+        settings = (
+            FlextInfraBaseMkTemplateRenderer.default_config().model_copy(
+                update={"project_name": self.project_name},
+            )
+            if self.project_name
+            else None
+        )
+        result = self.generate_basemk(settings)
+        if result.failure:
+            return result
+        write_result = self.write(
+            result.value,
+            output=self.output,
+            stream=sys.stdout,
+        )
+        if write_result.failure:
+            return r[str].fail(write_result.error or "write failed")
+        return result
 
     def generate_basemk(
         self,
-        config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
-    ) -> r[str]:
+        settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+    ) -> p.Result[str]:
         """Generate base.mk content from configuration."""
-        config_result = self._normalize_config(config)
-        if config_result.is_failure:
+        config_result = FlextInfraBaseMkTemplateRenderer.normalize_config(settings)
+        if config_result.failure:
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
         render_result = (
-            self.template_engine or FlextInfraBaseMkTemplateEngine()
+            self.template_renderer or FlextInfraBaseMkTemplateRenderer()
         ).render_all(config_value)
-        if render_result.is_failure:
+        if render_result.failure:
             return r[str].fail(render_result.error or "base.mk render failed")
         return self._validate_generated_output(render_result.value)
 
@@ -60,7 +81,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         *,
         output: Path | None = None,
         stream: p.Infra.OutputStream | None = None,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Write generated content to file or stream."""
         if output is None:
             target_stream = stream
@@ -69,92 +90,61 @@ class FlextInfraBaseMkGenerator(s[str]):
             try:
                 _ = target_stream.write(content)
                 return r[bool].ok(True)
-            except OSError as exc:
-                return r[bool].fail(f"base.mk stdout write failed: {exc}")
-        try:
-            output.parent.mkdir(parents=True, exist_ok=True)
-            _ = output.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
-            return r[bool].ok(True)
-        except OSError as exc:
-            return r[bool].fail(f"base.mk write failed: {exc}")
+            except c.EXC_OS_VALUE as exc:
+                return r[bool].fail_op("base.mk stdout write", exc)
+        return u.Cli.atomic_write_text_file(output, content)
 
-    def handle_generate_input(self, params: m.Infra.BaseMkGenerateInput) -> r[str]:
-        """CLI handler for generate command input."""
-        config = (
-            FlextInfraBaseMkTemplateEngine.default_config().model_copy(
-                update={"project_name": params.project_name},
-            )
-            if params.project_name
-            else None
-        )
-        result = self.generate_basemk(config)
-        if result.is_failure:
-            return result
-        output_path = Path(params.output) if params.output else None
-        write_result = self.write(
-            result.value,
-            output=output_path,
-            stream=sys.stdout,
-        )
-        if write_result.is_failure:
-            return r[str].fail(write_result.error or "write failed")
-        return result
-
-    def _normalize_config(
-        self,
-        config: m.Infra.BaseMkConfig | t.ScalarMapping | None,
-    ) -> r[m.Infra.BaseMkConfig]:
-        if config is None:
-            return r[m.Infra.BaseMkConfig].ok(
-                FlextInfraBaseMkTemplateEngine.default_config(),
-            )
-        if isinstance(config, m.Infra.BaseMkConfig):
-            return r[m.Infra.BaseMkConfig].ok(config)
-        try:
-            normalized = m.Infra.BaseMkConfig.model_validate(
-                dict(config),
-            )
-            return r[m.Infra.BaseMkConfig].ok(normalized)
-        except (TypeError, ValueError) as exc:
-            return r[m.Infra.BaseMkConfig].fail(
-                f"base.mk configuration validation failed: {exc}",
-            )
-
-    def _validate_generated_output(self, content: str) -> r[str]:
+    def _validate_generated_output(self, content: str) -> p.Result[str]:
         """Validate generated base.mk by running make --dry-run."""
         try:
             with tempfile.TemporaryDirectory(prefix="flext-basemk-") as temp_dir_name:
-                temp_dir = Path(temp_dir_name)
-                base_mk_path = temp_dir / c.Infra.Files.BASE_MK
-                makefile_path = temp_dir / c.Infra.Files.MAKEFILE_FILENAME
-                _ = base_mk_path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
-                _ = makefile_path.write_text(
-                    "include base.mk\n",
-                    encoding=c.Infra.Encoding.DEFAULT,
+                validation = self._validate_generated_output_in_dir(
+                    content,
+                    Path(temp_dir_name),
                 )
-                process_result = self._get_runner.run([
-                    c.Infra.MAKE,
-                    "-C",
-                    str(temp_dir),
-                    "--dry-run",
-                    "help",
-                ])
-                if process_result.is_failure:
-                    error_text = process_result.error or "make validation failed"
-                    return r[str].fail(
-                        f"generated base.mk validation failed: {error_text}",
-                    )
+                if validation.failure:
+                    return validation
         except OSError as exc:
-            return r[str].fail(f"generated base.mk validation failed: {exc}")
+            return r[str].fail_op("generated base.mk validation", exc)
+        return r[str].ok(content)
+
+    def _validate_generated_output_in_dir(
+        self,
+        content: str,
+        temp_dir: Path,
+    ) -> p.Result[str]:
+        """Validate generated content inside an already-created temp directory."""
+        write_result = self._write_validation_makefiles(content, temp_dir)
+        if write_result.failure:
+            return r[str].fail(write_result.error or "temp Makefile write failed")
+        process_result = self._get_runner.run([
+            c.Infra.MAKE,
+            "-C",
+            str(temp_dir),
+            "--dry-run",
+            "help",
+        ])
+        if process_result.failure:
+            error_text = process_result.error or "make validation failed"
+            return r[str].fail_op("generated base.mk validation", error_text)
         return r[str].ok(content)
 
     @staticmethod
-    def render_bootstrap_include() -> r[str]:
-        """Render the Makefile bootstrap include block from template."""
-        return FlextInfraBaseMkTemplateEngine().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
-            make=c.Infra.Make,
+    def _write_validation_makefiles(content: str, temp_dir: Path) -> p.Result[bool]:
+        """Write temporary Makefile pair used by base.mk validation."""
+        base_write = u.Cli.atomic_write_text_file(
+            temp_dir / c.Infra.BASE_MK,
+            content,
         )
+        if base_write.failure:
+            return r[bool].fail(base_write.error or "temp base.mk write failed")
+        makefile_write = u.Cli.atomic_write_text_file(
+            temp_dir / c.Infra.MAKEFILE_FILENAME,
+            "include base.mk\n",
+        )
+        if makefile_write.failure:
+            return r[bool].fail(makefile_write.error or "temp Makefile write failed")
+        return r[bool].ok(True)
 
 
-__all__ = ["FlextInfraBaseMkGenerator"]
+__all__: list[str] = ["FlextInfraBaseMkGenerator"]

@@ -1,125 +1,56 @@
-# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make gen
-#
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Validate package."""
 
 from __future__ import annotations
 
-import typing as _t
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-from flext_core.lazy import install_lazy_exports
-
-if _t.TYPE_CHECKING:
-    import tests.unit.validate.basemk_validator_tests as _tests_unit_validate_basemk_validator_tests
-
-    basemk_validator_tests = _tests_unit_validate_basemk_validator_tests
-    import tests.unit.validate.init_tests as _tests_unit_validate_init_tests
-
-    init_tests = _tests_unit_validate_init_tests
-    import tests.unit.validate.inventory_tests as _tests_unit_validate_inventory_tests
-
-    inventory_tests = _tests_unit_validate_inventory_tests
-    import tests.unit.validate.main_cli_tests as _tests_unit_validate_main_cli_tests
-
-    main_cli_tests = _tests_unit_validate_main_cli_tests
-    import tests.unit.validate.main_tests as _tests_unit_validate_main_tests
-    from tests.unit.validate.main_cli_tests import (
-        test_stub_validate_help_returns_zero,
-        test_stub_validate_uses_all_flag,
-    )
-
-    main_tests = _tests_unit_validate_main_tests
-    import tests.unit.validate.namespace_validator_tests as _tests_unit_validate_namespace_validator_tests
-
-    namespace_validator_tests = _tests_unit_validate_namespace_validator_tests
-    import tests.unit.validate.pytest_diag as _tests_unit_validate_pytest_diag
-    from tests.unit.validate.namespace_validator_tests import (
-        TestFlextInfraNamespaceValidator,
-    )
-
-    pytest_diag = _tests_unit_validate_pytest_diag
-    import tests.unit.validate.scanner_tests as _tests_unit_validate_scanner_tests
-
-    scanner_tests = _tests_unit_validate_scanner_tests
-    import tests.unit.validate.skill_validator_tests as _tests_unit_validate_skill_validator_tests
-
-    skill_validator_tests = _tests_unit_validate_skill_validator_tests
-    import tests.unit.validate.stub_chain_tests as _tests_unit_validate_stub_chain_tests
-
-    stub_chain_tests = _tests_unit_validate_stub_chain_tests
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-_LAZY_IMPORTS = {
-    "TestFlextInfraNamespaceValidator": (
-        "tests.unit.validate.namespace_validator_tests",
-        "TestFlextInfraNamespaceValidator",
-    ),
-    "basemk_validator_tests": "tests.unit.validate.basemk_validator_tests",
-    "c": ("flext_core.constants", "FlextConstants"),
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "init_tests": "tests.unit.validate.init_tests",
-    "inventory_tests": "tests.unit.validate.inventory_tests",
-    "m": ("flext_core.models", "FlextModels"),
-    "main_cli_tests": "tests.unit.validate.main_cli_tests",
-    "main_tests": "tests.unit.validate.main_tests",
-    "namespace_validator_tests": "tests.unit.validate.namespace_validator_tests",
-    "p": ("flext_core.protocols", "FlextProtocols"),
-    "pytest_diag": "tests.unit.validate.pytest_diag",
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "scanner_tests": "tests.unit.validate.scanner_tests",
-    "skill_validator_tests": "tests.unit.validate.skill_validator_tests",
-    "stub_chain_tests": "tests.unit.validate.stub_chain_tests",
-    "t": ("flext_core.typings", "FlextTypes"),
-    "test_stub_validate_help_returns_zero": (
-        "tests.unit.validate.main_cli_tests",
-        "test_stub_validate_help_returns_zero",
-    ),
-    "test_stub_validate_uses_all_flag": (
-        "tests.unit.validate.main_cli_tests",
-        "test_stub_validate_uses_all_flag",
-    ),
-    "u": ("flext_core.utilities", "FlextUtilities"),
-    "x": ("flext_core.mixins", "FlextMixins"),
-}
-
-__all__ = [
-    "TestFlextInfraNamespaceValidator",
-    "basemk_validator_tests",
-    "c",
-    "d",
-    "e",
-    "h",
-    "init_tests",
-    "inventory_tests",
-    "m",
-    "main_cli_tests",
-    "main_tests",
-    "namespace_validator_tests",
-    "p",
-    "pytest_diag",
-    "r",
-    "s",
-    "scanner_tests",
-    "skill_validator_tests",
-    "stub_chain_tests",
-    "t",
-    "test_stub_validate_help_returns_zero",
-    "test_stub_validate_uses_all_flag",
-    "u",
-    "x",
-]
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".basemk_validator_tests": ("basemk_validator_tests",),
+        ".fresh_import_tests": ("fresh_import_tests",),
+        ".import_cycles_tests": ("import_cycles_tests",),
+        ".init_tests": ("init_tests",),
+        ".inventory_tests": ("inventory_tests",),
+        ".lazy_map_freshness_tests": ("lazy_map_freshness_tests",),
+        ".loc_delta_tests": ("loc_delta_tests",),
+        ".main_cli_tests": ("TestValidateCli",),
+        ".main_tests": ("main_tests",),
+        ".manual_command_tests": ("manual_command_tests",),
+        ".metadata_discipline_tests": ("metadata_discipline_tests",),
+        ".namespace_validator_tests": ("TestFlextInfraNamespaceValidator",),
+        ".pytest_diag_tests": ("pytest_diag_tests",),
+        ".scanner_helpers_tests": ("scanner_helpers_tests",),
+        ".scanner_tests": ("scanner_tests",),
+        ".silent_failure_tests": ("silent_failure_tests",),
+        ".skill_validator_tests": ("skill_validator_tests",),
+        ".stub_chain_tests": ("stub_chain_tests",),
+        ".tier_whitelist_tests": ("tier_whitelist_tests",),
+        "flext_tests": (
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "td",
+            "tf",
+            "tk",
+            "tm",
+            "tv",
+            "u",
+            "x",
+        ),
+    },
+)
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    publish_all=False,
+)

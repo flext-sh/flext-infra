@@ -1,7 +1,4 @@
-"""Constants for flext-infra.
-
-Defines configuration constants and enumerations for infrastructure services
-including validation rules, check types, and workspace settings.
+"""Constants facade for flext-infra — c.Infra project namespace.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,56 +6,44 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import FlextCliConstants
-from flext_infra import (
-    FlextInfraBasemkConstants,
-    FlextInfraCheckConstants,
-    FlextInfraCodegenConstants,
-    FlextInfraConstantsBase,
-    FlextInfraConstantsCensus,
-    FlextInfraConstantsRope,
-    FlextInfraCoreConstants,
-    FlextInfraDepsConstants,
-    FlextInfraDocsConstants,
-    FlextInfraGithubConstants,
-    FlextInfraRefactorConstants,
-    FlextInfraReleaseConstants,
-    FlextInfraSharedInfraConstants,
-    FlextInfraWorkspaceConstants,
-)
+from flext_cli import c
+from flext_infra._constants.base import FlextInfraConstantsBase
+from flext_infra._constants.basemk import FlextInfraConstantsBasemk
+from flext_infra._constants.census import FlextInfraConstantsCensus
+from flext_infra._constants.check import FlextInfraConstantsCheck
+from flext_infra._constants.cli import FlextInfraConstantsCli
+from flext_infra._constants.codegen import FlextInfraConstantsCodegen
+from flext_infra._constants.deps import FlextInfraConstantsDeps
+from flext_infra._constants.detectors import FlextInfraConstantsDetectors
+from flext_infra._constants.docs import FlextInfraConstantsDocs
+from flext_infra._constants.github import FlextInfraConstantsGithub
+from flext_infra._constants.refactor import FlextInfraConstantsRefactor
+from flext_infra._constants.release import FlextInfraConstantsRelease
+from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 
 
-class FlextInfraConstants(FlextCliConstants):
-    """Centralized constants for FLEXT infrastructure (Layer 0).
-
-    Provides immutable, namespace-organized constants for infrastructure
-    configuration, validation rules, check types, and workspace settings.
-
-    Usage:
-        >>> from flext_infra import c
-        >>> c.Infra.Status.PASSED
-        >>> c.Infra.Paths.VENV_BIN_REL
-        >>> c.Infra.EXCLUDED_PROJECTS
-    """
+class FlextInfraConstants(c):
+    """Infra constants facade — access via c.Infra.*."""
 
     class Infra(
-        FlextInfraConstantsCensus,
-        FlextInfraSharedInfraConstants,
-        FlextInfraBasemkConstants,
-        FlextInfraCheckConstants,
-        FlextInfraCodegenConstants,
-        FlextInfraConstantsRope,
-        FlextInfraCoreConstants,
-        FlextInfraDepsConstants,
-        FlextInfraDocsConstants,
-        FlextInfraGithubConstants,
-        FlextInfraRefactorConstants,
-        FlextInfraReleaseConstants,
-        FlextInfraWorkspaceConstants,
         FlextInfraConstantsBase,
+        FlextInfraConstantsCensus,
+        FlextInfraConstantsBasemk,
+        FlextInfraConstantsCheck,
+        FlextInfraConstantsCli,
+        FlextInfraConstantsCodegen,
+        FlextInfraConstantsRope,
+        FlextInfraConstantsDeps,
+        FlextInfraConstantsDetectors,
+        FlextInfraConstantsDocs,
+        FlextInfraConstantsGithub,
+        FlextInfraConstantsRefactor,
+        FlextInfraConstantsRelease,
+        FlextInfraConstantsWorkspace,
     ):
-        """Merged infra-domain constants from all sub-packages."""
+        """Infra-domain constants — merged mixin namespace."""
 
 
 c = FlextInfraConstants
-__all__ = ["FlextInfraConstants", "c"]
+__all__: tuple[str, ...] = ("FlextInfraConstants", "c")

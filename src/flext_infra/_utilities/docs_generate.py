@@ -2,25 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import ValidationError
-
-from flext_cli import FlextCliUtilitiesJson as _CliJson
-from flext_core import u
-from flext_infra import (
-    FlextInfraUtilitiesDocs,
-    FlextInfraUtilitiesDocsContract,
-    FlextInfraUtilitiesDocsRender,
-    FlextInfraUtilitiesPatterns,
-    c,
-    m,
-    t,
-)
+from flext_cli import u
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
+from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesDocsGenerate(_CliJson):
+class FlextInfraUtilitiesDocsGenerate:
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -30,22 +24,22 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
                 contract.get("modules", [])
             )
-        except ValidationError:
+        except c.ValidationError:
             return []
         return [str(item) for item in items]
 
     @staticmethod
     def _prune_generated_tree(
         root: Path,
-        expected: Sequence[Path],
+        expected: t.SequenceOf[Path],
         *,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Prune stale files from one tool-owned generated tree."""
         if not root.exists():
             return []
         expected_paths = {path.resolve() for path in expected}
-        removed: MutableSequence[m.Infra.GeneratedFile] = []
+        removed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
         for path in sorted(root.rglob("*.md")):
             if path.resolve() in expected_paths:
                 continue
@@ -64,19 +58,23 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
         scope: m.Infra.DocScope,
         *,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Generate the managed docs artifacts for one FLEXT project."""
-        contract = FlextInfraUtilitiesDocsContract.docs_contract(
-            scope.path,
-            scope.package_name,
+        contract = FlextInfraUtilitiesDocsApi.public_contract(
+            scope.path, scope.package_name
         )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
-        expected_generated: MutableSequence[Path] = [
+        expected_generated: t.MutableSequenceOf[Path] = [
             scope.path / "docs/api-reference/generated/overview.md",
             scope.path / "docs/api-reference/generated/public-api.md",
             scope.path / "docs/api-reference/generated/modules/index.md",
         ]
-        files: MutableSequence[m.Infra.GeneratedFile] = [
+        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
+            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                scope.path / "README.md",
+                FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract),
+                apply=apply,
+            ),
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 scope.path / "docs/index.md",
                 FlextInfraUtilitiesDocsRender.docs_project_index(scope, contract),
@@ -149,6 +147,13 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
                 apply=apply,
             )
         )
+        files.extend(
+            FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
+                scope.path / "docs/projects/generated",
+                [],
+                apply=apply,
+            )
+        )
         return files
 
     @staticmethod
@@ -157,7 +162,7 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
         *,
         workspace_root: Path,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Return project guide files managed by generation.
 
         Guide propagation is intentionally disabled; curated guides stay local.
@@ -172,14 +177,13 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
         scope: m.Infra.DocScope,
         *,
         apply: bool,
-    ) -> Sequence[m.Infra.GeneratedFile]:
-        """Return the managed mkdocs config file when it does not exist yet."""
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+        """Return the managed mkdocs settings file when it does not exist yet."""
         path = scope.path / "mkdocs.yml"
         if path.exists():
             return []
-        contract = FlextInfraUtilitiesDocsContract.docs_contract(
-            scope.path,
-            scope.package_name,
+        contract = FlextInfraUtilitiesDocsApi.public_contract(
+            scope.path, scope.package_name
         )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
         return [
@@ -200,11 +204,14 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
         workspace_root: Path,
         *,
         apply: bool,
-        projects: Sequence[str] | None = None,
-    ) -> Sequence[m.Infra.GeneratedFile]:
+        projects: t.StrSequence | None = None,
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Generate root workspace docs artifacts from discovered FLEXT projects."""
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             workspace_root
+        )
+        exclude_docs = FlextInfraUtilitiesDocsRender.as_string_sequence(
+            workspace_contract, "exclude_docs"
         )
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root,
@@ -212,23 +219,18 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
             c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         scopes = (
-            [
-                scope
-                for scope in scopes_result.value
-                if scope.name != c.Infra.ReportKeys.ROOT
-            ]
-            if scopes_result.is_success
+            [scope for scope in scopes_result.value if scope.name != c.Infra.RK_ROOT]
+            if scopes_result.success
             else []
         )
-        catalog_entries: MutableSequence[dict[str, str]] = []
+        catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
         class_counts: dict[str, int] = {}
         for scope in scopes:
             class_counts[scope.project_class] = (
                 class_counts.get(scope.project_class, 0) + 1
             )
-            project_contract = FlextInfraUtilitiesDocsContract.docs_contract(
-                scope.path,
-                scope.package_name,
+            project_contract = FlextInfraUtilitiesDocsApi.public_contract(
+                scope.path, scope.package_name
             )
             catalog_entries.append({
                 "name": scope.name,
@@ -237,13 +239,13 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
                 "description": str(project_contract.get("description", "")).strip(),
                 "api_page": f"../../api-reference/generated/{scope.name}.md",
             })
-        expected_api_generated: MutableSequence[Path] = [
+        expected_api_generated: t.MutableSequenceOf[Path] = [
             workspace_root / "docs/api-reference/generated/overview.md",
         ]
-        expected_project_generated: MutableSequence[Path] = [
+        expected_project_generated: t.MutableSequenceOf[Path] = [
             workspace_root / "docs/projects/generated/catalog.md",
         ]
-        files: MutableSequence[m.Infra.GeneratedFile] = [
+        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 workspace_root / "mkdocs.yml",
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(workspace_contract),
@@ -261,7 +263,8 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 workspace_root / "docs/projects/generated/catalog.md",
                 FlextInfraUtilitiesDocsRender.docs_project_catalog_page(
-                    catalog_entries
+                    catalog_entries,
+                    exclude_docs=exclude_docs,
                 ),
                 apply=apply,
             ),
@@ -299,39 +302,73 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
         return files
 
     @staticmethod
+    def docs_sanitize_scope_fences(
+        scope: m.Infra.DocScope,
+        *,
+        apply: bool,
+    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+        """Remove unsupported ``notest`` qualifiers from code fence info lines."""
+        changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
+        docs_root = scope.path / "docs"
+        if not docs_root.exists():
+            return changed
+        for path in sorted(docs_root.rglob("*.md")):
+            content = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            sanitized = c.Infra.FENCE_NOTEST_RE.sub(r"```\1", content)
+            sanitized = c.Infra.MANUAL_TOC_RE.sub("", sanitized)
+            if sanitized == content:
+                continue
+            changed.append(
+                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                    path,
+                    sanitized,
+                    apply=apply,
+                ),
+            )
+        return changed
+
+    @staticmethod
     def docs_generate_scope(
         scope: m.Infra.DocScope,
         *,
         apply: bool,
         workspace_root: Path,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope and persist the standard reports."""
-        files = (
+        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = list(
             FlextInfraUtilitiesDocsGenerate.docs_root_generated_files(
                 workspace_root,
                 apply=apply,
                 projects=projects,
             )
-            if scope.name == c.Infra.ReportKeys.ROOT
+            if scope.name == c.Infra.RK_ROOT
             else FlextInfraUtilitiesDocsGenerate.docs_project_generated_files(
                 scope,
                 apply=apply,
             )
         )
+        files.extend(
+            FlextInfraUtilitiesDocsGenerate.docs_sanitize_scope_fences(
+                scope,
+                apply=apply,
+            ),
+        )
         generated = u.count(files, lambda item: item.written)
-        _ = FlextInfraUtilitiesDocsGenerate.json_write(
-            scope.report_dir / "generate-summary.json",
-            {
-                c.Infra.ReportKeys.SUMMARY: {
-                    c.Infra.ReportKeys.SCOPE: scope.name,
-                    "generated": generated,
-                    "apply": apply,
-                },
-                "files": [
-                    {"path": item.path, "written": item.written} for item in files
-                ],
+        files_payload: t.JsonList = [
+            {"path": item.path, "written": item.written} for item in files
+        ]
+        summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
+            c.Infra.RK_SUMMARY: {
+                c.Infra.RK_SCOPE: scope.name,
+                "generated": generated,
+                "apply": apply,
             },
+            "files": files_payload,
+        })
+        _ = u.Cli.json_write(
+            scope.report_dir / "generate-summary.json",
+            summary_payload,
         )
         _ = FlextInfraUtilitiesDocs.write_markdown(
             scope.report_dir / "generate-report.md",
@@ -356,7 +393,7 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
                 )
                 for item in files
             ],
-            result=c.Infra.Status.OK if apply else c.Infra.Status.WARN,
+            result=(c.Infra.ResultStatus.OK if apply else c.Infra.ResultStatus.WARN),
             reason="generated" if apply else "dry-run",
             passed=apply,
         )
@@ -372,7 +409,7 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
         title = Path(guide_name).stem.replace("_", " ").replace("-", " ").strip()
         body_lines = lines
         for index, line in enumerate(lines):
-            match = FlextInfraUtilitiesPatterns.HEADING_RE.match(line)
+            match = c.Infra.HEADING_RE.match(line)
             if match is None:
                 continue
             title = match.group(1).strip() or title
@@ -385,7 +422,7 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
     @staticmethod
     def docs_sanitize_internal_anchor_links(content: str) -> str:
         """Replace local markdown links with plain text while preserving externals."""
-        return FlextInfraUtilitiesPatterns.MARKDOWN_LINK_RE.sub(
+        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(
             lambda match: (
                 match.group(0)
                 if match.group(2).startswith(("http://", "https://", "#", "mailto:"))
@@ -393,6 +430,7 @@ class FlextInfraUtilitiesDocsGenerate(_CliJson):
             ),
             content,
         )
+        return sanitized
 
 
-__all__ = ["FlextInfraUtilitiesDocsGenerate"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsGenerate"]

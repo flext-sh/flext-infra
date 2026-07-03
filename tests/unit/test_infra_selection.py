@@ -12,10 +12,13 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import u
+
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
-class TestFlextInfraUtilitiesSelection:
+class TestsFlextInfraInfraSelection:
     """Test suite for u.Infra."""
 
     @pytest.fixture
@@ -26,14 +29,38 @@ class TestFlextInfraUtilitiesSelection:
             proj.mkdir()
             (proj / ".git").mkdir()
             (proj / "Makefile").touch()
-            (proj / "pyproject.toml").touch()
-            (proj / "src").mkdir()
+            (proj / "pyproject.toml").write_text(
+                f'[project]\nname = "{name}"\ndependencies = ["flext-core"]\n',
+            )
+            package_dir = proj / "src" / name.replace("-", "_")
+            package_dir.mkdir(parents=True)
+            (package_dir / "__init__.py").write_text("")
         return tmp_path
 
     @pytest.fixture
     def selector(self) -> type[u.Infra]:
         """Provide project selector utilities class."""
-        return u.Infra
+        selector_cls: type[u.Infra] = u.Infra
+        return selector_cls
+
+    @pytest.fixture
+    def workspace_with_declared_names(self, tmp_path: Path) -> Path:
+        """Create projects whose declared names differ from directory names."""
+        for directory_name, project_name in [
+            ("core-alias", "flext-core"),
+            ("cli-alias", "flext-cli"),
+        ]:
+            proj = tmp_path / directory_name
+            proj.mkdir()
+            (proj / ".git").mkdir()
+            (proj / "Makefile").touch()
+            package_dir = proj / "src" / project_name.replace("-", "_")
+            package_dir.mkdir(parents=True)
+            (proj / "pyproject.toml").write_text(
+                f'[project]\nname = "{project_name}"\ndependencies = ["flext-core"]\n',
+            )
+            (package_dir / "__init__.py").write_text("")
+        return tmp_path
 
     def test_resolve_projects_all_projects(
         self,
@@ -42,7 +69,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving all projects when names list is empty."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects = tm.ok(result)
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
@@ -53,7 +80,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving specific projects by name."""
         result = selector.resolve_projects(workspace_with_projects, ["beta", "alpha"])
-        projects = tm.ok(result)
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=2)
         tm.that([p.name for p in projects], eq=["alpha", "beta"])
 
@@ -64,7 +91,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving a single project."""
         result = selector.resolve_projects(workspace_with_projects, ["gamma"])
-        projects = tm.ok(result)
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=1)
         tm.that(projects[0].name, eq="gamma")
 
@@ -107,7 +134,7 @@ class TestFlextInfraUtilitiesSelection:
             workspace_with_projects,
             ["gamma", "alpha", "beta"],
         )
-        projects = tm.ok(result)
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
     def test_resolve_projects_result_type(
@@ -117,10 +144,36 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test that result contains properly typed ProjectInfo items."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        assert result.is_success
-        projects = result.value
+        assert result.success
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
         tm.that(len(projects), eq=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
+
+    def test_resolve_projects_accepts_directory_aliases(
+        self,
+        selector: type[u.Infra],
+        workspace_with_declared_names: Path,
+    ) -> None:
+        """Test resolving projects by directory name alias."""
+        result = selector.resolve_projects(
+            workspace_with_declared_names,
+            ["core-alias", "cli-alias"],
+        )
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        tm.that([p.name for p in projects], eq=["flext-cli", "flext-core"])
+
+    def test_resolve_projects_accepts_declared_names(
+        self,
+        selector: type[u.Infra],
+        workspace_with_declared_names: Path,
+    ) -> None:
+        """Test resolving projects by declared project.name."""
+        result = selector.resolve_projects(
+            workspace_with_declared_names,
+            ["flext-core", "flext-cli"],
+        )
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        tm.that([p.path.name for p in projects], eq=["cli-alias", "core-alias"])
 
     def test_selector_with_default_discovery(
         self,
@@ -129,7 +182,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test selector uses default discovery service implicitly."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects = tm.ok(result)
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=3)
 
     def test_selector_resolve_projects_empty_list(
@@ -139,5 +192,5 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolve_projects returns empty list when no projects match."""
         result = selector.resolve_projects(tmp_path, [])
-        projects = tm.ok(result)
-        tm.that(projects, eq=[])
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        tm.that(projects, empty=True)

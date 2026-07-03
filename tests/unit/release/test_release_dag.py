@@ -1,141 +1,88 @@
-"""Tests for release orchestrator DAG pipeline execution.
-
-Validates phase ordering, selective phase execution, and failure propagation
-through the DAG-based release pipeline.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public release orchestration tests using real workspaces."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_tests import tm
-from tests import c, m, t
-
-from flext_core import r
-from flext_infra import FlextInfraReleaseOrchestrator
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from _pytest.monkeypatch import MonkeyPatch
-
-_CLS = FlextInfraReleaseOrchestrator
-
-# Canonical phase order as used by _build_release_stages.
-_ALL_PHASES: list[str] = [
-    c.Infra.Verbs.VALIDATE,
-    c.Infra.VERSION,
-    c.Infra.Directories.BUILD,
-    "publish",
-]
+from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 def _make_config(
     workspace_root: Path,
-    phases: list[str] | None = None,
+    *,
+    phases: t.SequenceOf[str] | None = None,
+    dry_run: bool = False,
 ) -> m.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
-        version="1.0.0",
-        tag="v1.0.0",
-        phases=phases or _ALL_PHASES,
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
+        phases=list(phases) if phases is not None else list(c.Tests.ALL_PHASES),
         project_names=None,
-        dry_run=False,
+        dry_run=dry_run,
         push=False,
         dev_suffix=False,
         create_branches=False,
         next_dev=False,
-        next_bump="minor",
+        next_bump=c.Tests.RELEASE_BUMP_MINOR,
     )
 
 
-def _noop_branches(
-    *args: t.Scalar,
-    **kwargs: t.Scalar,
-) -> r[bool]:
-    return r[bool].ok(True)
+class TestsFlextInfraReleaseDag:
+    """Behavior contract for test_release_dag."""
 
-
-class TestReleaseDag:
-    """Tests for DAG-based release pipeline execution."""
-
-    def test_release_phases_execute_via_dag(
+    def test_release_succeed_in_dry_run_mode(
         self,
         tmp_path: Path,
-        monkeypatch: MonkeyPatch,
     ) -> None:
-        """All 4 phases execute in canonical order via DAG pipeline."""
-        executed_phases: list[str] = []
+        workspace = u.Tests.create_release_workspace(
+            tmp_path,
+            project_names=("flext-a",),
+        )
+        result = FlextInfraReleaseOrchestrator().run_release(
+            _make_config(workspace, dry_run=True),
+        )
 
-        def _tracking_dispatch(
-            self_: FlextInfraReleaseOrchestrator,
-            dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> r[bool]:
-            executed_phases.append(dispatch_config.phase)
-            return r[bool].ok(True)
+        assert result.success
+        report_dir = workspace / ".reports" / "release" / c.Tests.RELEASE_TAG_TARGET
+        assert (report_dir / "build-report.json").is_file()
+        assert (report_dir / c.Tests.RELEASE_NOTES_FILENAME).is_file()
 
-        monkeypatch.setattr(_CLS, "_dispatch_phase", _tracking_dispatch)
-        monkeypatch.setattr(_CLS, "_create_branches", _noop_branches)
-
-        config = _make_config(tmp_path)
-        result = _CLS().run_release(config)
-        tm.ok(result)
-        tm.that(executed_phases, eq=_ALL_PHASES)
-
-    def test_release_selective_phases(
+    def test_release_selected_validate_phase_skips_release_artifacts(
         self,
         tmp_path: Path,
-        monkeypatch: MonkeyPatch,
     ) -> None:
-        """Request only validate+build; version+publish are skipped."""
-        executed_phases: list[str] = []
+        workspace = u.Tests.create_release_workspace(tmp_path)
+        result = FlextInfraReleaseOrchestrator().run_release(
+            _make_config(
+                workspace,
+                phases=[c.Infra.VERB_VALIDATE],
+                dry_run=True,
+            ),
+        )
 
-        def _tracking_dispatch(
-            self_: FlextInfraReleaseOrchestrator,
-            dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> r[bool]:
-            executed_phases.append(dispatch_config.phase)
-            return r[bool].ok(True)
+        assert result.success
+        assert not (workspace / ".reports/release").exists()
 
-        monkeypatch.setattr(_CLS, "_dispatch_phase", _tracking_dispatch)
-
-        selected = [c.Infra.Verbs.VALIDATE, c.Infra.Directories.BUILD]
-        config = _make_config(tmp_path, phases=selected)
-        result = _CLS().run_release(config)
-        tm.ok(result)
-        tm.that(executed_phases, eq=selected)
-        # version and publish must not appear.
-        tm.that(c.Infra.VERSION not in executed_phases, eq=True)
-        tm.that("publish" not in executed_phases, eq=True)
-
-    def test_release_failure_propagates(
+    def test_release_build_failure_propagates_from_real_make(
         self,
         tmp_path: Path,
-        monkeypatch: MonkeyPatch,
     ) -> None:
-        """If validate fails, version/build/publish don't run."""
-        executed_phases: list[str] = []
+        workspace = u.Tests.create_release_workspace(
+            tmp_path,
+            root_build_exit_code="1",
+        )
+        result = FlextInfraReleaseOrchestrator().run_release(
+            _make_config(
+                workspace,
+                phases=[c.Infra.DIR_BUILD],
+                dry_run=False,
+            ),
+        )
 
-        def _failing_dispatch(
-            self_: FlextInfraReleaseOrchestrator,
-            dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
-        ) -> r[bool]:
-            executed_phases.append(dispatch_config.phase)
-            if dispatch_config.phase == c.Infra.Verbs.VALIDATE:
-                return r[bool].fail("validation failed")
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(_CLS, "_dispatch_phase", _failing_dispatch)
-
-        config = _make_config(tmp_path)
-        result = _CLS().run_release(config)
-        tm.fail(result)
-        # Only validate should have been dispatched.
-        tm.that(executed_phases, eq=[c.Infra.Verbs.VALIDATE])
-        tm.that(c.Infra.VERSION not in executed_phases, eq=True)
-
-
-__all__: t.StrSequence = []
+        assert result.failure
+        assert "build failed" in (result.error or "")

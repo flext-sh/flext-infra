@@ -1,25 +1,30 @@
-"""Signature propagation transformer — declarative signature migrations via rope.
-
-Replaces CST-based call site rewriting with regex-based pattern matching
-and rope's replace_in_source for keyword argument transformations.
-"""
+"""Signature propagation transformer — rope-driven call-site keyword rewrite."""
 
 from __future__ import annotations
 
-import ast
-from collections.abc import Sequence
 from operator import itemgetter
 
-from flext_infra import FlextInfraChangeTrackingTransformer, m, t, u
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.transformers.base import FlextInfraChangeTrackingTransformer
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer):
-    """Apply declarative signature migrations to call sites via regex."""
+    """Apply declarative signature migrations to call sites via rope + regex.
+
+    Uses rope's ``parse_string_module`` to locate ``Call`` nodes by name,
+    then slices each call's byte range from the original source and
+    applies keyword renames/removals/additions inside that one slice
+    (regex helpers from ``c.Infra``). No ast import is needed.
+    """
 
     def __init__(
         self,
         *,
-        migrations: Sequence[m.Infra.SignatureMigration],
+        migrations: t.SequenceOf[m.Infra.SignatureMigration],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize transformer state for declarative signature migrations."""
@@ -39,21 +44,20 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         migration: m.Infra.SignatureMigration,
     ) -> str:
         """Apply a single migration to source text."""
-        migration_id = str(migration.id)
         keyword_renames = dict(migration.keyword_renames)
         remove_keywords = set(migration.remove_keywords)
         add_keywords = dict(migration.add_keywords)
         if not keyword_renames and not remove_keywords and not add_keywords:
             return source
         targets = set(migration.target_simple_names) | set(
-            migration.target_qualified_names
+            migration.target_qualified_names,
         )
         for target in targets:
             simple_name = target.rsplit(".", 1)[-1] if "." in target else target
             source = self._rewrite_calls(
                 source,
                 simple_name=simple_name,
-                migration_id=migration_id,
+                migration_id=migration.id,
                 keyword_renames=keyword_renames,
                 remove_keywords=remove_keywords,
                 add_keywords=add_keywords,
@@ -70,36 +74,34 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         remove_keywords: t.Infra.StrSet,
         add_keywords: t.MutableStrMapping,
     ) -> str:
-        """Rewrite keyword arguments in calls to simple_name."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
+        """Rewrite keyword arguments in calls to ``simple_name`` via rope-located ranges."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
             return source
         line_offsets = self._line_offsets(source)
         edits: list[tuple[int, int, str]] = []
-        for node in ast.walk(module):
-            if not isinstance(node, ast.Call):
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(pymodule.get_ast()):
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Call":
                 continue
-            if not self._matches_target(node.func, simple_name):
+            if (
+                FlextInfraUtilitiesRopeAnalysis.name_of(getattr(node, "func", None))
+                != simple_name
+            ):
                 continue
-            replacement, changed = self._rewrite_call_node(
-                node,
+            span = FlextInfraUtilitiesRopeAnalysis.line_col_range(node)
+            if span is None:
+                continue
+            lineno, col_offset, end_lineno, end_col_offset = span
+            start = self._offset(line_offsets, lineno, col_offset)
+            end = self._offset(line_offsets, end_lineno, end_col_offset)
+            replacement, changed = self._rewrite_call_text(
+                source[start:end],
                 keyword_renames=keyword_renames,
                 remove_keywords=remove_keywords,
                 add_keywords=add_keywords,
             )
             if not changed:
                 continue
-            start = self._offset(
-                line_offsets,
-                node.lineno,
-                node.col_offset,
-            )
-            end = self._offset(
-                line_offsets,
-                node.end_lineno or node.lineno,
-                node.end_col_offset or node.col_offset,
-            )
             edits.append((start, end, replacement))
             self._record_change(f"[{migration_id}] Updated call: {simple_name}(...)")
         updated = source
@@ -112,73 +114,109 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return updated
 
     @staticmethod
-    def _matches_target(func: t.Infra.AstExpr, simple_name: str) -> bool:
-        """Return whether a call target matches the migrated simple name."""
-        if isinstance(func, ast.Name):
-            return func.id == simple_name
-        if isinstance(func, ast.Attribute):
-            return func.attr == simple_name
-        return False
-
-    def _rewrite_call_node(
-        self,
-        node: t.Infra.AstCall,
+    def _rewrite_call_text(
+        call_text: str,
         *,
         keyword_renames: t.MutableStrMapping,
         remove_keywords: t.Infra.StrSet,
         add_keywords: t.MutableStrMapping,
     ) -> tuple[str, bool]:
-        rewritten_keywords: list[t.Infra.AstKeyword] = []
+        """Rewrite keywords inside a single call's source slice (regex per-name)."""
+        result = call_text
         changed = False
-        for keyword in node.keywords:
-            if keyword.arg is None:
-                rewritten_keywords.append(keyword)
-                continue
-            renamed = keyword_renames.get(keyword.arg, keyword.arg)
-            if renamed != keyword.arg:
+        for old_name, new_name in keyword_renames.items():
+            pattern = c.Infra.compile_keyword_argument(old_name)
+            new_text, count = pattern.subn(rf"{new_name}\1", result)
+            if count:
                 changed = True
-            if keyword.arg in remove_keywords or renamed in remove_keywords:
-                changed = True
-                continue
-            rewritten_keywords.append(ast.keyword(arg=renamed, value=keyword.value))
-        present_keywords = {
-            keyword.arg for keyword in rewritten_keywords if keyword.arg is not None
-        }
-        for key, value_literal in add_keywords.items():
-            if key in present_keywords:
-                continue
-            rewritten_keywords.append(
-                ast.keyword(arg=key, value=self._literal_expr(value_literal))
+                result = new_text
+        for remove_name in remove_keywords:
+            pattern = c.Infra.compile_keyword_argument(remove_name)
+            stripped, drops = FlextInfraRefactorSignaturePropagator._drop_keyword(
+                result,
+                pattern,
             )
-            changed = True
-        if not changed:
-            return ast.unparse(node), False
-        rewritten_call = ast.Call(
-            func=node.func,
-            args=node.args,
-            keywords=rewritten_keywords,
-        )
-        return ast.unparse(rewritten_call), True
+            if drops:
+                changed = True
+                result = stripped
+        if add_keywords:
+            close = result.rfind(")")
+            if close >= 0:
+                existing = {
+                    match.group(0).split("=", 1)[0].strip()
+                    for match in c.Infra.compile_keyword_argument(r"\w+").finditer(
+                        result,
+                    )
+                }
+                additions = [
+                    f"{key}={u.norm_str(value)}"
+                    for key, value in add_keywords.items()
+                    if key not in existing
+                ]
+                if additions:
+                    inner = result[:close].rstrip()
+                    inner_has_args = inner.endswith(",") or inner[-1:] != "("
+                    sep = ", " if inner_has_args and not inner.endswith(",") else ""
+                    if inner.endswith(","):
+                        sep = " "
+                    if inner.endswith("("):
+                        sep = ""
+                    result = f"{inner}{sep}{', '.join(additions)}{result[close:]}"
+                    changed = True
+        return result, changed
 
     @staticmethod
-    def _literal_expr(value_literal: str) -> t.Infra.AstExpr:
-        """Parse an expression literal used by add_keywords."""
-        try:
-            parsed = ast.parse(value_literal, mode="eval")
-        except SyntaxError:
-            return ast.Constant(value=u.norm_str(value_literal))
-        return parsed.body
+    def _drop_keyword(
+        text: str,
+        pattern: t.Infra.RegexPattern,
+    ) -> tuple[str, int]:
+        """Remove ``<name>=<value>[,]?`` occurrences from a call slice."""
+        result = text
+        drops = 0
+        match = pattern.search(result)
+        while match is not None:
+            start = match.start()
+            cursor = match.end()
+            depth = 0
+            while cursor < len(result):
+                ch = result[cursor]
+                if ch in "([{":
+                    depth += 1
+                elif ch in ")]}":
+                    if depth == 0:
+                        break
+                    depth -= 1
+                elif ch == "," and depth == 0:
+                    cursor += 1
+                    break
+                cursor += 1
+            tail = result[cursor:].lstrip()
+            head = result[:start].rstrip()
+            head = head.removesuffix(",")
+            joiner = "" if not head.endswith("(") and tail.startswith(")") else " "
+            if head.endswith("(") or tail.startswith(")"):
+                joiner = ""
+            elif tail and not tail.startswith(","):
+                joiner = ", "
+            else:
+                joiner = ""
+            result = f"{head}{joiner}{tail}"
+            drops += 1
+            match = pattern.search(result)
+        return result, drops
 
     @staticmethod
-    def _line_offsets(source: str) -> Sequence[int]:
+    def _line_offsets(source: str) -> tuple[int, ...]:
+        """Cumulative byte offsets at each line start."""
         offsets = [0]
         for line in source.splitlines(keepends=True):
             offsets.append(offsets[-1] + len(line))
-        return offsets
+        return tuple(offsets)
 
     @staticmethod
-    def _offset(line_offsets: Sequence[int], line: int, column: int) -> int:
+    def _offset(line_offsets: tuple[int, ...], line: int, column: int) -> int:
+        """Convert ``(line, column)`` to a byte offset."""
         return line_offsets[line - 1] + column
 
 
-__all__ = ["FlextInfraRefactorSignaturePropagator"]
+__all__: list[str] = ["FlextInfraRefactorSignaturePropagator"]

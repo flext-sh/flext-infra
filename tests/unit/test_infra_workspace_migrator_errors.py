@@ -1,8 +1,4 @@
-"""Tests for FlextInfraProjectMigrator — write/read failure scenarios.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Tests for workspace migrator failure handling."""
 
 from __future__ import annotations
 
@@ -10,162 +6,120 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import (
-    FlextInfraTestHelpers as h,
-    m as im,
-    t,
-)
-from tests.unit.test_infra_workspace_migrator import (
-    _build_migrator,
-    _project,
-    _StubDiscovery,
-    _StubGenerator,
-)
 
-from flext_infra import FlextInfraProjectMigrator
+from flext_infra import r
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
-def _setup_basic(tmp_path: Path) -> tuple[Path, im.Infra.ProjectInfo]:
-    root = tmp_path / "project-a"
-    root.mkdir(parents=True)
-    (root / ".git").mkdir()
-    (root / "base.mk").write_text("base", encoding="utf-8")
-    (root / "Makefile").write_text("content", encoding="utf-8")
-    (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
-    (root / ".gitignore").write_text("", encoding="utf-8")
-    return root, _project(root)
+class TestsFlextInfraInfraWorkspaceMigratorErrors:
+    @staticmethod
+    def _make_read_only(path: Path) -> None:
+        path.chmod(0o444)
 
-
-class TestMigratorWriteFailures:
-    def test_gitignore_write_failure(
+    @pytest.mark.parametrize(
+        ("base_mk", "read_only_name", "new_base_mk", "expected_error"),
+        [
+            ("base", ".gitignore", "base", ".gitignore update failed"),
+            ("old", "base.mk", "new content", "base.mk update failed"),
+        ],
+    )
+    def test_write_failure(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        base_mk: str,
+        read_only_name: str,
+        new_base_mk: str,
+        expected_error: str,
     ) -> None:
-        _root, proj = _setup_basic(tmp_path)
-        migrator = _build_migrator(proj, "base", workspace_root=tmp_path, dry_run=False)
-        original_write = Path.write_text
+        root = u.Tests.create_migrator_dir_layout(tmp_path, base_mk=base_mk)
+        (root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "flext_infra" / "__init__.py").touch()
+        self._make_read_only(root / read_only_name)
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(root),
+            new_base_mk,
+            workspace_root=tmp_path,
+            dry_run=False,
+        )
 
-        def _selective_write(self: Path, data: str, **kwargs: str | None) -> int:
-            if self.name == ".gitignore":
-                msg = "Write failed"
-                raise OSError(msg)
-            return original_write(self, data, **kwargs)
-
-        monkeypatch.setattr(Path, "write_text", _selective_write)
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("Write failed" in err for err in migration[0].errors),
+            any(expected_error in err for err in migration[0].errors),
             eq=True,
         )
 
-    def test_basemk_write_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    def test_makefile_write_failure(self, tmp_path: Path) -> None:
         root = tmp_path / "project-a"
         root.mkdir(parents=True)
-        (root / ".git").mkdir()
-        (root / "base.mk").write_text("old", encoding="utf-8")
-        (root / "Makefile").write_text("content", encoding="utf-8")
-        (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
-        (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "new content", workspace_root=tmp_path, dry_run=False
+        u.Tests.write_migrator_project(root)
+        self._make_read_only(root / "Makefile")
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=False,
         )
 
-        def _write_fail(_self: Path, _data: str, **_kw: t.Scalar) -> int:
-            msg = "Write failed"
-            raise OSError(msg)
-
-        monkeypatch.setattr(Path, "write_text", _write_fail)
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("Write failed" in err for err in migration[0].errors),
+            any("Makefile update failed" in err for err in migration[0].errors),
             eq=True,
         )
 
-    def test_makefile_write_failure(
+    def test_makefile_bootstrap_render_failure(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        h.write_project(root)
-        migrator = _build_migrator(
-            _project(root), "base", workspace_root=tmp_path, dry_run=False
+        root = u.Tests.create_migrator_dir_layout(
+            tmp_path,
+            base_mk="base",
+            makefile=c.Infra.MAKEFILE_INCLUDE_OLD,
         )
-        original_write = Path.write_text
+        monkeypatch.setattr(
+            FlextInfraBaseMkTemplateRenderer,
+            "render_bootstrap_include",
+            staticmethod(
+                lambda: r[str].fail("bootstrap include render failed"),
+            ),
+        )
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=False,
+        )
 
-        def _selective_write(self: Path, data: str, **kwargs: str | None) -> int:
-            if "Makefile" in str(self):
-                msg = "Makefile write failed"
-                raise OSError(msg)
-            return original_write(self, data, **kwargs)
-
-        monkeypatch.setattr(Path, "write_text", _selective_write)
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("Makefile write failed" in err for err in migration[0].errors),
+            any(
+                "bootstrap include render failed" in err for err in migration[0].errors
+            ),
             eq=True,
         )
 
-    def test_pyproject_write_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        _root, proj = _setup_basic(tmp_path)
-        migrator = _build_migrator(proj, "base", workspace_root=tmp_path, dry_run=False)
-        original_write = Path.write_text
-
-        def _selective_write(self: Path, data: str, **kwargs: str | None) -> int:
-            if "pyproject.toml" in str(self):
-                msg = "pyproject write failed"
-                raise OSError(msg)
-            return original_write(self, data, **kwargs)
-
-        monkeypatch.setattr(Path, "write_text", _selective_write)
-        result = migrator.execute()
-        migration = tm.ok(result)
-        tm.that(
-            any("pyproject write failed" in err for err in migration[0].errors),
-            eq=True,
+    def test_gitignore_read_failure(self, tmp_path: Path) -> None:
+        root = u.Tests.create_migrator_dir_layout(
+            tmp_path, base_mk="base", gitignore=None
+        )
+        (root / ".gitignore").mkdir()
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(root),
+            "base",
+            workspace_root=tmp_path,
+            dry_run=False,
         )
 
-
-class TestMigratorReadFailures:
-    def test_gitignore_read_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        (root / ".git").mkdir()
-        (root / "base.mk").write_text("base", encoding="utf-8")
-        (root / "Makefile").write_text("content", encoding="utf-8")
-        (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
-        (root / ".gitignore").write_text("existing", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base", workspace_root=tmp_path, dry_run=False
-        )
-        original_read = Path.read_text
-
-        def _selective_read(self: Path, **kwargs: str | None) -> str:
-            if ".gitignore" in str(self):
-                msg = ".gitignore read failed"
-                raise OSError(msg)
-            return original_read(self, **kwargs)
-
-        monkeypatch.setattr(Path, "read_text", _selective_read)
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(".gitignore read failed" in err for err in migration[0].errors),
             eq=True,
@@ -174,35 +128,34 @@ class TestMigratorReadFailures:
     def test_basemk_generation_failure(self, tmp_path: Path) -> None:
         root = tmp_path
         (root / ".git").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
+        (root / "src" / "flext_infra" / "__init__.py").touch()
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
-        proj = _project(root, "workspace-root")
+        proj = u.Tests.create_migrator_project(root, "workspace-root")
         migrator = FlextInfraProjectMigrator(
-            workspace=tmp_path, dry_run=False, apply=True
+            workspace=tmp_path, dry_run=False, apply_changes=True
         )
-        migrator.discovery = _StubDiscovery([proj])
-        migrator.generator = _StubGenerator(fail="Generation failed")
+        migrator.discovery = u.Tests.create_migrator_discovery([proj])
+        migrator.generator = u.Tests.create_migrator_generator(fail="Generation failed")
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("Generation failed" in err for err in migration[0].errors),
             eq=True,
         )
 
     def test_pyproject_parse_failure(self, tmp_path: Path) -> None:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        (root / ".git").mkdir()
-        (root / "base.mk").write_text("base.mk", encoding="utf-8")
-        (root / "Makefile").write_text("content", encoding="utf-8")
-        (root / "pyproject.toml").write_text("invalid toml {", encoding="utf-8")
-        (root / ".gitignore").write_text("", encoding="utf-8")
-        migrator = _build_migrator(
-            _project(root), "base.mk", workspace_root=tmp_path, dry_run=False
+        root = u.Tests.create_migrator_dir_layout(tmp_path, pyproject="invalid toml {")
+        migrator = u.Tests.build_project_migrator(
+            u.Tests.create_migrator_project(root),
+            "base.mk",
+            workspace_root=tmp_path,
+            dry_run=False,
         )
         result = migrator.execute()
-        migration = tm.ok(result)
+        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("parse failed" in err for err in migration[0].errors),
             eq=True,

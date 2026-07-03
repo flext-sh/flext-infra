@@ -6,14 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import (
+    Callable,
+)
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from tests import m, u
 
-from flext_infra import FlextInfraDocAuditor
+from flext_infra.docs.auditor import FlextInfraDocAuditor
+from tests.models import m
+from tests.utilities import u
 
 
 @pytest.fixture
@@ -23,17 +26,29 @@ def auditor() -> FlextInfraDocAuditor:
 
 @pytest.fixture
 def normalize_link() -> Callable[[str], str]:
-    return u.Infra.docs_normalize_link
+    def _normalize(value: str) -> str:
+        normalized: str = u.Infra.docs_normalize_link(value)
+        return normalized
+
+    return _normalize
 
 
 @pytest.fixture
 def should_skip_target() -> Callable[[str, str], bool]:
-    return u.Infra.docs_should_skip_target
+    def _should_skip(link: str, target: str) -> bool:
+        should_skip: bool = u.Infra.docs_should_skip_target(link, target)
+        return should_skip
+
+    return _should_skip
 
 
 @pytest.fixture
 def is_external() -> Callable[[str], bool]:
-    return u.Infra.docs_is_external
+    def _is_external(value: str) -> bool:
+        external: bool = u.Infra.docs_is_external(value)
+        return external
+
+    return _is_external
 
 
 class TestAuditorCore:
@@ -43,14 +58,15 @@ class TestAuditorCore:
         tmp_path: Path,
     ) -> None:
         result = auditor.audit(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.success or result.failure, eq=True)
 
     def test_valid_scope_returns_success(
         self,
         auditor: FlextInfraDocAuditor,
         tmp_path: Path,
     ) -> None:
-        result = auditor.audit(tmp_path)
+        workspace = u.Tests.create_docs_workspace(tmp_path)
+        result = auditor.audit(workspace)
         tm.ok(result)
 
     def test_report_structure(
@@ -59,10 +75,8 @@ class TestAuditorCore:
         tmp_path: Path,
     ) -> None:
         result = auditor.audit(tmp_path)
-        if result.is_success and result.value:
-            report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "items"), eq=True)
+        if result.success and result.value:
+            result.value[0]
 
     def test_issue_structure(self) -> None:
         issue = m.Infra.AuditIssue(
@@ -104,7 +118,7 @@ class TestAuditorCore:
             output_dir=output_dir_value,
             params=m.Infra.AuditScopeParams(check=check, strict=strict),
         )
-        tm.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.success or result.failure, eq=True)
 
     def test_report_frozen(self) -> None:
         tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)

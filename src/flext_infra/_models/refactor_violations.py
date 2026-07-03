@@ -2,174 +2,173 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from flext_cli import m
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.typings import t
 
-from flext_core import m
-from flext_infra import FlextInfraModelsMixins, t
 
-
-class FlextInfraRefactorModelsViolations:
+class FlextInfraModelsRefactorViolations:
     """Class-nesting violation, helper classification, and analysis report models."""
+
+    class ClassNestingViolationRequest(m.ContractModel):
+        """Validated input for class-nesting policy violation checks."""
+
+        symbol: Annotated[t.NonEmptyStr, m.Field(description="Source symbol name")]
+        family: Annotated[t.NonEmptyStr, m.Field(description="Module family key")]
+        target_namespace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Destination namespace for the symbol"),
+        ]
+        operation: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Policy operation being validated"),
+        ]
 
     class ClassNestingMapping(m.ArbitraryTypesModel):
         """Unified mapping contract for class-nesting rewrite planning."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-        loose_name: Annotated[
-            str,
-            Field(default="", description="Original loose class name"),
-        ] = ""
-        current_file: Annotated[
-            str,
-            Field(default="", description="File containing class"),
-        ] = ""
+        loose_name: Annotated[str, m.Field(description="Original loose class name")] = (
+            ""
+        )
+        current_file: Annotated[str, m.Field(description="File containing class")] = ""
         target_namespace: Annotated[
             t.NonEmptyStr,
-            Field(description="Target namespace class name"),
+            m.Field(description="Target namespace class name"),
         ]
-        target_name: Annotated[
-            str,
-            Field(default="", description="Target class name"),
-        ] = ""
-        confidence: Annotated[t.NonEmptyStr, Field(description="Confidence level")]
-        reason: Annotated[
-            str,
-            Field(default="", description="Optional mapping rationale"),
-        ] = ""
+        target_name: Annotated[str, m.Field(description="Target class name")] = ""
+        confidence: Annotated[t.NonEmptyStr, m.Field(description="Confidence level")]
+        reason: Annotated[str, m.Field(description="Optional mapping rationale")] = ""
         rewrite_scope: Annotated[
-            str | None,
-            Field(default=None, description="Rewrite scope (file/project/workspace)"),
+            str | None, m.Field(description="Rewrite scope (file/project/workspace)")
         ] = None
 
     class ClassNestingViolation(
-        FlextInfraModelsMixins.ConfidenceLevelMixin,
-        FlextInfraModelsMixins.RewriteScopeMixin,
-        FlextInfraModelsMixins.FileLineViolationMixin,
+        mm.ConfidenceLevelMixin,
+        mm.RewriteScopeMixin,
+        mm.FileLineViolationMixin,
         m.ArbitraryTypesModel,
     ):
         """Normalized class-nesting violation with rewrite metadata."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
-        class_name: Annotated[t.NonEmptyStr, Field(description="Class name")]
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         target_namespace: Annotated[
-            str,
-            Field(default="", description="Expected namespace class"),
+            str, m.Field(description="Expected namespace class")
         ] = ""
 
     class ClassNestingPolicy(m.ContractModel):
         """Validated policy contract used by class-nesting transformers."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-        family_name: Annotated[t.NonEmptyStr, Field(description="Module family name")]
-        allowed_operations: t.StrSequence = Field(
-            default_factory=list,
-            description="Enabled operation identifiers for this family",
+        family_name: Annotated[t.NonEmptyStr, m.Field(description="Module family name")]
+        module_patterns: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Glob patterns matching module paths.",
         )
-        forbidden_operations: t.StrSequence = Field(
-            default_factory=list,
-            description="Disabled operation identifiers for this family",
+        facade_family: Annotated[
+            str,
+            m.Field(description="Facade family alias"),
+        ] = ""
+        allowed_operations: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Rewrite operations explicitly allowed by the policy.",
         )
-        forbidden_targets: t.StrSequence = Field(
-            default_factory=list,
-            description="Target namespaces forbidden for this family",
+        forbidden_operations: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Rewrite operations blocked by the policy.",
+        )
+        forbidden_targets: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Namespace targets blocked by the policy.",
+        )
+        validation_requirements: t.MappingKV[str, t.StrSequence] = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Validation requirements by stage.",
         )
         enable_class_nesting: Annotated[
             bool,
-            Field(
-                default=True,
+            m.Field(
                 description="Allow moving top-level classes under a namespace",
             ),
-        ]
+        ] = True
         allow_namespace_creation: Annotated[
             bool,
-            Field(
-                default=True,
+            m.Field(
                 description="Allow creating a target namespace when absent",
             ),
-        ]
+        ] = True
         allow_existing_namespace_merge: Annotated[
             bool,
-            Field(
-                default=True,
+            m.Field(
                 description="Allow merging nested classes into existing namespace",
             ),
-        ]
+        ] = True
         enable_helper_consolidation: Annotated[
             bool,
-            Field(
-                default=True,
+            m.Field(
                 description="Allow consolidating helper functions into namespaces",
             ),
-        ]
+        ] = True
         allow_helper_call_rewrite: Annotated[
             bool,
-            Field(
-                default=True,
+            m.Field(
                 description="Allow rewriting helper call sites to namespaced calls",
             ),
-        ]
+        ] = True
         require_signature_validation: Annotated[
             bool,
-            Field(
-                default=False,
+            m.Field(
                 description="Require signature checks before helper migration",
             ),
-        ]
-        required_parameters: t.StrSequence = Field(
-            default_factory=list,
-            description="Function parameters that must exist in helper signatures",
+        ] = False
+        required_parameters: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Parameters that must be present before rewriting.",
         )
-        forbidden_parameters: t.StrSequence = Field(
-            default_factory=list,
-            description="Function parameters that must not exist in helper signatures",
+        forbidden_parameters: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Parameters that block rewriting when present.",
         )
         allow_vararg: Annotated[
-            bool,
-            Field(
-                default=True, description="Allow variadic positional parameter usage"
-            ),
-        ]
+            bool, m.Field(description="Allow variadic positional parameter usage")
+        ] = True
         allow_kwarg: Annotated[
-            bool,
-            Field(default=True, description="Allow variadic keyword parameter usage"),
-        ]
+            bool, m.Field(description="Allow variadic keyword parameter usage")
+        ] = True
         allow_positional_only_params: Annotated[
-            bool,
-            Field(default=True, description="Allow positional-only parameters"),
-        ]
+            bool, m.Field(description="Allow positional-only parameters")
+        ] = True
         allow_keyword_only_params: Annotated[
-            bool,
-            Field(default=True, description="Allow keyword-only parameters"),
-        ]
+            bool, m.Field(description="Allow keyword-only parameters")
+        ] = True
         propagate_imports: Annotated[
-            bool,
-            Field(default=True, description="Allow propagating import rewrite rules"),
-        ]
+            bool, m.Field(description="Allow propagating import rewrite rules")
+        ] = True
         propagate_name_references: Annotated[
             bool,
-            Field(
-                default=True,
+            m.Field(
                 description="Allow propagating direct name reference rewrites",
             ),
-        ]
+        ] = True
         propagate_attribute_references: Annotated[
             bool,
-            Field(
-                default=True,
+            m.Field(
                 description="Allow propagating attribute reference rewrites",
             ),
-        ]
-        blocked_reference_prefixes: t.StrSequence = Field(
-            default_factory=list,
-            description="Name prefixes blocked from rewrite propagation",
+        ] = True
+        blocked_reference_prefixes: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Reference prefixes that must never be rewritten.",
         )
-        allowed_targets: t.StrSequence = Field(
-            default_factory=list, description="Explicitly allowed target namespaces"
+        allowed_targets: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Namespace targets explicitly allowed for rewrites.",
         )
 
     class ClassNestingReport(m.ArbitraryTypesModel):
@@ -177,104 +176,114 @@ class FlextInfraRefactorModelsViolations:
 
         violations_count: Annotated[
             t.NonNegativeInt,
-            Field(description="Total violations"),
+            m.Field(description="Total violations"),
         ]
-        confidence_counts: t.IntMapping = Field(
-            default_factory=dict, description="Confidence histogram"
+        confidence_counts: t.IntMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Confidence histogram",
         )
         violations: tuple[
-            FlextInfraRefactorModelsViolations.ClassNestingViolation,
+            FlextInfraModelsRefactorViolations.ClassNestingViolation,
             ...,
-        ] = Field(default_factory=tuple, description="Violation details")
-        per_file_counts: t.IntMapping = Field(
-            default_factory=dict, description="Violation counts per file"
+        ] = m.Field(default_factory=tuple, description="Violation details")
+        per_file_counts: t.IntMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Violation counts per file",
         )
 
     class HelperClassification(m.ArbitraryTypesModel):
         """Classification result for a helper function."""
 
-        file: Annotated[t.NonEmptyStr, Field(description="Source file")]
-        function: Annotated[t.NonEmptyStr, Field(description="Function name")]
-        category: Annotated[t.NonEmptyStr, Field(description="Assigned category")]
+        file: Annotated[t.NonEmptyStr, m.Field(description="Source file")]
+        function: Annotated[t.NonEmptyStr, m.Field(description="Function name")]
+        category: Annotated[t.NonEmptyStr, m.Field(description="Assigned category")]
         target_namespace: Annotated[
             t.NonEmptyStr,
-            Field(description="Target namespace path"),
+            m.Field(description="Target namespace path"),
         ]
-        dependencies: t.StrSequence = Field(
-            default_factory=list, description="Imported dependencies used by function"
+        dependencies: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Dependency symbols referenced by the helper.",
         )
         manual_review: Annotated[
-            bool,
-            Field(default=False, description="Whether manual review is required"),
-        ]
+            bool, m.Field(description="Whether manual review is required")
+        ] = False
         review_reason: Annotated[
-            str,
-            Field(default="", description="Manual review rationale"),
-        ]
+            str, m.Field(description="Manual review rationale")
+        ] = ""
 
     class HelperClassificationReport(m.ArbitraryTypesModel):
         """Aggregated helper-function classification payload."""
 
-        totals: t.IntMapping = Field(
-            default_factory=dict, description="Category totals"
+        totals: t.IntMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Category totals",
         )
         suggestions: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
-        ] = Field(default_factory=tuple, description="Classification suggestions")
+        ] = m.Field(default_factory=tuple, description="Classification suggestions")
         manual_review: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
-        ] = Field(default_factory=tuple, description="Manual-review candidates")
+        ] = m.Field(default_factory=tuple, description="Manual-review candidates")
 
     class HelperFileAnalysis(m.ArbitraryTypesModel):
+        """Helper file analysis."""
+
         suggestions: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
-        ] = Field(
+        ] = m.Field(
             default_factory=tuple,
             description="Helper classifications from one file",
         )
-        totals: t.IntMapping = Field(
-            default_factory=dict, description="Category totals for file helpers"
+        totals: t.IntMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Category totals for file helpers",
         )
         manual_review: tuple[
-            FlextInfraRefactorModelsViolations.HelperClassification,
+            FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
-        ] = Field(default_factory=tuple, description="Helpers requiring manual review")
+        ] = m.Field(
+            default_factory=tuple, description="Helpers requiring manual review"
+        )
 
     class ViolationTopFileSection(m.ArbitraryTypesModel):
         """One ranked hotspot entry in violation analysis output."""
 
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
+        file: Annotated[t.NonEmptyStr, m.Field(description="File path")]
         total: Annotated[
             t.NonNegativeInt,
-            Field(description="Total violations in file"),
+            m.Field(description="Total violations in file"),
         ]
-        counts: t.IntMapping = Field(
-            default_factory=dict, description="Per-pattern counts"
+        counts: t.IntMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Per-pattern counts",
         )
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):
         """Full violation analysis report for refactor diagnostics."""
 
-        totals: t.IntMapping = Field(
-            default_factory=dict, description="Aggregate counts by pattern"
+        totals: t.IntMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Aggregate counts by pattern",
         )
-        files: Mapping[str, t.IntMapping] = Field(
-            default_factory=dict, description="Per-file per-pattern counts"
+        files: t.MappingKV[str, t.IntMapping] = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Per-file per-pattern counts",
         )
         top_files: tuple[
-            FlextInfraRefactorModelsViolations.ViolationTopFileSection,
+            FlextInfraModelsRefactorViolations.ViolationTopFileSection,
             ...,
-        ] = Field(default_factory=tuple, description="Top hotspot files")
-        files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
-        helper_classification: FlextInfraRefactorModelsViolations.HelperClassificationReport = Field(
+        ] = m.Field(default_factory=tuple, description="Top hotspot files")
+        files_scanned: Annotated[t.NonNegativeInt, m.Field(description="Files scanned")]
+        helper_classification: FlextInfraModelsRefactorViolations.HelperClassificationReport = m.Field(
             description="Helper classification summary"
         )
-        class_nesting: FlextInfraRefactorModelsViolations.ClassNestingReport = Field(
+        class_nesting: FlextInfraModelsRefactorViolations.ClassNestingReport = m.Field(
             description="Class nesting analysis summary"
         )
 
 
-__all__ = ["FlextInfraRefactorModelsViolations"]
+__all__: list[str] = ["FlextInfraModelsRefactorViolations"]

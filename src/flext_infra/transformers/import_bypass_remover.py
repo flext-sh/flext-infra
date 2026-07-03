@@ -5,22 +5,15 @@ Replaces try/except ImportError fallback blocks with the primary import.
 
 from __future__ import annotations
 
-import re
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, t, u
+from flext_infra.constants import c
+from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.typings import t
 
 
 class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
     """Replace import bypass try/except blocks with the primary import."""
-
-    _BYPASS_RE = re.compile(
-        r"^try:\n"
-        r"(    from .+\n)"
-        r"except ImportError:\n"
-        r"    from .+\n",
-        re.MULTILINE,
-    )
 
     @override
     def transform(
@@ -29,20 +22,16 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Remove try/except ImportError fallback blocks, keep the primary import."""
-        source = u.Infra.read_source(resource)
-        new_source, count = self._BYPASS_RE.subn(r"\1", source)
+        source = resource.read()
+        new_source, count = c.Infra.IMPORT_BYPASS_RE.subn(r"\1", source)
         if count == 0:
-            return source, []
+            no_changes: list[str] = []
+            return source, no_changes
         changes = [f"Removed {count} import bypass fallback(s)"]
         for msg in changes:
             self._record_change(msg)
-        u.Infra.write_source(
-            rope_project,
-            resource,
-            new_source,
-            description="remove import bypass",
-        )
+        resource.write(new_source)
         return new_source, list(self.changes)
 
 
-__all__ = ["FlextInfraRefactorImportBypassRemover"]
+__all__: list[str] = ["FlextInfraRefactorImportBypassRemover"]

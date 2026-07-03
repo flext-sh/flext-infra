@@ -2,27 +2,31 @@
 
 from __future__ import annotations
 
-import importlib
 import shlex
-from collections.abc import MutableSequence, Sequence
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s
-from flext_infra import (
+from flext_core import r
+from flext_infra.base import s
+from flext_infra.check._workspace_check_reports import (
+    FlextInfraWorkspaceCheckReportsMixin,
+)
+from flext_infra.check.workspace_check_gates import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
-    WorkspaceLoopOutcome,
-    c,
-    m,
-    t,
-    u,
-    workspace_check_cli as workspace_check_cli_module,
 )
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
-class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
+class FlextInfraWorkspaceChecker(
+    s[bool],
+    FlextInfraWorkspaceCheckGatesMixin,
+    FlextInfraWorkspaceCheckReportsMixin,
+):
     """Run workspace quality gates and generate reports."""
 
     def __init__(
@@ -36,25 +40,18 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             workspace_root or workspace,
         )
         self._registry = FlextInfraGateRegistry.default()
-        report_dir = u.Infra.get_report_dir(
+        report_dir = u.Cli.resolve_report_dir(
             self._workspace_root,
             c.Infra.PROJECT,
-            c.Infra.Verbs.CHECK,
+            c.Infra.VERB_CHECK,
         )
         dir_result = u.Cli.ensure_dir(report_dir)
-        if dir_result.is_failure:
+        if dir_result.failure:
             self._default_reports_dir = (
-                self._workspace_root
-                / c.Infra.Reporting.REPORTS_DIR_NAME
-                / c.Infra.Verbs.CHECK
+                self._workspace_root / c.Infra.REPORTS_DIR_NAME / c.Infra.VERB_CHECK
             )
         else:
             self._default_reports_dir = report_dir
-
-    @staticmethod
-    def parse_gate_csv(raw: str) -> t.StrSequence:
-        """Parse a comma-separated gate list."""
-        return [gate.strip() for gate in raw.split(",") if gate.strip()]
 
     @staticmethod
     def parse_tool_args(raw: str | None) -> t.StrSequence:
@@ -64,9 +61,9 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return [item for item in shlex.split(raw) if item]
 
     @staticmethod
-    def resolve_gates(gates: Sequence[str]) -> r[list[str]]:
+    def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
         """Resolve and validate requested gate names."""
-        resolved: MutableSequence[str] = []
+        resolved: t.MutableSequenceOf[str] = []
         for gate in gates:
             name = gate.strip()
             if not name:
@@ -79,130 +76,121 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
         return r[list[str]].ok(list(resolved))
 
     @override
-    def execute(self) -> r[bool]:
-        return r[bool].fail("Use run() or run_projects() directly")
+    def execute(self) -> p.Result[bool]:
+        """Execute."""
+        return r[bool].fail("Use execute_command() directly")
 
-    def format(self, project_dir: Path) -> r[m.Infra.GateResult]:
+    @classmethod
+    @override
+    def execute_command(
+        cls,
+        params: m.Infra.RunCommand,
+    ) -> p.Result[bool]:
+        """Execute quality gates from the canonical check command payload."""
+        checker = cls(workspace_root=params.workspace_path)
+        project_targets_result = cls._resolve_project_targets(params)
+        if project_targets_result.failure:
+            return r[bool].fail(
+                project_targets_result.error or "project resolution failed"
+            )
+        project_targets = project_targets_result.value
+        gates = params.gates
+        gate_ctx = m.Infra.GateContext(
+            workspace=params.workspace_path,
+            reports_dir=params.reports_dir_path,
+            apply_fixes=params.fix,
+            check_only=params.check_only,
+            ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
+            pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
+        )
+        run_result = checker.run_projects(
+            projects=project_targets,
+            gates=gates,
+            reports_dir=params.reports_dir_path,
+            fail_fast=params.fail_fast,
+            ctx=gate_ctx,
+        )
+        if run_result.failure:
+            return r[bool].fail(run_result.error or "check failed")
+        failed_projects = [
+            project for project in run_result.value if not project.passed
+        ]
+        if failed_projects:
+            failed_names = ", ".join(project.project for project in failed_projects)
+            return r[bool].fail(f"quality gates failed for: {failed_names}")
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _resolve_project_targets(
+        params: m.Infra.RunCommand,
+    ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
+        """Resolve explicit projects or discover the workspace project set."""
+        requested = params.project_names
+        if requested:
+            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
+                tuple(
+                    m.Infra.CheckProjectTarget.from_workspace_name(
+                        params.workspace_path,
+                        project_name,
+                    )
+                    for project_name in requested
+                ),
+            )
+        discovered = u.Infra.resolve_projects(params.workspace_path, ())
+        if discovered.failure:
+            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
+                discovered.error or "project discovery failed"
+            )
+        project_targets = tuple(
+            m.Infra.CheckProjectTarget(name=project.name, path=project.path)
+            for project in discovered.value
+        )
+        if not project_targets:
+            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
+                "no projects discovered"
+            )
+        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(project_targets)
+
+    def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project."""
         return r[m.Infra.GateResult].ok(
             self._run_gate(c.Infra.FORMAT, project_dir).result,
         )
 
-    def lint(self, project_dir: Path) -> r[m.Infra.GateResult]:
+    def lint(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run lint checks for one project."""
         return r[m.Infra.GateResult].ok(
             self._run_gate(c.Infra.LINT, project_dir).result,
         )
 
-    @staticmethod
-    def build_parser() -> t.Infra.CliArgumentParser:
-        """Build the workspace check CLI parser."""
-        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.build_parser()
-
-    @staticmethod
-    def run_cli(argv: Sequence[str] | None = None) -> int:
-        """Run the subcommand-based workspace check CLI."""
-        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.run_cli(argv)
-
-    @staticmethod
-    def main(argv: Sequence[str] | None = None) -> int:
-        """Run the legacy workspace check CLI entrypoint."""
-        raw_argv = list(argv) if argv is not None else None
-        if raw_argv:
-            cli_module = importlib.import_module("flext_infra.cli")
-            if raw_argv[0] in cli_module.FlextInfraCli.GROUPS:
-                return cli_module.main(raw_argv)
-        return workspace_check_cli_module.FlextInfraWorkspaceCheckerCli.main(argv)
-
     def run_project(
         self,
         project: str,
-        gates: Sequence[str],
-    ) -> r[Sequence[m.Infra.ProjectResult]]:
+        gates: t.StrSequence,
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
-        return self.run_projects([project], list(gates)).map(lambda value: value)
-
-    @staticmethod
-    def _write_reports_and_summary(
-        resolved_gates: Sequence[str],
-        report_base: Path,
-        outcome: WorkspaceLoopOutcome,
-    ) -> r[Sequence[m.Infra.ProjectResult]]:
-        """Write markdown/SARIF reports and print summary to output."""
-        results = outcome.results
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-        md_path = report_base / "check-report.md"
-        md_write_result = u.Cli.atomic_write_text_file(
-            md_path,
-            u.Infra.generate_markdown(results, resolved_gates, timestamp),
-        )
-        if md_write_result.is_failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
-                md_write_result.error or "failed to write markdown report",
-            )
-        sarif_path = report_base / "check-report.sarif"
-        sarif_payload = u.Infra.generate_sarif(results, resolved_gates)
-        json_write_result = u.Cli.json_write(sarif_path, sarif_payload)
-        if json_write_result.is_failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
-                json_write_result.error or "failed to write sarif report",
-            )
-        total_errors = sum(project.total_errors for project in results)
-        success = len(results) - outcome.failed
-        u.Infra.summary(
-            m.Infra.SummaryStats(
-                verb=c.Infra.Verbs.CHECK,
-                total=len(results),
-                success=success,
-                failed=outcome.failed,
-                skipped=outcome.skipped,
-                elapsed=outcome.total_elapsed,
-            )
-        )
-        u.Infra.info(f"Reports: {md_path}")
-        u.Infra.info(f"         {sarif_path}")
-        if total_errors > 0:
-            u.Infra.info("Errors by project:")
-            for project in sorted(
-                results,
-                key=lambda item: item.total_errors,
-                reverse=True,
-            ):
-                if project.total_errors == 0:
-                    continue
-                breakdown = ", ".join(
-                    f"{gate}={len(project.gates[gate].issues)}"
-                    for gate in resolved_gates
-                    if gate in project.gates and project.gates[gate].issues
-                )
-                u.Infra.error(
-                    f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
-                )
-        return r[Sequence[m.Infra.ProjectResult]].ok(results)
+        return self.run_projects([project], list(gates))
 
     def run_projects(
         self,
-        projects: Sequence[str],
-        gates: Sequence[str],
+        projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
+        gates: t.StrSequence,
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
         ctx: m.Infra.GateContext | None = None,
-    ) -> r[Sequence[m.Infra.ProjectResult]]:
-        """Run selected gates for multiple projects.
-
-        Pass ``ctx`` to supply a pre-built GateContext.
-        """
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
+        """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
-        if resolved_gates_result.is_failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
+        if resolved_gates_result.failure:
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates",
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)
-        if dir_ensure.is_failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
+        if dir_ensure.failure:
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 dir_ensure.error or "failed to create report directory",
             )
         effective_ctx = ctx or m.Infra.GateContext(
@@ -210,7 +198,7 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             reports_dir=report_base,
         )
         outcome = self._run_project_loop(
-            projects,
+            self._project_targets(projects),
             resolved_gates,
             effective_ctx,
             fail_fast=fail_fast,
@@ -221,9 +209,23 @@ class FlextInfraWorkspaceChecker(FlextInfraWorkspaceCheckGatesMixin, s[bool]):
             outcome,
         )
 
+    def _project_targets(
+        self,
+        projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
+    ) -> t.SequenceOf[m.Infra.CheckProjectTarget]:
+        """Return typed project targets from public names or internal selections."""
+        targets: list[m.Infra.CheckProjectTarget] = []
+        for project in projects:
+            if isinstance(project, m.Infra.CheckProjectTarget):
+                targets.append(project)
+                continue
+            targets.append(
+                m.Infra.CheckProjectTarget.from_workspace_name(
+                    self._workspace_root,
+                    project,
+                ),
+            )
+        return tuple(targets)
 
-build_parser = FlextInfraWorkspaceChecker.build_parser
-run_cli = FlextInfraWorkspaceChecker.run_cli
-main = FlextInfraWorkspaceChecker.main
 
-__all__ = ["FlextInfraWorkspaceChecker", "build_parser", "main", "run_cli"]
+__all__: list[str] = ["FlextInfraWorkspaceChecker"]

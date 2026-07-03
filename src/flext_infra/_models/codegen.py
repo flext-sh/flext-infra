@@ -2,291 +2,571 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, MutableSet, Sequence
-from typing import Annotated, ClassVar
-
-from pydantic import ConfigDict, Field
-
-from flext_cli import u
-from flext_core import FlextModels
-from flext_infra._models.codegen_deduplication import (
-    FlextInfraCodegenDeduplicationModels,
+from collections.abc import (
+    MutableSet,
 )
-from flext_infra._models.mixins import FlextInfraModelsMixins
-from flext_infra.typings import FlextInfraTypes as t
+from pathlib import Path
+from types import MappingProxyType
+from typing import Annotated, ClassVar, Literal, Self
+
+from flext_cli import m, u
+from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
-class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
+class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class CensusViolation(
-        FlextInfraModelsMixins.RequiredNonNegativeLineMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.RequiredNonNegativeLineMixin,
+        m.ArbitraryTypesModel,
     ):
         """A single namespace violation detected by the census service."""
 
-        module: Annotated[t.NonEmptyStr, Field(description="Module file path")]
-        rule: Annotated[
-            t.NonEmptyStr,
-            Field(description="Violated rule identifier (e.g. NS-001)"),
-        ]
-        message: Annotated[
-            t.NonEmptyStr,
-            Field(description="Human-readable violation message"),
-        ]
-        fixable: Annotated[
-            bool,
-            Field(description="Whether this violation can be auto-fixed"),
-        ]
+        module: t.NonEmptyStr = m.Field(description="Module file path")
+        rule: t.NonEmptyStr = m.Field(
+            description="Violated rule identifier (e.g. NS-001)"
+        )
+        message: t.NonEmptyStr = m.Field(description="Human-readable violation message")
+        fixable: bool = m.Field(description="Whether this violation can be auto-fixed")
 
     class CensusReport(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.ProjectNameMixin,
+        m.ArbitraryTypesModel,
     ):
         """Aggregated census report for a single project."""
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+        def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
+            """Violations default."""
             return []
 
         violations: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
-            Field(
+            list[FlextInfraModelsCodegen.CensusViolation],
+            m.Field(
                 default_factory=_violations_default,
                 description="Detected violations",
             ),
         ]
-        total: Annotated[t.NonNegativeInt, Field(description="Total violation count")]
+        total: Annotated[t.NonNegativeInt, m.Field(description="Total violation count")]
         fixable: Annotated[
             t.NonNegativeInt,
-            Field(description="Count of auto-fixable violations"),
+            m.Field(description="Count of auto-fixable violations"),
         ]
 
     class ScaffoldResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.ProjectNameMixin,
+        m.ArbitraryTypesModel,
     ):
-        """Result of scaffolding base modules for a project."""
+        """Result of scaffolding base modules for a project.
 
-        files_created: t.StrSequence = Field(
-            default_factory=list,
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        files_created: t.StrSequence = m.Field(
+            default_factory=tuple,
             description="Newly created file paths",
         )
-        files_skipped: t.StrSequence = Field(
-            default_factory=list,
+        files_skipped: t.StrSequence = m.Field(
+            default_factory=tuple,
             description="Skipped (already existing) file paths",
         )
 
+    class ScaffoldDirRequest(m.ArbitraryTypesModel):
+        """Directory-level scaffold request and accumulation state."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True,
+            revalidate_instances="never",
+        )
+
+        target_dir: Annotated[Path, m.Field(description="Directory to scaffold")]
+        prefix: Annotated[str, m.Field(description="Generated class name prefix")]
+        modules: Annotated[
+            t.VariadicTuple[t.Quad[str, str, str, str]],
+            m.Field(description="Module skeleton definitions"),
+        ]
+        test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
+        inherit_project_facade: Annotated[
+            bool,
+            m.Field(description="Whether generated classes inherit project facade"),
+        ]
+        dry_run: Annotated[
+            bool,
+            m.Field(description="Whether to report creations without writing"),
+        ]
+        files_created: Annotated[
+            t.MutableSequenceOf[str],
+            m.Field(description="Created file accumulator"),
+        ]
+        files_skipped: Annotated[
+            t.MutableSequenceOf[str],
+            m.Field(description="Skipped file accumulator"),
+        ]
+
     class AutoFixResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.ProjectNameMixin,
+        m.ArbitraryTypesModel,
     ):
         """Result of auto-fixing namespace violations for a project."""
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+        def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
+            """Violations default."""
             return []
 
         violations_fixed: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
-            Field(
+            list[FlextInfraModelsCodegen.CensusViolation],
+            m.Field(
                 default_factory=_violations_default,
                 description="Fixed violations",
             ),
         ]
         violations_skipped: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
-            Field(
+            list[FlextInfraModelsCodegen.CensusViolation],
+            m.Field(
                 default_factory=_violations_default,
                 description="Skipped violations (not auto-fixable)",
             ),
         ]
-        files_modified: t.StrSequence = Field(
-            default_factory=list,
+        files_modified: t.StrSequence = m.Field(
+            default_factory=tuple,
             description="Modified file paths",
         )
 
-    class QualityGateCheck(FlextModels.ArbitraryTypesModel):
+    class ConsolidatorFileResult(m.ContractModel):
+        """Per-file result emitted by the constants consolidator."""
+
+        file: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace-relative file path")
+        ]
+        status: Annotated[
+            Literal["applied", "reverted"],
+            m.Field(description="File processing status"),
+        ]
+        changes: Annotated[
+            t.StrSequence,
+            m.Field(default_factory=tuple, description="Applied replacements"),
+        ]
+
+    class ConsolidatorReport(m.ContractModel):
+        """JSON report emitted by the constants consolidator."""
+
+        total_found: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total replacements found"),
+        ] = 0
+        total_applied: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total replacements applied"),
+        ] = 0
+        total_failed: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total files reverted"),
+        ] = 0
+        files: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.ConsolidatorFileResult],
+            m.Field(default_factory=tuple, description="Per-file processing results"),
+        ]
+
+    class NamespaceModulePolicy(m.ArbitraryTypesModel):
+        """Derived gen-init policy for one governed module."""
+
+        enforce_contract: Annotated[
+            bool,
+            m.Field(
+                description="Whether gen-init must enforce namespace shape.",
+            ),
+        ] = False
+        export_symbols: Annotated[
+            bool,
+            m.Field(
+                description="Whether gen-init should discover public symbols.",
+            ),
+        ] = False
+        include_in_lazy_init: Annotated[
+            bool,
+            m.Field(
+                description="Whether lazy-init should index this module at all.",
+            ),
+        ] = True
+        project_prefix: Annotated[
+            str,
+            m.Field(
+                description="Canonical class prefix expected for the module.",
+            ),
+        ] = ""
+        expected_alias: Annotated[
+            str | None,
+            m.Field(
+                description="Canonical module-level alias allowed for the file.",
+            ),
+        ] = None
+        expected_family: Annotated[
+            str | None,
+            m.Field(
+                description="Canonical namespace family suffix for the file.",
+            ),
+        ] = None
+        family_tokens: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Accepted family markers for private namespace modules.",
+        )
+        accepted_suffixes: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Accepted class suffixes for governed facade classes.",
+        )
+        allow_main_export: Annotated[
+            bool,
+            m.Field(
+                description="Whether the file may export a module-level main().",
+            ),
+        ] = False
+        allow_type_alias: Annotated[
+            bool,
+            m.Field(
+                description="Whether the module may keep TypeAlias declarations.",
+            ),
+        ] = False
+        is_fixture_module: Annotated[
+            bool,
+            m.Field(
+                description="Whether the module belongs to a private fixtures package.",
+            ),
+        ] = False
+        type_checking_imports: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Canonical root names allowed inside TYPE_CHECKING imports.",
+        )
+
+    class LazyInitPackageContext(m.ArbitraryTypesModel):
+        """Declarative package context for one lazy-init directory."""
+
+        pkg_dir: Path = m.Field(description="Directory being processed.")
+        init_path: Path = m.Field(description="Target __init__.py path.")
+        current_pkg: str = m.Field(description="Importable package name.")
+        surface: str = m.Field(description="Root surface for alias inheritance.")
+        generated_init: Annotated[
+            bool,
+            m.Field(
+                description="Whether the current __init__.py is generated by lazy-init.",
+            ),
+        ] = False
+        importable: Annotated[
+            bool,
+            m.Field(
+                description="Whether the directory resolves to an importable package.",
+            ),
+        ] = False
+
+    class LazyInitRegistryWrapper(m.ArbitraryTypesModel):
+        """External lazy import registry consumed by a thin generated ``__init__``."""
+
+        module: t.NonEmptyStr = m.Field(description="Importable registry module.")
+        name: t.NonEmptyStr = m.Field(description="Registry symbol exported by module.")
+        public_exports_name: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Optional public export contract symbol exported by module.",
+            ),
+        ] = None
+        generated: Annotated[
+            bool,
+            m.Field(
+                description="Whether codegen owns and refreshes the registry module.",
+            ),
+        ] = False
+
+    class LazyInitPlan(m.ArbitraryTypesModel):
+        """Fully resolved lazy-init action and render payload.
+
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        context: FlextInfraModelsCodegen.LazyInitPackageContext = m.Field(
+            description="Discovered package context.",
+        )
+        action: Annotated[
+            c.Infra.LazyInitAction,
+            m.Field(
+                description="Action selected for this package.",
+            ),
+        ] = c.Infra.LazyInitAction.SKIP
+        exports: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Public exports for generated __init__.py.",
+        )
+        lazy_map: t.LazyAliasMap = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Lazy import map: export name to module/attribute target.",
+        )
+        type_checking_map: t.LazyAliasMap = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description=(
+                "Type-checking import map used to publish static package attributes "
+                "without widening the runtime/public lazy export surface."
+            ),
+        )
+        eager_dunders: t.LazyAliasMap = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description=(
+                "Dunder exports that must be eagerly imported at __init__.py "
+                "load time. Required for the ``__version__.py`` submodule case "
+                "where the submodule name collides with the dunder string it "
+                "exports — eager binding pins the canonical string in the "
+                "package dict before any submodule re-import can shadow it."
+            ),
+        )
+        inline_constants: t.StrMapping = m.Field(
+            default_factory=lambda: MappingProxyType({}),
+            description="Inline constants emitted directly into __init__.py.",
+        )
+        wildcard_runtime_modules: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Runtime wildcard import modules.",
+        )
+        child_packages_for_lazy: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Direct child package imports merged at runtime.",
+        )
+        excluded_lazy_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Names excluded from runtime child lazy import merges.",
+        )
+        registry_wrapper: Annotated[
+            FlextInfraModelsCodegen.LazyInitRegistryWrapper | None,
+            m.Field(
+                description=(
+                    "Pre-split lazy registry for generated wrappers that must stay thin."
+                ),
+            ),
+        ] = None
+
+    class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""
 
-        name: Annotated[t.NonEmptyStr, Field(description="Check identifier")]
-        passed: Annotated[bool, Field(description="Whether check passed")]
-        detail: Annotated[
-            str,
-            Field(default="", description="Human-readable check detail"),
-        ]
-        critical: Annotated[bool, Field(description="Whether failure is critical")]
+        name: Annotated[t.NonEmptyStr, m.Field(description="Check identifier")]
+        passed: Annotated[bool, m.Field(description="Whether check passed")]
+        detail: Annotated[str, m.Field(description="Human-readable check detail")] = ""
+        critical: Annotated[bool, m.Field(description="Whether failure is critical")]
 
     class QualityGateProjectFinding(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.ProjectNameMixin,
+        m.ArbitraryTypesModel,
     ):
         """Per-project quality gate findings."""
 
         violations_total: Annotated[
             t.NonNegativeInt,
-            Field(description="Total violations"),
+            m.Field(description="Total violations"),
         ]
         fixable_violations: Annotated[
             t.NonNegativeInt,
-            Field(description="Auto-fixable violations"),
+            m.Field(description="Auto-fixable violations"),
         ]
-        validator_passed: Annotated[bool, Field(description="Whether validator passed")]
+        validator_passed: Annotated[
+            bool, m.Field(description="Whether validator passed")
+        ]
         mro_failures: Annotated[
             t.NonNegativeInt,
-            Field(description="MRO failure count"),
+            m.Field(description="MRO failure count"),
         ]
         layer_violations: Annotated[
             t.NonNegativeInt,
-            Field(description="Layer violation count"),
+            m.Field(description="Layer violation count"),
         ]
         cross_project_reference_violations: Annotated[
             t.NonNegativeInt,
-            Field(description="Cross-project reference violation count"),
+            m.Field(description="Cross-project reference violation count"),
         ]
 
     class BulkFixItem(
-        FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraModelsMixins.PositiveLineMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.AbsoluteFilePathTextMixin,
+        mm.PositiveLineMixin,
+        m.ArbitraryTypesModel,
     ):
         """Shared line-addressable item used by bulk codegen fixes."""
 
-        name: Annotated[t.NonEmptyStr, Field(description="Item identifier")]
+        name: Annotated[t.NonEmptyStr, m.Field(description="Item identifier")]
 
     class ConstantDefinition(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextInfraModelsMixins.NestedClassPathMixin,
+        mm.ProjectNameMixin,
+        mm.NestedClassPathMixin,
         BulkFixItem,
     ):
         """A single constant extracted from a constants.py file."""
 
         value_repr: Annotated[
             str,
-            Field(description="Source repr (e.g., '30', '\"localhost\"')"),
+            m.Field(description="Source repr (e.g., '30', '\"localhost\"')"),
         ]
         type_annotation: Annotated[
-            str,
-            Field(default="", description="Type annotation string"),
-        ]
+            str, m.Field(description="Type annotation string")
+        ] = ""
 
-    class DuplicateConstantGroup(FlextModels.ArbitraryTypesModel):
+    class DuplicateConstantGroup(m.ArbitraryTypesModel):
         """Cross-project duplicate group with consolidation metadata."""
 
-        constant_name: t.NonEmptyStr = Field(description="Constant identifier")
-        definitions: list[FlextInfraCodegenModels.ConstantDefinition] = Field(
+        constant_name: t.NonEmptyStr = m.Field(description="Constant identifier")
+        definitions: list[FlextInfraModelsCodegen.ConstantDefinition] = m.Field(
             description="Definitions across projects",
         )
-        is_value_identical: bool = Field(description="Whether all values match")
-        canonical_ref: str = Field(default="", description="Canonical parent reference")
-
-    class UnusedConstant(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextInfraModelsMixins.NestedClassPathMixin,
-        BulkFixItem,
-    ):
-        """Constant declared but never referenced in workspace."""
+        is_value_identical: bool = m.Field(description="Whether all values match")
+        canonical_ref: Annotated[
+            str, m.Field(description="Canonical parent reference")
+        ] = ""
 
     class DirectConstantRef(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextModels.ArbitraryTypesModel,
+        mm.ProjectNameMixin,
+        m.ArbitraryTypesModel,
     ):
         """Direct FlextXConstants.Y.Z reference that should use c.* alias."""
 
         full_ref: Annotated[
             t.NonEmptyStr,
-            Field(description="e.g., FlextAuthConstants.Auth.DEFAULT_TIMEOUT"),
+            m.Field(description="e.g., FlextAuthConstants.Auth.DEFAULT_TIMEOUT"),
         ]
         alias_ref: Annotated[
             t.NonEmptyStr,
-            Field(description="e.g., c.Auth.DEFAULT_TIMEOUT"),
+            m.Field(description="e.g., c.Auth.DEFAULT_TIMEOUT"),
         ]
         file_path: Annotated[
             t.NonEmptyStr,
-            Field(description="File containing the reference"),
+            m.Field(description="File containing the reference"),
         ]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+        line: Annotated[t.PositiveInt, m.Field(description="Line number")]
 
-    class CanonicalValueRule(FlextModels.ArbitraryTypesModel):
-        value: t.Infra.CanonicalValue = Field(description="Canonical value")
-        type: str = Field(description="Canonical type")
-        canonical_ref: str = Field(description="Canonical reference")
-        semantic_names: t.StrSequence = Field(
-            default_factory=list, description="semantic_names"
+    class CanonicalValueRule(m.ArbitraryTypesModel):
+        """Canonical value rule."""
+
+        value: Annotated[
+            t.Infra.CanonicalValue,
+            m.Field(description="Canonical value"),
+        ]
+        type: Annotated[
+            Literal["int", "str", "regex", "frozenset", "tuple"],
+            m.Field(description="Canonical type"),
+        ]
+        canonical_ref: str = m.Field(description="Canonical reference")
+        semantic_names: t.StrSequence = m.Field(
+            default_factory=tuple, description="semantic_names"
         )
 
-    class NsRule(FlextModels.ArbitraryTypesModel):
-        id: str = Field(description="Rule ID")
-        description: str = Field(description="Rule description")
-        fixable: bool = Field(description="Whether the rule is fixable")
-        fixable_exclusion: str | None = Field(
-            default=None, description="Fixable exclusion reason"
-        )
+        @u.model_validator(mode="after")
+        def validate_value_shape(self) -> Self:
+            """Keep canonical governance values aligned with their declared kind."""
+            if self.type == "int":
+                if not isinstance(self.value, int) or isinstance(self.value, bool):
+                    msg = "int canonical values must use an integer payload"
+                    raise TypeError(msg)
+                return self
+            if self.type in {"str", "regex"}:
+                if not isinstance(self.value, str):
+                    msg = "string canonical values must use a string payload"
+                    raise TypeError(msg)
+                return self
+            if isinstance(self.value, str):
+                msg = "sequence canonical values must use a string sequence payload"
+                raise TypeError(msg)
+            return self
 
-    class ConstantsGovernanceConfig(FlextModels.ArbitraryTypesModel):
-        version: str = Field(description="Config version")
-        rules: list[FlextInfraCodegenModels.NsRule] = Field(
+    class NsRule(m.ArbitraryTypesModel):
+        """Ns rule."""
+
+        id: str = m.Field(description="Rule ID")
+        description: str = m.Field(description="Rule description")
+        fixable: bool = m.Field(description="Whether the rule is fixable")
+        fixable_exclusion: Annotated[
+            str | None, m.Field(description="Fixable exclusion reason")
+        ] = None
+
+    class ConstantsGovernanceConfig(m.ArbitraryTypesModel):
+        """Constants governance config."""
+
+        version: str = m.Field(description="Config version")
+        rules: list[FlextInfraModelsCodegen.NsRule] = m.Field(
             description="Governance rules"
         )
-        canonical_values: list[FlextInfraCodegenModels.CanonicalValueRule] = Field(
-            description="Canonical values config"
+        canonical_values: list[FlextInfraModelsCodegen.CanonicalValueRule] = m.Field(
+            description="Canonical values settings"
         )
-        constants_class_pattern: str = Field(
+        constants_class_pattern: str = m.Field(
             description="Constants class pattern regex"
         )
 
-    class FixContext(FlextModels.ArbitraryTypesModel):
-        """Mutable accumulation context for fix operations."""
+    class FixContext(m.ArbitraryTypesModel):
+        """Mutable accumulation context for fix operations.
+
+        Enforcement exemption: MutableSequence/MutableSet accumulators are
+        appended/added to as fixes proceed; fresh per-instance — no shared
+        state.
+        """
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraCodegenModels.CensusViolation]:
+        def _violations_default() -> list[FlextInfraModelsCodegen.CensusViolation]:
+            """Violations default."""
             return []
 
         violations_fixed: Annotated[
-            MutableSequence[FlextInfraCodegenModels.CensusViolation],
-            Field(
+            t.MutableSequenceOf[FlextInfraModelsCodegen.CensusViolation],
+            m.Field(
                 default_factory=_violations_default,
                 description="List of violations that were fixed",
             ),
         ]
         violations_skipped: Annotated[
-            MutableSequence[FlextInfraCodegenModels.CensusViolation],
-            Field(
+            t.MutableSequenceOf[FlextInfraModelsCodegen.CensusViolation],
+            m.Field(
                 default_factory=_violations_default,
                 description="List of violations that were skipped",
             ),
         ]
         files_modified: Annotated[
             MutableSet[str],
-            Field(
+            m.Field(
                 default_factory=set,
                 description="Set of unique modified file paths",
             ),
         ]
 
+        @property
+        def has_changes(self) -> bool:
+            """Whether at least one file was modified."""
+            return bool(self.files_modified)
+
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
+            """Skip."""
             self.violations_skipped.append(
-                FlextInfraCodegenModels.CensusViolation(
+                FlextInfraModelsCodegen.CensusViolation(
                     module=module, rule=rule, line=line, message=message, fixable=False
                 ),
             )
 
         def fix(self, *, module: str, rule: str, line: int, message: str) -> None:
+            """Fix."""
             self.violations_fixed.append(
-                FlextInfraCodegenModels.CensusViolation(
+                FlextInfraModelsCodegen.CensusViolation(
                     module=module, rule=rule, line=line, message=message, fixable=True
                 ),
             )
 
-    class ViolationKey(FlextModels.ContractModel):
+    class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True,
+            extra="forbid",
+        )
 
-        module: Annotated[str, Field(description="Module containing the violation")]
-        rule: Annotated[str, Field(description="Rule that was violated")]
+        module: Annotated[str, m.Field(description="Module containing the violation")]
+        rule: Annotated[str, m.Field(description="Rule that was violated")]
         content_hash: Annotated[
-            str, Field(description="SHA256 of surrounding context lines")
+            str, m.Field(description="SHA256 of surrounding context lines")
         ]
 
         def __hash__(self) -> int:
@@ -295,19 +575,63 @@ class FlextInfraCodegenModels(FlextInfraCodegenDeduplicationModels):
 
         @staticmethod
         def from_violation(
-            violation: FlextInfraCodegenModels.CensusViolation,
-            source_lines: Sequence[str],
-        ) -> FlextInfraCodegenModels.ViolationKey:
+            violation: FlextInfraModelsCodegen.CensusViolation,
+            source_lines: t.StrSequence,
+        ) -> FlextInfraModelsCodegen.ViolationKey:
             """Build key from violation and source context (+-2 lines)."""
             ctx_start = max(0, violation.line - 2)
             ctx_end = min(len(source_lines), violation.line + 3)
             context = "\n".join(source_lines[ctx_start:ctx_end])
             content_hash = u.Cli.sha256_content(context)
-            return FlextInfraCodegenModels.ViolationKey(
+            return FlextInfraModelsCodegen.ViolationKey(
                 module=violation.module,
                 rule=violation.rule,
                 content_hash=content_hash,
             )
 
+    class CodegenPipelineState(m.ArbitraryTypesModel):
+        """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
 
-__all__ = ["FlextInfraCodegenModels"]
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            arbitrary_types_allowed=True,
+        )
+
+        discovered_projects: Annotated[
+            t.SequenceOf[p.Infra.ProjectInfo],
+            m.Field(
+                default_factory=tuple,
+                description="Projects discovered at pipeline start",
+            ),
+        ]
+        census_service: Annotated[
+            p.Infra.CodegenCensusService | None,
+            m.Field(
+                description="Cached census service for reuse across stages",
+            ),
+        ] = None
+        reports_before: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.CensusReport],
+            m.Field(
+                default_factory=tuple,
+                description="Census reports collected before fixes",
+            ),
+        ]
+        reports_after: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.CensusReport],
+            m.Field(
+                default_factory=tuple,
+                description="Census reports collected after fixes",
+            ),
+        ]
+        scaffold_results: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.ScaffoldResult],
+            m.Field(default_factory=tuple, description="Scaffolding stage results"),
+        ]
+        fix_results: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.AutoFixResult],
+            m.Field(default_factory=tuple, description="Auto-fix stage results"),
+        ]
+
+
+__all__: list[str] = ["FlextInfraModelsCodegen"]

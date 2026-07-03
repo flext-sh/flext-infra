@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 from typing import cast
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraDependencyDetectionService,
-    m,
-    t,
-)
+from flext_infra import m, t
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 
 
-class TestFlextInfraDependencyDetectionModels:
+class TestsFlextInfraDepsDetectionModels:
     def test_deptry_issue_groups_creation(self) -> None:
         groups = m.Infra.DeptryIssueGroups()
         assert groups.dep001 == []
@@ -30,10 +29,10 @@ class TestFlextInfraDependencyDetectionModels:
             dev_in_runtime=[],
             raw_count=0,
         )
-        tm.that(report.missing, eq=[])
-        tm.that(report.unused, eq=[])
-        tm.that(report.transitive, eq=[])
-        tm.that(report.dev_in_runtime, eq=[])
+        tm.that(report.missing, empty=True)
+        tm.that(report.unused, empty=True)
+        tm.that(report.transitive, empty=True)
+        tm.that(report.dev_in_runtime, empty=True)
         tm.that(report.raw_count, eq=0)
 
     def test_project_dependency_report_creation(self) -> None:
@@ -57,28 +56,23 @@ class TestFlextInfraDependencyDetectionModels:
             to_add=[],
             to_remove=[],
         )
-        tm.that(report.required_packages, eq=[])
-        tm.that(report.hinted, eq=[])
-        tm.that(report.missing_modules, eq=[])
-        tm.that(report.current, eq=[])
-        tm.that(report.to_add, eq=[])
-        tm.that(report.to_remove, eq=[])
+        tm.that(report.required_packages, empty=True)
+        tm.that(report.hinted, empty=True)
+        tm.that(report.missing_modules, empty=True)
+        tm.that(report.current, empty=True)
+        tm.that(report.to_add, empty=True)
+        tm.that(report.to_remove, empty=True)
         tm.that(not report.limits_applied, eq=True)
         tm.that(report.python_version, eq=None)
 
-
-class TestFlextInfraDependencyDetectionService:
     def test_service_initialization(self) -> None:
-        service = FlextInfraDependencyDetectionService()
-        tm.that(hasattr(service, "runner"), eq=True)
+        FlextInfraDependencyDetectionService()
 
     def test_default_module_to_types_package_mapping(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        tm.that(service.DEFAULT_MODULE_TO_TYPES_PACKAGE, has="yaml")
-        tm.that(service.DEFAULT_MODULE_TO_TYPES_PACKAGE["yaml"], eq="types-pyyaml")
+        limits = service.load_dependency_limits()
+        tm.that(service.module_to_types_package("yaml", limits), eq="types-pyyaml")
 
-
-class TestToInfraValue:
     def test_none_value(self) -> None:
         assert FlextInfraDependencyDetectionService.to_infra_value(None) is None
 

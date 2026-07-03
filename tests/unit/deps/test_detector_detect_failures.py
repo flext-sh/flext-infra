@@ -2,29 +2,35 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
-from tests.unit.deps.test_detector_detect import _DepsStub, _setup_detector
+
+from tests.utilities import u
 
 
-class TestDetectorRunFailures:
+class TestsFlextInfraDepsDetectorDetectFailures:
     def test_run_with_no_projects_found(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        deps = _DepsStub([])
-        result = _setup_detector(monkeypatch, tmp_path, deps).run([])
-        tm.that(tm.ok(result), eq=2)
+        deps = u.Tests.create_detector_deps_stub([])
+        result = u.Tests.setup_detector_runtime(
+            tmp_path,
+            deps,
+        ).execute()
+        tm.fail(result, has="no projects found")
 
     def test_run_with_project_discovery_failure(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        deps = _DepsStub([tmp_path / "proj-a"])
+        deps = u.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
         deps.discovery_failure = "discovery failed"
-        error = tm.fail(_setup_detector(monkeypatch, tmp_path, deps).run([]))
+        error = tm.fail(
+            u.Tests.setup_detector_runtime(
+                tmp_path,
+                deps,
+            ).execute(),
+        )
         tm.that(
             "discovery failed" in error or "project discovery failed" in error,
             eq=True,
@@ -32,29 +38,41 @@ class TestDetectorRunFailures:
 
     def test_run_with_deptry_failure(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        deps = _DepsStub([tmp_path / "proj-a"])
+        deps = u.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
         deps.deptry_failure = "deptry failed"
         error = tm.fail(
-            _setup_detector(monkeypatch, tmp_path, deps).run(["--no-pip-check"]),
+            u.Tests
+            .setup_detector_runtime(
+                tmp_path,
+                deps,
+            )
+            .model_copy(update={"no_pip_check": True})
+            .execute(),
         )
         tm.that("deptry failed" in error or "deptry run failed" in error, eq=True)
 
     def test_run_with_typings_detection_failure(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
         (tmp_path / "proj-a" / "src").mkdir(parents=True)
-        deps = _DepsStub([tmp_path / "proj-a"])
+        deps = u.Tests.create_detector_deps_stub([tmp_path / "proj-a"])
         deps.typings_failure = "typing detection failed"
         error = tm.fail(
-            _setup_detector(monkeypatch, tmp_path, deps).run([
-                "--typings",
-                "--no-pip-check",
-            ]),
+            u.Tests
+            .setup_detector_runtime(
+                tmp_path,
+                deps,
+            )
+            .model_copy(
+                update={
+                    "typings": True,
+                    "no_pip_check": True,
+                }
+            )
+            .execute(),
         )
         tm.that(
             "typing detection failed" in error

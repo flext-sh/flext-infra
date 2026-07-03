@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraGate, c, m, t
+from flext_infra.constants import c
+from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.models import m
+from flext_infra.typings import t
 
 
 class FlextInfraRuffFormatGate(FlextInfraGate):
@@ -24,6 +26,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
+        """Get check dirs."""
         _ = ctx
         return self._existing_check_dirs(project_dir) or ["."]
 
@@ -34,6 +37,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = project_dir, ctx
         return [
             c.Infra.RUFF,
@@ -49,9 +53,10 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if result.exit_code != 0 and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
@@ -63,7 +68,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                 if not resolved or resolved in seen:
                     continue
                 if match or (
-                    resolved.endswith(c.Infra.Extensions.PYTHON) and " " not in resolved
+                    resolved.endswith(c.Infra.EXT_PYTHON) and " " not in resolved
                 ):
                     seen.add(resolved)
                     issues.append(
@@ -84,8 +89,9 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
     ) -> t.StrSequence:
+        """Build fix command."""
         _ = project_dir, ctx, targets
         return [c.Infra.RUFF, c.Infra.FORMAT, "."]
 
 
-__all__ = ["FlextInfraRuffFormatGate"]
+__all__: list[str] = ["FlextInfraRuffFormatGate"]

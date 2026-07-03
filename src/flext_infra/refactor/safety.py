@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, r, t, u
+from flext_core import r
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorSafetyManager:
@@ -24,31 +27,41 @@ class FlextInfraRefactorSafetyManager:
             "-q",
         ]
         self._emergency_stop_reason = ""
-        self._bak_paths: Sequence[Path] = []
+        self._bak_paths: t.SequenceOf[Path] = []
 
     def request_emergency_stop(self, reason: str) -> None:
         """Record an emergency stop reason for later inspection."""
         self._emergency_stop_reason = reason.strip() or "unspecified"
 
-    def is_emergency_stop_requested(self) -> bool:
-        """Return True if an emergency stop has been requested."""
+    @property
+    def emergency_stop_requested(self) -> bool:
+        """Return whether an emergency stop has been requested."""
         return bool(self._emergency_stop_reason)
 
-    def create_pre_transformation_stash(
+    def create_pre_transformation_checkpoint(
         self,
         workspace_root: Path,
         *,
         label: str = "flext-refactor-pre-transform",
-    ) -> r[str]:
+    ) -> p.Result[str]:
         """Back up files in workspace root and return label as reference."""
         _ = label
-        py_files = list(workspace_root.rglob(c.Infra.Extensions.PYTHON_GLOB))
+        py_files = list(
+            u.Infra.iter_matching_files(
+                workspace_root,
+                includes=[c.Infra.EXT_PYTHON_GLOB],
+            ),
+        )
         self._bak_paths = u.Infra.backup_files(py_files)
         return r[str].ok(str(workspace_root))
 
-    def rollback(self, workspace_root: Path, stash_ref: str = "") -> r[bool]:
+    def rollback(
+        self,
+        workspace_root: Path,
+        checkpoint_ref: str = "",
+    ) -> p.Result[bool]:
         """Restore previously backed up files."""
-        _ = workspace_root, stash_ref
+        _ = workspace_root, checkpoint_ref
         u.Infra.restore_files(self._bak_paths)
         self._bak_paths = []
         return r[bool].ok(True)
@@ -58,16 +71,16 @@ class FlextInfraRefactorSafetyManager:
         workspace_root: Path,
         *,
         status: str,
-        stash_ref: str,
+        checkpoint_ref: str,
         processed_targets: t.StrSequence,
-    ) -> r[bool]:
+    ) -> p.Result[bool]:
         """Persist checkpoint metadata for the current refactor run.
 
         The current safety flow relies on copy-on-write backups, so saving
         checkpoint state is intentionally a no-op hook used by integrations
         and tests to observe lifecycle sequencing.
         """
-        _ = workspace_root, status, stash_ref, processed_targets
+        _ = workspace_root, status, checkpoint_ref, processed_targets
         return r[bool].ok(True)
 
     @staticmethod
@@ -80,7 +93,7 @@ class FlextInfraRefactorSafetyManager:
             "no tests collected" in normalized or "no tests ran" in normalized
         )
 
-    def run_semantic_validation(self, workspace_root: Path) -> r[bool]:
+    def run_semantic_validation(self, workspace_root: Path) -> p.Result[bool]:
         """Run import checks and tests against the workspace root."""
         if self._emergency_stop_reason:
             return r[bool].fail(
@@ -90,18 +103,23 @@ class FlextInfraRefactorSafetyManager:
             [c.Infra.PYTHON, "-m", c.Infra.PYTEST, "--collect-only", "-q"],
             cwd=workspace_root,
         )
-        if ic.is_failure and not self._is_no_tests_collected_error(ic.error):
+        if ic.failure and not self._is_no_tests_collected_error(ic.error):
             return r[bool].fail(ic.error or "import validation failed")
         tc = u.Cli.run_checked(self._test_command, cwd=workspace_root)
-        if tc.is_failure and not self._is_no_tests_collected_error(tc.error):
+        if tc.failure and not self._is_no_tests_collected_error(tc.error):
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)
 
-    def clear_checkpoint(self) -> r[bool]:
-        """Clean up backup files after successful validation."""
-        u.Infra.cleanup_backups(self._bak_paths)
-        self._bak_paths = []
+    def clear_checkpoint(self, *, keep: t.SequenceOf[Path] = ()) -> p.Result[bool]:
+        """Clean up transient backups while preserving requested .bak files."""
+        keep_paths = {
+            path.with_suffix(path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX)
+            for path in keep
+        }
+        cleanup = [bak for bak in self._bak_paths if bak not in keep_paths]
+        u.Infra.cleanup_backups(cleanup)
+        self._bak_paths = [bak for bak in self._bak_paths if bak in keep_paths]
         return r[bool].ok(True)
 
 
-__all__ = ["FlextInfraRefactorSafetyManager"]
+__all__: list[str] = ["FlextInfraRefactorSafetyManager"]

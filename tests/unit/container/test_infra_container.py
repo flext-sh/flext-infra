@@ -9,51 +9,40 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
-from tests import c, u
 
 from flext_core import FlextContainer
+from tests.constants import c
+from tests.utilities import u
 
 
-class TestInfraContainerFunctions:
+class TestsFlextInfraContainerInfraContainer:
     """Test container accessor functions."""
 
-    @pytest.fixture(autouse=True)
+    pytestmark = pytest.mark.usefixtures("setup")
+
+    @pytest.fixture
     def setup(self) -> None:
         """Ensure container is configured before each test."""
         FlextContainer().initialize_di_components()
 
     def test_get_flext_infra_container_returns_singleton(self) -> None:
         """Verify FlextContainer is a singleton-like container."""
-        assert FlextContainer.has_service is not None
-        assert callable(FlextContainer.get)
+        container = FlextContainer()
+        assert callable(container.has)
+        assert callable(container.resolve)
 
     def test_get_flext_infra_service_returns_result(self) -> None:
         """Verify container get returns values for registered services."""
-        assert callable(FlextContainer.register)
-        assert callable(FlextContainer.get)
-
-
-class TestInfraMroPattern:
-    """Test that u.Infra MRO exposes all utility methods."""
-
-    def test_git_methods_available(self) -> None:
-        """Verify git methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.git_current_branch)
-        assert callable(u.Infra.git_add)
-        assert callable(u.Infra.git_commit)
-        assert callable(u.Infra.git_push)
-        assert callable(u.Infra.git_pull)
-        assert callable(u.Infra.git_fetch)
-        assert callable(u.Infra.git_has_changes)
-        assert callable(u.Infra.git_is_repo)
-        assert callable(u.Infra.git_run)
+        container = FlextContainer()
+        assert callable(container.bind)
+        assert callable(container.resolve)
 
     def test_io_methods_available(self) -> None:
         """Verify IO methods are accessible via u.Infra MRO."""
-        assert callable(getattr(u.Cli, "toml_read_json"))
         assert callable(u.Cli.json_write)
 
     def test_cli_runtime_methods_available(self) -> None:
@@ -61,6 +50,7 @@ class TestInfraMroPattern:
         assert callable(u.Cli.run_checked)
         assert callable(u.Cli.run_raw)
         assert callable(u.Cli.capture)
+        assert callable(u.Cli.run_to_file)
 
     def test_discovery_methods_available(self) -> None:
         """Verify discovery methods are accessible via u.Infra MRO."""
@@ -69,23 +59,23 @@ class TestInfraMroPattern:
 
     def test_output_methods_available(self) -> None:
         """Verify output methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.status)
-        assert callable(u.Infra.summary)
-        assert callable(u.Infra.error)
-        assert callable(u.Infra.warning)
-        assert callable(u.Infra.info)
-        assert callable(u.Infra.header)
-        assert callable(u.Infra.progress)
+        assert callable(u.Cli.status)
+        assert callable(u.Cli.summary)
+        assert callable(u.Cli.error)
+        assert callable(u.Cli.warning)
+        assert callable(u.Cli.info)
+        assert callable(u.Cli.header)
+        assert callable(u.Cli.progress)
 
     def test_path_methods_available(self) -> None:
         """Verify path methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.workspace_root)
+        assert callable(u.Infra.rope_workspace_root)
 
     def test_template_methods_available(self) -> None:
         """Verify template constants are accessible via c.Infra MRO."""
-        assert isinstance(c.Infra.SourceCode.TOC_START, str)
-        assert isinstance(c.Infra.SourceCode.TOC_END, str)
-        assert isinstance(c.Infra.SourceCode.GENERATED_HEADER, str)
+        assert isinstance(c.Infra.TOC_START, str)
+        assert isinstance(c.Infra.TOC_END, str)
+        assert isinstance(c.Infra.GENERATED_HEADER, str)
 
     def test_versioning_methods_available(self) -> None:
         """Verify versioning methods are accessible via u.Infra MRO."""
@@ -95,35 +85,26 @@ class TestInfraMroPattern:
     def test_toml_methods_available(self) -> None:
         """Verify TOML methods are accessible via u.Infra MRO."""
         assert callable(u.Cli.toml_ensure_table)
-        assert callable(u.Cli.toml_table_string_keys)
+        assert callable(u.Cli.toml_table_path)
 
     def test_patterns_available(self) -> None:
         """Verify pattern constants are accessible via u.Infra MRO."""
-        assert callable(u.Infra.matches)
-
-
-class TestInfraServiceRetrieval:
-    """Test service retrieval behavior."""
-
-    @pytest.fixture(autouse=True)
-    def setup(self) -> None:
-        """Ensure container is configured before each test."""
-        FlextContainer().initialize_di_components()
+        assert callable(u.Cli.matches)
 
     def test_container_has_service_method(self) -> None:
         """Verify FlextContainer has has_service method."""
-        assert callable(FlextContainer.has_service)
+        assert callable(FlextContainer().has)
 
     def test_container_list_services_method(self) -> None:
         """Verify FlextContainer has list_services method."""
-        assert callable(FlextContainer.list_services)
+        assert callable(FlextContainer().names)
 
     def test_output_methods_write_to_configured_stream(self) -> None:
         """Verify output methods write through the shared namespace stream."""
         stream = StringIO()
 
-        u.Infra.setup(color=False, unicode=False, stream=stream)
-        u.Infra.info("hello")
-        u.Infra.warning("careful")
+        with redirect_stdout(stream):
+            u.Cli.info("hello")
+            u.Cli.warning("careful")
 
         assert stream.getvalue() == "INFO: hello\nWARN: careful\n"

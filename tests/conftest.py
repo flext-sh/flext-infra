@@ -2,13 +2,95 @@
 
 from __future__ import annotations
 
+import importlib
+import sys
 from collections.abc import Iterator
 from pathlib import Path
+from types import ModuleType
 
 import pytest
-from tests import t, u
+from flext_tests import (
+    reset_settings as _shared_reset_settings,
+    settings as _shared_settings,
+    settings_factory as _shared_settings_factory,
+)
 
-pytest_plugins = ["flext_tests.conftest_plugin"]
+import flext_infra as infra_pkg
+from flext_infra.settings import FlextInfraSettings
+from tests.constants import c
+from tests.typings import t
+from tests.utilities import u
+
+reset_settings = _shared_reset_settings
+settings = _shared_settings
+settings_factory = _shared_settings_factory
+
+pytest_plugins = [
+    "tests.unit.fixtures",
+    "tests.unit.fixtures_git",
+]
+
+
+@pytest.fixture
+def reset_infra_settings(reset_settings: None) -> Iterator[None]:
+    """Reset project-specific infra settings around each test."""
+    del reset_settings
+    FlextInfraSettings.reset_for_testing()
+    yield
+    FlextInfraSettings.reset_for_testing()
+
+
+@pytest.fixture
+def infra_public_root() -> ModuleType:
+    """Reload the root public package after clearing lazy-export caches."""
+    for export_name in c.Tests.INFRA_PUBLIC_ROOT_EXPORTS:
+        _ = infra_pkg.__dict__.pop(export_name, None)
+    for module_name in c.Tests.INFRA_PUBLIC_WRAPPER_MODULES:
+        _ = sys.modules.pop(module_name, None)
+    return importlib.reload(infra_pkg)
+
+
+def _is_collectable_test_module(collection_path: Path) -> bool:
+    tests_root = Path(__file__).parent
+    try:
+        collection_path.relative_to(tests_root)
+    except ValueError:
+        return True
+
+    file_name = collection_path.name
+    if collection_path.suffix != ".py" or file_name == "conftest.py":
+        return True
+
+    return file_name.startswith("test_") or file_name.endswith("_tests.py")
+
+
+def pytest_ignore_collect(
+    collection_path: Path,
+    config: pytest.Config,
+) -> bool | None:
+    del config
+    if _is_collectable_test_module(collection_path):
+        return None
+    return True
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config,
+    items: list[pytest.Item],
+) -> None:
+    kept_items: list[pytest.Item] = []
+    deselected_items: list[pytest.Item] = []
+
+    for item in items:
+        if _is_collectable_test_module(Path(item.path)):
+            item.add_marker(pytest.mark.usefixtures("reset_infra_settings"))
+            kept_items.append(item)
+            continue
+        deselected_items.append(item)
+
+    if deselected_items:
+        config.hook.pytest_deselected(items=deselected_items)
+        items[:] = kept_items
 
 
 @pytest.fixture
@@ -74,9 +156,9 @@ def infra_safe_command_output(
         ["echo", "infra-ok"],
         cwd=infra_test_workspace,
     )
-    assert echo_result.is_success
+    assert echo_result.success
     pwd_result = infra_subprocess.capture(["pwd"], cwd=infra_test_workspace)
-    assert pwd_result.is_success
+    assert pwd_result.success
     return f"{echo_result.value.strip()}|{pwd_result.value.strip()}"
 
 
@@ -87,15 +169,15 @@ def infra_git_repo(
 ) -> Path:
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    assert infra_subprocess.run_checked(["git", "init"], cwd=repo).is_success
+    assert infra_subprocess.run_checked(["git", "init"], cwd=repo).success
     assert infra_subprocess.run_checked(
         ["git", "config", "user.email", "infra@example.com"],
         cwd=repo,
-    ).is_success
+    ).success
     assert infra_subprocess.run_checked(
         ["git", "config", "user.name", "Infra Fixtures"],
         cwd=repo,
-    ).is_success
+    ).success
     return repo
 
 

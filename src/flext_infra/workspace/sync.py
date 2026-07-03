@@ -10,23 +10,25 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
+import fcntl
 from pathlib import Path
-from typing import Annotated, Self, overload, override
+from typing import Annotated, override
 
-from pydantic import Field
-
-from flext_infra import (
-    FlextInfraBaseMkGenerator,
-    FlextInfraCommandContext,
-    c,
-    m,
-    r,
-    t,
-    u,
+from flext_core import r
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.utilities import u
+from flext_infra.workspace._sync_artifacts import (
+    FlextInfraWorkspaceSyncArtifactsMixin,
 )
 
 
-class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
+class FlextInfraSyncService(
+    s[m.Infra.SyncResult],
+    FlextInfraWorkspaceSyncArtifactsMixin,
+):
     """Infrastructure service for workspace base.mk synchronization.
 
     Generates a fresh base.mk via ``FlextInfraBaseMkGenerator``, compares its SHA256
@@ -35,32 +37,18 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
 
     """
 
-    generator: Annotated[
-        FlextInfraBaseMkGenerator | None,
-        Field(
-            default=None, exclude=True, description="Optional custom generator service"
-        ),
-    ] = None
     canonical_root: Annotated[
-        Path | None,
-        Field(default=None, description="Optional canonical root path"),
+        Path | None, m.Field(description="Optional canonical root path")
     ] = None
-
-    def _get_generator(self) -> FlextInfraBaseMkGenerator:
-        """Return the configured generator, including test-time private injection."""
-        private_generator = getattr(self, "_generator", None)
-        configured = self.generator or private_generator
-        return configured if configured is not None else FlextInfraBaseMkGenerator()
 
     def _resolved_workspace_root(self) -> Path:
         """Return the validated workspace root from the command context."""
-        return self.workspace_root.resolve()
+        resolved: Path = self.workspace_root.resolve()
+        return resolved
 
     @override
-    def execute(self) -> r[m.Infra.SyncResult]:
+    def execute(self) -> p.Result[m.Infra.SyncResult]:
         """Execute the workspace sync flow."""
-        import fcntl
-
         resolved = self._resolved_workspace_root()
         if not resolved.exists():
             return r[m.Infra.SyncResult].fail(
@@ -69,80 +57,103 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
 
         lock_file = resolved / ".flext-sync.lock"
         try:
-            with lock_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as handle:
-                try:
-                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    return self._sync_locked_content(
-                        resolved,
-                        config=None,
-                        canonical_root=self.canonical_root,
-                    )
-                except OSError as exc:
-                    return r[m.Infra.SyncResult].fail(f"lock acquisition failed: {exc}")
-                finally:
-                    with contextlib.suppress(OSError):
-                        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            with lock_file.open("w", encoding=c.Cli.ENCODING_DEFAULT) as handle:
+                return self._execute_with_lock(resolved, handle.fileno())
         except OSError as exc:
             return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
 
-    @overload
-    @classmethod
-    def execute_command(cls, params: Self) -> r[m.Infra.SyncResult]: ...
-
-    @overload
-    @classmethod
-    def execute_command(
-        cls,
-        params: m.Infra.WorkspaceSyncInput,
-    ) -> r[m.Infra.SyncResult]: ...
-
-    @classmethod
-    @override
-    def execute_command(cls, params: object) -> r[m.Infra.SyncResult]:
-        """Convert CLI input model to service instance and execute."""
-        if isinstance(params, cls):
-            return params.execute()
-        if not isinstance(params, m.Infra.WorkspaceSyncInput):
-            return r[m.Infra.SyncResult].fail(
-                "expected WorkspaceSyncInput or service instance"
+    def _execute_with_lock(
+        self,
+        resolved: Path,
+        descriptor: int,
+    ) -> p.Result[m.Infra.SyncResult]:
+        """Run sync while holding the workspace sync lock."""
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return self._sync_locked_content(
+                resolved,
+                settings=None,
+                canonical_root=self.canonical_root,
             )
-        service = cls.model_validate({
-            "workspace_root": params.workspace_path,
-            "apply_changes": params.apply,
-            "canonical_root": params.canonical_root_path,
-        })
-        return service.execute()
+        except OSError as exc:
+            return r[m.Infra.SyncResult].fail_op("lock acquisition", exc)
+        finally:
+            with contextlib.suppress(OSError):
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
 
     def _sync_locked_content(
         self,
         resolved: Path,
-        config: m.Infra.BaseMkConfig | None,
+        settings: m.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
-    ) -> r[m.Infra.SyncResult]:
+    ) -> p.Result[m.Infra.SyncResult]:
         """Execute all sync steps under the file lock."""
         changed = 0
         effective_root = canonical_root or self.canonical_root
+        is_workspace_root = self._is_workspace_root(resolved, effective_root)
         basemk_result = self._sync_basemk(
             resolved,
-            config,
+            settings,
             canonical_root=effective_root,
         )
-        if basemk_result.is_failure:
+        if basemk_result.failure:
             return r[m.Infra.SyncResult].fail(
                 basemk_result.error or "base.mk sync failed",
             )
         changed += 1 if basemk_result.value else 0
         gitignore_result = self._ensure_gitignore_entries(
             resolved,
-            c.Infra.REQUIRED_GITIGNORE_ENTRIES,
+            (
+                *c.Infra.REQUIRED_GITIGNORE_ENTRIES,
+                "!.pre-commit-config.yaml",
+            )
+            if is_workspace_root
+            else c.Infra.REQUIRED_GITIGNORE_ENTRIES,
         )
-        if gitignore_result.is_failure:
+        if gitignore_result.failure:
             return r[m.Infra.SyncResult].fail(
                 gitignore_result.error or ".gitignore sync failed",
             )
         changed += 1 if gitignore_result.value else 0
-        changed += self._sync_makefile_if_needed(resolved, effective_root)
+        env_result = self._sync_environment_files(resolved)
+        if env_result.failure:
+            return r[m.Infra.SyncResult].fail(
+                env_result.error or "workspace environment sync failed",
+            )
+        changed += env_result.value
+        vscode_result = self._sync_vscode_settings(resolved)
+        if vscode_result.failure:
+            return r[m.Infra.SyncResult].fail(
+                vscode_result.error or "VS Code settings sync failed",
+            )
+        changed += 1 if vscode_result.value else 0
+        if is_workspace_root:
+            pre_commit_result = self._sync_pre_commit_config(resolved)
+            if pre_commit_result.failure:
+                return r[m.Infra.SyncResult].fail(
+                    pre_commit_result.error or ".pre-commit-config.yaml sync failed",
+                )
+            changed += 1 if pre_commit_result.value else 0
+        makefile_result = self._sync_makefile_if_needed(
+            resolved,
+            effective_root,
+        )
+        if makefile_result.failure:
+            return r[m.Infra.SyncResult].fail(
+                makefile_result.error or "Makefile sync failed",
+            )
+        changed += makefile_result.value
+        if is_workspace_root:
+            child_sync_result = self._sync_workspace_children(
+                resolved,
+                canonical_root=effective_root or resolved,
+            )
+            if child_sync_result.failure:
+                return r[m.Infra.SyncResult].fail(
+                    child_sync_result.error or "workspace child sync failed",
+                )
+            changed += child_sync_result.value
         return r[m.Infra.SyncResult].ok(
             m.Infra.SyncResult(
                 files_changed=changed,
@@ -151,166 +162,36 @@ class FlextInfraSyncService(FlextInfraCommandContext[m.Infra.SyncResult]):
             ),
         )
 
-    def _sync_makefile_if_needed(
-        self,
-        resolved: Path,
-        effective_root: Path | None,
-    ) -> int:
-        """Sync workspace or project Makefile as appropriate. Returns 1 if changed."""
-        is_workspace_root = self._is_workspace_root(resolved, effective_root)
-        if is_workspace_root:
-            workspace_makefile_result = self._sync_workspace_makefile(resolved)
-            if workspace_makefile_result.is_success and workspace_makefile_result.value:
-                return 1
-        elif (resolved / c.Infra.Files.PYPROJECT_FILENAME).exists():
-            makefile_result = self._sync_project_makefile(
-                resolved,
-                effective_root or resolved,
-            )
-            if makefile_result.is_success and makefile_result.value:
-                return 1
-        return 0
-
-    @staticmethod
-    def _sync_project_makefile(
-        workspace_root: Path,
-        canonical_root: Path,
-    ) -> r[bool]:
-        """Sync the generated section of a project Makefile from pyproject.toml."""
-        from flext_infra import (
-            FlextInfraProjectMakefileUpdater,
-        )
-
-        return FlextInfraProjectMakefileUpdater().update(
-            workspace_root,
-            canonical_root=canonical_root,
-        )
-
-    @staticmethod
-    def _sync_workspace_makefile(workspace_root: Path) -> r[bool]:
-        """Sync the workspace root Makefile from the canonical generator."""
-        from flext_infra import (
-            FlextInfraWorkspaceMakefileGenerator,
-        )
-
-        return FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-
-    @staticmethod
-    def _is_workspace_root(
-        workspace_root: Path,
-        canonical_root: Path | None,
-    ) -> bool:
-        """Detect whether the sync target is the workspace root."""
-        resolved_root = workspace_root.resolve()
-        if canonical_root is not None:
-            return resolved_root == canonical_root.resolve()
-        if (resolved_root / c.Infra.Files.GITMODULES).exists():
-            return True
-        discovered = u.Infra.discover_projects(resolved_root)
-        if discovered.is_failure:
-            return False
-        return any(
-            project.path.resolve() != resolved_root for project in discovered.value
-        )
-
-    def _ensure_gitignore_entries(
+    def _sync_workspace_children(
         self,
         workspace_root: Path,
-        required: t.StrSequence,
-    ) -> r[bool]:
-        """Idempotently add missing .gitignore entries.
-
-        Appends only entries not already present (exact line match).
-        Never removes or reorders existing entries.
-
-        Args:
-            workspace_root: Root directory of the project.
-            required: List of gitignore patterns that must be present.
-
-        Returns:
-            r with True if file was changed, False otherwise.
-
-        """
-        gitignore = workspace_root / c.Infra.Files.GITIGNORE
-        try:
-            existing_lines: t.StrSequence = []
-            if gitignore.exists():
-                existing_lines = gitignore.read_text(
-                    encoding=c.Infra.Encoding.DEFAULT,
-                ).splitlines()
-            existing_patterns = {
-                line.strip() for line in existing_lines if line.strip()
-            }
-            missing = [p for p in required if p not in existing_patterns]
-            if not missing:
-                return r[bool].ok(False)
-            with gitignore.open("a", encoding=c.Infra.Encoding.DEFAULT) as handle:
-                _ = handle.write(
-                    "\n# --- workspace-sync: required ignores (auto-managed) ---\n",
-                )
-                for pattern in missing:
-                    _ = handle.write(f"{pattern}\n")
-            return r[bool].ok(True)
-        except OSError as exc:
-            return r[bool].fail(f".gitignore update failed: {exc}")
-
-    def _sync_basemk(
-        self,
-        workspace_root: Path,
-        config: m.Infra.BaseMkConfig | None,
         *,
-        canonical_root: Path | None = None,
-    ) -> r[bool]:
-        """Sync base.mk for workspace root and subprojects.
-
-        All projects receive a generated local ``base.mk`` so regeneration is
-        fully deterministic from ``make gen`` without relying on deferred
-        bootstrap.
-        """
-        _ = canonical_root
-        generator = self._get_generator()
-        gen_result = generator.generate_basemk(config)
-        if gen_result.is_failure:
-            return r[bool].fail(gen_result.error or "base.mk generation failed")
-        content: str = gen_result.value
-        target_path = workspace_root / c.Infra.Files.BASE_MK
-        content_hash = u.Cli.sha256_content(content)
-        if target_path.exists():
-            existing_hash = u.Cli.sha256_file(target_path)
-            if content_hash == existing_hash:
-                return r[bool].ok(False)
-        return u.Cli.atomic_write_text_file(target_path, content)
-
-    @staticmethod
-    def main() -> int:
-        """CLI entry point for workspace sync."""
-        parser = u.Infra.create_parser(
-            "flext-infra workspace sync",
-            "Workspace base.mk sync",
-            flags=u.Infra.SharedFlags(),
-        )
-        _ = parser.add_argument(
-            "--canonical-root",
-            type=Path,
-            default=None,
-            help="Canonical workspace root",
-        )
-        args = parser.parse_args()
-        service = FlextInfraSyncService.model_validate({
-            "workspace_root": args.workspace,
-            "apply_changes": args.apply,
-            "canonical_root": args.canonical_root,
-        })
-        result = service.execute()
-        if result.is_success:
-            return 0
-        u.Infra.error(result.error or "sync failed")
-        return 1
-
-
-main = FlextInfraSyncService.main
+        canonical_root: Path,
+    ) -> p.Result[int]:
+        """Synchronize all discovered child projects under the workspace root."""
+        discovered = u.Infra.discover_projects(workspace_root, include_attached=True)
+        if discovered.failure:
+            return r[int].fail(discovered.error or "workspace discovery failed")
+        changed = 0
+        resolved_root = workspace_root.resolve()
+        for project in discovered.value:
+            project_path = project.path.resolve()
+            if project_path == resolved_root:
+                continue
+            sync_result = self._sync_locked_content(
+                project_path,
+                settings=None,
+                canonical_root=canonical_root,
+            )
+            if sync_result.failure:
+                project_error = sync_result.error or "project sync failed"
+                return r[int].fail(f"{project.name}: {project_error}")
+            changed += sync_result.value.files_changed
+        return r[int].ok(changed)
 
 
 if __name__ == "__main__":
-    raise SystemExit(FlextInfraSyncService.main())
-__all__ = ["FlextInfraSyncService", "main"]
+    raise SystemExit(0)
+
+
+__all__: list[str] = ["FlextInfraSyncService"]

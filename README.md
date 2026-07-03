@@ -1,42 +1,45 @@
-# FLEXT-Infra
+<!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-**FLEXT-Infra** is the infrastructure tooling library for the FLEXT ecosystem, providing build automation, code generation, workspace management, and quality validation for all FLEXT projects.
+# flext-infra
 
-**Version**: 0.12.0-dev | Part of the [FLEXT](https://github.com/flext-sh/flext) ecosystem.
+**Version**: `0.12.0-dev` | **Python**: 3.13+ | **Project class**: `infra`
 
-## Key Features
+## Purpose
 
-- **Build Automation**: Standardized `base.mk` generation for consistent project builds.
-- **Code Generation**: Automated `__init__.py` lazy-export generation and code scaffolding.
-- **Dependency Management**: `pyproject.toml` modernization and workspace-wide dependency synchronization.
-- **Quality Validation**: Multi-gate validation (ruff, mypy, pyright, pyrefly) with configurable scopes.
-- **Workspace Sync**: Cross-project configuration synchronization and drift detection.
+FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management
 
-## CLI
+## Module Map
 
-Use the centralized entrypoint:
+::: flext_infra
+    options:
+      members: false
+      show_root_heading: false
+      show_root_toc_entry: false
+      show_source: false
 
-```bash
-flext-infra <group> <command> [options]
-```
+## Collection Rules
 
-Examples:
+Read [`/flext/AGENTS.md`](../AGENTS.md) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).
 
-```bash
-flext-infra basemk render --projects-name flext-core
-flext-infra check run --projects flext-core
-flext-infra codegen lazy-init --workspace .
-flext-infra validate inventory --workspace .
-flext-infra docs audit --workspace .
-flext-infra workspace sync --workspace .
-```
+## Operation Flow
 
-## Installation
+- Public surface: see [`docs/index.md`](docs/index.md) and [`docs/api-reference/README.md`](docs/api-reference/README.md).
+- Generated module overview: [`docs/api-reference/generated/overview.md`](docs/api-reference/generated/overview.md).
+- Settings env prefix: see project `pyproject.toml` `[tool.flext]` and `FlextSettings` ConfigDict.
 
-```bash
-poetry add flext-infra
-```
+## Integration Points
 
-## License
+- Parent MRO chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.
+- Public extensions exposed by this project: `FlextInfraUtilitiesRefactorEngine`, `FlextInfraRefactorMigrateToClassMRO`, `FlextInfraReleaseOrchestrator`, `FlextInfraSilentFailureGate`, `FlextInfraRefactorImportModernizer`, `FlextInfraStubSupplyChain` (+243 more).
+- Library abstraction boundaries: see AGENTS.md §2.7.
 
-MIT License - see [LICENSE](LICENSE) for details.
+## Quality Gates
+
+Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`](../.agents/skills/flext-quality-gates/SKILL.md) skill for selectors and thresholds.
+
+## Governance Pointer
+
+- Engineering law: [`/flext/AGENTS.md`](../AGENTS.md)
+- Skills index: [`/flext/.agents/skills/`](../.agents/skills/)
+- Onboarding: [`/flext/docs/guides/onboarding.md`](../docs/guides/onboarding.md)
+- Full project portal: [`docs/index.md`](docs/index.md).

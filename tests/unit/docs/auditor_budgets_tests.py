@@ -9,21 +9,22 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import u
 
-from flext_infra import FlextInfraDocAuditor
+from flext_infra.docs.auditor import FlextInfraDocAuditor
+from tests.typings import t
+from tests.utilities import u
 
 
 class TestLoadAuditBudgets:
     def test_no_config(self, tmp_path: Path) -> None:
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
         tm.that(default, eq=None)
-        tm.that(by_scope, eq={})
+        tm.that(by_scope, empty=True)
 
     def test_with_config(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
-        config_data = {
+        config_data: t.JsonMapping = {
             "docs_validation": {
                 "audit_gate": {
                     "max_issues_default": 5,
@@ -42,12 +43,12 @@ class TestLoadAuditBudgets:
         (arch_dir / "architecture_config.json").write_text("{invalid json}")
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
         tm.that(default, eq=None)
-        tm.that(by_scope, eq={})
+        tm.that(by_scope, empty=True)
 
     def test_float_values(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
-        config_data = {
+        config_data: t.JsonMapping = {
             "docs_validation": {
                 "audit_gate": {
                     "max_issues_default": 5.5,
@@ -63,7 +64,7 @@ class TestLoadAuditBudgets:
     def test_no_default_budget(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
-        config_data = {
+        config_data: t.JsonMapping = {
             "docs_validation": {
                 "audit_gate": {"max_issues_by_scope": {"test-project": 3}},
             },

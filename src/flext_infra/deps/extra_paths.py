@@ -1,50 +1,91 @@
-"""Synchronize pyright and mypy extraPaths from path dependencies."""
+"""Synchronize pyright, mypy, and pyrefly paths from workspace dependencies.
+
+Handlers are called by the canonical CLI via FlextInfraCliDeps.register_deps.
+"""
 
 from __future__ import annotations
 
-import sys
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping
 from pathlib import Path
+from typing import override
 
 from flext_infra import (
-    FlextInfraExtraPathsPyrefly,
-    FlextInfraExtraPathsResolutionMixin,
     c,
     m,
+    p,
     r,
     t,
     u,
 )
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.deps._extra_paths_sources import FlextInfraExtraPathsSourceMixin
+from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
 
 class FlextInfraExtraPathsManager(
-    FlextInfraExtraPathsResolutionMixin,
-    FlextInfraExtraPathsPyrefly,
+    FlextInfraExtraPathsSourceMixin,
+    FlextInfraExtraPathsSyncMixin,
+    FlextInfraProjectSelectionServiceBase[bool],
 ):
-    """Manager for synchronizing pyright and mypy extraPaths from path dependencies."""
+    """Manager for synchronizing type-checker search paths from dependencies."""
 
-    ROOT = u.Infra.resolve_workspace_root(__file__)
+    _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()
+    _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
-        """Initialize the extra paths manager with path resolver and TOML service."""
-        super().__init__()
-        self.root = workspace_root or self.ROOT
+    @override
+    def model_post_init(self, __context: dict[str, p.AttributeProbe], /) -> None:
+        """Initialize tool configuration and workspace metadata after validation."""
         tool_config_result = u.Infra.load_tool_config()
-        if tool_config_result.is_failure:
-            msg = tool_config_result.error or "failed to load deps tool config"
+        if tool_config_result.failure:
+            msg = tool_config_result.error or "failed to load deps tool settings"
             raise ValueError(msg)
-        self._tool_config: m.Infra.ToolConfigDocument = tool_config_result.value
-        self._workspace_project_names: t.Infra.StrSet = (
-            self._discover_workspace_project_names()
+        self._tool_config = tool_config_result.value
+        self._workspace_project_names = set(
+            u.Infra.workspace_member_names(self.workspace_root)
         )
 
-    def _pyright_path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
-        return self._tool_config.tools.pyright.path_rules
+    @override
+    def execute(self) -> p.Result[bool]:
+        """Synchronize extra paths for the configured project slice."""
+        result = self.sync_extra_paths(
+            dry_run=self.effective_dry_run,
+            project_dirs=self.project_dirs,
+        )
+        if result.failure:
+            return r[bool].fail(result.error or "extra-path synchronization failed")
+        return r[bool].ok(True)
 
-    def pyrefly_path_rules(self) -> m.Infra.PyreflyConfig.PathRulesConfig:
-        """Expose pyrefly path rules through the public resolver contract."""
-        return self._tool_config.tools.pyrefly.path_rules
+    def _dep_paths(
+        self,
+        payload: t.Infra.ContainerDict,
+        *,
+        is_root: bool = False,
+    ) -> t.StrSequence:
+        """Resolve dependency source roots to relative search paths."""
+        dep_skip = c.Infra.COMMON_EXCLUDED_DIRS | frozenset({c.Infra.DIR_TESTS})
+        project_table = payload.get(c.Infra.PROJECT)
+        current_project_name = (
+            project_table.get(c.NAME) if isinstance(project_table, Mapping) else None
+        )
+        resolved: t.MutableSequenceOf[str] = []
+        for name in self._resolve_transitive_deps(
+            u.Infra.local_dependency_names_from_payload(
+                payload,
+                workspace_project_names=tuple(self._workspace_project_names),
+            )
+        ):
+            if isinstance(current_project_name, str) and name == current_project_name:
+                continue
+            prefix = name if is_root else f"../{name}"
+            dep_dir = self.root / name
+            if not dep_dir.is_dir():
+                resolved.append(f"{prefix}/src")
+                continue
+            for dir_name in u.Infra.discover_python_dirs(dep_dir, skip_dirs=dep_skip):
+                resolved.append(f"{prefix}/{dir_name}")
+        return resolved
 
+    @override
     def pyright_extra_paths(
         self,
         *,
@@ -52,169 +93,133 @@ class FlextInfraExtraPathsManager(
         is_root: bool,
     ) -> t.StrSequence:
         """Compute pyright extra paths for a project."""
-        rules = self._pyright_path_rules()
-        source_root = self._source_root(
-            project_dir,
-            source_dir=rules.source_dir,
-            project_root=rules.project_root,
+        rules = self._tool_config.tools.pyright.path_rules
+        source_root = (
+            rules.source_dir
+            if (project_dir / rules.source_dir).is_dir()
+            else rules.project_root
         )
         configured_typings = (
             rules.root_typings_paths if is_root else rules.project_typings_paths
         )
-        typings_paths = self._existing_relative_paths(project_dir, configured_typings)
+        typings_paths = [
+            relative_path
+            for relative_path in configured_typings
+            if (project_dir / relative_path).is_dir()
+        ]
         return sorted({rules.project_root, source_root, *typings_paths})
 
-    def _apply_paths_to_doc(
+    def pyrefly_search_paths(
         self,
-        doc: t.Cli.TomlDocument,
         *,
         project_dir: Path,
         is_root: bool,
     ) -> t.StrSequence:
-        """Apply computed extra paths to an in-memory TOMLDocument.
-
-        Returns list of change descriptions (empty if nothing changed).
-        """
-        expected = self.pyright_extra_paths(
-            project_dir=project_dir,
-            is_root=is_root,
+        """Compute pyrefly search paths for a project."""
+        rules = self._tool_config.tools.pyrefly.path_rules
+        source_root = (
+            rules.source_dir
+            if (project_dir / rules.source_dir).is_dir()
+            else rules.project_root
         )
-        tool_table = u.Cli.toml_get_table(doc, c.Infra.TOOL)
-        if tool_table is None:
-            return list[str]()
-        pyright_table = u.Cli.toml_get_table(tool_table, c.Infra.PYRIGHT)
-        if pyright_table is None:
-            return list[str]()
-        mypy_table = u.Cli.toml_get_table(tool_table, c.Infra.MYPY)
-        changes: MutableSequence[str] = []
-        current_pyright = u.Cli.toml_as_string_list(
-            u.Cli.toml_get_item(pyright_table, "extraPaths")
+        configured_typings = (
+            rules.root_typings_paths if is_root else rules.project_typings_paths
         )
-        if current_pyright != expected:
-            pyright_table["extraPaths"] = expected
-            changes.append("synchronized pyright extraPaths")
-        if mypy_table is not None:
-            current_mypy = u.Cli.toml_as_string_list(
-                u.Cli.toml_get_item(mypy_table, "mypy_path")
-            )
-            if current_mypy != expected:
-                mypy_table["mypy_path"] = expected
-                tool_table[c.Infra.MYPY] = mypy_table
-                changes.append("synchronized mypy mypy_path")
-        if changes:
-            tool_table[c.Infra.PYRIGHT] = pyright_table
-            doc["tool"] = tool_table
-        return changes
-
-    def sync_one(
-        self,
-        pyproject_path: Path,
-        *,
-        dry_run: bool = False,
-        is_root: bool = False,
-    ) -> r[bool]:
-        """Synchronize pyright and mypy paths for single pyproject.toml."""
-        if not pyproject_path.exists():
-            return r[bool].fail(f"pyproject not found: {pyproject_path}")
-        doc_result = u.Cli.toml_read_document(pyproject_path)
-        if doc_result.is_failure:
-            return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
-        doc: t.Cli.TomlDocument = doc_result.value
-        changes = self._apply_paths_to_doc(
-            doc,
-            project_dir=pyproject_path.parent,
-            is_root=is_root,
-        )
-        if changes and (not dry_run):
-            write_result = u.Cli.toml_write_document(pyproject_path, doc)
-            if write_result.is_failure:
-                return r[bool].fail(
-                    write_result.error or f"failed to write {pyproject_path}",
+        typings_paths = [
+            relative_path
+            for relative_path in configured_typings
+            if (project_dir / relative_path).is_dir()
+        ]
+        shared_paths = [
+            relative_path
+            for relative_path in rules.project_shared_search_paths
+            if (project_dir / relative_path).is_dir()
+        ]
+        local_dirs = [
+            directory
+            for directory in u.Infra.discover_python_dirs(project_dir)
+            if not is_root
+            or not (project_dir / directory / c.Infra.PYPROJECT_FILENAME).is_file()
+        ]
+        paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
+        if rules.include_path_dependencies_in_search_path:
+            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+            if pyproject.exists():
+                payload = u.Infra.pyproject_payload(
+                    pyproject,
                 )
-        return r[bool].ok(bool(changes))
+                paths.update(self._dep_paths(payload, is_root=is_root))
+                paths.update(self._uv_source_paths(payload, project_dir=project_dir))
+        if (project_dir / source_root).is_dir():
+            paths.add(source_root)
+        if (
+            any(directory != source_root for directory in local_dirs)
+            or any(project_dir.glob("*.py"))
+            or any(project_dir.glob("*.pyi"))
+        ):
+            paths.add(rules.project_root)
+        if (not paths) and (project_dir / rules.project_root).is_dir():
+            paths.add(rules.project_root)
+        return sorted(paths)
 
-    def sync_doc(
+    def pyrefly_project_includes(
         self,
-        doc: t.Cli.TomlDocument,
         *,
         project_dir: Path,
-        is_root: bool = False,
+        is_root: bool,
     ) -> t.StrSequence:
-        """Synchronize extra paths on an in-memory TOMLDocument.
-
-        Used by FlextInfraEnsureExtraPathsPhase to modify the doc in-place
-        without reading/writing to disk (avoiding overwrite by modernizer).
-
-        Returns:
-            List of change descriptions.
-
-        """
-        return self._apply_paths_to_doc(
-            doc,
-            project_dir=project_dir,
-            is_root=is_root,
-        )
-
-    def sync_extra_paths(
-        self,
-        *,
-        dry_run: bool = False,
-        project_dirs: Sequence[Path] | None = None,
-    ) -> r[int]:
-        """Synchronize extraPaths and mypy_path across projects."""
-        if project_dirs:
-            for project_dir in project_dirs:
-                pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-                sync_result = self.sync_one(
-                    pyproject,
-                    dry_run=dry_run,
-                    is_root=project_dir == self.root,
-                )
-                if sync_result.is_failure:
-                    return r[int].fail(
-                        sync_result.error or f"sync failed for {pyproject}",
-                    )
-                if sync_result.value and (not dry_run):
-                    u.Infra.info(f"Updated {pyproject}")
-            return r[int].ok(0)
-        pyproject = self.root / c.Infra.Files.PYPROJECT_FILENAME
-        if not pyproject.exists():
-            return r[int].fail(f"Missing {pyproject}")
-        sync_result = self.sync_one(pyproject, dry_run=dry_run, is_root=True)
-        if sync_result.is_failure:
-            return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
-        if sync_result.value and (not dry_run):
-            u.Infra.info("Updated extraPaths and mypy_path from path dependencies.")
-        return r[int].ok(0)
+        """Build pyrefly project-includes from auto-discovered top-level Python dirs."""
+        pyright_includes = self._pyright_include_globs(project_dir)
+        if pyright_includes:
+            return pyright_includes
+        rules = self._tool_config.tools.pyrefly.path_rules
+        includes: t.Infra.StrSet = set()
+        local_dirs = [
+            directory
+            for directory in u.Infra.discover_python_dirs(project_dir)
+            if not is_root
+            or not (project_dir / directory / c.Infra.PYPROJECT_FILENAME).is_file()
+        ]
+        includes.update(f"{directory}/**/*.py*" for directory in local_dirs)
+        if not is_root or (not rules.workspace_include_children):
+            return sorted(includes)
+        for child in sorted(project_dir.iterdir()):
+            if not child.is_dir() or not (child / c.Infra.PYPROJECT_FILENAME).exists():
+                continue
+            child_dirs = u.Infra.discover_python_dirs(child)
+            includes.update(
+                f"{child.name}/{directory}/**/*.py*" for directory in child_dirs
+            )
+        return sorted(includes)
 
     @staticmethod
-    def main(argv: t.StrSequence | None = None) -> int:
-        """Execute extra paths synchronization from command line."""
-        parser = u.Infra.create_parser(
-            "flext-infra deps extra-paths",
-            "Synchronize pyright and mypy extraPaths from path dependencies",
-            flags=u.Infra.SharedFlags(include_apply=True, include_project=True),
-        )
-        args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
-        manager = FlextInfraExtraPathsManager(workspace_root=cli.workspace)
-        result = manager.sync_extra_paths(
-            dry_run=cli.dry_run,
-            project_dirs=cli.project_dirs(),
-        )
-        if result.is_success:
-            return result.value
-        u.Infra.error(result.error or "sync failed")
-        return 1
+    def _pyright_include_globs(project_dir: Path) -> t.StrSequence:
+        """Return pyrefly-compatible globs derived from [tool.pyright].include."""
+        pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+        if not pyproject.exists():
+            return ()
+        payload = u.Infra.pyproject_payload(pyproject)
+        tool_table = payload.get(c.Infra.TOOL)
+        if not isinstance(tool_table, Mapping):
+            return ()
+        pyright_table = tool_table.get(c.Infra.PYRIGHT)
+        if not isinstance(pyright_table, Mapping):
+            return ()
+        include_items = pyright_table.get(c.Infra.INCLUDE)
+        if not isinstance(include_items, list):
+            return ()
+        includes: t.Infra.StrSet = set()
+        for item in include_items:
+            if not isinstance(item, str):
+                continue
+            normalized = item.strip().rstrip("/")
+            if not normalized:
+                continue
+            if "*" in normalized or normalized.endswith((".py", ".pyi")):
+                includes.add(normalized)
+            else:
+                includes.add(f"{normalized}/**/*.py*")
+        return tuple(sorted(includes))
 
 
-main = FlextInfraExtraPathsManager.main
-
-
-if __name__ == "__main__":
-    sys.exit(FlextInfraExtraPathsManager.main())
-
-
-__all__ = [
-    "FlextInfraExtraPathsManager",
-]
+__all__: list[str] = ["FlextInfraExtraPathsManager"]

@@ -13,7 +13,11 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from flext_infra import c, m, r, s, u
+from flext_core import r
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.utilities import u
 
 
 class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
@@ -38,9 +42,9 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         parsed = urlparse(url)
         path = parsed.path or url
         name = path.rsplit("/", 1)[-1]
-        return name.removesuffix(c.Infra.Git.DIR)
+        return name.removesuffix(c.Infra.GIT_DIR)
 
-    def detect(self, project_root: Path) -> r[c.Infra.WorkspaceMode]:
+    def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
         """Detect workspace mode by inspecting parent repository origin URL.
 
         Args:
@@ -51,72 +55,50 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             c.Infra.WorkspaceMode.STANDALONE otherwise.
 
         """
+        result: p.Result[c.Infra.WorkspaceMode]
         try:
-            resolved_project_root = project_root.resolve()
-            for candidate in (resolved_project_root, *resolved_project_root.parents):
-                if (candidate / c.Infra.Files.GITMODULES).exists():
-                    return r[c.Infra.WorkspaceMode].ok(
-                        c.Infra.WorkspaceMode.WORKSPACE,
-                    )
-            parent = resolved_project_root.parent
-            git_marker = parent / c.Infra.Git.DIR
-            if not git_marker.exists():
-                u.Infra.info(
-                    "Running in standalone mode (no parent workspace detected)"
-                )
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            result = u.Infra.git_run(
-                ["config", "--get", "remote.origin.url"],
-                cwd=parent,
-            )
-            if result.is_failure:
-                u.Infra.info("Running in standalone mode (unable to detect workspace)")
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            origin = result.value.strip()
-            if not origin:
-                u.Infra.info("Running in standalone mode (no remote origin found)")
-                return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.STANDALONE)
-            repo_name = self._repo_name_from_url(origin)
-            mode = (
-                c.Infra.WorkspaceMode.WORKSPACE
-                if repo_name == c.Infra.Packages.ROOT
-                else c.Infra.WorkspaceMode.STANDALONE
-            )
-            if mode == c.Infra.WorkspaceMode.STANDALONE:
-                u.Infra.info(f"Running in standalone mode (parent repo: {repo_name})")
-            return r[c.Infra.WorkspaceMode].ok(mode)
-        except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            u.Infra.info(f"Running in standalone mode (detection error: {exc})")
-            return r[c.Infra.WorkspaceMode].fail(f"Detection failed: {exc}")
+            mode = self._detect_mode(project_root)
+            result = r[c.Infra.WorkspaceMode].ok(mode)
+        except c.EXC_OS_RUNTIME_TYPE as exc:
+            u.Cli.info(f"Running in standalone mode (detection error: {exc})")
+            result = r[c.Infra.WorkspaceMode].fail_op("Detection", exc)
+        return result
 
-    def _resolved_workspace_root(self) -> Path:
-        """Return the validated workspace root from the command context."""
-        raw = getattr(self, "workspace_root", None)
-        if isinstance(raw, Path):
-            return raw.resolve()
-        if isinstance(raw, str) and raw.strip():
-            return Path(raw).resolve()
-        return Path.cwd().resolve()
+    def _detect_mode(self, project_root: Path) -> c.Infra.WorkspaceMode:
+        """Resolve workspace mode without wrapping expected OS/runtime errors."""
+        resolved_project_root = project_root.resolve()
+        for candidate in (resolved_project_root, *resolved_project_root.parents):
+            if (candidate / c.Infra.GITMODULES).exists():
+                return c.Infra.WorkspaceMode.WORKSPACE
+        return self._detect_parent_mode(resolved_project_root.parent)
+
+    def _detect_parent_mode(self, parent: Path) -> c.Infra.WorkspaceMode:
+        """Detect mode from parent repository metadata."""
+        git_marker = parent / c.Infra.GIT_DIR
+        if not git_marker.exists():
+            u.Cli.info("Running in standalone mode (no parent workspace detected)")
+            return c.Infra.WorkspaceMode.STANDALONE
+        capture_result = u.Cli.capture(
+            [c.Infra.GIT, "config", "--get", "remote.origin.url"],
+            cwd=parent,
+        )
+        if capture_result.failure:
+            u.Cli.info("Running in standalone mode (unable to detect workspace)")
+            return c.Infra.WorkspaceMode.STANDALONE
+        origin = capture_result.value.strip()
+        if not origin:
+            u.Cli.info("Running in standalone mode (no remote origin found)")
+            return c.Infra.WorkspaceMode.STANDALONE
+        repo_name = self._repo_name_from_url(origin)
+        if repo_name == c.Infra.PKG_ROOT:
+            return c.Infra.WorkspaceMode.WORKSPACE
+        u.Cli.info(f"Running in standalone mode (parent repo: {repo_name})")
+        return c.Infra.WorkspaceMode.STANDALONE
 
     @override
-    def execute(self) -> r[c.Infra.WorkspaceMode]:
+    def execute(self) -> p.Result[c.Infra.WorkspaceMode]:
         """Execute the workspace detection flow."""
-        return self.detect(self._resolved_workspace_root())
-
-    @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: s[c.Infra.WorkspaceMode] | m.Infra.WorkspaceDetectInput,
-    ) -> r[c.Infra.WorkspaceMode]:
-        """Normalize workspace CLI input into the canonical detector model."""
-        if isinstance(params, m.Infra.WorkspaceDetectInput):
-            service = cls.model_validate({
-                "workspace_root": params.workspace_path,
-                "apply_changes": params.apply,
-            })
-            return service.execute()
-        return params.execute()
+        return self.detect(self.workspace_root)
 
 
-__all__ = ["FlextInfraWorkspaceDetector"]
+__all__: list[str] = ["FlextInfraWorkspaceDetector"]

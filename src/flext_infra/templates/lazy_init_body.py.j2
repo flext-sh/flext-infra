@@ -9,50 +9,65 @@
 
 {% endif %}
 {%- if type_checking_lines %}
-import typing as _t
-
 {{ type_checking_lines }}
 {%- endif %}
 
-{%- if child_module_paths %}
+{%- macro lazy_import_map() -%}
+{%- set module_single_line_extra = 22 if use_merge_lazy_imports else 18 -%}
+{%- set alias_single_line_extra = 29 if use_merge_lazy_imports else 25 -%}
+build_lazy_import_map(
+    {
+{%- for mod, names in lazy_module_groups %}
+{%- if names|length == 1 and (mod|length + names[0]|length + module_single_line_extra <= 88) %}
+        "{{ mod }}": ("{{ names[0] }}",),
+{%- else %}
+        "{{ mod }}": (
+{%- for name in names %}
+            "{{ name }}",
+{%- endfor %}
+        ),
+{%- endif %}
+{%- endfor %}
+    },
+{%- if lazy_alias_groups %}
+    alias_groups={
+{%- for mod, pairs in lazy_alias_groups %}
+{%- if pairs|length == 1 and (mod|length + pairs[0][0]|length + pairs[0][1]|length + alias_single_line_extra <= 88) %}
+        "{{ mod }}": (("{{ pairs[0][0] }}", "{{ pairs[0][1] }}"),),
+{%- else %}
+        "{{ mod }}": (
+{%- for export_name, attr_name in pairs %}
+            ("{{ export_name }}", "{{ attr_name }}"),
+{%- endfor %}
+        ),
+{%- endif %}
+{%- endfor %}
+    },
+{%- endif %}
+)
+{%- endmacro %}
+
+{%- if use_merge_lazy_imports %}
 _LAZY_IMPORTS = merge_lazy_imports(
+{%- if child_module_paths|length == 1 %}
+    ("{{ child_module_paths[0] }}",),
+{%- else %}
     (
 {%- for child_module_path in child_module_paths %}
         "{{ child_module_path }}",
 {%- endfor %}
     ),
-    {
-{%- for name, mod, attr in lazy_entries %}
-{%- if attr == "" %}
-        "{{ name }}": "{{ mod }}",
-{%- else %}
-        "{{ name }}": ("{{ mod }}", "{{ attr }}"),
 {%- endif %}
-{%- endfor %}
-    },
-)
+    {{ lazy_import_map() | indent(4, false) }},
 {%- if excluded_lazy_names %}
+    exclude_names=(
 {%- for name in excluded_lazy_names %}
-_ = _LAZY_IMPORTS.pop("{{ name }}", None)
+        "{{ name }}",
 {%- endfor %}
+    ),
 {%- endif %}
+    module_name=__name__,
+)
 {%- else %}
-_LAZY_IMPORTS = {
-{%- for name, mod, attr in lazy_entries %}
-{%- if attr == "" %}
-    "{{ name }}": "{{ mod }}",
-{%- else %}
-    "{{ name }}": ("{{ mod }}", "{{ attr }}"),
-{%- endif %}
-{%- endfor %}
-}
-{%- endif %}
-
-{%- if exports %}
-
-__all__ = [
-{%- for export in exports %}
-    "{{ export }}",
-{%- endfor %}
-]
+_LAZY_IMPORTS = {{ lazy_import_map() }}
 {%- endif %}

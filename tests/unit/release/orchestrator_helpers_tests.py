@@ -1,263 +1,211 @@
-"""Tests for FlextInfraReleaseOrchestrator helper methods."""
+"""Public tests for release utilities and filtered release behavior."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
-from tests import m as _m, r, t, u
 
-import flext_infra.release.orchestrator as _orch_mod
-from flext_infra import (
-    FlextInfraReleaseOrchestrator,
-    m,
-    m as infra_models,
+from flext_cli import u as cli_u
+from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
+
+
+def make_config(
+    workspace_root: Path,
+    *,
+    project_names: list[str] | None = None,
+) -> m.Infra.ReleaseOrchestratorConfig:
+    return m.Infra.ReleaseOrchestratorConfig(
+        workspace_root=workspace_root,
+        version=c.Tests.RELEASE_VERSION_TARGET,
+        tag=c.Tests.RELEASE_TAG_TARGET,
+        phases=[c.Infra.DIR_BUILD],
+        project_names=project_names,
+        dry_run=False,
+        push=False,
+        dev_suffix=False,
+        create_branches=False,
+        next_dev=False,
+        next_bump=c.Tests.RELEASE_BUMP_MINOR,
+    )
+
+
+@pytest.mark.parametrize(
+    ("phase", "expected"),
+    [
+        (c.Infra.RELEASE_PHASE_ALL, c.Tests.ALL_PHASES),
+        (
+            c.Tests.RELEASE_PHASE_VALIDATE,
+            (c.Tests.RELEASE_PHASE_VALIDATE,),
+        ),
+    ],
 )
-
-from ._stubs import (
-    FakeSelection,
-    FakeUtilsNamespace,
-)
-
-if TYPE_CHECKING:
-    from _pytest.monkeypatch import MonkeyPatch
-
-_CLS = FlextInfraReleaseOrchestrator
+def test_resolve_phase_names(
+    phase: str,
+    expected: t.StrSequence,
+) -> None:
+    assert tuple(u.Infra.resolve_phase_names(phase)) == expected
 
 
-@pytest.fixture
-def workspace_root(tmp_path: Path) -> Path:
-    root = tmp_path / "workspace"
-    root.mkdir(exist_ok=True)
-    (root / ".git").mkdir()
-    (root / "Makefile").touch()
-    (root / "pyproject.toml").write_text('version = "0.1.0"\n', encoding="utf-8")
-    return root
+def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
+    notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
+    project = u.Tests.create_project_info(
+        tmp_path / "flext-a",
+        name="flext-a",
+    )
+
+    result = u.Infra.generate_notes(
+        c.Tests.RELEASE_VERSION_TARGET,
+        c.Tests.RELEASE_TAG_TARGET,
+        [project],
+        c.Tests.RELEASE_NOTES_CHANGE_LINE,
+        notes_path,
+    )
+
+    notes = notes_path.read_text(encoding="utf-8")
+    assert result.success
+    assert c.Tests.RELEASE_NOTES_HEADING in notes
+    assert "- root" in notes
+    assert "- flext-a" in notes
+    assert c.Tests.RELEASE_NOTES_CHANGE_LINE in notes
+    for verification_line in c.Tests.RELEASE_VERIFICATION_LINES[:2]:
+        assert verification_line in notes
 
 
-def _patch_sel(mp: MonkeyPatch, sel: FakeSelection) -> None:
-    def _resolve_projects(
-        workspace_root: Path,
-        names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return sel.resolve_projects(workspace_root, names)
+def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
+    notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
+    notes_path.mkdir(parents=True, exist_ok=True)
 
-    mp.setattr(u.Infra, "resolve_projects", staticmethod(_resolve_projects))
+    result = u.Infra.generate_notes(
+        c.Tests.RELEASE_VERSION_TARGET,
+        c.Tests.RELEASE_TAG_TARGET,
+        [],
+        "",
+        notes_path,
+    )
 
-
-class TestVersionFiles:
-    def test_includes_workspace_root(self, workspace_root: Path) -> None:
-        files = _CLS()._version_files(workspace_root, [])
-        tm.that(any(f.name == "pyproject.toml" for f in files), eq=True)
-
-    def test_discovery(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        proj_dir = workspace_root / "proj1"
-        proj_dir.mkdir()
-        (proj_dir / "pyproject.toml").touch()
-        fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[_m.Infra.ProjectInfo]].ok([
-            _m.Infra.ProjectInfo(name="proj1", path=proj_dir, stack="python"),
-        ])
-        _patch_sel(monkeypatch, fake_sel)
-        tm.that(len(_CLS()._version_files(workspace_root, ["proj1"])), gt=0)
+    assert result.failure
+    assert "failed to write release notes" in (result.error or "")
 
 
-class TestBuildTargets:
-    """Tests for _build_targets."""
+def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    notes_path = workspace / "notes.md"
+    notes_path.parent.mkdir(parents=True, exist_ok=True)
+    notes_path.write_text(c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8")
 
-    def test_includes_root(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        _patch_sel(monkeypatch, FakeSelection())
-        targets = _CLS()._build_targets(workspace_root, [])
-        name, path = targets[0]
-        tm.that(name, eq="root")
-        tm.that(str(path), eq=str(workspace_root))
+    result = u.Infra.update_changelog(
+        workspace,
+        c.Tests.RELEASE_VERSION_TARGET,
+        c.Tests.RELEASE_TAG_TARGET,
+        notes_path,
+    )
 
-    def test_deduplication(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[_m.Infra.ProjectInfo]].ok([
-            _m.Infra.ProjectInfo(
-                name="proj1",
-                path=workspace_root / "proj1",
-                stack="python",
-            ),
-        ])
-        _patch_sel(monkeypatch, fake_sel)
-        names = [n for n, _ in _CLS()._build_targets(workspace_root, ["proj1"])]
-        tm.that(len(names), eq=len(set(names)))
+    assert result.success
+    assert (workspace / "docs" / "CHANGELOG.md").is_file()
+    assert (workspace / "docs" / "releases" / "latest.md").is_file()
+    assert (
+        workspace / "docs" / "releases" / f"{c.Tests.RELEASE_TAG_TARGET}.md"
+    ).is_file()
 
 
-class TestRunMake:
-    """Tests for _run_make."""
+def test_update_changelog_is_idempotent_for_existing_release_heading(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    notes_path = workspace / "notes.md"
+    notes_path.parent.mkdir(parents=True, exist_ok=True)
+    notes_path.write_text(c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8")
 
-    def test_success(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        output = _m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
+    first_result = u.Infra.update_changelog(
+        workspace,
+        c.Tests.RELEASE_VERSION_TARGET,
+        c.Tests.RELEASE_TAG_TARGET,
+        notes_path,
+    )
+    second_result = u.Infra.update_changelog(
+        workspace,
+        c.Tests.RELEASE_VERSION_TARGET,
+        c.Tests.RELEASE_TAG_TARGET,
+        notes_path,
+    )
 
-        def _fake_run_raw(
-            cmd: t.StrSequence,
-            **kw: t.Scalar,
-        ) -> r[_m.Cli.CommandOutput]:
-            return r[_m.Cli.CommandOutput].ok(output)
-
-        monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
-        result = _CLS._run_make(workspace_root, "build")
-        tm.ok(result)
-        code, _out = result.value
-        tm.that(code, eq=0)
-
-    def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        def _fake_run_raw(
-            cmd: t.StrSequence,
-            **kw: t.Scalar,
-        ) -> r[_m.Cli.CommandOutput]:
-            return r[_m.Cli.CommandOutput].fail("failed")
-
-        monkeypatch.setattr(u.Cli, "run_raw", staticmethod(_fake_run_raw))
-        tm.fail(_CLS._run_make(workspace_root, "build"))
+    changelog = (workspace / "docs" / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert first_result.success
+    assert second_result.success
+    assert changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - ") == 1
 
 
-class TestGenerateNotes:
-    """Tests for _generate_notes."""
+def test_update_changelog_adds_default_header_when_marker_is_missing(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    (docs_dir / "CHANGELOG.md").write_text("Existing notes only\n", encoding="utf-8")
+    notes_path = workspace / "notes.md"
+    notes_path.write_text(c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8")
 
-    def test_writes_file(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        FakeUtilsNamespace.Infra.reset()
-        monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
+    result = u.Infra.update_changelog(
+        workspace,
+        c.Tests.RELEASE_VERSION_TARGET,
+        c.Tests.RELEASE_TAG_TARGET,
+        notes_path,
+    )
 
-        def _previous_tag(*a: t.Scalar, **kw: t.Scalar) -> r[str]:
-            del a, kw
-            return r[str].ok("")
-
-        def _collect_changes(*a: t.Scalar, **kw: t.Scalar) -> r[str]:
-            del a, kw
-            return r[str].ok("")
-
-        monkeypatch.setattr(_CLS, "_previous_tag", _previous_tag)
-        monkeypatch.setattr(_CLS, "_collect_changes", _collect_changes)
-        notes_path = workspace_root / "notes.md"
-        config = infra_models.Infra.ReleasePhaseDispatchConfig(
-            phase="publish",
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
-            project_names=[],
-            dry_run=False,
-            push=False,
-            dev_suffix=False,
-        )
-        result = _CLS()._generate_notes(
-            config,
-            notes_path,
-        )
-        tm.ok(result)
-        tm.that(notes_path.exists(), eq=True)
+    changelog = (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert result.success
+    assert changelog.startswith(c.Tests.RELEASE_CHANGELOG_HEADER)
 
 
-class TestUpdateChangelog:
-    """Tests for _update_changelog."""
+def test_update_changelog_missing_notes_file_returns_failure(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
 
-    def test_creates_files(self, workspace_root: Path) -> None:
-        notes = workspace_root / "notes.md"
-        notes.write_text("# Release v1.0.0\n")
-        result = u.Infra.update_changelog(
-            workspace_root,
-            "1.0.0",
-            "v1.0.0",
-            notes,
-        )
-        tm.ok(result)
-        tm.that((workspace_root / "docs" / "CHANGELOG.md").exists(), eq=True)
+    result = u.Infra.update_changelog(
+        workspace,
+        c.Tests.RELEASE_VERSION_TARGET,
+        c.Tests.RELEASE_TAG_TARGET,
+        workspace / "missing-notes.md",
+    )
 
-    def test_appends_to_existing(self, workspace_root: Path) -> None:
-        changelog = workspace_root / "docs" / "CHANGELOG.md"
-        changelog.parent.mkdir(parents=True)
-        changelog.write_text("# Changelog\n\n## 0.9.0 - 2025-01-01\n")
-        notes = workspace_root / "notes.md"
-        notes.write_text("# Release v1.0.0\n")
-        tm.ok(
-            u.Infra.update_changelog(
-                workspace_root,
-                "1.0.0",
-                "v1.0.0",
-                notes,
-            ),
-        )
-        tm.that(changelog.read_text(), contains="1.0.0")
+    assert result.failure
+    assert "changelog update failed" in (result.error or "")
 
 
-class TestBumpNextDev:
-    """Tests for _bump_next_dev."""
+def test_run_release_build_deduplicates_duplicate_project_selectors(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Tests.create_release_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
 
-    def test_bumps_version(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _bump_ok(cur: str, kind: str) -> r[str]:
-            _ = cur, kind
-            return r[str].ok("1.1.0")
+    result = FlextInfraReleaseOrchestrator().run_release(
+        make_config(
+            workspace,
+            project_names=["flext-a", "flext-a"],
+        ),
+    )
 
-        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_ok))
+    report_path = (
+        workspace
+        / ".reports"
+        / "release"
+        / c.Tests.RELEASE_TAG_TARGET
+        / "build-report.json"
+    )
+    report = cli_u.Cli.json_loads(report_path.read_text(encoding="utf-8")).unwrap()
 
-        def _phase_version(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-            del a, kw
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(_CLS, "phase_version", _phase_version)
-        tm.ok(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "minor"))
-
-    def test_bump_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        def _bump_fail(cur: str, kind: str) -> r[str]:
-            _ = cur, kind
-            return r[str].fail("invalid bump")
-
-        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_fail))
-        tm.fail(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "invalid"))
-
-
-class TestDispatchPhase:
-    """Tests for _dispatch_phase."""
-
-    @staticmethod
-    def _dispatch(
-        orch: FlextInfraReleaseOrchestrator,
-        phase: str,
-        root: Path,
-    ) -> r[bool]:
-        config = infra_models.Infra.ReleasePhaseDispatchConfig(
-            phase=phase,
-            workspace_root=root,
-            version="1.0.0",
-            tag="v1.0.0",
-            project_names=[],
-            dry_run=False,
-            push=False,
-            dev_suffix=False,
-        )
-        return orch._dispatch_phase(config)
-
-    def test_unknown_phase(self, workspace_root: Path) -> None:
-        result = self._dispatch(_CLS(), "unknown", workspace_root)
-        tm.fail(result)
-        tm.that(result.error, contains="unknown phase")
-
-    def test_routes_validate(
-        self,
-        workspace_root: Path,
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        def _phase_validate(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
-            del a, kw
-            return r[bool].ok(True)
-
-        monkeypatch.setattr(_CLS, "phase_validate", _phase_validate)
-        tm.ok(self._dispatch(_CLS(), "validate", workspace_root))
+    assert result.success
+    assert isinstance(report, dict)
+    assert report["total"] == 2
+    records = report["records"]
+    assert isinstance(records, list)
+    assert [record["project"] for record in records if isinstance(record, dict)] == [
+        "root",
+        "flext-a",
+    ]

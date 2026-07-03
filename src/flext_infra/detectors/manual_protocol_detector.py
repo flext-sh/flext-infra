@@ -6,45 +6,39 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import ClassVar, override
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, u
 
-
-class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraManualProtocolDetector:
     """Detect Protocol classes outside canonical protocol files via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.manual_protocol"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Protocol class '{name}' must be centralized ({suggestion})"
-    )
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.ManualProtocolViolation]:
+    ) -> t.SequenceOf[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""
-        file_path = ctx.file_path
-        rope_project = ctx.rope_project
         if (
-            file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
-            or c.Infra.MRO_PROTOCOLS_DIRECTORY in file_path.parts
-            or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
+            ctx.file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
+            or c.Infra.MRO_PROTOCOLS_DIRECTORIES.intersection(ctx.file_path.parts)
         ):
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
-        if res is None:
+        if ctx.file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
+            return []
+        file_path = ctx.file_path
+        try:
+            source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        except OSError:
             return []
         return [
             m.Infra.ManualProtocolViolation(
                 file=str(file_path), line=ci.line, name=ci.name
             )
-            for ci in u.Infra.get_class_info(rope_project, res)
+            for ci in u.Infra.class_info_from_source(source)
             if "Protocol" in ci.bases
         ]
 
 
-__all__ = ["FlextInfraManualProtocolDetector"]
+__all__: list[str] = ["FlextInfraManualProtocolDetector"]

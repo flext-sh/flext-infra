@@ -6,11 +6,11 @@ and regex-based attribute access detection for usage collection.
 
 from __future__ import annotations
 
-import re
-from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 
 class FlextInfraCensusImportDiscoveryVisitor:
@@ -30,19 +30,15 @@ class FlextInfraCensusImportDiscoveryVisitor:
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
         self.alias_locals: t.Infra.StrSet = set()
-        self.direct_imports: t.MutableStrMapping = {}
+        self.direct_imports: dict[str, str] = {}
 
     def scan_source(self, source: str) -> None:
         """Scan source text to discover imports matching family/facade patterns."""
-        import_re = re.compile(
-            r"^from\s+([\w.]+)\s+import\s+(.+?)$",
-            re.MULTILINE,
-        )
-        for match in import_re.finditer(source):
+        for match in c.Infra.FROM_IMPORT_SIMPLE_RE.finditer(source):
             module_str = match.group(1)
             if (
-                c.Infra.Packages.CORE_UNDERSCORE not in module_str
-                and c.Infra.Packages.PREFIX_UNDERSCORE not in module_str
+                c.Infra.PKG_CORE_UNDERSCORE not in module_str
+                and c.Infra.PKG_PREFIX_UNDERSCORE not in module_str
             ):
                 continue
             names_part = match.group(2).strip().rstrip("\\")
@@ -50,13 +46,13 @@ class FlextInfraCensusImportDiscoveryVisitor:
                 name_entry = name_entry.strip()
                 if not name_entry:
                     continue
-                parts = re.split(r"\s+as\s+", name_entry, maxsplit=1)
+                parts = c.Infra.AS_KEYWORD_RE.split(name_entry, maxsplit=1)
                 imported_name = parts[0].strip()
                 local_name = parts[1].strip() if len(parts) > 1 else imported_name
                 if imported_name in {self.family_alias, self.facade_class_prefix}:
                     self.alias_locals.add(local_name)
                 if imported_name.startswith(self.facade_class_prefix) and (
-                    c.Infra.Packages.CORE_UNDERSCORE in module_str
+                    c.Infra.PKG_CORE_UNDERSCORE in module_str
                 ):
                     self.direct_imports[local_name] = imported_name
 
@@ -73,8 +69,8 @@ class FlextInfraCensusUsageCollector:
     def __init__(
         self,
         *,
-        method_index: Mapping[str, t.Infra.StrSet],
-        flat_aliases: Mapping[str, t.Infra.StrPair],
+        method_index: t.MappingKV[str, t.Infra.StrSet],
+        flat_aliases: t.MappingKV[str, t.StrPair],
         inner_class_map: t.StrMapping,
         alias_locals: t.Infra.StrSet,
         direct_imports: t.StrMapping,
@@ -89,7 +85,7 @@ class FlextInfraCensusUsageCollector:
         self.direct_imports = direct_imports
         self.file_path = file_path
         self.project_name = project_name
-        self.records: MutableSequence[m.Infra.CensusUsageRecord] = []
+        self.records: t.MutableSequenceOf[m.Infra.CensusUsageRecord] = []
 
     def scan_source(self, source: str) -> None:
         """Scan source text for attribute access patterns."""
@@ -100,16 +96,16 @@ class FlextInfraCensusUsageCollector:
 
     def _scan_flat_aliases(self, source: str, alias: str) -> None:
         """Detect alias.method_name patterns."""
-        pattern = re.compile(rf"\b{re.escape(alias)}\.(\w+)")
+        pattern = c.Infra.compile_attr_access(alias)
         for match in pattern.finditer(source):
             method_name = match.group(1)
             if method_name in self.flat_aliases:
                 cls, orig = self.flat_aliases[method_name]
-                self._record(cls, orig, c.Infra.Census.MODE_ALIAS_FLAT)
+                self._record(cls, orig, c.Infra.CensusMode.ALIAS_FLAT)
 
     def _scan_namespaced_aliases(self, source: str, alias: str) -> None:
         """Detect alias.ClassName.method_name patterns."""
-        pattern = re.compile(rf"\b{re.escape(alias)}\.(\w+)\.(\w+)")
+        pattern = c.Infra.compile_double_attr_access(alias)
         for match in pattern.finditer(source):
             inner_name = match.group(1)
             method_name = match.group(2)
@@ -118,21 +114,27 @@ class FlextInfraCensusUsageCollector:
                 base_class in self.method_index
                 and method_name in self.method_index[base_class]
             ):
-                self._record(base_class, method_name, c.Infra.Census.MODE_ALIAS_NS)
+                self._record(base_class, method_name, c.Infra.CensusMode.ALIAS_NS)
 
     def _scan_direct_references(self, source: str) -> None:
         """Detect DirectClass.method_name patterns."""
         for local_name, actual in self.direct_imports.items():
-            pattern = re.compile(rf"\b{re.escape(local_name)}\.(\w+)")
+            pattern = c.Infra.compile_attr_access(local_name)
             for match in pattern.finditer(source):
                 method_name = match.group(1)
                 if (
                     actual in self.method_index
                     and method_name in self.method_index[actual]
                 ):
-                    self._record(actual, method_name, c.Infra.Census.MODE_DIRECT)
+                    self._record(actual, method_name, c.Infra.CensusMode.DIRECT)
 
-    def _record(self, class_name: str, method_name: str, mode: str) -> None:
+    def _record(
+        self,
+        class_name: str,
+        method_name: str,
+        mode: c.Infra.CensusMode,
+    ) -> None:
+        """Record."""
         self.records.append(
             m.Infra.CensusUsageRecord(
                 class_name=class_name,
@@ -144,4 +146,7 @@ class FlextInfraCensusUsageCollector:
         )
 
 
-__all__ = ["FlextInfraCensusImportDiscoveryVisitor", "FlextInfraCensusUsageCollector"]
+__all__: list[str] = [
+    "FlextInfraCensusImportDiscoveryVisitor",
+    "FlextInfraCensusUsageCollector",
+]

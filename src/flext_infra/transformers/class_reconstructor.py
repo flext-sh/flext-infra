@@ -2,225 +2,213 @@
 
 from __future__ import annotations
 
-import ast
-from collections.abc import MutableSequence, Sequence
-from operator import itemgetter
-from typing import TypeGuard, override
+import operator
+from typing import override
 
-from pydantic import TypeAdapter, ValidationError
-
-from flext_infra import FlextInfraRopeTransformer, c, m, t, u
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
-    """Reorder class methods based on declarative ordering configuration."""
+    """Reorder class methods based on declarative ordering configuration.
+
+    Uses rope's ``PyClass.get_attributes()`` and ``Scope.get_start()`` /
+    ``Scope.get_end()`` to locate every method's source range without any
+    direct ``ast`` parsing. Source slicing is line-based; column offsets
+    are normalized via ``str.splitlines(keepends=True)``.
+    """
 
     _description = "class reconstructor"
 
     def __init__(
         self,
-        order_config: Sequence[t.Infra.ContainerDict],
+        order_config: t.SequenceOf[t.Infra.ContainerDict],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
-        """Initialize with rule order config and optional change callback."""
+        """Initialize with rule order settings and optional change callback."""
         super().__init__(on_change=on_change)
         try:
-            self._order_config: Sequence[m.Infra.MethodOrderRule] = TypeAdapter(
-                Sequence[m.Infra.MethodOrderRule],
-            ).validate_python(order_config)
-        except ValidationError:
+            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
+                order_config,
+            )
+            self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
+                m.Infra.MethodOrderRule.model_validate(item) for item in typed_items
+            ]
+        except c.ValidationError:
             self._order_config = list[m.Infra.MethodOrderRule]()
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
-        """Apply method reordering to in-memory source."""
+        """Apply method reordering to in-memory source via rope."""
         self.changes.clear()
         if not self._order_config:
             return source, list[str]()
         try:
-            module = ast.parse(source)
-        except SyntaxError:
+            pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        except c.EXC_OS_SYNTAX:
             return source, list[str]()
-        line_offsets = self._line_offsets(source)
-        edits: MutableSequence[tuple[int, int, str]] = []
-        for statement in module.body:
-            if not isinstance(statement, ast.ClassDef):
+        if pymodule is None:
+            return source, list[str]()
+        lines = source.splitlines(keepends=True)
+        edits: list[tuple[int, int, str]] = []
+        for class_name, class_pyname in pymodule.get_attributes().items():
+            class_obj = class_pyname.get_object()
+            if not FlextInfraUtilitiesRopeAnalysis.is_pyclass(class_obj):
                 continue
-            edits.extend(
-                self._class_method_block_edits(
-                    source,
-                    statement,
-                    line_offsets=line_offsets,
-                )
+            block_edits = self._class_block_edits(
+                class_name=class_name,
+                class_obj=class_obj,
+                lines=lines,
             )
+            edits.extend(block_edits)
         if not edits:
             return source, list(self.changes)
         updated = source
         for start, end, replacement in sorted(
-            edits,
-            key=itemgetter(0),
-            reverse=True,
+            edits, key=operator.itemgetter(0), reverse=True
         ):
-            updated = updated[:start] + replacement + updated[end:]
+            updated = f"{updated[:start]}{replacement}{updated[end:]}"
         return updated, list(self.changes)
 
-    def _class_method_block_edits(
+    def _class_block_edits(
         self,
-        source: str,
-        class_node: t.Infra.AstClassDef,
-        *,
-        line_offsets: Sequence[int],
-    ) -> Sequence[tuple[int, int, str]]:
-        edits: MutableSequence[tuple[int, int, str]] = []
-        body = class_node.body
-        index = 0
-        while index < len(body):
-            statement = body[index]
-            if not self._is_method_node(statement):
-                index += 1
-                continue
-            run_start = index
-            while index < len(body) and self._is_method_node(body[index]):
-                index += 1
-            run = [node for node in body[run_start:index] if self._is_method_node(node)]
-            if len(run) < c.Infra.MIN_METHODS_FOR_REORDER:
-                continue
-            edit = self._build_block_edit(
-                source,
-                class_name=class_node.name,
-                method_nodes=run,
-                next_sibling=body[index] if index < len(body) else None,
-                line_offsets=line_offsets,
-            )
-            if edit is not None:
-                edits.append(edit)
-        return edits
-
-    def _build_block_edit(
-        self,
-        source: str,
         *,
         class_name: str,
-        method_nodes: Sequence[t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef],
-        next_sibling: t.Infra.AstStmt | None,
-        line_offsets: Sequence[int],
-    ) -> tuple[int, int, str] | None:
-        start = self._node_start_offset(method_nodes[0], line_offsets)
-        end = (
-            self._node_start_offset(next_sibling, line_offsets)
-            if next_sibling is not None
-            else self._node_end_offset(method_nodes[-1], line_offsets)
-        )
-        method_chunks = [
-            self._method_chunk(
-                source,
-                node=method_nodes[index],
-                next_node=(
-                    method_nodes[index + 1]
-                    if index + 1 < len(method_nodes)
-                    else next_sibling
+        class_obj: t.Infra.RopePyObject,
+        lines: t.SequenceOf[str],
+    ) -> list[tuple[int, int, str]]:
+        """Return reorder edits for each contiguous method block in one class."""
+        method_chunks = self._collect_method_chunks(class_obj=class_obj, lines=lines)
+        if len(method_chunks) < c.Infra.MIN_METHODS_FOR_REORDER:
+            return []
+        source = "".join(lines)
+        edits: list[tuple[int, int, str]] = []
+        for block in self._contiguous_method_blocks(
+            method_chunks=method_chunks, source=source
+        ):
+            if len(block) < c.Infra.MIN_METHODS_FOR_REORDER:
+                continue
+            sorted_chunks = sorted(
+                block,
+                key=lambda item: u.Infra.build_method_sort_key(
+                    item[0],
+                    self._order_config,
                 ),
-                line_offsets=line_offsets,
             )
-            for index in range(len(method_nodes))
-        ]
-        sorted_chunks = sorted(
-            method_chunks,
-            key=lambda item: u.Infra.build_method_sort_key(
-                item[0],
-                self._order_config,
-            ),
-        )
-        original_names = [item[0].name for item in method_chunks]
-        sorted_names = [item[0].name for item in sorted_chunks]
-        if original_names == sorted_names:
-            return None
-        self._record_change(
-            f"Reordered {len(method_chunks)} methods in class {class_name}",
-        )
-        return start, end, "".join(item[1] for item in sorted_chunks)
+            if [item[0].name for item in block] == [
+                item[0].name for item in sorted_chunks
+            ]:
+                continue
+            separators = [
+                source[block[index][2] : block[index + 1][1]]
+                for index in range(len(block) - 1)
+            ]
+            replacement_parts: list[str] = []
+            for index, item in enumerate(sorted_chunks):
+                replacement_parts.append(item[3])
+                if index < len(separators):
+                    replacement_parts.append(separators[index])
+            edits.append((
+                block[0][1],
+                block[-1][2],
+                "".join(replacement_parts),
+            ))
+            self._record_change(
+                f"Reordered {len(block)} methods in class {class_name}",
+            )
+        return edits
 
-    def _method_chunk(
+    def _collect_method_chunks(
         self,
-        source: str,
         *,
-        node: t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef,
-        next_node: t.Infra.AstStmt | None,
-        line_offsets: Sequence[int],
-    ) -> tuple[m.Infra.MethodInfo, str]:
-        start = self._node_start_offset(node, line_offsets)
-        end = (
-            self._node_start_offset(next_node, line_offsets)
-            if next_node is not None
-            else self._node_end_offset(node, line_offsets)
-        )
-        decorators = self._decorator_names(node)
-        method_info = m.Infra.MethodInfo(
-            name=node.name,
-            category=u.Infra.categorize_method(node.name, decorators),
-            node=node,
-            decorators=decorators,
-        )
-        return method_info, source[start:end]
+        class_obj: t.Infra.RopePyObject,
+        lines: t.SequenceOf[str],
+    ) -> list[tuple[m.Infra.MethodInfo, int, int, str]]:
+        """Collect ``(MethodInfo, start_offset, end_offset, source_chunk)`` ordered by line."""
+        line_offsets = self._line_offsets(lines)
+        source = "".join(lines)
+        raw: list[tuple[int, int, m.Infra.MethodInfo]] = []
+        for method_name, method_pyname in class_obj.get_attributes().items():
+            method_obj = method_pyname.get_object()
+            if not FlextInfraUtilitiesRopeAnalysis.is_pyfunction(method_obj):
+                continue
+            location = method_pyname.get_definition_location()
+            if location is None or location[1] is None:
+                continue
+            raw_line = lines[location[1] - 1]
+            if not isinstance(raw_line, str):
+                continue
+            definition_line = raw_line.lstrip()
+            if not definition_line.startswith(("def ", "async def ", "@")):
+                continue
+            decorators = FlextInfraUtilitiesRopeAnalysis.decorator_names(method_obj)
+            start_line = FlextInfraUtilitiesRopeAnalysis.first_decorator_line(
+                method_obj,
+                default_line=location[1],
+            )
+            end_line = method_obj.get_scope().get_end() or location[1]
+            method_info = m.Infra.MethodInfo(
+                name=method_name,
+                category=u.Infra.categorize_method(method_name, decorators),
+                node=None,
+                decorators=decorators,
+            )
+            raw.append((start_line, end_line, method_info))
+        raw.sort(key=operator.itemgetter(0))
+        chunks: list[tuple[m.Infra.MethodInfo, int, int, str]] = []
+        for start_line, end_line, method_info in raw:
+            block_start = line_offsets[start_line - 1]
+            block_end = (
+                line_offsets[end_line] if end_line < len(line_offsets) else len(source)
+            )
+            chunks.append((
+                method_info,
+                block_start,
+                block_end,
+                source[block_start:block_end],
+            ))
+        return chunks
 
     @staticmethod
-    def _decorator_names(
-        node: t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef,
-    ) -> Sequence[str]:
-        return [
-            name
-            for decorator in node.decorator_list
-            if (name := FlextInfraRefactorClassReconstructor._decorator_name(decorator))
+    def _contiguous_method_blocks(
+        *,
+        method_chunks: t.SequenceOf[tuple[m.Infra.MethodInfo, int, int, str]],
+        source: str,
+    ) -> list[list[tuple[m.Infra.MethodInfo, int, int, str]]]:
+        """Split method chunks into reorderable blocks separated only by spacing/comments."""
+        if not method_chunks:
+            return []
+        blocks: list[list[tuple[m.Infra.MethodInfo, int, int, str]]] = [
+            [method_chunks[0]]
         ]
+        for chunk in method_chunks[1:]:
+            previous = blocks[-1][-1]
+            gap = source[previous[2] : chunk[1]]
+            if FlextInfraRefactorClassReconstructor._is_reorderable_gap(gap):
+                blocks[-1].append(chunk)
+                continue
+            blocks.append([chunk])
+        return blocks
 
     @staticmethod
-    def _decorator_name(decorator: t.Infra.AstExpr) -> str:
-        if isinstance(decorator, ast.Name):
-            return decorator.id
-        if isinstance(decorator, ast.Attribute):
-            return decorator.attr
-        if isinstance(decorator, ast.Call):
-            return FlextInfraRefactorClassReconstructor._decorator_name(decorator.func)
-        return ""
+    def _is_reorderable_gap(gap: str) -> bool:
+        """Return whether the gap between methods contains only blank lines or comments."""
+        return all(
+            not stripped or stripped.startswith("#")
+            for stripped in (line.strip() for line in gap.splitlines())
+        )
 
     @staticmethod
-    def _line_offsets(source: str) -> Sequence[int]:
+    def _line_offsets(lines: t.SequenceOf[str]) -> t.SequenceOf[int]:
+        """Return cumulative byte offsets at each line start (plus EOF)."""
         offsets = [0]
-        for line in source.splitlines(keepends=True):
+        for line in lines:
             offsets.append(offsets[-1] + len(line))
         return offsets
 
-    @staticmethod
-    def _node_start_offset(node: t.Infra.AstStmt, line_offsets: Sequence[int]) -> int:
-        start_line = min(
-            (
-                decorator.lineno
-                for decorator in getattr(node, "decorator_list", [])
-                if hasattr(decorator, "lineno")
-            ),
-            default=node.lineno,
-        )
-        start_col = min(
-            (
-                decorator.col_offset
-                for decorator in getattr(node, "decorator_list", [])
-                if hasattr(decorator, "col_offset") and decorator.lineno == start_line
-            ),
-            default=node.col_offset,
-        )
-        return line_offsets[start_line - 1] + start_col
 
-    @staticmethod
-    def _node_end_offset(node: t.Infra.AstStmt, line_offsets: Sequence[int]) -> int:
-        end_line = node.end_lineno or node.lineno
-        end_col = node.end_col_offset or 0
-        return line_offsets[end_line - 1] + end_col
-
-    @staticmethod
-    def _is_method_node(
-        node: t.Infra.AstStmt,
-    ) -> TypeGuard[t.Infra.AstFunctionDef | t.Infra.AstAsyncFunctionDef]:
-        return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-
-
-__all__ = ["FlextInfraRefactorClassReconstructor"]
+__all__: list[str] = ["FlextInfraRefactorClassReconstructor"]

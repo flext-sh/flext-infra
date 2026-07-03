@@ -11,27 +11,35 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import (
-    FlextInfraCodegenTestProjectFactory,
-    t,
-)
 
-from flext_infra import FlextInfraCodegenFixer
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
-def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
-    flexcore = tmp_path / "flexcore"
-    flexcore.mkdir()
-    (flexcore / "Makefile").touch()
-    (flexcore / "pyproject.toml").write_text("[project]\nname='flexcore'\n")
-    (flexcore / ".git").mkdir()
-    pkg = flexcore / "src" / "flexcore"
+def _project_info(
+    project: Path, *, package_name: str = "test_proj"
+) -> m.Infra.ProjectInfo:
+    return u.Tests.create_project_info(
+        project,
+        name=project.name,
+        package_name=package_name,
+    )
+
+
+def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
+    external_project = tmp_path / "external-project"
+    external_project.mkdir()
+    (external_project / "Makefile").touch()
+    (external_project / ".git").mkdir()
+    pkg = external_project / "src" / "external_project"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").touch()
     (pkg / "typings.py").write_text("pass\n")
     (pkg / "constants.py").write_text("pass\n")
     (pkg / "base.py").write_text("import typing\nT = typing.TypeVar('T')\n")
-    FlextInfraCodegenTestProjectFactory.create_project(
+    u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",
@@ -43,7 +51,7 @@ def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
     fixer = FlextInfraCodegenFixer(workspace=tmp_path)
     results = fixer.fix_workspace()
     project_names = [res.project for res in results]
-    tm.that("flexcore" not in project_names, eq=True)
+    tm.that("external-project" not in project_names, eq=True)
     tm.that(project_names, has="test-proj")
 
 
@@ -54,15 +62,17 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     (project / "pyproject.toml").write_text("[project]\nname='no-src-proj'\n")
     (project / ".git").mkdir()
     fixer = FlextInfraCodegenFixer(workspace=tmp_path)
-    result = fixer.fix_project(project)
+    [result] = fixer.fix_workspace(
+        projects=[_project_info(project, package_name="")],
+    )
     tm.that(result.project, eq="no-src-proj")
-    tm.that(result.violations_fixed, eq=[])
-    tm.that(result.violations_skipped, eq=[])
-    tm.that(result.files_modified, eq=[])
+    tm.that(result.violations_fixed, empty=True)
+    tm.that(result.violations_skipped, empty=True)
+    tm.that(result.files_modified, empty=True)
 
 
 def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
-    project = FlextInfraCodegenTestProjectFactory.create_project(
+    project = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",
@@ -72,7 +82,7 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
         },
     )
     fixer = FlextInfraCodegenFixer(workspace=tmp_path)
-    result = fixer.fix_project(project)
+    [result] = fixer.fix_workspace(projects=[_project_info(project)])
     modified_str = " ".join(result.files_modified)
     tm.that(modified_str, contains="__init__.py")
     tm.that(len(result.files_modified) >= 1, eq=True)

@@ -9,33 +9,49 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import c, m, p, r, t, u
+from flext_core import r
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
-class FlextInfraStubSupplyChain:
+class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     """Manages typing stub supply chain for workspace projects.
 
     Coordinates mypy stub hints, pyrefly missing imports, stubgen
     generation, and types-package installation.
     """
 
-    def __init__(self) -> None:
-        """Initialize the stub supply chain."""
-        self._runner: p.Cli.CommandRunner = u.Cli()
+    all_projects: Annotated[
+        bool, m.Field(alias="all", description="Validate all projects")
+    ] = False
+    runner: Annotated[
+        p.Cli.CommandRunner | None,
+        m.Field(exclude=True, description="Optional command runner"),
+    ] = None
 
-    def _discover_stub_projects(self, workspace_root: Path) -> Sequence[Path]:
+    @override
+    @property
+    def project_dirs(self) -> t.SequenceOf[Path] | None:
+        """Return resolved project directories for targeted validation."""
+        names = self.project_names
+        if self.all_projects or names is None:
+            return None
+        return [self.workspace_root / name for name in names]
+
+    def _discover_stub_projects(self, workspace_root: Path) -> t.SequenceOf[Path]:
         """Discover projects that should participate in stub checks."""
         _ = self
         return [
-            entry
-            for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name)
-            if entry.is_dir()
-            and not entry.name.startswith(".")
-            and (entry / c.Infra.Files.PYPROJECT_FILENAME).exists()
-            and (entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir()
+            project_root
+            for project_root in u.Infra.discover_project_roots(workspace_root)
+            if (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
         ]
 
     def _is_internal(self, module_name: str, project_name: str) -> bool:
@@ -52,8 +68,8 @@ class FlextInfraStubSupplyChain:
         _ = self
         rel = module_name.replace(".", "/")
         for base in (
-            workspace_root / c.Infra.Directories.TYPINGS,
-            workspace_root / c.Infra.Directories.TYPINGS / "generated",
+            workspace_root / c.Infra.DIR_TYPINGS,
+            workspace_root / c.Infra.DIR_TYPINGS / "generated",
         ):
             candidates = [base / f"{rel}.pyi", base / rel / "__init__.pyi"]
             if any(c.exists() for c in candidates):
@@ -64,7 +80,7 @@ class FlextInfraStubSupplyChain:
         self,
         project_dir: Path,
         workspace_root: Path,
-    ) -> r[m.Infra.StubAnalysisReport]:
+    ) -> p.Result[m.Infra.StubAnalysisReport]:
         """Analyze a project for missing stubs and type packages.
 
         Runs mypy for hints and pyrefly for missing imports, then
@@ -79,33 +95,17 @@ class FlextInfraStubSupplyChain:
 
         """
         try:
-            root = workspace_root.resolve()
-            proj = project_dir.resolve()
-            mypy_hints = self._run_mypy_hints(proj)
-            missing_imports = self._run_pyrefly_missing(proj)
-            internal = [m for m in missing_imports if self._is_internal(m, proj.name)]
-            external = [
-                m for m in missing_imports if not self._is_internal(m, proj.name)
-            ]
-            unresolved = [m for m in external if not self._stub_exists(m, root)]
-            result = m.Infra.StubAnalysisReport(
-                project=proj.name,
-                mypy_hints=mypy_hints,
-                internal_missing=internal,
-                unresolved_missing=unresolved,
-                total_missing=len(missing_imports),
-            )
-            return r[m.Infra.StubAnalysisReport].ok(result)
-        except (OSError, TypeError, ValueError) as exc:
+            return self._analyze_project(project_dir, workspace_root)
+        except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.StubAnalysisReport].fail(
                 f"stub analysis failed for {project_dir.name}: {exc}",
             )
 
-    def validate(
+    def build_report(
         self,
         workspace_root: Path,
-        project_dirs: Sequence[Path] | None = None,
-    ) -> r[m.Infra.ValidationReport]:
+        project_dirs: t.SequenceOf[Path] | None = None,
+    ) -> p.Result[m.Infra.ValidationReport]:
         """Validate stub supply chain across projects.
 
         Args:
@@ -117,67 +117,140 @@ class FlextInfraStubSupplyChain:
 
         """
         try:
-            root = workspace_root.resolve()
-            projects = project_dirs or self._discover_stub_projects(root)
-            violations: MutableSequence[str] = []
-            for proj in projects:
-                result = self.analyze(proj, root)
-                if result.is_failure:
-                    violations.append(f"{proj.name}: {result.error}")
-                    continue
-                data = result.value
-                internal = data.internal_missing
-                unresolved = data.unresolved_missing
-                if internal:
-                    violations.append(
-                        f"{proj.name}: {len(internal)} internal missing imports",
-                    )
-                if unresolved:
-                    violations.append(
-                        f"{proj.name}: {len(unresolved)} unresolved imports",
-                    )
-            passed = not violations
-            summary = f"stub chain: {len(projects)} projects, {len(violations)} issues"
-            return r[m.Infra.ValidationReport].ok(
-                m.Infra.ValidationReport(
-                    passed=passed,
-                    violations=violations,
-                    summary=summary,
-                ),
-            )
-        except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.ValidationReport].fail(
-                f"stub validation failed: {exc}",
-            )
+            return self._build_stub_report(workspace_root, project_dirs)
+        except c.EXC_OS_TYPE_VALUE as exc:
+            return r[m.Infra.ValidationReport].fail_op("stub validation", exc)
 
-    def execute_command(self, params: m.Infra.ValidateStubValidateInput) -> r[bool]:
-        """Execute the stub-validation CLI flow for the input model."""
-        return self.validate(
-            params.workspace_path,
-            project_dirs=params.project_dirs,
-        ).flat_map(
-            lambda report: (
-                r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
-            )
+    def _classify_missing_imports(
+        self,
+        missing_imports: t.StrSequence,
+        project_name: str,
+        workspace_root: Path,
+    ) -> tuple[t.StrSequence, t.StrSequence]:
+        """Split missing imports into internal and unresolved external groups."""
+        internal = tuple(
+            module_name
+            for module_name in missing_imports
+            if self._is_internal(module_name, project_name)
+        )
+        external = tuple(
+            module_name
+            for module_name in missing_imports
+            if not self._is_internal(module_name, project_name)
+        )
+        unresolved = tuple(
+            module_name
+            for module_name in external
+            if not self._stub_exists(module_name, workspace_root)
+        )
+        return internal, unresolved
+
+    def _analyze_project(
+        self,
+        project_dir: Path,
+        workspace_root: Path,
+    ) -> p.Result[m.Infra.StubAnalysisReport]:
+        """Analyze one project after path resolution."""
+        root = workspace_root.resolve()
+        proj = project_dir.resolve()
+        mypy_hints = self._run_mypy_hints(proj)
+        missing_imports = self._run_pyrefly_missing(proj)
+        internal, unresolved = self._classify_missing_imports(
+            missing_imports,
+            proj.name,
+            root,
+        )
+        return r[m.Infra.StubAnalysisReport].ok(
+            m.Infra.StubAnalysisReport(
+                project=proj.name,
+                mypy_hints=mypy_hints,
+                internal_missing=internal,
+                unresolved_missing=unresolved,
+                total_missing=len(missing_imports),
+            ),
         )
 
+    def _project_violations(
+        self,
+        project_dir: Path,
+        workspace_root: Path,
+    ) -> t.StrSequence:
+        """Return stub-chain violations for one project."""
+        result = self.analyze(project_dir, workspace_root)
+        if result.failure:
+            return (f"{project_dir.name}: {result.error}",)
+        data = result.value
+        violations: t.MutableSequenceOf[str] = []
+        if data.internal_missing:
+            violations.append(
+                f"{project_dir.name}: {len(data.internal_missing)} internal missing imports",
+            )
+        if data.unresolved_missing:
+            violations.append(
+                f"{project_dir.name}: {len(data.unresolved_missing)} unresolved imports",
+            )
+        return tuple(violations)
+
+    def _stub_violations(
+        self,
+        projects: t.SequenceOf[Path],
+        workspace_root: Path,
+    ) -> t.StrSequence:
+        """Collect stub-chain violations for all selected projects."""
+        violations: t.MutableSequenceOf[str] = []
+        for project_dir in projects:
+            violations.extend(self._project_violations(project_dir, workspace_root))
+        return tuple(violations)
+
+    def _build_stub_report(
+        self,
+        workspace_root: Path,
+        project_dirs: t.SequenceOf[Path] | None,
+    ) -> p.Result[m.Infra.ValidationReport]:
+        """Build the workspace stub-chain validation report."""
+        root = workspace_root.resolve()
+        projects = project_dirs or self._discover_stub_projects(root)
+        violations = self._stub_violations(projects, root)
+        return r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport(
+                passed=not violations,
+                violations=violations,
+                summary=(
+                    f"stub chain: {len(projects)} projects, {len(violations)} issues"
+                ),
+            ),
+        )
+
+    @override
+    def execute(self) -> p.Result[bool]:
+        """Execute the stub-validation CLI flow."""
+        report_result = self.build_report(
+            self.workspace_root,
+            project_dirs=self.project_dirs,
+        )
+        if report_result.failure:
+            return r[bool].fail(report_result.error or "stub validation failed")
+        report = report_result.unwrap()
+        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+
     def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
-        """Run mypy and extract types-package hints."""
-        result = self._runner.run(
+        """Run mypy and extract install-package hints."""
+        runner = self.runner or u.Cli()
+        result = runner.run(
             [
                 c.Infra.POETRY,
-                c.Infra.Verbs.RUN,
+                c.Infra.VERB_RUN,
                 c.Infra.MYPY,
-                c.Infra.Paths.DEFAULT_SRC_DIR,
+                c.Infra.DEFAULT_SRC_DIR,
                 "--config-file",
-                c.Infra.Files.PYPROJECT_FILENAME,
+                c.Infra.PYPROJECT_FILENAME,
                 "--no-error-summary",
             ],
             cwd=project_dir,
         )
         output = ""
-        if result.is_success:
-            cmd_output: p.Cli.CommandOutput = result.value
+        if result.success:
+            cmd_output: m.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         return sorted({
             m.group(1).strip()
@@ -187,24 +260,25 @@ class FlextInfraStubSupplyChain:
 
     def _run_pyrefly_missing(self, project_dir: Path) -> t.StrSequence:
         """Run pyrefly check and extract missing imports."""
-        result = self._runner.run(
+        runner = self.runner or u.Cli()
+        result = runner.run(
             [
                 c.Infra.POETRY,
-                c.Infra.Verbs.RUN,
+                c.Infra.VERB_RUN,
                 c.Infra.PYREFLY,
                 c.Infra.CHECK,
-                c.Infra.Paths.DEFAULT_SRC_DIR,
+                c.Infra.DEFAULT_SRC_DIR,
                 "--config",
-                c.Infra.Files.PYPROJECT_FILENAME,
+                c.Infra.PYPROJECT_FILENAME,
             ],
             cwd=project_dir,
         )
         output = ""
-        if result.is_success:
-            cmd_output: p.Cli.CommandOutput = result.value
+        if result.success:
+            cmd_output: m.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         seen: t.Infra.StrSet = set()
-        ordered: MutableSequence[str] = []
+        ordered: t.MutableSequenceOf[str] = []
         for match in c.Infra.MISSING_IMPORT_RE.finditer(output):
             name = match.group(1).strip()
             if name and name not in seen:
@@ -213,4 +287,4 @@ class FlextInfraStubSupplyChain:
         return ordered
 
 
-__all__ = ["FlextInfraStubSupplyChain"]
+__all__: list[str] = ["FlextInfraStubSupplyChain"]

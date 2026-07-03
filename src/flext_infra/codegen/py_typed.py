@@ -11,21 +11,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
 from flext_core import r
-from flext_infra import c, s, u
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraCodegenPyTyped(s[bool]):
     """Creates and removes PEP 561 ``py.typed`` markers across workspace packages."""
 
-    _PY_TYPED_FILENAME: str = c.Infra.Files.PY_TYPED
+    _PY_TYPED_FILENAME: str = c.Infra.PY_TYPED
 
     @override
-    def execute(self) -> r[bool]:
+    def execute(self) -> p.Result[bool]:
         """Execute ``py.typed`` synchronization from the validated CLI model."""
         self.run(check_only=self.check_only)
         return r[bool].ok(True)
@@ -39,7 +42,7 @@ class FlextInfraCodegenPyTyped(s[bool]):
         Returns the number of marker files created or removed.
 
         """
-        dirs_to_scan: Sequence[Path] = [
+        dirs_to_scan: t.SequenceOf[Path] = [
             self.workspace_root / pattern.split("/*")[0]
             for pattern in c.Infra.ALL_SCAN_PATTERNS
             if (self.workspace_root / pattern.split("/*")[0]).is_dir()
@@ -66,10 +69,10 @@ class FlextInfraCodegenPyTyped(s[bool]):
                         marker.unlink()
                     removed += 1
         mode = "check" if check_only else "apply"
-        u.Infra.info(
+        u.Cli.info(
             f"py.typed {mode}: {created} created, {removed} removed",
         )
         return created + removed
 
 
-__all__ = ["FlextInfraCodegenPyTyped"]
+__all__: list[str] = ["FlextInfraCodegenPyTyped"]

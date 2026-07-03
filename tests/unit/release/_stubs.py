@@ -9,14 +9,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from tests import m, t
 
-from flext_core import r
+from flext_infra import r
+from tests.constants import c
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 
 
 @pytest.fixture
@@ -36,16 +41,16 @@ class FakeUtilsNamespace:
     class Infra:
         """Fake Infra utilities namespace."""
 
-        _git_checkout_result: r[bool] = r[bool].ok(True)
-        _git_run_result: r[str] = r[str].ok("")
-        _git_run_checked_result: r[bool] = r[bool].ok(True)
-        _git_tag_exists_result: r[bool] = r[bool].ok(False)
-        _git_create_tag_result: r[bool] = r[bool].ok(True)
-        _git_checkout_side_effects: Sequence[r[bool]] | None = None
+        _git_checkout_result: p.Result[bool] = r[bool].ok(True)
+        _git_run_result: p.Result[str] = r[str].ok("")
+        _git_run_checked_result: p.Result[bool] = r[bool].ok(True)
+        _git_tag_exists_result: p.Result[bool] = r[bool].ok(False)
+        _git_create_tag_result: p.Result[bool] = r[bool].ok(True)
+        _git_checkout_side_effects: t.SequenceOf[r[bool]] | None = None
         _call_count: int = 0
 
         @classmethod
-        def git_checkout(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_checkout(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             if cls._git_checkout_side_effects is not None:
                 idx = cls._call_count
                 cls._call_count += 1
@@ -53,19 +58,19 @@ class FakeUtilsNamespace:
             return cls._git_checkout_result
 
         @classmethod
-        def git_run(cls, *args: str, **kwargs: str) -> r[str]:
+        def git_run(cls, *args: str, **kwargs: str) -> p.Result[str]:
             return cls._git_run_result
 
         @classmethod
-        def git_run_checked(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_run_checked(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             return cls._git_run_checked_result
 
         @classmethod
-        def git_tag_exists(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_tag_exists(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             return cls._git_tag_exists_result
 
         @classmethod
-        def git_create_tag(cls, *args: str, **kwargs: str) -> r[bool]:
+        def git_create_tag(cls, *args: str, **kwargs: str) -> p.Result[bool]:
             return cls._git_create_tag_result
 
         @classmethod
@@ -73,7 +78,7 @@ class FakeUtilsNamespace:
             cls,
             workspace_root: Path,
             names: t.StrSequence,
-        ) -> r[Sequence[SimpleNamespace]]:
+        ) -> p.Result[Sequence[SimpleNamespace]]:
             return r[Sequence[SimpleNamespace]].ok([])
 
         @classmethod
@@ -81,10 +86,10 @@ class FakeUtilsNamespace:
             cls,
             version: str,
             tag: str,
-            projects: Sequence[SimpleNamespace],
+            projects: t.SequenceOf[SimpleNamespace],
             changes: str,
             output_path: Path,
-        ) -> r[bool]:
+        ) -> p.Result[bool]:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(f"# Release {tag}\n{changes}\n", encoding="utf-8")
             return r[bool].ok(True)
@@ -103,14 +108,14 @@ class FakeUtilsNamespace:
 class FakeVersioning:
     """Fake for FlextInfraUtilitiesVersioning."""
 
-    _parse_result: r[str] = r[str].ok("1.0.0")
-    _bump_result: r[str] = r[str].ok("1.1.0")
+    _parse_result: p.Result[str] = r[str].ok(c.Tests.RELEASE_VERSION_TARGET)
+    _bump_result: p.Result[str] = r[str].ok("1.1.0")
     _replace_called: bool = False
 
-    def parse_semver(self, *args: str, **kwargs: str) -> r[str]:
+    def parse_semver(self, *args: str, **kwargs: str) -> p.Result[str]:
         return self._parse_result
 
-    def bump_version(self, *args: str, **kwargs: str) -> r[str]:
+    def bump_version(self, *args: str, **kwargs: str) -> p.Result[str]:
         return self._bump_result
 
     def replace_project_version(self, *args: str, **kwargs: str) -> None:
@@ -120,15 +125,15 @@ class FakeVersioning:
 class FakeSubprocess:
     """Fake command runner for CLI runtime execution."""
 
-    _run_checked_result: r[bool] = r[bool].ok(True)
-    _run_raw_result: r[m.Cli.CommandOutput] | None = None
+    _run_checked_result: p.Result[bool] = r[bool].ok(True)
+    _run_raw_result: p.Result[m.Cli.CommandOutput] | None = None
     _run_checked_called: bool = False
 
-    def run_checked(self, *args: str, **kwargs: str) -> r[bool]:
+    def run_checked(self, *args: str, **kwargs: str) -> p.Result[bool]:
         self._run_checked_called = True
         return self._run_checked_result
 
-    def run_raw(self, *args: str, **kwargs: str) -> r[m.Cli.CommandOutput]:
+    def run_raw(self, *args: str, **kwargs: str) -> p.Result[m.Cli.CommandOutput]:
         if self._run_raw_result is not None:
             return self._run_raw_result
         output = m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
@@ -140,7 +145,7 @@ class FakeReporting:
 
     _report_dir: Path | None = None
 
-    def get_report_dir(self, *args: str, **kwargs: str) -> Path:
+    def resolve_report_dir(self, *args: str, **kwargs: str) -> Path:
         if self._report_dir is not None:
             return self._report_dir
         msg = "report_dir not set on FakeReporting"
@@ -150,19 +155,19 @@ class FakeReporting:
 class FakeSelection:
     """Fake for FlextInfraUtilitiesSelection."""
 
-    _resolve_result: r[Sequence[m.Infra.ProjectInfo]] = r[
-        Sequence[m.Infra.ProjectInfo]
+    _resolve_result: p.Result[Sequence[m.Infra.ProjectInfo]] = r[
+        t.SequenceOf[m.Infra.ProjectInfo]
     ].ok([])
 
     def resolve_projects(
         self,
         workspace_root: Path,
         names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         return self._resolve_result
 
 
-__all__ = [
+__all__: list[str] = [
     "FakeReporting",
     "FakeSelection",
     "FakeSubprocess",

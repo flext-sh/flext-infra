@@ -1,141 +1,229 @@
-"""Usage census orchestrator logic.
-
-Delegates core file crawling to `u.Infra` and applies rope-oriented discovery.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Workspace-wide Rope-only census orchestration."""
 
 from __future__ import annotations
 
 import time
-from collections.abc import MutableSequence
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import (
-    FlextInfraCensusImportDiscoveryVisitor,
-    FlextInfraCensusUsageCollector,
-    c,
-    m,
-    r,
-    u,
+from flext_cli import cli
+from flext_core import r
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.refactor._census_apply import (
+    FlextInfraRefactorCensusApplyMixin,
 )
+from flext_infra.refactor._census_collect import (
+    FlextInfraRefactorCensusCollectMixin,
+)
+from flext_infra.refactor._census_collect_helpers import (
+    FlextInfraRefactorCensusCollectHelpersMixin,
+)
+from flext_infra.refactor._census_filters import (
+    FlextInfraRefactorCensusFiltersMixin,
+)
+from flext_infra.refactor._census_inventory import (
+    FlextInfraRefactorCensusInventoryMixin,
+)
+from flext_infra.refactor._census_objects import (
+    FlextInfraRefactorCensusObjectsMixin,
+)
+from flext_infra.refactor._census_project import (
+    FlextInfraRefactorCensusProjectMixin,
+)
+from flext_infra.refactor._census_render import (
+    FlextInfraRefactorCensusRenderMixin,
+)
+from flext_infra.refactor._census_rules_alias import (
+    FlextInfraRefactorCensusRulesAliasMixin,
+)
+from flext_infra.refactor._census_rules_dispatch import (
+    FlextInfraRefactorCensusRulesDispatchMixin,
+)
+from flext_infra.refactor._census_rules_struct import (
+    FlextInfraRefactorCensusRulesStructMixin,
+)
+from flext_infra.refactor._census_symbols import (
+    FlextInfraRefactorCensusSymbolsMixin,
+)
+from flext_infra.refactor._census_validate import (
+    FlextInfraRefactorCensusValidateMixin,
+)
+from flext_infra.typings import t
+from flext_infra.utilities import u
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
-class FlextInfraRefactorCensus:
-    """Census execution engine resolving family usage patterns."""
+class FlextInfraRefactorCensus(
+    FlextInfraProjectSelectionServiceBase[m.Infra.Census.WorkspaceReport],
+    FlextInfraRefactorCensusApplyMixin,
+    FlextInfraRefactorCensusCollectMixin,
+    FlextInfraRefactorCensusCollectHelpersMixin,
+    FlextInfraRefactorCensusFiltersMixin,
+    FlextInfraRefactorCensusInventoryMixin,
+    FlextInfraRefactorCensusObjectsMixin,
+    FlextInfraRefactorCensusProjectMixin,
+    FlextInfraRefactorCensusRenderMixin,
+    FlextInfraRefactorCensusRulesAliasMixin,
+    FlextInfraRefactorCensusRulesDispatchMixin,
+    FlextInfraRefactorCensusRulesStructMixin,
+    FlextInfraRefactorCensusSymbolsMixin,
+    FlextInfraRefactorCensusValidateMixin,
+):
+    """Generalized Rope-only census service for Python objects across the workspace."""
 
-    @staticmethod
-    def render_text(report: m.Infra.UtilitiesCensusReport) -> str:
-        """Render the census report cleanly."""
-        return u.Infra.render_census_report(report)
+    json_output: Annotated[
+        str | None,
+        m.Field(description="Path to write JSON report"),
+    ] = None
+    impact_map_output: Annotated[
+        str | None,
+        m.Field(description="Path to write dry-run impact map JSON"),
+    ] = None
+    kinds: Annotated[
+        t.StrSequence | None,
+        m.Field(description="Optional symbol-kind filters; repeat --kinds NAME"),
+    ] = None
+    rules: Annotated[
+        t.StrSequence | None,
+        m.Field(description="Optional violation-rule filters; repeat --rules NAME"),
+    ] = None
+    families: Annotated[
+        t.StrSequence | None,
+        m.Field(
+            description="Optional namespace-family filters; repeat --families NAME"
+        ),
+    ] = None
+    include_local_scopes: Annotated[
+        bool,
+        m.Field(description="Include locals, parameters, and nested scopes"),
+    ] = True
 
-    def run(
+    @property
+    def json_output_path(self) -> Path | None:
+        """Return the resolved JSON export path when provided."""
+        path: Path | None = u.Infra.normalize_optional_path(self.json_output)
+        return path
+
+    @property
+    def impact_map_output_path(self) -> Path | None:
+        """Return the resolved impact-map export path when provided."""
+        path: Path | None = u.Infra.normalize_optional_path(
+            self.impact_map_output,
+        )
+        return path
+
+    @property
+    def kind_names(self) -> t.StrSequence | None:
+        """Return normalized symbol-kind filters."""
+        return u.Infra.normalize_sequence_values(self.kinds)
+
+    @property
+    def rule_names(self) -> t.StrSequence | None:
+        """Return normalized violation-rule filters."""
+        return u.Infra.normalize_sequence_values(self.rules)
+
+    @property
+    def family_names(self) -> t.StrSequence | None:
+        """Return normalized family filters."""
+        return u.Infra.normalize_sequence_values(self.families)
+
+    @property
+    @override
+    def dry_run_gate_names(self) -> t.StrSequence:
+        """Return the per-candidate gate set (``lint`` + ``pyrefly``).
+
+        Mypy and pyright perform transitive module analysis that flags
+        ``__init__.py`` lazy-import references to just-removed symbols
+        *before* ``FlextInfraCodegenLazyInit`` regenerates them at the
+        end of ``_apply_supported_fixes``. That would roll back every
+        safe candidate. The per-candidate gate therefore uses the two
+        fast tools that validate the actual file being modified
+        (``ruff`` E/F + ``pyrefly``); the session-level regen run + a
+        final ``ruff format/fix`` on every touched file guarantees
+        consistency afterwards.
+        """
+        return (c.Infra.LINT, c.Infra.PYREFLY)
+
+    def _rope_root_for_selection(self) -> Path | None:
+        """Return a project-scoped Rope root when exactly one project is selected.
+
+        Workspace-wide scans (zero or many projects) keep the canonical workspace
+        root so cross-project rules such as duplicate detection remain accurate.
+        """
+        names = self.project_names
+        if names is None or len(names) != 1:
+            return None
+        project_path = self.root / names[0]
+        if project_path.is_dir():
+            return project_path
+        return None
+
+    def _execution_reports(
         self,
-        workspace_root: Path,
-        *,
-        target: m.Infra.MROFamilyTarget | None = None,
-    ) -> r[m.Infra.UtilitiesCensusReport]:
-        """Execute the workspace census."""
-        target = target or u.Infra.build_mro_target(
-            c.Infra.Census.DEFAULT_FAMILY,
-        )
-        t0 = time.monotonic()
-        u.Infra.header(f"Usage Census — family={target.family} ({target.class_suffix})")
+    ) -> tuple[
+        m.Infra.Census.WorkspaceReport,
+        m.Infra.Census.WorkspaceReport | None,
+    ]:
+        """Collect the final report and the pre-apply impact-map report."""
+        started = time.monotonic()
+        applied = frozenset[str]()
+        impact_map_report: m.Infra.Census.WorkspaceReport | None = None
+        rope_root = self._rope_root_for_selection()
+        with FlextInfraRopeWorkspace.open_workspace(
+            self.root,
+            rope_workspace_root=rope_root,
+        ) as rope:
 
-        pkg = (
-            workspace_root
-            / target.core_project
-            / c.Infra.Paths.DEFAULT_SRC_DIR
-            / target.package_dir
-        )
-        facade = (
-            workspace_root
-            / target.core_project
-            / c.Infra.Paths.DEFAULT_SRC_DIR
-            / target.facade_module
-        )
+            def collect(applied: frozenset[str]) -> m.Infra.Census.WorkspaceReport:
+                return self._collect_report(
+                    rope,
+                    project_names=self.project_names,
+                    kind_names=self.kind_names,
+                    family_names=self.family_names,
+                    rule_names=self.rule_names,
+                    include_local_scopes=self.include_local_scopes,
+                    applied=applied,
+                )
 
-        # 1-3. Metadata & Discovery
-        u.Infra.progress(1, 5, "Metadata gathering", "metadata")
-        parsed = (
-            u.Infra.extract_public_methods_from_dir(pkg)
-            if pkg.is_dir()
-            else u.Infra.extract_public_methods_from_file(pkg)
+            report = collect(applied)
+            impact_map_report = report
+            if self.apply_changes and not self.effective_dry_run:
+                applied = self._apply_supported_fixes(rope, report)
+                if applied:
+                    rope.reload()
+                    report = collect(applied)
+        finalized_report = report.model_copy(
+            update={"scan_duration_seconds": time.monotonic() - started}
         )
-        methods = {
-            cls: [
-                m.Infra.CensusMethodInfo(name=n, method_type=t, source_file=s)
-                for n, t, s in lst
-            ]
-            for cls, lst in parsed.items()
-        }
-        index = {cls: {mi.name for mi in ms} for cls, ms in methods.items()}
+        return finalized_report, impact_map_report
 
-        flat = u.Infra.build_facade_alias_map(facade, target.facade_class_prefix)
-        inner = u.Infra.build_facade_inner_class_map(facade, target.facade_class_prefix)
+    def build_report(self) -> m.Infra.Census.WorkspaceReport:
+        """Build the canonical workspace census report without CLI side effects."""
+        report, _ = self._execution_reports()
+        return report
 
-        # 4. Scanning & Visitors
-        u.Infra.progress(4, 5, "scan-files", "rope+visitors")
-        files_result = u.Infra.iter_workspace_python_modules(
-            workspace_root,
-            exclude_packages=frozenset({target.core_project}),
-        )
-        if files_result.is_failure:
-            return r[m.Infra.UtilitiesCensusReport].fail(
-                f"Failed to discover files: {files_result.error}",
+    @override
+    def execute(self) -> p.Result[m.Infra.Census.WorkspaceReport]:
+        """Execute the census with one shared Rope session."""
+        report, impact_map_report = self._execution_reports()
+        cli.display_text(self.render_text(report))
+        if self.json_output_path is not None:
+            u.Infra.export_pydantic_json(report, self.json_output_path)
+            u.Cli.info(f"JSON report exported to: {self.json_output_path}")
+        if self.impact_map_output_path is not None:
+            impact_result = u.Infra.write_impact_map(
+                self._impact_map_results(impact_map_report or report),
+                self.impact_map_output_path,
             )
-        modules = files_result.value
-        files = [file_path for _, file_path in modules]
-        roots = [project_root for project_root, _ in modules]
-
-        recs: MutableSequence[m.Infra.CensusUsageRecord] = []
-        errs = usage = 0
-        for i, fp in enumerate(files, 1):
-            if i % 500 == 0:
-                u.Infra.info(f"  [{i}/{len(files)}] scanned...")
-
-            project = u.Infra.identify_project_by_roots(fp, roots)
-            try:
-                source = fp.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            except (OSError, UnicodeDecodeError):
-                errs += 1
-                continue
-            imp = FlextInfraCensusImportDiscoveryVisitor(
-                family_alias=target.family,
-                facade_class_prefix=target.facade_class_prefix,
-            )
-            imp.scan_source(source)
-            col = FlextInfraCensusUsageCollector(
-                method_index=index,
-                flat_aliases=flat,
-                inner_class_map=inner,
-                alias_locals=imp.alias_locals,
-                direct_imports=imp.direct_imports,
-                file_path=fp,
-                project_name=project,
-            )
-            col.scan_source(source)
-            if col.records:
-                usage += 1
-                recs.extend(col.records)
-
-        u.Infra.info(f"Files with usage: {usage}, parse errors: {errs}")
-
-        # 5. Rollup and format
-        u.Infra.progress(5, 5, "aggregate", "report")
-        rep = u.Infra.aggregate_usage_metrics(methods, recs, len(files), errs)
-        u.Infra.summary(
-            m.Infra.SummaryStats(
-                verb="census",
-                total=rep.total_methods,
-                success=rep.total_methods - rep.total_unused,
-                failed=rep.total_unused,
-                skipped=errs,
-                elapsed=time.monotonic() - t0,
-            )
-        )
-        return r[m.Infra.UtilitiesCensusReport].ok(rep)
+            if impact_result.failure:
+                return r[m.Infra.Census.WorkspaceReport].fail(
+                    impact_result.error or "impact map write failed"
+                )
+            u.Cli.info(f"Impact map exported to: {self.impact_map_output_path}")
+        return r[m.Infra.Census.WorkspaceReport].ok(report)
 
 
-__all__ = ["FlextInfraRefactorCensus"]
+__all__: list[str] = ["FlextInfraRefactorCensus"]

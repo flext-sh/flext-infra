@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraCodegenLazyInit
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 def _create_init_file(directory: Path, content: str) -> Path:
@@ -27,12 +27,12 @@ def _create_init_file(directory: Path, content: str) -> Path:
 _VALID_INIT = (
     '"""Test package."""\n'
     "from test_pkg.module import TestClass\n"
-    '__all__ = ["TestClass"]\n'
+    '__all__: list[str] = ["TestClass"]\n'
 )
 _VALID_TESTS_INIT = (
     '"""Test helpers."""\n'
     "from test_helpers.fixtures import SomeFixture\n"
-    '__all__ = ["SomeFixture"]\n'
+    '__all__: list[str] = ["SomeFixture"]\n'
 )
 
 
@@ -74,7 +74,7 @@ class TestAllDirectoriesScanned:
             tmp_path / "tests" / "unit" / "helpers",
             '"""Nested test helpers."""\n'
             "from test_helpers.deep import DeepFixture\n"
-            '__all__ = ["DeepFixture"]\n',
+            '__all__: list[str] = ["DeepFixture"]\n',
         )
         generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         generator.generate_inits(check_only=False)
@@ -170,16 +170,14 @@ class TestEdgeCases:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
         generator = FlextInfraCodegenLazyInit(workspace=tmp_path)
         result = generator.execute()
-        tm.that(result.is_success, eq=True)
+        tm.that(result.success, eq=True)
         tm.that(type(result.value).__name__, eq="bool")
 
     def test_src_content_consistent_across_runs(
         self,
         tmp_path: Path,
     ) -> None:
-        src_content = (
-            '"""Package."""\nfrom pkg.models import MyModel\n__all__ = ["MyModel"]\n'
-        )
+        src_content = '"""Package."""\nfrom pkg.models import MyModel\n__all__: list[str] = ["MyModel"]\n'
         src_dir_a = tmp_path / "a" / "src" / "pkg"
         _create_init_file(src_dir_a, src_content)
         gen_a = FlextInfraCodegenLazyInit(workspace=tmp_path / "a")

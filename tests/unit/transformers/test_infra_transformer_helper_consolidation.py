@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraHelperConsolidationTransformer, u
+from flext_infra.transformers.helper_consolidation import (
+    FlextInfraHelperConsolidationTransformer,
+)
+from tests.typings import t
+from tests.utilities import u
 
 
 def _transform_source(
     tmp_path: Path,
     source: str,
-    mappings: dict[str, str],
+    mappings: t.MappingKV[str, str],
 ) -> str:
     file_path = tmp_path / "helper_consolidation.py"
     file_path.write_text(source, encoding="utf-8")
@@ -21,12 +25,13 @@ def _transform_source(
         if resource is None:
             raise FileNotFoundError(file_path)
         transformed, _ = transformer.transform(rope_project, resource)
-        return transformed
+        transformed_source: str = transformed
+        return transformed_source
     finally:
         rope_project.close()
 
 
-class TestHelperConsolidationTransformer:
+class TestsFlextInfraTransformersInfraTransformerHelperConsolidation:
     """Test suite for helper consolidation transformer."""
 
     def test_helper_becomes_staticmethod(self, tmp_path: Path) -> None:

@@ -2,49 +2,44 @@
 
 from __future__ import annotations
 
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 
-from flext_cli import FlextCliUtilitiesToml as _CliToml
-from flext_infra import (
-    FlextInfraUtilitiesDocsApi,
-    FlextInfraUtilitiesDocsScope,
-    c,
-    m,
-    t,
-)
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesDocsContract(_CliToml):
+class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
-
-    @staticmethod
-    def docs_contract(
-        project_root: Path,
-        package_name: str,
-    ) -> t.Infra.ContainerDict:
-        """Return the public docs contract for a project."""
-        return FlextInfraUtilitiesDocsApi.public_contract(project_root, package_name)
 
     @staticmethod
     def docs_workspace_contract(
         workspace_root: Path,
     ) -> t.Infra.ContainerDict:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
-        payload = FlextInfraUtilitiesDocsScope.pyproject_payload(workspace_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.workspace_docs_meta(workspace_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
+        docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
             workspace_root,
             "exclude_docs",
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta = (
-            FlextInfraUtilitiesDocsContract.toml_as_mapping(project_meta_value) or {}
+        project_meta: t.Infra.ContainerDict = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_meta_value)
+            if isinstance(project_meta_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
         project_urls_value = project_meta.get("urls")
-        project_urls = (
-            FlextInfraUtilitiesDocsContract.toml_as_mapping(project_urls_value) or {}
+        project_urls: t.Infra.ContainerDict = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_urls_value)
+            if isinstance(project_urls_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
-        return {
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),
             "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
@@ -60,8 +55,8 @@ class FlextInfraUtilitiesDocsContract(_CliToml):
                 or project_urls.get("Homepage")
                 or c.Infra.GITHUB_REPO_URL
             ).strip(),
-            "exclude_docs": exclude_docs,
-        }
+            "exclude_docs": list(exclude_docs),
+        })
 
     @staticmethod
     def docs_write_if_needed(
@@ -75,14 +70,14 @@ class FlextInfraUtilitiesDocsContract(_CliToml):
         if path.exists() and not overwrite:
             return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
         current = (
-            path.read_text(encoding=c.Infra.Encoding.DEFAULT) if path.exists() else ""
+            path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if path.exists() else ""
         )
         if current == content:
             return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
         if apply:
             path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
+            _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.GeneratedFile(path=path.as_posix(), written=apply)
 
 
-__all__ = ["FlextInfraUtilitiesDocsContract"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsContract"]

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import t, u
+import tomlkit
+
+from tests.typings import t
+from tests.utilities import u
 
 
-class TestIterWorkspacePythonModules:
+class TestsFlextInfraUtilitiesiteration:
     @staticmethod
     def _create_project(workspace: Path, name: str) -> Path:
         project_root = workspace / name
@@ -30,7 +33,7 @@ class TestIterWorkspacePythonModules:
 
         result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
-        assert result.is_success
+        assert result.success
         expected = {
             (alpha_root, alpha_root / "src" / "alpha" / "core.py"),
             (alpha_root, alpha_root / "tests" / "test_core.py"),
@@ -53,7 +56,7 @@ class TestIterWorkspacePythonModules:
 
         result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert (project_root, project_root / ".venv" / "lib" / "ignored.py") not in set(
             result.value,
         )
@@ -67,7 +70,7 @@ class TestIterWorkspacePythonModules:
             exclude_packages=frozenset({"beta"}),
         )
 
-        assert result.is_success
+        assert result.success
         assert result.value
         assert all(project_root == alpha_root for project_root, _ in result.value)
 
@@ -79,7 +82,7 @@ class TestIterWorkspacePythonModules:
             include_tests=False,
         )
 
-        assert result.is_success
+        assert result.success
         expected = {(project_root, project_root / "src" / "delta" / "core.py")}
         assert set(result.value) == expected
 
@@ -88,7 +91,7 @@ class TestIterWorkspacePythonModules:
 
         result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
 
-        assert result.is_success
+        assert result.success
         assert result.value == []
 
     def test_non_existent_workspace_root_raises(self) -> None:
@@ -96,11 +99,140 @@ class TestIterWorkspacePythonModules:
 
         try:
             result = u.Infra.iter_workspace_python_modules(workspace_root=missing_root)
-            assert result.is_failure
+            assert result.failure
             assert result.error is not None
             assert "failed" in result.error
         except FileNotFoundError:
             assert True
+
+    @staticmethod
+    def _create_attached_subrepo(workspace: Path, name: str) -> Path:
+        sub_root = workspace / name
+        package_name = name.replace("-", "_")
+        (sub_root / "src" / package_name).mkdir(parents=True)
+        (sub_root / "tests").mkdir()
+        (sub_root / "Makefile").touch()
+        (sub_root / "pyproject.toml").write_text(
+            (
+                '[project]\nname = "' + name + '"\nversion = "0.1.0"\n'
+                "[tool.flext.workspace]\nattached = true\n"
+            ),
+            encoding="utf-8",
+        )
+        return sub_root
+
+    def test_attached_helper_returns_only_opted_in_dirs(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "ws"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        opted = self._create_attached_subrepo(tmp_path, "alpha-attached")
+        (tmp_path / "noisy").mkdir()
+        (tmp_path / ".hidden").mkdir()
+        unopted = tmp_path / "beta-not-attached"
+        unopted.mkdir()
+        (unopted / "pyproject.toml").write_text(
+            '[project]\nname = "beta"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+
+        names = u.Infra._attached_top_level_dir_names(tmp_path)
+
+        assert names == frozenset({opted.name})
+
+    def test_discover_project_candidates_includes_attached_when_requested(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "ws"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        self._create_project(tmp_path, "host_pkg")
+        external = self._create_attached_subrepo(tmp_path, "external-repo")
+
+        candidates = u.Infra.discover_project_candidates(
+            workspace_root=tmp_path,
+            include_attached=True,
+        )
+
+        names = {path.name for path in candidates}
+        assert external.name in names
+
+    def test_discover_project_candidates_includes_external_sibling_patterns(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "flext"
+        workspace.mkdir()
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "flext"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        external = tmp_path / ".ai-hub"
+        (external / "src" / "aihub").mkdir(parents=True)
+        (external / "src" / "aihub" / "__init__.py").write_text(
+            "",
+            encoding="utf-8",
+        )
+        (external / "pyproject.toml").write_text(
+            (
+                '[project]\nname = "ai-hub"\nversion = "0.0.0"\n'
+                'dependencies = ["flext-core"]\n'
+            ),
+            encoding="utf-8",
+        )
+
+        candidates = u.Infra.discover_project_candidates(
+            workspace_root=workspace,
+            include_attached=True,
+        )
+
+        assert external.resolve() in candidates
+
+    def test_workspace_dep_namespaces_from_payload_uses_workspace_sources(self) -> None:
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            {
+                "project": {
+                    "dependencies": [
+                        "flext-core>=0.1.0",
+                        "requests>=2.0",
+                        "flext-cli",
+                    ],
+                },
+                "tool": {
+                    "uv": {
+                        "sources": {
+                            "flext-core": {"workspace": True},
+                            "flext-cli": {"workspace": True},
+                            "requests": {"path": "../vendor/requests"},
+                        },
+                    },
+                },
+            },
+        )
+
+        namespaces = u.Infra.workspace_dep_namespaces_from_payload(payload)
+
+        assert namespaces == ("flext_cli", "flext_core")
+
+    def test_workspace_dep_namespaces_reads_toml_document(self) -> None:
+        doc = tomlkit.parse(
+            """
+[project]
+dependencies = ["flext-core>=0.1.0"]
+
+[tool.uv.sources.flext-core]
+workspace = true
+""",
+        )
+
+        namespaces = u.Infra.workspace_dep_namespaces(doc)
+
+        assert namespaces == ("flext_core",)
 
 
 __all__: t.StrSequence = []

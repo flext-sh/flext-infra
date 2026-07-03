@@ -1,7 +1,8 @@
-"""Tests for census models, excluded projects, and violation pattern.
+"""Tests for census models and violation pattern.
 
-Validates CensusViolation/CensusReport models, project exclusion set,
-and the compiled violation regex pattern.
+Validates CensusViolation/CensusReport models and the compiled violation
+regex pattern. Projects without pyproject.toml are filtered at the discovery
+boundary, not via a hand-curated list.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,15 +11,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_tests import tm
-from tests import c, m, t
 
-
-class TestExcludedProjects:
-    def test_flexcore_in_excluded_set(self) -> None:
-        tm.that(c.Infra.EXCLUDED_PROJECTS, has="flexcore")
-
-    def test_excluded_set_is_frozenset(self) -> None:
-        tm.that(type(c.Infra.EXCLUDED_PROJECTS).__name__, eq="frozenset")
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
 
 
 class TestViolationPattern:
@@ -31,13 +27,9 @@ class TestViolationPattern:
         assert set(match.groupdict().keys()) == {"rule", "module", "line", "message"}
 
 
-_CV = m.Infra.CensusViolation
-_CR = m.Infra.CensusReport
-
-
 class TestCensusViolationModel:
     def test_model_fields(self) -> None:
-        v = _CV(
+        v = m.Infra.CensusViolation(
             module="src/file.py",
             rule="NS-001",
             line=10,
@@ -53,19 +45,42 @@ class TestCensusViolationModel:
 
 class TestCensusReportModel:
     def test_empty_report(self) -> None:
-        report = _CR(project="test-project", violations=[], total=0, fixable=0)
+        report = m.Infra.CensusReport(
+            project="test-project",
+            violations=[],
+            total=0,
+            fixable=0,
+        )
         tm.that(report.project, eq="test-project")
         tm.that(report.total, eq=0)
         tm.that(report.fixable, eq=0)
-        tm.that(report.violations, eq=[])
+        tm.that(report.violations, empty=True)
 
     def test_report_with_mixed_violations(self) -> None:
         violations = [
-            _CV(module="src/a.py", rule="NS-000", line=1, message="m1", fixable=False),
-            _CV(module="src/b.py", rule="NS-001", line=2, message="m2", fixable=True),
-            _CV(module="src/c.py", rule="NS-002", line=3, message="m3", fixable=True),
+            m.Infra.CensusViolation(
+                module="src/a.py",
+                rule="NS-000",
+                line=1,
+                message="m1",
+                fixable=False,
+            ),
+            m.Infra.CensusViolation(
+                module="src/b.py",
+                rule="NS-001",
+                line=2,
+                message="m2",
+                fixable=True,
+            ),
+            m.Infra.CensusViolation(
+                module="src/c.py",
+                rule="NS-002",
+                line=3,
+                message="m3",
+                fixable=True,
+            ),
         ]
-        report = _CR(
+        report = m.Infra.CensusReport(
             project="test-project",
             violations=violations,
             total=len(violations),

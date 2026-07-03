@@ -7,109 +7,96 @@ validating post-transform quality via gates, and restoring on failure.
 from __future__ import annotations
 
 import shutil
-from collections.abc import Callable, Sequence
+from collections.abc import (
+    Callable,
+)
 from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesSafety:
     """Static safety helpers for copy-on-write file protection."""
 
     @staticmethod
-    def _git_ok(repo: Path, *args: str) -> bool:
-        result = u.Cli.run_raw([c.Infra.GIT, *args], cwd=repo)
-        return result.is_success and result.value.exit_code == 0
-
-    @staticmethod
-    def _is_git_repo(repo: Path) -> bool:
-        return FlextInfraUtilitiesSafety._git_ok(
-            repo,
-            "rev-parse",
-            "--is-inside-work-tree",
-        )
-
-    @staticmethod
-    def create_checkpoint(repo: Path, *, label: str = "checkpoint") -> r[str]:
-        """Create a git-stash checkpoint for dirty repositories.
+    def create_checkpoint(repo: Path, *, label: str = "checkpoint") -> p.Result[str]:
+        """Validate that a repository is clean before file-scoped protection.
 
         Returns an empty string for non-repositories or clean trees.
         """
-        if not FlextInfraUtilitiesSafety._is_git_repo(repo):
-            return r[str].ok("")
-        status_result = u.Cli.run_raw(
-            [c.Infra.GIT, "status", "--porcelain"],
+        result: p.Result[str]
+        checkpoint_label = label.strip() or "checkpoint"
+        repo_check = u.Cli.run_raw(
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
             cwd=repo,
         )
-        if status_result.is_failure or status_result.value.exit_code != 0:
-            return r[str].fail(status_result.error or "git status failed")
-        if not status_result.value.stdout.strip():
-            return r[str].ok("")
-        stash_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "push", "--include-untracked", "-m", label],
-            cwd=repo,
-        )
-        if stash_result.is_failure or stash_result.value.exit_code != 0:
-            return r[str].fail(stash_result.error or "git stash push failed")
-        list_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "list", "-1", "--format=%gd"],
-            cwd=repo,
-        )
-        if list_result.is_failure or list_result.value.exit_code != 0:
-            return r[str].fail(list_result.error or "git stash list failed")
-        stash_ref = list_result.value.stdout.strip()
-        if not stash_ref:
-            return r[str].fail("git stash list returned no checkpoint ref")
-        return r[str].ok(f"{label}: {stash_ref}")
+        if repo_check.failure or repo_check.value.exit_code != 0:
+            result = r[str].ok("")
+        else:
+            status_result = u.Cli.run_raw(
+                [c.Infra.GIT, "status", "--porcelain"],
+                cwd=repo,
+            )
+            if status_result.failure or status_result.value.exit_code != 0:
+                result = r[str].fail(status_result.error or "git status failed")
+            elif not status_result.value.stdout.strip():
+                result = r[str].ok("")
+            else:
+                result = r[str].fail(
+                    "dirty git worktree cannot be checkpointed automatically "
+                    f"({checkpoint_label}); use file-scoped backup APIs"
+                )
+        return result
 
     @staticmethod
-    def rollback_to_checkpoint(repo: Path, checkpoint: str = "") -> r[bool]:
-        """Restore a previously-created git-stash checkpoint.
+    def rollback_to_checkpoint(repo: Path, checkpoint: str = "") -> p.Result[bool]:
+        """Reject repository-wide rollback; callers must use file-scoped backups.
 
         Returns success for non-repositories or empty checkpoint strings.
         """
-        if (not checkpoint) or (not FlextInfraUtilitiesSafety._is_git_repo(repo)):
+        if not checkpoint:
             return r[bool].ok(True)
-        checkpoint_ref = checkpoint.split(":", 1)[-1].strip()
-        apply_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "apply", checkpoint_ref],
+        repo_check = u.Cli.run_raw(
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
             cwd=repo,
         )
-        if apply_result.is_failure or apply_result.value.exit_code != 0:
-            return r[bool].fail(apply_result.error or "git stash apply failed")
-        drop_result = u.Cli.run_raw(
-            [c.Infra.GIT, "stash", "drop", checkpoint_ref],
-            cwd=repo,
+        if repo_check.failure or repo_check.value.exit_code != 0:
+            return r[bool].ok(True)
+        return r[bool].fail(
+            "repository-wide checkpoint rollback is unsupported; "
+            "use file-scoped backup APIs"
         )
-        if drop_result.is_failure or drop_result.value.exit_code != 0:
-            return r[bool].fail(drop_result.error or "git stash drop failed")
-        return r[bool].ok(True)
 
     @staticmethod
-    def backup_files(files: Sequence[Path]) -> Sequence[Path]:
+    def backup_files(files: t.SequenceOf[Path]) -> t.SequenceOf[Path]:
         """Copy each file to .bak. Fail fast on any error."""
         bak_paths: list[Path] = []
         for file_path in files:
             if not file_path.exists():
                 continue
             bak = file_path.with_suffix(
-                file_path.suffix + c.Infra.SafeExecution.BAK_SUFFIX,
+                file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX,
             )
             shutil.copy2(file_path, bak)
             bak_paths.append(bak)
         return bak_paths
 
     @staticmethod
-    def restore_files(bak_paths: Sequence[Path]) -> None:
-        """Move .bak files back to originals. Fail fast."""
+    def restore_files(bak_paths: t.SequenceOf[Path]) -> None:
+        """Move .bak files back to originals. Fail fast whenever possible."""
         for bak in bak_paths:
-            original = Path(str(bak).removesuffix(c.Infra.SafeExecution.BAK_SUFFIX))
+            if not bak.exists():
+                continue
+            original = Path(str(bak).removesuffix(c.Infra.SAFE_EXECUTION_BAK_SUFFIX))
             shutil.move(str(bak), str(original))
 
     @staticmethod
-    def cleanup_backups(bak_paths: Sequence[Path]) -> None:
+    def cleanup_backups(bak_paths: t.SequenceOf[Path]) -> None:
         """Remove .bak files after successful validation."""
         for bak in bak_paths:
             if bak.exists():
@@ -117,9 +104,9 @@ class FlextInfraUtilitiesSafety:
 
     @staticmethod
     def execute_safely(
-        files: Sequence[Path],
-        transform: Callable[[Sequence[Path]], r[Sequence[Path]]],
-        validate: Callable[[Sequence[Path]], r[bool]],
+        files: t.SequenceOf[Path],
+        transform: Callable[[t.SequenceOf[Path]], r[t.SequenceOf[Path]]],
+        validate: Callable[[t.SequenceOf[Path]], r[bool]],
         *,
         mode: c.Infra.ExecutionMode = c.Infra.ExecutionMode.APPLY_SAFE,
     ) -> m.Infra.SafeExecutionResult:
@@ -140,7 +127,7 @@ class FlextInfraUtilitiesSafety:
         bak_paths = FlextInfraUtilitiesSafety.backup_files(files)
 
         transform_result = transform(files)
-        if transform_result.is_failure:
+        if transform_result.failure:
             FlextInfraUtilitiesSafety.restore_files(bak_paths)
             return m.Infra.SafeExecutionResult(
                 mode=mode,
@@ -159,7 +146,7 @@ class FlextInfraUtilitiesSafety:
             )
 
         validate_result = validate(files)
-        if validate_result.is_failure:
+        if validate_result.failure:
             FlextInfraUtilitiesSafety.restore_files(bak_paths)
             return m.Infra.SafeExecutionResult(
                 mode=mode,
@@ -177,4 +164,4 @@ class FlextInfraUtilitiesSafety:
         )
 
 
-__all__ = ["FlextInfraUtilitiesSafety"]
+__all__: list[str] = ["FlextInfraUtilitiesSafety"]

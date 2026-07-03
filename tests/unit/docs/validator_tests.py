@@ -1,196 +1,94 @@
-"""Tests for FlextInfraDocValidator — core validate and report model.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public validation-workflow tests for docs services."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-from tests import m, t
-
-from flext_core import r
-from flext_infra import FlextInfraDocValidator, FlextInfraUtilitiesDocs
+from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.docs.validator import FlextInfraDocValidator
+from tests.models import m
+from tests.utilities import u
 
 
-class TestValidateReport:
-    """Tests for DocsPhaseReport model used by validator."""
+def test_validate_report_model_fields() -> None:
+    report = m.Infra.DocsPhaseReport(
+        phase="validate",
+        scope="root",
+        result="FAIL",
+        message="Missing generated docs",
+        missing_adr_skills=["rules-docs"],
+        todo_written=False,
+    )
 
-    def test_report_frozen(self) -> None:
-        """Test DocsPhaseReport is frozen (immutable)."""
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+    assert report.result == "FAIL"
+    assert report.missing_adr_skills == ["rules-docs"]
+    assert report.todo_written is False
 
-    def test_missing_adr_skills_field(self) -> None:
-        """Test DocsPhaseReport missing_adr_skills field."""
-        report = m.Infra.DocsPhaseReport(
-            phase="validate",
-            scope="test",
-            result="FAIL",
-            message="Missing skills",
-            missing_adr_skills=["skill1", "skill2"],
+
+def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
+
+    result = FlextInfraDocValidator().validate_workspace(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=False,
         )
-        tm.that(len(report.missing_adr_skills), eq=2)
-        tm.that(report.missing_adr_skills, has="skill1")
+    )
 
-    def test_todo_written_field(self) -> None:
-        """Test DocsPhaseReport todo_written field."""
-        report = m.Infra.DocsPhaseReport(
-            phase="validate",
-            scope="test",
-            result="PASS",
-            message="Validation passed",
-            todo_written=True,
+    assert result.success
+    assert any(report.result == "FAIL" for report in result.value)
+
+
+def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
+
+    generated = FlextInfraDocGenerator().generate(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=True,
         )
-        tm.that(report.todo_written, eq=True)
-
-    def test_result_field_values(self) -> None:
-        """Test DocsPhaseReport result field accepts valid values."""
-        for status in ["PASS", "FAIL", "WARN"]:
-            report = m.Infra.DocsPhaseReport(
-                phase="validate",
-                scope="test",
-                result=status,
-                message="Test",
-            )
-            tm.that(report.result, eq=status)
-
-    def test_message_field(self) -> None:
-        """Test DocsPhaseReport message field."""
-        report = m.Infra.DocsPhaseReport(
-            phase="validate",
-            scope="test",
-            result="PASS",
-            message="All validations passed successfully",
+    )
+    assert generated.success
+    result = FlextInfraDocValidator().validate_workspace(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=True,
         )
-        tm.that(report.message, eq="All validations passed successfully")
+    )
+
+    assert result.success
+    assert all(report.result == "OK" for report in result.value)
 
 
-class TestValidateCore:
-    """Tests for FlextInfraDocValidator.validate."""
+def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
 
-    @pytest.fixture
-    def validator(self) -> FlextInfraDocValidator:
-        """Create validator instance."""
-        return FlextInfraDocValidator()
-
-    def test_returns_flext_result(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test that validate returns r."""
-        result = validator.validate_workspace(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
-
-    def test_valid_scope_returns_success(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with valid scope returns success."""
-        result = validator.validate_workspace(tmp_path)
-        tm.ok(result)
-        tm.that(len(result.value), gte=0)
-
-    def test_report_structure(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test ValidateReport has required fields."""
-        result = validator.validate_workspace(tmp_path)
-        if result.is_success and result.value:
-            report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "result"), eq=True)
-            tm.that(hasattr(report, "message"), eq=True)
-
-    def test_with_project_filter(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with single project filter."""
-        result = validator.validate_workspace(tmp_path, projects=["test-project"])
-        tm.that(result.is_success or result.is_failure, eq=True)
-
-    def test_with_projects_filter(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with multiple projects filter."""
-        result = validator.validate_workspace(tmp_path, projects=["proj1", "proj2"])
-        tm.that(result.is_success or result.is_failure, eq=True)
-
-    def test_with_check_parameter(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with check parameter."""
-        result = validator.validate_workspace(tmp_path, check="adr-skills")
-        tm.that(result.is_success or result.is_failure, eq=True)
-
-    def test_apply_false_dry_run(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with apply=False (dry-run mode)."""
-        result = validator.validate_workspace(tmp_path, apply=False)
-        tm.that(result.is_success or result.is_failure, eq=True)
-
-    def test_apply_true(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with apply=True."""
-        result = validator.validate_workspace(tmp_path, apply=True)
-        tm.that(result.is_success or result.is_failure, eq=True)
-
-    def test_custom_output_dir(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate with custom output directory."""
-        result = validator.validate_workspace(
-            tmp_path, output_dir=str(tmp_path / "custom")
+    FlextInfraDocGenerator().generate(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=True,
         )
-        tm.that(result.is_success or result.is_failure, eq=True)
-
-    def test_multiple_scopes(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        """Test validate returns list for multiple scopes."""
-        result = validator.validate_workspace(
-            tmp_path, projects=["proj1", "proj2", "proj3"]
+    )
+    result = FlextInfraDocValidator().validate_workspace(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace,
+            projects=["flext-a"],
+            apply=True,
         )
-        if result.is_success:
-            tm.that(len(result.value), gte=0)
+    )
 
-    def test_scope_failure_returns_failure(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test validate returns failure when scope building fails."""
-
-        def mock_build_scopes(
-            *args: t.Scalar,
-            **kwargs: t.Scalar,
-        ) -> r[Sequence[m.Infra.DocScope]]:
-            return r[Sequence[m.Infra.DocScope]].fail("Scope error")
-
-        monkeypatch.setattr(FlextInfraUtilitiesDocs, "build_scopes", mock_build_scopes)
-        result = validator.validate_workspace(tmp_path)
-        tm.fail(result, has="Scope error")
+    assert result.success
+    assert (workspace / "flext-a/TODOS.md").exists()

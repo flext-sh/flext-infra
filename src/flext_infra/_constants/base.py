@@ -9,26 +9,39 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
-from flext_infra import FlextInfraConstantsMake, FlextInfraConstantsSourceCode
+from flext_infra._constants.make import FlextInfraConstantsMake
+from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra.typings import t
 
 
 class FlextInfraConstantsBase(
+    FlextInfraConstantsSharedInfra,
     FlextInfraConstantsMake,
     FlextInfraConstantsSourceCode,
 ):
     """Base constants for flext-infra project."""
 
-    KNOWN_VERBS: Final[frozenset[str]] = frozenset({
-        "build",
-        "check",
-        "dependencies",
-        "docs",
-        "preflight",
-        "release",
-        "tests",
-        "validate",
-        "workspace",
-    })
+    @unique
+    class DependencyGroup(StrEnum):
+        """Canonical pyproject dependency-group names."""
+
+        DEV = "dev"
+        DOCS = "docs"
+        SECURITY = "security"
+        TEST = "test"
+        TYPINGS = "typings"
+
+    @unique
+    class ScopeLevel(StrEnum):
+        """Scope-resolution granularity enum for refactor selectors."""
+
+        MODULE = "module"
+        NAMESPACE = "namespace"
+        PROJECT = "project"
+        PROJECTS = "projects"
+        FILES = "files"
+        WORKSPACE = "workspace"
 
     # TOML section/key names for pyproject.toml parsing
 
@@ -40,12 +53,16 @@ class FlextInfraConstantsBase(
     "Top-level [project] section key."
     DEPENDENCIES: Final[str] = "dependencies"
     "Dependencies key within project or poetry sections."
+    DEPENDENCY_GROUPS: Final[str] = "dependency-groups"
+    "PEP 735 dependency-groups table key."
     OPTIONAL_DEPENDENCIES: Final[str] = "optional-dependencies"
     "Optional dependencies key within [project]."
     GROUP: Final[str] = "group"
     "Poetry group key for dependency groups."
     NAME: Final[str] = "name"
     "Project/package name key."
+    PACKAGE_IMPORT_NAME: Final[str] = "flext_infra"
+    "Canonical import package name for flext-infra itself."
     VERSION: Final[str] = "version"
     "Version key within project or tool sections."
     PYREFLY: Final[str] = "pyrefly"
@@ -67,27 +84,23 @@ class FlextInfraConstantsBase(
     LINT_SECTION: Final[str] = "lint"
     "Ruff lint subsection key."
     SEARCH_PATH: Final[str] = "search-path"
-    "Pyrefly search-path config key."
+    "Pyrefly search-path settings key."
     PROJECT_EXCLUDES: Final[str] = "project-excludes"
-    "Pyrefly project-excludes config key."
-    SUB_CONFIG: Final[str] = "sub-config"
-    "Pyrefly sub-config key."
-    EXECUTION_ENVIRONMENTS: Final[str] = "executionEnvironments"
-    "Pyright execution environments config key."
+    "Pyrefly project-excludes settings key."
+    SUB_CONFIG: Final[str] = "sub-settings"
+    "Pyrefly sub-settings key."
     EXTRA_PATHS: Final[str] = "extraPaths"
-    "Pyright extra paths config key."
-    STUB_PATH: Final[str] = "stubPath"
-    "Pyright stub path config key."
+    "Pyright extra paths settings key."
     REPORT_PRIVATE_USAGE: Final[str] = "reportPrivateUsage"
-    "Pyright execution-environment private-usage config key."
+    "Pyright execution-environment private-usage settings key."
     VENV_PATH: Final[str] = "venvPath"
-    "Pyright virtualenv base path config key."
+    "Pyright virtualenv base path settings key."
     PYTHON_VERSION_HYPHEN: Final[str] = "python-version"
-    "Pyrefly/pyright python-version config key (hyphenated)."
+    "Pyrefly/pyright python-version settings key (hyphenated)."
     PYTHON_VERSION_UNDERSCORE: Final[str] = "python_version"
-    "Mypy python_version config key (underscored)."
+    "Mypy python_version settings key (underscored)."
     EXTEND: Final[str] = "extend"
-    "Ruff extend config key."
+    "Ruff extend settings key."
     KNOWN_FIRST_PARTY_HYPHEN: Final[str] = "known-first-party"
     "Ruff isort known-first-party key (hyphenated)."
     KNOWN_FIRST_PARTY_UNDERSCORE: Final[str] = "known_first_party"
@@ -95,23 +108,27 @@ class FlextInfraConstantsBase(
     IGNORE_ERRORS_IN_GENERATED: Final[str] = "ignore-errors-in-generated-code"
     "Pyrefly ignore-errors-in-generated-code key."
     MINVERSION: Final[str] = "minversion"
-    "Pytest minversion config key."
+    "Pytest minversion settings key."
     PYTHON_CLASSES: Final[str] = "python_classes"
-    "Pytest python_classes config key."
+    "Pytest python_classes settings key."
     PYTHON_FILES: Final[str] = "python_files"
-    "Pytest python_files config key."
+    "Pytest python_files settings key."
     ADDOPTS: Final[str] = "addopts"
-    "Pytest addopts config key."
+    "Pytest addopts settings key."
     MARKERS: Final[str] = "markers"
-    "Pytest markers config key."
+    "Pytest markers settings key."
     PLUGINS: Final[str] = "plugins"
-    "Mypy plugins config key."
+    "Mypy plugins settings key."
     DISABLE_ERROR_CODE: Final[str] = "disable_error_code"
-    "Mypy disable_error_code config key."
+    "Mypy disable_error_code settings key."
     IGNORE: Final[str] = "ignore"
-    "Pyrefly/sub-config ignore key."
+    "Pyrefly/sub-settings ignore key."
+    INCLUDE: Final[str] = "include"
+    "Generic include key."
     EXCLUDE: Final[str] = "exclude"
     "Generic exclude key."
+    PROJECT_INCLUDES: Final[str] = "project-includes"
+    "Pyrefly project-includes settings key."
     PATH: Final[str] = "path"
     "Path key within dependency entries."
     ERROR: Final[str] = "error"
@@ -120,20 +137,36 @@ class FlextInfraConstantsBase(
     "Deptry JSON code field key."
     MODULE: Final[str] = "module"
     "Deptry JSON module field key."
-    DEV: Final[str] = "dev"
+    DEV: Final[DependencyGroup] = DependencyGroup.DEV
     "Development dependency group name."
-    DOCS: Final[str] = "docs"
+    DOCS: Final[DependencyGroup] = DependencyGroup.DOCS
     "Documentation dependency group name."
-    SECURITY: Final[str] = "security"
+    SECURITY: Final[DependencyGroup] = DependencyGroup.SECURITY
     "Security dependency group name."
-    TEST: Final[str] = "test"
+    TEST: Final[DependencyGroup] = DependencyGroup.TEST
     "Test dependency group name."
+    TYPINGS: Final[DependencyGroup] = DependencyGroup.TYPINGS
+    "Typing stubs dependency group name."
     TYPING_LIBRARIES: Final[str] = "typing_libraries"
     "Project limits typing_libraries key."
     MODULE_TO_PACKAGE: Final[str] = "module_to_package"
     "Typing libraries module_to_package mapping key."
     PYTHON: Final[str] = "python"
-    "Python config subsection key (in limits)."
+    "Python settings subsection key (in limits)."
+
+    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
+        DEV,
+        DOCS,
+        SECURITY,
+        TEST,
+        TYPINGS,
+    )
+    LEGACY_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
+        DOCS,
+        SECURITY,
+        TEST,
+        TYPINGS,
+    )
 
     # ANSI color codes and terminal symbols (SSOT for output styling).
 
@@ -159,18 +192,12 @@ class FlextInfraConstantsBase(
     "Bandit security linter binary."
     MARKDOWNLINT: Final[str] = "markdownlint"
     "Markdown linter binary."
-    GOFMT: Final[str] = "gofmt"
-    "Go formatter binary."
     OUTPUT_JSON: Final[str] = "json"
     "Common CLI output format flag value."
     PR: Final[str] = "pr"
     "GitHub pull request subcommand."
-    SQUASH: Final[str] = "squash"
-    "GitHub squash merge method."
     SCAN: Final[str] = "scan"
     "ast-grep scan subcommand."
-    GOVET: Final[str] = "go"
-    "Go vet binary (invoked as 'go vet')."
     MAKE: Final[str] = "make"
     "Make build tool binary."
 
@@ -180,92 +207,123 @@ class FlextInfraConstantsBase(
     LINT: Final[str] = "lint"
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
-    GO: Final[str] = "go"
+    SILENT_FAILURE: Final[str] = "silent-failure"
     TYPE_ALIAS: Final[str] = "type"
-    DEFAULT_CSV: Final[str] = "lint,format,pyrefly,mypy,pyright,security,markdown,go"
+    DEFAULT_CSV: Final[str] = (
+        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
+    )
 
-    class TomlMerge:
-        """Merge strategies for TOML list synchronization."""
+    @unique
+    class TomlMergeMode(StrEnum):
+        """SSOT merge strategies for TOML list synchronization."""
 
-        REPLACE: Final[str] = "replace"
-        ADDITIVE: Final[str] = "additive"
-        MERGE: Final[str] = "merge"
+        REPLACE = "replace"
+        ADDITIVE = "additive"
+        MERGE = "merge"
 
-    class Status:
-        """Status strings for check results."""
+    @unique
+    class ResultStatus(StrEnum):
+        """SSOT status values for reports and gate summaries."""
 
-        PASSED: Final[str] = "PASS"
-        FAIL: Final[str] = "FAIL"
-        OK: Final[str] = "OK"
-        WARN: Final[str] = "WARN"
+        PASSED = "PASS"
+        FAIL = "FAIL"
+        OK = "OK"
+        WARN = "WARN"
 
-    class Defaults:
-        """Default fallback values."""
+    @unique
+    class MatchMode(StrEnum):
+        """SSOT scanner match mode values."""
 
-        UNKNOWN: Final[str] = "unknown"
-        UNNAMED: Final[str] = "unnamed"
+        PRESENT = "present"
+        ABSENT = "absent"
 
-    class MatchModes:
-        """Scanner match mode constants."""
+    @unique
+    class LazyInitAction(StrEnum):
+        """SSOT lazy-init action values."""
 
-        PRESENT: Final[str] = "present"
-        ABSENT: Final[str] = "absent"
+        WRITE = "write"
+        REMOVE = "remove"
+        SKIP = "skip"
 
-    class Modes:
-        """Operation mode constants."""
+    @unique
+    class PathSyncMode(StrEnum):
+        """SSOT dependency path-sync modes."""
 
-        BASELINE: Final[str] = "baseline"
-        STRICT: Final[str] = "strict"
+        WORKSPACE = "workspace"
+        STANDALONE = "standalone"
+        AUTO = "auto"
 
-    class Severity:
-        """Severity level constants for check/report results."""
+    @unique
+    class DependencyConstraintPolicy(StrEnum):
+        """SSOT dependency constraint rewrite policies."""
 
-        ERROR: Final[str] = "error"
-        WARNING: Final[str] = "warning"
-        NOTE: Final[str] = "note"
-        LOW: Final[str] = "low"
-        SKIP: Final[str] = "skip"
+        FLOOR = "floor"
+        COMPATIBLE = "compatible"
 
-    class ReportKeys:
-        """Common dictionary key names for reports and results."""
+    @unique
+    class TomlOperationKind(StrEnum):
+        """SSOT TOML phase operation kinds."""
 
-        STATUS: Final[str] = "status"
-        FILE: Final[str] = "file"
-        MESSAGE: Final[str] = "message"
-        SUMMARY: Final[str] = "summary"
-        TOTAL: Final[str] = "total"
-        RULES: Final[str] = "rules"
-        RELEASE: Final[str] = "release"
-        ACTION: Final[str] = "action"
-        SCOPE: Final[str] = "scope"
-        VIOLATIONS: Final[str] = "violations"
-        VIOLATIONS_COUNT: Final[str] = "violations_count"
-        RULE_ID: Final[str] = "rule_id"
-        OK: Final[str] = "ok"
-        ENABLED: Final[str] = "enabled"
-        PROJECTS: Final[str] = "projects"
-        WORKSPACE: Final[str] = "workspace"
-        ROOT: Final[str] = "root"
-        ID: Final[str] = "id"
-        URL: Final[str] = "url"
-        CLASS_NESTING: Final[str] = "class_nesting"
-        TARGET_NAMESPACE: Final[str] = "target_namespace"
-        SOURCE_SYMBOL: Final[str] = "source_symbol"
-        LOOSE_NAME: Final[str] = "loose_name"
-        REWRITE_SCOPE: Final[str] = "rewrite_scope"
-        CONFIDENCE: Final[str] = "confidence"
-        FIX_ACTION: Final[str] = "fix_action"
-        CURRENT_FILE: Final[str] = "current_file"
-        VIOLATION_TYPE: Final[str] = "violation_type"
-        SUGGESTED_FIX: Final[str] = "suggested_fix"
-        HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
-        POST_CHECKS: Final[str] = "post_checks"
+        SET = "set"
+        LIST = "list"
+        REMOVE = "remove"
 
-    class Cli:
-        """CLI integration constants."""
+    @unique
+    class OperationMode(StrEnum):
+        """SSOT operation mode values."""
 
-        APPLY_OPTION_DECLS: Final[tuple[str, ...]] = ("--apply/--dry-run",)
-        "Typer dual-flag declarations for --apply/--dry-run option."
+        BASELINE = "baseline"
+        STRICT = "strict"
+
+    @unique
+    class SeverityLevel(StrEnum):
+        """SSOT severity levels."""
+
+        ERROR = "error"
+        WARNING = "warning"
+        NOTE = "note"
+        LOW = "low"
+        SKIP = "skip"
+
+    DEFAULT_UNKNOWN: Final[str] = "unknown"
+    DEFAULT_UNNAMED: Final[str] = "unnamed"
+
+    RK_STATUS: Final[str] = "status"
+    RK_FILE: Final[str] = "file"
+    RK_MESSAGE: Final[str] = "message"
+    RK_SUMMARY: Final[str] = "summary"
+    RK_TOTAL: Final[str] = "total"
+    RK_RULES: Final[str] = "rules"
+    RK_RELEASE: Final[str] = "release"
+    RK_ACTION: Final[str] = "action"
+    RK_SCOPE: Final[str] = "scope"
+    RK_VIOLATIONS: Final[str] = "violations"
+    RK_VIOLATIONS_COUNT: Final[str] = "violations_count"
+    RK_RULE_ID: Final[str] = "rule_id"
+    RK_OK: Final[str] = "ok"
+    RK_ENABLED: Final[str] = "enabled"
+    RK_PROJECTS: Final[str] = "projects"
+    RK_WORKSPACE: Final[str] = "workspace"
+    RK_ROOT: Final[str] = "root"
+    RK_ID: Final[str] = "id"
+    RK_URL: Final[str] = "url"
+    RK_CLASS_NESTING: Final[str] = "class_nesting"
+    RK_TARGET_NAMESPACE: Final[str] = "target_namespace"
+    RK_SOURCE_SYMBOL: Final[str] = "source_symbol"
+    RK_LOOSE_NAME: Final[str] = "loose_name"
+    RK_REWRITE_SCOPE: Final[str] = "rewrite_scope"
+    RK_CONFIDENCE: Final[str] = "confidence"
+    RK_FIX_ACTION: Final[str] = "fix_action"
+    RK_CURRENT_FILE: Final[str] = "current_file"
+    RK_DESCRIPTION: Final[str] = "description"
+    RK_SEVERITY: Final[str] = "severity"
+    RK_VIOLATION_TYPE: Final[str] = "violation_type"
+    RK_SUGGESTED_FIX: Final[str] = "suggested_fix"
+    RK_HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
+    RK_POST_CHECKS: Final[str] = "post_checks"
+
+    CLI_APPLY_OPTION_DECLS: Final[t.StrSequence] = ("--apply/--dry-run",)
+    "Typer dual-flag declarations for --apply/--dry-run option."
 
     @unique
     class FacadeFamily(StrEnum):
@@ -277,13 +335,29 @@ class FlextInfraConstantsBase(
         M = "m"
         U = "u"
 
-    class SafeExecution:
-        """Constants for safe execution pipeline with automatic rollback."""
+    SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,mypy,pyright,pyrefly"
+    "Default quality gates for post-transform validation."
+    ENFORCEMENT_ADVISORY_GATES: Final[frozenset[str]] = frozenset({
+        "runtime-census",
+        "namespace",
+        "tier-whitelist",
+        "silent-failure",
+    })
+    "Gates that report violations as warnings rather than failing the pipeline."
+    SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
+    "File backup suffix for copy-on-write safety."
+    ENV_VAR_LINT_SNAPSHOT_GATES: Final[str] = "FLEXT_INFRA_LINT_SNAPSHOT_GATES"
+    "Optional override for lint-snapshot gate selection (comma-separated)."
 
-        DEFAULT_GATES: Final[str] = "lint,pyrefly"
-        "Default quality gates for post-transform validation."
-        BAK_SUFFIX: Final[str] = ".bak"
-        "File backup suffix for copy-on-write safety."
+    ENV_VAR_STANDALONE: Final[str] = "FLEXT_STANDALONE"
+    ENV_VAR_WORKSPACE_ROOT: Final[str] = "FLEXT_WORKSPACE_ROOT"
+    ENV_VAR_USE_HTTPS: Final[str] = "FLEXT_USE_HTTPS"
+    ENV_VAR_GITHUB_ACTIONS: Final[str] = "GITHUB_ACTIONS"
+    ENV_VAR_GITHUB_HEAD_REF: Final[str] = "GITHUB_HEAD_REF"
+    ENV_VAR_GITHUB_REF_NAME: Final[str] = "GITHUB_REF_NAME"
+    ENV_DEFAULT_STANDALONE: Final[bool] = False
+    ENV_DEFAULT_USE_HTTPS: Final[bool] = False
+    ENV_DEFAULT_GITHUB_ACTIONS: Final[bool] = False
 
     @unique
     class ExecutionMode(StrEnum):
@@ -299,4 +373,4 @@ class FlextInfraConstantsBase(
         "Apply without post-validation."
 
 
-__all__ = ["FlextInfraConstantsBase"]
+__all__: list[str] = ["FlextInfraConstantsBase"]

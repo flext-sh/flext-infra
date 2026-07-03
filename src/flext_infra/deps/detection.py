@@ -2,22 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 from typing import override
 
-from flext_core import FlextLogger
-from flext_infra import FlextInfraDependencyDetectionAnalysis, c, m, p, r, t, u
+from flext_core import r
+from flext_infra.constants import c
+from flext_infra.deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):
     """Runtime vs dev dependency detector using deptry, pip-check, and mypy stub analysis."""
 
-    _log = FlextLogger.create_module_logger(__name__)
-
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping = (
-        c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE
-    )
+    _log = u.fetch_logger(__name__)
 
     def __init__(self) -> None:
         """Initialize the dependency detection service with selector, toml, and runner."""
@@ -25,29 +28,19 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self.toml: p.Infra.TomlReader | None = None
         self.runner: p.Cli.CommandRunner | None = None
 
-    def _resolve_projects(
-        self,
-        workspace_root: Path,
-        names: t.StrSequence,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        if self.selector is not None:
-            return self.selector.resolve_projects(workspace_root, names)
-        return u.Infra.resolve_projects(workspace_root, names)
-
     @override
-    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        """Read plain."""
         if self.toml is not None:
             return self.toml.read_plain(path)
-        read_result = u.Cli.toml_read_json(path)
-        if read_result.is_failure:
+        plain_result = u.Cli.toml_read_json(path)
+        if plain_result.failure:
             return r[t.Infra.ContainerDict].fail(
-                read_result.error or f"failed to read {path}",
+                plain_result.error or f"failed to read {path}",
             )
-        try:
-            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(read_result.value)
-        except ValueError as exc:
-            return r[t.Infra.ContainerDict].fail(f"failed to validate {path}: {exc}")
-        return r[t.Infra.ContainerDict].ok(data)
+        return r[t.Infra.ContainerDict].ok(
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value),
+        )
 
     @override
     def _run_raw(
@@ -57,14 +50,15 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> r[m.Cli.CommandOutput]:
+    ) -> p.Result[m.Cli.CommandOutput]:
+        """Run raw."""
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         return u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
 
     @staticmethod
     def classify_issues(
-        issues: Sequence[t.Infra.ContainerDict],
+        issues: t.SequenceOf[t.Infra.ContainerDict],
     ) -> m.Infra.DeptryIssueGroups:
         """Classify deptry issues by error code (DEP001-DEP004)."""
         groups = m.Infra.DeptryIssueGroups.model_validate({
@@ -74,21 +68,17 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             "dep004": [],
         })
         for item in issues:
-            normalized_item: t.MutableStrMapping = {}
+            normalized_item: dict[str, t.Primitives | None] = {}
             for key, raw_value in item.items():
                 if raw_value is None:
-                    normalized_item[str(key)] = ""
+                    normalized_item[key] = ""
                     continue
-                if isinstance(raw_value, (str, int, float, bool)):
-                    normalized_item[str(key)] = str(raw_value)
+                if isinstance(raw_value, t.PRIMITIVES_TYPES):
+                    normalized_item[key] = raw_value
             error_obj = item.get(c.Infra.ERROR)
-            if not u.is_mapping(error_obj):
+            if not isinstance(error_obj, Mapping):
                 continue
-            error_data = u.Infra.validate(
-                t.Infra.INFRA_MAPPING_ADAPTER,
-                error_obj,
-                default={},
-            )
+            error_data = u.Cli.json_as_mapping(error_obj)
             if not error_data:
                 continue
             code = error_data.get(c.Infra.CODE)
@@ -105,14 +95,15 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
     def build_project_report(
         self,
         project_name: str,
-        deptry_issues: Sequence[t.Infra.ContainerDict],
+        deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
     ) -> m.Infra.ProjectDependencyReport:
         """Build a project dependency report from classified deptry issues."""
         classified = self.classify_issues(deptry_issues)
 
         def _module_names(
-            items: Sequence[Mapping[str, t.Infra.InfraValue]],
-        ) -> MutableSequence[str]:
+            items: t.SequenceOf[t.MappingKV[str, t.JsonValue | None]],
+        ) -> t.MutableSequenceOf[str]:
+            """Module names."""
             return [
                 str(val)
                 for item in items
@@ -134,25 +125,31 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self,
         workspace_root: Path,
         projects_filter: t.StrSequence | None = None,
-    ) -> r[Sequence[Path]]:
+    ) -> p.Result[t.SequenceOf[Path]]:
         """Discover project paths with pyproject.toml in workspace.
 
         Returns only the Path objects, filtered to those with pyproject.toml.
         For full ProjectInfo metadata, use u.Infra.discover_projects().
         """
         names = projects_filter or []
-        result = self._resolve_projects(workspace_root, names)
-        if result.is_failure:
-            return r[Sequence[Path]].fail(result.error or "project resolution failed")
-        projects_info: Sequence[m.Infra.ProjectInfo] = result.value
+        result = (
+            self.selector.resolve_projects(workspace_root, names)
+            if self.selector is not None
+            else u.Infra.resolve_projects(workspace_root, names)
+        )
+        if result.failure:
+            return r[t.SequenceOf[Path]].fail(
+                result.error or "project resolution failed"
+            )
+        projects_info: t.SequenceOf[m.Infra.ProjectInfo] = result.value
         projects = [
             project.path
             for project in projects_info
-            if (project.path / c.Infra.Files.PYPROJECT_FILENAME).exists()
+            if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
         ]
-        return r[Sequence[Path]].ok(sorted(projects))
+        return r[t.SequenceOf[Path]].ok(sorted(projects))
 
 
-__all__ = [
+__all__: list[str] = [
     "FlextInfraDependencyDetectionService",
 ]

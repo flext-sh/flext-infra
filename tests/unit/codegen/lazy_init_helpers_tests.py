@@ -1,221 +1,396 @@
-"""Tests for lazy_init helper functions: package inference, docstrings, exports.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Behavior tests for public lazy-init generation."""
 
 from __future__ import annotations
 
-import re
-from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import (
-    FlextInfraUtilitiesCodegenLazyScanning,
-    FlextInfraUtilitiesRopeHelpers,
-    u,
-)
-
-_read_existing_docstring: Callable[[Path], str] = getattr(
-    FlextInfraUtilitiesCodegenLazyScanning,
-    "read_existing_docstring",
-)
-_build_sibling_export_index: Callable[[Path, str], Mapping[str, tuple[str, str]]] = (
-    getattr(FlextInfraUtilitiesCodegenLazyScanning, "build_sibling_export_index")
-)
+from tests.constants import c
+from tests.utilities import u
 
 
-def _extract_exports(source: str) -> tuple[bool, list[str]]:
-    for name, value_str in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(
-        source
-    ):
-        if name == "__all__":
-            return True, re.findall(r'["\']([^"\']+)["\']', value_str)
-    return False, []
+class TestsFlextInfraLazyInitHelpers:
+    """Validate lazy-init through the public service surface only."""
 
+    @staticmethod
+    def _workspace(tmp_path: Path) -> tuple[Path, Path]:
+        workspace: tuple[Path, Path] = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        return workspace
 
-class TestInferPackage:
-    """Test infer_package function."""
-
-    def test_src_path(self) -> None:
-        """Test inference from src/ path."""
-        path = Path("/workspace/src/test_pkg/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="test_pkg")
-
-    def test_deeply_nested_src_path(self) -> None:
-        """Test inference from deeply nested src/ path."""
-        path = Path("/workspace/src/a/b/c/d/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="a.b.c.d")
-
-    def test_tests_path(self) -> None:
-        """Test inference from tests/ path."""
-        path = Path("/workspace/tests/unit/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="tests.unit")
-
-    def test_examples_nested_tests_path(self) -> None:
-        """Test inference preserves examples package before nested tests."""
-        path = Path("/workspace/examples/tests/__init__.py")
-        tm.that(
-            u.Infra.discover_package_from_file(path),
-            eq="examples.tests",
+    @staticmethod
+    def _generated_init(package_root: Path) -> str:
+        return package_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-    def test_docs_tools_path(self) -> None:
-        """Test inference preserves docs namespace packages."""
-        path = Path("/workspace/docs/architecture/tools/__init__.py")
-        tm.that(
-            u.Infra.discover_package_from_file(path),
-            eq="docs.architecture.tools",
+    @staticmethod
+    def _generated_exports(package_root: Path) -> str:
+        part_exports = sorted(
+            package_root.glob("_exports_lazy_part_*.py"),
+            key=lambda path: path.name,
+        )
+        if part_exports:
+            return "\n".join(
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in part_exports
+            )
+
+        exports_file = package_root / "_exports.py"
+        if exports_file.exists():
+            return exports_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+
+        return package_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-    def test_without_src_directory(self) -> None:
-        """Test when path doesn't contain /src/."""
-        path = Path("/workspace/lib/test/__init__.py")
-        tm.that(u.Infra.discover_package_from_file(path), eq="")
-
-
-class TestReadExistingDocstring:
-    """Test _read_existing_docstring function."""
-
-    def test_with_docstring(self, tmp_path: Path) -> None:
-        """Test extracting docstring from existing __init__.py."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text('"""Package docstring."""\nx = 1\n')
-        result = _read_existing_docstring(init_file)
-        tm.that(result, contains="Package docstring")
-
-    def test_without_docstring(self, tmp_path: Path) -> None:
-        """Test returns empty when no docstring exists."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text("x = 1\ny = 2\n")
-        result = _read_existing_docstring(init_file)
-        tm.that(result, eq="")
-
-    def test_nonexistent_file(self, tmp_path: Path) -> None:
-        """Test returns empty when file doesn't exist."""
-        init_file = tmp_path / "__init__.py"
-        result = _read_existing_docstring(init_file)
-        tm.that(result, eq="")
-
-    def test_with_syntax_error(self, tmp_path: Path) -> None:
-        """Test returns empty on syntax error."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text("invalid syntax ][")
-        result = _read_existing_docstring(init_file)
-        tm.that(result, eq="")
-
-    def test_with_single_quotes(self, tmp_path: Path) -> None:
-        """Test preserves single-quote docstring style."""
-        init_file = tmp_path / "__init__.py"
-        init_file.write_text("'''Module docstring.'''\nx = 1\n")
-        result = _read_existing_docstring(init_file)
-        tm.that(result, contains="Module docstring")
-
-
-class TestBuildSiblingExportIndex:
-    """Test _build_sibling_export_index function."""
-
-    def test_with_all_exports(self, tmp_path: Path) -> None:
-        """Test scanning sibling files with __all__."""
-        (tmp_path / "models.py").write_text(
-            '"""Models."""\n\n__all__ = ["Foo", "Bar"]\n\nclass Foo: pass\nclass Bar: pass\n',
+    def test_discover_package_from_standard_roots(self) -> None:
+        assert (
+            u.Infra.package_name(
+                Path("/workspace/src/test_pkg/__init__.py"),
+            )
+            == "test_pkg"
         )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
-        tm.that(index, contains="Foo")
-        tm.that(index, contains="Bar")
-        tm.that(index["Foo"], eq=("test_pkg.models", "Foo"))
-
-    def test_without_all_falls_back_to_ast(self, tmp_path: Path) -> None:
-        """Test scanning sibling files without __all__ uses AST."""
-        (tmp_path / "service.py").write_text(
-            "class PublicService:\n    pass\n\ndef public_func():\n    pass\n",
+        assert (
+            u.Infra.package_name(
+                Path("/workspace/tests/unit/__init__.py"),
+            )
+            == "tests.unit"
         )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
-        tm.that(index, contains="PublicService")
-        tm.that(index, contains="public_func")
-
-    def test_skips_init_and_main(self, tmp_path: Path) -> None:
-        """Test that __init__.py and __main__.py are skipped."""
-        (tmp_path / "__init__.py").write_text('__all__ = ["Init"]\n')
-        (tmp_path / "__main__.py").write_text("def main(): pass\n")
-        (tmp_path / "models.py").write_text(
-            '__all__ = ["Model"]\nclass Model: pass\n',
-        )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
-        tm.that(index, excludes="Init")
-        tm.that(index, excludes="main")
-        tm.that(index, contains="Model")
-
-    def test_skips_private_files(self, tmp_path: Path) -> None:
-        """Test that _private.py files are skipped."""
-        (tmp_path / "_internal.py").write_text("class Internal: pass\n")
-        (tmp_path / "public.py").write_text("class Public: pass\n")
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
-        tm.that(index, excludes="Internal")
-        tm.that(index, contains="Public")
-
-    def test_skips_version_file(self, tmp_path: Path) -> None:
-        """Test that __version__.py is skipped (handled separately)."""
-        (tmp_path / "__version__.py").write_text('__version__ = "1.0.0"\n')
-        (tmp_path / "models.py").write_text(
-            '__all__ = ["Model"]\nclass Model: pass\n',
-        )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
-        tm.that(index, excludes="__version__")
-        tm.that(index, contains="Model")
-
-    def test_handles_syntax_error_gracefully(self, tmp_path: Path) -> None:
-        """Test that syntax errors in sibling files are skipped."""
-        (tmp_path / "broken.py").write_text("def broken(][: pass\n")
-        (tmp_path / "good.py").write_text(
-            '__all__ = ["Good"]\nclass Good: pass\n',
-        )
-        index = _build_sibling_export_index(tmp_path, "test_pkg")
-        tm.that(index, contains="Good")
-
-    def test_preserves_docs_module_path(self, tmp_path: Path) -> None:
-        """Test docs package exports keep their namespace-qualified module path."""
-        tools_dir = tmp_path / "docs" / "architecture" / "tools"
-        tools_dir.mkdir(parents=True)
-        (tools_dir / "validate_docs.py").write_text(
-            '__all__ = ["ArchitectureValidator"]\nclass ArchitectureValidator: pass\n',
-        )
-        index = _build_sibling_export_index(tools_dir, "docs.architecture.tools")
-        tm.that(
-            index["ArchitectureValidator"],
-            eq=("docs.architecture.tools.validate_docs", "ArchitectureValidator"),
+        assert (
+            u.Infra.package_name(
+                Path("/workspace/examples/tests/__init__.py"),
+            )
+            == "examples.tests"
         )
 
+    def test_root_generation_uses_real_classes_and_aliases(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
 
-class TestExtractExports:
-    """Test extract_exports function."""
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
 
-    def test_with_list_all(self) -> None:
-        """Test __all__ as list."""
-        code = '__all__ = ["Foo", "Bar"]'
-        has_all, exports = _extract_exports(code)
-        tm.that(has_all, eq=True)
-        tm.that(exports, eq=["Foo", "Bar"])
+        assert "from flext_core.lazy import install_lazy_exports" in init_content
+        assert "_LAZY_IMPORTS" in init_content
+        assert '"FlextDemoModels"' in exports_content
+        assert '"m"' in exports_content
 
-    def test_with_tuple_all(self) -> None:
-        """Test __all__ as tuple."""
-        code = '__all__ = ("Foo", "Bar")'
-        has_all, exports = _extract_exports(code)
-        tm.that(has_all, eq=True)
-        tm.that(exports, eq=["Foo", "Bar"])
+    def test_private_modules_do_not_export_from_root(self, tmp_path: Path) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        (package_root / "_internal.py").write_text(
+            "from __future__ import annotations\n\nclass FlextDemoInternal:\n    pass\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
 
-    def test_with_non_string_elements(self) -> None:
-        """Test ignores non-string elements."""
-        code = '__all__ = ["Foo", 123, "Bar"]'
-        has_all, exports = _extract_exports(code)
-        tm.that(has_all, eq=True)
-        tm.that(exports, eq=["Foo", "Bar"])
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        assert "FlextDemoInternal" not in self._generated_init(package_root)
 
-    def test_without_all(self) -> None:
-        """Test when __all__ is missing."""
-        code = "x = 1"
-        has_all, exports = _extract_exports(code)
-        tm.that(not has_all, eq=True)
-        tm.that(exports, eq=[])
+    def test_explicit_all_exports_keep_public_aliases_only(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        (package_root / "api.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemo:\n"
+            "    pass\n\n"
+            "demo = FlextDemo()\n"
+            "hidden = FlextDemo()\n\n"
+            '__all__: list[str] = ["FlextDemo", "demo"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        exports_content = self._generated_exports(package_root)
+
+        assert '"FlextDemo"' in exports_content
+        assert '"demo"' in exports_content
+        assert "hidden" not in exports_content
+
+    def test_child_exports_bubble_public_symbols_only(self, tmp_path: Path) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        child_dir = package_root / "services"
+        child_dir.mkdir()
+        (child_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (child_dir / "service.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoService:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextDemoService"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (child_dir / "colors.py").write_text(
+            'from __future__ import annotations\n\nBLUE = "blue"\n\n__all__: list[str] = ["BLUE"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (child_dir / "cli.py").write_text(
+            'from __future__ import annotations\n\ndef main() -> str:\n    return "ok"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            child_dir / "models.py",
+            class_name="FlextDemoServicesModels",
+            alias="m",
+            docstring="Models.",
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        exports_content = self._generated_exports(package_root)
+
+        assert "FlextDemoService" in exports_content
+        assert '"BLUE"' in exports_content
+        assert '"main"' not in exports_content
+        assert '"m": ("flext_demo.services.models", "m")' not in exports_content
+
+    def test_tests_root_aliases_follow_export_hierarchy(self, tmp_path: Path) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        package_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__: list[str] = ["d"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoConstants:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextDemoConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tests_support_root = (
+            tmp_path / "flext-tests" / c.Infra.DEFAULT_SRC_DIR / "flext_tests"
+        )
+        tests_support_root.mkdir(parents=True)
+        tests_support_root.parent.parent.joinpath(
+            c.Infra.PYPROJECT_FILENAME
+        ).write_text(
+            '[project]\nname = "flext-tests"\nversion = "0.1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tests_support_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__: list[str] = ["d", "td", "tm"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tests_support_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextTestsConstants:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextTestsConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
+        core_root.mkdir(parents=True)
+        core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        core_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__: list[str] = ["tm"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        core_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextCoreConstants:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextCoreConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tests_root = workspace_root / c.Infra.DIR_TESTS
+        tests_root.mkdir()
+        tests_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_demo import FlextDemoConstants\n"
+            "from flext_core import FlextCoreConstants\n"
+            "from flext_tests import FlextTestsConstants\n\n"
+            "class TestsFlextDemoConstants("
+            "FlextDemoConstants, FlextCoreConstants, FlextTestsConstants"
+            "):\n"
+            "    pass\n\n"
+            "c = TestsFlextDemoConstants\n\n"
+            '__all__: list[str] = ["TestsFlextDemoConstants", "c"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        child_dir = tests_root / "unit"
+        child_dir.mkdir()
+        (child_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (child_dir / "child.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class Child:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["Child"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert '"d"' in init_content
+        assert '"td"' in init_content
+        assert '"tm"' in init_content
+        assert '    "tm",' in init_content
+        assert '"flext_core": ("tm",)' not in init_content
+        assert "install_lazy_exports(" in init_content
+
+    def test_root_aliases_follow_transitive_parent_exports_from_source(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-meltano",
+            package_name="flext_meltano",
+        )
+        core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
+        core_root.mkdir(parents=True)
+        core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        core_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            core_root / "result.py",
+            class_name="FlextCoreResult",
+            alias="r",
+            docstring="Result.",
+        )
+        core_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextCoreConstants:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextCoreConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        cli_root = tmp_path / "flext-cli" / c.Infra.DEFAULT_SRC_DIR / "flext_cli"
+        cli_root.mkdir(parents=True)
+        cli_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-cli"\nversion = "0.1.0"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        cli_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__: list[str] = ["c", "r"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        cli_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core import FlextCoreConstants\n\n"
+            "class FlextCliConstants(FlextCoreConstants):\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextCliConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_cli import c\n\n"
+            "class FlextMeltanoConstants(c):\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextMeltanoConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        init_content = self._generated_init(package_root)
+
+        assert "from flext_cli import d, e, h, m, p, r, s, t, u, x" in init_content
+        for alias_name in ("d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
+            assert f'    "{alias_name}",' in init_content
+        sidecar_content = package_root.joinpath("_exports_lazy_part_01.py").read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        assert '".constants": (' in sidecar_content
+
+    def test_nested_tests_namespace_exports_local_symbols_only(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        package_root.joinpath(c.Infra.RESULT_PY).write_text(
+            "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tests_unit_root = workspace_root / c.Infra.DIR_TESTS / "unit"
+        tests_unit_root.mkdir(parents=True)
+        tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        tests_unit_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class TestsFlextDemoUnitConstants:\n"
+            "    pass\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tests_unit_root.joinpath(c.Infra.MODELS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "class TestsFlextDemoUnitModels:\n"
+            "    pass\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert "TestsFlextDemoUnitConstants" in init_content
+        assert "TestsFlextDemoUnitModels" in init_content
+        assert "publish_all=False" in init_content
+
+    def test_root_exports_symbols_from_deep_descendant_packages(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        deep_dir = package_root / "services" / "http"
+        deep_dir.mkdir(parents=True)
+        (package_root / "services" / c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        deep_dir.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        deep_dir.joinpath("transport.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoHttpTransport:\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["FlextDemoHttpTransport"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        exports_content = self._generated_exports(package_root)
+
+        assert "FlextDemoHttpTransport" in exports_content
+
+    def test_duplicate_public_export_resolved_by_canonical_scorer(
+        self, tmp_path: Path
+    ) -> None:
+        """Duplicate public exports are resolved deterministically (warn + generate)."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        (package_root / "alpha.py").write_text(
+            "from __future__ import annotations\n\nclass Shared:\n    pass\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (package_root / "beta.py").write_text(
+            "from __future__ import annotations\n\nclass Shared:\n    pass\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
+        assert init_content.startswith(c.Infra.AUTOGEN_HEADER)
+        assert "Shared" in exports_content

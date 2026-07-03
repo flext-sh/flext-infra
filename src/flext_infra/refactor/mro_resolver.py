@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Mapping, MutableSequence, Sequence
 
 from flext_infra import (
-    FlextInfraRefactorMROImportRewriter,
     c,
     m,
     t,
@@ -16,20 +14,20 @@ from flext_infra import (
 class FlextInfraRefactorMROResolver:
     """Resolve MRO inheritance chains and detect loose classes needing absorption."""
 
-    CONSTANT_PATTERN: t.Infra.RegexPattern = c.Infra.SourceCode.CONSTANT_NAME_RE
+    CONSTANT_PATTERN: t.Infra.RegexPattern = c.Infra.CONSTANT_NAME_RE
 
     @classmethod
     def resolve(
         cls,
         *,
-        family_classes: Mapping[t.Infra.FacadeFamily, type],
-        expected_base_chains: Mapping[
-            t.Infra.FacadeFamily,
-            Sequence[t.Infra.ExpectedBase],
+        family_classes: t.MappingKV[c.Infra.FacadeFamily, type],
+        expected_base_chains: t.MappingKV[
+            c.Infra.FacadeFamily,
+            t.SequenceOf[t.Infra.ExpectedBase],
         ],
-    ) -> t.Infra.VariadicTuple[m.Infra.FamilyMROResolution]:
+    ) -> t.VariadicTuple[m.Infra.FamilyMROResolution]:
         """Resolve expected and effective MRO data for all facade families."""
-        resolutions: MutableSequence[m.Infra.FamilyMROResolution] = []
+        resolutions: t.MutableSequenceOf[m.Infra.FamilyMROResolution] = []
         for family in (
             c.Infra.FacadeFamily.C,
             c.Infra.FacadeFamily.T,
@@ -52,10 +50,11 @@ class FlextInfraRefactorMROResolver:
     def _resolve_family(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
         facade_class: type,
-        expected_chain: Sequence[t.Infra.ExpectedBase],
+        expected_chain: t.SequenceOf[t.Infra.ExpectedBase],
     ) -> m.Infra.FamilyMROResolution:
+        """Resolve family."""
         expected_names = cls._normalize_expected_chain(expected_chain=expected_chain)
         cls._validate_base_policy(
             family=family,
@@ -83,8 +82,9 @@ class FlextInfraRefactorMROResolver:
     def _normalize_expected_chain(
         cls,
         *,
-        expected_chain: Sequence[t.Infra.ExpectedBase],
-    ) -> t.Infra.VariadicTuple[str]:
+        expected_chain: t.SequenceOf[t.Infra.ExpectedBase],
+    ) -> t.VariadicTuple[str]:
+        """Normalize expected chain."""
         expected_names: t.StrSequence = [
             base if isinstance(base, str) else base.__name__ for base in expected_chain
         ]
@@ -94,10 +94,11 @@ class FlextInfraRefactorMROResolver:
     def _validate_base_policy(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
         facade_class: type,
-        expected_names: t.Infra.VariadicTuple[str],
+        expected_names: t.VariadicTuple[str],
     ) -> None:
+        """Validate base policy."""
         direct_base_names = tuple(base.__name__ for base in facade_class.__bases__)
         if len(direct_base_names) < len(expected_names):
             msg = f"family={family} has fewer direct bases than expected: expected={expected_names!r} direct={direct_base_names!r}"
@@ -124,11 +125,12 @@ class FlextInfraRefactorMROResolver:
     def _validate_expected_accessibility(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
-        expected_names: t.Infra.VariadicTuple[str],
-        accessible_namespaces: t.Infra.VariadicTuple[str],
+        family: c.Infra.FacadeFamily,
+        expected_names: t.VariadicTuple[str],
+        accessible_namespaces: t.VariadicTuple[str],
     ) -> None:
-        missing_namespaces: MutableSequence[str] = []
+        """Validate expected accessibility."""
+        missing_namespaces: t.MutableSequenceOf[str] = []
         for base_name in expected_names:
             namespace = cls._namespace_from_class_name(
                 class_name=base_name,
@@ -147,10 +149,11 @@ class FlextInfraRefactorMROResolver:
     def _collect_accessible_namespaces(
         cls,
         *,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
         facade_class: type,
-    ) -> t.Infra.VariadicTuple[str]:
-        namespace_order: MutableSequence[str] = []
+    ) -> t.VariadicTuple[str]:
+        """Collect accessible namespaces."""
+        namespace_order: t.MutableSequenceOf[str] = []
         for current in inspect.getmro(facade_class):
             if current.__name__ == "NormalizedValue":
                 continue
@@ -173,8 +176,9 @@ class FlextInfraRefactorMROResolver:
         cls,
         *,
         class_name: str,
-        family: t.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily,
     ) -> str | None:
+        """Namespace from class name."""
         suffix = c.Infra.FAMILY_SUFFIXES[family]
         if not class_name.endswith(suffix):
             return None
@@ -185,12 +189,12 @@ class FlextInfraRefactorMROResolver:
         return root
 
     @staticmethod
-    def _append_unique(namespaces: MutableSequence[str], candidate: str) -> None:
+    def _append_unique(namespaces: t.MutableSequenceOf[str], candidate: str) -> None:
+        """Append unique."""
         if candidate not in namespaces:
             namespaces.append(candidate)
 
 
-__all__ = [
-    "FlextInfraRefactorMROImportRewriter",
+__all__: list[str] = [
     "FlextInfraRefactorMROResolver",
 ]

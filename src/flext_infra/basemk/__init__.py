@@ -1,83 +1,30 @@
-# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make gen
-#
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Basemk package."""
 
 from __future__ import annotations
 
-import typing as _t
+from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if _t.TYPE_CHECKING:
-    import flext_infra.basemk.cli as _flext_infra_basemk_cli
-
-    cli = _flext_infra_basemk_cli
-    import flext_infra.basemk.engine as _flext_infra_basemk_engine
-    from flext_infra.basemk.cli import FlextInfraCliBasemk
-
-    engine = _flext_infra_basemk_engine
-    import flext_infra.basemk.generator as _flext_infra_basemk_generator
-    from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
-
-    generator = _flext_infra_basemk_generator
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
-    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-_LAZY_IMPORTS = {
-    "FlextInfraBaseMkGenerator": (
-        "flext_infra.basemk.generator",
-        "FlextInfraBaseMkGenerator",
-    ),
-    "FlextInfraBaseMkTemplateEngine": (
-        "flext_infra.basemk.engine",
-        "FlextInfraBaseMkTemplateEngine",
-    ),
-    "FlextInfraCliBasemk": ("flext_infra.basemk.cli", "FlextInfraCliBasemk"),
-    "c": ("flext_core.constants", "FlextConstants"),
-    "cli": "flext_infra.basemk.cli",
-    "d": ("flext_core.decorators", "FlextDecorators"),
-    "e": ("flext_core.exceptions", "FlextExceptions"),
-    "engine": "flext_infra.basemk.engine",
-    "generator": "flext_infra.basemk.generator",
-    "h": ("flext_core.handlers", "FlextHandlers"),
-    "m": ("flext_core.models", "FlextModels"),
-    "p": ("flext_core.protocols", "FlextProtocols"),
-    "r": ("flext_core.result", "FlextResult"),
-    "s": ("flext_core.service", "FlextService"),
-    "t": ("flext_core.typings", "FlextTypes"),
-    "u": ("flext_core.utilities", "FlextUtilities"),
-    "x": ("flext_core.mixins", "FlextMixins"),
-}
-
-__all__ = [
-    "FlextInfraBaseMkGenerator",
-    "FlextInfraBaseMkTemplateEngine",
-    "FlextInfraCliBasemk",
-    "c",
-    "cli",
-    "d",
-    "e",
-    "engine",
-    "generator",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "u",
-    "x",
-]
+if TYPE_CHECKING:
+    from flext_infra.basemk.generator import (
+        FlextInfraBaseMkGenerator as FlextInfraBaseMkGenerator,
+    )
+    from flext_infra.basemk.renderer import (
+        FlextInfraBaseMkTemplateRenderer as FlextInfraBaseMkTemplateRenderer,
+    )
+_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        ".generator": ("FlextInfraBaseMkGenerator",),
+        ".renderer": ("FlextInfraBaseMkTemplateRenderer",),
+    },
+)
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    publish_all=False,
+)

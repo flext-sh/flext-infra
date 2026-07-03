@@ -1,6 +1,6 @@
 """Type system for FLEXT infra tests.
 
-Provides FlextInfraTestTypes, extending FlextTestsTypes with infra-specific
+Provides TestsFlextInfraTypes, extending TestsFlextTypes with infra-specific
 type definitions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -11,29 +11,16 @@ from __future__ import annotations
 
 from flext_tests import FlextTestsTypes
 
-from flext_infra import FlextInfraTypes
+from flext_infra import t
 
 
-class FlextInfraTestTypes(FlextTestsTypes, FlextInfraTypes):
-    """Type system for FLEXT infra tests - extends FlextTestsTypes.
+class TestsFlextInfraTypes(FlextTestsTypes, t):
+    """Type system for FLEXT infra tests."""
 
-    Architecture: Extends FlextTestsTypes with infra-specific type definitions.
-    All base types from FlextTestsTypes are available through inheritance.
-    """
-
-    class Infra(FlextInfraTypes.Infra):
-        """Infra-specific type definitions namespace."""
-
-        class Tests:
-            """Test-specific type definitions namespace with infra extensions."""
-
-            type ProjectName = str
-            "Type for project names in infra testing."
-            type DockerImageName = str
-            "Type for Docker image names."
-            type TestMarker = str
-            "Type for test markers (infra, integration, docker, etc.)."
+    class Tests(FlextTestsTypes.Tests):
+        """Tests use inherited flext-tests and production typing contracts."""
 
 
-t = FlextInfraTestTypes
-__all__ = ["FlextInfraTestTypes", "t"]
+t = TestsFlextInfraTypes
+
+__all__: list[str] = ["TestsFlextInfraTypes", "t"]

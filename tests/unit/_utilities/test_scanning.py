@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m
+from tests.constants import c
+from tests.models import m
 
 
-class TestScanModels:
+class TestsFlextInfraUtilitiesscanning:
     def test_scan_violation_model_fields(self) -> None:
         violation = m.Infra.ScanViolation(
             line=42,

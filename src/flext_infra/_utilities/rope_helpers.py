@@ -2,42 +2,77 @@
 
 from __future__ import annotations
 
-import re
-from collections.abc import Sequence
-from typing import ClassVar
+from importlib import import_module
+from pathlib import Path
+from typing import ClassVar, cast
 
-from flext_infra import FlextInfraUtilitiesRopeCore, c, m, p, t
+from flext_infra._utilities._rope_bracket_balance import (
+    FlextInfraUtilitiesRopeBracketBalanceMixin,
+)
+from flext_infra._utilities._rope_method_order import (
+    FlextInfraUtilitiesRopeMethodOrderMixin,
+)
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesRopeHelpers:
+class FlextInfraUtilitiesRopeHelpers(
+    FlextInfraUtilitiesRopeBracketBalanceMixin,
+    FlextInfraUtilitiesRopeMethodOrderMixin,
+):
     """Generic text, import-placement, and method-order helpers."""
 
-    @staticmethod
-    def get_rope_get_module_imports_fn() -> p.Infra.RopeGetModuleImportsFn:
-        """Expose ``get_module_imports`` through the public Rope protocol boundary."""
+    _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
+    _default_post_hooks_registered: ClassVar[bool] = False
+    _default_post_hook_module: ClassVar[str] = (
+        "flext_infra.refactor.migrate_to_class_mro"
+    )
+    _default_post_hook_owner: ClassVar[str] = "FlextInfraRefactorMigrateToClassMRO"
 
-        def _get_module_imports(
-            project: t.Infra.RopeProject,
-            pymodule: t.Infra.RopePyModule,
-        ) -> t.Infra.RopeModuleImports:
-            return FlextInfraUtilitiesRopeCore.ensure_module_imports(
-                FlextInfraUtilitiesRopeCore.get_module_imports_for_pymodule(
-                    project,
-                    pymodule,
-                )
-            )
+    @classmethod
+    def _ensure_default_post_hooks_registered(cls) -> None:
+        """Load and register built-in rope post-hooks once."""
+        if cls._default_post_hooks_registered:
+            return
+        module = import_module(cls._default_post_hook_module)
+        owner = getattr(module, cls._default_post_hook_owner)
+        cls.register_rope_post_hook(
+            cast("p.Infra.RopePostHook", getattr(owner, "run_as_hook")),
+        )
+        cls._default_post_hooks_registered = True
 
-        return _get_module_imports
+    @classmethod
+    def run_rope_post_hooks(
+        cls,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> t.SequenceOf[m.Infra.Result]:
+        """Run workspace-scale semantic passes after local refactors."""
+        cls._ensure_default_post_hooks_registered()
+        results: list[m.Infra.Result] = []
+        for hook in cls._post_hooks:
+            results.extend(hook(path, dry_run=dry_run))
+        return results
+
+    @classmethod
+    def register_rope_post_hook(
+        cls,
+        hook: p.Infra.RopePostHook,
+    ) -> None:
+        """Register a post-processing hook for rope refactoring pipelines."""
+        if hook not in cls._post_hooks:
+            cls._post_hooks.append(hook)
 
     @staticmethod
     def get_module_level_assignments(
         source: str,
-    ) -> Sequence[t.Infra.StrPair]:
+    ) -> t.StrPairSequence:
         """Return (name, value_str) for module-level simple assignments."""
-        assignment_pattern = re.compile(
-            r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$",
-        )
-        results: list[t.Infra.StrPair] = []
+        assignment_pattern = c.Infra.MODULE_ASSIGNMENT_RE
+        results: list[t.StrPair] = []
         scope_depth = 0
         in_multiline_assignment = False
         current_name = ""
@@ -95,25 +130,28 @@ class FlextInfraUtilitiesRopeHelpers:
         *,
         kind: str = "function",
     ) -> str | None:
-        """Extract full def/class block by name using regex."""
+        r"""Extract full def/class block by name using regex.
+
+        Handles single-line signatures. Multi-line return-annotation
+        signatures (``def foo() -> tuple[\n    A,\n]:``) are detected
+        by a fallback bracket-balance scan that extends the regex match
+        through any unclosed bracket groups.
+        """
         if kind == "function":
-            pattern = re.compile(
-                rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"def\s+{re.escape(name)}\s*\([^)]*\)[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_function_def_block(name)
         elif kind == "class":
-            pattern = re.compile(
-                rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"class\s+{re.escape(name)}\b[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_class_def_block(name)
         else:
             return None
         match = pattern.search(source)
-        return match.group(0).rstrip("\n") if match else None
+        if match is None:
+            return None
+        block = match.group(0)
+        return FlextInfraUtilitiesRopeHelpers._extend_block_through_open_brackets(
+            source,
+            block,
+            match_end=match.end(),
+        ).rstrip("\n")
 
     @staticmethod
     def remove_definition(
@@ -124,22 +162,13 @@ class FlextInfraUtilitiesRopeHelpers:
     ) -> str:
         """Remove a top-level def/class from source."""
         if kind == "function":
-            pattern = re.compile(
-                rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"def\s+{re.escape(name)}\s*\([^)]*\)[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_function_def_remove(name)
         elif kind == "class":
-            pattern = re.compile(
-                rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
-                rf"class\s+{re.escape(name)}\b[^\n]*\n"
-                rf"(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*",
-                re.MULTILINE,
-            )
+            pattern = c.Infra.compile_class_def_remove(name)
         else:
             return source
-        return pattern.sub("", source, count=1)
+        updated_source: str = pattern.sub("", source, count=1)
+        return updated_source
 
     @staticmethod
     def append_to_class_body(
@@ -148,11 +177,7 @@ class FlextInfraUtilitiesRopeHelpers:
         block: str,
     ) -> str:
         """Append a block of code to an existing class body."""
-        if not re.search(
-            rf"^class\s+{re.escape(class_name)}\b",
-            source,
-            re.MULTILINE,
-        ):
+        if not c.Infra.compile_class_header_search(class_name).search(source):
             return source.rstrip("\n") + f"\n\nclass {class_name}:\n{block}\n"
         lines = source.splitlines(keepends=True)
         in_class = False
@@ -188,146 +213,5 @@ class FlextInfraUtilitiesRopeHelpers:
         lines.insert(insert_idx, block.rstrip("\n") + "\n\n")
         return "".join(lines)
 
-    @staticmethod
-    def indent_block(text: str, spaces: int = 4) -> str:
-        """Add indentation to each line of a block."""
-        prefix = " " * spaces
-        return "".join(
-            f"{prefix}{line}" if line.strip() else line
-            for line in text.splitlines(keepends=True)
-        )
 
-    @staticmethod
-    def ensure_decorator(
-        source: str,
-        decorator: str = "@staticmethod",
-    ) -> str:
-        """Ensure a function/block has a specific decorator."""
-        return source if decorator in source else f"{decorator}\n{source}"
-
-    @staticmethod
-    def has_toplevel_definition(
-        source: str,
-        name: str,
-        *,
-        kind: str = "function",
-    ) -> bool:
-        """Check if a top-level function or class exists by name."""
-        if kind == "function":
-            return (
-                re.search(
-                    rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*def\s+{re.escape(name)}\s*\(",
-                    source,
-                    re.MULTILINE,
-                )
-                is not None
-            )
-        if kind == "class":
-            return (
-                re.search(rf"^class\s+{re.escape(name)}\b", source, re.MULTILINE)
-                is not None
-            )
-        return False
-
-    @staticmethod
-    def check_visibility(name: str, visibility: str | None) -> bool:
-        """Check if a method name matches the given visibility filter."""
-        if visibility is None:
-            return True
-        if visibility == "public":
-            return not name.startswith("_")
-        if visibility == "protected":
-            return name.startswith("_") and not name.startswith("__")
-        if visibility == "private":
-            return name.startswith("__") and not name.endswith("__")
-        return True
-
-    _WORD_BOUNDARY_RE_CACHE: ClassVar[dict[str, t.Infra.RegexPattern]] = {}
-
-    @staticmethod
-    def bound_name(name_part: str) -> str:
-        """Extract the bound name from 'X' or 'X as Y'."""
-        item = name_part.strip()
-        if " as " in item:
-            return item.split(" as ", 1)[1].strip()
-        return item
-
-    @staticmethod
-    def word_boundary_re(name: str) -> t.Infra.RegexPattern:
-        """Get compiled word-boundary regex for a name."""
-        cache = FlextInfraUtilitiesRopeHelpers._WORD_BOUNDARY_RE_CACHE
-        if name not in cache:
-            cache[name] = re.compile(rf"\b{re.escape(name)}\b")
-        return cache[name]
-
-    _PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset(
-        {"property", "cached_property", "computed_field"},
-    )
-    _DECORATOR_TO_CATEGORY: ClassVar[Sequence[t.Infra.StrPair]] = [
-        ("staticmethod", "static"),
-        ("classmethod", "class"),
-    ]
-
-    @staticmethod
-    def matches_method_rule(
-        method: m.Infra.MethodInfo,
-        rule: m.Infra.MethodOrderRule,
-    ) -> bool:
-        """Check if a method matches an ordering rule."""
-        decorators = set(method.decorators)
-        excludes = set(rule.exclude_decorators)
-        if excludes and decorators.intersection(excludes):
-            return False
-        if not FlextInfraUtilitiesRopeHelpers.check_visibility(
-            method.name, rule.visibility
-        ):
-            return False
-        if rule.decorators and not decorators.intersection(rule.decorators):
-            return False
-        patterns = rule.patterns
-        return not patterns or any(
-            re.match(pattern, method.name) for pattern in patterns
-        )
-
-    @staticmethod
-    def build_method_sort_key(
-        method: m.Infra.MethodInfo,
-        order_config: Sequence[m.Infra.MethodOrderRule],
-    ) -> tuple[int, int, str]:
-        """Build a sort key tuple for method ordering."""
-        for index, rule in enumerate(order_config):
-            if rule.category == "class_attributes":
-                continue
-            if not FlextInfraUtilitiesRopeHelpers.matches_method_rule(method, rule):
-                continue
-            explicit_order = rule.order
-            if explicit_order:
-                if method.name in explicit_order:
-                    return (index, explicit_order.index(method.name), method.name)
-                if "*" in explicit_order:
-                    return (index, explicit_order.index("*") + 1, method.name)
-            return (index, 0, method.name)
-        return (len(order_config), 0, method.name)
-
-    @staticmethod
-    def categorize_method(name: str, decorators: Sequence[str]) -> str:
-        """Categorize a method by its decorators and name pattern."""
-        if FlextInfraUtilitiesRopeHelpers._PROPERTY_DECORATORS.intersection(decorators):
-            return c.Infra.MethodCategory.PROPERTY
-        for (
-            decorator_name,
-            category,
-        ) in FlextInfraUtilitiesRopeHelpers._DECORATOR_TO_CATEGORY:
-            if decorator_name in decorators:
-                return category
-        # Fallback: categorize by name convention
-        if name.startswith("__") and name.endswith("__"):
-            return c.Infra.MethodCategory.MAGIC
-        if name.startswith("__"):
-            return c.Infra.MethodCategory.PRIVATE
-        if name.startswith("_"):
-            return c.Infra.MethodCategory.PROTECTED
-        return c.Infra.MethodCategory.PUBLIC
-
-
-__all__ = ["FlextInfraUtilitiesRopeHelpers"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeHelpers"]

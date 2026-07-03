@@ -6,17 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import argparse
-from collections.abc import Mapping, Sequence
+from collections.abc import (
+    Iterator,
+)
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_core import FlextProtocols, r
-
 if TYPE_CHECKING:
-    from flext_infra import m, t, u
+    from flext_core import p
+    from flext_infra import m, t
 
 
+@runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
@@ -38,9 +39,20 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class RenderableTemplate(Protocol):
-        """Structural contract for template engines that expose ``render``."""
+        """Structural contract for template renderers that expose ``render``."""
 
-        def render(self, **kwargs: object) -> str:
+        def render(
+            self,
+            **kwargs: (
+                t.JsonPayload
+                | t.SequenceOf[t.JsonValue]
+                | t.StrPairSequence
+                | t.SequenceOf[t.StrSequencePair]
+                | t.SequenceOf[t.StrPairSequencePair]
+                | t.JsonMapping
+                | type
+            ),
+        ) -> str:
             """Render a template with keyword context."""
             ...
 
@@ -58,11 +70,16 @@ class FlextInfraProtocolsBase(Protocol):
             """Return the project path."""
             ...
 
+        @property
+        def package_name(self) -> str:
+            """Return the primary Python package name."""
+            ...
+
     @runtime_checkable
     class Validator(Protocol):
         """Contract for validation services."""
 
-        def validate(self, argv: t.StrSequence | None = None) -> r[int]:
+        def validate(self, argv: t.StrSequence | None = None) -> p.Result[int]:
             """Execute validation and return result."""
             ...
 
@@ -74,7 +91,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project: str,
             gates: t.StrSequence,
-        ) -> r[Sequence[m.Infra.ProjectResult]]:
+        ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
             """Run quality gates for one project."""
             ...
 
@@ -88,9 +105,9 @@ class FlextInfraProtocolsBase(Protocol):
             _target: str | None = None,
             *,
             workspace_root: Path | None = None,
-            config: m.Infra.BaseMkConfig | None = None,
+            settings: m.Infra.BaseMkConfig | None = None,
             canonical_root: Path | None = None,
-        ) -> r[m.Infra.SyncResult]:
+        ) -> p.Result[m.Infra.SyncResult]:
             """Synchronize generated workspace or project artifacts."""
             ...
 
@@ -100,13 +117,8 @@ class FlextInfraProtocolsBase(Protocol):
 
         def generate(
             self,
-            workspace_root: Path,
-            *,
-            project: str | None = None,
-            projects: str | None = None,
-            output_dir: str = "",
-            apply: bool = False,
-        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            request: m.Infra.DocsGenerateRequest,
+        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
 
@@ -117,7 +129,7 @@ class FlextInfraProtocolsBase(Protocol):
         def discover_projects(
             self,
             workspace_root: Path,
-        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...
 
@@ -125,7 +137,7 @@ class FlextInfraProtocolsBase(Protocol):
     class TomlReader(Protocol):
         """Contract for TOML file readers used by dependency services."""
 
-        def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
             """Read and parse a TOML file as a plain dict with r error handling."""
             ...
 
@@ -138,7 +150,7 @@ class FlextInfraProtocolsBase(Protocol):
             cmd: t.StrSequence,
             cwd: Path | None = None,
             timeout: int | None = None,
-        ) -> r[str]:
+        ) -> p.Result[str]:
             """Run a command and capture its stdout."""
             ...
 
@@ -147,7 +159,7 @@ class FlextInfraProtocolsBase(Protocol):
             cmd: t.StrSequence,
             cwd: Path | None = None,
             timeout: int | None = None,
-        ) -> r[bool]:
+        ) -> p.Result[bool]:
             """Run a command and return success/failure."""
             ...
 
@@ -159,27 +171,15 @@ class FlextInfraProtocolsBase(Protocol):
             """Scan a single file and return scan result."""
             ...
 
+    @runtime_checkable
     class WorkspaceReport(Protocol):
         """Protocol for workspace dependency report model contract."""
 
         pip_check: m.Infra.PipCheckReport | None
         dependency_limits: m.Infra.DependencyLimitsInfo | None
 
-        def model_dump(self) -> Mapping[str, t.Infra.InfraValue]:
+        def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Serialize report model payload."""
-            ...
-
-    @runtime_checkable
-    class ReportingService(Protocol):
-        """Service for reporting directory resolution."""
-
-        def get_report_dir(
-            self,
-            workspace_root: Path,
-            scope: str,
-            verb: str,
-        ) -> Path:
-            """Resolve report output directory for given scope and verb."""
             ...
 
     @runtime_checkable
@@ -189,15 +189,16 @@ class FlextInfraProtocolsBase(Protocol):
         def write_json(
             self,
             path: Path,
-            payload: Mapping[str, t.Infra.InfraValue],
-        ) -> r[bool]:
+            payload: t.MappingKV[str, t.Infra.InfraValue],
+        ) -> p.Result[bool]:
             """Write payload to JSON file."""
             ...
 
+    @runtime_checkable
     class ProjectReportLike(Protocol):
         """Protocol for project-level dependency report contracts."""
 
-        def model_dump(self) -> Mapping[str, t.Infra.InfraValue]:
+        def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Serialize project report payload."""
             ...
 
@@ -210,7 +211,7 @@ class FlextInfraProtocolsBase(Protocol):
             workspace_root: Path,
             *,
             projects_filter: t.StrSequence | None = None,
-        ) -> r[Sequence[Path]]:
+        ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
 
@@ -218,14 +219,14 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_path: Path,
             venv_bin: Path,
-        ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
+        ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
             """Run deptry on a project and return issues."""
             ...
 
         def build_project_report(
             self,
             project_name: str,
-            deptry_issues: Sequence[t.Infra.ContainerDict],
+            deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
         ) -> FlextInfraProtocolsBase.ProjectReportLike:
             """Build project report from deptry issues."""
             ...
@@ -237,18 +238,17 @@ class FlextInfraProtocolsBase(Protocol):
         def load_dependency_limits(
             self,
             limits_path: Path | None = None,
-        ) -> Mapping[str, t.Infra.InfraValue]:
+        ) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Load dependency limits from TOML file."""
             ...
 
         def get_required_typings(
             self,
             project_path: Path,
-            venv_bin: Path,
             limits_path: Path | None = None,
             *,
             include_mypy: bool = True,
-        ) -> r[m.Infra.TypingsReport]:
+        ) -> p.Result[m.Infra.TypingsReport]:
             """Get required typing libraries for a project."""
             ...
 
@@ -260,7 +260,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             workspace_root: Path,
             venv_bin: Path,
-        ) -> r[t.Infra.Pair[t.StrSequence, int]]:
+        ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
 
@@ -274,36 +274,28 @@ class FlextInfraProtocolsBase(Protocol):
             cwd: Path | None = None,
             timeout: int | None = None,
             env: t.StrMapping | None = None,
-        ) -> r[m.Cli.CommandOutput]:
+        ) -> p.Result[m.Cli.CommandOutput]:
             """Run command and return raw output."""
             ...
 
+    @runtime_checkable
     class DetectorRuntime(Protocol):
         """Protocol for detector runtime service dependencies."""
 
-        reporting: FlextInfraProtocolsBase.ReportingService
         deps: FlextInfraProtocolsBase.DepsService
         runner: FlextInfraProtocolsBase.RunnerService
-        log: FlextProtocols.Logger
 
-        @staticmethod
-        def parser(default_limits_path: Path) -> argparse.ArgumentParser:
-            """Create argument parser for detector CLI."""
-            ...
-
-        @staticmethod
-        def project_filter(cli: u.Infra.CliArgs) -> t.StrSequence | None:
-            """Resolve project filter list from parsed args."""
-            ...
+        @property
+        def log(self) -> p.Logger: ...
 
     @runtime_checkable
     class TemplateRenderer(Protocol):
-        """Protocol for template rendering engines."""
+        """Protocol for template renderers."""
 
         def render_all(
             self,
-            config: m.Infra.BaseMkConfig | None = None,
-        ) -> r[str]:
+            settings: m.Infra.BaseMkConfig | None = None,
+        ) -> p.Result[str]:
             """Render all templates with given configuration."""
             ...
 
@@ -311,7 +303,7 @@ class FlextInfraProtocolsBase(Protocol):
     class ViolationWithLine(Protocol):
         """Protocol for violations that have a line number."""
 
-        def model_dump(self) -> t.Cli.JsonMapping:
+        def model_dump(self) -> t.JsonMapping:
             """Dump violation data to a dictionary."""
             ...
 
@@ -326,81 +318,61 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             fail_fast: bool = False,
             make_args: t.StrSequence = (),
-        ) -> r[Sequence[m.Cli.CommandOutput]]:
+        ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...
 
     @runtime_checkable
-    class ExtraPathsResolver(Protocol):
-        """Structural contract for dependency-backed extra-path resolvers."""
-
-        root: Path
-
-        def _source_root(
-            self,
-            project_dir: Path,
-            *,
-            source_dir: str,
-            project_root: str,
-        ) -> str:
-            """Resolve source root path for a project."""
-            ...
-
-        def _existing_relative_paths(
-            self,
-            project_dir: Path,
-            configured_paths: t.StrSequence,
-        ) -> t.StrSequence:
-            """Filter configured paths to only those that exist."""
-            ...
-
-        def pyrefly_path_rules(
-            self,
-        ) -> m.Infra.PyreflyConfig.PathRulesConfig:
-            """Get pyrefly path rules from tool config."""
-            ...
-
-        def get_dep_paths(
-            self,
-            doc: t.Cli.TomlDocument,
-            *,
-            is_root: bool = False,
-        ) -> t.StrSequence:
-            """Resolve dependency search paths for one TOML document."""
-            ...
-
     class CodegenFixer(Protocol):
         """Protocol for codegen namespace fixer services."""
 
-        def execute(self) -> r[bool]:
+        def execute(self) -> p.Result[bool]:
             """Execute codegen fix pass."""
             ...
 
+    @runtime_checkable
+    class CodegenCensusService(Protocol):
+        """Protocol for codegen census services reused across pipeline stages."""
+
+        def run(
+            self,
+            workspace_root: Path | None = None,
+            *,
+            output_format: str = "json",
+            projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
+        ) -> t.SequenceOf[m.Infra.CensusReport]:
+            """Run census and return typed reports."""
+            ...
+
+    @runtime_checkable
     class PyprojectModernizer(Protocol):
         """Protocol for pyproject.toml modernization services."""
 
-        def execute(self) -> r[bool]:
+        def execute(self) -> p.Result[bool]:
             """Execute modernization pass."""
             ...
 
+    @runtime_checkable
     class GithubService(Protocol):
         """Protocol for GitHub operations services."""
 
-        def execute(self) -> r[bool]:
+        def execute(self) -> p.Result[bool]:
             """Execute GitHub operations."""
             ...
 
-    class RefactorEngine(Protocol):
-        """Protocol for rope-based refactor engine services."""
+    @runtime_checkable
+    class RefactorService(Protocol):
+        """Protocol for rope-based refactor services."""
 
-        def execute(self) -> r[bool]:
+        def execute(self) -> p.Result[bool]:
             """Execute refactoring pass."""
             ...
 
+    @runtime_checkable
     class ReleaseOrchestrator(Protocol):
         """Protocol for release orchestration services."""
 
-        def execute(self) -> r[bool]:
+        def execute(self) -> p.Result[bool]:
             """Execute release orchestration."""
             ...
 
@@ -408,7 +380,7 @@ class FlextInfraProtocolsBase(Protocol):
     class SafeTransformer(Protocol):
         """Contract for transformers that run with copy-on-write protection."""
 
-        def transform(self, files: Sequence[Path]) -> r[Sequence[Path]]:
+        def transform(self, files: t.SequenceOf[Path]) -> p.Result[t.SequenceOf[Path]]:
             """Apply transformation to files, return paths of modified files."""
             ...
 
@@ -418,8 +390,76 @@ class FlextInfraProtocolsBase(Protocol):
 
         def validate(
             self,
-            files: Sequence[Path],
+            files: t.SequenceOf[Path],
             project_dir: Path,
-        ) -> r[m.Infra.GateResult]:
+        ) -> p.Result[m.Infra.GateResult]:
             """Validate files pass quality gates after transformation."""
+            ...
+
+    @runtime_checkable
+    class XmlElementLike(Protocol):
+        """Typed subset of the safe XML element API returned by defusedxml."""
+
+        attrib: dict[str, str]
+        text: str | None
+
+        def find(self, path: str) -> FlextInfraProtocolsBase.XmlElementLike | None:
+            """Find first matching child element."""
+            ...
+
+        def iter(
+            self, tag: str | None = None
+        ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
+            """Iterate over matching elements."""
+            ...
+
+    @runtime_checkable
+    class RefactorCliArgs(Protocol):
+        """Structural protocol for the parsed refactor CLI argument bag.
+
+        Replaces the prior ``argparse.Namespace`` annotation: the orchestrator
+        and renderer consume only attribute access, so a structural protocol
+        captures the contract without binding to argparse.
+        """
+
+        project: Path | None
+        workspace: Path | None
+        file: Path | None
+        files: t.SequenceOf[Path] | None
+        pattern: str
+        dry_run: bool
+        show_diff: bool
+        analysis_output: Path | None
+        impact_map_output: Path | None
+
+    @runtime_checkable
+    class GithubCliHandlers(Protocol):
+        """Protocol for GitHub CLI handler mixins."""
+
+        def sync_github_workflows(
+            self,
+            params: m.Infra.GithubWorkflowSyncRequest,
+        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
+            """Sync GitHub workflow files."""
+            ...
+
+        def lint_github_workflows(
+            self,
+            params: m.Infra.GithubWorkflowLintRequest,
+        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
+            """Lint GitHub workflow files."""
+            ...
+
+        def run_github_pull_request(
+            self,
+            params: m.Infra.GithubPullRequestRequest,
+        ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+            """Manage pull request for a single project."""
+            ...
+
+        def run_github_workspace_pull_requests(
+            self,
+            params: m.Infra.GithubPullRequestWorkspaceRequest,
+        ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
+            """Manage pull requests across the workspace."""
             ...

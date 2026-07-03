@@ -6,67 +6,68 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
-from typing import ClassVar, override
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
 
-
-class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraManualTypingAliasDetector:
     """Detect typing declarations outside canonical typings files via rope."""
 
-    _rule_id: ClassVar[str] = "namespace.manual_typing_alias"
-    _MESSAGE_TEMPLATE: ClassVar[str] = "Typing alias '{name}': {detail}"
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
+    ) -> t.SequenceOf[m.Infra.ManualTypingAliasViolation]:
         """Detect typing declaration placement violations in a single file."""
-        file_path = ctx.file_path
-        rope_project = ctx.rope_project
         if (
-            file_path.suffix != c.Infra.Extensions.PYTHON
-            or file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
-            or c.Infra.MRO_TYPINGS_DIRECTORY in file_path.parts
+            ctx.file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
+            or c.Infra.MRO_TYPINGS_DIRECTORY in ctx.file_path.parts
         ):
             return []
-        source = cls._get_source_or_empty(rope_project, file_path)
-        if source is None:
+        resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
+        if resource is None:
             return []
-        violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
-        # PEP 695: type Foo = ...
-        for hit in c.Infra.PEP695_RE.finditer(source):
-            violations.append(
-                m.Infra.ManualTypingAliasViolation(
-                    file=str(file_path),
-                    line=source[: hit.start()].count("\n") + 1,
-                    name=hit.group(1),
-                    detail="PEP695 alias must be centralized under typings scope",
+        file_path = ctx.file_path
+        lines = resource.read().splitlines()
+        violations: t.MutableSequenceOf[m.Infra.ManualTypingAliasViolation] = []
+        for line_number, line in enumerate(lines, start=1):
+            if not line or line[0].isspace():
+                continue
+            pep695_match = c.Infra.PEP695_RE.match(line)
+            if pep695_match is not None:
+                violations.append(
+                    m.Infra.ManualTypingAliasViolation(
+                        file=str(file_path),
+                        line=line_number,
+                        name=pep695_match.group(1),
+                        detail="PEP695 alias must be centralized under typings scope",
+                    )
                 )
-            )
-        # TypeAlias annotation: Foo: TypeAlias = ...
-        for hit in c.Infra.TYPEALIAS_ANNOT_RE.finditer(source):
-            violations.append(
-                m.Infra.ManualTypingAliasViolation(
-                    file=str(file_path),
-                    line=source[: hit.start()].count("\n") + 1,
-                    name=hit.group(1),
-                    detail="TypeAlias assignment must be centralized under typings scope",
+                continue
+            type_alias_match = c.Infra.TYPEALIAS_ANNOT_RE.match(line)
+            if type_alias_match is not None:
+                violations.append(
+                    m.Infra.ManualTypingAliasViolation(
+                        file=str(file_path),
+                        line=line_number,
+                        name=type_alias_match.group(1),
+                        detail="TypeAlias assignment must be centralized under typings scope",
+                    )
                 )
-            )
-        for hit in c.Infra.TYPING_FACTORY_ASSIGN_RE.finditer(source):
+                continue
+            typing_factory_match = c.Infra.TYPING_FACTORY_ASSIGN_RE.match(line)
+            if typing_factory_match is None:
+                continue
             violations.append(
                 m.Infra.ManualTypingAliasViolation(
                     file=str(file_path),
-                    line=source[: hit.start()].count("\n") + 1,
-                    name=hit.group(1),
+                    line=line_number,
+                    name=typing_factory_match.group(1),
                     detail="Typing factory assignment must be centralized under typings scope",
                 )
             )
         return violations
 
 
-__all__ = ["FlextInfraManualTypingAliasDetector"]
+__all__: list[str] = ["FlextInfraManualTypingAliasDetector"]

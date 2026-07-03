@@ -12,16 +12,13 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from flext_cli import FlextCliProtocols
-from flext_infra import (
-    FlextInfraProtocolsBase,
-    FlextInfraProtocolsCheck,
-    FlextInfraProtocolsRefactor,
-    FlextInfraProtocolsRope,
-)
+from flext_cli import p
+from flext_infra._protocols.base import FlextInfraProtocolsBase
+from flext_infra._protocols.check import FlextInfraProtocolsCheck
+from flext_infra._protocols.rope import FlextInfraProtocolsRope
 
 
-class FlextInfraProtocols(FlextCliProtocols):
+class FlextInfraProtocols(p):
     """Structural contracts for flext-infra utilities and services.
 
     All parent protocols (Result, Config, DI, Service, etc.) are inherited
@@ -32,7 +29,6 @@ class FlextInfraProtocols(FlextCliProtocols):
     @runtime_checkable
     class Infra(
         FlextInfraProtocolsCheck,
-        FlextInfraProtocolsRefactor,
         FlextInfraProtocolsRope,
         FlextInfraProtocolsBase,
         Protocol,
@@ -41,4 +37,4 @@ class FlextInfraProtocols(FlextCliProtocols):
 
 
 p = FlextInfraProtocols
-__all__ = ["FlextInfraProtocols", "p"]
+__all__: list[str] = ["FlextInfraProtocols", "FlextInfraProtocolsBase", "p"]

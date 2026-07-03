@@ -9,7 +9,7 @@ from typing import Final
 from pydantic import BaseModel, Field
 
 
-class {{ facade_name }}(BaseModel):
+class {{ facade_name }}(m.BaseModel):
     """{{ docstring }}
     
     Runtime alias: {{ runtime_alias }} = {{ facade_name }}

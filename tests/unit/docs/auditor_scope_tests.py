@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import m
 
-from flext_infra import FlextInfraDocAuditor
+from flext_infra.docs.auditor import FlextInfraDocAuditor
+from tests.models import m
 
 
 class TestAuditorForbiddenTerms:

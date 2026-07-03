@@ -9,53 +9,49 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import FlextCliModels
-from flext_infra import (
-    FlextInfraBasemkModels,
-    FlextInfraCheckModels,
-    FlextInfraCodegenModels,
-    FlextInfraCoreModels,
-    FlextInfraDepsModels,
-    FlextInfraDocsModels,
-    FlextInfraEngineModels,
-    FlextInfraGatesModels,
-    FlextInfraGithubModels,
-    FlextInfraModelsBase,
-    FlextInfraModelsCensus,
-    FlextInfraModelsCliInputs,
-    FlextInfraModelsRope,
-    FlextInfraModelsScan,
-    FlextInfraRefactorModels,
-    FlextInfraReleaseModels,
-    FlextInfraWorkspaceModels,
-)
+from flext_cli import m
+from flext_infra._models.base import FlextInfraModelsBase
+from flext_infra._models.basemk import FlextInfraModelsBasemk
+from flext_infra._models.census import FlextInfraModelsCensus
+from flext_infra._models.check import FlextInfraModelsCheck
+from flext_infra._models.codegen import FlextInfraModelsCodegen
+from flext_infra._models.deps import FlextInfraModelsDeps
+from flext_infra._models.docs import FlextInfraModelsDocs
+from flext_infra._models.gates import FlextInfraModelsGates
+from flext_infra._models.github import FlextInfraModelsGithub
+from flext_infra._models.mixins import FlextInfraModelsMixins
+from flext_infra._models.refactor import FlextInfraModelsRefactor
+from flext_infra._models.release import FlextInfraModelsRelease
+from flext_infra._models.rope import FlextInfraModelsRope
+from flext_infra._models.scan import FlextInfraModelsScan
+from flext_infra._models.validate import FlextInfraModelsCore
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
-class FlextInfraModels(FlextCliModels):
+class FlextInfraModels(m):
     """Merged model namespace for flext-infra domain objects."""
 
     class Infra(
-        FlextInfraModelsCliInputs,
         FlextInfraModelsCensus,
-        FlextInfraBasemkModels,
-        FlextInfraCheckModels,
-        FlextInfraCodegenModels,
-        FlextInfraDepsModels,
-        FlextInfraDocsModels,
-        FlextInfraGatesModels,
-        FlextInfraGithubModels,
-        FlextInfraRefactorModels,
-        FlextInfraReleaseModels,
-        FlextInfraCoreModels,
-        FlextInfraWorkspaceModels,
+        FlextInfraModelsBasemk,
+        FlextInfraModelsCheck,
+        FlextInfraModelsCodegen,
+        FlextInfraModelsDeps,
+        FlextInfraModelsDocs,
+        FlextInfraModelsGates,
+        FlextInfraModelsGithub,
+        FlextInfraModelsRefactor,
+        FlextInfraModelsRelease,
+        FlextInfraModelsMixins,
+        FlextInfraModelsWorkspace,
         FlextInfraModelsRope,
         FlextInfraModelsScan,
+        FlextInfraModelsCore,
         FlextInfraModelsBase,
-        FlextInfraEngineModels,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 
 
 m = FlextInfraModels
 
-__all__ = ["FlextInfraModels", "m"]
+__all__: list[str] = ["FlextInfraModels", "m"]

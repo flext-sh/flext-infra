@@ -18,7 +18,23 @@ This project portal is generated from `pyproject.toml`, package exports, and rea
 
 ## Public Surface Summary
 
-- Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandContext`, `FlextInfraConstants`, `FlextInfraModels`, `FlextInfraProtocols` (+4 more)
-- Alias namespaces: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `12`
-- Exported module shortcuts: `api`, `base`, `cli`, `constants`, `detectors`, `models` (+5 more)
+::: flext_infra
+    options:
+      members: false
+      show_root_heading: false
+      show_root_toc_entry: false
+      show_source: false
+
+## Collection Rules
+
+Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).
+
+## Quality Gates
+
+Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`](https://github.com/flext-sh/flext/blob/main/.agents/skills/flext-quality-gates/SKILL.md) skill for selectors and thresholds.
+
+## Governance Pointer
+
+- Engineering law: [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+- Skills index: [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/main/.agents/skills/)
+- Onboarding: [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/main/docs/guides/onboarding.md)

@@ -2,96 +2,129 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from types import MappingProxyType
+from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from flext_cli import m, u
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.constants import c
+from flext_infra.typings import t
 
-from flext_core import m
-from flext_infra import FlextInfraModelsMixins, t
 
-
-class FlextInfraWorkspaceModels:
+class FlextInfraModelsWorkspace:
     """Models for workspace discovery, sync, and migration.
 
     Canonical base policy:
     - ``ArbitraryTypesModel`` for mutable discovery and migration payloads.
-    - ``ContractModel`` reserved for immutable workspace config contracts.
+    - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
     class ProjectInfo(
-        FlextInfraModelsMixins.ProjectEntryNameMixin,
+        mm.ProjectEntryNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Discovered project metadata for workspace operations."""
 
-        model_config = ConfigDict(frozen=True, validate_default=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, validate_default=False
+        )
 
-        path: Annotated[Path, Field(description="Absolute or relative project path")]
+        path: Annotated[Path, m.Field(description="Absolute or relative project path")]
         stack: Annotated[
             t.NonEmptyStr,
-            Field(description="Primary technology stack"),
+            m.Field(description="Primary technology stack"),
         ]
-        has_tests: Annotated[
-            bool,
-            Field(default=False, description="Project has test suite"),
-        ] = False
+        has_tests: Annotated[bool, m.Field(description="Project has test suite")] = (
+            False
+        )
         has_src: Annotated[
-            bool,
-            Field(default=True, description="Project has source directory"),
+            bool, m.Field(description="Project has source directory")
         ] = True
         project_class: Annotated[
             t.NonEmptyStr,
-            Field(
-                default="platform",
+            m.Field(
                 description="Docs/governance project classification",
             ),
         ] = "platform"
         package_name: Annotated[
-            str,
-            Field(default="", description="Primary Python package name"),
+            str, m.Field(description="Primary Python package name")
         ] = ""
+        workspace_role: Annotated[
+            c.Infra.WorkspaceProjectRole,
+            m.Field(
+                description="Operational role relative to the uv workspace root",
+            ),
+        ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
-    class ProjectMeta(
-        FlextInfraModelsMixins.ProjectEntryNameMixin,
-        m.ArbitraryTypesModel,
-    ):
-        """Extracted project metadata for makefile generation."""
+    class ProjectPyprojectState(m.ArbitraryTypesModel):
+        """Centralized parsed pyproject state reused across discovery services.
 
-        python_version: Annotated[t.NonEmptyStr, Field(description="Python version")]
-        description: Annotated[t.NonEmptyStr, Field(description="Project description")]
+        Enforcement exemption: internal tooling model with intentional
+        mutable state.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, validate_default=False
+        )
+
+        project_root: Annotated[Path, m.Field(description="Project root path")]
+        pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
+        payload: Annotated[
+            t.Infra.ContainerDict,
+            m.Field(description="Parsed pyproject payload"),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        docs_meta: Annotated[
+            t.Infra.ContainerDict,
+            m.Field(description="Parsed tool.flext.docs payload"),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        project_name: Annotated[str, m.Field(description="Declared project name")] = ""
+        package_name: Annotated[str, m.Field(description="Primary package name")] = ""
+        dependency_names: Annotated[
+            t.StrSequence,
+            m.Field(description="Declared dependency names"),
+        ] = m.Field(default_factory=tuple)
 
     class SyncResult(m.ArbitraryTypesModel):
         """Result payload for sync operations."""
 
         files_changed: Annotated[
-            t.NonNegativeInt,
-            Field(default=0, description="Total changed files"),
+            t.NonNegativeInt, m.Field(description="Total changed files")
         ] = 0
-        source: Annotated[Path, Field(description="Sync source path")]
-        target: Annotated[Path, Field(description="Sync target path")]
+        source: Annotated[Path, m.Field(description="Sync source path")]
+        target: Annotated[Path, m.Field(description="Sync target path")]
         timestamp: Annotated[
             datetime,
-            Field(
-                description="Execution timestamp in UTC",
+            m.Field(
+                description="Execution timestamp in the configured timezone",
             ),
-        ] = Field(default_factory=lambda: datetime.now(UTC))
+        ] = m.Field(default_factory=lambda: u.now())
+
+        @u.field_serializer("source", "target", when_used="json")
+        def serialize_paths(self, value: Path) -> str:
+            """Serialize sync paths for JSON result boundaries."""
+            return str(value)
+
+        @u.field_serializer("timestamp", when_used="json")
+        def serialize_timestamp(self, value: datetime) -> str:
+            """Serialize execution timestamp for JSON result boundaries."""
+            return value.isoformat()
 
     class MigrationResult(
-        FlextInfraModelsMixins.ProjectNameMixin,
+        mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
         """Migration operation outcome with applied changes and errors."""
 
         changes: Annotated[
             t.StrSequence,
-            Field(description="Applied changes"),
-        ] = Field(default_factory=list)
+            m.Field(description="Applied changes"),
+        ] = m.Field(default_factory=tuple)
         errors: Annotated[
             t.StrSequence,
-            Field(description="Migration errors"),
-        ] = Field(default_factory=list)
+            m.Field(description="Migration errors"),
+        ] = m.Field(default_factory=tuple)
 
 
-__all__ = ["FlextInfraWorkspaceModels"]
+__all__: list[str] = ["FlextInfraModelsWorkspace"]

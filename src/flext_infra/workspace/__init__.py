@@ -1,158 +1,66 @@
-# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make gen
-#
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Workspace package."""
 
 from __future__ import annotations
 
-import typing as _t
+from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports, merge_lazy_imports
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-if _t.TYPE_CHECKING:
-    import flext_infra.workspace.cli as _flext_infra_workspace_cli
-
-    cli = _flext_infra_workspace_cli
-    import flext_infra.workspace.detector as _flext_infra_workspace_detector
-    from flext_infra.workspace.cli import FlextInfraCliWorkspace
-
-    detector = _flext_infra_workspace_detector
-    import flext_infra.workspace.maintenance as _flext_infra_workspace_maintenance
-    from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-
-    maintenance = _flext_infra_workspace_maintenance
-    import flext_infra.workspace.migrator as _flext_infra_workspace_migrator
-    from flext_infra.workspace.maintenance import (
-        FlextInfraCliMaintenance,
-        FlextInfraPythonVersionEnforcer,
-        logger,
-        python_version,
+if TYPE_CHECKING:
+    from flext_infra.workspace.base import (
+        FlextInfraWorkspaceGeneratorBase as FlextInfraWorkspaceGeneratorBase,
     )
-
-    migrator = _flext_infra_workspace_migrator
-    import flext_infra.workspace.orchestrator as _flext_infra_workspace_orchestrator
-    from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-
-    orchestrator = _flext_infra_workspace_orchestrator
-    import flext_infra.workspace.project_makefile as _flext_infra_workspace_project_makefile
-    from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-
-    project_makefile = _flext_infra_workspace_project_makefile
-    import flext_infra.workspace.sync as _flext_infra_workspace_sync
-    from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
-
-    sync = _flext_infra_workspace_sync
-    import flext_infra.workspace.workspace_makefile as _flext_infra_workspace_workspace_makefile
-    from flext_infra.workspace.sync import FlextInfraSyncService, main
-
-    workspace_makefile = _flext_infra_workspace_workspace_makefile
-    from flext_core.constants import FlextConstants as c
-    from flext_core.decorators import FlextDecorators as d
-    from flext_core.exceptions import FlextExceptions as e
-    from flext_core.handlers import FlextHandlers as h
-    from flext_core.mixins import FlextMixins as x
-    from flext_core.models import FlextModels as m
-    from flext_core.protocols import FlextProtocols as p
-    from flext_core.result import FlextResult as r
-    from flext_core.service import FlextService as s
-    from flext_core.typings import FlextTypes as t
-    from flext_core.utilities import FlextUtilities as u
+    from flext_infra.workspace.detector import (
+        FlextInfraWorkspaceDetector as FlextInfraWorkspaceDetector,
+    )
+    from flext_infra.workspace.environment import (
+        FlextInfraWorkspaceEnvironment as FlextInfraWorkspaceEnvironment,
+    )
+    from flext_infra.workspace.migrator import (
+        FlextInfraProjectMigrator as FlextInfraProjectMigrator,
+    )
+    from flext_infra.workspace.orchestrator import (
+        FlextInfraOrchestratorService as FlextInfraOrchestratorService,
+    )
+    from flext_infra.workspace.project_makefile import (
+        FlextInfraProjectMakefileUpdater as FlextInfraProjectMakefileUpdater,
+    )
+    from flext_infra.workspace.rope import (
+        FlextInfraRopeWorkspace as FlextInfraRopeWorkspace,
+    )
+    from flext_infra.workspace.sandbox_orchestrator import (
+        FlextInfraSandboxOrchestrator as FlextInfraSandboxOrchestrator,
+    )
+    from flext_infra.workspace.sync import (
+        FlextInfraSyncService as FlextInfraSyncService,
+    )
+    from flext_infra.workspace.vscode import (
+        FlextInfraWorkspaceVscode as FlextInfraWorkspaceVscode,
+    )
     from flext_infra.workspace.workspace_makefile import (
-        FlextInfraWorkspaceMakefileGenerator,
+        FlextInfraWorkspaceMakefileGenerator as FlextInfraWorkspaceMakefileGenerator,
     )
-_LAZY_IMPORTS = merge_lazy_imports(
-    ("flext_infra.workspace.maintenance",),
+_LAZY_IMPORTS = build_lazy_import_map(
     {
-        "FlextInfraCliWorkspace": (
-            "flext_infra.workspace.cli",
-            "FlextInfraCliWorkspace",
-        ),
-        "FlextInfraOrchestratorService": (
-            "flext_infra.workspace.orchestrator",
-            "FlextInfraOrchestratorService",
-        ),
-        "FlextInfraProjectMakefileUpdater": (
-            "flext_infra.workspace.project_makefile",
-            "FlextInfraProjectMakefileUpdater",
-        ),
-        "FlextInfraProjectMigrator": (
-            "flext_infra.workspace.migrator",
-            "FlextInfraProjectMigrator",
-        ),
-        "FlextInfraSyncService": (
-            "flext_infra.workspace.sync",
-            "FlextInfraSyncService",
-        ),
-        "FlextInfraWorkspaceDetector": (
-            "flext_infra.workspace.detector",
-            "FlextInfraWorkspaceDetector",
-        ),
-        "FlextInfraWorkspaceMakefileGenerator": (
-            "flext_infra.workspace.workspace_makefile",
-            "FlextInfraWorkspaceMakefileGenerator",
-        ),
-        "c": ("flext_core.constants", "FlextConstants"),
-        "cli": "flext_infra.workspace.cli",
-        "d": ("flext_core.decorators", "FlextDecorators"),
-        "detector": "flext_infra.workspace.detector",
-        "e": ("flext_core.exceptions", "FlextExceptions"),
-        "h": ("flext_core.handlers", "FlextHandlers"),
-        "m": ("flext_core.models", "FlextModels"),
-        "main": ("flext_infra.workspace.sync", "main"),
-        "maintenance": "flext_infra.workspace.maintenance",
-        "migrator": "flext_infra.workspace.migrator",
-        "orchestrator": "flext_infra.workspace.orchestrator",
-        "p": ("flext_core.protocols", "FlextProtocols"),
-        "project_makefile": "flext_infra.workspace.project_makefile",
-        "r": ("flext_core.result", "FlextResult"),
-        "s": ("flext_core.service", "FlextService"),
-        "sync": "flext_infra.workspace.sync",
-        "t": ("flext_core.typings", "FlextTypes"),
-        "u": ("flext_core.utilities", "FlextUtilities"),
-        "workspace_makefile": "flext_infra.workspace.workspace_makefile",
-        "x": ("flext_core.mixins", "FlextMixins"),
+        ".base": ("FlextInfraWorkspaceGeneratorBase",),
+        ".detector": ("FlextInfraWorkspaceDetector",),
+        ".environment": ("FlextInfraWorkspaceEnvironment",),
+        ".migrator": ("FlextInfraProjectMigrator",),
+        ".orchestrator": ("FlextInfraOrchestratorService",),
+        ".project_makefile": ("FlextInfraProjectMakefileUpdater",),
+        ".rope": ("FlextInfraRopeWorkspace",),
+        ".sandbox_orchestrator": ("FlextInfraSandboxOrchestrator",),
+        ".sync": ("FlextInfraSyncService",),
+        ".vscode": ("FlextInfraWorkspaceVscode",),
+        ".workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
     },
 )
-_ = _LAZY_IMPORTS.pop("cleanup_submodule_namespace", None)
-_ = _LAZY_IMPORTS.pop("install_lazy_exports", None)
-_ = _LAZY_IMPORTS.pop("lazy_getattr", None)
-_ = _LAZY_IMPORTS.pop("merge_lazy_imports", None)
-_ = _LAZY_IMPORTS.pop("output", None)
-_ = _LAZY_IMPORTS.pop("output_reporting", None)
-
-__all__ = [
-    "FlextInfraCliMaintenance",
-    "FlextInfraCliWorkspace",
-    "FlextInfraOrchestratorService",
-    "FlextInfraProjectMakefileUpdater",
-    "FlextInfraProjectMigrator",
-    "FlextInfraPythonVersionEnforcer",
-    "FlextInfraSyncService",
-    "FlextInfraWorkspaceDetector",
-    "FlextInfraWorkspaceMakefileGenerator",
-    "c",
-    "cli",
-    "d",
-    "detector",
-    "e",
-    "h",
-    "logger",
-    "m",
-    "main",
-    "maintenance",
-    "migrator",
-    "orchestrator",
-    "p",
-    "project_makefile",
-    "python_version",
-    "r",
-    "s",
-    "sync",
-    "t",
-    "u",
-    "workspace_makefile",
-    "x",
-]
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    publish_all=False,
+)

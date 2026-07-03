@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-import sys
-from collections.abc import Sequence
+from collections.abc import (
+    Sequence,
+)
 from pathlib import Path
+from typing import override
 
-import pytest
-import tomlkit
 from flext_tests import tm
-from tests import FlextInfraTestHelpers as h, m
-from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
+from flext_infra import r
+from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:
@@ -24,73 +25,59 @@ def _project(path: Path) -> m.Infra.ProjectInfo:
     )
 
 
-class _SilentLogger:
-    """No-op logger mock for path_sync tests."""
+def _service(
+    projects: t.SequenceOf[m.Infra.ProjectInfo],
+) -> FlextInfraUtilitiesDependencyPathSync:
+    class _TestPathSync(FlextInfraUtilitiesDependencyPathSync):
+        @staticmethod
+        @override
+        def discover_projects(
+            workspace_root: Path,
+            *,
+            include_attached: bool = False,
+        ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+            _ = workspace_root
+            _ = include_attached
+            return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 
-    def info(self, _message: str) -> None:
-        pass
-
-
-def test_main_project_obj_not_dict_first_loop(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_dir = tmp_path / "test-project"
-    project_dir.mkdir()
-    (project_dir / "pyproject.toml").touch()
-
-    def _discover_projects(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
-
-    def _read_document(_path: Path) -> r[TOMLDocument]:
-        return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
-
-    monkeypatch.setattr(sys, "argv", ["sync-paths", "--workspace", str(tmp_path)])
-    monkeypatch.setattr(
-        "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
-        _discover_projects,
-    )
-    monkeypatch.setattr(
-        path_sync_module.u.Cli,
-        "toml_read_document",
-        staticmethod(_read_document),
-    )
-
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
-    tm.that(path_sync_module.main(), eq=0)
+    return _TestPathSync()
 
 
-def test_main_project_obj_not_dict_second_loop(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_dir = tmp_path / "test-project"
-    project_dir.mkdir()
+class TestsFlextInfraDepsPathSyncMainProjectObj:
+    """Behavior contract for test_path_sync_main_project_obj."""
 
-    def _discover_projects(
-        _root: Path,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+    def test_main_project_obj_not_dict_first_loop(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            'project = "not-a-dict"\n',
+            encoding="utf-8",
+        )
+        tm.that(
+            _service([]).execute(
+                m.Infra.PathSyncCommand.model_validate({
+                    "workspace": str(tmp_path),
+                    "mode": "standalone",
+                })
+            ),
+            eq=0,
+        )
 
-    def _read_document(_path: Path) -> r[TOMLDocument]:
-        return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
-
-    monkeypatch.setattr(sys, "argv", ["sync-paths", "--workspace", str(tmp_path)])
-    monkeypatch.setattr(
-        "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
-        _discover_projects,
-    )
-    monkeypatch.setattr(
-        path_sync_module.u.Cli,
-        "toml_read_document",
-        staticmethod(_read_document),
-    )
-
-    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
-    tm.that(path_sync_module.main(), eq=0)
-
-
-def test_helpers_alias_is_reachable_project_obj() -> None:
-    tm.that(hasattr(h, "assert_ok"), eq=True)
+    def test_main_project_obj_not_dict_second_loop(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "workspace"\n',
+            encoding="utf-8",
+        )
+        project_dir = tmp_path / "test-project"
+        project_dir.mkdir()
+        (project_dir / "pyproject.toml").write_text(
+            'project = "not-a-dict"\n',
+            encoding="utf-8",
+        )
+        tm.that(
+            _service([_project(project_dir)]).execute(
+                m.Infra.PathSyncCommand.model_validate({
+                    "workspace": str(tmp_path),
+                    "mode": "standalone",
+                })
+            ),
+            eq=0,
+        )

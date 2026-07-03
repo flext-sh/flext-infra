@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import (
+    Mapping,
+)
 from pathlib import Path
 from typing import ClassVar, override
 
-from pydantic import ValidationError
-
-from flext_infra import FlextInfraGate, c, m, t, u
+from flext_infra.constants import c
+from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRuffLintGate(FlextInfraGate):
@@ -37,10 +41,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
+        """Build check command."""
         _ = project_dir
         return [
             c.Infra.RUFF,
-            c.Infra.Verbs.CHECK,
+            c.Infra.VERB_CHECK,
             *check_dirs,
             *ctx.ruff_args,
             "--output-format",
@@ -54,25 +59,40 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         result: m.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse check output."""
         _ = project_dir, ctx
-        issues: MutableSequence[m.Infra.Issue] = []
-        ruff_data = u.Cli.json_parse(result.stdout or "[]").unwrap_or([])
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        parsed_result = u.Cli.json_parse(result.stdout or "[]")
+        empty_items: t.JsonValueList = []
+        ruff_data = parsed_result.unwrap() if parsed_result.success else empty_items
         try:
             if isinstance(ruff_data, list):
                 for entry in ruff_data:
                     if isinstance(entry, Mapping):
                         issues.append(
                             m.Infra.Issue(
-                                file=u.Infra.pick_str(entry, "filename", "?"),
-                                line=u.Infra.nested_int(entry, "location", "row"),
-                                column=u.Infra.nested_int(entry, "location", "column"),
-                                code=u.Infra.pick_str(entry, "code"),
-                                message=u.Infra.pick_str(entry, "message"),
+                                file=u.Cli.json_pick_str(entry, "filename", "?"),
+                                line=u.Cli.json_nested_int(entry, "location", "row"),
+                                column=u.Cli.json_nested_int(
+                                    entry, "location", "column"
+                                ),
+                                code=u.Cli.json_pick_str(entry, "code"),
+                                message=u.Cli.json_pick_str(entry, "message"),
                             ),
                         )
-        except (TypeError, ValidationError):
-            pass
+        except c.EXC_VALIDATION_TYPE as err:
+            issues.append(
+                m.Infra.Issue(
+                    file="<ruff-output>",
+                    line=0,
+                    column=0,
+                    code="PARSE_ERROR",
+                    message=f"Tool output parsing failed: {type(err).__name__}",
+                    severity="ERROR",
+                )
+            )
+            return False, issues
         return result.exit_code == 0, issues
 
     @override
@@ -82,10 +102,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         targets: t.StrSequence,
     ) -> t.StrSequence:
+        """Build fix command."""
         _ = project_dir
         return [
             c.Infra.RUFF,
-            c.Infra.Verbs.CHECK,
+            c.Infra.VERB_CHECK,
             *targets,
             *ctx.ruff_args,
             "--fix",
@@ -93,4 +114,4 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         ]
 
 
-__all__ = ["FlextInfraRuffLintGate"]
+__all__: list[str] = ["FlextInfraRuffLintGate"]

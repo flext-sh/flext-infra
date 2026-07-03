@@ -1,187 +1,49 @@
-"""Tests for FlextInfraDocValidator — internal methods.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public utility tests used by docs validation flows."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-from tests import m, t
-
-from flext_infra import FlextInfraDocValidator, u
+from tests.constants import c
+from tests.utilities import u
 
 
-@pytest.fixture
-def validator() -> FlextInfraDocValidator:
-    return FlextInfraDocValidator()
+def test_docs_has_adr_reference_detects_marker(tmp_path: Path) -> None:
+    skill = tmp_path / "SKILL.md"
+    skill.write_text("# Skill\n\nADR: documented.\n", encoding="utf-8")
+
+    assert u.Infra.docs_has_adr_reference(skill) is True
 
 
-def _scope(tmp_path: Path, name: str = "test") -> m.Infra.DocScope:
-    return m.Infra.DocScope(
-        name=name,
-        path=tmp_path,
-        report_dir=tmp_path / "reports",
+def test_docs_load_required_skills_reads_architecture_config(tmp_path: Path) -> None:
+    settings = tmp_path / "docs/architecture/architecture_config.json"
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text(
+        '{"docs_validation": {"required_skills": ["rules-docs", "readme-standardization"]}}',
+        encoding="utf-8",
     )
 
+    result = u.Infra.docs_load_required_skills(tmp_path)
 
-class TestValidateScope:
-    def test_adr_check(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        report = validator._validate_scope(
-            _scope(tmp_path, "root"),
-            check="adr-skill",
-            apply_mode=False,
-        )
-        tm.that(report.scope, eq="root")
-
-    def test_without_config(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        report = validator._validate_scope(
-            _scope(tmp_path),
-            check="all",
-            apply_mode=False,
-        )
-        tm.that(report.scope, eq="test")
-
-    def test_all_check(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        report = validator._validate_scope(
-            _scope(tmp_path),
-            check="all",
-            apply_mode=False,
-        )
-        tm.that(report.scope, eq="test")
-
-    def test_adr_check_failure(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        def mock_adr_check(path: Path | str) -> tuple[int, t.StrSequence]:
-            return (1, ["missing_skill"])
-
-        monkeypatch.setattr(validator, "_run_adr_skill_check", mock_adr_check)
-        report = validator._validate_scope(
-            _scope(tmp_path),
-            check="adr",
-            apply_mode=False,
-        )
-        tm.that(report.scope, eq="test")
-
-    def test_adr_skill_check_failure(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        arch_dir = tmp_path / "docs/architecture"
-        arch_dir.mkdir(parents=True, exist_ok=True)
-        (arch_dir / "architecture_config.json").write_text("{}")
-
-        def mock_adr_check(path: Path | str) -> tuple[int, t.StrSequence]:
-            return (1, ["missing_skill_1", "missing_skill_2"])
-
-        monkeypatch.setattr(validator, "_run_adr_skill_check", mock_adr_check)
-        report = validator._validate_scope(
-            _scope(tmp_path, "root"),
-            check="adr-skill",
-            apply_mode=False,
-        )
-        tm.that(report.scope, eq="root")
-        tm.that(report.result, eq="FAIL")
+    assert result.success
+    assert result.value == ["rules-docs", "readme-standardization"]
 
 
-class TestAdrHelpers:
-    def test_has_adr_with_text(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        sf = tmp_path / "SKILL.md"
-        sf.write_text("# Skill\n\nADR: This is an ADR reference.\n")
-        tm.that(u.Infra.docs_has_adr_reference(sf), eq=True)
+def test_docs_write_todo_writes_only_for_project_scopes(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(
+        tmp_path,
+        project_names=("flext-a",),
+    )
+    scopes = u.Infra.build_scopes(
+        workspace,
+        projects=["flext-a"],
+        output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+    )
 
-    def test_has_adr_without_text(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        sf = tmp_path / "SKILL.md"
-        sf.write_text("# Skill\n\nNo architecture decision record here.\n")
-        tm.that(not u.Infra.docs_has_adr_reference(sf), eq=True)
-
-    def test_adr_check_no_config(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code, gte=0)
-
-    def test_adr_check_with_config(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        cfg_dir = tmp_path / "docs/architecture"
-        cfg_dir.mkdir(parents=True, exist_ok=True)
-        (cfg_dir / "architecture_config.json").write_text(
-            '{"docs_validation": {"required_skills": ["test-skill"]}}',
-        )
-        code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code, gte=0)
-
-    def test_adr_check_with_missing_skills(
-        self,
-        validator: FlextInfraDocValidator,
-        tmp_path: Path,
-    ) -> None:
-        (tmp_path / ".claude/skills").mkdir(parents=True, exist_ok=True)
-        code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code, gte=0)
-
-
-class TestMaybeWriteTodo:
-    def test_root_scope_skipped(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        tm.that(
-            not u.Infra.docs_write_todo(
-                _scope(tmp_path, "root"),
-                apply_mode=True,
-            ),
-            eq=True,
-        )
-
-    def test_apply_false(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        tm.that(
-            not u.Infra.docs_write_todo(
-                _scope(tmp_path),
-                apply_mode=False,
-            ),
-            eq=True,
-        )
-
-    def test_creates_file(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        result = u.Infra.docs_write_todo(_scope(tmp_path), apply_mode=True)
-        tm.that(result, eq=True)
-        tm.that((tmp_path / "TODOS.md").exists(), eq=True)
+    assert scopes.success
+    root_scope, project_scope = scopes.value
+    root_result = u.Infra.docs_write_todo(root_scope, apply_mode=True)
+    project_result = u.Infra.docs_write_todo(project_scope, apply_mode=True)
+    assert root_result.success and root_result.value is False
+    assert project_result.success and project_result.value is True
+    assert (workspace / "flext-a/TODOS.md").exists()

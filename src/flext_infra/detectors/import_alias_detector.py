@@ -6,57 +6,51 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import ClassVar, override
-
 from flext_infra import (
-    FlextInfraScanFileMixin,
     c,
     m,
-    p,
+    t,
     u,
 )
 
 
-class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+class FlextInfraImportAliasDetector:
     """Detect deep import paths that should use top-level aliases."""
 
-    _rule_id: ClassVar[str] = "namespace.import_alias"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Deep import '{current_import}' should use '{suggested_import}'"
-    )
-
-    @classmethod
-    @override
+    @staticmethod
     def detect_file(
-        cls,
         ctx: m.Infra.DetectorContext,
-    ) -> Sequence[m.Infra.ImportAliasViolation]:
+    ) -> t.SequenceOf[m.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
-        file_path = ctx.file_path
-        if file_path.name == c.Infra.Files.INIT_PY:
-            return []
-        resource = u.Infra.get_resource_from_path(
-            ctx.rope_project,
-            file_path,
+        resource = u.Infra.fetch_python_resource(
+            ctx.rope_project, ctx.file_path, skip_init_py=True
         )
         if resource is None:
             return []
+        file_path = ctx.file_path
         source = resource.read()
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return []
+        metadata = u.read_project_constants("flext-infra")
         source_lines = source.splitlines()
         violations: list[m.Infra.ImportAliasViolation] = []
         for from_import in u.Infra.get_absolute_from_imports(
             ctx.rope_project,
             resource,
         ):
-            if not cls._is_deep_flext_module(from_import.module_name):
+            if not (
+                from_import.module_name.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
+                and "." in from_import.module_name
+                and all(
+                    not part.startswith("_")
+                    for part in from_import.module_name.split(".")[1:]
+                )
+            ):
                 continue
             alias_names = sorted(
                 name
                 for name, alias in from_import.names_and_aliases
-                if alias is None and name in c.Infra.RUNTIME_ALIAS_NAMES
+                if alias is None and name in metadata.RUNTIME_ALIAS_NAMES
             )
             if not alias_names:
                 continue
@@ -79,14 +73,5 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             )
         return violations
 
-    @staticmethod
-    def _is_deep_flext_module(module_name: str) -> bool:
-        if (
-            not module_name.startswith(c.Infra.Packages.PREFIX_UNDERSCORE)
-            or "." not in module_name
-        ):
-            return False
-        return all(not part.startswith("_") for part in module_name.split(".")[1:])
 
-
-__all__ = ["FlextInfraImportAliasDetector"]
+__all__: list[str] = ["FlextInfraImportAliasDetector"]

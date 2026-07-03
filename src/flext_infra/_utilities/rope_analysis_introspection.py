@@ -2,31 +2,32 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
-from pathlib import Path
-
-from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRopeCore,
-    c,
-    m,
-    p,
-    t,
+from collections.abc import (
+    MutableMapping,
 )
+from pathlib import Path
+from typing import ClassVar
+
+from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesRopeAnalysisIntrospection(
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesRopeCore,
-):
+class FlextInfraUtilitiesRopeAnalysisIntrospection:
     """Rope-backed class and module introspection helpers.
 
     Extracted mixin providing: get_class_nested_classes,
-    get_module_symbols, extract_public_methods_from_dir,
-    extract_public_methods_from_file.
+    get_module_symbols, extract_public_methods_from_dir.
     """
+
+    _METHOD_KIND_LABELS: ClassVar[t.StrMapping] = {
+        "staticmethod": "static",
+        "classmethod": "class",
+    }
 
     @staticmethod
     def get_class_nested_classes(
@@ -35,80 +36,151 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
         class_name: str,
     ) -> t.StrSequence:
         """Return names of nested classes within a given class."""
-        result: list[str] = []
         try:
-            pycore = FlextInfraUtilitiesRopeAnalysisIntrospection.get_pycore(
+            return FlextInfraUtilitiesRopeAnalysisIntrospection._nested_class_names(
                 rope_project,
+                resource,
+                class_name,
             )
-            pymodule = pycore.resource_to_pyobject(resource)
-            attributes = pymodule.get_attributes()
-            if class_name not in attributes:
-                return result
-            obj = attributes[class_name].get_object()
-            if not FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
-                obj
-            ):
-                return result
-            for name, pyname in obj.get_attributes().items():
-                child = pyname.get_object()
-                if FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
-                    child
-                ):
-                    result.append(name)
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+            return ()
+
+    @staticmethod
+    def _nested_class_names(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        class_name: str,
+    ) -> t.StrSequence:
+        """Return nested class names from a resolved Rope class object."""
+        result: list[str] = []
+        pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+        attributes = pymodule.get_attributes()
+        if class_name not in attributes:
             return result
+        obj = attributes[class_name].get_object()
+        if not isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
+            return result
+        for name, pyname in obj.get_attributes().items():
+            child = pyname.get_object()
+            if isinstance(child, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
+                result.append(name)
         return result
 
     @staticmethod
     def get_module_symbols(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> Sequence[m.Infra.SymbolInfo]:
-        """Return all top-level symbols with metadata."""
-        result: MutableSequence[m.Infra.SymbolInfo] = []
+    ) -> t.SequenceOf[m.Infra.SymbolInfo]:
+        """Return top-level symbols defined in one module through Rope metadata."""
+        result: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
         try:
-            pycore = FlextInfraUtilitiesRopeAnalysisIntrospection.get_pycore(
-                rope_project,
-            )
-            pymodule = pycore.resource_to_pyobject(resource)
-            resource_path = resource.path
-            for name, pyname in pymodule.get_attributes().items():
-                obj = pyname.get_object()
-                _, line_candidate = pyname.get_definition_location()
-                line = line_candidate or 0
-                module = obj.get_module()
-                origin = module.get_resource() if module is not None else None
-                if origin is not None and origin.path != resource_path:
-                    continue
-                if FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_abstract_class_like(
-                    obj
-                ):
-                    kind = "class"
-                elif FlextInfraUtilitiesRopeAnalysisIntrospection.is_rope_pyfunction_like(
-                    obj
-                ):
-                    kind = "function"
-                else:
-                    kind = "assignment"
-                result.append(m.Infra.SymbolInfo(name=name, kind=kind, line=line))
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+            tree: p.AttributeProbe = pymodule.get_ast()
+            body: object = getattr(tree, "body", ())
+            if not isinstance(body, (list, tuple)):
+                return result
+            for node in body:
+                result.extend(
+                    FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(
+                        node
+                    )
+                )
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return result
         return sorted(result, key=lambda symbol: symbol.line)
+
+    @staticmethod
+    def _module_symbols_from_node(
+        node: p.AttributeProbe,
+    ) -> t.SequenceOf[m.Infra.SymbolInfo]:
+        """Return top-level symbol entries represented by one Rope AST node."""
+        node_kind = node.__class__.__name__
+        line = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_line(node)
+        if node_kind == "ClassDef":
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(node)
+            return (
+                (m.Infra.SymbolInfo(name=name, kind="class", line=line),)
+                if name
+                else ()
+            )
+        if node_kind in {"FunctionDef", "AsyncFunctionDef"}:
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(node)
+            return (
+                (m.Infra.SymbolInfo(name=name, kind="function", line=line),)
+                if name
+                else ()
+            )
+        return tuple(
+            m.Infra.SymbolInfo(name=name, kind="assignment", line=line)
+            for name in FlextInfraUtilitiesRopeAnalysisIntrospection._assignment_names(
+                node,
+                node_kind,
+            )
+        )
+
+    @staticmethod
+    def _assignment_names(node: p.AttributeProbe, node_kind: str) -> t.StrSequence:
+        """Return assignment-like target names from one top-level AST node."""
+        if node_kind == "Assign":
+            raw_targets: object = getattr(node, "targets", ())
+            if not isinstance(raw_targets, (list, tuple)):
+                return ()
+            return tuple(
+                name
+                for target in raw_targets
+                if (
+                    name
+                    := FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(
+                        target
+                    )
+                )
+            )
+        if node_kind == "AnnAssign":
+            target: object = getattr(node, "target", None)
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(target)
+            return (name,) if name else ()
+        if node_kind == "TypeAlias":
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(node)
+            return (name,) if name else ()
+        return ()
+
+    @staticmethod
+    def _ast_named_value(node: p.AttributeProbe | object | None) -> str:
+        """Return ``name``/``id`` carried by a Rope AST node."""
+        if node is None:
+            return ""
+        direct: object = getattr(node, "name", "")
+        if isinstance(direct, str) and direct:
+            return direct
+        identifier: object = getattr(node, "id", "")
+        if isinstance(identifier, str) and identifier:
+            return identifier
+        nested: object = getattr(direct, "id", "")
+        if isinstance(nested, str):
+            return nested
+        return ""
+
+    @staticmethod
+    def _ast_line(node: p.AttributeProbe) -> int:
+        """Return a stable one-based source line for a Rope AST node."""
+        line: object = getattr(node, "lineno", 1)
+        return line if isinstance(line, int) and line > 0 else 1
 
     @classmethod
     def extract_public_methods_from_dir(
         cls: type[p.Infra.RopeAnalysisMethods],
         package_dir: Path,
-    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
+    ) -> t.MappingKV[str, t.SequenceOf[t.Triple[str, str, str]]]:
         """Extract public methods from all Python files in a package directory."""
-        result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = cls.discover_project_root_from_file(package_dir / "foo.py")
+        result: MutableMapping[str, t.MutableSequenceOf[t.Triple[str, str, str]]] = {}
+        project_root = FlextInfraUtilitiesDiscovery.project_root(
+            package_dir / "foo.py",
+        )
         if project_root is None:
             return result
-        rope_proj = cls.init_rope_project(project_root.parent)
-        try:
-            for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
-                if py_file.name == c.Infra.Files.INIT_PY:
+        with FlextInfraUtilitiesRopeCore.open_project(project_root.parent) as rope_proj:
+            for py_file in sorted(package_dir.glob(c.Infra.EXT_PYTHON_GLOB)):
+                if py_file.name == c.Infra.INIT_PY:
                     continue
                 resource = cls.get_resource_from_path(rope_proj, py_file)
                 if resource is None:
@@ -125,57 +197,12 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection(
                     for method_name, method_kind in class_methods.items():
                         methods.append((
                             method_name,
-                            cls.method_kind_label(method_kind),
+                            FlextInfraUtilitiesRopeAnalysisIntrospection._METHOD_KIND_LABELS.get(
+                                method_kind, "instance"
+                            ),
                             py_file.name,
                         ))
-        finally:
-            rope_proj.close()
         return result
 
-    @classmethod
-    def extract_public_methods_from_file(
-        cls: type[p.Infra.RopeAnalysisMethods],
-        file_path: Path,
-    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
-        """Extract public methods from a single Python file."""
-        if not file_path.exists():
-            return {}
-        result: MutableMapping[str, MutableSequence[t.Infra.Triple[str, str, str]]] = {}
-        project_root = cls.discover_project_root_from_file(file_path)
-        if project_root is None:
-            return result
-        rope_proj = cls.init_rope_project(project_root.parent)
-        try:
-            resource = cls.get_resource_from_path(rope_proj, file_path)
-            if resource is None:
-                return {}
-            classes = cls.get_module_classes(rope_proj, resource)
-            for class_name in classes:
-                class_methods = cls.get_class_methods(
-                    rope_proj,
-                    resource,
-                    class_name,
-                    include_private=False,
-                )
-                methods = result.setdefault(class_name, [])
-                for method_name, method_kind in class_methods.items():
-                    methods.append((
-                        method_name,
-                        cls.method_kind_label(method_kind),
-                        file_path.name,
-                    ))
-        finally:
-            rope_proj.close()
-        return result
 
-    @staticmethod
-    def method_kind_label(method_kind: str) -> str:
-        """Normalize Rope method kinds to census labels."""
-        if method_kind == "staticmethod":
-            return "static"
-        if method_kind == "classmethod":
-            return "class"
-        return "instance"
-
-
-__all__ = ["FlextInfraUtilitiesRopeAnalysisIntrospection"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisIntrospection"]

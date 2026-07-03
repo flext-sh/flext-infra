@@ -1,10 +1,9 @@
-"""CLI contract tests for workspace maintenance entry point."""
+"""CLI contract tests for maintenance entry point."""
 
 from __future__ import annotations
 
-from tests import t
-
 from flext_infra import main as infra_main
+from tests.typings import t
 
 
 def main(argv: t.StrSequence | None = None) -> int:
@@ -14,5 +13,8 @@ def main(argv: t.StrSequence | None = None) -> int:
     return infra_main(args)
 
 
-def test_maintenance_rejects_apply_flag() -> None:
-    assert main(["--apply"]) == 2
+class TestsFlextInfraInfraMaintenanceCli:
+    """Behavior contract for test_infra_maintenance_cli."""
+
+    def test_maintenance_rejects_apply_flag(self) -> None:
+        assert main(["--apply"]) == 2

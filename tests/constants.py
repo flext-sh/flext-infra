@@ -1,7 +1,8 @@
 """Constants for FLEXT infra tests.
 
-Provides FlextInfraTestConstants, extending FlextTestsConstants with infra-specific
-constants for infrastructure testing, project names, and test markers.
+Provides TestsFlextInfraConstants, extending FlextTestsConstants with
+infra-specific constants for infrastructure testing, project names, and test
+markers.
 
 Copyright (FlextTestsConstants) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,14 +10,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Final
+import re
+from types import MappingProxyType
+from typing import ClassVar, Final
 
 from flext_tests import FlextTestsConstants
 
-from flext_infra import FlextInfraConstants
+from flext_infra import c, t
 
 
-class FlextInfraTestConstants(FlextTestsConstants, FlextInfraConstants):
+class TestsFlextInfraConstants(FlextTestsConstants, c):
     """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
     Architecture layer: Layer 0 foundation constants with infra test extensions.
@@ -24,71 +27,154 @@ class FlextInfraTestConstants(FlextTestsConstants, FlextInfraConstants):
     All base constants from FlextTestsConstants are available through inheritance.
     """
 
-    class Infra(FlextInfraConstants.Infra):
-        """Infra-specific test constants namespace.
+    class Tests(FlextTestsConstants.Tests):
+        """Flat constants optimized for data-driven infra tests."""
 
-        All infra-specific test constants are organized under this namespace.
-        Access via FlextTestsConstants.Infra.*
-        """
+        RELEASE_PHASE_VALIDATE: Final[str] = c.Infra.VERB_VALIDATE
+        RELEASE_PHASE_VERSION: Final[str] = c.Infra.VERSION
+        RELEASE_PHASE_BUILD: Final[str] = c.Infra.DIR_BUILD
+        RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.VERB_PUBLISH
 
-        class Tests:
-            """Test-specific constants namespace with infra extensions.
+        ALL_PHASES: Final[t.StrSequence] = (
+            RELEASE_PHASE_VALIDATE,
+            RELEASE_PHASE_VERSION,
+            RELEASE_PHASE_BUILD,
+            RELEASE_PHASE_PUBLISH,
+        )
 
-            All test-specific constants are organized under this namespace.
-            Access via FlextTestsConstants.Infra.Tests.* for infra test constants.
-            """
+        LOG_NOISE_LINES: Final[t.StrSequence] = (
+            "make[1]: Nothing to be done",
+            "INFO: running tests",
+            "warning: ignoring duplicate",
+            "Success: 5 passed",
+            "make[2]: Entering directory",
+        )
+        LOG_ERROR_LINES: Final[t.StrSequence] = (
+            "ERROR: something went wrong",
+            "FAIL: test_foo failed",
+            "error: compilation failed",
+            "E  AssertionError: mismatch",
+            "FAILED tests/test_foo.py::test_bar",
+        )
+        LOG_PATTERN_CASES: ClassVar[tuple[tuple[str, int], ...]] = (
+            ("error: compilation failed", 1),
+            ("E  AssertionError: mismatch", 1),
+            ("FAILED tests/test_foo.py::test_bar", 1),
+            ("make[2]: Entering directory", 0),
+            ("warning: ignoring duplicate", 0),
+            ("Success: 5 passed", 0),
+        )
+        LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
+            r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)",
+        )
+        LOG_MIXED_SCENARIO_LINES: Final[t.StrSequence] = (
+            "make[1]: running",
+            "ERROR: build failed",
+            "INFO: post-build",
+            "FAIL: test broken",
+            "Total: 2 failed",
+        )
+        SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = re.compile(
+            r"hello",
+            re.MULTILINE,
+        )
+        LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = re.compile(
+            r'["\']([^"\']+)["\']',
+        )
+        INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (
+            "FlextInfra",
+            "c",
+            "infra",
+            "m",
+            "main",
+            "p",
+            "s",
+            "t",
+            "u",
+        )
+        INFRA_PUBLIC_WRAPPER_MODULES: Final[t.StrSequence] = (
+            "flext_infra.__version__",
+            "flext_infra.constants",
+            "flext_infra.models",
+            "flext_infra.protocols",
+            "flext_infra.typings",
+            "flext_infra.utilities",
+        )
+        INFRA_PUBLIC_ROOT_ALIAS_EXPECTATIONS: ClassVar[tuple[tuple[str, str], ...]] = (
+            ("c", "FlextInfraConstants"),
+            ("m", "FlextInfraModels"),
+            ("p", "FlextInfraProtocols"),
+            ("s", "FlextInfraServiceBase"),
+            ("t", "FlextInfraTypes"),
+            ("u", "FlextInfraUtilities"),
+        )
+        INFRA_PUBLIC_WRAPPER_ALIAS_EXPECTATIONS: ClassVar[
+            tuple[tuple[str, str, str], ...]
+        ] = (
+            ("flext_infra.constants", "c", "FlextInfraConstants"),
+            ("flext_infra.models", "m", "FlextInfraModels"),
+            ("flext_infra.protocols", "p", "FlextInfraProtocols"),
+            ("flext_infra.typings", "t", "FlextInfraTypes"),
+            ("flext_infra.utilities", "u", "FlextInfraUtilities"),
+        )
+        INFRA_PUBLIC_NAMESPACE_ALIAS_NAMES: Final[t.StrSequence] = (
+            "c",
+            "m",
+            "p",
+            "t",
+            "u",
+        )
+        INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
+            "current_workspace_version",
+            "parse_semver",
+        )
 
-            class Projects:
-                """Project names and identifiers for infra testing."""
+        WORKSPACE_PROJECT_NAME: Final[str] = "workspace"
+        DEMO_PROJECT_NAME: Final[str] = "demo-project"
+        PROJECT_A_NAME: Final[str] = "proj-a"
+        PROJECT_B_NAME: Final[str] = "proj-b"
+        PROJECT_NO_SRC_NAME: Final[str] = "no-src"
+        PROJECT_MEMBERS_BY_SCENARIO: ClassVar[t.MappingKV[str, t.StrSequence]] = (
+            MappingProxyType({
+                "single": (DEMO_PROJECT_NAME,),
+                "filtered": (PROJECT_A_NAME, PROJECT_B_NAME),
+                "missing_src": (PROJECT_NO_SRC_NAME,),
+            })
+        )
 
-                FLEXT_CORE: Final[str] = "flext-core"
-                FLEXT_API: Final[str] = "flext-api"
-                FLEXT_CLI: Final[str] = "flext-cli"
-                FLEXT_MELTANO: Final[str] = "flext-meltano"
-                FLEXT_LDAP: Final[str] = "flext-ldap"
-                FLEXT_LDIF: Final[str] = "flext-ldif"
-                FLEXT_OBSERVABILITY: Final[str] = "flext-observability"
-                FLEXT_QUALITY: Final[str] = "flext-quality"
+        CODEGEN_NAMESPACE_FILES: Final[frozenset[str]] = frozenset({
+            "__init__.py",
+            "__version__.py",
+            "py.typed",
+        })
+        CODEGEN_SKIPPED_DIRS: Final[frozenset[str]] = frozenset({
+            ".hidden",
+            "vendor",
+            "node_modules",
+            ".venv",
+        })
 
-                ALL_PROJECTS: Final[tuple[str, ...]] = (
-                    FLEXT_CORE,
-                    FLEXT_API,
-                    FLEXT_CLI,
-                    FLEXT_MELTANO,
-                    FLEXT_LDAP,
-                    FLEXT_LDIF,
-                    FLEXT_OBSERVABILITY,
-                    FLEXT_QUALITY,
-                )
-
-            class Markers:
-                """Test markers for infra test categorization."""
-
-                INFRA: Final[str] = "infra"
-                INTEGRATION: Final[str] = "integration"
-                DOCKER: Final[str] = "docker"
-                SLOW: Final[str] = "slow"
-                REQUIRES_NETWORK: Final[str] = "requires_network"
-                REQUIRES_DOCKER: Final[str] = "requires_docker"
-
-            class Versions:
-                """Version strings for infra components."""
-
-                PYTHON_MIN: Final[str] = "3.13"
-                PYTHON_RECOMMENDED: Final[str] = "3.13"
-                POETRY_MIN: Final[str] = "1.8"
-                RUFF_MIN: Final[str] = "0.1"
-                MYPY_MIN: Final[str] = "1.0"
-
-            class Paths:
-                """Path constants for infra testing."""
-
-                DOCKER_COMPOSE_DIR: Final[str] = "docker"
-                TESTS_DIR: Final[str] = "tests"
-                INFRA_TESTS_DIR: Final[str] = "tests/infra"
-                FIXTURES_DIR: Final[str] = "tests/fixtures"
-                INTEGRATION_DIR: Final[str] = "tests/integration"
+        RELEASE_VERSION_BASE: Final[str] = "0.1.0"
+        RELEASE_VERSION_SELECTED: Final[str] = "1.2.0"
+        RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
+        RELEASE_VERSION_NEXT_DEV: Final[str] = "1.1.0-dev"
+        RELEASE_BUMP_MINOR: Final[str] = "minor"
+        RELEASE_PROJECTS: Final[tuple[str, str]] = (
+            "flext-a",
+            "flext-b",
+        )
+        RELEASE_TAG_TARGET: Final[str] = "v1.0.0"
+        RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
+        RELEASE_NOTES_HEADING: Final[str] = "# Release v1.0.0"
+        RELEASE_NOTES_CHANGE_LINE: Final[str] = "- abc123 fix release flow"
+        RELEASE_INITIAL_CHANGE_LINE: Final[str] = "- Initial tagged release"
+        RELEASE_CHANGELOG_HEADER: Final[str] = "# Changelog\n\n"
+        RELEASE_VERIFICATION_LINES: Final[t.StrSequence] = (
+            "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all",
+            "- make val VALIDATE_SCOPE=workspace",
+            "- make build",
+        )
 
 
-c = FlextInfraTestConstants
-__all__ = ["FlextInfraTestConstants", "c"]
+c = TestsFlextInfraConstants
+__all__: list[str] = ["TestsFlextInfraConstants", "c"]

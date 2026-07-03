@@ -9,38 +9,34 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from flext_tests import tm
-from tests import (
-    FlextInfraCodegenTestProjectFactory,
-    t,
-)
 
-from flext_infra import FlextInfraCodegenScaffolder
-
-_SRC_MODULE_FILES = FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from tests.constants import c
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
 def _parse_class_names(source: str) -> t.StrSequence:
-    """Extract all class names from Python source code via AST.
+    """Extract all class names from Python source via the codegen regex authority.
 
-    Single Responsibility: parse and extract class definitions only.
+    Single Responsibility: detect class definitions only.
     """
-    tree = ast.parse(source)
-    return [node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
+    return c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
 
 
 def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
-    """Validate that all modules in base_dir parse as valid Python AST.
+    """Validate that all modules in base_dir compile as valid Python.
 
-    Utility: eliminates duplicate parse validation logic.
+    Utility: eliminates duplicate syntax validation logic.
     """
     for mod in modules:
         source = (base_dir / mod).read_text(encoding="utf-8")
-        tree = ast.parse(source)
-        tm.that(type(tree).__name__, eq="Module")
+        compiled = compile(source, str(base_dir / mod), "exec")
+        assert compiled is not None
 
 
 def _validate_class_names(
@@ -61,43 +57,59 @@ def _validate_class_names(
         )
 
 
+def _project_info(
+    project: Path, *, package_name: str = "test_project"
+) -> m.Infra.ProjectInfo:
+    return u.Tests.create_project_info(
+        project,
+        name=project.name,
+        package_name=package_name,
+    )
+
+
 class TestGeneratedFilesAreValidPython:
     def test_generated_src_modules_parse_successfully(
         self,
         tmp_path: Path,
     ) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=False,
         )
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        scaffolder.scaffold_project(project)
+        _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
-        _validate_modules_parse(pkg, _SRC_MODULE_FILES)
+        _validate_modules_parse(
+            pkg,
+            u.Tests.src_module_files(),
+        )
 
     def test_generated_tests_modules_parse_successfully(
         self,
         tmp_path: Path,
     ) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=True,
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        scaffolder.scaffold_project(project)
-        _validate_modules_parse(tests_dir, _SRC_MODULE_FILES)
+        _ = scaffolder.run(projects=[_project_info(project)])
+        _validate_modules_parse(
+            tests_dir,
+            u.Tests.src_module_files(),
+        )
 
 
 class TestGeneratedClassNamingConvention:
     def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=False,
         )
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        scaffolder.scaffold_project(project)
+        _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
         _validate_class_names(
             pkg,
@@ -114,14 +126,14 @@ class TestGeneratedClassNamingConvention:
         self,
         tmp_path: Path,
     ) -> None:
-        project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path,
             with_all_modules=True,
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        scaffolder.scaffold_project(project)
+        _ = scaffolder.run(projects=[_project_info(project)])
         _validate_class_names(
             tests_dir,
             {
@@ -138,7 +150,15 @@ class TestGeneratedClassNamingConvention:
         project.mkdir()
         (project / "Makefile").touch()
         scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
-        result = scaffolder.scaffold_project(project)
-        tm.that(result.files_created, eq=[])
-        tm.that(result.files_skipped, eq=[])
+        [result] = scaffolder.run(
+            projects=[
+                u.Tests.create_project_info(
+                    project,
+                    name="empty-project",
+                    package_name="",
+                )
+            ]
+        )
+        tm.that(result.files_created, empty=True)
+        tm.that(result.files_skipped, empty=True)
         tm.that(result.project, eq="empty-project")

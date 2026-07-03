@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
-class FlextInfraBasemkConstants:
+class FlextInfraConstantsBasemk:
     """Basemk infrastructure constants."""
 
     TEMPLATE_ORDER: Final[t.StrSequence] = (
@@ -22,4 +23,4 @@ class FlextInfraBasemkConstants:
     )
 
 
-__all__ = ["FlextInfraBasemkConstants"]
+__all__: list[str] = ["FlextInfraConstantsBasemk"]

@@ -1,8 +1,8 @@
 """Type aliases for flext-infra.
 
-Re-exports and extends flext_core typings for infrastructure services.
+Re-exports and extends flext-cli typings for infrastructure services.
 Infra-specific type aliases live inside ``FlextInfraTypes`` so they are
-accessed via ``t.Infra.Payload``, ``t.Infra.PayloadMap``, etc.
+accessed via ``t.Infra.Payload``, ``t.Infra.ContainerDict``, etc.
 
 Non-recursive aliases use ``type X = ...`` (PEP 695 Python 3.13+ syntax).
 See AGENTS.md §3 AXIOMATIC rule.
@@ -13,20 +13,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_cli import FlextCliTypes
-from flext_infra import (
-    FlextInfraTypesAdapters,
-    FlextInfraTypesBase,
-    FlextInfraTypesRope,
-)
-
-if TYPE_CHECKING:
-    from flext_infra import FlextInfraEngineModels
+from flext_cli import t
+from flext_infra._typings.adapters import FlextInfraTypesAdapters
+from flext_infra._typings.base import FlextInfraTypesBase
+from flext_infra._typings.rope import FlextInfraTypesRope
 
 
-class FlextInfraTypes(FlextCliTypes):
+class FlextInfraTypes(t):
     """Type namespace for flext-infra; extends FlextTypes via MRO.
 
     Infra-specific types are nested under the ``Infra`` inner class to
@@ -42,13 +35,11 @@ class FlextInfraTypes(FlextCliTypes):
     ):
         """Infrastructure-domain type aliases.
 
-        These aliases compose ``FlextTypes.Scalar`` and collection generics
-        for infrastructure payload contracts and common patterns.
+        These aliases compose CLI JSON contracts and infrastructure-specific
+        collection generics for common tooling payloads.
         """
-
-        if TYPE_CHECKING:
-            type TomlOperation = FlextInfraEngineModels.TomlOperation
 
 
 t = FlextInfraTypes
-__all__ = ["FlextInfraTypes", "t"]
+
+__all__: list[str] = ["FlextInfraTypes", "t"]

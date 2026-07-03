@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-import re
 from typing import override
 
-from flext_infra import FlextInfraRopeTransformer, t, u
+from flext_infra.constants import c
+from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
@@ -16,16 +18,22 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
     """
 
     @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """No-op text transform. This transformer requires rope resources."""
+        return source, list(self.changes)
+
+    @override
     def transform(
         self,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Apply MRO redeclaration removal. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         class_infos = u.Infra.get_class_info(rope_project, resource)
         if not class_infos:
-            return source, []
+            no_changes: list[str] = []
+            return source, no_changes
 
         for parent_info in class_infos:
             parent_name = parent_info.name
@@ -43,13 +51,8 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
                     nested_class=nested_name,
                 )
 
-        if source != u.Infra.read_source(resource) and self.changes:
-            u.Infra.write_source(
-                rope_project,
-                resource,
-                source,
-                description="mro remover",
-            )
+        if source != resource.read() and self.changes:
+            resource.write(source)
         return source, list(self.changes)
 
     def _strip_parent_base(
@@ -80,21 +83,20 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
             for b in nested_bases
             if b != parent_name and not b.startswith(f"{parent_name}.")
         ]
-        pattern = re.compile(
-            rf"^(\s*class\s+{re.escape(nested_class)})\s*\([^)]*\)\s*:",
-            re.MULTILINE,
-        )
+        pattern = c.Infra.compile_class_header_with_bases_for(nested_class)
         if remaining:
             bases_str = ", ".join(remaining)
             replacement = rf"\1({bases_str}):"
         else:
             replacement = r"\1:"
 
-        new_source, count = pattern.subn(replacement, source, count=1)
+        replacement_result = pattern.subn(replacement, source, count=1)
+        new_source: str = replacement_result[0]
+        count = replacement_result[1]
         if count > 0 and new_source != source:
             self._record_change(f"Fixed MRO redeclaration: {nested_class}")
             return new_source
         return source
 
 
-__all__ = ["FlextInfraRefactorMRORemover"]
+__all__: list[str] = ["FlextInfraRefactorMRORemover"]

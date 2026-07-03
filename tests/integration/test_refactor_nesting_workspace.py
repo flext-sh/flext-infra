@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import (
+    Mapping,
+    MutableSequence,
+)
 from pathlib import Path
 
-from flext_infra import FlextInfraModels, FlextInfraRefactorLooseClassScanner
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+from tests.models import m
 
 
-class TestWorkspaceLevelRefactor:
+class TestsFlextInfraIntegrationRefactorNestingWorkspace:
     """Test class nesting refactor across multi-project workspace."""
 
     def test_multi_project_workspace_processed(self, tmp_path: Path) -> None:
@@ -26,7 +30,7 @@ class TestWorkspaceLevelRefactor:
         violations_count = 0
         for proj in projects:
             result = scanner.scan(tmp_path / proj)
-            assert result.is_success
+            assert result.success
             raw_files = result.value.get("files_scanned", 0)
             files_scanned += (
                 int(raw_files) if isinstance(raw_files, (int, float)) else 0
@@ -51,8 +55,8 @@ class TestWorkspaceLevelRefactor:
         scanner = FlextInfraRefactorLooseClassScanner()
         result_a = scanner.scan(tmp_path / "project-a")
         result_b = scanner.scan(tmp_path / "project-b")
-        assert result_a.is_success
-        assert result_b.is_success
+        assert result_a.success
+        assert result_b.success
         total_files = 0
         for result in (result_a, result_b):
             raw = result.value.get("files_scanned", 0)
@@ -70,20 +74,18 @@ class TestWorkspaceLevelRefactor:
                 '\nclass UtilityHelper:\n    @staticmethod\n    def help() -> str:\n        return "help"\n',
             )
         scanner = FlextInfraRefactorLooseClassScanner()
-        all_violations: MutableSequence[FlextInfraModels.Infra.LooseClassViolation] = []
+        all_violations: MutableSequence[m.Infra.LooseClassViolation] = []
         for proj in projects:
             result = scanner.scan(tmp_path / proj)
-            assert result.is_success
+            assert result.success
             violations_raw = result.value.get("violations", [])
             if isinstance(violations_raw, list):
                 for v_item in violations_raw:
-                    if isinstance(v_item, FlextInfraModels.Infra.LooseClassViolation):
+                    if isinstance(v_item, m.Infra.LooseClassViolation):
                         all_violations.append(v_item)
                     elif isinstance(v_item, Mapping):
                         all_violations.append(
-                            FlextInfraModels.Infra.LooseClassViolation.model_validate(
-                                v_item
-                            ),
+                            m.Infra.LooseClassViolation.model_validate(v_item),
                         )
         assert len(all_violations) >= 3
         for v in all_violations:

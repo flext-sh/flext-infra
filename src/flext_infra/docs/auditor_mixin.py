@@ -1,0 +1,157 @@
+"""Auditor helper mixin for the documentation auditor service.
+
+Provides static helper methods used by the documentation auditor service.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from collections.abc import (
+    Callable,
+    Mapping,
+)
+from pathlib import Path
+
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
+
+
+class FlextInfraDocAuditorMixin:
+    """Mixin providing helper methods for the documentation auditor."""
+
+    @staticmethod
+    def find_architecture_config(workspace_root: Path) -> Path | None:
+        """Walk up from workspace_root looking for the architecture settings."""
+        for candidate in [workspace_root, *workspace_root.parents]:
+            path = candidate / "docs/architecture/architecture_config.json"
+            if path.exists():
+                return path
+        return None
+
+    @staticmethod
+    def parse_audit_gate(
+        audit_gate: t.MappingKV[str, t.Infra.InfraValue],
+    ) -> t.Pair[int | None, t.IntMapping]:
+        """Extract default budget and per-scope budgets from an audit_gate mapping."""
+        default_budget = audit_gate.get("max_issues_default")
+        by_scope_raw_value = audit_gate.get("max_issues_by_scope")
+        by_scope_raw: t.MappingKV[str, t.Infra.InfraValue] = {}
+        if isinstance(by_scope_raw_value, Mapping):
+            try:
+                by_scope_raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                    by_scope_raw_value,
+                    strict=True,
+                )
+            except c.ValidationError:
+                by_scope_raw = {}
+        by_scope: t.MutableIntMapping = {}
+        for name, value in by_scope_raw.items():
+            if isinstance(value, t.NUMERIC_TYPES):
+                by_scope[name] = int(value)
+        resolved_default = (
+            int(default_budget) if isinstance(default_budget, t.NUMERIC_TYPES) else None
+        )
+        return (resolved_default, by_scope)
+
+    @classmethod
+    def load_audit_budgets(
+        cls,
+        workspace_root: Path,
+    ) -> t.Pair[int | None, t.IntMapping]:
+        """Load audit budgets from the nearest architecture settings."""
+        result: t.Pair[int | None, t.IntMapping]
+        settings = cls.find_architecture_config(workspace_root)
+        if settings is None:
+            result = (None, {})
+        else:
+            payload_result = u.Cli.json_read(settings)
+            if payload_result.failure or not isinstance(payload_result.value, Mapping):
+                result = (None, {})
+            else:
+                docs_validation = payload_result.value.get("docs_validation")
+                if not isinstance(docs_validation, Mapping):
+                    result = (None, {})
+                else:
+                    audit_gate = docs_validation.get("audit_gate")
+                    if not isinstance(audit_gate, Mapping):
+                        result = (None, {})
+                    else:
+                        try:
+                            validated_gate = (
+                                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                                    audit_gate,
+                                    strict=False,
+                                )
+                            )
+                        except c.ValidationError:
+                            result = (None, {})
+                        else:
+                            result = cls.parse_audit_gate(validated_gate)
+        return result
+
+    @staticmethod
+    def resolve_checks(check: str) -> t.Infra.StrSet:
+        """Parse check string into a resolved set of check names."""
+        checks = {part.strip() for part in check.split(",") if part.strip()}
+        if not checks or "all" in checks:
+            return {
+                "links",
+                "forbidden-terms",
+                "placeholders",
+                "stale-symbols",
+                "scope-boundary",
+                "generated-ownership",
+                "docstrings",
+                "python-codeblocks",
+            }
+        return checks
+
+    @staticmethod
+    def write_audit_reports(
+        scope: m.Infra.DocScope,
+        issues: t.SequenceOf[m.Infra.AuditIssue],
+        checks: t.Infra.StrSet,
+        *,
+        strict: bool,
+        to_markdown_fn: Callable[
+            [m.Infra.DocScope, t.SequenceOf[m.Infra.AuditIssue]], t.StrSequence
+        ],
+    ) -> None:
+        """Persist JSON summary and markdown report to the scope report directory."""
+        validated_checks = t.json_list_adapter().validate_python(sorted(checks))
+        sorted_checks: t.JsonValueList = list(validated_checks)
+        summary: t.JsonDict = {
+            c.Infra.RK_SCOPE: scope.name,
+            "issues": len(issues),
+            c.Infra.VERB_CHECKS: sorted_checks,
+            c.Infra.OperationMode.STRICT: strict,
+            "report_dir": scope.report_dir.as_posix(),
+        }
+        issues_payload: t.JsonValue = [
+            {
+                c.Infra.RK_FILE: issue.file,
+                "issue_type": issue.issue_type,
+                "severity": issue.severity,
+                c.Infra.RK_MESSAGE: issue.message,
+            }
+            for issue in issues
+        ]
+        summary_payload: t.JsonDict = {
+            c.Infra.RK_SUMMARY: summary,
+            "issues": issues_payload,
+        }
+        _ = u.Cli.json_write(
+            scope.report_dir / "audit-summary.json",
+            summary_payload,
+        )
+        _ = u.Infra.write_markdown(
+            scope.report_dir / "audit-report.md",
+            to_markdown_fn(scope, issues),
+        )
+
+
+__all__: list[str] = ["FlextInfraDocAuditorMixin"]

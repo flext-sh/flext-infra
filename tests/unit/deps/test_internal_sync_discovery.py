@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import (
+    Callable,
+)
 from pathlib import Path
 
 from flext_tests import tm
-from tests import t
 
-from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService
+from flext_infra import r
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
+from tests.protocols import p
+from tests.typings import t
 
 
 class _TomlReaderStub:
@@ -15,20 +18,20 @@ class _TomlReaderStub:
 
     def __init__(
         self,
-        fn: Callable[[Path], r[t.Infra.ContainerDict]],
+        fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
     ) -> None:
         self._fn = fn
 
-    def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         """Delegate to the callable provided at construction."""
         return self._fn(path)
 
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    value: r[t.Infra.ContainerDict],
+    value: p.Result[t.Infra.ContainerDict],
 ) -> None:
-    def _reader(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _reader(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         return value
 
     service.toml = _TomlReaderStub(fn=_reader)
@@ -36,11 +39,11 @@ def _set_toml_stub(
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 
-    def _next(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _next(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         item = values[state["index"]]
         state["index"] += 1
         return item
@@ -48,7 +51,7 @@ def _set_toml_sequence(
     service.toml = _TomlReaderStub(fn=_next)
 
 
-class TestParseGitmodules:
+class TestsFlextInfraDepsInternalSyncDiscovery:
     def test_parse_gitmodules_valid(self, tmp_path: Path) -> None:
         gitmodules = tmp_path / ".gitmodules"
         gitmodules.write_text(
@@ -66,20 +69,24 @@ class TestParseGitmodules:
     def test_parse_gitmodules_empty(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text("")
-        tm.that(FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={})
+        tm.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
+        )
 
     def test_parse_gitmodules_no_url(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text('[submodule "test"]\n\tpath = test\n')
-        tm.that(FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={})
+        tm.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
+        )
 
     def test_parse_gitmodules_non_submodule_section(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text("[other]\nfoo = bar\n")
-        tm.that(FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={})
+        tm.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
+        )
 
-
-class TestParseRepoMap:
     def test_parse_repo_map_success(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -105,12 +112,12 @@ class TestParseRepoMap:
     def test_parse_repo_map_no_repo_section(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, r[t.Infra.ContainerDict].ok({"other": "data"}))
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
     def test_parse_repo_map_non_dict_repo(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, r[t.Infra.ContainerDict].ok({"repo": "not-a-dict"}))
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
     def test_parse_repo_map_non_dict_values(self) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -118,7 +125,7 @@ class TestParseRepoMap:
             service,
             r[t.Infra.ContainerDict].ok({"repo": {"flext-core": "string-value"}}),
         )
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
     def test_parse_repo_map_no_ssh_url(self) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -126,7 +133,7 @@ class TestParseRepoMap:
             service,
             r[t.Infra.ContainerDict].ok({"repo": {"flext-core": {"other": "val"}}}),
         )
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
     def test_parse_repo_map_auto_https(self) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -142,12 +149,10 @@ class TestParseRepoMap:
         tm.ok(result)
         tm.that(result.value["flext-core"].https_url.startswith("https://"), eq=True)
 
-
-class TestCollectInternalDeps:
     def test_no_pyproject(self, tmp_path: Path) -> None:
         tm.ok(
             FlextInfraInternalDependencySyncService().collect_internal_deps(tmp_path),
-            eq={},
+            empty=True,
         )
 
     def test_poetry_path_deps(self, tmp_path: Path) -> None:
@@ -209,5 +214,5 @@ class TestCollectInternalDeps:
             ],
         )
         (tmp_path / "pyproject.toml").write_text("")
-        tm.ok(service.collect_internal_deps(tmp_path), eq={})
-        tm.ok(service.collect_internal_deps(tmp_path), eq={})
+        tm.ok(service.collect_internal_deps(tmp_path), empty=True)
+        tm.ok(service.collect_internal_deps(tmp_path), empty=True)

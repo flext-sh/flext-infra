@@ -12,15 +12,27 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
-from tests import m, t
+from flext_tests import r, tm
 
-from flext_infra import FlextInfraCodegenCensus
+from flext_infra.codegen.census import FlextInfraCodegenCensus
+from tests.models import m
+from tests.typings import t
+from tests.utilities import u
 
 
-@pytest.fixture
-def census(tmp_path: Path) -> FlextInfraCodegenCensus:
-    return FlextInfraCodegenCensus(workspace=tmp_path)
+def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:
+    parsed = u.Infra.parse_namespace_validation(
+        r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport(
+                passed=True,
+                violations=[violation],
+            )
+        )
+    )
+    if parsed.failure:
+        return None
+    violations = parsed.unwrap()
+    return violations[0] if violations else None
 
 
 class TestParseViolationValid:
@@ -72,7 +84,7 @@ class TestParseViolationValid:
         expected_line: int,
         expected_msg: str,
     ) -> None:
-        result = FlextInfraCodegenCensus._parse_violation(violation_str)
+        result = _parse_violation(violation_str)
         tm.that(result, none=False)
         tm.that(result, is_=m.Infra.CensusViolation)
         assert result is not None
@@ -105,12 +117,12 @@ class TestParseViolationInvalid:
         ],
     )
     def test_returns_none(self, violation_str: str) -> None:
-        tm.that(FlextInfraCodegenCensus._parse_violation(violation_str), none=True)
+        tm.that(_parse_violation(violation_str), none=True)
 
 
 class TestFixabilityClassification:
     def test_ns000_not_fixable(self) -> None:
-        result = FlextInfraCodegenCensus._parse_violation(
+        result = _parse_violation(
             "[NS-000-001] src/file.py:1 — Structure violation",
         )
         tm.that(result, none=False)
@@ -118,7 +130,7 @@ class TestFixabilityClassification:
         tm.that(not result.fixable, eq=True)
 
     def test_ns001_fixable(self) -> None:
-        result = FlextInfraCodegenCensus._parse_violation(
+        result = _parse_violation(
             "[NS-001-001] src/file.py:1 — Constant violation",
         )
         tm.that(result, none=False)
@@ -126,7 +138,7 @@ class TestFixabilityClassification:
         tm.that(result.fixable, eq=True)
 
     def test_ns002_fixable(self) -> None:
-        result = FlextInfraCodegenCensus._parse_violation(
+        result = _parse_violation(
             "[NS-002-001] src/file.py:1 — TypeVar violation",
         )
         tm.that(result, none=False)
@@ -135,12 +147,25 @@ class TestFixabilityClassification:
 
     def test_ns000_multiple_sub_rules_not_fixable(self) -> None:
         for sub in ("001", "002", "099"):
-            result = FlextInfraCodegenCensus._parse_violation(
+            result = _parse_violation(
                 f"[NS-000-{sub}] src/x.py:1 — msg",
             )
             tm.that(result, none=False)
             assert result is not None
             tm.that(not result.fixable, eq=True)
+
+
+class TestCensusExecute:
+    def test_execute_fails_when_apply_changes_requested(self, tmp_path: Path) -> None:
+        result = FlextInfraCodegenCensus(
+            workspace=tmp_path,
+            apply_changes=True,
+        ).execute()
+
+        tm.fail(
+            result,
+            has="census is read-only; use flext-infra codegen auto-fix --apply",
+        )
 
 
 __all__: t.StrSequence = []

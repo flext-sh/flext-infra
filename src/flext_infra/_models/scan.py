@@ -8,83 +8,88 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
-
-from flext_core import FlextModels
-from flext_infra import (
-    FlextInfraModelsMixins,
-    FlextInfraNamespaceEnforcerModels,
-    FlextInfraTypesRope,
+from flext_cli import m
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra._models.refactor_namespace_enforcer import (
+    FlextInfraModelsNamespaceEnforcer,
 )
+from flext_infra.typings import t
 
 
 class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
 
-    class DetectorContext(FlextModels.ArbitraryTypesModel):
+    class DetectorContext(m.ArbitraryTypesModel):
         """Bundles common parameters passed to every detect_file classmethod."""
 
-        file_path: Path = Field(
+        file_path: Path = m.Field(
             description="Filesystem path of the file being scanned.",
         )
-        rope_project: FlextInfraTypesRope.RopeProject = Field(
+        rope_project: t.Infra.RopeProject = m.Field(
             description="Initialized Rope project for semantic metadata.",
         )
-        parse_failures: (
-            MutableSequence[FlextInfraNamespaceEnforcerModels.ParseFailureViolation]
-            | None
-        ) = Field(
-            default=None,
-            description="Shared parse-failure collector across detector passes.",
-        )
-        project_name: str = Field(
-            default="",
-            description="Optional project name for the scanned file.",
-        )
-        project_root: Path | None = Field(
-            default=None,
-            description="Optional project root containing the scanned file.",
-        )
+        parse_failures: Annotated[
+            (
+                t.MutableSequenceOf[
+                    FlextInfraModelsNamespaceEnforcer.ParseFailureViolation
+                ]
+                | None
+            ),
+            m.Field(
+                description="Shared parse-failure collector across detector passes.",
+            ),
+        ] = None
+        project_name: Annotated[
+            str,
+            m.Field(
+                description="Optional project name for the scanned file.",
+            ),
+        ] = ""
+        project_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Optional project root containing the scanned file.",
+            ),
+        ] = None
 
     class ScanViolation(
-        FlextInfraModelsMixins.PositiveLineMixin,
-        FlextModels.ContractModel,
+        mm.PositiveLineMixin,
+        m.ContractModel,
     ):
         """A single violation found during file scanning."""
 
         message: Annotated[
             str,
-            Field(description="Human-readable violation description"),
+            m.Field(description="Human-readable violation description"),
         ]
-        severity: Annotated[str, Field(description="Violation severity level")]
+        severity: Annotated[str, m.Field(description="Violation severity level")]
         rule_id: Annotated[
-            str | None,
-            Field(default=None, description="Optional rule identifier"),
-        ]
+            str | None, m.Field(description="Optional rule identifier")
+        ] = None
 
-    class ScanResult(FlextModels.ArbitraryTypesModel):
+    class ScanResult(m.ArbitraryTypesModel):
         """Result of scanning a single file."""
 
         @staticmethod
         def _violations_default() -> list[FlextInfraModelsScan.ScanViolation]:
+            """Violations default."""
             return []
 
-        file_path: Annotated[Path, Field(description="Path to the scanned file")]
+        file_path: Annotated[Path, m.Field(description="Path to the scanned file")]
         violations: Annotated[
             list[FlextInfraModelsScan.ScanViolation],
-            Field(
+            m.Field(
                 default_factory=_violations_default,
                 description="Violations found in the file",
             ),
         ]
         detector_name: Annotated[
             str,
-            Field(description="Name of the detector that produced this result"),
+            m.Field(description="Name of the detector that produced this result"),
         ]
 
 
-__all__ = ["FlextInfraModelsScan"]
+__all__: list[str] = ["FlextInfraModelsScan"]

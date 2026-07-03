@@ -15,10 +15,8 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import (
-    FlextInfraPythonVersionEnforcer,
-    main as infra_main,
-)
+from flext_infra import main as infra_main
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,18 +48,12 @@ def _make_enforcer(workspace: Path) -> FlextInfraPythonVersionEnforcer:
     return _TestEnforcer()
 
 
-class TestMaintenanceMainSuccess:
-    """Tests for main() success paths."""
-
+class TestsFlextInfraInfraMaintenanceMain:
     def test_main_with_help_flag(self) -> None:
         tm.that(main(["--help"]), eq=0)
 
     def test_main_calls_sys_exit_on_help(self) -> None:
         tm.that(main(["--help"]), eq=0)
-
-
-class TestMaintenanceMainEnforcer:
-    """Tests for FlextInfraPythonVersionEnforcer directly."""
 
     def test_enforcer_check_only_success(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -148,7 +140,12 @@ class TestMaintenanceMainEnforcer:
         (project / "src").mkdir()
         mismatched = sys.version_info.minor + 1
         (project / "pyproject.toml").write_text(
-            f'requires-python = ">=3.{mismatched}"\n',
+            (
+                "[project]\n"
+                "name = 'project-a'\n"
+                "dependencies = ['flext-core>=0.1.0']\n"
+                f'requires-python = ">=3.{mismatched}"\n'
+            ),
             encoding="utf-8",
         )
         enforcer = _make_enforcer(workspace)

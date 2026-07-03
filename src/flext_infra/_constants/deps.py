@@ -3,24 +3,30 @@
 from __future__ import annotations
 
 import re
+from types import MappingProxyType
 from typing import Final
 
-from flext_infra import t
+from flext_cli import t
 
 
-class FlextInfraDepsConstants:
+class FlextInfraConstantsDeps:
     """Deps infrastructure constants."""
 
     # NOTE: Hardcoded base path constants removed.
-    # All tool config phases now use dynamic discovery via
+    # All tool settings phases now use dynamic discovery via
     # u.Infra.discover_python_dirs() (SSOT in FlextInfraUtilitiesDiscovery).
-    GIT_REF_RE: Final[re.Pattern[str]] = re.compile(
+    GIT_REF_RE: Final[t.RegexPattern] = re.compile(
         r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$",
     )
-    GITHUB_REPO_URL_RE: Final[re.Pattern[str]] = re.compile(
+    GITHUB_REPO_URL_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?|https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?)$",
     )
-    PEP621_PATH_RE: Final[re.Pattern[str]] = re.compile(r"@\s*(?:file:)?(?P<path>.+)$")
+    GITHUB_OWNER_PATTERNS: Final[tuple[t.RegexPattern, ...]] = (
+        re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+        re.compile(r"^https://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+        re.compile(r"^http://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+    )
+    PEP621_PATH_RE: Final[t.RegexPattern] = re.compile(r"@\s*(?:file:)?(?P<path>.+)$")
     SKIP_DIRS: Final[frozenset[str]] = frozenset({
         ".archive",
         ".claude.disabled",
@@ -29,7 +35,6 @@ class FlextInfraDepsConstants:
         ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
-        ".sisyphus",
         ".venv",
         "__pycache__",
         "build",
@@ -39,13 +44,16 @@ class FlextInfraDepsConstants:
         "site",
         "vendor",
     })
-    DEP_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
+    DEP_NAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
     FLEXT_DEPS_DIR: Final[str] = ".flext-deps"
-    PEP621_PATH_DEP_RE: Final[re.Pattern[str]] = re.compile(
+    PEP621_PATH_DEP_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<name>[A-Za-z0-9_.-]+)\s*@\s*(?:file:(?://)?)?(?P<path>.+)$",
     )
-    PEP621_NAME_RE: Final[re.Pattern[str]] = re.compile(
+    PEP621_NAME_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(?P<name>[A-Za-z0-9_.-]+)",
+    )
+    PEP621_REQUIREMENT_HEAD_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)",
     )
     BANNER: Final[str] = (
         "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
@@ -59,7 +67,7 @@ class FlextInfraDepsConstants:
     LEGACY_AUTO_BANNER_LINE: Final[str] = (
         "# Sections with [AUTO] are derived from workspace layout and dependencies."
     )
-    COMMENT_MARKERS: Final[t.Infra.VariadicTuple[t.Infra.StrPair]] = (
+    COMMENT_MARKERS: Final[t.StrPairTuple] = (
         ("[build-system]", "# [MANAGED] build system"),
         ("[project]", "# [CUSTOM] project metadata"),
         ("[tool.poetry.group.dev.dependencies]", "# [CUSTOM] poetry dev extensions"),
@@ -75,7 +83,7 @@ class FlextInfraDepsConstants:
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[t.StrMapping] = {
+    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[t.StrMapping] = MappingProxyType({
         "yaml": "types-pyyaml",
         "ldap3": "types-ldap3",
         "redis": "types-redis",
@@ -91,8 +99,8 @@ class FlextInfraDepsConstants:
         "jsonschema": "types-jsonschema",
         "openpyxl": "types-openpyxl",
         "xlrd": "types-xlrd",
-    }
+    })
     """Default mapping from module name to ``types-*`` stub package."""
 
 
-__all__ = ["FlextInfraDepsConstants"]
+__all__: list[str] = ["FlextInfraConstantsDeps"]

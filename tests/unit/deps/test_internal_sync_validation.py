@@ -5,10 +5,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraInternalDependencySyncService
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 
 
-class TestFlextInfraInternalDependencySyncService:
+class TestsFlextInfraDepsInternalSyncValidation:
     def test_service_initialization(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         tm.that(
@@ -55,8 +55,6 @@ class TestFlextInfraInternalDependencySyncService:
         url = "https://github.com/flext-sh/flext.git"
         tm.that(FlextInfraInternalDependencySyncService.ssh_to_https(url), eq=url)
 
-
-class TestValidateGitRefEdgeCases:
     @pytest.mark.parametrize(
         "ref",
         ["feature/my-branch", "v1.0.0", "release/2.0", "fix/issue-123"],
@@ -68,8 +66,6 @@ class TestValidateGitRefEdgeCases:
     def test_invalid_refs(self, ref: str) -> None:
         tm.fail(FlextInfraInternalDependencySyncService.validate_git_ref(ref))
 
-
-class TestOwnerFromRemoteUrl:
     @pytest.mark.parametrize(
         ("url", "expected"),
         [
@@ -85,8 +81,6 @@ class TestOwnerFromRemoteUrl:
             eq=expected,
         )
 
-
-class TestIsRelativeTo:
     def test_relative_to_true(self, tmp_path: Path) -> None:
         child = tmp_path / "sub" / "file.txt"
         tm.that(
@@ -100,8 +94,6 @@ class TestIsRelativeTo:
             eq=True,
         )
 
-
-class TestIsInternalPathDep:
     @pytest.mark.parametrize(
         ("raw_path", "expected"),
         [
@@ -115,8 +107,14 @@ class TestIsInternalPathDep:
             ("../a/b", None),
         ],
     )
-    def test_is_internal_path_dep(self, raw_path: str, expected: str | None) -> None:
+    def test_resolve_internal_repo_name(
+        self,
+        raw_path: str,
+        expected: str | None,
+    ) -> None:
         tm.that(
-            FlextInfraInternalDependencySyncService.is_internal_path_dep(raw_path),
+            FlextInfraInternalDependencySyncService.resolve_internal_repo_name(
+                raw_path,
+            ),
             eq=expected,
         )

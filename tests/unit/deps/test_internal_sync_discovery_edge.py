@@ -1,41 +1,48 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import (
+    Callable,
+)
 from pathlib import Path
 
 from flext_tests import tm
-from tests import t
 
-from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService
+from flext_infra import r
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
+from tests.protocols import p
+from tests.typings import t
 
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 
-    def _next(_path: Path) -> r[t.Infra.ContainerDict]:
+    def _next(_path: Path) -> p.Result[t.Infra.ContainerDict]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
-        def __init__(self, fn: Callable[[Path], r[t.Infra.ContainerDict]]) -> None:
+        def __init__(
+            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+        ) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_next)
 
 
-class TestCollectInternalDepsEdgeCases:
+class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
     def test_collect_internal_deps_variants(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text("x")
 
-        def _collect(value: r[t.Infra.ContainerDict]) -> r[Mapping[str, Path]]:
+        def _collect(
+            value: p.Result[t.Infra.ContainerDict],
+        ) -> p.Result[t.MappingKV[str, Path]]:
             service = FlextInfraInternalDependencySyncService()
             _set_toml_sequence(service, [value])
             result = service.collect_internal_deps(tmp_path)

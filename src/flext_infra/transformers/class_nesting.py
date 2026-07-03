@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import textwrap
 from collections import defaultdict
-from collections.abc import Sequence
 from typing import override
 
-from flext_infra import (
-    FlextInfraRefactorTransformerPolicyUtilities,
-    FlextInfraRopeTransformer,
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
@@ -40,19 +36,14 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         resource: t.Infra.RopeResource,
     ) -> t.Infra.TransformResult:
         """Apply class nesting. Returns (new_source, changes)."""
-        source = u.Infra.read_source(resource)
+        source = resource.read()
         class_infos = u.Infra.get_class_info(rope_project, resource)
         updated, changes = self.apply_to_source(
             source,
             existing_names={info.name for info in class_infos},
         )
         if updated != source and changes:
-            u.Infra.write_source(
-                rope_project,
-                resource,
-                updated,
-                description="class nesting",
-            )
+            resource.write(updated)
         return updated, changes
 
     @override
@@ -64,7 +55,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
     ) -> t.Infra.TransformResult:
         """Apply class nesting to in-memory source without persisting."""
         if existing_names is None:
-            existing_names = set(c.Infra.SourceCode.CLASS_NAME_RE.findall(source))
+            existing_names = set(c.Infra.CLASS_NAME_RE.findall(source))
         collected: dict[str, list[str]] = defaultdict(list)
         for class_name, target_namespace in self._mappings.items():
             if class_name not in existing_names:
@@ -73,7 +64,8 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
                 continue
             collected[target_namespace].append(class_name)
         if not collected:
-            return source, []
+            no_changes: list[str] = []
+            return source, no_changes
         updated = source
         for namespace, class_names in collected.items():
             if not self._ns_op_allowed(class_names, namespace, "creation"):
@@ -95,9 +87,10 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         source: str,
         *,
         namespace: str,
-        class_names: Sequence[str],
+        class_names: t.StrSequence,
         ns_exists: bool,
     ) -> str:
+        """Nest classes."""
         extracted: list[str] = []
         for class_name in class_names:
             block = u.Infra.extract_definition(source, class_name, kind="class")
@@ -110,26 +103,32 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
             return source
         nested_block = "\n".join(extracted)
         if ns_exists:
-            return u.Infra.append_to_class_body(source, namespace, nested_block)
+            appended: str = u.Infra.append_to_class_body(
+                source, namespace, nested_block
+            )
+            return appended
         return source.rstrip("\n") + f"\n\nclass {namespace}:\n{nested_block}\n"
 
     def _is_nesting_allowed(self, class_name: str, target_namespace: str) -> bool:
+        """Is nesting allowed."""
         policy = self._policy_for(class_name)
         if policy is None:
             return True
         if not policy.enable_class_nesting:
             return False
-        return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+        allowed: bool = u.Infra.target_allowed(
             policy=policy,
             target_namespace=target_namespace,
         )
+        return allowed
 
     def _ns_op_allowed(
         self,
-        class_names: Sequence[str],
+        class_names: t.StrSequence,
         target_namespace: str,
         operation: str,
     ) -> bool:
+        """Ns op allowed."""
         for class_name in class_names:
             policy = self._policy_for(class_name)
             if policy is None:
@@ -138,7 +137,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
                 return False
             if operation == "merge" and not policy.allow_existing_namespace_merge:
                 return False
-            if not FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+            if not u.Infra.target_allowed(
                 policy=policy,
                 target_namespace=target_namespace,
             ):
@@ -146,11 +145,12 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         return True
 
     def _policy_for(self, symbol_name: str) -> m.Infra.ClassNestingPolicy | None:
-        return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
+        """Policy for."""
+        return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
         )
 
 
-__all__ = ["FlextInfraRefactorClassNestingTransformer"]
+__all__: list[str] = ["FlextInfraRefactorClassNestingTransformer"]
