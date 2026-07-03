@@ -10,12 +10,19 @@ import re
 from pathlib import Path
 from typing import override
 
+from flext_infra.constants import c
+from flext_infra.transformers._canonical_t_import import (
+    FlextInfraEnsureCanonicalTImportMixin,
+)
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
 
-class FlextInfraRefactorTypingDictAttr(FlextInfraRopeTransformer):
+class FlextInfraRefactorTypingDictAttr(
+    FlextInfraEnsureCanonicalTImportMixin,
+    FlextInfraRopeTransformer,
+):
     """Rewrite ``typing.Dict[K, V]`` to ``t.MappingKV[K, V]``.
 
     Safe deterministic rewrite for attribute-style typing references.
@@ -44,7 +51,15 @@ class FlextInfraRefactorTypingDictAttr(FlextInfraRopeTransformer):
         """Rewrite typing.Dict usages and ensure t import."""
         updated = self._rewrite_dict_annotations(source)
         if updated != source:
-            updated = self._ensure_t_import(updated)
+            added, did_add = self._ensure_t_import(
+                updated,
+                self._canonical_import_module(),
+            )
+            if did_add:
+                self._record_change(
+                    f"Added canonical t import from {self._canonical_import_module()}"
+                )
+            updated = added
         return updated, list(self.changes)
 
     def _rewrite_dict_annotations(self, source: str) -> str:
@@ -58,47 +73,14 @@ class FlextInfraRefactorTypingDictAttr(FlextInfraRopeTransformer):
 
         return self._TYPING_DICT_ATTR_RE.sub(replacer, source)
 
-    def _ensure_t_import(self, source: str) -> str:
-        """Inject ``from <pkg> import t`` when ``t.`` is used without import."""
-        if "t." not in source or self._has_t_import(source):
-            return source
-        module_name = self._canonical_import_module()
-        if not module_name:
-            module_name = "flext_core"
-        insertion = self._import_insertion_offset(source)
-        updated = (
-            f"{source[:insertion]}from {module_name} import t\n{source[insertion:]}"
-        )
-        self._record_change(f"Added canonical t import from {module_name}")
-        return updated
-
     def _canonical_import_module(self) -> str:
         """Return the root package name for the file under transformation."""
         if self._file_path is None:
-            return ""
+            return c.Infra.PKG_CORE_UNDERSCORE
         package_name: str = u.Infra.package_name(self._file_path)
+        if not package_name:
+            return c.Infra.PKG_CORE_UNDERSCORE
         return package_name.split(".", maxsplit=1)[0]
-
-    @staticmethod
-    def _has_t_import(source: str) -> bool:
-        """Return whether the source already imports ``t``."""
-        return (
-            re.search(r"^from\s+\S+\s+import\s+.*\bt\b", source, re.MULTILINE)
-            is not None
-        )
-
-    @staticmethod
-    def _import_insertion_offset(source: str) -> int:
-        """Return the byte offset after the last import line."""
-        lines = source.splitlines(keepends=True)
-        last_import = -1
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith(("from ", "import ")):
-                last_import = index
-        if last_import == -1:
-            return 0
-        return sum(len(line) for line in lines[: last_import + 1])
 
 
 __all__: list[str] = ["FlextInfraRefactorTypingDictAttr"]

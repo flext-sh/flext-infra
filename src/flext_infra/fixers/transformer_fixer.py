@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_core._models.enforcement import FlextModelsEnforcement as me
+from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
@@ -135,6 +136,16 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 skipped.extend(result.skipped)
                 failed.extend(result.failed)
                 files_modified.update(result.files_modified)
+        if ctx.apply and files_modified:
+            normalize_result = self._normalize_imports(tuple(files_modified))
+            if normalize_result.failure:
+                failed.append(
+                    fr.FailedFix(
+                        rule_id="",
+                        file_path=str(project_dir),
+                        error=normalize_result.error or "import normalization failed",
+                    ),
+                )
         return fr.ProjectFixResult(
             project=project_dir.name,
             fixed=tuple(fixed),
@@ -143,6 +154,24 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             failed=tuple(failed),
             files_modified=tuple(files_modified),
         )
+
+    def _normalize_imports(
+        self,
+        file_paths: t.SequenceOf[str],
+    ) -> p.Result[bool]:
+        """Run rope+ruff import cleanup on files touched by transformers.
+
+        Keeps canonical runtime-alias imports (c/m/p/t/u) that Ruff may consider
+        unused because they are referenced inside string annotations or via
+        lazy exports.
+        """
+        paths = tuple(Path(path) for path in file_paths)
+        with u.Infra.open_project(self._workspace_root) as rope_project:
+            return FlextInfraUtilitiesRopeImports.normalize_imports(
+                rope_project,
+                file_paths=paths,
+                preserve_canonical_aliases=True,
+            )
 
     def _fix_file(
         self,

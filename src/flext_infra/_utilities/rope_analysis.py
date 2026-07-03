@@ -197,6 +197,11 @@ class FlextInfraUtilitiesRopeAnalysis:
         return tuple(class_infos)
 
     @staticmethod
+    def superclass_name(superclass: p.AttributeProbe) -> str:
+        """Return a superclass name from Rope objects with uneven public APIs."""
+        return FlextInfraUtilitiesRopeAnalysis._superclass_name(superclass)
+
+    @staticmethod
     def _superclass_name(
         superclass: p.AttributeProbe,
         *,
@@ -863,6 +868,11 @@ class FlextInfraUtilitiesRopeAnalysis:
         return ()
 
     @staticmethod
+    def assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
+        """Return direct assignment target names represented by one AST node."""
+        return FlextInfraUtilitiesRopeAnalysis._assignment_target_names(node)
+
+    @staticmethod
     def _assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
         """Return direct assignment target names represented by one AST node."""
         node_kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
@@ -952,6 +962,11 @@ class FlextInfraUtilitiesRopeAnalysis:
                 if (base_name := FlextInfraUtilitiesRopeAnalysis._class_base_name(base))
             ),
         )
+
+    @staticmethod
+    def class_base_name(node: object) -> str:
+        """Return terminal base name from an AST base expression."""
+        return FlextInfraUtilitiesRopeAnalysis._class_base_name(node)
 
     @staticmethod
     def _class_base_name(node: object) -> str:

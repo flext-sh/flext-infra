@@ -154,13 +154,20 @@ class TestsFlextInfraLazyInitRegistryWrapper:
             "flext_demo",
             registry_wrapper=registry,
         )
+        lines = content.splitlines()
 
-        assert "from typing import TYPE_CHECKING" not in content
-        assert "if TYPE_CHECKING:" not in content
-        assert "from flext_demo.api import FlextDemo as FlextDemo" not in content
+        assert "from typing import TYPE_CHECKING" in content
+        assert "if TYPE_CHECKING:" in content
+        assert "    from flext_core import r" in content
+        assert "    from flext_demo.api import FlextDemo as FlextDemo" in content
+        assert (
+            "    from flext_demo.models import FlextDemoModels as FlextDemoModels"
+            in content
+        )
+        assert "from flext_demo.api import FlextDemo as FlextDemo" not in lines
         assert (
             "from flext_demo.models import FlextDemoModels as FlextDemoModels"
-            not in content
+            not in lines
         )
         assert "from flext_demo._exports import (" in content
         assert "FLEXT_DEMO_LAZY_IMPORTS" in content

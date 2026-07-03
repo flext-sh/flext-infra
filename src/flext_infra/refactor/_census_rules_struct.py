@@ -17,6 +17,9 @@ from flext_infra.detectors.inline_import_detector import (
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
+from flext_infra.detectors.mro_shape_detector import (
+    FlextInfraMROShapeDetector,
+)
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -309,6 +312,57 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     applied=self._fix_key(
                         file_path,
                         detector_violation.facade_class,
+                        action,
+                    )
+                    in applied,
+                )
+            )
+        return violations, fixes
+
+    def _rule_mro_shape(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        *,
+        project_name: str,
+        objects: tuple[m.Infra.Census.Object, ...] | None,
+        applied: frozenset[str],
+        selected_kinds: frozenset[str],
+        symbol_index: dict[str, tuple[str, int]],
+        convention: m.Infra.RopeModuleConvention,
+    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+        """Detect + plan fixes for MRO-shape violations (manual-only)."""
+        _ = objects, symbol_index
+        ctx = self._detector_context(rope, file_path, convention=convention)
+        violations: list[m.Infra.Census.Violation] = []
+        fixes: list[m.Infra.Census.Fix] = []
+        for detector_violation in FlextInfraMROShapeDetector.detect_file(ctx):
+            object_kind = "class"
+            if selected_kinds and object_kind not in selected_kinds:
+                continue
+            action = detector_violation.fix_action
+            violations.append(
+                self._raw_violation(
+                    project=project_name,
+                    object_name=detector_violation.class_name,
+                    object_kind=object_kind,
+                    kind="mro_shape",
+                    file_path=file_path,
+                    line=detector_violation.line,
+                    description=detector_violation.detail,
+                    fixable=detector_violation.fixable,
+                    fix_action=action,
+                )
+            )
+            fixes.append(
+                m.Infra.Census.Fix(
+                    object_name=detector_violation.class_name,
+                    action=action,
+                    source_file=str(file_path),
+                    files_changed=1,
+                    applied=self._fix_key(
+                        file_path,
+                        detector_violation.class_name,
                         action,
                     )
                     in applied,

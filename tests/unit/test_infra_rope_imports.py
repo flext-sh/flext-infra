@@ -53,6 +53,70 @@ class TestsFlextInfraRopeImports:
             "    return os.getcwd()\n"
         )
 
+    def test_ensure_canonical_alias_imports_restores_string_referenced_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """String-referenced runtime aliases removed by Ruff must be restored."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                'def keep(value: "c.Infra.PathLike") -> str:\n'
+                "    return str(value)\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+            result = FlextInfraUtilitiesRopeImports._ensure_canonical_alias_imports(
+                rope.rope_project,
+                {module_path.resolve(): [("flext_core", ("c",))]},
+            )
+
+        updated = module_path.read_text(encoding="utf-8")
+        assert result.success
+        assert result.value is True
+        assert "from flext_core import c" in updated
+        assert "c.Infra.PathLike" in updated
+
+    def test_ensure_canonical_alias_imports_ignores_unreferenced_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Unreferenced runtime aliases must not be restored after Ruff cleanup."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        module_path = package_root / "service.py"
+        module_path.write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "def keep() -> str:\n"
+                "    return 'ok'\n"
+            ),
+            encoding="utf-8",
+        )
+
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+            result = FlextInfraUtilitiesRopeImports._ensure_canonical_alias_imports(
+                rope.rope_project,
+                {module_path.resolve(): [("flext_core", ("c",))]},
+            )
+
+        updated = module_path.read_text(encoding="utf-8")
+        assert result.success
+        assert result.value is False
+        assert "from flext_core import c" not in updated
+        assert "return 'ok'" in updated
+
     def test_organize_imports_treats_none_as_noop(
         self,
         tmp_path: Path,

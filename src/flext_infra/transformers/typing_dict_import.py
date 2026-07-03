@@ -10,12 +10,19 @@ import re
 from pathlib import Path
 from typing import override
 
+from flext_infra.constants import c
+from flext_infra.transformers._canonical_t_import import (
+    FlextInfraEnsureCanonicalTImportMixin,
+)
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
 
-class FlextInfraRefactorTypingDictImport(FlextInfraRopeTransformer):
+class FlextInfraRefactorTypingDictImport(
+    FlextInfraEnsureCanonicalTImportMixin,
+    FlextInfraRopeTransformer,
+):
     """Remove ``from typing import Dict`` and rewrite ``Dict[K, V]`` annotations.
 
     Safe deterministic rewrite: every ``Dict[K, V]`` becomes ``t.MappingKV[K, V]``
@@ -50,7 +57,15 @@ class FlextInfraRefactorTypingDictImport(FlextInfraRopeTransformer):
         updated = self._remove_dict_import(source)
         updated = self._rewrite_dict_annotations(updated)
         if updated != source:
-            updated = self._ensure_t_import(updated)
+            added, did_add = self._ensure_t_import(
+                updated,
+                self._canonical_import_module(),
+            )
+            if did_add:
+                self._record_change(
+                    f"Added canonical t import from {self._canonical_import_module()}"
+                )
+            updated = added
         return updated, list(self.changes)
 
     def _remove_dict_import(self, source: str) -> str:
@@ -58,12 +73,17 @@ class FlextInfraRefactorTypingDictImport(FlextInfraRopeTransformer):
 
         def replacer(match: re.Match[str]) -> str:
             items = match.group("items")
+            original_items = items.strip()
             cleaned = self._remove_dict_item(items)
             if not cleaned:
-                self._record_change("Removed from typing import Dict")
-                return ""
-            self._record_change("Removed Dict from typing import")
-            return f"from typing import {cleaned}"
+                if original_items == "Dict":
+                    self._record_change("Removed from typing import Dict")
+                    return ""
+                return match.group(0)
+            if cleaned != original_items:
+                self._record_change("Removed Dict from typing import")
+                return f"from typing import {cleaned}\n"
+            return match.group(0)
 
         return self._TYPING_DICT_IMPORT_RE.sub(replacer, source)
 
@@ -85,47 +105,14 @@ class FlextInfraRefactorTypingDictImport(FlextInfraRopeTransformer):
 
         return self._DICT_USAGE_RE.sub(replacer, source)
 
-    def _ensure_t_import(self, source: str) -> str:
-        """Inject ``from <pkg> import t`` when ``t.`` is used without import."""
-        if "t." not in source or self._has_t_import(source):
-            return source
-        module_name = self._canonical_import_module()
-        if not module_name:
-            module_name = "flext_core"
-        insertion = self._import_insertion_offset(source)
-        updated = (
-            f"{source[:insertion]}from {module_name} import t\n{source[insertion:]}"
-        )
-        self._record_change(f"Added canonical t import from {module_name}")
-        return updated
-
     def _canonical_import_module(self) -> str:
         """Return the root package name for the file under transformation."""
         if self._file_path is None:
-            return ""
+            return c.Infra.PKG_CORE_UNDERSCORE
         package_name: str = u.Infra.package_name(self._file_path)
+        if not package_name:
+            return c.Infra.PKG_CORE_UNDERSCORE
         return package_name.split(".", maxsplit=1)[0]
-
-    @staticmethod
-    def _has_t_import(source: str) -> bool:
-        """Return whether the source already imports ``t``."""
-        return (
-            re.search(r"^from\s+\S+\s+import\s+.*\bt\b", source, re.MULTILINE)
-            is not None
-        )
-
-    @staticmethod
-    def _import_insertion_offset(source: str) -> int:
-        """Return the byte offset after the last import line."""
-        lines = source.splitlines(keepends=True)
-        last_import = -1
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith(("from ", "import ")):
-                last_import = index
-        if last_import == -1:
-            return 0
-        return sum(len(line) for line in lines[: last_import + 1])
 
 
 __all__: list[str] = ["FlextInfraRefactorTypingDictImport"]

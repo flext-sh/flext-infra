@@ -227,7 +227,7 @@ class FlextInfraRefactorCensusApplyMixin(
                     kinds=frozenset(object_names) if object_names else None,
                 )
                 changed = len(changes) > 0
-            elif action in {"deep_namespace_refactor", "manual"}:
+            elif action in {"deep_namespace_refactor", "rewrite_mro_shape", "manual"}:
                 # Manual-only actions: reported in dry-run, no-op during apply.
                 pass
             if not changed:

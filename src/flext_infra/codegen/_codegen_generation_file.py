@@ -97,6 +97,7 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
             current_pkg,
             registry_wrapper,
             context.runtime_import_lines,
+            context.type_checking_lines if publish_all else "",
             context.inline_constants,
             context.eager_export_names,
             context.exports,

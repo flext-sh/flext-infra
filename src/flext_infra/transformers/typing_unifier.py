@@ -23,6 +23,9 @@ from pathlib import Path
 from typing import override
 
 from flext_infra.constants import c
+from flext_infra.transformers._canonical_t_import import (
+    FlextInfraEnsureCanonicalTImportMixin,
+)
 from flext_infra.transformers._typing_rewrite import (
     FlextInfraRefactorTypingUnifierRewriteMixin,
 )
@@ -32,6 +35,7 @@ from flext_infra.utilities import u
 
 
 class FlextInfraRefactorTypingUnifier(
+    FlextInfraEnsureCanonicalTImportMixin,
     FlextInfraRopeTransformer,
     FlextInfraRefactorTypingUnifierRewriteMixin,
 ):
@@ -78,7 +82,15 @@ class FlextInfraRefactorTypingUnifier(
             source, _count = pattern.subn(replacer, source)
         source = self._canonicalize_annotation_builtins(source)
         source = self._modernize_typealias(source)
-        source = self._ensure_t_import(source)
+        added, did_add = self._ensure_t_import(
+            source,
+            self._canonical_import_module(),
+        )
+        if did_add:
+            self._record_change(
+                f"Added canonical t import from {self._canonical_import_module()}"
+            )
+        source = added
         return source, list(self.changes)
 
     def _canonicalize_annotation_builtins(self, source: str) -> str:
@@ -120,67 +132,14 @@ class FlextInfraRefactorTypingUnifier(
             return True
         return any(part in c.Infra.TYPING_DEFINITION_FILES for part in file_path.parts)
 
-    def _ensure_t_import(self, source: str) -> str:
-        """Inject ``from <pkg> import t`` when ``t.`` is used without import."""
-        if "t." not in source or self._has_t_import(source):
-            return source
-        module_name = self._canonical_import_module()
-        if not module_name:
-            return source
-        insertion = self._import_insertion_offset(source)
-        updated = (
-            f"{source[:insertion]}from {module_name} import t\n{source[insertion:]}"
-        )
-        self._record_change(f"Added canonical t import from {module_name}")
-        return updated
-
     def _canonical_import_module(self) -> str:
         """Return the root package name for the file under transformation."""
         if self._file_path is None:
-            return ""
+            return c.Infra.PKG_CORE_UNDERSCORE
         package_name: str = u.Infra.package_name(self._file_path)
+        if not package_name:
+            return c.Infra.PKG_CORE_UNDERSCORE
         return package_name.split(".", maxsplit=1)[0]
-
-    @staticmethod
-    def _has_t_import(source: str) -> bool:
-        """Return whether the source already imports ``t`` on one or multiple lines."""
-        if c.Infra.T_IMPORT_RE.search(source) is not None:
-            return True
-        lines = source.splitlines()
-        index = 0
-        while index < len(lines):
-            stripped = lines[index].strip()
-            if stripped.startswith("from ") and stripped.endswith("import ("):
-                index += 1
-                while index < len(lines):
-                    current = lines[index].strip().rstrip(",")
-                    if current == ")":
-                        break
-                    if current == "t":
-                        return True
-                    index += 1
-            index += 1
-        return False
-
-    @staticmethod
-    def _import_insertion_offset(source: str) -> int:
-        """Return the byte offset where a new import line should be inserted."""
-        last_match: t.Infra.RegexMatch | None = None
-        for match in c.Infra.IMPORT_LINE_ANCHORED_RE.finditer(source):
-            last_match = match
-        if last_match is None:
-            return 0
-        matched_line = source[last_match.start() : last_match.end()]
-        if matched_line.rstrip().endswith("("):
-            tail = source[last_match.end() :]
-            close_match = c.Infra.IMPORT_PAREN_CLOSE_RE.search(tail)
-            if close_match is not None:
-                close_offset: int = last_match.end() + close_match.end()
-                if close_offset < len(source) and source[close_offset] == "\n":
-                    close_offset += 1
-                return close_offset
-        line_end = source.find("\n", last_match.end())
-        return len(source) if line_end == -1 else line_end + 1
 
 
 __all__: list[str] = ["FlextInfraRefactorTypingUnifier"]

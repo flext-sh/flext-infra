@@ -20,6 +20,7 @@ from flext_infra._constants.github import FlextInfraConstantsGithub
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
 from flext_infra._constants.release import FlextInfraConstantsRelease
 from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
 from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 
 
@@ -38,6 +39,7 @@ class FlextInfraConstants(c):
         FlextInfraConstantsDetectors,
         FlextInfraConstantsDocs,
         FlextInfraConstantsGithub,
+        FlextInfraConstantsSourceCode,
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRelease,
         FlextInfraConstantsWorkspace,

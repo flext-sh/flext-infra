@@ -155,6 +155,7 @@ class FlextInfraConstantsSharedInfra:
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: Final[str] = "flext-core"
     PKG_CORE_UNDERSCORE: Final[str] = "flext_core"
+    PKG_INFRA_UNDERSCORE: Final[str] = "flext_infra"
     PKG_ROOT: Final[str] = "flext"
     PKG_PREFIX_HYPHEN: Final[str] = "flext-"
     PKG_PREFIX_UNDERSCORE: Final[str] = "flext_"

@@ -104,6 +104,18 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
         ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        def _rule_mro_shape(
+            self,
+            rope: p.Infra.RopeWorkspaceDsl,
+            file_path: Path,
+            *,
+            project_name: str,
+            objects: tuple[m.Infra.Census.Object, ...] | None,
+            applied: frozenset[str],
+            selected_kinds: frozenset[str],
+            symbol_index: dict[str, tuple[str, int]],
+            convention: m.Infra.RopeModuleConvention,
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
         def _rule_inline_import(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -225,6 +237,19 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             fixes.extend(f)
         if selected("mro_completeness"):
             v, f = self._rule_mro_completeness(
+                rope,
+                file_path,
+                project_name=project_name,
+                objects=objects,
+                applied=applied,
+                selected_kinds=resolved_kinds,
+                symbol_index=symbol_index,
+                convention=resolved_convention,
+            )
+            violations.extend(v)
+            fixes.extend(f)
+        if selected("mro_shape"):
+            v, f = self._rule_mro_shape(
                 rope,
                 file_path,
                 project_name=project_name,

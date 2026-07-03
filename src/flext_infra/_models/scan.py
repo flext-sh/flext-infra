@@ -38,6 +38,7 @@ class FlextInfraModelsScan:
                 ]
                 | None
             ),
+            m.SkipValidation,
             m.Field(
                 description="Shared parse-failure collector across detector passes.",
             ),

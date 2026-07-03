@@ -3,6 +3,10 @@
 
 from __future__ import annotations
 
+{% if type_checking_lines -%}
+from typing import TYPE_CHECKING
+
+{% endif -%}
 from flext_core.lazy import install_lazy_exports
 {% if public_exports_name -%}
 from {{ registry_module }} import (
@@ -15,6 +19,10 @@ from {{ registry_module }} import {{ registry_name }}
 
 {% if runtime_import_lines -%}
 {{ runtime_import_lines }}
+
+{% endif -%}
+{% if type_checking_lines -%}
+{{ type_checking_lines }}
 
 {% endif -%}
 {% for name, value in inline_constants %}

@@ -91,6 +91,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
                     rope_project,
                     file_paths=(file_path,),
+                    preserve_canonical_aliases=True,
                 )
                 if cleanup_result.failure:
                     msg = cleanup_result.error or "rope import cleanup failed"
@@ -149,6 +150,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
                     rope_project,
                     file_paths=(file_path,),
+                    preserve_canonical_aliases=True,
                 )
                 if cleanup_result.failure:
                     msg = cleanup_result.error or "rope import cleanup failed"

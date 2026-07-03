@@ -101,6 +101,27 @@ class FlextInfraModelsNamespaceEnforcer:
         ]
         suggestion: Annotated[str, m.Field(description="Fix suggestion")]
 
+    class MROShapeViolation(FileLineViolation):
+        """MRO shape violation (ENFORCE-046/047/049/051)."""
+
+        class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
+        rule_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Rule identifier (046/047/049/051)")
+        ]
+        detail: Annotated[str, m.Field(description="Human-readable description")]
+        first_base: Annotated[
+            t.NonEmptyStr, m.Field(description="First base class name")
+        ]
+        expected_base: Annotated[
+            str, m.Field(description="Expected base class name or pattern")
+        ] = ""
+        fix_action: Annotated[
+            str, m.Field(description="Recommended fix action identifier")
+        ] = "manual"
+        fixable: Annotated[
+            bool, m.Field(description="Whether the violation can be auto-fixed")
+        ] = False
+
     class InternalImportViolation(
         mm.ViolationDetailMixin,
         ImportViolationBase,

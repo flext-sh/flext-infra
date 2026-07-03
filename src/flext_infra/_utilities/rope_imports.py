@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
 from pathlib import Path
 from typing import cast
@@ -246,16 +247,31 @@ class FlextInfraUtilitiesRopeImports:
         rope_project: t.Infra.RopeProject,
         *,
         file_paths: t.SequenceOf[Path],
+        preserve_canonical_aliases: bool = False,
     ) -> p.Result[bool]:
         """Apply one centralized Rope+Ruff import cleanup for touched files.
 
         Runs Rope's import organizer per file first, then lets Ruff remove
         orphaned imports and normalize import ordering/formatting once across the
-        touched path set. Returns whether Rope reported any import rewrite.
+        touched path set. Returns whether an import cleanup changed any file.
+
+        When ``preserve_canonical_aliases`` is set, runtime-alias imports from
+        ``flext_core`` / ``flext_infra`` (e.g. ``from flext_core import c, m``)
+        are restored after Ruff only when still referenced semantically, including
+        forward references that Ruff cannot see inside string annotations.
         """
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
         if not existing_paths:
             return r[bool].ok(False)
+        canonical_imports: dict[Path, list[tuple[str, tuple[str, ...]]]] = {}
+        if preserve_canonical_aliases:
+            try:
+                canonical_imports = cls._collect_canonical_alias_imports(
+                    rope_project,
+                    existing_paths,
+                )
+            except ValueError as exc:
+                return r[bool].fail(str(exc))
         rope_changed = False
         for file_path in existing_paths:
             resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
@@ -281,6 +297,16 @@ class FlextInfraUtilitiesRopeImports:
         )
         if check_result.failure:
             return r[bool].fail(check_result.error or "ruff check --fix failed")
+        if preserve_canonical_aliases:
+            restore_result = cls._ensure_canonical_alias_imports(
+                rope_project,
+                canonical_imports,
+            )
+            if restore_result.failure:
+                return r[bool].fail(
+                    restore_result.error or "canonical alias restore failed"
+                )
+            rope_changed = rope_changed or restore_result.unwrap_or(False)
         format_result = u.Cli.run_raw(
             ["ruff", "format", *normalized_paths],
             timeout=c.Infra.TIMEOUT_SHORT,
@@ -288,6 +314,178 @@ class FlextInfraUtilitiesRopeImports:
         if format_result.failure:
             return r[bool].fail(format_result.error or "ruff format failed")
         return r[bool].ok(rope_changed)
+
+    @classmethod
+    def _collect_canonical_alias_imports(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        file_paths: t.SequenceOf[Path],
+    ) -> dict[Path, list[tuple[str, tuple[str, ...]]]]:
+        """Collect canonical runtime-alias imports eligible for semantic restore."""
+        metadata = u.read_project_constants("flext-infra")
+        runtime_aliases = metadata.RUNTIME_ALIAS_NAMES
+        canonical_modules = frozenset({
+            c.Infra.PKG_CORE_UNDERSCORE,
+            c.Infra.PKG_INFRA_UNDERSCORE,
+        })
+        collected: dict[Path, list[tuple[str, tuple[str, ...]]]] = {}
+        for file_path in file_paths:
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project,
+                file_path,
+            )
+            if resource is None:
+                continue
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project,
+                resource,
+            )
+            if module_imports is None:
+                continue
+            entries: list[tuple[str, tuple[str, ...]]] = []
+            for import_stmt in cls.import_statements(module_imports):
+                import_info = import_stmt.import_info
+                if not isinstance(import_info, FromImport) or import_info.level != 0:
+                    continue
+                if import_info.module_name not in canonical_modules:
+                    continue
+                plain_names = [
+                    (name, alias)
+                    for name, alias in import_info.names_and_aliases
+                    if alias is None
+                ]
+                if not plain_names or not all(
+                    name in runtime_aliases for name, _alias in plain_names
+                ):
+                    continue
+                referenced_result = cls._referenced_runtime_aliases(
+                    resource.read(),
+                    tuple(name for name, _alias in plain_names),
+                )
+                if referenced_result.failure:
+                    msg = referenced_result.error or "alias reference scan failed"
+                    raise ValueError(msg)
+                referenced_aliases = referenced_result.unwrap_or(frozenset())
+                alias_names = tuple(
+                    name for name, _alias in plain_names if name in referenced_aliases
+                )
+                if not alias_names:
+                    continue
+                entries.append((import_info.module_name, alias_names))
+            if entries:
+                collected[file_path] = entries
+        return collected
+
+    @staticmethod
+    def _referenced_runtime_aliases(
+        source: str,
+        aliases: t.SequenceOf[str],
+    ) -> p.Result[frozenset[str]]:
+        """Return runtime aliases referenced after Ruff cleanup."""
+        alias_set = frozenset(aliases)
+        referenced: set[str] = set()
+        try:
+            tree = ast.parse(source)
+        except SyntaxError as exc:
+            return r[frozenset[str]].fail(
+                f"source is not parseable after import cleanup: {exc!s}"
+            )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and node.id in alias_set:
+                referenced.add(node.id)
+                continue
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                literal = node.value
+                referenced.update(
+                    alias for alias in alias_set if f"{alias}." in literal
+                )
+        return r[frozenset[str]].ok(frozenset(referenced))
+
+    @classmethod
+    def _ensure_canonical_alias_imports(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        collected: dict[Path, list[tuple[str, tuple[str, ...]]]],
+    ) -> p.Result[bool]:
+        """Re-add canonical runtime-alias imports removed by Ruff F401 cleanup."""
+        changed_any = False
+        for file_path, entries in collected.items():
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project,
+                file_path,
+            )
+            if resource is None:
+                continue
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project,
+                resource,
+            )
+            if module_imports is None:
+                continue
+            referenced_aliases_result = cls._referenced_runtime_aliases(
+                resource.read(),
+                tuple(alias for _module_name, aliases in entries for alias in aliases),
+            )
+            if referenced_aliases_result.failure:
+                return r[bool].fail(
+                    referenced_aliases_result.error or "alias reference scan failed"
+                )
+            referenced_aliases = referenced_aliases_result.unwrap_or(frozenset())
+            current: dict[str, set[str]] = defaultdict(set)
+            for import_stmt in cls.import_statements(module_imports):
+                import_info = import_stmt.import_info
+                if not isinstance(import_info, FromImport) or import_info.level != 0:
+                    continue
+                current[import_info.module_name].update(
+                    name
+                    for name, alias in import_info.names_and_aliases
+                    if alias is None
+                )
+            changed = False
+            for module_name, alias_names in entries:
+                missing = sorted(
+                    (frozenset(alias_names) & referenced_aliases)
+                    - current.get(module_name, set())
+                )
+                if not missing:
+                    continue
+                existing = current.get(module_name, set())
+                if existing:
+                    # Merge into existing from-import via rope mutation.
+                    for import_stmt in cls.import_statements(module_imports):
+                        import_info = import_stmt.import_info
+                        if (
+                            isinstance(import_info, FromImport)
+                            and import_info.level == 0
+                            and import_info.module_name == module_name
+                        ):
+                            merged = list(import_info.names_and_aliases)
+                            present = {name for name, alias in merged if alias is None}
+                            merged.extend(
+                                (name, None)
+                                for name in sorted(missing)
+                                if name not in present
+                            )
+                            import_stmt.import_info = FromImport(
+                                module_name,
+                                0,
+                                merged,
+                            )
+                            changed = True
+                            break
+                else:
+                    module_imports.add_import(
+                        FromImport(module_name, 0, [(name, None) for name in missing])
+                    )
+                    changed = True
+            if changed:
+                module_imports.remove_duplicates()
+                module_imports.sort_imports()
+                updated_source = module_imports.get_changed_source()
+                if updated_source != resource.read():
+                    resource.write(updated_source)
+                    changed_any = True
+        return r[bool].ok(changed_any)
 
     @staticmethod
     def get_absolute_from_imports(

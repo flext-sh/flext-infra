@@ -82,6 +82,10 @@ class FlextInfraModelsCodegenRender:
         runtime_import_lines: str = m.Field(
             description="Rendered eager import block for non-lazy exports.",
         )
+        type_checking_lines: Annotated[
+            str,
+            m.Field(description="Rendered TYPE_CHECKING block lines."),
+        ] = ""
         inline_constants: t.StrPairSequence = m.Field(
             default_factory=tuple,
             description="Inline constant assignments.",

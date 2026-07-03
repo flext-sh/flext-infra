@@ -74,7 +74,11 @@ class TestManualCommandValidator:
 
     def test_render_uses_flext_infra_and_drops_scripts(self) -> None:
         rendered = _V.render_pre_commit_config()
-        tm.that("python -m flext_infra check --what boundary" in rendered, eq=True)
+        tm.that(
+            "uv run --all-packages python -m flext_infra validate --what manual-cmd"
+            in rendered,
+            eq=True,
+        )
         tm.that("audit_banned_cli_libs.py" not in rendered, eq=True)
 
 

@@ -50,8 +50,11 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that((pkg / "utilities.py").exists(), eq=True)
 
         service_source = (pkg / "service.py").read_text(encoding="utf-8")
-        tm.that(service_source, has="from flext_core import c, m, r, p, t, u, p")
-        tm.that(service_source, has="from flext_infra import c, m, t, u, p")
+        tm.that(service_source, has="from __future__ import annotations")
+        tm.that(service_source, has="VALUE = 1")
+        tm.that(service_source, lacks="from flext_core import c, m, r, p, t, u, p")
+        tm.that(service_source, lacks="from flext_infra import c, m, t, u, p")
+        tm.that(service_source, lacks="from sample_pkg import")
 
     def test_namespace_enforcer_detects_manual_typings_and_compat_aliases(
         self,

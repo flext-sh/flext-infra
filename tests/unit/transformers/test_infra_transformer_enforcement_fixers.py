@@ -28,6 +28,9 @@ from flext_infra.transformers.typing_dict_attr import (
 from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
+from flext_infra.transformers.typing_unifier import (
+    FlextInfraRefactorTypingUnifier,
+)
 
 
 def _transform(
@@ -39,7 +42,8 @@ def _transform(
     | FlextInfraRefactorOpenEncoding
     | FlextInfraRefactorRemoveBreakpoint
     | FlextInfraRefactorTypingDictAttr
-    | FlextInfraRefactorTypingDictImport,
+    | FlextInfraRefactorTypingDictImport
+    | FlextInfraRefactorTypingUnifier,
 ) -> tuple[str, Sequence[str]]:
     """Apply a stateless transformer to source text."""
     result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
@@ -263,6 +267,19 @@ class TestsFlextInfraTransformersTypingDictImport:
         assert "t.MappingKV[str, int]" in code
         assert changes
 
+    def test_no_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "def foo(result):\n"
+            "    assert result.success\n"
+        )
+        transformer = FlextInfraRefactorTypingDictImport(
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code == source
+        assert changes == []
+
 
 class TestsFlextInfraTransformersTypingDictAttr:
     """Behavior contract for FlextInfraRefactorTypingDictAttr."""
@@ -293,6 +310,55 @@ class TestsFlextInfraTransformersTypingDictAttr:
         assert code.count("from flext_core import t") == 1
         assert "t.MappingKV[str, int]" in code
         assert changes
+
+    def test_no_typing_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "def foo(result):\n"
+            "    assert result.success\n"
+        )
+        transformer = FlextInfraRefactorTypingDictAttr(
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code == source
+        assert changes == []
+
+
+class TestsFlextInfraTransformersTypingUnifier:
+    """Behavior contract for FlextInfraRefactorTypingUnifier."""
+
+    def test_builtin_annotation_canonicalized(self, tmp_path: Path) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "def foo(x: dict[str, int]) -> list[str]:\n    pass\n"
+        )
+        transformer = FlextInfraRefactorTypingUnifier(
+            canonical_map={},
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "t.MutableMappingKV[str, int]" in code
+        assert "t.MutableSequenceOf[str]" in code
+        assert "from flext_core import t" in code
+        assert changes
+
+    def test_no_builtin_annotation_does_not_add_t_import(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        source = (
+            "from __future__ import annotations\n\n"
+            "def foo(result):\n"
+            "    assert result.success\n"
+        )
+        transformer = FlextInfraRefactorTypingUnifier(
+            canonical_map={},
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code == source
+        assert changes == []
 
 
 class TestsFlextInfraTransformersHardcodedVersion:
