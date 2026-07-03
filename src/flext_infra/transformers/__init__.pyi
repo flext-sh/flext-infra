@@ -1,8 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
 from flext_infra.transformers import smells as smells
-from flext_infra.transformers.bare_except import (
-    FlextInfraRefactorBareExcept as FlextInfraRefactorBareExcept,
-)
 from flext_infra.transformers.base import (
     FlextInfraChangeTrackingTransformer as FlextInfraChangeTrackingTransformer,
     FlextInfraRopeTransformer as FlextInfraRopeTransformer,
@@ -59,20 +56,17 @@ from flext_infra.transformers.nested_class_propagation import (
 from flext_infra.transformers.open_encoding import (
     FlextInfraRefactorOpenEncoding as FlextInfraRefactorOpenEncoding,
 )
+from flext_infra.transformers.pattern import (
+    FlextInfraRefactorPatternTransformer as FlextInfraRefactorPatternTransformer,
+)
 from flext_infra.transformers.pattern_modernizer import (
     FlextInfraRefactorPatternModernizer as FlextInfraRefactorPatternModernizer,
-)
-from flext_infra.transformers.print_to_logger import (
-    FlextInfraRefactorPrintToLogger as FlextInfraRefactorPrintToLogger,
 )
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator as FlextInfraRefactorProjectAliasMigrator,
 )
 from flext_infra.transformers.pydantic_modernizer import (
     FlextInfraRefactorPydanticModernizer as FlextInfraRefactorPydanticModernizer,
-)
-from flext_infra.transformers.remove_breakpoint import (
-    FlextInfraRefactorRemoveBreakpoint as FlextInfraRefactorRemoveBreakpoint,
 )
 from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer as FlextInfraRefactorResultDiModernizer,
@@ -118,7 +112,6 @@ __all__ = (
     "FlextInfraChangeTrackingTransformer",
     "FlextInfraHelperConsolidationTransformer",
     "FlextInfraNestedClassPropagationTransformer",
-    "FlextInfraRefactorBareExcept",
     "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorCliModernizer",
@@ -133,11 +126,10 @@ __all__ = (
     "FlextInfraRefactorMRORemover",
     "FlextInfraRefactorMROSymbolPropagator",
     "FlextInfraRefactorOpenEncoding",
+    "FlextInfraRefactorPatternTransformer",
     "FlextInfraRefactorPatternModernizer",
-    "FlextInfraRefactorPrintToLogger",
     "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
-    "FlextInfraRefactorRemoveBreakpoint",
     "FlextInfraRefactorResultDiModernizer",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
