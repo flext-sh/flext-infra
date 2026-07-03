@@ -5,10 +5,11 @@ from __future__ import annotations
 import operator
 from collections import defaultdict
 
-from flext_infra import c, t
 from flext_infra.codegen._codegen_generation_paths import (
     FlextInfraCodegenGenerationPathsMixin,
 )
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMixin):

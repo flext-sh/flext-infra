@@ -6,7 +6,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, t, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -35,6 +34,9 @@ from flext_infra.detectors.namespace_source_detector import (
     FlextInfraNamespaceSourceDetector,
 )
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraNamespaceEnforcerProjectMixin:
@@ -146,6 +148,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
+                    project_root=project_root,
                 ),
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_import_violations(
@@ -180,6 +183,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
+                    project_root=project_root,
                 ),
             ),
             rewrite_fn=None,

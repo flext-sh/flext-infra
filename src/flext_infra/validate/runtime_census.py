@@ -15,8 +15,13 @@ import inspect
 import pkgutil
 from typing import Annotated, override
 
-from flext_core import FlextUtilitiesEnforcement
-from flext_infra import c, m, p, r, s, t, u
+from flext_core import FlextUtilitiesEnforcement, r
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRuntimeCensusValidator(s[bool]):
@@ -56,13 +61,15 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         """Resolve the importable package name for a project root."""
         layout = u.Infra.layout(project.path, project=project)
         if layout is not None:
-            return layout.package_name
+            package_name: str = layout.package_name
+            return package_name
         src_dir = project.path / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return None
         for child in sorted(src_dir.iterdir()):
             if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                return child.name
+                child_name: str = child.name
+                return child_name
         return None
 
     @staticmethod

@@ -5,7 +5,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import c, m
+from flext_infra.constants import c
+from flext_infra.models import m
 
 
 class FlextInfraCodegenLazyInitPlannerRegistryMixin:
@@ -85,15 +86,6 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
                 "generated": True,
             })
         module_stem = c.Infra.ROOT_EXPORTS_FILENAME.removesuffix(".py")
-        if processing_constants:
-            return m.Infra.LazyInitRegistryWrapper.model_validate({
-                "module": f"{current_pkg}.{module_stem}",
-                "name": FlextInfraCodegenLazyInitPlannerRegistryMixin._registry_name(
-                    pkg_dir,
-                    current_pkg,
-                ),
-                "generated": True,
-            })
         return m.Infra.LazyInitRegistryWrapper.model_validate({
             "module": (
                 f"{current_pkg}.{c.Infra.ROOT_EXPORTS_DIR}.{module_stem}"

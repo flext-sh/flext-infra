@@ -8,11 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, p, r, t
+from flext_core import r
 from flext_infra._iteration_directory import FlextInfraUtilitiesIterationDirectory
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesIterationWorkspace:

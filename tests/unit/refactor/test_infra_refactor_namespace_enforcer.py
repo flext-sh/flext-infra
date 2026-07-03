@@ -247,9 +247,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
         _ = (nested_pkg / "_base.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class _NestedMixin:\n"
-            "    pass\n",
+            "from __future__ import annotations\n\nclass _NestedMixin:\n    pass\n",
             encoding="utf-8",
         )
         _ = (nested_pkg / "impl.py").write_text(
@@ -278,7 +276,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         parts_pkg.mkdir(parents=True)
         tests_dir.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
+            "[project]\n"
+            "name='sample'\n"
+            "[tool.hatch.build.targets.wheel]\n"
+            "packages=['src/sample_pkg']\n",
             encoding="utf-8",
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
@@ -302,6 +303,45 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(report.total_internal_import_violations, eq=1)
         violation = report.projects[0].internal_import_violations[0]
         tm.that(violation.file.replace("\\", "/"), has="tests/helper.py")
+
+    def test_namespace_enforcer_allows_pytest_whitebox_project_private_import(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        project = workspace / "sample-proj"
+        pkg = project / "src" / "sample_pkg"
+        parts_pkg = pkg / "_parts"
+        tests_dir = project / "tests"
+        parts_pkg.mkdir(parents=True)
+        tests_dir.mkdir(parents=True)
+        _ = (project / "pyproject.toml").write_text(
+            "[project]\n"
+            "name='sample'\n"
+            "[tool.hatch.build.targets.wheel]\n"
+            "packages=['src/sample_pkg']\n",
+            encoding="utf-8",
+        )
+        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (parts_pkg / "impl.py").write_text(
+            "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
+            encoding="utf-8",
+        )
+        _ = (tests_dir / "test_parts.py").write_text(
+            "from __future__ import annotations\n"
+            "from sample_pkg._parts.impl import PartsImpl\n\n"
+            "def test_parts_impl() -> None:\n"
+            "    assert PartsImpl() is not None\n",
+            encoding="utf-8",
+        )
+
+        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+            apply=False,
+        )
+
+        tm.that(report.total_internal_import_violations, eq=0)
 
     def test_namespace_enforce_diff_documents_non_read_only_behavior(self) -> None:
         description = (
@@ -388,6 +428,60 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         single_class = [v for v in violations if v.kind == "single_class"]
         tm.that(len(single_class), eq=1)
+
+    def test_loose_object_detector_skips_private_base_module_mro_contract(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        target = tmp_path / "_base.py"
+        target.write_text(
+            "from __future__ import annotations\n\n"
+            "class _DemoTyping:\n"
+            "    pass\n\n"
+            "class _DemoBase:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that([v for v in violations if v.kind == "single_class"], empty=True)
+
+    def test_loose_object_detector_skips_pytest_module_functions(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+    ) -> None:
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir()
+        target = tests_dir / "test_sample.py"
+        target.write_text(
+            "from __future__ import annotations\n\n"
+            "import pytest\n\n"
+            "@pytest.fixture\n"
+            "def sample_value() -> int:\n"
+            "    return 1\n\n"
+            "def test_sample_value(sample_value: int) -> None:\n"
+            "    assert sample_value == 1\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraLooseObjectDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                project_name="sample-proj",
+                rope_project=rope_project,
+            ),
+        )
+
+        tm.that(violations, empty=True)
 
     def test_loose_object_detector_skips_typings_module_exception(
         self,

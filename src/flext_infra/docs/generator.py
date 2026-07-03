@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from typing import override
 
-from flext_infra import m, p, t, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraDocGenerator(FlextInfraDocServiceBase):

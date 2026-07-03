@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, u
+from flext_cli import m
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 from flext_infra.constants import c
 from flext_infra.typings import t
@@ -146,7 +146,7 @@ class FlextInfraModelsMixins:
             ),
         ]
 
-        @u.field_validator("gates", mode="before")
+        @m.field_validator("gates", mode="before")
         @classmethod
         def _parse_gates(
             cls,
@@ -166,13 +166,13 @@ class FlextInfraModelsMixins:
                 )
             return tuple(normalized)
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def dry_run(self) -> bool:
             """Whether writes are disabled (inverse of apply)."""
             return not self.apply
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def execution_mode(self) -> c.Infra.ExecutionMode:
             """Resolve execution mode from CLI flags."""

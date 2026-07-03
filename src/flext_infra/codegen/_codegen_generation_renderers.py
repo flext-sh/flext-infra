@@ -7,10 +7,13 @@ from typing import override
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from flext_infra import c, m, p, t
 from flext_infra.codegen._codegen_generation_typing_stub import (
     FlextInfraCodegenGenerationTypingStubMixin,
 )
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationRenderersMixin(

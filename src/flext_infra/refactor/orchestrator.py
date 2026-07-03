@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, t, u
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.refactor._orchestrator_dispatch import (
     FlextInfraRefactorOrchestratorDispatchMixin,
 )
@@ -19,6 +20,8 @@ from flext_infra.refactor.file_executor import (
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 _log = u.fetch_logger(__name__)
 

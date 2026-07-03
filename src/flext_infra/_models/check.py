@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m, u
-from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraModelsCheck:
@@ -106,7 +107,7 @@ class FlextInfraModelsCheck:
             ),
         ] = c.Infra.ERROR
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def formatted(self) -> str:
             """Format issue as ``file:line:col [code] message``."""
@@ -148,7 +149,7 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def error_count(self) -> int:
             """Number of diagnostics with error severity."""
@@ -172,13 +173,13 @@ class FlextInfraModelsCheck:
             description="Gate name to execution mapping",
         )
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def passed(self) -> bool:
             """Whether every gate passed."""
             return all(v.result.passed for v in self.gates.values())
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def total_errors(self) -> int:
             """Total error-severity diagnostic count across all gates."""

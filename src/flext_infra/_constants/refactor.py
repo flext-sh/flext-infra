@@ -618,6 +618,21 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "__version_info__",
     })
     "Top-level names allowed without namespace classification."
+    NAMESPACE_PRIVATE_BASE_MODULE: Final[str] = "_base.py"
+    "Private base module name allowed to host private MRO base contracts."
+    NAMESPACE_PRIVATE_BASE_CLASS_SUFFIXES: Final[frozenset[str]] = frozenset({
+        "Base",
+        "Mixin",
+        "Typing",
+    })
+    "Allowed suffixes for multiple private classes in a private base module."
+    NAMESPACE_PYTEST_MODULE_PREFIX: Final[str] = "test_"
+    "Pytest module prefix exempt from production loose-object structure checks."
+    NAMESPACE_PYTEST_MODULE_SUFFIXES: Final[frozenset[str]] = frozenset({
+        "_test.py",
+        "_tests.py",
+    })
+    "Pytest module suffixes exempt from production loose-object structure checks."
 
     # --- Census mode StrEnum (was: class Census plain strings) ---
     @unique

@@ -13,8 +13,10 @@ import mkdocs.config
 import mkdocs.exceptions
 
 from flext_cli import u
-from flext_infra import c, m, p
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDocsBuild:

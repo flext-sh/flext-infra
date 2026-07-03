@@ -11,9 +11,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
-from flext_infra import c, m, p, t
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraProjectSelectionMixin:
@@ -27,13 +30,13 @@ class FlextInfraProjectSelectionMixin:
         """Return the workspace root supplied by the composed service base."""
         raise NotImplementedError
 
-    @cli_u.computed_field()
+    @m.computed_field()
     @property
     def project_names(self) -> t.StrSequence | None:
         """Return normalized selected project names."""
         return ub.normalize_sequence_values(self.selected_projects)
 
-    @cli_u.computed_field()
+    @m.computed_field()
     @property
     def project_dirs(self) -> t.SequenceOf[Path] | None:
         """Resolve selected project directories relative to the workspace root."""

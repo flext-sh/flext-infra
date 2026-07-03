@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import t
 from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesProjectDiscovery(

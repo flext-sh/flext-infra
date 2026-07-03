@@ -6,13 +6,13 @@ import ast
 from pathlib import Path
 from typing import override
 
-from flext_infra import c
 from flext_infra.codegen._lazy_init_planner_public_root import (
     FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
 from flext_infra.codegen._lazy_init_planner_registry import (
     FlextInfraCodegenLazyInitPlannerRegistryMixin,
 )
+from flext_infra.constants import c
 
 
 class FlextInfraCodegenLazyInitPlannerPublicApiMixin(

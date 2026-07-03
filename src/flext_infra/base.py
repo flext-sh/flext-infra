@@ -132,7 +132,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         Path | None, m.Field(description="Output directory", exclude=True)
     ] = None
 
-    @cli_u.field_validator("project_filter", mode="before")
+    @m.field_validator("project_filter", mode="before")
     @classmethod
     def _normalize_project_filter(
         cls,
@@ -148,7 +148,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         )
         return ",".join(normalized_values) or None
 
-    @cli_u.field_validator("output_dir", mode="before")
+    @m.field_validator("output_dir", mode="before")
     @classmethod
     def _normalize_output_dir(cls, value: str | Path | None) -> Path | None:
         """Preserve relative output dirs so callers can scope them under workspace roots."""
@@ -157,13 +157,13 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         path: Path = cli_u.Cli.resolve_optional_path(value, default=Path())
         return path.resolve() if path.is_absolute() else path
 
-    @cli_u.computed_field()
+    @m.computed_field()
     @property
     def root(self) -> Path:
         """Return the canonical normalized workspace root."""
         return self.workspace_root
 
-    @cli_u.computed_field()
+    @m.computed_field()
     @property
     def effective_dry_run(self) -> bool:
         """Return the normalized write-mode decision for CLI services."""

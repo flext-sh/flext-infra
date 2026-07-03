@@ -14,7 +14,9 @@ from typing import ClassVar
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, p, t
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class _DiagResult:

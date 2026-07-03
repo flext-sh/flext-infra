@@ -9,7 +9,12 @@ from collections.abc import (
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import FlextInfraSettings, c, m, p, r, t
+from flext_core import r
+from flext_infra import FlextInfraSettings
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraInternalSyncRepoMixin:

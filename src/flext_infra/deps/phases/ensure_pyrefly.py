@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t
+from flext_infra.constants import c
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager

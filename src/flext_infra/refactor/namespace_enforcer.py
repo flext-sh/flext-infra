@@ -9,13 +9,17 @@ from pathlib import Path
 from typing import override
 
 from flext_cli import cli
-from flext_infra import m, p, r, t, u
+from flext_core import r
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._namespace_enforcer_project import (
     FlextInfraNamespaceEnforcerProjectMixin,
 )
 from flext_infra.refactor.namespace_enforcer_phases import (
     FlextInfraNamespaceEnforcerPhasesMixin,
 )
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraNamespaceEnforcer(

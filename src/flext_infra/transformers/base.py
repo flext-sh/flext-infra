@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
-from flext_infra import t
+from flext_infra.typings import t
 
 
 class FlextInfraChangeTrackingTransformer:

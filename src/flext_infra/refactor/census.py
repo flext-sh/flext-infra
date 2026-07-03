@@ -7,8 +7,11 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_cli import cli
-from flext_infra import c, m, p, r, t, u
+from flext_core import r
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._census_apply import (
     FlextInfraRefactorCensusApplyMixin,
 )
@@ -48,6 +51,8 @@ from flext_infra.refactor._census_symbols import (
 from flext_infra.refactor._census_validate import (
     FlextInfraRefactorCensusValidateMixin,
 )
+from flext_infra.typings import t
+from flext_infra.utilities import u
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 

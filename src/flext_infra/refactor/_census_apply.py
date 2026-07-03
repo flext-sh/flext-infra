@@ -7,7 +7,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, p, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
@@ -24,9 +23,13 @@ from flext_infra.detectors.mro_completeness_detector import (
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._census_apply_formatting import (
     FlextInfraRefactorCensusApplyFormattingMixin,
 )
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorCensusApplyMixin(
@@ -255,7 +258,7 @@ class FlextInfraRefactorCensusApplyMixin(
             line_ranges_to_remove.append((start_line, end_line))
             if isinstance(target, ast.Import):
                 imports_to_add.extend(("", (alias.name,)) for alias in target.names)
-            elif isinstance(target, ast.ImportFrom):
+            else:
                 module_name = target.module or ""
                 imports_to_add.append((
                     module_name,

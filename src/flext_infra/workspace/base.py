@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_infra import m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.models import m
 
 
 class FlextInfraWorkspaceGeneratorBase(m.ArbitraryTypesModel):

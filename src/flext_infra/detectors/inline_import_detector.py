@@ -12,7 +12,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import m, t, u
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraInlineImportDetector:

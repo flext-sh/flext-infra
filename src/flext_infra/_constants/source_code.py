@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from typing import Final
 
-from flext_infra import t
+from flext_infra.typings import t
 
 
 class FlextInfraConstantsSourceCode:

@@ -6,10 +6,13 @@ from functools import cache
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, p, r, t
+from flext_core import r
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDiscovery:

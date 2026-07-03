@@ -9,8 +9,10 @@ function definitions; pattern matching of node shapes uses
 
 from __future__ import annotations
 
-from flext_infra import c, t, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.constants import c
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorLegacyTextOps:

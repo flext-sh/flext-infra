@@ -22,8 +22,11 @@ from typing import Annotated, override
 
 from git import GitCommandError, Repo
 
-from flext_infra import m, p, r, u
+from flext_core import r
 from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.utilities import u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 

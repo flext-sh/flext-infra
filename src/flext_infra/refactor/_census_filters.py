@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import ClassVar
 
-from flext_infra import m, t, u
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorCensusFiltersMixin:

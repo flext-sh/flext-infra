@@ -5,8 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
@@ -159,7 +162,8 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         """Return the directory where a registry module's files must live."""
         suffix = f".{c.Infra.ROOT_EXPORTS_DIR}.{c.Infra.ROOT_EXPORTS_FILENAME.removesuffix('.py')}"
         if module.endswith(suffix):
-            return pkg_dir / c.Infra.ROOT_EXPORTS_DIR
+            root_exports_dir: str = c.Infra.ROOT_EXPORTS_DIR
+            return pkg_dir / root_exports_dir
         return pkg_dir
 
     def _ensure_constants_init(self, registry_dir: Path) -> None:

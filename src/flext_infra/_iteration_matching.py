@@ -9,8 +9,8 @@ from __future__ import annotations
 import fnmatch
 from pathlib import Path
 
-from flext_infra import t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesIterationMatching:

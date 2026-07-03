@@ -19,9 +19,9 @@ from __future__ import annotations
 import ast
 from typing import ClassVar, override
 
-from flext_infra import t
 from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
 from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.typings import t
 
 
 class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):

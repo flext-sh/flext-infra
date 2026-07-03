@@ -53,7 +53,9 @@ def _sarif_fixture(project: str) -> str:
             },
         ],
     })
-    return u.Cli.json_dumps({"runs": [{"results": results}]}).unwrap()
+    return m.TypeAdapter(str).validate_python(
+        u.Cli.json_dumps({"runs": [{"results": results}]}).unwrap(),
+    )
 
 
 def _seeded_gate(
@@ -77,13 +79,13 @@ def _ctx(tmp_path: Path) -> m.Infra.GateContext:
 
 
 @pytest.fixture
-def _clean_scan_cache() -> Iterator[None]:
+def clean_scan_cache() -> Iterator[None]:
     """Isolate the class-level scan cache between tests."""
     yield
     FlextInfraSmellsGate._scan_cache.clear()
 
 
-pytestmark = pytest.mark.usefixtures("_clean_scan_cache")
+pytestmark = pytest.mark.usefixtures("clean_scan_cache")
 
 
 class TestSmellsGate:

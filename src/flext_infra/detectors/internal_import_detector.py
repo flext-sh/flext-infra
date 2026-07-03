@@ -6,7 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import m, t, u
+from pathlib import Path
+
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraInternalImportDetector:
@@ -52,6 +57,33 @@ class FlextInfraInternalImportDetector:
         """Public accessor for same-package facade-assembly exemption."""
         return cls._facade_assembly_exempt(importer_module, fqn)
 
+    @classmethod
+    def _is_pytest_test_module(cls, file_path: Path) -> bool:
+        """Return whether a file is a pytest test module."""
+        if c.Infra.DIR_TESTS not in file_path.parts:
+            return False
+        file_name = file_path.name
+        return file_name.startswith(
+            c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX,
+        ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
+
+    @classmethod
+    def _project_whitebox_test_exempt(
+        cls,
+        ctx: m.Infra.DetectorContext,
+        fqn: str,
+    ) -> bool:
+        """Return whether a pytest test module imports its own package internals."""
+        if not cls._is_pytest_test_module(ctx.file_path):
+            return False
+        if ctx.project_root is None:
+            return False
+        project_layout = u.Infra.layout(ctx.project_root)
+        if project_layout is None:
+            return False
+        package_name = project_layout.package_name
+        return fqn == package_name or fqn.startswith(f"{package_name}.")
+
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
@@ -68,8 +100,8 @@ class FlextInfraInternalImportDetector:
         imports = u.Infra.get_semantic_module_imports(rope_project, res)
 
         def violates_internal_import(local: str, fqn: str) -> bool:
-            private_module = (
-                FlextInfraInternalImportDetector._has_private_module_part(fqn)
+            private_module = FlextInfraInternalImportDetector._has_private_module_part(
+                fqn
             )
             facade_exempt = private_module and (
                 FlextInfraInternalImportDetector._facade_assembly_exempt(
@@ -77,7 +109,17 @@ class FlextInfraInternalImportDetector:
                     fqn,
                 )
             )
-            return (local.startswith("_") or private_module) and not facade_exempt
+            whitebox_exempt = (
+                FlextInfraInternalImportDetector._project_whitebox_test_exempt(
+                    ctx,
+                    fqn,
+                )
+            )
+            return (
+                (local.startswith("_") or private_module)
+                and not facade_exempt
+                and not whitebox_exempt
+            )
 
         return [
             m.Infra.InternalImportViolation(

@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import p, r, t
+from flext_core import r
 from flext_infra._iteration_workspace import FlextInfraUtilitiesIterationWorkspace
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesIterationModules:

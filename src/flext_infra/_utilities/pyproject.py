@@ -12,7 +12,8 @@ from pathlib import Path
 from tomlkit import TOMLDocument
 
 from flext_cli import u
-from flext_infra import c, t
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 def _validate_infra_payload(payload: object) -> t.Infra.ContainerDict | None:

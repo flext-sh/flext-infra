@@ -6,13 +6,18 @@ import sys
 from typing import ClassVar
 
 from flext_cli import cli as cli_facade, p as cli_p
-from flext_infra import c, m, p, r, t, u
+from flext_core import r
 from flext_infra._constants.cli_routes import (
     CODEGEN_ROUTES as _ROUTES_CODEGEN,
     VALIDATE_ROUTES as _ROUTES_VALIDATE,
     WORKSPACE_ROUTES as _ROUTES_WORKSPACE,
 )
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraCli(type(cli_facade)):

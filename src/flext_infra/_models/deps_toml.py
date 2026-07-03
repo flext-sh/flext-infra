@@ -13,7 +13,8 @@ from itertools import chain
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
-from flext_infra import c, t
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraModelsDepsToml:

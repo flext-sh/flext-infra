@@ -10,10 +10,13 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_infra import c, m, t, u
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.transformers._tier0_transformer import (
     FlextInfraTier0TransformerMixin,
 )
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
@@ -57,7 +60,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
             ),
         ] = m.Field(default_factory=frozenset)
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def has_violations(self) -> bool:
             """Return True if any imports need redirecting or moving."""

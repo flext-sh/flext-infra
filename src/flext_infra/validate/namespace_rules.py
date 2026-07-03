@@ -15,8 +15,8 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from flext_infra import t

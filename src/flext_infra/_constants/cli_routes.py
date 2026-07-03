@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
@@ -19,6 +18,7 @@ from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
+from flext_infra.constants import c
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
@@ -30,6 +30,7 @@ from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.models import m
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -57,6 +58,7 @@ from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
 from flext_infra.transformers.tests_modernizer import FlextInfraRefactorTestsModernizer
+from flext_infra.utilities import u
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles

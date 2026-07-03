@@ -14,7 +14,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, p, r, s, t, u
+from flext_core import r
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraCodegenPyTyped(s[bool]):

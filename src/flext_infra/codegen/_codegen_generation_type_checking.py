@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from flext_infra import c, t
 from flext_infra.codegen._codegen_generation_imports import (
     FlextInfraCodegenGenerationImportsMixin,
 )
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationTypeCheckingMixin(

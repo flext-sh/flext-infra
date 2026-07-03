@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, t, u
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
@@ -24,6 +26,8 @@ from flext_infra.transformers.tier0_import_fixer import (
     FlextInfraTransformerTier0ImportFixer,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):

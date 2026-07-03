@@ -28,6 +28,8 @@ class FlextInfraLooseObjectDetector:
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
+        if cls._is_pytest_test_module(ctx.file_path):
+            return []
         res = u.Infra.fetch_python_resource(
             ctx.rope_project,
             ctx.file_path,
@@ -104,7 +106,10 @@ class FlextInfraLooseObjectDetector:
             )
         )
 
-        if len(class_symbols) != 1:
+        if len(class_symbols) != 1 and not cls._allows_private_base_module_classes(
+            file_path=file_path,
+            class_symbols=class_symbols,
+        ):
             violations.append(
                 m.Infra.LooseObjectViolation(
                     file=file_str,
@@ -116,6 +121,34 @@ class FlextInfraLooseObjectDetector:
             )
 
         return violations
+
+    @classmethod
+    def _is_pytest_test_module(cls, file_path: Path) -> bool:
+        """Return whether a file is a pytest module, not a production module."""
+        if c.Infra.DIR_TESTS not in file_path.parts:
+            return False
+        file_name = file_path.name
+        return file_name.startswith(
+            c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX,
+        ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
+
+    @classmethod
+    def _allows_private_base_module_classes(
+        cls,
+        *,
+        file_path: Path,
+        class_symbols: t.SequenceOf[m.Infra.SymbolInfo],
+    ) -> bool:
+        """Return whether a private ``_base.py`` module satisfies MRO contracts."""
+        if file_path.name != c.Infra.NAMESPACE_PRIVATE_BASE_MODULE:
+            return False
+        if not class_symbols:
+            return False
+        allowed_suffixes = tuple(c.Infra.NAMESPACE_PRIVATE_BASE_CLASS_SUFFIXES)
+        return all(
+            symbol.name.startswith("_") and symbol.name.endswith(allowed_suffixes)
+            for symbol in class_symbols
+        )
 
     @classmethod
     def _detect_ast_loose_objects(

@@ -16,8 +16,11 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_core import FlextSmellViolation, c as core_c
-from flext_infra import c, m, t, u
+from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraSmellsGate(FlextInfraGate):
@@ -139,8 +142,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
     def _severity() -> str:
         """WARNING while report-only; ERROR once SMELLS_GATE_MODE is STRICT."""
         if c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.STRICT:
-            return c.Infra.GateSeverity.ERROR.value
-        return c.Infra.GateSeverity.WARNING.value
+            return str(c.Infra.GateSeverity.ERROR.value)
+        return str(c.Infra.GateSeverity.WARNING.value)
 
     @classmethod
     def _issues_from_sarif(

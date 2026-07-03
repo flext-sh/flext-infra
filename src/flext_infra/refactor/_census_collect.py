@@ -7,14 +7,16 @@ from typing import TYPE_CHECKING
 
 from rope.base.exceptions import RopeError
 
-from flext_infra import m, p, t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._census_rules_dispatch import (
     FlextInfraRefactorCensusRulesDispatchMixin,
 )
 from flext_infra.refactor._census_validate import (
     FlextInfraRefactorCensusValidateMixin,
 )
+from flext_infra.typings import t
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import m
+from flext_infra.models import m
 
 
 class FlextInfraRefactorCensusRenderMixin:

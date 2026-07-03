@@ -9,10 +9,12 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_infra import m, t, u
 from flext_infra.detectors.internal_import_detector import (
     FlextInfraInternalImportDetector,
 )
+from flext_infra.models import m
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraPrivateImportBypassDetector:

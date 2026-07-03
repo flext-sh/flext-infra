@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated, Self
 
-from flext_cli import m, u
-from flext_infra import t
+from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.typings import t
 
 
 class FlextInfraModelsNamespaceEnforcer:
@@ -329,7 +329,7 @@ class FlextInfraModelsNamespaceEnforcer:
             t.NonNegativeInt, m.Field(description="Files scanned")
         ] = 0
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def has_violations(self) -> bool:
             """Check if this project has any violations."""
@@ -457,7 +457,7 @@ class FlextInfraModelsNamespaceEnforcer:
                 total_files_scanned=sum(p.files_scanned for p in projects),
             )
 
-        @u.computed_field()
+        @m.computed_field()
         @property
         def has_violations(self) -> bool:
             """Has violations."""

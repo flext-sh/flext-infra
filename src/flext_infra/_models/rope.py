@@ -11,9 +11,10 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import p, t
 from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraModelsRope:

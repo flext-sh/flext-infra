@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import FlextSettingsBase, m, u
-from flext_infra import c
+from flext_core import FlextSettingsBase, m
+from flext_infra.constants import c
 
 
 class FlextInfraSettings(FlextSettingsBase):
@@ -19,7 +19,7 @@ class FlextInfraSettings(FlextSettingsBase):
 
     standalone: Annotated[
         bool,
-        u.Field(
+        m.Field(
             default=c.Infra.ENV_DEFAULT_STANDALONE,
             validation_alias=c.Infra.ENV_VAR_STANDALONE,
             description="Force standalone mode and skip workspace auto-detection.",
@@ -27,7 +27,7 @@ class FlextInfraSettings(FlextSettingsBase):
     ]
     workspace_root: Annotated[
         Path | None,
-        u.Field(
+        m.Field(
             default=None,
             validation_alias=c.Infra.ENV_VAR_WORKSPACE_ROOT,
             description="Explicit workspace root used for dependency orchestration.",
@@ -35,7 +35,7 @@ class FlextInfraSettings(FlextSettingsBase):
     ] = None
     use_https: Annotated[
         bool,
-        u.Field(
+        m.Field(
             default=c.Infra.ENV_DEFAULT_USE_HTTPS,
             validation_alias=c.Infra.ENV_VAR_USE_HTTPS,
             description="Prefer HTTPS repository URLs during dependency sync.",
@@ -43,7 +43,7 @@ class FlextInfraSettings(FlextSettingsBase):
     ]
     github_actions: Annotated[
         bool,
-        u.Field(
+        m.Field(
             default=c.Infra.ENV_DEFAULT_GITHUB_ACTIONS,
             validation_alias=c.Infra.ENV_VAR_GITHUB_ACTIONS,
             description="Whether the current runtime is a GitHub Actions environment.",
@@ -51,7 +51,7 @@ class FlextInfraSettings(FlextSettingsBase):
     ]
     github_head_ref: Annotated[
         str | None,
-        u.Field(
+        m.Field(
             default=None,
             validation_alias=c.Infra.ENV_VAR_GITHUB_HEAD_REF,
             description="GitHub Actions head ref override for dependency sync.",
@@ -59,14 +59,14 @@ class FlextInfraSettings(FlextSettingsBase):
     ] = None
     github_ref_name: Annotated[
         str | None,
-        u.Field(
+        m.Field(
             default=None,
             validation_alias=c.Infra.ENV_VAR_GITHUB_REF_NAME,
             description="GitHub Actions ref-name override for dependency sync.",
         ),
     ] = None
 
-    @u.field_validator("standalone", mode="before")
+    @m.field_validator("standalone", mode="before")
     @classmethod
     def _coerce_standalone(cls, value: bool | str | None) -> bool | str:
         """Coerce standalone."""
@@ -77,7 +77,7 @@ class FlextInfraSettings(FlextSettingsBase):
             return default
         return value
 
-    @u.field_validator("workspace_root", mode="before")
+    @m.field_validator("workspace_root", mode="before")
     @classmethod
     def _coerce_workspace_root(cls, value: str | Path | None) -> Path | None:
         """Coerce workspace root."""

@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, t, u
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
 )
@@ -27,6 +26,11 @@ from flext_infra.codegen._lazy_init_planner_parents import (
 from flext_infra.codegen._lazy_init_planner_public_api import (
     FlextInfraCodegenLazyInitPlannerPublicApiMixin,
 )
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):

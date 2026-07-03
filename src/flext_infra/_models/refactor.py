@@ -10,7 +10,6 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_core import u
-from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
@@ -20,6 +19,7 @@ from flext_infra._models.refactor_namespace_enforcer import (
 from flext_infra._models.refactor_violations import (
     FlextInfraModelsRefactorViolations,
 )
+from flext_infra.typings import t
 
 
 class FlextInfraModelsRefactor(

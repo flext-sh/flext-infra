@@ -5,9 +5,12 @@ from __future__ import annotations
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import m, p, t, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorCensusSymbolsMixin:

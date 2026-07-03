@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesLogParser:

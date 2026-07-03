@@ -13,8 +13,9 @@ from rope.base.pynames import (
 )
 from rope.base.pynamesdef import AssignedName as RopeAssignedName
 
-from flext_infra import c, m
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra.constants import c
+from flext_infra.models import m
 
 if TYPE_CHECKING:
     from flext_infra import p, t
