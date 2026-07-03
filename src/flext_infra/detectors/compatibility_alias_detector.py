@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 from rope.refactor.importutils.importinfo import FromImport
 
 from flext_infra.constants import c
@@ -230,6 +233,42 @@ def _local_alias_targets(source: str) -> t.StrMapping:
         target = match.group(2)
         targets[alias] = target
     return targets
+
+
+def _detect_foreign_canonical_aliases(
+    *,
+    source: str,
+    file_path: Path,
+) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
+    """Detect local canonical aliases imported from upstream packages."""
+    current_module = u.Infra.package_name(file_path)
+    current_package = current_module.split(".", maxsplit=1)[0]
+    local_aliases = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS.get(current_package, ())
+    if not local_aliases:
+        return ()
+    if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
+        return ()
+    tree = ast.parse(source)
+    violations: list[m.Infra.CompatibilityAliasViolation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.level != 0 or node.module != c.Infra.PKG_CORE_UNDERSCORE:
+            continue
+        for imported in node.names:
+            bound_name = imported.asname or imported.name
+            if bound_name not in local_aliases:
+                continue
+            violations.append(
+                m.Infra.CompatibilityAliasViolation(
+                    file=str(file_path),
+                    line=node.lineno,
+                    alias_name=bound_name,
+                    target_name=bound_name,
+                    module_name=current_package,
+                )
+            )
+    return tuple(violations)
 
 
 __all__: list[str] = ["FlextInfraCompatibilityAliasDetector"]

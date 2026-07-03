@@ -14,15 +14,14 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestsFlextInfraTransformersCliModernizer",
         ),
         ".test_infra_transformer_enforcement_fixers": (
-            "TestsFlextInfraTransformersBareExcept",
             "TestsFlextInfraTransformersCompatibilityAlias",
             "TestsFlextInfraTransformersFutureImport",
             "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",
-            "TestsFlextInfraTransformersPrintToLogger",
-            "TestsFlextInfraTransformersRemoveBreakpoint",
+            "TestsFlextInfraTransformersPattern",
             "TestsFlextInfraTransformersTypingDictAttr",
             "TestsFlextInfraTransformersTypingDictImport",
+            "TestsFlextInfraTransformersTypingUnifier",
         ),
         ".test_infra_transformer_helper_consolidation": (
             "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",

@@ -321,15 +321,14 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 blocked_aliases=blocked_aliases,
             )
         if transformer_cls is FlextInfraRefactorPatternTransformer:
-            patterns = tuple(
-                item
-                for item in u.Cli.json_as_sequence(params.get("patterns"))
-                if isinstance(item, dict)
-            )
+            required_alias = params.get("required_alias", "")
+            alias_module = params.get("alias_module", "")
             return FlextInfraRefactorPatternTransformer(
-                patterns=patterns,
-                required_alias=str(params.get("required_alias") or ""),
-                alias_module=str(params.get("alias_module") or ""),
+                patterns=u.Cli.json_as_mapping_list(params.get("patterns")),
+                required_alias=required_alias
+                if isinstance(required_alias, str)
+                else "",
+                alias_module=alias_module if isinstance(alias_module, str) else "",
                 file_path=file_path,
             )
         # Remaining enforcement transformers require no runtime params.

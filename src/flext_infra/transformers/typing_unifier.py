@@ -31,7 +31,6 @@ from flext_infra.transformers._typing_rewrite import (
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraRefactorTypingUnifier(
@@ -84,11 +83,12 @@ class FlextInfraRefactorTypingUnifier(
         source = self._modernize_typealias(source)
         added, did_add = self._ensure_t_import(
             source,
-            self._canonical_import_module(),
+            self._canonical_import_module(self._file_path),
         )
         if did_add:
             self._record_change(
-                f"Added canonical t import from {self._canonical_import_module()}"
+                "Added canonical t import from "
+                f"{self._canonical_import_module(self._file_path)}"
             )
         source = added
         return source, list(self.changes)
@@ -131,15 +131,6 @@ class FlextInfraRefactorTypingUnifier(
         if file_path.name in c.Infra.TYPING_DEFINITION_FILES:
             return True
         return any(part in c.Infra.TYPING_DEFINITION_FILES for part in file_path.parts)
-
-    def _canonical_import_module(self) -> str:
-        """Return the root package name for the file under transformation."""
-        if self._file_path is None:
-            return c.Infra.PKG_CORE_UNDERSCORE
-        package_name: str = u.Infra.package_name(self._file_path)
-        if not package_name:
-            return c.Infra.PKG_CORE_UNDERSCORE
-        return package_name.split(".", maxsplit=1)[0]
 
 
 __all__: list[str] = ["FlextInfraRefactorTypingUnifier"]

@@ -75,6 +75,10 @@ class FlextInfraConstantsSourceCode:
     "Header for shell auto-generated content."
     FUTURE_ANNOTATIONS: Final[str] = "from __future__ import annotations"
     "Standard future annotations import line."
+    ENCODING_COOKIE_RE: Final[t.RegexPattern] = re.compile(
+        r"^[ \t\f]*#.*?coding[:=][ \t]*[-\w.]+",
+    )
+    "Regex: Python source encoding cookie on a header line."
     IMPORT_RE: Final[t.RegexPattern] = re.compile(
         r"^import\s+(.+)",
         re.MULTILINE,

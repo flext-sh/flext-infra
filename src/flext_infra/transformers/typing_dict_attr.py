@@ -10,13 +10,11 @@ import re
 from pathlib import Path
 from typing import override
 
-from flext_infra.constants import c
 from flext_infra.transformers._canonical_t_import import (
     FlextInfraEnsureCanonicalTImportMixin,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraRefactorTypingDictAttr(
@@ -53,11 +51,12 @@ class FlextInfraRefactorTypingDictAttr(
         if updated != source:
             added, did_add = self._ensure_t_import(
                 updated,
-                self._canonical_import_module(),
+                self._canonical_import_module(self._file_path),
             )
             if did_add:
                 self._record_change(
-                    f"Added canonical t import from {self._canonical_import_module()}"
+                    "Added canonical t import from "
+                    f"{self._canonical_import_module(self._file_path)}"
                 )
             updated = added
         return updated, list(self.changes)
@@ -72,15 +71,6 @@ class FlextInfraRefactorTypingDictAttr(
             return "t.MappingKV["
 
         return self._TYPING_DICT_ATTR_RE.sub(replacer, source)
-
-    def _canonical_import_module(self) -> str:
-        """Return the root package name for the file under transformation."""
-        if self._file_path is None:
-            return c.Infra.PKG_CORE_UNDERSCORE
-        package_name: str = u.Infra.package_name(self._file_path)
-        if not package_name:
-            return c.Infra.PKG_CORE_UNDERSCORE
-        return package_name.split(".", maxsplit=1)[0]
 
 
 __all__: list[str] = ["FlextInfraRefactorTypingDictAttr"]

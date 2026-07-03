@@ -11,12 +11,17 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra.constants import c
+from flext_infra.transformers._canonical_t_import import (
+    FlextInfraEnsureCanonicalTImportMixin,
+)
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
-class FlextInfraRefactorPatternTransformer(FlextInfraRopeTransformer):
+class FlextInfraRefactorPatternTransformer(
+    FlextInfraEnsureCanonicalTImportMixin,
+    FlextInfraRopeTransformer,
+):
     """Apply declarative regex substitutions declared in enforcement catalog rules.
 
     Each catalog entry declares a list of ``patterns`` (regex + replacement +
@@ -70,7 +75,11 @@ class FlextInfraRefactorPatternTransformer(FlextInfraRopeTransformer):
         for pattern_spec in self._patterns:
             updated = self._apply_pattern(updated, pattern_spec)
         if updated != source and self._required_alias:
-            updated = self._ensure_alias_import(updated)
+            updated, _did_add = self._ensure_alias_import(
+                source=updated,
+                module_name=self._alias_module,
+                alias=self._required_alias,
+            )
         return updated, list(self.changes)
 
     def _apply_pattern(
@@ -106,51 +115,6 @@ class FlextInfraRefactorPatternTransformer(FlextInfraRopeTransformer):
 
         return compiled.sub(replacer, source)
 
-    def _ensure_alias_import(self, source: str) -> str:
-        """Inject ``from <module> import <alias>`` if the alias is used."""
-        alias = self._required_alias
-        if not alias or self._alias_module_already_imports(source, alias):
-            return source
-        if not self._alias_used(source, alias):
-            return source
-        insertion = self._import_insertion_offset(source)
-        updated = (
-            f"{source[:insertion]}from {self._alias_module} import {alias}\n"
-            f"{source[insertion:]}"
-        )
-        self._record_change(f"Added canonical {alias} import from {self._alias_module}")
-        return updated
-
-    @classmethod
-    def _alias_used(cls, source: str, alias: str) -> bool:
-        """Return whether the source contains a real use of ``alias``."""
-        return (
-            c.Infra.compile(rf"\b{c.Infra.escape(alias)}\.").search(source) is not None
-        )
-
-    @classmethod
-    def _alias_module_already_imports(cls, source: str, alias: str) -> bool:
-        """Return whether the source already imports ``alias`` canonically."""
-        if c.Infra.compile(
-            rf"\bfrom\s+\S+\s+import\s+.*\b{c.Infra.escape(alias)}\b"
-        ).search(source):
-            return True
-        lines = source.splitlines()
-        index = 0
-        while index < len(lines):
-            stripped = lines[index].strip()
-            if stripped.startswith("from ") and stripped.endswith("import ("):
-                index += 1
-                while index < len(lines):
-                    current = lines[index].strip().rstrip(",")
-                    if current == ")":
-                        break
-                    if current == alias:
-                        return True
-                    index += 1
-            index += 1
-        return False
-
     @classmethod
     def _compile_flags(cls, flags_value: t.JsonValue | None) -> int:
         """Return combined regex flags from a list of flag names."""
@@ -169,38 +133,6 @@ class FlextInfraRefactorPatternTransformer(FlextInfraRopeTransformer):
                 raise ValueError(msg)
             combined |= cls._FLAG_MAP[name]
         return combined
-
-    @staticmethod
-    def _canonical_import_module(file_path: Path | None) -> str:
-        """Return the root package name for the file under transformation."""
-        if file_path is None:
-            return c.Infra.PKG_CORE_UNDERSCORE
-        package_name: str = u.Infra.package_name(file_path)
-        return package_name.split(".", maxsplit=1)[0] or c.Infra.PKG_CORE_UNDERSCORE
-
-    @staticmethod
-    def _import_insertion_offset(source: str) -> int:
-        """Return the byte offset where a new import line should be inserted.
-
-        The line is appended after the last existing import line. Callers that
-        need strict import ordering should run an import organizer afterward.
-        """
-        last_match: t.Infra.RegexMatch | None = None
-        for match in c.Infra.IMPORT_LINE_ANCHORED_RE.finditer(source):
-            last_match = match
-        if last_match is None:
-            return 0
-        matched_line = source[last_match.start() : last_match.end()]
-        if matched_line.rstrip().endswith("("):
-            tail = source[last_match.end() :]
-            close_match = c.Infra.IMPORT_PAREN_CLOSE_RE.search(tail)
-            if close_match is not None:
-                close_offset: int = last_match.end() + close_match.end()
-                if close_offset < len(source) and source[close_offset] == "\n":
-                    close_offset += 1
-                return close_offset
-        line_end = source.find("\n", last_match.end())
-        return len(source) if line_end == -1 else line_end + 1
 
 
 __all__: list[str] = ["FlextInfraRefactorPatternTransformer"]
