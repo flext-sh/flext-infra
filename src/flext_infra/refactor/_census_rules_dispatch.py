@@ -54,6 +54,18 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             selected_kinds: frozenset[str],
             convention: m.Infra.RopeModuleConvention,
         ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        def _rule_class_placement(
+            self,
+            rope: p.Infra.RopeWorkspaceDsl,
+            file_path: Path,
+            *,
+            project_name: str,
+            objects: tuple[m.Infra.Census.Object, ...] | None,
+            applied: frozenset[str],
+            selected_kinds: frozenset[str],
+            symbol_index: dict[str, tuple[str, int]],
+            convention: m.Infra.RopeModuleConvention,
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
         def _rule_compatibility_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
