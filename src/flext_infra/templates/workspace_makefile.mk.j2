@@ -373,6 +373,12 @@ _boot_default: ## Install all projects into workspace .venv
 	else \
 		echo "Skipping workspace validation (no managed workspace projects selected)."; \
 	fi
+	$(Q)if git rev-parse --git-dir >/dev/null 2>&1 && [ -f .pre-commit-config.yaml ]; then \
+		echo "Installing pre-commit hooks (workspace root)..."; \
+		uv run --all-packages pre-commit install || exit 1; \
+	else \
+		echo "INFO: skipping pre-commit install (no git repository or config)"; \
+	fi
 
 _up: ## Refresh workspace lock/install + rewrite dependency constraints + dependency report
 	$(Q)$(REQUIRE_VENV)
