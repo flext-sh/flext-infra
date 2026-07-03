@@ -5,7 +5,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+from flext_core.lazy import (
+    build_lazy_import_map,
+    install_lazy_exports,
+    merge_lazy_imports,
+)
 
 if TYPE_CHECKING:
     from flext_infra.transformers.base import (
@@ -64,6 +68,15 @@ if TYPE_CHECKING:
     from flext_infra.transformers.signature_propagator import (
         FlextInfraRefactorSignaturePropagator as FlextInfraRefactorSignaturePropagator,
     )
+    from flext_infra.transformers.smells.base import (
+        FlextInfraSmellFixer as FlextInfraSmellFixer,
+        auto_fixable_smell_tags as auto_fixable_smell_tags,
+        register_smell_fixer as register_smell_fixer,
+        smell_fixer_for as smell_fixer_for,
+    )
+    from flext_infra.transformers.smells.boolean_logic import (
+        FlextInfraBooleanLogicFixer as FlextInfraBooleanLogicFixer,
+    )
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator as FlextInfraRefactorSymbolPropagator,
     )
@@ -79,38 +92,71 @@ if TYPE_CHECKING:
     from flext_infra.transformers.violation_census_visitor import (
         FlextInfraViolationCensusVisitor as FlextInfraViolationCensusVisitor,
     )
-_LAZY_IMPORTS = build_lazy_import_map(
-    {
-        ".base": (
-            "FlextInfraChangeTrackingTransformer",
-            "FlextInfraRopeTransformer",
-        ),
-        ".census_visitors": (
-            "FlextInfraCensusImportDiscoveryVisitor",
-            "FlextInfraCensusUsageCollector",
-        ),
-        ".class_nesting": ("FlextInfraRefactorClassNestingTransformer",),
-        ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),
-        ".cli_modernizer": ("FlextInfraRefactorCliModernizer",),
-        ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
-        ".helper_consolidation": ("FlextInfraHelperConsolidationTransformer",),
-        ".import_bypass_remover": ("FlextInfraRefactorImportBypassRemover",),
-        ".import_modernizer": ("FlextInfraRefactorImportModernizer",),
-        ".lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
-        ".logging_modernizer": ("FlextInfraRefactorLoggingModernizer",),
-        ".mro_remover": ("FlextInfraRefactorMRORemover",),
-        ".mro_symbol_propagator": ("FlextInfraRefactorMROSymbolPropagator",),
-        ".nested_class_propagation": ("FlextInfraNestedClassPropagationTransformer",),
-        ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
-        ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
-        ".result_di_modernizer": ("FlextInfraRefactorResultDiModernizer",),
-        ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
-        ".symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
-        ".tests_modernizer": ("FlextInfraRefactorTestsModernizer",),
-        ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),
-        ".typing_unifier": ("FlextInfraRefactorTypingUnifier",),
-        ".violation_census_visitor": ("FlextInfraViolationCensusVisitor",),
-    },
+_LAZY_IMPORTS = merge_lazy_imports(
+    (".smells",),
+    build_lazy_import_map(
+        {
+            ".base": (
+                "FlextInfraChangeTrackingTransformer",
+                "FlextInfraRopeTransformer",
+            ),
+            ".census_visitors": (
+                "FlextInfraCensusImportDiscoveryVisitor",
+                "FlextInfraCensusUsageCollector",
+            ),
+            ".class_nesting": ("FlextInfraRefactorClassNestingTransformer",),
+            ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),
+            ".cli_modernizer": ("FlextInfraRefactorCliModernizer",),
+            ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
+            ".helper_consolidation": ("FlextInfraHelperConsolidationTransformer",),
+            ".import_bypass_remover": ("FlextInfraRefactorImportBypassRemover",),
+            ".import_modernizer": ("FlextInfraRefactorImportModernizer",),
+            ".lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
+            ".logging_modernizer": ("FlextInfraRefactorLoggingModernizer",),
+            ".mro_remover": ("FlextInfraRefactorMRORemover",),
+            ".mro_symbol_propagator": ("FlextInfraRefactorMROSymbolPropagator",),
+            ".nested_class_propagation": (
+                "FlextInfraNestedClassPropagationTransformer",
+            ),
+            ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
+            ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
+            ".result_di_modernizer": ("FlextInfraRefactorResultDiModernizer",),
+            ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
+            ".smells": ("smells",),
+            ".smells.base": (
+                "FlextInfraSmellFixer",
+                "auto_fixable_smell_tags",
+                "register_smell_fixer",
+                "smell_fixer_for",
+            ),
+            ".smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
+            ".symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
+            ".tests_modernizer": ("FlextInfraRefactorTestsModernizer",),
+            ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),
+            ".typing_unifier": ("FlextInfraRefactorTypingUnifier",),
+            ".violation_census_visitor": ("FlextInfraViolationCensusVisitor",),
+        },
+    ),
+    exclude_names=(
+        "cleanup_submodule_namespace",
+        "install_lazy_exports",
+        "lazy_getattr",
+        "logger",
+        "merge_lazy_imports",
+        "output",
+        "output_reporting",
+        "pytest_addoption",
+        "pytest_collect_file",
+        "pytest_collection_modifyitems",
+        "pytest_configure",
+        "pytest_runtest_setup",
+        "pytest_runtest_teardown",
+        "pytest_sessionfinish",
+        "pytest_sessionstart",
+        "pytest_terminal_summary",
+        "pytest_warning_recorded",
+    ),
+    module_name=__name__,
 )
 
 

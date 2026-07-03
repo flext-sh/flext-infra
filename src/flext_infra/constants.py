@@ -14,6 +14,7 @@ from flext_infra._constants.check import FlextInfraConstantsCheck
 from flext_infra._constants.cli import FlextInfraConstantsCli
 from flext_infra._constants.codegen import FlextInfraConstantsCodegen
 from flext_infra._constants.deps import FlextInfraConstantsDeps
+from flext_infra._constants.detectors import FlextInfraConstantsDetectors
 from flext_infra._constants.docs import FlextInfraConstantsDocs
 from flext_infra._constants.github import FlextInfraConstantsGithub
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
@@ -34,6 +35,7 @@ class FlextInfraConstants(c):
         FlextInfraConstantsCodegen,
         FlextInfraConstantsRope,
         FlextInfraConstantsDeps,
+        FlextInfraConstantsDetectors,
         FlextInfraConstantsDocs,
         FlextInfraConstantsGithub,
         FlextInfraConstantsRefactor,

@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_core import r
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -118,7 +119,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         """
         try:
             pymodule = u.Infra.get_pymodule(project, resource)
-        except u.Infra.RUNTIME_ERRORS as exc:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS as exc:
             return r[str].fail(f"get_pymodule rope error: {exc!s}")
         except TypeError as exc:
             return r[str].fail(f"get_pymodule type error: {exc!s}")

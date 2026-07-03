@@ -14,14 +14,12 @@ import fcntl
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    s,
-    u,
-)
+from flext_core import r
+from flext_infra.base import s
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.utilities import u
 from flext_infra.workspace._sync_artifacts import (
     FlextInfraWorkspaceSyncArtifactsMixin,
 )
@@ -124,6 +122,12 @@ class FlextInfraSyncService(
                 env_result.error or "workspace environment sync failed",
             )
         changed += env_result.value
+        vscode_result = self._sync_vscode_settings(resolved)
+        if vscode_result.failure:
+            return r[m.Infra.SyncResult].fail(
+                vscode_result.error or "VS Code settings sync failed",
+            )
+        changed += 1 if vscode_result.value else 0
         if is_workspace_root:
             pre_commit_result = self._sync_pre_commit_config(resolved)
             if pre_commit_result.failure:

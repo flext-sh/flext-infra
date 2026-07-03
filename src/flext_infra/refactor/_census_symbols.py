@@ -5,8 +5,8 @@ from __future__ import annotations
 from operator import itemgetter
 from pathlib import Path
 
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
@@ -36,7 +36,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
                 resource,
             ).get_attributes()
         except (
-            *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
+            *FlextInfraConstantsRope.RUNTIME_ERRORS,
             RecursionError,
             SyntaxError,
             ValueError,
@@ -94,9 +94,9 @@ class FlextInfraRefactorCensusSymbolsMixin:
         inherited_kind = object_kinds.get(id(obj))
         if inherited_kind in {"class", "function"}:
             return inherited_kind
-        if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+        if isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
             return "class"
-        if isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
+        if isinstance(obj, FlextInfraConstantsRope.PY_FUNCTION_TYPES):
             return "function"
         return "constant" if name.isupper() else "assignment"
 

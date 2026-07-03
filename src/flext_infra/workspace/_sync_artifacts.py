@@ -13,6 +13,7 @@ from flext_infra.utilities import u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
+from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
@@ -146,6 +147,11 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
             if content_hash == existing_hash:
                 return r[bool].ok(False)
         return u.Cli.atomic_write_text_file(target_path, content)
+
+    @staticmethod
+    def _sync_vscode_settings(workspace_root: Path) -> p.Result[bool]:
+        """Sync canonical VS Code settings for Python workspaces."""
+        return FlextInfraWorkspaceVscode.sync_settings(workspace_root)
 
     @staticmethod
     def _is_flext_infra_root(workspace_root: Path) -> bool:

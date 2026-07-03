@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, override
 
+from flext_infra._constants.detectors import FlextInfraConstantsDetectors
 from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -25,7 +26,6 @@ class FlextInfraInlineImportDetector:
     can be hoisted or reviewed manually.
     """
 
-    IMPORTLIB_IMPORT_MODULE: ClassVar[str] = "importlib.import_module"
     _STDLIB_NAMES: ClassVar[frozenset[str]] = frozenset(sys.stdlib_module_names)
 
     @classmethod
@@ -172,7 +172,7 @@ class _InlineImportVisitor(ast.NodeVisitor):
         if self._type_checking_depth > 0:
             return
         call_name = _resolve_call_name(node, self._import_aliases)
-        if call_name == FlextInfraInlineImportDetector.IMPORTLIB_IMPORT_MODULE:
+        if call_name == FlextInfraConstantsDetectors.IMPORTLIB_IMPORT_MODULE:
             self._add_violation(
                 line=node.lineno,
                 current_import="importlib.import_module(...)",

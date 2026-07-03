@@ -8,6 +8,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import ClassVar
 
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
@@ -41,7 +42,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 resource,
                 class_name,
             )
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
 
     @staticmethod
@@ -57,11 +58,11 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         if class_name not in attributes:
             return result
         obj = attributes[class_name].get_object()
-        if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+        if not isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
             return result
         for name, pyname in obj.get_attributes().items():
             child = pyname.get_object()
-            if isinstance(child, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+            if isinstance(child, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
                 result.append(name)
         return result
 
@@ -84,7 +85,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                         node
                     )
                 )
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return result
         return sorted(result, key=lambda symbol: symbol.line)
 

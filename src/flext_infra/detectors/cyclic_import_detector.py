@@ -9,6 +9,7 @@ from __future__ import annotations
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -41,7 +42,11 @@ class FlextInfraCyclicImportDetector:
                 continue
             try:
                 module_name = u.Infra.get_pymodule(rope_project, resource).get_name()
-            except (*u.Infra.RUNTIME_ERRORS, *u.Infra.SYNTAX_ERRORS, TypeError):
+            except (
+                *FlextInfraConstantsRope.RUNTIME_ERRORS,
+                *FlextInfraConstantsRope.SYNTAX_ERRORS,
+                TypeError,
+            ):
                 continue
             if module_name:
                 module_resources.append((module_name, str(real_path), resource))

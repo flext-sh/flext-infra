@@ -20,7 +20,7 @@ from rope.refactor.importutils.importinfo import (
 )
 
 from flext_cli import u
-from flext_infra import (
+from flext_core import (
     c,
     m,
     p,

@@ -15,6 +15,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
@@ -162,7 +163,7 @@ class FlextInfraLooseObjectDetector:
         """Detect loose Final/collection/Enum/TypeVar objects via rope AST."""
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return []
         tree = pymodule.get_ast()
         if tree is None:

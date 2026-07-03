@@ -8,9 +8,36 @@ from __future__ import annotations
 
 from typing import Final
 
+from rope.base.exceptions import (
+    ModuleSyntaxError,
+    RefactoringError,
+    ResourceNotFoundError,
+)
+from rope.base.pyobjects import AbstractClass
+from rope.base.pyobjectsdef import PyFunction
+
 
 class FlextInfraConstantsRope:
     """Rope Project configuration constants — accessed via c.Infra.*."""
+
+    SYNTAX_ERRORS: Final[tuple[type[BaseException], ...]] = (
+        SyntaxError,
+        ModuleSyntaxError,
+    )
+    "Exception types that signal unparseable Python source during Rope operations."
+
+    RUNTIME_ERRORS: Final[tuple[type[BaseException], ...]] = (
+        RefactoringError,
+        ResourceNotFoundError,
+        AttributeError,
+    )
+    "Exception types that signal recoverable Rope runtime failures."
+
+    ABSTRACT_CLASS_TYPES: Final[tuple[type[AbstractClass], ...]] = (AbstractClass,)
+    "Rope pyobject classes treated as abstract class shapes."
+
+    PY_FUNCTION_TYPES: Final[tuple[type[PyFunction], ...]] = (PyFunction,)
+    "Rope pyobject classes treated as function shapes."
 
     ROPE_IGNORED_RESOURCES: Final[tuple[str, ...]] = (
         ".venv",

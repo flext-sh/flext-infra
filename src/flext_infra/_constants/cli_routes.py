@@ -29,6 +29,7 @@ from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_infra.models import m
 from flext_infra.refactor.accessor_migration import (
@@ -102,6 +103,14 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             help_text="Repair [tool.pyrefly] blocks",
             model_cls=m.Infra.FixPyreflyConfigCommand,
             handler=lambda params: FlextInfraConfigFixer.execute_command(params),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="fix-enforcement",
+            help_text="Auto-fix enforcement-catalog violations",
+            model_cls=m.Infra.FixEnforcementCommand,
+            handler=lambda params: (
+                FlextInfraEnforcementFixerOrchestrator.execute_command(params)
+            ),
         ),
     ),
     c.Infra.CLI_GROUP_CODEGEN: tuple(

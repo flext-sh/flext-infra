@@ -426,6 +426,7 @@ tools:
       reportUnnecessaryIsInstance: warning
       reportUnreachable: none
       reportUnsupportedDunderAll: none
+      reportUntypedBaseClass: none
       reportUntypedFunctionDecorator: none
       reportUnusedClass: error
       reportUnusedFunction: error
@@ -444,7 +445,6 @@ tools:
     source-env-suppressions:
       reportGeneralTypeIssues: "none"
       reportReturnType: "none"
-      reportUntypedBaseClass: "none"
     test-like-env-suppressions:
       reportArgumentType: "none"
       reportReturnType: "none"

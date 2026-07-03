@@ -8,16 +8,8 @@ from collections.abc import (
 )
 from contextlib import contextmanager
 from pathlib import Path
-from typing import ClassVar
 
-from rope.base.exceptions import (
-    ModuleSyntaxError,
-    RefactoringError,
-    ResourceNotFoundError,
-)
 from rope.base.project import Project
-from rope.base.pyobjects import AbstractClass
-from rope.base.pyobjectsdef import PyFunction
 
 from flext_core import t
 from flext_infra._constants.rope import FlextInfraConstantsRope
@@ -41,27 +33,13 @@ class FlextInfraUtilitiesRopeCore(
 ):
     """Core Rope lifecycle helpers."""
 
-    SYNTAX_ERRORS: ClassVar[tuple[type[BaseException], ...]] = (
-        SyntaxError,
-        ModuleSyntaxError,
-    )
-    RUNTIME_ERRORS: ClassVar[tuple[type[BaseException], ...]] = (
-        RefactoringError,
-        ResourceNotFoundError,
-        AttributeError,
-    )
-    ABSTRACT_CLASS_TYPES: ClassVar[tuple[type[AbstractClass], ...]] = (AbstractClass,)
-    PY_FUNCTION_TYPES: ClassVar[tuple[type[PyFunction], ...]] = (PyFunction,)
-
     @staticmethod
     def init_rope_project(
         workspace_root: Path,
         *,
         project_prefix: str = FlextInfraConstantsSharedInfra.PKG_PREFIX_HYPHEN,
         src_dir: str = FlextInfraConstantsSharedInfra.DEFAULT_SRC_DIR,
-        ignored_resources: t.StrSequence = (
-            FlextInfraConstantsRope.ROPE_IGNORED_RESOURCES
-        ),
+        ignored_resources: t.StrSequence = FlextInfraConstantsRope.ROPE_IGNORED_RESOURCES,
     ) -> Project:
         """Create a rope Project over workspace_root with no disk artifacts."""
         _ = (project_prefix, src_dir)

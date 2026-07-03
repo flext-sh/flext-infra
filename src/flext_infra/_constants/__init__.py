@@ -52,6 +52,9 @@ if TYPE_CHECKING:
     from flext_infra._constants.deps import (
         FlextInfraConstantsDeps as FlextInfraConstantsDeps,
     )
+    from flext_infra._constants.detectors import (
+        FlextInfraConstantsDetectors as FlextInfraConstantsDetectors,
+    )
     from flext_infra._constants.docs import (
         FlextInfraConstantsDocs as FlextInfraConstantsDocs,
     )
@@ -102,6 +105,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".codegen_lazy": ("FlextInfraConstantsCodegenLazy",),
         ".codegen_render_names": ("FlextInfraConstantsCodegenRenderNames",),
         ".deps": ("FlextInfraConstantsDeps",),
+        ".detectors": ("FlextInfraConstantsDetectors",),
         ".docs": ("FlextInfraConstantsDocs",),
         ".github": ("FlextInfraConstantsGithub",),
         ".make": ("FlextInfraConstantsMake",),

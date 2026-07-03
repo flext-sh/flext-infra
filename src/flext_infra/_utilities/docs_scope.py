@@ -6,17 +6,15 @@ from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
 
-from flext_cli import u
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_cli.utilities import FlextCliUtilities as u
+from flext_core.result import FlextResult as r
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra.constants import FlextInfraConstants as c
+from flext_infra.models import FlextInfraModels as m
+from flext_infra.protocols import FlextInfraProtocols as p
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraUtilitiesDocsScope:
@@ -207,9 +205,13 @@ class FlextInfraUtilitiesDocsScope:
         """Load the minimal docs policy settings if present."""
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
         if not path.exists():
-            return {}
+            empty: t.Infra.ContainerDict = {}
+            return empty
         result = u.Cli.json_read(path)
-        return result.value if result.success else {}
+        if result.success:
+            return result.value
+        empty: t.Infra.ContainerDict = {}
+        return empty
 
     @staticmethod
     def excluded_roots(workspace_root: Path) -> t.Infra.StrSet:
@@ -279,12 +281,17 @@ class FlextInfraUtilitiesDocsScope:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
-            return {}
+            empty: t.Infra.ContainerDict = {}
+            return empty
         flext = tool.get("flext")
         if not isinstance(flext, dict):
-            return {}
+            empty: t.Infra.ContainerDict = {}
+            return empty
         docs = flext.get("docs")
-        return docs if isinstance(docs, dict) else {}
+        if isinstance(docs, dict):
+            return docs
+        empty: t.Infra.ContainerDict = {}
+        return empty
 
     @staticmethod
     def classify_project_from_meta(

@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from rope.refactor.importutils.importinfo import FromImport
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -21,10 +23,13 @@ class FlextInfraCompatibilityAliasDetector:
     ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file.
 
-        Covers two kinds:
+        Covers:
         - module-level ``CapName = CapName`` compatibility assignments;
         - ``from <pkg> import <LongFacadeClass>`` where a canonical short alias
-          exists in ``c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES``.
+          exists in ``c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES``;
+        - part-file aliases such as ``FlextFooPartNN`` / ``FlextFooPartFinal``
+          and ad-hoc short aliases for Flext classes (e.g.
+          ``FlextRuntimeMetadataValidation as FlextRuntime``).
         """
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
@@ -56,22 +61,39 @@ class FlextInfraCompatibilityAliasDetector:
         local_alias_targets = _local_alias_targets(source)
         imported_long_names: set[str] = set()
         canonical_aliases_by_module: dict[str, set[str]] = {}
-        for from_import in u.Infra.get_absolute_from_imports(
-            ctx.rope_project,
-            resource,
-        ):
-            module_name = from_import.module_name
+        part_alias_violations: list[m.Infra.CompatibilityAliasViolation] = []
+        current_module = u.Infra.package_name(file_path)
+        for from_import in _all_from_imports(ctx.rope_project, resource):
+            module_name = _resolve_imported_module(
+                current_module=current_module,
+                from_import=from_import,
+            )
             for name, alias in from_import.names_and_aliases:
                 bound_name = alias if alias is not None else name
                 if bound_name in alias_renames.values():
                     canonical_aliases_by_module.setdefault(module_name, set()).add(
                         bound_name
                     )
-        for from_import in u.Infra.get_absolute_from_imports(
-            ctx.rope_project,
-            resource,
-        ):
-            module_name = from_import.module_name
+                if alias is not None and _is_part_compat_alias(name, alias):
+                    part_alias_violations.append(
+                        m.Infra.CompatibilityAliasViolation(
+                            file=str(file_path),
+                            line=_find_import_line(
+                                lines=lines,
+                                module_name=module_name,
+                                imported_name=name,
+                                alias_name=alias,
+                            ),
+                            alias_name=alias,
+                            target_name=name,
+                            module_name=module_name,
+                        )
+                    )
+        for from_import in _all_from_imports(ctx.rope_project, resource):
+            module_name = _resolve_imported_module(
+                current_module=current_module,
+                from_import=from_import,
+            )
             for name, alias in from_import.names_and_aliases:
                 canonical_alias = alias_renames.get(name)
                 if canonical_alias is None or alias is not None:
@@ -91,9 +113,11 @@ class FlextInfraCompatibilityAliasDetector:
                     # compatibility-alias violation.
                     continue
                 imported_long_names.add(name)
-                line_number = u.Infra.find_import_line(
+                line_number = _find_import_line(
                     lines=lines,
                     module_name=module_name,
+                    imported_name=name,
+                    alias_name=alias,
                 )
                 violations.append(
                     m.Infra.CompatibilityAliasViolation(
@@ -104,7 +128,78 @@ class FlextInfraCompatibilityAliasDetector:
                         module_name=module_name,
                     )
                 )
-        return violations
+        return violations + part_alias_violations
+
+
+def _all_from_imports(
+    rope_project: t.Infra.RopeProject,
+    resource: t.Infra.RopeResource,
+) -> t.SequenceOf[FromImport]:
+    """Return all ``from ... import ...`` descriptors in a module (absolute + relative)."""
+    module_imports = u.Infra.get_module_imports(rope_project, resource)
+    if module_imports is None:
+        return ()
+    import_statements = u.Infra.import_statements(module_imports)
+    return tuple(
+        import_stmt.import_info
+        for import_stmt in import_statements
+        if isinstance(import_stmt.import_info, FromImport)
+    )
+
+
+def _resolve_imported_module(
+    *,
+    current_module: str,
+    from_import: FromImport,
+) -> str:
+    """Return the absolute module name for a possibly-relative ``FromImport``."""
+    module_name = from_import.module_name
+    if from_import.level == 0:
+        return module_name
+    if not current_module:
+        return module_name
+    current_parts = current_module.split(".")
+    if from_import.level > len(current_parts):
+        return module_name
+    package_parts = current_parts[: -from_import.level]
+    if module_name:
+        return ".".join(package_parts + [module_name])
+    return ".".join(package_parts)
+
+
+def _find_import_line(
+    *,
+    lines: t.StrSequence,
+    module_name: str,
+    imported_name: str,
+    alias_name: str | None,
+) -> int:
+    """Return the 1-based line number of the relevant ``from`` import."""
+    for index, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if not stripped.startswith("from "):
+            continue
+        if imported_name in stripped and (alias_name is None or alias_name in stripped):
+            return index
+    return u.Infra.find_import_line(lines=lines, module_name=module_name) or 1
+
+
+def _is_part_compat_alias(imported_name: str, alias_name: str) -> bool:
+    """Return True when ``alias_name`` is a part-file compat alias of ``imported_name``.
+
+    Matches patterns such as ``FlextFooPartNN`` or ``FlextFooPartFinal`` used to
+    assemble facades across part modules, plus ad-hoc short aliases like
+    ``FlextRuntime`` for ``FlextRuntimeMetadataValidation``.
+    """
+    if alias_name == imported_name:
+        return False
+    if not alias_name[:1].isupper() or alias_name.isupper():
+        return False
+    if imported_name[:1].isupper() and alias_name.startswith(imported_name):
+        # e.g. FlextContainerPart01, FlextContainerPartFinal
+        suffix = alias_name[len(imported_name) :]
+        return suffix.startswith("Part") or suffix == "Final"
+    return bool(imported_name.startswith("Flext") and alias_name.startswith("Flext"))
 
 
 def _local_alias_targets(source: str) -> t.StrMapping:

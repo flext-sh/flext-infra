@@ -92,6 +92,54 @@ class FlextInfraModelsCheck:
     ):
         """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""
 
+    class FixEnforcementCommand(
+        mm.WriteMixin,
+        m.ContractModel,
+    ):
+        """Canonical CLI payload for ``flext-infra check fix-enforcement``."""
+
+        rules: Annotated[
+            t.StrSequence,
+            m.Field(
+                default_factory=tuple,
+                description="Comma-separated enforcement rule IDs to fix",
+            ),
+        ]
+        safe_only: Annotated[
+            bool,
+            m.Field(
+                alias="safe-only",
+                description="Only apply fixes marked safe in the catalog",
+            ),
+        ] = True
+        check_after: Annotated[
+            bool,
+            m.Field(
+                alias="check-after",
+                description="Re-run the corresponding check after fixing",
+            ),
+        ] = True
+
+        @m.field_validator("rules", mode="before")
+        @classmethod
+        def _parse_rules(
+            cls,
+            value: str | t.SequenceOf[str] | None,
+        ) -> t.StrSequence:
+            """Accept CSV string, sequence, or None; normalize to StrSequence."""
+            if value is None:
+                return ()
+            if isinstance(value, str):
+                return tuple(part.strip() for part in value.split(",") if part.strip())
+            normalized: list[str] = []
+            for part in value:
+                if not part:
+                    continue
+                normalized.extend(
+                    token.strip() for token in part.split(",") if token.strip()
+                )
+            return tuple(normalized)
+
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""
 

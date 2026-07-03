@@ -13,6 +13,7 @@ from rope.base.pynames import (
 )
 from rope.base.pynamesdef import AssignedName as RopeAssignedName
 
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -115,7 +116,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                     pymodule=pymodule,
                 )
             )
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             state = FlextInfraUtilitiesRopeAnalysis._empty_module_semantic_state()
         FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE[cache_key] = state
         return state
@@ -177,7 +178,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             if not FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource):
                 continue
             obj = pyname.get_object()
-            if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+            if not isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
                 continue
             location = pyname.get_definition_location()
             line = location[1] if location and location[1] else 1
@@ -346,7 +347,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 source=source,
                 symbol=symbol,
             )
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             pass
         return result
 
@@ -450,7 +451,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = (
                     export_names
                 )
-            except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            except FlextInfraConstantsRope.RUNTIME_ERRORS:
                 FlextInfraUtilitiesRopeAnalysis._EXPORT_NAMES_CACHE[cache_key] = ()
                 export_names = ()
         return export_names
@@ -562,9 +563,9 @@ class FlextInfraUtilitiesRopeAnalysis:
         if not isinstance(pyname, RopeDefinedName):
             return False
         obj = pyname.get_object()
-        if isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+        if isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
             return True
-        if not isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
+        if not isinstance(obj, FlextInfraConstantsRope.PY_FUNCTION_TYPES):
             return False
         allow_main: bool = export_options.allow_main
         allow_functions: bool = export_options.allow_functions
@@ -613,12 +614,12 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def is_pyclass(obj: object) -> bool:
         """Return whether a rope object is a ``PyClass`` (abstract class type)."""
-        return isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES)
+        return isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES)
 
     @staticmethod
     def is_pyfunction(obj: object) -> bool:
         """Return whether a rope object is a ``PyFunction``."""
-        return isinstance(obj, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES)
+        return isinstance(obj, FlextInfraConstantsRope.PY_FUNCTION_TYPES)
 
     @staticmethod
     def module_has_docstring_source(source: str) -> bool:
@@ -628,7 +629,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             return False
         try:
             return bool(pymodule.get_doc())
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return False
 
     @staticmethod
@@ -642,7 +643,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             if pyname is None:
                 return False
             return bool(pyname.get_object().get_doc())
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return False
 
     @staticmethod
@@ -741,7 +742,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         rope_project = FlextInfraUtilitiesRopeAnalysis._shared_parse_project()
         try:
             pymodule = rope_libutils.get_string_module(rope_project, source)
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return None
         return pymodule
 
@@ -977,7 +978,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 resource,
             )
             tree: p.AttributeProbe = pymodule.get_ast()
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return 0
         class_body = FlextInfraUtilitiesRopeAnalysis._class_body_nodes(
             tree,
@@ -1013,7 +1014,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 rope_project,
                 resource,
             )
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return {}
         return FlextInfraUtilitiesRopeAnalysis._class_methods_from_pymodule(
             class_name=class_name,
@@ -1034,13 +1035,13 @@ class FlextInfraUtilitiesRopeAnalysis:
         if class_name not in attributes:
             return result
         obj = attributes[class_name].get_object()
-        if not isinstance(obj, FlextInfraUtilitiesRopeCore.ABSTRACT_CLASS_TYPES):
+        if not isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
             return result
         for name, pyname in obj.get_attributes().items():
             if not include_private and name.startswith("_"):
                 continue
             child = pyname.get_object()
-            if not isinstance(child, FlextInfraUtilitiesRopeCore.PY_FUNCTION_TYPES):
+            if not isinstance(child, FlextInfraConstantsRope.PY_FUNCTION_TYPES):
                 continue
             result[name] = child.get_kind()
         return result
@@ -1072,7 +1073,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 rope_project,
                 resource,
             )
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             rope_project.close()
             return None
         return pymodule, rope_project

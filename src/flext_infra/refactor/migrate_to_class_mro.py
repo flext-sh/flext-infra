@@ -9,8 +9,8 @@ from typing import ClassVar
 from flext_cli import cli
 from flext_core import r
 from flext_core.utilities import u
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
@@ -167,7 +167,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
-            *FlextInfraUtilitiesRopeCore.SYNTAX_ERRORS,
+            *FlextInfraConstantsRope.SYNTAX_ERRORS,
             OSError,
             ValueError,
             KeyError,

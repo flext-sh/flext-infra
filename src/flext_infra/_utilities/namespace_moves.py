@@ -10,6 +10,7 @@ from pathlib import Path
 from rope.refactor.rename import Rename
 
 from flext_cli import u
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
@@ -328,8 +329,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 renamer = Rename(rope_project, resource, offset)
                 changes = renamer.get_changes(canonical_alias, resources=[resource])
             except (
-                *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
-                *FlextInfraUtilitiesRopeCore.SYNTAX_ERRORS,
+                *FlextInfraConstantsRope.RUNTIME_ERRORS,
+                *FlextInfraConstantsRope.SYNTAX_ERRORS,
                 TypeError,
                 ValueError,
             ):
@@ -738,8 +739,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         rope_project, target_resource
                     ).get_name()
                 except (
-                    *FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS,
-                    *FlextInfraUtilitiesRopeCore.SYNTAX_ERRORS,
+                    *FlextInfraConstantsRope.RUNTIME_ERRORS,
+                    *FlextInfraConstantsRope.SYNTAX_ERRORS,
                     TypeError,
                 ):
                     continue

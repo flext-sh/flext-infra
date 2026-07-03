@@ -52,12 +52,8 @@ class _BooleanSimplifier(ast.NodeTransformer):
         if isinstance(node, ast.Name | ast.Constant | ast.Attribute):
             return True
         if isinstance(node, ast.Compare):
-            return (
-                _BooleanSimplifier._is_simple_operand(node.left)
-                and all(
-                    _BooleanSimplifier._is_simple_operand(comp)
-                    for comp in node.comparators
-                )
+            return _BooleanSimplifier._is_simple_operand(node.left) and all(
+                _BooleanSimplifier._is_simple_operand(comp) for comp in node.comparators
             )
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
             return _BooleanSimplifier._is_simple_operand(node.operand)
@@ -93,8 +89,7 @@ class FlextInfraBooleanLogicFixer(FlextInfraSmellFixer):
             return False, []
         source_path.write_text(updated, encoding="utf-8")
         message = (
-            f"{issue.file}:{issue.line}: simplified boolean-logic chain "
-            "to any()/all()"
+            f"{issue.file}:{issue.line}: simplified boolean-logic chain to any()/all()"
         )
         self._record_change(message)
         return True, list(self.changes)

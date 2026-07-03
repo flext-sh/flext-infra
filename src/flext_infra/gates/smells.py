@@ -59,11 +59,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         issues = self._issues_from_sarif(scan.stdout or "{}", project_dir.name)
         if not issues and scan.exit_code != 0:
             issues = (self._tool_failure_issue(scan),)
-        auto_issues = [
-            issue
-            for issue in issues
-            if self._is_auto_fixable(issue)
-        ]
+        auto_issues = [issue for issue in issues if self._is_auto_fixable(issue)]
         changes: list[str] = []
         for issue in auto_issues:
             fixer = smell_fixer_for(issue.code)

@@ -5,8 +5,9 @@ from __future__ import annotations
 import ast
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
+from flext_infra._constants.detectors import FlextInfraConstantsDetectors
 from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -14,8 +15,6 @@ from flext_infra.utilities import u
 
 class FlextInfraSilentFailureDetector:
     """Detect branches that hide failures behind generic sentinel returns."""
-
-    CONTEXTLIB_SUPPRESS: ClassVar[str] = "contextlib.suppress"
 
     @staticmethod
     def detect_file(
@@ -146,7 +145,7 @@ class _SilentFailureVisitor(ast.NodeVisitor):
     @override
     def visit_Call(self, node: ast.Call) -> None:
         call_name = _resolve_call_name(node, self._import_aliases)
-        if call_name == FlextInfraSilentFailureDetector.CONTEXTLIB_SUPPRESS:
+        if call_name == FlextInfraConstantsDetectors.CONTEXTLIB_SUPPRESS:
             self._add_violation(
                 line=node.lineno,
                 kind="silent-failure-suppress",

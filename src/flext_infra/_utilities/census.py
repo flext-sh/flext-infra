@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -376,7 +377,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 rope.rope_project,
                 resource,
             ).get_attributes()
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
         except (RecursionError, SyntaxError, ValueError, TypeError):
             return ()
@@ -387,7 +388,7 @@ class FlextInfraUtilitiesRefactorCensus:
             return ()
         try:
             target_object = target_pyname.get_object()
-        except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
         alias_names: set[str] = set()
         for name, pyname in attributes.items():
@@ -406,7 +407,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 continue
             try:
                 alias_object = pyname.get_object()
-            except FlextInfraUtilitiesRopeCore.RUNTIME_ERRORS:
+            except FlextInfraConstantsRope.RUNTIME_ERRORS:
                 continue
             if id(alias_object) == id(target_object):
                 alias_names.add(name)

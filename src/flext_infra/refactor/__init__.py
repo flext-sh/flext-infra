@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer as FlextInfraRefactorClassNestingAnalyzer,
     )
+    from flext_infra.refactor.classvar_constant_autofix import (
+        FlextInfraRefactorClassvarConstantAutofix as FlextInfraRefactorClassvarConstantAutofix,
+    )
     from flext_infra.refactor.file_executor import (
         FlextInfraClassNestingPostCheckGate as FlextInfraClassNestingPostCheckGate,
         FlextInfraRefactorFileExecutor as FlextInfraRefactorFileExecutor,
@@ -77,6 +80,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".accessor_migration": ("FlextInfraAccessorMigrationOrchestrator",),
         ".census": ("FlextInfraRefactorCensus",),
         ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
+        ".classvar_constant_autofix": ("FlextInfraRefactorClassvarConstantAutofix",),
         ".file_executor": (
             "FlextInfraClassNestingPostCheckGate",
             "FlextInfraRefactorFileExecutor",

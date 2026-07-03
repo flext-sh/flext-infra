@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
@@ -26,8 +27,30 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 return workspace_root
         return None
 
-    @staticmethod
+    _ROOT_PACKAGE_CACHE: ClassVar[dict[Path, str | None]] = {}
+
+    @classmethod
+    def _project_root_package_name(cls, project_root: Path) -> str | None:
+        """Return the single source package under <project_root>/src, if any."""
+        cached = cls._ROOT_PACKAGE_CACHE.get(project_root)
+        if cached is not None:
+            return cached
+        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            cls._ROOT_PACKAGE_CACHE[project_root] = None
+            return None
+        candidates = [
+            child.name
+            for child in src_dir.iterdir()
+            if child.is_dir() and (child / c.Infra.INIT_PY).is_file()
+        ]
+        result: str | None = candidates[0] if len(candidates) == 1 else None
+        cls._ROOT_PACKAGE_CACHE[project_root] = result
+        return result
+
+    @classmethod
     def _package_name_for_dir(
+        cls,
         package_dir: Path,
         *,
         project_root: Path,
@@ -40,13 +63,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         if not relative_parts:
             return ""
         root_name = relative_parts[0]
-        package_parts = (
-            relative_parts[1:]
-            if root_name == c.Infra.DEFAULT_SRC_DIR
-            else relative_parts
-            if root_name in c.Infra.ROOT_WRAPPER_SEGMENTS
-            else ()
-        )
+        if root_name == c.Infra.DEFAULT_SRC_DIR:
+            package_parts = relative_parts[1:]
+        elif root_name in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES}:
+            root_pkg = cls._project_root_package_name(project_root)
+            package_parts = (
+                (root_pkg, *relative_parts) if root_pkg is not None else relative_parts
+            )
+        elif root_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
+            package_parts = relative_parts
+        else:
+            package_parts = ()
         return ".".join(package_parts)
 
     @classmethod
