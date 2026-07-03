@@ -74,7 +74,7 @@ class FlextInfraCompatibilityAliasDetector:
                     canonical_aliases_by_module.setdefault(module_name, set()).add(
                         bound_name
                     )
-                if alias is not None and _is_part_compat_alias(name, alias):
+                if alias is not None and _is_ad_hoc_flext_alias(name, alias) and not _is_part_mro_alias(name, alias):
                     part_alias_violations.append(
                         m.Infra.CompatibilityAliasViolation(
                             file=str(file_path),
@@ -184,21 +184,32 @@ def _find_import_line(
     return u.Infra.find_import_line(lines=lines, module_name=module_name) or 1
 
 
-def _is_part_compat_alias(imported_name: str, alias_name: str) -> bool:
-    """Return True when ``alias_name`` is a part-file compat alias of ``imported_name``.
+def _is_part_mro_alias(imported_name: str, alias_name: str) -> bool:
+    """Return True when ``alias_name`` is an MRO composition alias of ``imported_name``.
 
     Matches patterns such as ``FlextFooPartNN`` or ``FlextFooPartFinal`` used to
-    assemble facades across part modules, plus ad-hoc short aliases like
-    ``FlextRuntime`` for ``FlextRuntimeMetadataValidation``.
+    assemble facades across part modules. These aliases are intentional and
+    must NOT be reported as compatibility-alias violations.
     """
     if alias_name == imported_name:
         return False
     if not alias_name[:1].isupper() or alias_name.isupper():
         return False
     if imported_name[:1].isupper() and alias_name.startswith(imported_name):
-        # e.g. FlextContainerPart01, FlextContainerPartFinal
         suffix = alias_name[len(imported_name) :]
         return suffix.startswith("Part") or suffix == "Final"
+    return False
+
+
+def _is_ad_hoc_flext_alias(imported_name: str, alias_name: str) -> bool:
+    """Return True for a non-MRO, non-canonical Flext alias that should be fixed.
+
+    Example: ``FlextRuntimeMetadataValidation as FlextRuntime``.
+    """
+    if alias_name == imported_name:
+        return False
+    if not alias_name[:1].isupper() or alias_name.isupper():
+        return False
     return bool(imported_name.startswith("Flext") and alias_name.startswith("Flext"))
 
 

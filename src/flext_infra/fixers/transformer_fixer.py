@@ -183,7 +183,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         params = dict(fix_action.params)
         if transformer_cls is FlextInfraRefactorTypingUnifier:
             targets_value = params.get("targets", [])
-            targets = (
+            targets: t.StrSequence = (
                 targets_value
                 if isinstance(targets_value, (list, tuple))
                 else []
