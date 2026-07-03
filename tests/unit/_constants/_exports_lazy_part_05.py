@@ -55,10 +55,8 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".refactor.test_infra_refactor_project_classifier": (
             "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
         ),
-        ".refactor.test_infra_refactor_safety": (
-            "TestsFlextInfraRefactorInfraRefactorSafety",
-        ),
         ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
+        ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
         ".test_infra_selection": ("TestsFlextInfraInfraSelection",),
         ".test_infra_typings": ("TestsFlextInfraInfraTypings",),
         ".test_infra_utilities": ("TestsFlextInfraInfraUtilities",),

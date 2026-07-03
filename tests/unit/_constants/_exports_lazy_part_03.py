@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
     {
+        ".deps.test_detection_deptry": ("TestsFlextInfraDepsDetectionDeptry",),
         ".deps.test_detection_discover": ("TestsFlextInfraDepsDetectionDiscover",),
         ".deps.test_detection_models": ("TestsFlextInfraDepsDetectionModels",),
         ".deps.test_detection_typings": ("TestsFlextInfraDepsDetectionTypings",),
@@ -58,7 +59,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
         ".deps.test_modernizer_coverage": ("TestsFlextInfraDepsModernizerCoverage",),
         ".deps.test_modernizer_helpers": ("TestsFlextInfraDepsModernizerHelpers",),
         ".deps.test_modernizer_main": ("TestsFlextInfraDepsModernizerMain",),
-        ".deps.test_modernizer_main_extra": ("TestsFlextInfraDepsModernizerMainExtra",),
     },
 )
 

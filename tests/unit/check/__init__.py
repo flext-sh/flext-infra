@@ -8,6 +8,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".abstraction_boundary_gate_tests": ("abstraction_boundary_gate_tests",),
+        ".enforcement_fixer_orchestrator_tests": ("TestsEnforcementFixerOrchestrator",),
         ".extended_cli_entry_tests": ("TestWorkspaceCheckCLI",),
         ".extended_config_fixer_errors_tests": ("TestConfigFixerPublicBehavior",),
         ".extended_config_fixer_tests": (

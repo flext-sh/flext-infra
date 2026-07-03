@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
+        ".settings": ("TestsFlextInfraSettings",),
         ".typings": ("TestsFlextInfraTypes",),
         ".unit._utilities.test_discovery_consolidated": (
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
@@ -64,9 +65,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "TestsFlextInfraWorkspaceMakefileGenerator",
         ),
         ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
-        ".unit.workspace.test_sync_environment": (
-            "TestsFlextInfraWorkspaceSyncEnvironment",
-        ),
         ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         ".utilities": ("TestsFlextInfraUtilities",),
     },

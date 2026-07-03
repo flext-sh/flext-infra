@@ -19,11 +19,7 @@ from flext_infra.base_selection import (
 from flext_infra.cli import FlextInfraCli as FlextInfraCli, main as main
 from flext_infra.constants import FlextInfraConstants as FlextInfraConstants, c as c
 from flext_infra.models import FlextInfraModels as FlextInfraModels, m as m
-from flext_infra.protocols import (
-    FlextInfraProtocols as FlextInfraProtocols,
-    FlextInfraProtocolsBase as FlextInfraProtocolsBase,
-    p as p,
-)
+from flext_infra.protocols import FlextInfraProtocols as FlextInfraProtocols, p as p
 from flext_infra.settings import FlextInfraSettings as FlextInfraSettings
 from flext_infra.typings import FlextInfraTypes as FlextInfraTypes, t as t
 from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u as u
@@ -35,7 +31,6 @@ __all__ = (
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
-    "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
     "FlextInfraTypes",

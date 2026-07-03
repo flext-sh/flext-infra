@@ -12,8 +12,8 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".protocols": ("TestsFlextInfraProtocols",),
         ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
         ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
-        ".settings": ("TestsFlextInfraSettings",),
         ".unit._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
+        ".unit.codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
         ".unit.codegen.lazy_init_transforms_tests": (
             "TestsFlextInfraLazyInitTransforms",
         ),

@@ -31,7 +31,9 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
             "tool_config_document",
         ),
         ".unit.fixtures_git": ("real_git_repo",),
-        ".utilities": ("u",),
+        ".unit.workspace.test_sync_environment": (
+            "TestsFlextInfraWorkspaceSyncEnvironment",
+        ),
         "flext_tests": (
             "d",
             "e",

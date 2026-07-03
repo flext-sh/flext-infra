@@ -469,6 +469,9 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         )
 
         source_text = service.read_text(encoding="utf-8")
-        assert '"""Demo service."""\n\nfrom __future__ import annotations\nfrom . import _constants\n' in source_text
+        assert (
+            '"""Demo service."""\n\nfrom __future__ import annotations\nfrom . import _constants\n'
+            in source_text
+        )
         assert '"""Return value."""\nfrom . import _constants' not in source_text
         assert "return _constants.VALUE" in source_text

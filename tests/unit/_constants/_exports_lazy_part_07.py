@@ -9,6 +9,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
         "._constants": ("_constants",),
         "._utilities": ("_utilities",),
+        "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
         ".basemk": ("basemk",),
         ".check": ("check",),
         ".codegen": ("codegen",),
@@ -23,7 +24,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "modernizer_workspace_with_projects",
             "real_docs_project",
             "real_makefile_project",
-            "real_python_package",
         ),
         ".fixtures_git": ("real_git_repo",),
         ".github": ("github",),

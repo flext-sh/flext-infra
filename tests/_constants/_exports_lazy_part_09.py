@@ -8,6 +8,7 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_09 = build_lazy_import_map(
     {
         ".unit": ("unit",),
+        ".utilities": ("u",),
         "flext_tests": ("x",),
     },
 )

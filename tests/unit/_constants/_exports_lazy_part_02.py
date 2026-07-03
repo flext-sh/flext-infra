@@ -15,6 +15,9 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".basemk.test_main": ("TestsFlextInfraBasemkMain",),
         ".basemk.test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
         ".basemk.test_renderer": ("TestsFlextInfraBasemkRenderer",),
+        ".check.enforcement_fixer_orchestrator_tests": (
+            "TestsEnforcementFixerOrchestrator",
+        ),
         ".check.extended_cli_entry_tests": ("TestWorkspaceCheckCLI",),
         ".check.extended_error_reporting_tests": (
             "TestGateErrorReportingPublicBehavior",
@@ -43,7 +46,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ),
         ".container.test_infra_container": ("TestsFlextInfraContainerInfraContainer",),
         ".deps.test_detection_classify": ("TestsFlextInfraDepsDetectionClassify",),
-        ".deps.test_detection_deptry": ("TestsFlextInfraDepsDetectionDeptry",),
         ".docs.auditor_budgets_tests": ("TestLoadAuditBudgets",),
         ".docs.shared_iter_tests": (
             "TestIterMarkdownFiles",

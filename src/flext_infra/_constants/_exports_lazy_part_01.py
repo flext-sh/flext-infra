@@ -16,7 +16,10 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
             "FlextInfra",
             "infra",
         ),
-        ".base": ("FlextInfraServiceBase",),
+        ".base": (
+            "FlextInfraServiceBase",
+            "s",
+        ),
         ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
         ".basemk": ("basemk",),
         ".check": ("check",),
@@ -41,7 +44,6 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ),
         ".protocols": (
             "FlextInfraProtocols",
-            "FlextInfraProtocolsBase",
             "p",
         ),
         ".refactor": ("refactor",),

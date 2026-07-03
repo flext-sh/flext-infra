@@ -44,7 +44,6 @@ _PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
-    "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
     "FlextInfraTypes",
