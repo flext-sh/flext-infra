@@ -95,7 +95,8 @@ _PUBLIC_EXPORTS = (
 )
 _PUBLISHED_NAMES = frozenset({*_LAZY_IMPORTS, *_METADATA_EXPORTS})
 if not frozenset(_PUBLIC_EXPORTS) <= _PUBLISHED_NAMES:
-    raise RuntimeError("flext_infra root exports drift from FLEXT_INFRA_LAZY_IMPORTS")
+    msg = "flext_infra root exports drift from FLEXT_INFRA_LAZY_IMPORTS"
+    raise RuntimeError(msg)
 
 install_lazy_exports(
     __name__,
