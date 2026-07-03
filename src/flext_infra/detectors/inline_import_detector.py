@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra._constants.detectors import FlextInfraConstantsDetectors
+from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -35,12 +36,21 @@ class FlextInfraInlineImportDetector:
         module_name: str,
         is_importlib: bool,
     ) -> str:
-        """Return 'hoist_inline_import' when no cycle risk, else 'manual'."""
+        """Return the catalog fix action for an inline import.
+
+        - ``manual`` for dynamic importlib calls (needs human review).
+        - ``hoist_inline_import`` for stdlib imports (no cycle risk).
+        - ``rewrite_library_abstraction`` for libraries owned by another FLEXT
+          project (route through the owner facade after hoisting).
+        - ``manual`` for all other project/third-party imports.
+        """
         if is_importlib:
             return "manual"
         top_level = module_name.split(".", maxsplit=1)[0] if module_name else ""
         if top_level in cls._STDLIB_NAMES:
             return "hoist_inline_import"
+        if top_level in c.ENFORCEMENT_LIBRARY_OWNERS:
+            return "rewrite_library_abstraction"
         return "manual"
 
     @classmethod
@@ -76,11 +86,11 @@ class FlextInfraInlineImportDetector:
     def _exempt_file(cls, file_path: Path) -> bool:
         """Skip lazy-init scaffolds, beartype bootstrap, and flext_core.lazy."""
         parts = file_path.parts
-        return (
-            file_path.name == "__init__.py"
-            or "beartype" in parts
-            or (file_path.name == "lazy.py" and "flext_core" in parts)
-        )
+        if file_path.name in c.Infra.INLINE_IMPORT_EXEMPT_FILE_NAMES:
+            return True
+        if any(part in c.Infra.INLINE_IMPORT_EXEMPT_PATH_PARTS for part in parts):
+            return True
+        return file_path.name == "lazy.py" and c.Infra.PKG_CORE_UNDERSCORE in parts
 
 
 class _InlineImportVisitor(ast.NodeVisitor):

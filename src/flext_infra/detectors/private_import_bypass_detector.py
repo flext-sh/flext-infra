@@ -9,6 +9,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import ClassVar
 
+from flext_infra.constants import c
 from flext_infra.detectors.internal_import_detector import (
     FlextInfraInternalImportDetector,
 )
@@ -26,11 +27,8 @@ class FlextInfraPrivateImportBypassDetector:
     """
 
     _FAMILY_TO_FACADE: ClassVar[t.StrMapping] = MappingProxyType({
-        "_constants": "c",
-        "_models": "m",
-        "_protocols": "p",
-        "_typings": "t",
-        "_utilities": "u",
+        f"_{layer_lower}": layer_name[0].lower()
+        for layer_name, layer_lower in c.ENFORCEMENT_NAMESPACE_LAYER_MAP
     })
 
     @classmethod
