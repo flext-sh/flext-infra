@@ -17,6 +17,9 @@ from flext_infra.detectors.compatibility_alias_detector import (
 )
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
@@ -152,35 +155,93 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                 raw_output=files_result.error or "canonical-alias fix failed",
             )
 
-        rope_project = u.Infra.init_rope_project(project_dir)
-        try:
-            violations: list[m.Infra.CompatibilityAliasViolation] = []
-            for file_path in files_result.value:
-                for violation in FlextInfraCompatibilityAliasDetector.detect_file(
-                    m.Infra.DetectorContext(
-                        file_path=file_path,
-                        project_root=project_dir,
-                        rope_project=rope_project,
-                        project_name=project_dir.name,
-                    )
-                ):
-                    if (
-                        violation.module_name
-                        != u.Infra.package_name(file_path).split(".", maxsplit=1)[0]
-                    ):
-                        continue
-                    violations.append(violation)
-
-            if violations:
-                u.Infra.rewrite_foreign_canonical_alias_violations(
-                    rope_project=rope_project,
-                    violations=violations,
-                    parse_failures=[],
+        changed_files: list[Path] = []
+        for file_path in files_result.value:
+            transformer = FlextInfraRefactorProjectAliasMigrator(
+                file_path=file_path,
+            )
+            read = u.Cli.files_read_text(file_path)
+            if read.failure:
+                return self._fix_failure_result(
+                    project_dir=project_dir,
+                    file_path=file_path,
+                    message=read.error or "canonical-alias source read failed",
+                    started=started,
+                    ctx=ctx,
                 )
-        finally:
-            rope_project.close()
+            updated, changes = transformer.apply_to_source(read.value)
+            if not changes or updated == read.value:
+                continue
+            write = u.Cli.files_write_text(file_path, updated)
+            if write.failure:
+                return self._fix_failure_result(
+                    project_dir=project_dir,
+                    file_path=file_path,
+                    message=write.error or "canonical-alias source write failed",
+                    started=started,
+                    ctx=ctx,
+                )
+            changed_files.append(file_path)
+
+        if changed_files:
+            format_result = u.Cli.run_raw(
+                ["ruff", "format", *[str(path) for path in changed_files]],
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+            if format_result.failure:
+                return self._fix_failure_result(
+                    project_dir=project_dir,
+                    file_path=project_dir,
+                    message=format_result.error or "ruff format failed",
+                    started=started,
+                    ctx=ctx,
+                )
+            format_output = format_result.value
+            if format_output.exit_code != 0:
+                detail = (format_output.stderr or format_output.stdout).strip()
+                return self._fix_failure_result(
+                    project_dir=project_dir,
+                    file_path=project_dir,
+                    message=(
+                        f"ruff format failed ({format_output.exit_code}): "
+                        f"{detail or 'no output'}"
+                    ),
+                    started=started,
+                    ctx=ctx,
+                )
 
         return self.check(project_dir, ctx)
+
+    def _fix_failure_result(
+        self,
+        *,
+        project_dir: Path,
+        file_path: Path,
+        message: str,
+        started: float,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Build a failed fix result for local rewrite failures."""
+        issue = m.Infra.Issue(
+            file=str(file_path),
+            line=1,
+            column=1,
+            code=self.gate_id,
+            message=message,
+            severity="ERROR",
+        )
+        return self._build_gate_result(
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=False,
+                errors=[issue.formatted],
+                duration=round(time.monotonic() - started, 3),
+            ),
+            issues=[issue],
+            raw_output=issue.message,
+            ctx=ctx,
+        )
 
     @override
     def _build_check_command(

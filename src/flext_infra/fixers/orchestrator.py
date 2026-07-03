@@ -23,6 +23,9 @@ from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
 from flext_infra.models import m
 from flext_infra.protocols import p
+from flext_infra.refactor.declarative_enforcement import (
+    FlextInfraRefactorDeclarativeEnforcement,
+)
 from flext_infra.typings import t
 from flext_infra.utilities import u
 
@@ -355,6 +358,16 @@ class FlextInfraEnforcementFixerOrchestrator(
                 )
                 violations.extend(collected)
                 failures.extend(errors)
+            elif (
+                source.kind == "flext_infra_detector"
+                and source.violation_field == "magic_literal_violations"
+            ):
+                collected, errors = self._collect_declarative_violations(
+                    project_dir,
+                    rule,
+                )
+                violations.extend(collected)
+                failures.extend(errors)
             elif source.kind in {"flext_infra_detector", "beartype"}:
                 collected, errors = self._collect_python_file_violations(
                     project_dir,
@@ -511,6 +524,67 @@ class FlextInfraEnforcementFixerOrchestrator(
             [(rule, self._probe_for_path(path)) for path in files_result.value],
             [],
         )
+
+    def _collect_declarative_violations(
+        self,
+        project_dir: Path,
+        rule: me.EnforcementRuleSpec,
+    ) -> tuple[
+        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        list[fr.FailedFix],
+    ]:
+        """Return concrete probes by running the declarative engine per file.
+
+        Unlike the generic per-file probe, this asks the declarative engine
+        to actually inspect each file and emit violation probes with line
+        numbers and metadata.
+        """
+        files_result = u.Infra.iter_python_files(
+            workspace_root=self.workspace_root,
+            project_roots=[project_dir],
+            include_tests=True,
+            include_examples=False,
+            include_scripts=False,
+            include_dynamic_dirs=False,
+        )
+        if files_result.failure:
+            return (
+                [],
+                [
+                    self._collection_failure(
+                        project_dir,
+                        rule,
+                        files_result.error or "unable to enumerate Python files",
+                    ),
+                ],
+            )
+        probes: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
+        with u.Infra.open_project(self.workspace_root) as rope_project:
+            for file_path in files_result.value:
+                ctx = m.Infra.DetectorContext(
+                    file_path=file_path,
+                    rope_project=rope_project,
+                    project_name=project_dir.name,
+                    project_root=project_dir,
+                )
+                try:
+                    detected = FlextInfraRefactorDeclarativeEnforcement.detect(
+                        rule,
+                        ctx,
+                    )
+                except c.EXC_BROAD_RUNTIME as exc:
+                    return (
+                        [],
+                        [
+                            self._collection_failure(
+                                project_dir,
+                                rule,
+                                f"declarative engine failed: {exc}",
+                            ),
+                        ],
+                    )
+                probes.extend((rule, probe) for probe in detected)
+        return probes, []
 
     def _collect_stub_file_violations(
         self,

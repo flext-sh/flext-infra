@@ -155,6 +155,10 @@ class FlextInfraCompatibilityAliasDetector:
         local_aliases = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS.get(current_package)
         if not local_aliases:
             return ()
+        if FlextInfraCompatibilityAliasDetector._is_private_facade_implementation(
+            file_path
+        ):
+            return ()
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return ()
         try:
@@ -229,6 +233,12 @@ class FlextInfraCompatibilityAliasDetector:
             and isinstance(test.comparators[0], ast.Constant)
             and test.comparators[0].value is True
         )
+
+    @staticmethod
+    def _is_private_facade_implementation(file_path: Path) -> bool:
+        """Return whether ``file_path`` implements a project facade namespace."""
+        family_dirs = frozenset(c.Infra.FAMILY_DIRECTORIES.values())
+        return bool(family_dirs.intersection(file_path.parts))
 
     @staticmethod
     def _all_from_imports(
