@@ -224,34 +224,57 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Rewrite compatibility alias violations."""
         _ = parse_failures
         assignment_grouped: t.MappingKV[Path, t.MutableStrMapping] = defaultdict(dict)
-        import_grouped: t.MappingKV[
+        compat_import_grouped: t.MappingKV[
             Path,
             t.MutableSequenceOf[m.Infra.CompatibilityAliasViolation],
         ] = defaultdict(list)
+        project_alias_grouped: t.MappingKV[
+            Path,
+            t.MutableSequenceOf[m.Infra.CompatibilityAliasViolation],
+        ] = defaultdict(list)
+        project_alias_owners = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
         for violation in violations:
-            if violation.module_name:
-                import_grouped[Path(violation.file)].append(violation)
-            else:
+            if not violation.module_name:
                 assignment_grouped[Path(violation.file)][violation.alias_name] = (
                     violation.target_name
                 )
+                continue
+            if (
+                violation.alias_name == violation.target_name
+                and violation.module_name in project_alias_owners
+            ):
+                # ENFORCE-080: canonical alias owned locally but imported from flext_core.
+                project_alias_grouped[Path(violation.file)].append(violation)
+            else:
+                compat_import_grouped[Path(violation.file)].append(violation)
         for file_path, alias_map in assignment_grouped.items():
             FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_compat_aliases_in_file(
                 file_path=file_path,
                 alias_map=alias_map,
                 gates=gates,
             )
+        all_import_files = [
+            *compat_import_grouped.keys(),
+            *project_alias_grouped.keys(),
+        ]
         workspace_root = (
             FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
-                py_files=list(import_grouped.keys())
+                py_files=all_import_files
             )
-            if import_grouped
+            if all_import_files
             else None
         )
         if workspace_root is None:
             return
         with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as rope_project:
-            for file_path, file_violations in import_grouped.items():
+            for file_path, file_violations in project_alias_grouped.items():
+                current_project = file_violations[0].module_name
+                FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_project_alias_imports_in_file(
+                    rope_project=rope_project,
+                    file_path=file_path,
+                    current_project=current_project,
+                )
+            for file_path, file_violations in compat_import_grouped.items():
                 FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_compat_import_aliases_in_file(
                     rope_project=rope_project,
                     file_path=file_path,
@@ -291,6 +314,34 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     gates=gates,
                 ),
             )
+
+    @staticmethod
+    def _rewrite_project_alias_imports_in_file(
+        *,
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
+        current_project: str,
+    ) -> None:
+        """Rewrite ENFORCE-080 imports using the project alias migrator."""
+        resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+            rope_project,
+            file_path,
+        )
+        if resource is None:
+            return
+        transformer = FlextInfraRefactorProjectAliasMigrator(
+            current_project=current_project,
+        )
+        updated, changes = transformer.transform(rope_project, resource)
+        if changes:
+            cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
+                rope_project,
+                file_paths=(file_path,),
+            )
+            if cleanup_result.failure:
+                msg = cleanup_result.error or "rope import cleanup failed"
+                raise RuntimeError(msg)
+        _ = updated
 
     @staticmethod
     def _rewrite_compat_import_aliases_in_file(

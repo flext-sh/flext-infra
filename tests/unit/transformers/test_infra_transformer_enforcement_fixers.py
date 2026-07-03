@@ -11,10 +11,19 @@ from pathlib import Path
 
 from flext_infra.transformers.bare_except import FlextInfraRefactorBareExcept
 from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
+from flext_infra.transformers.hardcoded_version import (
+    FlextInfraRefactorHardcodedVersion,
+)
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
 from flext_infra.transformers.remove_breakpoint import (
     FlextInfraRefactorRemoveBreakpoint,
+)
+from flext_infra.transformers.typing_dict_attr import (
+    FlextInfraRefactorTypingDictAttr,
+)
+from flext_infra.transformers.typing_dict_import import (
+    FlextInfraRefactorTypingDictImport,
 )
 
 
@@ -22,8 +31,11 @@ def _transform(
     source: str,
     transformer: FlextInfraRefactorBareExcept
     | FlextInfraRefactorFutureImport
+    | FlextInfraRefactorHardcodedVersion
     | FlextInfraRefactorOpenEncoding
-    | FlextInfraRefactorRemoveBreakpoint,
+    | FlextInfraRefactorRemoveBreakpoint
+    | FlextInfraRefactorTypingDictAttr
+    | FlextInfraRefactorTypingDictImport,
 ) -> tuple[str, Sequence[str]]:
     """Apply a stateless transformer to source text."""
     result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
