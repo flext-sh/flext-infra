@@ -28,12 +28,12 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
         """Apply compatibility alias removal to source text."""
         self.changes.clear()
         updated = source
-        updated = self._rewrite_compat_assignments(updated)
         updated = self._rewrite_compat_imports(updated)
+        updated = self._rewrite_compat_assignments(updated)
         return updated, list(self.changes)
 
-    def _rewrite_compat_assignments(self, source: str) -> str:
-        """Detect and remove ``Alias = Target`` compatibility assignments."""
+    def _collect_compat_assignments(self, source: str) -> dict[str, str]:
+        """Detect ``Alias = Target`` compatibility assignments."""
         alias_map: dict[str, str] = {}
         for match in c.Infra.COMPAT_ALIAS_RE.finditer(source):
             alias_name, target_name = match.group(1), match.group(2)
@@ -42,7 +42,11 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
             if alias_name.isupper() and target_name.isupper():
                 continue
             alias_map[alias_name] = target_name
+        return alias_map
 
+    def _rewrite_compat_assignments(self, source: str) -> str:
+        """Remove compatibility assignments and rewrite references."""
+        alias_map = self._collect_compat_assignments(source)
         if not alias_map:
             return source
 
@@ -74,6 +78,9 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
         except SyntaxError:
             return source
 
+        protected_targets = frozenset(
+            self._collect_compat_assignments(source).values()
+        )
         alias_renames = c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES
         alias_map: dict[str, str] = {}
         existing_names = self._collect_existing_names(tree)
@@ -85,6 +92,10 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
                 long_name = alias.name
                 canonical = alias_renames.get(long_name)
                 if canonical is None or alias.asname is not None:
+                    continue
+                if long_name in protected_targets:
+                    # The long name is the target of a local compatibility alias;
+                    # rewriting it would break that alias.
                     continue
                 if canonical in existing_names and canonical != long_name:
                     # Avoid shadowing an existing name in the file.
