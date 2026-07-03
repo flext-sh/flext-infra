@@ -249,7 +249,12 @@ class FlextInfraRefactorCensusApplyMixin(
                     "simple removal apply failed for "
                     f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
                 )
-                _log.warning("census_apply_candidate_rejected", candidate=candidate.file_path, object_name=candidate.object_name, error=msg)
+                _log.warning(
+                    "census_apply_candidate_rejected",
+                    candidate=candidate.file_path,
+                    object_name=candidate.object_name,
+                    error=msg,
+                )
                 continue
             if apply_result.unwrap_or(False):
                 applied.add(

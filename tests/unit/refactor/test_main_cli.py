@@ -1161,9 +1161,7 @@ class TestsFlextInfraRefactorMainCli:
         assert report_result.success, report_result.error
         report = report_result.unwrap()
         all_violations = tuple(
-            violation
-            for project in report.projects
-            for violation in project.violations
+            violation for project in report.projects for violation in project.violations
         )
         rejected = tuple(
             violation

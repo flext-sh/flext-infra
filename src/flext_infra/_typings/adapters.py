@@ -10,18 +10,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
-from pathlib import Path
-from typing import ClassVar
-
-from flext_cli import t
-from flext_core import m
-from flext_infra._typings.base import FlextInfraTypesBase
+from flext_infra._constants.adapters import FlextInfraConstantsAdapters
 
 
-class FlextInfraTypesAdapters:
+class FlextInfraTypesAdapters(FlextInfraConstantsAdapters):
     """Centralized TypeAdapter instances for infrastructure validation.
 
     Usage::
@@ -31,44 +23,5 @@ class FlextInfraTypesAdapters:
         validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
     """
 
-    # ── Mapping adapters ─────────────────────────────────────────────
-    INFRA_MAPPING_ADAPTER: ClassVar[
-        m.TypeAdapter[FlextInfraTypesBase.ContainerDict]
-    ] = t.Cli.JSON_MAPPING_ADAPTER
-    "Validates t.MappingKV[str, InfraValue] — the most common infra adapter."
 
-    MUTABLE_INFRA_MAPPING_ADAPTER: ClassVar[
-        m.TypeAdapter[MutableMapping[str, FlextInfraTypesBase.InfraValue]]
-    ] = m.TypeAdapter(MutableMapping[str, FlextInfraTypesBase.InfraValue])
-    "Validates MutableMapping[str, InfraValue] for in-place mutation."
-
-    STR_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.StrMapping]] = m.TypeAdapter(
-        t.StrMapping,
-    )
-    "Validates t.StrMapping."
-
-    CONTAINER_MAPPING_ADAPTER: ClassVar[
-        m.TypeAdapter[t.MappingKV[str, t.Scalar | Path]]
-    ] = m.TypeAdapter(t.MappingKV[str, t.Scalar | Path])
-    "Validates flat scalar/path mappings (no nested containers)."
-
-    # ── Sequence adapters ────────────────────────────────────────────
-    INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[FlextInfraTypesBase.InfraSequence]] = (
-        t.Cli.JSON_LIST_ADAPTER
-    )
-    "Validates t.SequenceOf[InfraValue]."
-
-    CONTAINER_DICT_SEQ_ADAPTER: ClassVar[
-        m.TypeAdapter[t.SequenceOf[FlextInfraTypesBase.ContainerDict]]
-    ] = m.TypeAdapter(t.SequenceOf[FlextInfraTypesBase.ContainerDict])
-    "Validates t.SequenceOf[ContainerDict]."
-
-    STR_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(
-        t.StrSequence,
-    )
-    "Validates t.StrSequence."
-
-    STR_MAPPING_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.SequenceOf[t.StrMapping]]] = (
-        m.TypeAdapter(t.SequenceOf[t.StrMapping])
-    )
-    "Validates t.SequenceOf[StrMapping]."
+__all__: list[str] = ["FlextInfraTypesAdapters"]

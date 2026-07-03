@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     from flext_infra._constants._exports_lazy_part_02 import (
         FLEXT_INFRA_LAZY_IMPORTS_PART_02 as FLEXT_INFRA_LAZY_IMPORTS_PART_02,
     )
+    from flext_infra._constants.adapters import (
+        FlextInfraConstantsAdapters as FlextInfraConstantsAdapters,
+    )
     from flext_infra._constants.base import (
         FlextInfraConstantsBase as FlextInfraConstantsBase,
     )
@@ -90,6 +93,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         "._exports": ("FLEXT_INFRA_LAZY_IMPORTS",),
         "._exports_lazy_part_01": ("FLEXT_INFRA_LAZY_IMPORTS_PART_01",),
         "._exports_lazy_part_02": ("FLEXT_INFRA_LAZY_IMPORTS_PART_02",),
+        ".adapters": ("FlextInfraConstantsAdapters",),
         ".base": ("FlextInfraConstantsBase",),
         ".basemk": ("FlextInfraConstantsBasemk",),
         ".census": ("FlextInfraConstantsCensus",),

@@ -100,8 +100,6 @@ class FlextInfraRefactorClassvarConstantAutofix:
         target_resource = _target_resource_for_module(
             project,
             constants_module,
-            class_module,
-            source_resource,
         )
         return ClassvarConstantAutofixPlan(
             class_module=class_module,
@@ -149,11 +147,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
     ) -> dict[str, object]:
         source_text = plan.source_resource.read()
         target_path = Path(plan.target_resource.real_path)
-        target_text = (
-            plan.target_resource.read()
-            if target_path.exists()
-            else _new_constants_module_source(plan.constants_module)
-        )
+        target_text = plan.target_resource.read()
         touched: set[str] = {
             plan.source_resource.path,
             plan.target_resource.path,
@@ -243,7 +237,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
             plan.constants_module,
         )
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
-        _write_target_module(target_path, new_target)
+        target_path.write_text(new_target, encoding="utf-8")
 
         # 6. Apply remaining rewrites to other resources.
         for resource in project.get_python_files():
@@ -273,60 +267,21 @@ def _class_start_lineno(source: str, class_name: str) -> int:
 def _target_resource_for_module(
     project: Project,
     constants_module: str,
-    class_module: str,
-    source_resource: File,
 ) -> t.Infra.RopeResource:
-    """Return the existing or creatable sibling constants module resource."""
+    """Return the existing canonical constants module resource."""
     try:
         target_mod = project.get_module(constants_module)
     except RopeModuleNotFoundError:
-        constants_file = _missing_module_path(
-            constants_module,
-            class_module,
-            source_resource.path,
-        )
-        return project.get_file(str(constants_file))
+        msg = f"constants module {constants_module} does not exist"
+        raise TypeError(msg) from None
     target_resource = target_mod.get_resource()
     if not isinstance(target_resource, File):
         msg = f"constants module {constants_module} did not resolve to a file resource"
         raise TypeError(msg)
+    if not Path(target_resource.real_path).is_file():
+        msg = f"constants module {constants_module} does not exist"
+        raise TypeError(msg)
     return target_resource
-
-
-def _missing_module_path(
-    constants_module: str,
-    class_module: str,
-    source_resource_path: str,
-) -> Path:
-    """Return the project-relative file for a missing constants module."""
-    source_path = Path(source_resource_path)
-    class_file = Path(*class_module.split(".")).with_suffix(".py")
-    source_parts = source_path.parts
-    class_parts = class_file.parts
-    if len(source_parts) >= len(class_parts) and (
-        source_parts[-len(class_parts) :] == class_parts
-    ):
-        prefix = source_parts[: -len(class_parts)]
-        return Path(*prefix, *constants_module.split(".")).with_suffix(".py")
-    return Path(*constants_module.split(".")).with_suffix(".py")
-
-
-def _new_constants_module_source(constants_module: str) -> str:
-    """Return minimal source for a newly-created constants module."""
-    return (
-        f'"""Constants for {constants_module}."""\n\n'
-        "from __future__ import annotations\n"
-    )
-
-
-def _write_target_module(target_path: Path, target_text: str) -> None:
-    """Write a generated constants module and package marker."""
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    if target_path.parent.name == "_constants":
-        init_path = target_path.parent / "__init__.py"
-        if not init_path.exists():
-            init_path.write_text('"""Constants package."""\n', encoding="utf-8")
-    target_path.write_text(target_text, encoding="utf-8")
 
 
 def _extract_declaration_line(
@@ -401,7 +356,10 @@ def _normalize_declaration_source(source: str) -> str:
     trim = min(indents)
     if trim <= 0:
         return "\n".join(lines)
-    return "\n".join((lines[0], *(line[trim:] if line.strip() else line for line in tail)))
+    return "\n".join((
+        lines[0],
+        *(line[trim:] if line.strip() else line for line in tail),
+    ))
 
 
 def _remove_declaration_line(

@@ -193,8 +193,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         missing = scope - available_names
         if missing:
             return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
-                "Requested projects were not discovered: "
-                f"{', '.join(sorted(missing))}",
+                f"Requested projects were not discovered: {', '.join(sorted(missing))}",
             )
         selected = (
             tuple(p for p in discovered if p.name in scope or p.path.name in scope)

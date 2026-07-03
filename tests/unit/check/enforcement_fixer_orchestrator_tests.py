@@ -236,7 +236,10 @@ class TestsEnforcementFixerOrchestrator:
         monkeypatch.setattr(
             orchestrator,
             "_collect_violations",
-            lambda project_dir, rules: ([(rules[0], SimpleNamespace(file_path=str(source_file)))], []),
+            lambda project_dir, rules: (
+                [(rules[0], SimpleNamespace(file_path=str(source_file)))],
+                [],
+            ),
         )
 
         results = orchestrator._fix_project(project, (self._rule("ENFORCE-008"),))
@@ -386,9 +389,7 @@ class TestsEnforcementFixerOrchestrator:
         )
         post_status = git_status()
         assert result.returncode == 0, (
-            f"dry-run failed\n"
-            f"stdout: {result.stdout}\n"
-            f"stderr: {result.stderr}"
+            f"dry-run failed\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
         assert pre_status == post_status, (
             f"dry-run mutated the worktree\n"
