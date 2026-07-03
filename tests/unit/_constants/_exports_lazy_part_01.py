@@ -29,9 +29,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         "._constants._exports_lazy_part_07": (
             "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07",
         ),
-        "._constants._exports_lazy_part_08": (
-            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08",
-        ),
         ".check.extended_config_fixer_errors_tests": ("TestConfigFixerPublicBehavior",),
         ".check.extended_config_fixer_tests": (
             "TestConfigFixerExecute",
@@ -67,6 +64,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
             "FlextInfraRefactorTypingUnificationRule",
         ),
         ".runner_service": ("RealSubprocessRunner",),
+        ".validate.namespace_validator_tests": ("TestFlextInfraNamespaceValidator",),
     },
 )
 

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.typings import t
-from tests.utilities import u
 from flext_infra.transformers.helper_consolidation import (
     FlextInfraHelperConsolidationTransformer,
 )
+from tests.typings import t
+from tests.utilities import u
 
 
 def _transform_source(

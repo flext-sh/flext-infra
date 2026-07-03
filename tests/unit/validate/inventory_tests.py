@@ -10,9 +10,9 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra.validate.inventory import FlextInfraInventoryService
 from tests.models import m
 from tests.typings import t
-from flext_infra.validate.inventory import FlextInfraInventoryService
 
 
 class TestInventoryServiceCore:

@@ -8,25 +8,25 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from tests.integration.test_infra_integration import (
+    from flext_infra.tests.integration.test_infra_integration import (
         TestsFlextInfraIntegrationInfraIntegration as TestsFlextInfraIntegrationInfraIntegration,
     )
-    from tests.integration.test_refactor_nesting_file import (
+    from flext_infra.tests.integration.test_refactor_nesting_file import (
         TestsFlextInfraIntegrationRefactorNestingFile as TestsFlextInfraIntegrationRefactorNestingFile,
     )
-    from tests.integration.test_refactor_nesting_idempotency import (
+    from flext_infra.tests.integration.test_refactor_nesting_idempotency import (
         TestsFlextInfraIntegrationRefactorNestingIdempotency as TestsFlextInfraIntegrationRefactorNestingIdempotency,
     )
-    from tests.integration.test_refactor_nesting_performance import (
+    from flext_infra.tests.integration.test_refactor_nesting_performance import (
         TestsFlextInfraIntegrationRefactorNestingPerformance as TestsFlextInfraIntegrationRefactorNestingPerformance,
     )
-    from tests.integration.test_refactor_nesting_project import (
+    from flext_infra.tests.integration.test_refactor_nesting_project import (
         TestsFlextInfraIntegrationRefactorNestingProject as TestsFlextInfraIntegrationRefactorNestingProject,
     )
-    from tests.integration.test_refactor_nesting_workspace import (
+    from flext_infra.tests.integration.test_refactor_nesting_workspace import (
         TestsFlextInfraIntegrationRefactorNestingWorkspace as TestsFlextInfraIntegrationRefactorNestingWorkspace,
     )
-    from tests.integration.test_refactor_policy_mro import (
+    from flext_infra.tests.integration.test_refactor_policy_mro import (
         TestsFlextInfraIntegrationRefactorPolicyMro as TestsFlextInfraIntegrationRefactorPolicyMro,
     )
 _LAZY_IMPORTS = build_lazy_import_map(

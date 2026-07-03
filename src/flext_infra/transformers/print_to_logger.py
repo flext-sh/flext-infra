@@ -83,7 +83,7 @@ class FlextInfraRefactorPrintToLogger(FlextInfraRopeTransformer):
         last_import = -1
         for index, line in enumerate(lines):
             stripped = line.strip()
-            if stripped.startswith("from ") or stripped.startswith("import "):
+            if stripped.startswith(("from ", "import ")):
                 last_import = index
         if last_import == -1:
             return 0

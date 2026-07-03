@@ -11,11 +11,11 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from tests.models import m
-from tests.typings import t
 from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
 )
+from tests.models import m
+from tests.typings import t
 
 
 @pytest.fixture

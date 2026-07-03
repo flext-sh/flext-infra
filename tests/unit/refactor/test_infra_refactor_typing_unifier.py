@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
-from tests.typings import t
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+from tests.typings import t
 
 
 class FlextInfraRefactorTypingUnificationRule:

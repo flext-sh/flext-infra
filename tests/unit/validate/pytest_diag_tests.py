@@ -6,9 +6,9 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from tests.models import m
 from tests.typings import t
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
 
 def _extractor(

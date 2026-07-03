@@ -32,7 +32,7 @@ class FlextInfraRefactorOpenEncoding(FlextInfraRopeTransformer):
             if not args or "encoding" in args:
                 return match.group(0)
             self._record_change('Added encoding="utf-8" to open() call')
-            return f"open({args}, encoding=\"utf-8\")"
+            return f'open({args}, encoding="utf-8")'
 
         updated = self._OPEN_CALL_RE.sub(replacer, source)
         return updated, list(self.changes)

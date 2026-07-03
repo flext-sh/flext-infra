@@ -9,11 +9,11 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests.constants import c
 from tests.models import m
 from tests.typings import t
 from tests.utilities import u
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:

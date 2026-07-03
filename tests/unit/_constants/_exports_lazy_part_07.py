@@ -7,7 +7,6 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
-        ".codegen": ("codegen",),
         ".container": ("container",),
         ".deps": ("deps",),
         ".discovery": ("discovery",),

@@ -11,14 +11,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    t,
-)
+from flext_cli.utilities import u
+from flext_core import r
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorPolicy:
@@ -63,9 +61,9 @@ class FlextInfraUtilitiesRefactorPolicy:
         loaded = FlextInfraUtilitiesRefactorPolicy.load_validated_policy_document(
             resolved_path,
         )
-        if loaded.failure:
-            return {}
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
+        if loaded.failure:
+            return by_family
         for raw in u.Cli.json_as_mapping_list(loaded.value.get("policy_matrix")):
             policy = m.Infra.ClassNestingPolicy.model_validate(raw)
             by_family[policy.family_name] = policy

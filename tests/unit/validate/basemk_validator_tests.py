@@ -15,10 +15,10 @@ import pytest
 from flext_tests import tf, tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from tests.models import m
 from tests.typings import t
 from tests.utilities import u
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 
 _ROOT: Final[str] = "# root content"
 

@@ -44,13 +44,13 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".container.test_infra_container": ("TestsFlextInfraContainerInfraContainer",),
         ".deps.test_detection_classify": ("TestsFlextInfraDepsDetectionClassify",),
         ".deps.test_detection_deptry": ("TestsFlextInfraDepsDetectionDeptry",),
+        ".deps.test_detection_discover": ("TestsFlextInfraDepsDetectionDiscover",),
         ".docs.auditor_budgets_tests": ("TestLoadAuditBudgets",),
         ".docs.shared_iter_tests": (
             "TestIterMarkdownFiles",
             "TestSelectedProjectNames",
         ),
         ".validate.main_cli_tests": ("TestValidateCli",),
-        ".validate.namespace_validator_tests": ("TestFlextInfraNamespaceValidator",),
     },
 )
 

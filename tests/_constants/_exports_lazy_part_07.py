@@ -27,9 +27,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "deptry_report_payload",
             "models_resource",
             "modernizer_workspace",
-        ),
-        ".unit.transformers.test_infra_transformer_helper_consolidation": (
-            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
+            "modernizer_workspace_with_projects",
         ),
         ".unit.transformers.test_infra_transformer_logging_modernizer": (
             "TestsFlextInfraTransformersLoggingModernizer",

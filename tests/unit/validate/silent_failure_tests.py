@@ -11,10 +11,10 @@ from flext_infra import main as infra_main
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
+from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from tests.models import m
 from tests.typings import t
 from tests.utilities import u
-from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 
 
 def _create_silent_failure_project(

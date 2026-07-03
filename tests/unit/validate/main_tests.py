@@ -13,11 +13,11 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import main as infra_main
-from tests.constants import c
-from tests.typings import t
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+from tests.constants import c
+from tests.typings import t
 
 
 def _cli(*args: str) -> int:

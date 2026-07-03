@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests.constants import c
 from tests.models import m
 from tests.utilities import u
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 

@@ -20,10 +20,7 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
         ".basemk": ("basemk",),
         ".check": ("check",),
-        ".cli": (
-            "FlextInfraCli",
-            "main",
-        ),
+        ".cli": ("FlextInfraCli",),
         ".codegen": ("codegen",),
         ".constants": (
             "FlextInfraConstants",
@@ -33,11 +30,12 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".detectors": ("detectors",),
         ".docs": ("docs",),
         ".fixers": ("fixers",),
+        ".fixers.base": ("FlextInfraFixerAdapter",),
         ".fixers.gate_fixer": ("FlextInfraGateFixerAdapter",),
+        ".fixers.orchestrator": ("FlextInfraEnforcementFixerOrchestrator",),
         ".fixers.result": ("FlextInfraFixersResult",),
         ".fixers.transformer_fixer": ("FlextInfraTransformerFixerAdapter",),
         ".gates": ("gates",),
-        ".maintenance": ("maintenance",),
         ".models": (
             "FlextInfraModels",
             "m",

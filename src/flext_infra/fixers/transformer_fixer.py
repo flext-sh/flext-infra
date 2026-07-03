@@ -18,7 +18,9 @@ from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.print_to_logger import FlextInfraRefactorPrintToLogger
-from flext_infra.transformers.remove_breakpoint import FlextInfraRefactorRemoveBreakpoint
+from flext_infra.transformers.remove_breakpoint import (
+    FlextInfraRefactorRemoveBreakpoint,
+)
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -189,7 +191,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         fix_action: me.EnforcementFixAction,
         file_path: Path,
     ) -> FlextInfraRopeTransformer:
-        """Instantiate a transformer with any params declared in the catalog."""
+        """Instantiate a transformer with params declared in the catalog."""
         params = dict(fix_action.params)
         if transformer_cls is FlextInfraRefactorTypingUnifier:
             targets_value = params.get("targets", [])
@@ -206,10 +208,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 canonical_map=canonical_map,
                 file_path=file_path,
             )
-        # Transformer params are declared in the enforcement catalog as JSON.
-        # The base constructor only accepts ``on_change``; concrete subclasses
-        # validate their own params inside this method.
-        return transformer_cls(on_change=None)
+        if transformer_cls is FlextInfraRefactorPrintToLogger:
+            return FlextInfraRefactorPrintToLogger(file_path=file_path)
+        # Remaining enforcement transformers require no runtime params.
+        return transformer_cls()
 
     @staticmethod
     def _collect_file_paths(

@@ -20,9 +20,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
         ".basemk": ("basemk",),
         ".check": ("check",),
-        ".refactor.test_infra_refactor_service": (
-            "TestsFlextInfraRefactorInfraRefactorService",
-        ),
+        ".codegen": ("codegen",),
         ".refactor.test_infra_refactor_typing_unifier": (
             "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
         ),

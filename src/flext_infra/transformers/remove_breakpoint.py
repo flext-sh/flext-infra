@@ -34,7 +34,7 @@ class FlextInfraRefactorRemoveBreakpoint(FlextInfraRopeTransformer):
         updated = self._PDB_SET_TRACE_RE.sub(self._on_removed, updated)
         return updated, list(self.changes)
 
-    def _on_removed(self, match: re.Match[str]) -> str:
+    def _on_removed(self, _match: re.Match[str]) -> str:
         self._record_change("Removed debugger statement")
         return "\n"
 

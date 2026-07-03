@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.typings import t
-from tests.utilities import u
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
+from tests.typings import t
+from tests.utilities import u
 
 
 def _apply_transformer(

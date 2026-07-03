@@ -13,9 +13,9 @@ from __future__ import annotations
 import pytest
 from flext_tests import tm
 
+from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from tests.models import m
 from tests.typings import t
-from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 
 
 @pytest.fixture

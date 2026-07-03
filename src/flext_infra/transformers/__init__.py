@@ -12,6 +12,9 @@ from flext_core.lazy import (
 )
 
 if TYPE_CHECKING:
+    from flext_infra.transformers.bare_except import (
+        FlextInfraRefactorBareExcept as FlextInfraRefactorBareExcept,
+    )
     from flext_infra.transformers.base import (
         FlextInfraChangeTrackingTransformer as FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer as FlextInfraRopeTransformer,
@@ -31,6 +34,9 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.deprecated_remover import (
         FlextInfraRefactorDeprecatedRemover as FlextInfraRefactorDeprecatedRemover,
+    )
+    from flext_infra.transformers.future_import import (
+        FlextInfraRefactorFutureImport as FlextInfraRefactorFutureImport,
     )
     from flext_infra.transformers.helper_consolidation import (
         FlextInfraHelperConsolidationTransformer as FlextInfraHelperConsolidationTransformer,
@@ -56,11 +62,20 @@ if TYPE_CHECKING:
     from flext_infra.transformers.nested_class_propagation import (
         FlextInfraNestedClassPropagationTransformer as FlextInfraNestedClassPropagationTransformer,
     )
+    from flext_infra.transformers.open_encoding import (
+        FlextInfraRefactorOpenEncoding as FlextInfraRefactorOpenEncoding,
+    )
     from flext_infra.transformers.pattern_modernizer import (
         FlextInfraRefactorPatternModernizer as FlextInfraRefactorPatternModernizer,
     )
+    from flext_infra.transformers.print_to_logger import (
+        FlextInfraRefactorPrintToLogger as FlextInfraRefactorPrintToLogger,
+    )
     from flext_infra.transformers.pydantic_modernizer import (
         FlextInfraRefactorPydanticModernizer as FlextInfraRefactorPydanticModernizer,
+    )
+    from flext_infra.transformers.remove_breakpoint import (
+        FlextInfraRefactorRemoveBreakpoint as FlextInfraRefactorRemoveBreakpoint,
     )
     from flext_infra.transformers.result_di_modernizer import (
         FlextInfraRefactorResultDiModernizer as FlextInfraRefactorResultDiModernizer,
@@ -96,6 +111,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
     (".smells",),
     build_lazy_import_map(
         {
+            ".bare_except": ("FlextInfraRefactorBareExcept",),
             ".base": (
                 "FlextInfraChangeTrackingTransformer",
                 "FlextInfraRopeTransformer",
@@ -108,6 +124,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),
             ".cli_modernizer": ("FlextInfraRefactorCliModernizer",),
             ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
+            ".future_import": ("FlextInfraRefactorFutureImport",),
             ".helper_consolidation": ("FlextInfraHelperConsolidationTransformer",),
             ".import_bypass_remover": ("FlextInfraRefactorImportBypassRemover",),
             ".import_modernizer": ("FlextInfraRefactorImportModernizer",),
@@ -118,8 +135,11 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".nested_class_propagation": (
                 "FlextInfraNestedClassPropagationTransformer",
             ),
+            ".open_encoding": ("FlextInfraRefactorOpenEncoding",),
             ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
+            ".print_to_logger": ("FlextInfraRefactorPrintToLogger",),
             ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
+            ".remove_breakpoint": ("FlextInfraRefactorRemoveBreakpoint",),
             ".result_di_modernizer": ("FlextInfraRefactorResultDiModernizer",),
             ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
             ".smells": ("smells",),
