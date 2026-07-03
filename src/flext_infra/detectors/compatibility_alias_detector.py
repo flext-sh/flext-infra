@@ -17,6 +17,26 @@ from flext_infra.utilities import u
 class FlextInfraCompatibilityAliasDetector:
     """Detect compatibility alias assignments and non-canonical facade imports."""
 
+    @classmethod
+    def fix_action_for(
+        cls,
+        violation: m.Infra.CompatibilityAliasViolation,
+        *,
+        current_project: str,
+    ) -> str:
+        """Return the catalog fix action for a compatibility-alias violation.
+
+        - ``rewrite_foreign_canonical_alias`` when the current project re-exports
+          the alias locally and the violation points back at the project package.
+        - ``rewrite_compatibility_alias`` for all other cases.
+        """
+        if (
+            violation.module_name == current_project
+            and violation.alias_name == violation.target_name
+        ):
+            return "rewrite_foreign_canonical_alias"
+        return "rewrite_compatibility_alias"
+
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
@@ -125,17 +145,11 @@ class FlextInfraCompatibilityAliasDetector:
                     current_module=current_module,
                     from_import=from_import,
                 )
-                if module_name != "flext_core":
+                if module_name != c.Infra.PKG_CORE_UNDERSCORE:
                     continue
                 for name, alias in from_import.names_and_aliases:
                     bound_name = alias if alias is not None else name
                     if bound_name not in local_aliases:
-                        continue
-                    if (
-                        local_alias_targets.get(bound_name)
-                        == f"Flext{bound_name.upper()}Constants"
-                    ):
-                        # intentionally seeding a local canonical alias
                         continue
                     line_number = _find_import_line(
                         lines=lines,

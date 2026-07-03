@@ -92,7 +92,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             object_kind = matched.kind if matched is not None else "class"
             if selected_kinds and object_kind not in selected_kinds:
                 continue
-            action = "relocate_class_placement"
+            action = detector_violation.action
             violations.append(
                 self._raw_violation(
                     project=project_name,
@@ -102,7 +102,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     file_path=file_path,
                     line=detector_violation.line,
                     description=detector_violation.suggestion,
-                    fixable=False,
+                    fixable=detector_violation.fixable,
                     fix_action=action,
                 )
             )
@@ -209,7 +209,10 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     object_kind = target_symbol[0]
             if selected_kinds and object_kind not in selected_kinds:
                 continue
-            action = "rewrite_compatibility_alias"
+            action = FlextInfraCompatibilityAliasDetector.fix_action_for(
+                detector_violation,
+                current_project=project_name,
+            )
             violations.append(
                 self._raw_violation(
                     project=project_name,
