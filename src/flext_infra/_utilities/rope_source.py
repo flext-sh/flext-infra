@@ -415,6 +415,7 @@ class FlextInfraUtilitiesRopeSource:
         resource: t.Infra.RopeResource,
         *,
         apply: bool = True,
+        kinds: set[str] | frozenset[str] | None = None,
     ) -> t.Infra.TransformResult:
         """Fix silent failure sentinels using rope-backed AST detection.
 
@@ -432,7 +433,7 @@ class FlextInfraUtilitiesRopeSource:
             return source, []
         if not isinstance(tree, ast.Module):
             return source, []
-        changes = collect_silent_failure_fixes(tree, source)
+        changes = collect_silent_failure_fixes(tree, source, kinds=kinds)
         if not changes:
             return source, []
         updated = cls.rewrite_source_at_offsets(

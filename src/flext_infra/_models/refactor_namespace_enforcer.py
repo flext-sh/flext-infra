@@ -399,6 +399,20 @@ class FlextInfraModelsNamespaceEnforcer:
                 description="Hardcoded `__version__` violations collected for the project.",
             ),
         ]
+        inline_import_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.InlineImportViolation],
+            m.Field(
+                default_factory=tuple,
+                description="Inline/lazy import violations collected for the project.",
+            ),
+        ]
+        silent_failure_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.SilentFailureViolation],
+            m.Field(
+                default_factory=tuple,
+                description="Silent-failure violations collected for the project.",
+            ),
+        ]
         parse_failures: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation],
             m.Field(
@@ -436,6 +450,8 @@ class FlextInfraModelsNamespaceEnforcer:
                 self.typing_dict_attr_violations,
                 self.typing_dict_import_violations,
                 self.hardcoded_version_violations,
+                self.inline_import_violations,
+                self.silent_failure_violations,
                 self.parse_failures,
             )
             return missing_facades or any(v for v in violation_fields)
@@ -520,6 +536,14 @@ class FlextInfraModelsNamespaceEnforcer:
             t.NonNegativeInt,
             m.Field(description="Total hardcoded `__version__` violations"),
         ] = 0
+        total_inline_import_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total inline/lazy import violations"),
+        ] = 0
+        total_silent_failure_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total silent-failure violations"),
+        ] = 0
         total_parse_failures: Annotated[
             t.NonNegativeInt, m.Field(description="Total parse failures")
         ] = 0
@@ -592,6 +616,12 @@ class FlextInfraModelsNamespaceEnforcer:
                 ),
                 total_hardcoded_version_violations=sum(
                     len(p.hardcoded_version_violations) for p in projects
+                ),
+                total_inline_import_violations=sum(
+                    len(p.inline_import_violations) for p in projects
+                ),
+                total_silent_failure_violations=sum(
+                    len(p.silent_failure_violations) for p in projects
                 ),
                 total_parse_failures=sum(len(p.parse_failures) for p in projects),
                 total_files_scanned=sum(p.files_scanned for p in projects),

@@ -67,9 +67,8 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
             return None
         value = returns.value
         is_result_shape = (
-            (isinstance(value, ast.Name) and value.id in {"r", "Result"})
-            or (isinstance(value, ast.Attribute) and value.attr == "Result")
-        )
+            isinstance(value, ast.Name) and value.id in {"r", "Result"}
+        ) or (isinstance(value, ast.Attribute) and value.attr == "Result")
         if not is_result_shape:
             return None
         return ast.unparse(returns.slice)
@@ -194,14 +193,16 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
             type_name = _expression_name(node.type, self._import_aliases)
             if type_name in self._BROAD_EXCEPTION_NAMES or not type_name:
                 return False
-        return not self._body_has_raise_or_fail(node.body) and self._body_has_sentinel_return(
+        return not self._body_has_raise_or_fail(
             node.body
-        )
+        ) and self._body_has_sentinel_return(node.body)
 
     def _body_has_sentinel_return(self, body: list[ast.stmt]) -> bool:
         for stmt in body:
             for child in ast.walk(stmt):
-                if isinstance(child, ast.Return) and self._is_sentinel_value(child.value):
+                if isinstance(child, ast.Return) and self._is_sentinel_value(
+                    child.value
+                ):
                     return True
         return False
 
@@ -317,7 +318,9 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
     def _first_sentinel_return(self, body: list[ast.stmt]) -> ast.Return | None:
         for stmt in body:
             for child in ast.walk(stmt):
-                if isinstance(child, ast.Return) and self._is_sentinel_value(child.value):
+                if isinstance(child, ast.Return) and self._is_sentinel_value(
+                    child.value
+                ):
                     return child
         return None
 
@@ -380,12 +383,15 @@ def collect_silent_failure_findings(
 def collect_silent_failure_fixes(
     tree: ast.Module,
     source: str,
+    *,
+    kinds: set[str] | frozenset[str] | None = None,
 ) -> list[tuple[int, int, str]]:
     """Return deterministic auto-fix replacements for silent-failure sentinels."""
+    allowed = kinds if kinds is not None else frozenset()
     return [
         finding.replacement
         for finding in _SilentFailureAstVisitor(source).analyze(tree)
-        if finding.replacement is not None
+        if finding.replacement is not None and (not allowed or finding.kind in allowed)
     ]
 
 
