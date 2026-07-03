@@ -31,6 +31,8 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     def __init__(
         self,
         project_alias_owners: t.StrSequenceMapping,
+        *,
+        current_project: str = "",
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with project → local aliases SSOT from flext-core."""
@@ -40,6 +42,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             project: frozenset(aliases)
             for project, aliases in project_alias_owners.items()
         }
+        self._current_project = current_project
 
     @override
     def transform(
@@ -49,6 +52,10 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     ) -> t.Infra.TransformResult:
         """Apply alias migration via rope utilities."""
         source = resource.read()
+        if not self._current_project:
+            self._current_project = self._project_from_path(
+                getattr(resource, "real_path", "") or ""
+            )
         updated, changes = self.apply_to_source(source)
         if updated != source and changes:
             resource.write(updated)

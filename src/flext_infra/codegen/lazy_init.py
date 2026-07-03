@@ -128,8 +128,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         for entry in rope.workspace_index.modules_by_path.values():
             if entry.is_package_init or not entry.module_name:
                 continue
-            first_segment = entry.module_name.partition(".")[0]
-            is_private_scope = first_segment in c.Infra.ROOT_WRAPPER_SEGMENTS
+            module_segments = frozenset(entry.module_name.split("."))
+            is_private_scope = bool(module_segments & c.Infra.NON_PUBLIC_LAZY_ROOTS)
             scope_key = (
                 str(entry.project_root)
                 if is_private_scope and entry.project_root is not None
