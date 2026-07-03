@@ -51,9 +51,7 @@ class FlextInfraFixersResult:
             default_factory=tuple,
             description="Fixed violations",
         )
-        previewed: t.SequenceOf[
-            FlextInfraFixersResult.PreviewedViolation
-        ] = m.Field(
+        previewed: t.SequenceOf[FlextInfraFixersResult.PreviewedViolation] = m.Field(
             default_factory=tuple,
             description="Dry-run previews",
         )

@@ -26,6 +26,13 @@ class FlextInfraConstantsWorkspace:
         WORKSPACE_MEMBER = "member"
         ATTACHED = "attached"
 
+    EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
+        ".ai-hub",
+        "algar-*",
+        "gruponos-*",
+    )
+    "Sibling directory patterns for FLEXT-managed external workspaces."
+
     MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.StrPair]] = (
         (
             'python3 "$(BASE_MK_DIR)/scripts/mode.py"',

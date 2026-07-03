@@ -226,6 +226,34 @@ class TestFlextInfraCodegenLazyInit:
         assert "FlextTestsService" not in stub_content
         assert '"sub"' not in stub_content
 
+    def test_public_root_publishes_governed_child_module_export(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Governed child modules can be public without leaking child symbols."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+        )
+        basemk_dir = package_root / "basemk"
+        basemk_dir.mkdir(parents=True)
+        u.Tests.write_lazy_init_namespace_module(
+            basemk_dir / "generator.py",
+            class_name="FlextTestsBaseMkGenerator",
+            alias="g",
+            docstring="Generator.",
+        )
+
+        result = u.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
+        stub_content = self._read_generated_file(package_root, c.Infra.INIT_PYI)
+        assert '"basemk"' in init_content
+        assert "FlextTestsBaseMkGenerator" not in init_content
+        assert "from flext_test_project import basemk as basemk" in stub_content
+        assert '"basemk"' in stub_content
+        assert "FlextTestsBaseMkGenerator" not in stub_content
+
     def test_generate_rewrites_to_canonical_docstring(self, tmp_path: Path) -> None:
         """Generated wrappers use the canonical package docstring."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(

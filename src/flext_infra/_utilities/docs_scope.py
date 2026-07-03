@@ -8,11 +8,11 @@ from pathlib import Path
 
 from flext_cli.utilities import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
+from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.models import FlextInfraModels as m
 from flext_infra.protocols import FlextInfraProtocols as p
 from flext_infra.typings import FlextInfraTypes as t
 
@@ -22,7 +22,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     @cache
-    def _project_state(project_root: str) -> m.Infra.ProjectPyprojectState:
+    def _project_state(project_root: str) -> mw.ProjectPyprojectState:
         """Return cached parsed pyproject state for one project root.
 
         When the pyproject is absent or empty, the returned state carries
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesDocsScope:
             )
         )
         if not payload:
-            return m.Infra.ProjectPyprojectState.model_construct(
+            return mw.ProjectPyprojectState.model_construct(
                 project_root=root,
                 pyproject_path=pyproject_path,
                 payload=payload,
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesDocsScope:
                 package_name="",
                 dependency_names=dependency_names,
             )
-        return m.Infra.ProjectPyprojectState.model_construct(
+        return mw.ProjectPyprojectState.model_construct(
             project_root=root,
             pyproject_path=pyproject_path,
             payload=payload,
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesDocsScope:
         )
 
     @staticmethod
-    def project_state(project_root: Path) -> m.Infra.ProjectPyprojectState:
+    def project_state(project_root: Path) -> mw.ProjectPyprojectState:
         """Return the centralized parsed state for one project root."""
         return FlextInfraUtilitiesDocsScope._project_state(str(project_root.resolve()))
 
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesDocsScope:
         names: t.StrSequence,
         *,
         include_attached: bool = False,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Resolve project names into canonical project descriptors.
 
         ``include_attached`` is forwarded to
@@ -93,25 +93,25 @@ class FlextInfraUtilitiesDocsScope:
             include_attached=include_attached,
         )
         if discover_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
+            return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 discover_result.error or "discovery failed",
             )
         projects = discover_result.value
         if not names:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(
+            return r[t.SequenceOf[mw.ProjectInfo]].ok(
                 sorted(projects, key=lambda proj: proj.name),
             )
-        by_name: dict[str, m.Infra.ProjectInfo] = {}
+        by_name: dict[str, mw.ProjectInfo] = {}
         for project in projects:
             by_name.setdefault(project.name, project)
             by_name.setdefault(project.path.name, project)
         missing = [name for name in names if name not in by_name]
         if missing:
             missing_text = ", ".join(sorted(missing))
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
+            return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 f"unknown projects: {missing_text}",
             )
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(
+        return r[t.SequenceOf[mw.ProjectInfo]].ok(
             sorted((by_name[name] for name in names), key=lambda proj: proj.name),
         )
 
@@ -121,15 +121,7 @@ class FlextInfraUtilitiesDocsScope:
         payload: t.Infra.ContainerDict,
     ) -> str:
         """Return the declared project name from ``[project].name``."""
-        project_section = payload.get("project")
-        if not isinstance(project_section, dict):
-            msg = f"{entry}: missing [project] table in pyproject.toml"
-            raise TypeError(msg)
-        raw_name = project_section.get("name")
-        if not isinstance(raw_name, str) or not raw_name.strip():
-            msg = f"{entry}: missing or empty [project].name in pyproject.toml"
-            raise ValueError(msg)
-        return raw_name.strip()
+        return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
     @staticmethod
     def _workspace_member_name_set(workspace_root: Path) -> t.Infra.StrSet:
@@ -141,7 +133,7 @@ class FlextInfraUtilitiesDocsScope:
         entry: Path,
         *,
         workspace_members: t.Infra.StrSet,
-    ) -> m.Infra.ProjectInfo | None:
+    ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
@@ -170,7 +162,7 @@ class FlextInfraUtilitiesDocsScope:
             if is_workspace_member
             else c.Infra.WorkspaceProjectRole.ATTACHED
         )
-        return m.Infra.ProjectInfo.model_construct(
+        return mw.ProjectInfo.model_construct(
             path=entry,
             name=project_state.project_name,
             stack="python/flext",
@@ -279,19 +271,7 @@ class FlextInfraUtilitiesDocsScope:
         payload: t.Infra.ContainerDict,
     ) -> t.Infra.ContainerDict:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
-        tool = payload.get(c.Infra.TOOL)
-        if not isinstance(tool, dict):
-            empty: t.Infra.ContainerDict = {}
-            return empty
-        flext = tool.get("flext")
-        if not isinstance(flext, dict):
-            empty: t.Infra.ContainerDict = {}
-            return empty
-        docs = flext.get("docs")
-        if isinstance(docs, dict):
-            return docs
-        empty: t.Infra.ContainerDict = {}
-        return empty
+        return FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
 
     @staticmethod
     def classify_project_from_meta(
@@ -335,55 +315,23 @@ class FlextInfraUtilitiesDocsScope:
 
         Raises ``ValueError`` only for flext- projects unable to resolve.
         """
-        configured = docs_meta.get("package_name")
-        if isinstance(configured, str) and configured.strip():
-            return configured.strip()
-        current: t.Infra.ContainerDict | None = payload
-        for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
-            if current is None:
-                break
-            candidate = current.get(key)
-            current = candidate if isinstance(candidate, dict) else None
-        packages = current.get("packages") if current is not None else None
-        if isinstance(packages, list):
-            for item in packages:
-                package_path = Path(str(item).strip())
-                if package_path.parts:
-                    package_parts: tuple[str, ...] = package_path.parts
-                    return package_parts[-1]
-        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
-        if src_dir.is_dir():
-            for child in sorted(src_dir.iterdir()):
-                if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
-                    child_path: Path = child
-                    return child_path.name
-        project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
+        return FlextInfraUtilitiesPyproject.package_name_from_payload(
             project_root,
             payload,
+            docs_meta,
         )
-        if project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
-            msg = (
-                f"{project_root}: cannot resolve package name — "
-                "no [tool.flext.docs].package_name, no hatch wheel packages, "
-                "and no src/<pkg>/__init__.py present"
-            )
-            raise ValueError(msg)
-        return ""
 
     @staticmethod
     def project_package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project."""
-        name: str = FlextInfraUtilitiesDocsScope.project_state(
-            project_root
-        ).package_name
-        return name
+        return FlextInfraUtilitiesPyproject.project_package_name(project_root)
 
     @staticmethod
     def discover_projects(
         workspace_root: Path,
         *,
         include_attached: bool = False,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Discover workspace projects that participate in the docs scope.
 
         ``include_attached`` is forwarded to
@@ -392,7 +340,7 @@ class FlextInfraUtilitiesDocsScope:
         are surfaced alongside the workspace's git-tracked projects.
         """
         if not workspace_root.exists() or not workspace_root.is_dir():
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
+            return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 f"discovery failed: invalid workspace root {workspace_root}",
             )
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
@@ -403,8 +351,8 @@ class FlextInfraUtilitiesDocsScope:
             workspace_root,
             include_attached=include_attached,
         )
-        root_project: m.Infra.ProjectInfo | None = None
-        projects: list[m.Infra.ProjectInfo] = []
+        root_project: mw.ProjectInfo | None = None
+        projects: list[mw.ProjectInfo] = []
         for project_root in project_roots:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
@@ -424,8 +372,8 @@ class FlextInfraUtilitiesDocsScope:
                 continue
             projects.append(project_info)
         if not projects and root_project is not None:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([root_project])
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(projects)
+            return r[t.SequenceOf[mw.ProjectInfo]].ok([root_project])
+        return r[t.SequenceOf[mw.ProjectInfo]].ok(projects)
 
     @staticmethod
     def required_project_files() -> t.StrSequence:

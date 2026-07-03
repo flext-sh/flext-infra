@@ -363,3 +363,66 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         assert isinstance(target_text, str) and isinstance(source_text, str)
         assert "GROUPS = frozenset({'a'})" in target_text
         assert "GROUPS = frozenset({'a'})" not in source_text
+
+    def test_autofix_dry_run_creates_missing_constants_module(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Dry-run can plan a constants module that does not exist yet."""
+        pkg = tmp_path / "src" / "demo"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        constants_mod = pkg / "_constants.py"
+        (pkg / "service.py").write_text(
+            "class DemoService:\n"
+            "    GROUPS = frozenset({'a'})\n"
+            "    def run(self) -> None:\n"
+            "        print(DemoService.GROUPS)\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "demo.service.DemoService",
+            "GROUPS",
+            "demo._constants",
+            dry_run=True,
+        )
+
+        target_text = result["target_text"]
+        assert isinstance(target_text, str)
+        assert '"""Constants for demo._constants."""' in target_text
+        assert "from __future__ import annotations" in target_text
+        assert "GROUPS = frozenset({'a'})" in target_text
+        assert not constants_mod.exists()
+
+    def test_autofix_dry_run_resolves_project_tests_package(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Project-local Rope roots resolve top-level tests packages."""
+        tests_pkg = tmp_path / "tests" / "unit"
+        tests_pkg.mkdir(parents=True)
+        (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
+        (tests_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (tests_pkg / "test_execution_result.py").write_text(
+            "class TestsDemo:\n"
+            "    TEST_VALUE = 1.5\n"
+            "    def test_value(self) -> None:\n"
+            "        assert self.TEST_VALUE == 1.5\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraRefactorClassvarConstantAutofix.apply(
+            tmp_path,
+            "tests.unit.test_execution_result.TestsDemo",
+            "TEST_VALUE",
+            "tests.unit._constants",
+            dry_run=True,
+        )
+
+        target_text = result["target_text"]
+        source_text = result["source_text"]
+        assert isinstance(target_text, str) and isinstance(source_text, str)
+        assert "TEST_VALUE = 1.5" in target_text
+        assert "TEST_VALUE = 1.5" not in source_text

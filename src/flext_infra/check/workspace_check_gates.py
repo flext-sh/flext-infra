@@ -287,7 +287,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 fail_fast=ctx.fail_fast,
                 ruff_args=ctx.ruff_args,
                 pyright_args=ctx.pyright_args,
-                gate_mode="warn" if gate_id in c.Infra.ENFORCEMENT_ADVISORY_GATES else "error",
+                gate_mode="warn"
+                if gate_id in c.Infra.ENFORCEMENT_ADVISORY_GATES
+                else "error",
             )
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             gates_sink[gate_id] = execution

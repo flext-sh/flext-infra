@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import t
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 from flext_infra._utilities.mro_scan_catalog import FlextInfraUtilitiesMroScanCatalog
 from flext_infra._utilities.mro_scan_source import FlextInfraUtilitiesMroScanSource
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorMroScan:

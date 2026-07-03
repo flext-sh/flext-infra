@@ -78,9 +78,7 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
         except SyntaxError:
             return source
 
-        protected_targets = frozenset(
-            self._collect_compat_assignments(source).values()
-        )
+        protected_targets = frozenset(self._collect_compat_assignments(source).values())
         alias_renames = c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES
         alias_map: dict[str, str] = {}
         existing_names = self._collect_existing_names(tree)

@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import FlextSettingsBase, m
+from flext_core import FlextSettingsBase
 from flext_infra.constants import c
+from flext_infra.models import m
 
 
 class FlextInfraSettings(FlextSettingsBase):

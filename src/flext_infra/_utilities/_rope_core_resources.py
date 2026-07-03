@@ -8,10 +8,10 @@ from rope.base.exceptions import ResourceNotFoundError
 from rope.base.project import Project
 from rope.base.resources import File
 
-from flext_core import t
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra.iteration import FlextInfraUtilitiesIteration
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeCoreResourcesMixin:

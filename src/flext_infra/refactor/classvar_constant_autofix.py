@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rope.base.exceptions import ModuleNotFoundError as RopeModuleNotFoundError
 from rope.base.pyobjects import PyClass
 from rope.refactor import occurrences
 from rope.refactor.occurrences import worder
@@ -81,8 +82,11 @@ class FlextInfraRefactorClassvarConstantAutofix:
             constant_name,
             class_lineno,
         )
-        target_mod = project.get_module(constants_module)
-        target_resource = target_mod.get_resource()
+        target_resource = _target_resource_for_module(
+            project,
+            source_resource,
+            constants_module,
+        )
         return ClassvarConstantAutofixPlan(
             class_module=class_module,
             class_name=class_name,
@@ -128,7 +132,12 @@ class FlextInfraRefactorClassvarConstantAutofix:
         dry_run: bool,
     ) -> dict[str, object]:
         source_text = plan.source_resource.read()
-        target_text = plan.target_resource.read()
+        target_path = Path(plan.target_resource.real_path)
+        target_text = (
+            plan.target_resource.read()
+            if target_path.exists()
+            else _new_constants_module_source(plan.constants_module)
+        )
         touched: set[str] = {
             plan.source_resource.path,
             plan.target_resource.path,
@@ -211,7 +220,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
         )
         new_source = _apply_edits(new_source, source_rewrites)
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
-        Path(plan.target_resource.real_path).write_text(new_target, encoding="utf-8")
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(new_target, encoding="utf-8")
 
         # 6. Apply remaining rewrites to other resources.
         for resource in project.get_python_files():
@@ -236,6 +246,29 @@ def _class_start_lineno(source: str, class_name: str) -> int:
             return lineno
     msg = f"Could not locate class {class_name}"
     raise ValueError(msg)
+
+
+def _target_resource_for_module(
+    project: Project,
+    source_resource: t.Infra.RopeResource,
+    constants_module: str,
+) -> t.Infra.RopeResource:
+    """Return the existing or creatable sibling constants module resource."""
+    try:
+        target_mod = project.get_module(constants_module)
+        return target_mod.get_resource()
+    except RopeModuleNotFoundError:
+        constants_filename = f"{constants_module.rsplit('.', maxsplit=1)[-1]}.py"
+        source_parent = Path(source_resource.path).parent
+        return project.get_file(str(source_parent / constants_filename))
+
+
+def _new_constants_module_source(constants_module: str) -> str:
+    """Return minimal source for a newly-created constants module."""
+    return (
+        f'"""Constants for {constants_module}."""\n\n'
+        "from __future__ import annotations\n"
+    )
 
 
 def _extract_declaration_line(

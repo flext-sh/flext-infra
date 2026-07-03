@@ -99,6 +99,8 @@ class FlextInfraEnforcementFixerOrchestrator(
             project_result = self._fix_project(project, selected_rules)
             all_results.extend(project_result)
         report = self._render_report(all_results)
+        if any(result.failed for result in all_results):
+            return r[str].fail(report)
         return r[str].ok(report)
 
     def _selected_rules(
@@ -107,8 +109,9 @@ class FlextInfraEnforcementFixerOrchestrator(
     ) -> tuple[me.EnforcementRuleSpec, ...]:
         """Return enabled rules with fix actions matching the CLI filter.
 
-        In the default mode (no explicit ``--rules``) rules whose fix action
-        has no registered adapter are silently discarded. When ``--rules`` is
+        In the default mode (no explicit ``--rules``), adapterless fix actions
+        stay selected so the routing phase emits a failed fix instead of
+        silently hiding an unsupported catalog contract. When ``--rules`` is
         used, every requested rule must be enabled, declare a fix action, and
         have an available adapter; otherwise a ``ValueError`` is raised so the
         caller can surface a clear failure.
@@ -147,8 +150,6 @@ class FlextInfraEnforcementFixerOrchestrator(
             if fix_action is None:
                 continue
             if self.safe_only and not fix_action.safe:
-                continue
-            if not self._has_adapter(rule):
                 continue
             results.append(rule)
         return tuple(results)
@@ -480,14 +481,20 @@ class FlextInfraEnforcementFixerOrchestrator(
         )
 
     def _command_ctx(self) -> m.Infra.FixEnforcementCommand:
-        """Build a command context for adapters from the service fields."""
+        """Build a command context for adapters from the service fields.
+
+        Dry-run (``apply=False``) must never trigger post-fix checks, because
+        check-after gates may rewrite files in place and restore originals.
+        Forcing ``check_after=False`` keeps the run 100% read-only regardless
+        of the CLI default or any future check-after implementation.
+        """
         return m.Infra.FixEnforcementCommand(
             workspace=str(self.workspace_root),
             projects=self.project_names,
             apply=self.apply,
             rules=self.rules,
             safe_only=self.safe_only,
-            check_after=self.check_after,
+            check_after=self.check_after and self.apply,
             fail_fast=self.fail_fast,
         )
 

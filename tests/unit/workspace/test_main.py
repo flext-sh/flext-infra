@@ -165,6 +165,32 @@ class TestsFlextInfraWorkspaceMain:
 
         assert result.success, result.error
 
+    def test_orchestrate_project_target_accepts_external_sibling(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "flext"
+        external = tmp_path / ".ai-hub"
+        workspace.mkdir()
+        external.mkdir()
+        project = m.Infra.ProjectInfo(
+            name="ai-hub",
+            path=external,
+            stack="python/flext",
+        )
+
+        target = FlextInfraOrchestratorService._project_target(
+            project,
+            workspace_root=workspace,
+        )
+
+        assert target == str(external.resolve())
+
+    def test_orchestrate_project_log_filename_stays_under_reports(self) -> None:
+        filename = FlextInfraOrchestratorService._project_log_filename("../.ai-hub")
+
+        assert filename == ".ai-hub.log"
+
     def test_orchestrate_workspace_forwards_fail_fast_to_project_make(self) -> None:
         assert FlextInfraOrchestratorService._normalize_fail_fast_make_args(
             (),

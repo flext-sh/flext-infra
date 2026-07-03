@@ -155,16 +155,12 @@ class FlextInfraNamespaceEnforcer(
     ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
         enforcer = cls(workspace_root=params.workspace_path)
-        if params.diff:
-            diff_output = enforcer.diff(project_names=params.project_names)
-            cli.display_text(diff_output or "No changes detected.")
         report = enforcer.enforce(
             apply=params.apply,
             project_names=params.project_names,
             gates=params.gates,
         )
-        if not params.diff:
-            cli.display_text(cls.render_text(report))
+        cli.display_text(cls.render_text(report))
         if report.has_violations:
             return r[m.Infra.WorkspaceEnforcementReport].fail(
                 "Namespace violations found"

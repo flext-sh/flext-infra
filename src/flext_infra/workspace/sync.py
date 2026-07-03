@@ -169,7 +169,7 @@ class FlextInfraSyncService(
         canonical_root: Path,
     ) -> p.Result[int]:
         """Synchronize all discovered child projects under the workspace root."""
-        discovered = u.Infra.discover_projects(workspace_root)
+        discovered = u.Infra.discover_projects(workspace_root, include_attached=True)
         if discovered.failure:
             return r[int].fail(discovered.error or "workspace discovery failed")
         changed = 0

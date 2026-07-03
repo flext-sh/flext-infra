@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import t
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.iteration import FlextInfraUtilitiesIteration
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesMroScanCatalog:

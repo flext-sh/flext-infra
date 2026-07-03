@@ -8,8 +8,7 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
-from flext_core import u
+from flext_cli import m, u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
@@ -52,12 +51,7 @@ class FlextInfraModelsRefactor(
         mm.WriteMixin,
         m.ContractModel,
     ):
-        """CLI/service request for namespace enforcement.
-
-        WARNING: ``--diff`` is NOT read-only — it applies rewrites, captures
-        the diff, then restores originals. Never use it for read-only
-        baselines; use the default dry-run scan instead.
-        """
+        """CLI/service request for namespace enforcement."""
 
     class ModernizeInput(
         mm.WriteMixin,

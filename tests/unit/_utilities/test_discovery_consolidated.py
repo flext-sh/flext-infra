@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from tests.constants import c
 from tests.models import m
 from tests.utilities import u
@@ -237,6 +238,29 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         assert result.success
         assert included_file in result.value
         assert skipped_file not in result.value
+
+    def test_find_all_pyproject_files_includes_external_workspace_siblings(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "flext"
+        workspace.mkdir()
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='flext'\n",
+            encoding="utf-8",
+        )
+        external = tmp_path / "gruponos-data"
+        (external / "src" / "gruponos_data").mkdir(parents=True)
+        external_pyproject = external / c.Infra.PYPROJECT_FILENAME
+        external_pyproject.write_text(
+            "[project]\nname='gruponos-data'\ndependencies=['flext-core']\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraUtilitiesDiscovery.find_all_pyproject_files(workspace)
+
+        assert result.success
+        assert external_pyproject in result.value
 
     def test_find_all_pyproject_files_returns_empty_for_non_directory_root(
         self,

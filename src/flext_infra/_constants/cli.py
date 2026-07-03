@@ -21,7 +21,6 @@ class FlextInfraConstantsCli:
         "--check",
         "--check-only",
         "--dry-run",
-        "--diff",
         "--fail-fast",
         "--verbose",
         "--quiet",
@@ -33,7 +32,6 @@ class FlextInfraConstantsCli:
         "--skip-comments",
         "--audit",
         "--rewrite-constraints",
-        "--rollback",
     )
     _SHARED_VALUE_FLAG_VALUES: Final[tuple[str, ...]] = (
         "--constraint-policy",

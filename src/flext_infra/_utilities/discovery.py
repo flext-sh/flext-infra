@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_core import r
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra.constants import c
 from flext_infra.protocols import p
@@ -144,11 +145,10 @@ class FlextInfraUtilitiesDiscovery:
                     return resolved_package
                 case _:
                     pass
-        return (
-            FlextInfraUtilitiesDocsScope.project_package_name(project_root)
-            if project_root is not None
-            else ""
-        )
+        if project_root is None:
+            return ""
+
+        return FlextInfraUtilitiesPyproject.project_package_name(project_root)
 
     @staticmethod
     def package_name(file_path: Path) -> str:
@@ -269,19 +269,29 @@ class FlextInfraUtilitiesDiscovery:
         skip_dirs: frozenset[str] | None = None,
         project_paths: t.SequenceOf[Path] | None = None,
     ) -> p.Result[t.SequenceOf[Path]]:
-        """Find all ``pyproject.toml`` files under one workspace root."""
-        if not workspace_root.exists():
+        """Find all managed ``pyproject.toml`` files for one workspace root."""
+        if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
+        scan_roots = [workspace_root.resolve()]
+        scan_roots.extend(
+            FlextInfraUtilitiesProjectDiscovery.discover_external_workspace_roots(
+                workspace_root,
+            ),
+        )
         try:
-            all_files = [
-                path
-                for path in workspace_root.rglob(c.Infra.PYPROJECT_FILENAME)
-                if not any(
-                    part in effective_skip
-                    for part in path.relative_to(workspace_root).parts[:-1]
+            all_files: list[Path] = []
+            for scan_root in scan_roots:
+                all_files.extend(
+                    sorted(
+                        path
+                        for path in scan_root.rglob(c.Infra.PYPROJECT_FILENAME)
+                        if not any(
+                            part in effective_skip
+                            for part in path.relative_to(scan_root).parts[:-1]
+                        )
+                    )
                 )
-            ]
         except OSError as exc:
             return r[t.SequenceOf[Path]].fail_op("pyproject file scan", exc)
         if project_paths is not None:
@@ -369,7 +379,7 @@ class FlextInfraUtilitiesDiscovery:
         file_path: Path,
     ) -> t.MappingKV[str, frozenset[str]]:
         """Return allowed foreign-package runtime alias sources for one file."""
-        package_name = FlextInfraUtilitiesDocsScope.project_package_name(project_root)
+        package_name = FlextInfraUtilitiesPyproject.project_package_name(project_root)
         if not package_name:
             return {}
         package_dir = (

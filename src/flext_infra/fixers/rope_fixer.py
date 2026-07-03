@@ -52,6 +52,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     """
 
     kind: ClassVar[str] = "rope"
+    _PRIVATE_NAMESPACE_MIN_PARTS: ClassVar[int] = 2
 
     def __init__(self, workspace_root: Path) -> None:
         """Bind the workspace root used to open rope projects."""
@@ -162,6 +163,52 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         if file_path.name == c.Infra.INIT_PY:
             return package_name
         return f"{package_name}.{file_path.stem}" if package_name else ""
+
+    @staticmethod
+    def _module_file_for_name(module_name: str, *, project_root: Path) -> Path:
+        """Return the source file path for an importable module name."""
+        return (
+            project_root
+            / c.Infra.DEFAULT_SRC_DIR
+            / Path(*module_name.split(".")).with_suffix(".py")
+        )
+
+    @staticmethod
+    def _constants_module_for_file(
+        file_path: Path,
+        *,
+        module_name: str,
+        project_root: Path,
+    ) -> str:
+        """Return the canonical project constants module for a source file."""
+        package_name = module_name.split(".", maxsplit=1)[0]
+        if not package_name:
+            return ""
+        package_root = project_root / c.Infra.DEFAULT_SRC_DIR / package_name
+        try:
+            relative_parts = file_path.relative_to(package_root).parts
+        except ValueError:
+            return ""
+        if not relative_parts:
+            return ""
+        first_part = relative_parts[0]
+        if first_part == "_constants":
+            return ""
+        if first_part.startswith("_"):
+            if (
+                len(relative_parts)
+                < FlextInfraRopeFixerAdapter._PRIVATE_NAMESPACE_MIN_PARTS
+            ):
+                return ""
+            domain = Path(relative_parts[1]).stem
+        elif len(relative_parts) == 1:
+            domain = file_path.stem
+        else:
+            domain = first_part
+        normalized_domain = domain.removeprefix("_")
+        if normalized_domain in {"", "__init__", "__main__", "__version__"}:
+            return ""
+        return f"{package_name}._constants.{normalized_domain}"
 
     def _group_by_target(
         self,
@@ -857,16 +904,25 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         ),
                     )
                     continue
-                constants_module = (
-                    f"{module_name.rsplit('.', maxsplit=1)[0]}._constants"
-                    if "." in module_name
-                    else f"{module_name}._constants"
+                constants_module = self._constants_module_for_file(
+                    file_path,
+                    module_name=module_name,
+                    project_root=project_dir,
                 )
+                if not constants_module:
+                    failed.append(
+                        fr.FailedFix(
+                            rule_id="ENFORCE-079",
+                            file_path=file_path_str,
+                            error="could not resolve canonical constants module",
+                        ),
+                    )
+                    continue
                 for violation in classvar_violations:
                     class_full_name = f"{module_name}.{violation.base_class}"
                     try:
                         result = FlextInfraRefactorClassvarConstantAutofix.apply(
-                            self._workspace_root,
+                            project_dir,
                             class_full_name,
                             violation.name,
                             constants_module,

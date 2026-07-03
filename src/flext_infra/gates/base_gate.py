@@ -275,9 +275,15 @@ class FlextInfraGate(ABC):
         marked passed so advisory enforcement gates do not fail the check
         pipeline.
         """
-        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not result.passed:
+        if (
+            ctx is not None
+            and getattr(ctx, "gate_mode", None) == "warn"
+            and not result.passed
+        ):
             warn_issues = [
-                issue.model_copy(update={"severity": "WARNING"}) if hasattr(issue, "model_copy") else issue
+                issue.model_copy(update={"severity": "WARNING"})
+                if hasattr(issue, "model_copy")
+                else issue
                 for issue in issues
             ]
             return m.Infra.GateExecution(

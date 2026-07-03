@@ -1,5 +1,6 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
 from flext_cli import d as d, e as e, h as h, r as r, x as x
+from flext_infra import basemk as basemk
 from flext_infra.__version__ import (
     __author__ as __author__,
     __author_email__ as __author_email__,
@@ -47,6 +48,7 @@ __all__ = (
     "__url__",
     "__version__",
     "__version_info__",
+    "basemk",
     "c",
     "d",
     "e",

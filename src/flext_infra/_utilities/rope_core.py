@@ -11,7 +11,6 @@ from pathlib import Path
 
 from rope.base.project import Project
 
-from flext_core import t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._utilities._rope_core_pymodule import (
@@ -25,6 +24,7 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 from flext_infra._utilities.rope_pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeCore(
@@ -45,8 +45,13 @@ class FlextInfraUtilitiesRopeCore(
         _ = (project_prefix, src_dir)
         FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
-        project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
+        discovered_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             resolved_root,
+        )
+        project_roots = tuple(
+            project_root
+            for project_root in discovered_roots
+            if project_root.resolve().is_relative_to(resolved_root)
         )
         source_folders = sorted({
             str(scan_path.relative_to(resolved_root))
@@ -55,6 +60,7 @@ class FlextInfraUtilitiesRopeCore(
                 project_root,
             )
             if (scan_path := project_root / dir_name).is_dir()
+            and scan_path.resolve().is_relative_to(resolved_root)
         })
         with warnings.catch_warnings():
             # Why: rope's own Project.__init__ emits this DeprecationWarning

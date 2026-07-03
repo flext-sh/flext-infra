@@ -49,6 +49,7 @@ _PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfraSettings",
     "FlextInfraTypes",
     "FlextInfraUtilities",
+    "basemk",
     "__author__",
     "__author_email__",
     "__description__",

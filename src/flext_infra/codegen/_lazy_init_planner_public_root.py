@@ -47,6 +47,12 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             dir_exports: t.MappingKV[str, t.LazyAliasMap],
         ) -> t.StrSequence: ...
 
+        def _merged_child_export_names(
+            self,
+            child_package: str,
+            dir_exports: t.MappingKV[str, t.LazyAliasMap],
+        ) -> frozenset[str]: ...
+
     @staticmethod
     def _promote_public_root_eager_aliases(
         *,
@@ -92,22 +98,37 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             public_children,
             dir_exports,
         )
+        module_export_names = {
+            name
+            for name, target in lazy_map.items()
+            if (not target[1] and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS)
+        }
+        internal_child_export_names = {
+            name
+            for child_package in child_packages
+            if child_package.rsplit(".", maxsplit=1)[-1]
+            in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES
+            for name in self._merged_child_export_names(child_package, dir_exports)
+        }
         public_export_names = {
             name
             for name in export_names
-            if name in eager_names
-            or (not explicit_exports and name in child_export_names)
-            or (
-                not root_contract
-                or self._is_public_root_export(
-                    name,
-                    lazy_map,
-                    root_pkg=context.current_pkg,
-                    root_namespace_files=self.lazy_init.root_namespace_files,
-                    explicit_public_exports=explicit_exports,
+            if name not in internal_child_export_names
+            and (
+                name in eager_names
+                or (not explicit_exports and name in child_export_names)
+                or (
+                    not root_contract
+                    or self._is_public_root_export(
+                        name,
+                        lazy_map,
+                        root_pkg=context.current_pkg,
+                        root_namespace_files=self.lazy_init.root_namespace_files,
+                        explicit_public_exports=explicit_exports,
+                    )
                 )
             )
-        }
+        } | module_export_names
         runtime_export_names = public_export_names | {
             name
             for name, target in lazy_map.items()

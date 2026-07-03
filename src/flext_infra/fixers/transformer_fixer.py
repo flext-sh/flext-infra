@@ -89,10 +89,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         fix_action: me.EnforcementFixAction,
     ) -> bool:
         """Return whether this adapter handles ``fix_action``."""
-        return (
-            fix_action.kind == self.kind
-            and fix_action.target in self._TRANSFORMERS
-        )
+        return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
 
     @override
     def fix_project(

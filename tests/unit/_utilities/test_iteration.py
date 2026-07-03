@@ -162,6 +162,37 @@ class TestsFlextInfraUtilitiesiteration:
         names = {path.name for path in candidates}
         assert external.name in names
 
+    def test_discover_project_candidates_includes_external_sibling_patterns(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "flext"
+        workspace.mkdir()
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "flext"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        external = tmp_path / ".ai-hub"
+        (external / "src" / "aihub").mkdir(parents=True)
+        (external / "src" / "aihub" / "__init__.py").write_text(
+            "",
+            encoding="utf-8",
+        )
+        (external / "pyproject.toml").write_text(
+            (
+                '[project]\nname = "ai-hub"\nversion = "0.0.0"\n'
+                'dependencies = ["flext-core"]\n'
+            ),
+            encoding="utf-8",
+        )
+
+        candidates = u.Infra.discover_project_candidates(
+            workspace_root=workspace,
+            include_attached=True,
+        )
+
+        assert external.resolve() in candidates
+
     def test_workspace_dep_namespaces_from_payload_uses_workspace_sources(self) -> None:
         payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
             {

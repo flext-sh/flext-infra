@@ -5,9 +5,9 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_core import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.typings import t
 
 

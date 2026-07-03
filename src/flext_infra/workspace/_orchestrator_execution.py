@@ -85,6 +85,16 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 failures.append((proj_name, err_count, log_file))
         return failures
 
+    @staticmethod
+    def _project_log_filename(project: str) -> str:
+        """Return a report filename for project targets that may contain path parts."""
+        project_path = Path(project)
+        excluded_parts = frozenset({project_path.anchor, ".", "..", ""})
+        safe_stem = "__".join(
+            part for part in project_path.parts if part not in excluded_parts
+        )
+        return f"{safe_stem or 'workspace'}.log"
+
     def orchestrate(
         self,
         projects: t.StrSequence,
@@ -190,7 +200,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             Path.cwd(),
             c.Infra.RK_WORKSPACE,
             verb,
-            f"{project}.log",
+            self._project_log_filename(project),
         )
         _ = u.Cli.ensure_dir(log_path.parent)
         started = time.monotonic()

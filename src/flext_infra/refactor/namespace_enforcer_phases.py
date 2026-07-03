@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import difflib
 from collections.abc import (
     Callable,
-    MutableMapping,
 )
 from pathlib import Path
 
@@ -16,7 +14,7 @@ from flext_infra.utilities import u
 
 
 class FlextInfraNamespaceEnforcerPhasesMixin:
-    """Project enforcement and diff methods for namespace enforcer."""
+    """Project enforcement methods for namespace enforcer."""
 
     _workspace_root: Path
     _rope_project: t.Infra.RopeProject
@@ -98,66 +96,6 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             raise RuntimeError(msg)
         files: t.SequenceOf[Path] = py_files_result.value
         return files
-
-    def diff(
-        self,
-        *,
-        project_names: t.StrSequence | None = None,
-    ) -> str:
-        """Run enforce with apply in diff mode: apply, capture diff, restore originals.
-
-        WARNING: NOT read-only. This mode rewrites files in place with
-        ``enforce(apply=True)``, captures the unified diff, then restores the
-        original contents; files created during the run are deleted on the
-        restore path. Never use it for read-only baselines — use
-        ``enforce(apply=False)`` (the default dry-run scan) instead.
-
-        Returns:
-            Unified diff string showing all changes that --apply would make.
-
-        """
-        project_roots = self._resolve_project_roots(project_names=project_names)
-        all_py_files: t.MutableSequenceOf[Path] = []
-        for project_root in project_roots:
-            all_py_files.extend(self._collect_py_files(project_root=project_root))
-        snapshots: MutableMapping[Path, str] = {}
-        for py_file in all_py_files:
-            if py_file.is_file():
-                snapshots[py_file] = u.Cli.files_read_text(py_file).unwrap()
-        try:
-            self.enforce(apply=True, project_names=project_names)
-        finally:
-            diff_lines: t.MutableSequenceOf[str] = []
-            for py_file, original in snapshots.items():
-                if not py_file.is_file():
-                    continue
-                modified = u.Cli.files_read_text(py_file).unwrap()
-                if modified != original:
-                    rel = py_file.relative_to(self._workspace_root)
-                    diff_lines.extend(
-                        difflib.unified_diff(
-                            original.splitlines(keepends=True),
-                            modified.splitlines(keepends=True),
-                            fromfile=f"a/{rel}",
-                            tofile=f"b/{rel}",
-                        ),
-                    )
-                _ = u.Cli.atomic_write_text_file(py_file, original).unwrap()
-            for project_root in project_roots:
-                for py_file in self._collect_py_files(project_root=project_root):
-                    if py_file not in snapshots and py_file.is_file():
-                        rel = py_file.relative_to(self._workspace_root)
-                        content = u.Cli.files_read_text(py_file).unwrap()
-                        diff_lines.extend(
-                            difflib.unified_diff(
-                                [],
-                                content.splitlines(keepends=True),
-                                fromfile="/dev/null",
-                                tofile=f"b/{rel}",
-                            ),
-                        )
-                        py_file.unlink()
-        return "".join(diff_lines)
 
 
 __all__: list[str] = ["FlextInfraNamespaceEnforcerPhasesMixin"]

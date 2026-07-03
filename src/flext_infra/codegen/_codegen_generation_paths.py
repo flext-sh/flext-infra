@@ -49,7 +49,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         if FlextInfraCodegenGenerationPathsMixin._is_module_or_package_export(
             attr_name
         ):
-            return False
+            return export_name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
         if not FlextInfraCodegenGenerationPathsMixin._is_private_subpackage_source(
             module_path
         ):

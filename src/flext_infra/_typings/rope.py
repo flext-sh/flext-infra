@@ -23,7 +23,7 @@ from rope.refactor.importutils.importinfo import (
 )
 from rope.refactor.importutils.module_imports import ModuleImports
 
-from flext_core import t
+from flext_infra import t
 
 
 class FlextInfraTypesRope:

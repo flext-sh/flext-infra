@@ -40,7 +40,9 @@ class FlextInfraModelsGates:
         ] = False
         gate_mode: Annotated[
             Literal["error", "warn"],
-            m.Field(description="Gate failure mode: error fails the pipeline, warn reports only"),
+            m.Field(
+                description="Gate failure mode: error fails the pipeline, warn reports only"
+            ),
         ] = "error"
         ruff_args: Annotated[
             t.StrSequence,

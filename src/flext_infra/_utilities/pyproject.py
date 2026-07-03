@@ -75,6 +75,91 @@ class FlextInfraUtilitiesPyproject:
         return flext if isinstance(flext, dict) else {}
 
     @staticmethod
+    def docs_meta_from_payload(
+        payload: t.Infra.ContainerDict,
+    ) -> t.Infra.ContainerDict:
+        """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
+        tool = payload.get(c.Infra.TOOL)
+        if not isinstance(tool, dict):
+            return {}
+        flext = tool.get("flext")
+        if not isinstance(flext, dict):
+            return {}
+        docs = flext.get("docs")
+        return docs if isinstance(docs, dict) else {}
+
+    @staticmethod
+    def project_name_from_payload(
+        entry: Path,
+        payload: t.Infra.ContainerDict,
+    ) -> str:
+        """Return the declared project name from ``[project].name``."""
+        project_section = payload.get("project")
+        if not isinstance(project_section, dict):
+            msg = f"{entry}: missing [project] table in pyproject.toml"
+            raise TypeError(msg)
+        raw_name = project_section.get("name")
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            msg = f"{entry}: missing or empty [project].name in pyproject.toml"
+            raise ValueError(msg)
+        return raw_name.strip()
+
+    @staticmethod
+    def package_name_from_payload(
+        project_root: Path,
+        payload: t.Infra.ContainerDict,
+        docs_meta: t.Infra.ContainerDict,
+    ) -> str:
+        """Return the primary package name using pre-loaded pyproject payload."""
+        configured = docs_meta.get("package_name")
+        if isinstance(configured, str) and configured.strip():
+            return configured.strip()
+        current: t.Infra.ContainerDict | None = payload
+        for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
+            if current is None:
+                break
+            candidate = current.get(key)
+            current = candidate if isinstance(candidate, dict) else None
+        packages = current.get("packages") if current is not None else None
+        if isinstance(packages, list):
+            for item in packages:
+                package_path = Path(str(item).strip())
+                if package_path.parts:
+                    package_parts: tuple[str, ...] = package_path.parts
+                    return package_parts[-1]
+        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
+        if src_dir.is_dir():
+            for child in sorted(src_dir.iterdir()):
+                if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
+                    child_path: Path = child
+                    return child_path.name
+        project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
+            project_root,
+            payload,
+        )
+        if project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
+            msg = (
+                f"{project_root}: cannot resolve package name — "
+                "no [tool.flext.docs].package_name, no hatch wheel packages, "
+                "and no src/<pkg>/__init__.py present"
+            )
+            raise ValueError(msg)
+        return ""
+
+    @staticmethod
+    def project_package_name(project_root: Path) -> str:
+        """Return the primary Python package name for a project root."""
+        payload = FlextInfraUtilitiesPyproject.pyproject_payload(
+            project_root / c.Infra.PYPROJECT_FILENAME,
+        )
+        docs_meta = FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
+        return FlextInfraUtilitiesPyproject.package_name_from_payload(
+            project_root,
+            payload,
+            docs_meta,
+        )
+
+    @staticmethod
     @cache
     def workspace_member_names(workspace_root: Path) -> t.StrSequence:
         """Return configured workspace members from ``[tool.flext.workspace]`` or ``[tool.uv.workspace]``.

@@ -6,8 +6,8 @@ import ast
 import re
 from typing import ClassVar
 
-from flext_core import t
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesMroScanSource:

@@ -447,11 +447,7 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
         ),
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",
-            help_text=(
-                "Scan workspace for namespace governance violations "
-                "(--diff is NOT read-only: it applies rewrites, captures "
-                "the diff, then restores originals)"
-            ),
+            help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
             handler=lambda params: FlextInfraNamespaceEnforcer.execute_command(params),
         ),

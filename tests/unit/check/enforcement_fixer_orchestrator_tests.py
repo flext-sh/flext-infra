@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import subprocess
 from pathlib import Path
 from types import ModuleType
 
@@ -151,3 +152,78 @@ class TestsEnforcementFixerOrchestrator:
         assert len(results) == 1
         assert len(results[0].failed) == 1
         assert "no registered fixer adapter" in results[0].failed[0].error
+
+    def test_command_ctx_forces_check_after_false_in_dry_run(self) -> None:
+        """Dry-run must not request post-fix checks that could rewrite files."""
+        orchestrator = FlextInfraEnforcementFixerOrchestrator(
+            workspace=Path("/tmp"),
+            selected_projects=("demo",),
+            apply=False,
+            check_after=True,
+        )
+
+        ctx = orchestrator._command_ctx()
+
+        assert ctx.apply is False
+        assert ctx.check_after is False
+
+    def test_command_ctx_preserves_check_after_when_applying(self) -> None:
+        """Apply mode may still request post-fix checks."""
+        orchestrator = FlextInfraEnforcementFixerOrchestrator(
+            workspace=Path("/tmp"),
+            selected_projects=("demo",),
+            apply=True,
+            check_after=True,
+        )
+
+        ctx = orchestrator._command_ctx()
+
+        assert ctx.apply is True
+        assert ctx.check_after is True
+
+    def test_fix_enforcement_dry_run_leaves_worktree_unchanged(self) -> None:
+        """Running fix-enforcement in dry-run must not modify the worktree.
+
+        This is a real-process guard: it executes the CLI against the
+        flext-infra project and asserts ``git status --short`` is identical
+        before and after the run.
+        """
+        project_dir = Path(__file__).parents[3]
+        workspace_root = project_dir.parent
+
+        def git_status() -> str:
+            result = subprocess.run(
+                ["git", "-C", str(project_dir), "status", "--short"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return result.stdout
+
+        pre_status = git_status()
+        result = subprocess.run(
+            [
+                "uv",
+                "run",
+                "python",
+                "-m",
+                "flext_infra",
+                "check",
+                "fix-enforcement",
+                "--workspace",
+                str(workspace_root),
+                "--projects",
+                project_dir.name,
+                "--no-check-after",
+            ],
+            cwd=str(workspace_root),
+            capture_output=True,
+            text=True,
+        )
+        post_status = git_status()
+        assert pre_status == post_status, (
+            f"dry-run mutated the worktree\n"
+            f"stdout: {result.stdout}\n"
+            f"stderr: {result.stderr}\n"
+            f"exit: {result.returncode}"
+        )

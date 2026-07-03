@@ -11,9 +11,6 @@ from flext_infra.detectors.manual_protocol_detector import (
     FlextInfraManualProtocolDetector,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from flext_infra.refactor.namespace_enforcer_phases import (
-    FlextInfraNamespaceEnforcerPhasesMixin,
-)
 from tests.models import m
 from tests.typings import t
 
@@ -343,13 +340,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.total_internal_import_violations, eq=0)
 
-    def test_namespace_enforce_diff_documents_non_read_only_behavior(self) -> None:
-        description = (
-            m.Infra.RefactorNamespaceEnforceInput.model_fields["diff"].description or ""
-        )
-        tm.that(description, has="NOT read-only")
-        docstring = FlextInfraNamespaceEnforcerPhasesMixin.diff.__doc__ or ""
-        tm.that(docstring, has="NOT read-only")
+    def test_namespace_enforce_does_not_expose_in_place_diff(self) -> None:
+        assert "diff" not in m.Infra.RefactorNamespaceEnforceInput.model_fields
 
     def test_loose_object_detector_detects_module_logger_assignment(
         self,

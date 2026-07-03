@@ -12,7 +12,7 @@ from rope.base.pyobjectsdef import PyModule
 from rope.base.resources import File
 from rope.refactor.importutils.module_imports import ModuleImports
 
-from flext_core import t
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeCorePyModuleMixin:

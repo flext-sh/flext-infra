@@ -120,20 +120,6 @@ class FlextInfraModelsMixins:
                 },
             ),
         ] = False
-        diff: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Show the unified diff --apply would produce. WARNING: "
-                    "NOT read-only — the implementing verb (namespace-enforce) "
-                    "rewrites files in place, captures the diff, then restores "
-                    "originals. Never use for read-only baselines."
-                ),
-            ),
-        ] = False
-        rollback: Annotated[
-            bool, m.Field(description="Enable automatic rollback on gate failure")
-        ] = True
         gates: Annotated[
             t.StrSequence,
             m.Field(
@@ -171,16 +157,6 @@ class FlextInfraModelsMixins:
         def dry_run(self) -> bool:
             """Whether writes are disabled (inverse of apply)."""
             return not self.apply
-
-        @m.computed_field()
-        @property
-        def execution_mode(self) -> c.Infra.ExecutionMode:
-            """Resolve execution mode from CLI flags."""
-            if not self.apply:
-                return c.Infra.ExecutionMode.DRY_RUN
-            if self.rollback:
-                return c.Infra.ExecutionMode.APPLY_SAFE
-            return c.Infra.ExecutionMode.APPLY_FORCE
 
     # ═══════════════════ RELEASE MIXINS ═══════════════════
 

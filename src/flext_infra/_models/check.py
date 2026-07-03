@@ -22,8 +22,8 @@ class FlextInfraModelsCheck:
         """Canonical CLI payload for ``flext-infra check run``.
 
         Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
-        ``apply``/``dry_run``, ``rollback``, ``diff``, ``workspace``,
-        ``projects``, ``fail_fast``, ``verbose`` from ``WriteMixin``.
+        ``apply``/``dry_run``, ``workspace``, ``projects``, ``fail_fast``,
+        ``verbose`` from ``WriteMixin``.
         """
 
         reports_dir: Annotated[

@@ -25,6 +25,13 @@ _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {
     "u": "utilities",
 }
 
+# Packages that define the canonical aliases themselves. Rewriting imports
+# inside them risks creating import cycles during package initialization.
+_ALIAS_SOURCE_PACKAGES: frozenset[str] = frozenset({
+    c.Infra.PKG_CORE_UNDERSCORE,
+    "flext_cli",
+})
+
 
 class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     """Rewrite ``from flext_core import c`` to ``from <proj>.constants import c``."""
@@ -88,6 +95,8 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
 
     def _migrate_aliases(self, source: str) -> str:
         """Rewrite flext_core alias imports to local project facades."""
+        if self._current_project in _ALIAS_SOURCE_PACKAGES:
+            return source
         lines = source.splitlines(keepends=True)
         result: t.MutableSequenceOf[str] = []
         local_imports_to_add: dict[str, set[str]] = {}
@@ -95,6 +104,12 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         while i < len(lines):
             line = lines[i]
             stripped = line.lstrip()
+            # Skip indented imports (e.g. inside ``if TYPE_CHECKING:``); preserve
+            # their original text to avoid breaking block structure.
+            if line and stripped != line:
+                result.append(line)
+                i += 1
+                continue
             next_i, rewritten, handled = self._consume_flext_core_import(
                 lines,
                 i,
