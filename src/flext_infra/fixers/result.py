@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_cli import m
+from flext_cli.models import FlextCliModels as m
 from flext_infra.typings import t
 
 

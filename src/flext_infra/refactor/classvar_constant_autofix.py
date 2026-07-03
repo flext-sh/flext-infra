@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rope.refactor import occurrences
+from rope.refactor.occurrences import worder
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
@@ -18,29 +20,18 @@ if TYPE_CHECKING:
     from rope.base.resources import Resource
 
 
+@dataclass(frozen=True)
 class ClassvarConstantAutofixPlan:
     """Planned edits for one ENFORCE-079 autofix."""
 
-    def __init__(
-        self,
-        *,
-        class_module: str,
-        class_name: str,
-        constant_name: str,
-        constants_module: str,
-        source_resource: Resource,
-        target_resource: Resource,
-        declaration_line: str,
-        class_lineno: int,
-    ) -> None:
-        self.class_module = class_module
-        self.class_name = class_name
-        self.constant_name = constant_name
-        self.constants_module = constants_module
-        self.source_resource = source_resource
-        self.target_resource = target_resource
-        self.declaration_line = declaration_line
-        self.class_lineno = class_lineno
+    class_module: str
+    class_name: str
+    constant_name: str
+    constants_module: str
+    source_resource: Resource
+    target_resource: Resource
+    declaration_line: str
+    class_lineno: int
 
 
 class FlextInfraRefactorClassvarConstantAutofix:
@@ -238,15 +229,16 @@ def _extract_declaration_line(
 
 
 def _remove_declaration_line(
-    source: str, declaration_line: str, class_lineno: int
+    source: str,
+    declaration_line: str,
+    class_lineno: int,
 ) -> str:
     """Remove the constant declaration from the class body, preserving layout."""
     lines = source.splitlines(keepends=True)
-    declaration_line + "\n"
     for idx in range(class_lineno - 1, len(lines)):
         if lines[idx].rstrip() == declaration_line:
             # Also remove the blank line that typically precedes it, if any.
-            if idx > 0 and lines[idx - 1].strip() == "":
+            if idx > 0 and not lines[idx - 1].strip():
                 del lines[idx - 1 : idx + 1]
             else:
                 del lines[idx : idx + 1]
@@ -266,8 +258,6 @@ def _attribute_prefix(source: str, offset: int) -> str:
     For ``Foo.BAR`` at the position of ``BAR`` this returns ``"Foo"``.
     For bare ``BAR`` returns the empty string.
     """
-    from rope.refactor.occurrences import worder
-
     word_finder = worder.Worder(source, True)
     try:
         primary = word_finder.get_primary_at(offset)

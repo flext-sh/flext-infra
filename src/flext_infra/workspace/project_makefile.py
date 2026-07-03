@@ -64,7 +64,11 @@ class FlextInfraProjectMakefileUpdater:
                     )
                 else:
                     bootstrap = bootstrap_result.value
-                    new_content = self._build_makefile(meta, bootstrap)
+                    new_content = self._build_makefile(
+                        meta,
+                        bootstrap,
+                        tests_dir=self._tests_dir(project_root, meta),
+                    )
                     makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
 
                     if makefile_path.exists():
@@ -86,7 +90,27 @@ class FlextInfraProjectMakefileUpdater:
         return result
 
     @staticmethod
-    def _build_makefile(meta: m.ProjectMetadata, bootstrap: str) -> str:
+    def _tests_dir(project_root: Path, meta: m.ProjectMetadata) -> str:
+        """Return the project test directory used by generated Makefiles."""
+        package_tests = (
+            project_root
+            / c.Infra.DEFAULT_SRC_DIR
+            / meta.package_name
+            / c.Infra.DIR_TESTS
+        )
+        if meta.package_name and package_tests.is_dir():
+            return (
+                Path(c.Infra.DEFAULT_SRC_DIR) / meta.package_name / c.Infra.DIR_TESTS
+            ).as_posix()
+        return c.Infra.DIR_TESTS
+
+    @staticmethod
+    def _build_makefile(
+        meta: m.ProjectMetadata,
+        bootstrap: str,
+        *,
+        tests_dir: str,
+    ) -> str:
         """Build the fully-generated Makefile content."""
         title = f"# {meta.name}"
         if meta.description:
@@ -104,7 +128,7 @@ class FlextInfraProjectMakefileUpdater:
             f"PROJECT_NAME := {meta.name}",
             f"PYTHON_VERSION ?= {meta.requires_python}",
             f"SRC_DIR ?= {c.Infra.DEFAULT_SRC_DIR}",
-            f"TESTS_DIR ?= {c.Infra.DIR_TESTS}",
+            f"TESTS_DIR ?= {tests_dir}",
             bootstrap,
             "",
             "# Project-specific targets (optional, never overwritten by sync)",

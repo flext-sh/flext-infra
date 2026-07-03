@@ -184,9 +184,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         if transformer_cls is FlextInfraRefactorTypingUnifier:
             targets_value = params.get("targets", [])
             targets: t.StrSequence = (
-                targets_value
-                if isinstance(targets_value, (list, tuple))
-                else []
+                targets_value if isinstance(targets_value, (list, tuple)) else []
             )
             canonical_map: dict[frozenset[str], str] = {}
             if "dict" in targets:

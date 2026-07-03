@@ -26,14 +26,12 @@ class FlextInfraCompatibilityAliasDetector:
         Covers:
         - module-level ``CapName = CapName`` compatibility assignments;
         - ``from <pkg> import <LongFacadeClass>`` where a canonical short alias
-          exists in ``c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES``;
-        - part-file aliases such as ``FlextFooPartNN`` / ``FlextFooPartFinal``
-          and ad-hoc short aliases for Flext classes (e.g.
-          ``FlextRuntimeMetadataValidation as FlextRuntime``).
+          exists in ``c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES`` and the long
+          name is imported without that canonical short alias.
         """
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
-            return []
+            return ()
         file_path = ctx.file_path
         source = resource.read()
         lines = source.splitlines()
@@ -61,7 +59,6 @@ class FlextInfraCompatibilityAliasDetector:
         local_alias_targets = _local_alias_targets(source)
         imported_long_names: set[str] = set()
         canonical_aliases_by_module: dict[str, set[str]] = {}
-        part_alias_violations: list[m.Infra.CompatibilityAliasViolation] = []
         current_module = u.Infra.package_name(file_path)
         for from_import in _all_from_imports(ctx.rope_project, resource):
             module_name = _resolve_imported_module(
@@ -73,21 +70,6 @@ class FlextInfraCompatibilityAliasDetector:
                 if bound_name in alias_renames.values():
                     canonical_aliases_by_module.setdefault(module_name, set()).add(
                         bound_name
-                    )
-                if alias is not None and _is_ad_hoc_flext_alias(name, alias) and not _is_part_mro_alias(name, alias):
-                    part_alias_violations.append(
-                        m.Infra.CompatibilityAliasViolation(
-                            file=str(file_path),
-                            line=_find_import_line(
-                                lines=lines,
-                                module_name=module_name,
-                                imported_name=name,
-                                alias_name=alias,
-                            ),
-                            alias_name=alias,
-                            target_name=name,
-                            module_name=module_name,
-                        )
                     )
         for from_import in _all_from_imports(ctx.rope_project, resource):
             module_name = _resolve_imported_module(
@@ -128,7 +110,7 @@ class FlextInfraCompatibilityAliasDetector:
                         module_name=module_name,
                     )
                 )
-        return violations + part_alias_violations
+        return violations
 
 
 def _all_from_imports(
@@ -182,35 +164,6 @@ def _find_import_line(
         if imported_name in stripped and (alias_name is None or alias_name in stripped):
             return index
     return u.Infra.find_import_line(lines=lines, module_name=module_name) or 1
-
-
-def _is_part_mro_alias(imported_name: str, alias_name: str) -> bool:
-    """Return True when ``alias_name`` is an MRO composition alias of ``imported_name``.
-
-    Matches patterns such as ``FlextFooPartNN`` or ``FlextFooPartFinal`` used to
-    assemble facades across part modules. These aliases are intentional and
-    must NOT be reported as compatibility-alias violations.
-    """
-    if alias_name == imported_name:
-        return False
-    if not alias_name[:1].isupper() or alias_name.isupper():
-        return False
-    if imported_name[:1].isupper() and alias_name.startswith(imported_name):
-        suffix = alias_name[len(imported_name) :]
-        return suffix.startswith("Part") or suffix == "Final"
-    return False
-
-
-def _is_ad_hoc_flext_alias(imported_name: str, alias_name: str) -> bool:
-    """Return True for a non-MRO, non-canonical Flext alias that should be fixed.
-
-    Example: ``FlextRuntimeMetadataValidation as FlextRuntime``.
-    """
-    if alias_name == imported_name:
-        return False
-    if not alias_name[:1].isupper() or alias_name.isupper():
-        return False
-    return bool(imported_name.startswith("Flext") and alias_name.startswith("Flext"))
 
 
 def _local_alias_targets(source: str) -> t.StrMapping:

@@ -8,7 +8,8 @@ from collections.abc import (
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, u
+from flext_cli.models import FlextCliModels as m
+from flext_cli.utilities import u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
 from flext_infra.typings import t
