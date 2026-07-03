@@ -5,6 +5,7 @@ from pathlib import Path
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
+from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
@@ -426,3 +427,15 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         assert isinstance(target_text, str) and isinstance(source_text, str)
         assert "TEST_VALUE = 1.5" in target_text
         assert "TEST_VALUE = 1.5" not in source_text
+
+    def test_classvar_constants_module_for_tests_package(self, tmp_path: Path) -> None:
+        """ENFORCE-079 maps project tests modules to sibling _constants."""
+        file_path = tmp_path / "tests" / "unit" / "test_execution_result.py"
+
+        constants_module = FlextInfraRopeFixerAdapter._constants_module_for_file(
+            file_path,
+            module_name="tests.unit.test_execution_result",
+            project_root=tmp_path,
+        )
+
+        assert constants_module == "tests.unit._constants"

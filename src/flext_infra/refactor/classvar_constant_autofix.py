@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from rope.base.exceptions import ModuleNotFoundError as RopeModuleNotFoundError
 from rope.base.pyobjects import PyClass
+from rope.base.resources import File
 from rope.refactor import occurrences
 from rope.refactor.occurrences import worder
 
@@ -84,7 +85,6 @@ class FlextInfraRefactorClassvarConstantAutofix:
         )
         target_resource = _target_resource_for_module(
             project,
-            source_resource,
             constants_module,
         )
         return ClassvarConstantAutofixPlan(
@@ -250,17 +250,18 @@ def _class_start_lineno(source: str, class_name: str) -> int:
 
 def _target_resource_for_module(
     project: Project,
-    source_resource: t.Infra.RopeResource,
     constants_module: str,
 ) -> t.Infra.RopeResource:
     """Return the existing or creatable sibling constants module resource."""
     try:
         target_mod = project.get_module(constants_module)
-        return target_mod.get_resource()
+        target_resource = target_mod.get_resource()
+        if isinstance(target_resource, File):
+            return target_resource
     except RopeModuleNotFoundError:
-        constants_filename = f"{constants_module.rsplit('.', maxsplit=1)[-1]}.py"
-        source_parent = Path(source_resource.path).parent
-        return project.get_file(str(source_parent / constants_filename))
+        pass
+    constants_file = Path(*constants_module.split(".")).with_suffix(".py")
+    return project.get_file(str(constants_file))
 
 
 def _new_constants_module_source(constants_module: str) -> str:

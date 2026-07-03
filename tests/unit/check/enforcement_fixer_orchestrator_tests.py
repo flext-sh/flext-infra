@@ -219,6 +219,7 @@ class TestsEnforcementFixerOrchestrator:
             cwd=str(workspace_root),
             capture_output=True,
             text=True,
+            check=False,
         )
         post_status = git_status()
         assert pre_status == post_status, (

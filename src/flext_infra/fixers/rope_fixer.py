@@ -181,9 +181,16 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         project_root: Path,
     ) -> str:
         """Return the canonical project constants module for a source file."""
-        package_name = module_name.split(".", maxsplit=1)[0]
+        module_parts = tuple(module_name.split("."))
+        package_name = module_parts[0] if module_parts else ""
         if not package_name:
             return ""
+        if package_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
+            if "_constants" in module_parts:
+                return ""
+            if file_path.stem in {"", "__init__", "__main__", "__version__"}:
+                return ""
+            return ".".join((*module_parts[:-1], "_constants"))
         package_root = project_root / c.Infra.DEFAULT_SRC_DIR / package_name
         try:
             relative_parts = file_path.relative_to(package_root).parts
@@ -914,7 +921,10 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         fr.FailedFix(
                             rule_id="ENFORCE-079",
                             file_path=file_path_str,
-                            error="could not resolve canonical constants module",
+                            error=(
+                                "could not resolve canonical constants module "
+                                f"for {module_name}"
+                            ),
                         ),
                     )
                     continue
