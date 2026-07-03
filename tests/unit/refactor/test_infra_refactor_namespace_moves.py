@@ -171,6 +171,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             (
                 "from __future__ import annotations\n\n"
                 "from flext_core import c, t, r\n\n"
+                "VALUE = c.MAX_SIZE\n"
                 "def fn(x: t.StrSequence) -> r.Result[str]:\n"
                 "    return r.ok(x[0])\n"
             ),
@@ -183,14 +184,14 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     line=4,
                     alias_name="c",
                     target_name="c",
-                    module_name="demo_pkg",
+                    module_name="flext_infra",
                 ),
                 m.Infra.CompatibilityAliasViolation(
                     file=str(source_file),
                     line=4,
                     alias_name="t",
                     target_name="t",
-                    module_name="demo_pkg",
+                    module_name="flext_infra",
                 ),
             ],
             parse_failures=[],
@@ -198,7 +199,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
 
         source_text = source_file.read_text(encoding="utf-8")
         assert "from flext_core import c, t, r" not in source_text
-        assert "from demo_pkg.constants import c" in source_text
-        assert "from demo_pkg.typings import t" in source_text
+        assert "from flext_infra.constants import c" in source_text
+        assert "from flext_infra.typings import t" in source_text
         assert "from flext_core import r" in source_text
         assert source_file.with_suffix(".py.bak").exists()

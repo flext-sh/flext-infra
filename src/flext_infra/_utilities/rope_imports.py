@@ -25,6 +25,9 @@ from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.typings import t
 
 
@@ -697,6 +700,40 @@ class FlextInfraUtilitiesRopeImports:
                 sorted(names),
                 apply=True,
             )
+
+    @staticmethod
+    def rewrite_foreign_canonical_alias_violations(
+        rope_project: t.Infra.RopeProject,
+        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+    ) -> None:
+        """Rewrite foreign canonical alias imports to local project facades.
+
+        Uses the ENFORCE-080 project alias migrator to move owned aliases from
+        ``flext_core`` to the project's local facade modules.
+        """
+        _ = parse_failures
+        file_paths: set[Path] = {Path(v.file) for v in violations}
+        for file_path in file_paths:
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project,
+                file_path,
+            )
+            if resource is None:
+                continue
+            transformer = FlextInfraRefactorProjectAliasMigrator(
+                file_path=file_path,
+            )
+            updated, changes = transformer.transform(rope_project, resource)
+            if changes:
+                cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
+                    rope_project,
+                    file_paths=(file_path,),
+                )
+                if cleanup_result.failure:
+                    msg = cleanup_result.error or "rope import cleanup failed"
+                    raise RuntimeError(msg)
+            _ = updated
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeImports"]
