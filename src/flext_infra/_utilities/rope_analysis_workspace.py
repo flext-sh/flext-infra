@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
@@ -26,17 +27,21 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 return workspace_root
         return None
 
-    _ROOT_PACKAGE_CACHE: ClassVar[dict[Path, str | None]] = {}
+    _ROOT_PACKAGE_CACHE: ClassVar[dict[Path, str | None] | None] = None
 
     @classmethod
     def _project_root_package_name(cls, project_root: Path) -> str | None:
         """Return the single source package under <project_root>/src, if any."""
-        cached = cls._ROOT_PACKAGE_CACHE.get(project_root)
+        cache = cls._ROOT_PACKAGE_CACHE
+        if cache is None:
+            cache = {}
+            cls._ROOT_PACKAGE_CACHE = cache
+        cached = cache.get(project_root)
         if cached is not None:
             return cached
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
-            cls._ROOT_PACKAGE_CACHE[project_root] = None
+            cache[project_root] = None
             return None
         candidates = [
             child.name
@@ -44,7 +49,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             if child.is_dir() and (child / c.Infra.INIT_PY).is_file()
         ]
         result: str | None = candidates[0] if len(candidates) == 1 else None
-        cls._ROOT_PACKAGE_CACHE[project_root] = result
+        cache[project_root] = result
         return result
 
     @classmethod
