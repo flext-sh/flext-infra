@@ -46,6 +46,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
                 Defaults to ``c.ENFORCEMENT_PROJECT_ALIAS_OWNERS``.
             current_project: Explicit project package; overrides inference.
             on_change: Optional callback invoked for each recorded change.
+
         """
         super().__init__(on_change=on_change)
         owners = (

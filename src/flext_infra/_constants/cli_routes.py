@@ -69,6 +69,7 @@ from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
 )
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
@@ -367,6 +368,11 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "lazy-map-freshness",
                 "Guard 2/3: lazy-map freshness validator",
                 FlextInfraValidateLazyMapFreshness,
+            ),
+            (
+                "namespace",
+                "Guard: static namespace rules (NS-000..003) via rope",
+                FlextInfraNamespaceValidator,
             ),
             (
                 "tier-whitelist",

@@ -59,6 +59,24 @@ class FlextInfraEnforcementFixerOrchestrator(
         m.Field(description="Re-run the corresponding check after fixing"),
     ] = True
 
+    @classmethod
+    @override
+    def execute_command(
+        cls,
+        params: m.Infra.FixEnforcementCommand,
+    ) -> p.Result[str]:
+        """Execute enforcement fixes from the canonical CLI payload."""
+        instance = cls(
+            workspace_root=params.workspace_path,
+            selected_projects=params.project_names,
+            apply=params.apply,
+            rules=params.rules,
+            safe_only=params.safe_only,
+            check_after=params.check_after,
+            fail_fast=params.fail_fast,
+        )
+        return instance.execute()
+
     @override
     def execute(self) -> p.Result[str]:
         """Run the enforcement fix pipeline and return a human-readable report."""

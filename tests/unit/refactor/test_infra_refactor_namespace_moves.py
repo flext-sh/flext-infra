@@ -159,3 +159,46 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         assert "LegacyThing = NewThing" not in source_text
         assert "REGISTRY = [NewThing]" in source_text
         assert source_file.with_suffix(".py.bak").exists()
+
+    def test_rewrite_compatibility_alias_violations_migrates_foreign_canonical_alias(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        _project_root, package_root = _build_project(tmp_path)
+        source_file = package_root / "service.py"
+        _write_file(
+            source_file,
+            (
+                "from __future__ import annotations\n\n"
+                "from flext_core import c, t, r\n\n"
+                "def fn(x: t.StrSequence) -> r.Result[str]:\n"
+                "    return r.ok(x[0])\n"
+            ),
+        )
+
+        u.Infra.rewrite_compatibility_alias_violations(
+            violations=[
+                m.Infra.CompatibilityAliasViolation(
+                    file=str(source_file),
+                    line=4,
+                    alias_name="c",
+                    target_name="c",
+                    module_name="demo_pkg",
+                ),
+                m.Infra.CompatibilityAliasViolation(
+                    file=str(source_file),
+                    line=4,
+                    alias_name="t",
+                    target_name="t",
+                    module_name="demo_pkg",
+                ),
+            ],
+            parse_failures=[],
+        )
+
+        source_text = source_file.read_text(encoding="utf-8")
+        assert "from flext_core import c, t, r" not in source_text
+        assert "from demo_pkg.constants import c" in source_text
+        assert "from demo_pkg.typings import t" in source_text
+        assert "from flext_core import r" in source_text
+        assert source_file.with_suffix(".py.bak").exists()

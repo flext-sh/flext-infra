@@ -12,9 +12,6 @@ from rope.refactor.rename import Rename
 from flext_cli import u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
@@ -25,6 +22,9 @@ from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.typings import t
 
 
@@ -490,7 +490,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Collect required import lines using rope-parsed module bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         if source_pymodule is None:
-            return []
+            return ()
         source_lines = source.splitlines()
         import_map: dict[str, str] = {}
         for node in getattr(source_pymodule.get_ast(), "body", []) or []:
@@ -653,7 +653,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             kept_source,
         )
         if source_pymodule is None:
-            return []
+            return ()
         referenced_aliases = sorted({
             getattr(node, "id", "")
             for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
@@ -664,16 +664,16 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         })
         referenced_aliases = [name for name in referenced_aliases if name]
         if not referenced_aliases:
-            return []
+            return ()
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         try:
             module_name = ".".join(
                 target_file.relative_to(src_root).with_suffix("").parts
             )
         except ValueError:
-            return []
+            return ()
         import_line = f"from {module_name} import {', '.join(referenced_aliases)}"
-        return [import_line] if import_line not in kept_source.splitlines() else []
+        return [import_line] if import_line not in kept_source.splitlines() else ()
 
     @staticmethod
     def _collect_missing_runtime_alias_imports(
@@ -698,7 +698,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 if node_id in runtime_aliases:
                     moved_aliases.add(node_id)
         if not moved_aliases:
-            return []
+            return ()
         imported_aliases: t.Infra.StrSet = set()
         for match in c.Infra.FROM_IMPORT_RE.finditer(target_source):
             imported_aliases.update(
@@ -716,7 +716,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             )
         missing_aliases = sorted(moved_aliases - imported_aliases)
         if not missing_aliases:
-            return []
+            return ()
         return [
             f"from {c.Infra.PKG_CORE_UNDERSCORE} import {', '.join(missing_aliases)}"
         ]
@@ -731,7 +731,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Collect orphaned import lines via rope-parsed bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         if source_pymodule is None:
-            return []
+            return ()
         source_lines = source.splitlines()
         kept_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(kept_source)
         kept_names: set[str] = set()

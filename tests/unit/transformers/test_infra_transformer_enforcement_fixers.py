@@ -190,3 +190,98 @@ class TestsFlextInfraTransformersPrintToLogger:
         assert "from flext_core import c, u" in code
         assert 'u.fetch_logger(__name__).info("hello")' in code
         assert changes
+
+
+class TestsFlextInfraTransformersTypingDictImport:
+    """Behavior contract for FlextInfraRefactorTypingDictImport."""
+
+    def test_typing_dict_import_removed_and_rewritten(self, tmp_path: Path) -> None:
+        source = (
+            "from typing import Dict, List\n\n"
+            "def foo(x: Dict[str, int]) -> None:\n    pass\n"
+        )
+        transformer = FlextInfraRefactorTypingDictImport(
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "from typing import Dict" not in code
+        assert "from typing import List" in code
+        assert "t.MappingKV[str, int]" in code
+        assert "from flext_core import t" in code
+        assert changes
+
+    def test_typing_dict_import_only_removed_when_empty(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        source = "from typing import Dict\n\ndef foo(x: Dict[str, int]) -> None:\n    pass\n"
+        transformer = FlextInfraRefactorTypingDictImport(
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "from typing import" not in code
+        assert "t.MappingKV[str, int]" in code
+        assert changes
+
+    def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
+        source = (
+            "from typing import Dict\n"
+            "from flext_core import t\n\n"
+            "def foo(x: Dict[str, int]) -> None:\n    pass\n"
+        )
+        transformer = FlextInfraRefactorTypingDictImport(
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code.count("from flext_core import t") == 1
+        assert "t.MappingKV[str, int]" in code
+        assert changes
+
+
+class TestsFlextInfraTransformersTypingDictAttr:
+    """Behavior contract for FlextInfraRefactorTypingDictAttr."""
+
+    def test_typing_dict_attr_rewritten(self, tmp_path: Path) -> None:
+        source = (
+            "import typing\n\n"
+            "def foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
+        )
+        transformer = FlextInfraRefactorTypingDictAttr(
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert "typing.Dict" not in code
+        assert "t.MappingKV[str, int]" in code
+        assert "from flext_core import t" in code
+        assert changes
+
+    def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
+        source = (
+            "import typing\n"
+            "from flext_core import t\n\n"
+            "def foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
+        )
+        transformer = FlextInfraRefactorTypingDictAttr(
+            file_path=tmp_path / "module.py",
+        )
+        code, changes = transformer.apply_to_source(source)
+        assert code.count("from flext_core import t") == 1
+        assert "t.MappingKV[str, int]" in code
+        assert changes
+
+
+class TestsFlextInfraTransformersHardcodedVersion:
+    """Behavior contract for FlextInfraRefactorHardcodedVersion."""
+
+    def test_hardcoded_version_reported(self) -> None:
+        source = '__version__ = "1.2.3"\n'
+        code, changes = _transform(source, FlextInfraRefactorHardcodedVersion())
+        assert code == source
+        assert changes
+        assert "importlib.metadata" in changes[0]
+
+    def test_no_version_unchanged(self) -> None:
+        source = "x = 1\n"
+        code, changes = _transform(source, FlextInfraRefactorHardcodedVersion())
+        assert code == source
+        assert changes == []

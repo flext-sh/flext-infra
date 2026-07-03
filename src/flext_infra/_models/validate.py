@@ -195,5 +195,19 @@ class FlextInfraModelsCore:
             ),
         ] = m.Field(default_factory=list)
 
+    class NamespaceValidateCommand(mm.ReadMixin, m.ContractModel):
+        """CLI payload for ``flext-infra validate namespace``.
+
+        Read-only namespace rule scan (NS-000..003) across selected projects.
+        """
+
+        scan_tests: Annotated[
+            bool,
+            m.Field(
+                alias="scan-tests",
+                description="Include test packages in the namespace scan",
+            ),
+        ] = False
+
 
 __all__: list[str] = ["FlextInfraModelsCore"]

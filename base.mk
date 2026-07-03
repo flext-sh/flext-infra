@@ -353,6 +353,16 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 	$(PROJECT_INFRA_CHECK) run --workspace "$(WORKSPACE_ROOT)" --gates "$$gates" --reports-dir "$(CURDIR)/.reports/check" --projects "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",); \
 	exit $$?
 
+fix-enforcement: ## Auto-fix enforcement-catalog violations (APPLY=1 to apply, PROJECTS=..., RULES=...)
+	$(Q)apply_flag=""; \
+	if [ "$(APPLY)" = "1" ]; then apply_flag="--apply"; fi; \
+	projects_arg=""; \
+	if [ -n "$(PROJECTS)" ]; then projects_arg="--projects $(PROJECTS)"; fi; \
+	rules_arg=""; \
+	if [ -n "$(RULES)" ]; then rules_arg="--rules $(RULES)"; fi; \
+	$(PROJECT_INFRA_CHECK) fix-enforcement --workspace "$(WORKSPACE_ROOT)" $$apply_flag $$projects_arg $$rules_arg; \
+	exit $$?
+
 scan: ## Run all security checks
 	$(Q)project_key="$(PROJECT_NAME)"; \
 	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \

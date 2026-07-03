@@ -61,6 +61,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             if (
                 name in c.Infra.ALIAS_NAMES
                 and module_path != current_pkg
+                and module_path != c.Infra.PKG_CORE_UNDERSCORE
                 and not module_path.startswith(current_prefix)
             ):
                 eager_imports[name] = target

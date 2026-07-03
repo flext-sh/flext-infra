@@ -14,6 +14,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from flext_cli import cli
 from flext_core import r
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
@@ -224,6 +225,46 @@ class FlextInfraNamespaceValidator(FlextInfraNamespaceRules):
     def _is_test_file(rel_path: Path) -> bool:
         """Return True when the file lives under the project's ``tests/`` tree."""
         return any(part == c.Infra.DIR_TESTS for part in rel_path.parts)
+
+    @classmethod
+    def execute_command(
+        cls,
+        params: m.Infra.NamespaceValidateCommand,
+    ) -> p.Result[bool]:
+        """Run namespace validation across selected projects from CLI payload."""
+        validator = cls()
+        workspace_root = params.workspace_path
+        project_names = params.project_names
+        if project_names:
+            project_results: list[p.Result[m.Infra.ValidationReport]] = []
+            for name in project_names:
+                project_root = workspace_root / name
+                if not project_root.is_dir():
+                    return r[bool].fail(f"project not found: {name}")
+                project_results.append(
+                    validator.validate(
+                        project_root,
+                        scan_tests=params.scan_tests,
+                    )
+                )
+            violations = [
+                line
+                for result in project_results
+                for line in (result.value.violations if result.success else [result.error or ""])
+            ]
+            passed = not violations and all(r.success for r in project_results)
+        else:
+            result = validator.validate(workspace_root, scan_tests=params.scan_tests)
+            if result.failure:
+                return r[bool].fail(result.error or "namespace validation failed")
+            passed = result.value.passed
+            violations = list(result.value.violations)
+        if passed:
+            cli.display_text("namespace validation passed")
+            return r[bool].ok(True)
+        summary = f"{len(violations)} namespace violation(s) found"
+        cli.display_text("\n".join([summary, *violations]))
+        return r[bool].fail(summary)
 
 
 __all__: list[str] = ["FlextInfraNamespaceValidator"]

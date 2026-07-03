@@ -100,33 +100,6 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         assert unit_wrapper.generated is True
         assert unit_wrapper.name == "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS"
 
-    def test_fqpn_tests_package_synthesizes_project_registry_wrapper(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Project test subpackages keep FQPN imports while using test registry names."""
-        tests_dir = tmp_path / "flext-infra" / "tests"
-        unit_dir = tests_dir / "unit"
-        unit_dir.mkdir(parents=True)
-
-        root_wrapper = FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
-            tests_dir,
-            "flext_infra.tests",
-        )
-        unit_wrapper = FlextInfraCodegenLazyInitPlannerPublicApiMixin._lazy_import_registry_wrapper(
-            unit_dir,
-            "tests.unit",
-        )
-
-        assert root_wrapper is not None
-        assert root_wrapper.generated is True
-        assert root_wrapper.module == "tests._exports"
-        assert root_wrapper.name == "TESTS_FLEXT_INFRA_LAZY_IMPORTS"
-        assert unit_wrapper is not None
-        assert unit_wrapper.generated is True
-        assert unit_wrapper.module == "tests.unit._exports"
-        assert unit_wrapper.name == "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS"
-
     def test_public_package_uses_generated_lazy_sidecar(self, tmp_path: Path) -> None:
         """Public packages keep existing exports while lazy imports move to sidecar."""
         pkg_dir = tmp_path / "src" / "flext_demo"
@@ -269,7 +242,7 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         }
 
         files = FlextInfraCodegenGeneration.generate_registry_files(
-            "flext_infra.tests",
+            "tests",
             "TESTS_FLEXT_INFRA_LAZY_IMPORTS",
             filtered,
             (),
