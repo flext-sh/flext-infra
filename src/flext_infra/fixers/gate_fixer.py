@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -34,8 +35,6 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     def _registry(self) -> object:
         """Lazy import of the gate registry to avoid circular imports."""
-        import importlib
-
         mod = importlib.import_module("flext_infra.check.workspace_check_gates")
         return mod.FlextInfraGateRegistry.default()
 

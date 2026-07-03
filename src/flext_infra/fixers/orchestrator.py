@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib
 from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, ClassVar, override
@@ -204,15 +205,13 @@ class FlextInfraEnforcementFixerOrchestrator(
         if source.kind != "flext_tests_validator":
             return []
         try:
-            import importlib
-
             tv_mod = importlib.import_module("flext_tests.validator")
-            FlextTestsValidator = getattr(tv_mod, "FlextTestsValidator", None)
-            if FlextTestsValidator is None:
+            validator_cls = getattr(tv_mod, "FlextTestsValidator", None)
+            if validator_cls is None:
                 return []
         except ImportError:
             return []
-        method = getattr(FlextTestsValidator, source.method, None)
+        method = getattr(validator_cls, source.method, None)
         if method is None or not callable(method):
             return []
         try:
