@@ -22,7 +22,7 @@ class FlextInfraEnsureCanonicalTImportMixin:
 
     # Match a real use of the ``t`` alias: ``t.`` as a standalone identifier.
     _T_ALIAS_USE_RE: t.Infra.RegexPattern = c.Infra.compile(r"\bt\.")
-    _DEFAULT_ALIAS_MODULE: ClassVar[str] = "flext_core"
+    _DEFAULT_ALIAS_MODULE: ClassVar[str] = c.Infra.PKG_CORE_UNDERSCORE
 
     def _ensure_t_import(
         self,
@@ -32,9 +32,8 @@ class FlextInfraEnsureCanonicalTImportMixin:
         """Inject ``from <module_name> import t`` if needed.
 
         Returns the (possibly unchanged) source and a boolean indicating whether
-        an import was added. When ``module_name`` cannot be inferred (e.g.
-        synthetic test paths), falls back to ``flext_core`` to preserve the
-        historical transformer contract.
+        an import was added. When ``module_name`` is absent, the canonical
+        FLEXT core module is used.
         """
         if not self._t_alias_used(source) or self._has_t_import(source):
             return source, False
