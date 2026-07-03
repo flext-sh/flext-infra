@@ -110,6 +110,45 @@ class FlextInfraCompatibilityAliasDetector:
                         module_name=module_name,
                     )
                 )
+
+        # ENFORCE-080: canonical alias imported from flext_core when the
+        # current project re-exports the same slot locally.
+        project_alias_owners = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
+        current_package = current_module.split(".")[0]
+        local_aliases = project_alias_owners.get(current_package)
+        if local_aliases and not u.Infra.looks_like_facade_file(
+            file_path=file_path,
+            source=source,
+        ):
+            for from_import in _all_from_imports(ctx.rope_project, resource):
+                module_name = _resolve_imported_module(
+                    current_module=current_module,
+                    from_import=from_import,
+                )
+                if module_name != "flext_core":
+                    continue
+                for name, alias in from_import.names_and_aliases:
+                    bound_name = alias if alias is not None else name
+                    if bound_name not in local_aliases:
+                        continue
+                    if local_alias_targets.get(bound_name) == f"Flext{bound_name.upper()}Constants":
+                        # intentionally seeding a local canonical alias
+                        continue
+                    line_number = _find_import_line(
+                        lines=lines,
+                        module_name=module_name,
+                        imported_name=name,
+                        alias_name=alias,
+                    )
+                    violations.append(
+                        m.Infra.CompatibilityAliasViolation(
+                            file=str(file_path),
+                            line=line_number,
+                            alias_name=bound_name,
+                            target_name=bound_name,
+                            module_name=current_package,
+                        )
+                    )
         return violations
 
 
