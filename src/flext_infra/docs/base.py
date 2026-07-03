@@ -13,7 +13,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, e, m, p, r, t
+from flext_infra import c, e, m, p, r, t
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
 
 class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC):

@@ -46,7 +46,7 @@ def _write_models_project(
         "m = FlextExampleModels\n",
         encoding="utf-8",
     )
-    models_dir = package_dir / "models"
+    models_dir = package_dir / "_models"
     models_dir.mkdir(parents=True)
     (models_dir / "__init__.py").write_text("", encoding="utf-8")
     (models_dir / "domain.py").write_text(

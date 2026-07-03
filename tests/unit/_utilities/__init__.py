@@ -12,6 +12,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".test_formatting": ("TestsFlextInfraUtilitiesformatting",),
         ".test_protected_edit": ("TestsFlextInfraUtilitiesProtectedEdit",),
+        ".test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
         ".test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".test_scanning": ("TestsFlextInfraUtilitiesscanning",),

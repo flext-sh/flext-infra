@@ -14,11 +14,11 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ),
         "._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
         "._utilities.test_protected_edit": ("TestsFlextInfraUtilitiesProtectedEdit",),
+        "._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
         "._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         "._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         "._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
         ".basemk": ("basemk",),
-        ".check": ("check",),
         ".refactor.test_infra_refactor_service": (
             "TestsFlextInfraRefactorInfraRefactorService",
         ),

@@ -35,10 +35,13 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
 
         pipeline_result = cli.pipeline(
             stages,
-            workspace_root=self.workspace_root,
-            settings={
-                c.Infra.PIPELINE_KEY_DRY_RUN: self.dry_run or not self.apply_changes,
-            },
+            context=cli.stage_context(
+                self.workspace_root,
+                settings={
+                    c.Infra.PIPELINE_KEY_DRY_RUN: self.dry_run
+                    or not self.apply_changes,
+                },
+            ),
             fail_fast=True,
             logger=_log,
         )

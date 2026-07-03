@@ -26,6 +26,9 @@ if TYPE_CHECKING:
     from flext_infra.detectors.import_alias_detector import (
         FlextInfraImportAliasDetector as FlextInfraImportAliasDetector,
     )
+    from flext_infra.detectors.inline_import_detector import (
+        FlextInfraInlineImportDetector as FlextInfraInlineImportDetector,
+    )
     from flext_infra.detectors.internal_import_detector import (
         FlextInfraInternalImportDetector as FlextInfraInternalImportDetector,
     )
@@ -44,6 +47,9 @@ if TYPE_CHECKING:
     from flext_infra.detectors.namespace_source_detector import (
         FlextInfraNamespaceSourceDetector as FlextInfraNamespaceSourceDetector,
     )
+    from flext_infra.detectors.private_import_bypass_detector import (
+        FlextInfraPrivateImportBypassDetector as FlextInfraPrivateImportBypassDetector,
+    )
     from flext_infra.detectors.runtime_alias_detector import (
         FlextInfraRuntimeAliasDetector as FlextInfraRuntimeAliasDetector,
     )
@@ -58,12 +64,14 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".facade_scanner": ("FlextInfraScanner",),
         ".future_annotations_detector": ("FlextInfraFutureAnnotationsDetector",),
         ".import_alias_detector": ("FlextInfraImportAliasDetector",),
+        ".inline_import_detector": ("FlextInfraInlineImportDetector",),
         ".internal_import_detector": ("FlextInfraInternalImportDetector",),
         ".loose_object_detector": ("FlextInfraLooseObjectDetector",),
         ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
         ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
         ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
         ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
+        ".private_import_bypass_detector": ("FlextInfraPrivateImportBypassDetector",),
         ".runtime_alias_detector": ("FlextInfraRuntimeAliasDetector",),
         ".silent_failure_detector": ("FlextInfraSilentFailureDetector",),
     },

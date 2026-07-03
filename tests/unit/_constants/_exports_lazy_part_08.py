@@ -8,6 +8,9 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
     {
         ".fixtures": ("tool_config_document",),
+        ".test_infra_workspace_migrator_pyproject": (
+            "test_infra_workspace_migrator_pyproject",
+        ),
         ".test_mro_service_base_alias": ("test_mro_service_base_alias",),
         ".test_version_diag": ("test_version_diag",),
         ".test_version_diag2": ("test_version_diag2",),

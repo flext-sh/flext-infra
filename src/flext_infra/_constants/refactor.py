@@ -357,7 +357,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "c": "_constants",
         "t": "_typings",
         "p": "_protocols",
-        "m": "models",
+        "m": "_models",
         "u": "_utilities",
     })
     "Facade family letter → subdirectory name mapping."
@@ -490,12 +490,46 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         r"^_?[A-Z][A-Z0-9_]+$",
     )
     "Regex: namespace constant candidate names."
+    CLASSVAR_EXEMPT_NAMES: Final[frozenset[str]] = frozenset({
+        "model_config",
+        "logger",
+    })
+    "ClassVar attribute names that are framework idioms and stay in place."
+    CLASSVAR_ALLOWED_CALLS: Final[frozenset[str]] = frozenset({
+        "Path",
+        "PurePath",
+        "PosixPath",
+        "WindowsPath",
+        "frozenset",
+        "tuple",
+        "dict",
+        "MappingProxyType",
+    })
+    "Canonical factory calls allowed as ClassVar default values."
     NAMESPACE_MIN_ALIAS_LENGTH: Final[int] = 2
     FACADE_ALIAS_RE: Final[t.RegexPattern] = re.compile(
         r"^(\w)\b[^=]*=\s*(\w+)",
         re.MULTILINE,
     )
     "Matches ``m = FlextFooModels`` alias assignments in facade files."
+
+    RUNTIME_ALIAS_SRC_DEPTH_MIN: Final[int] = 2
+    "Minimum relative path depth for a root ``src/`` facade."
+    RUNTIME_ALIAS_SRC_DEPTH_EXACT: Final[int] = 3
+    "Exact relative path depth for a root ``src/<pkg>/<facade>.py`` file."
+    RUNTIME_ALIAS_NON_ROOT_DIRS: Final[frozenset[str]] = frozenset({
+        "tests",
+        "examples",
+        "scripts",
+    })
+    "Top-level directories that may contain facade-style alias files."
+    RUNTIME_ALIAS_NON_ROOT_DEPTH_EXACT: Final[int] = 2
+    "Exact relative path depth for a top-level ``tests|examples|scripts/<file>.py``."
+    RUNTIME_ALIAS_PARTS_SKIP: Final[frozenset[str]] = frozenset({
+        "_parts",
+        "_root_typing_parts",
+    })
+    "Path fragments that disqualify a file from root-facade alias detection."
 
     # --- Detector regex constants ---
     ASSIGN_RE: Final[t.RegexPattern] = re.compile(

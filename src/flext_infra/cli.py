@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import cli as cli_facade, p as cli_p
@@ -15,23 +14,6 @@ from flext_infra._constants.cli_routes import (
 )
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
-_CLI_GROUP_ITEMS: tuple[tuple[str, str], ...] = (
-    (c.Infra.CLI_GROUP_BASEMK, "Base.mk template generation"),
-    (c.Infra.CLI_GROUP_CHECK, "Lint gates and pyrefly settings management"),
-    (c.Infra.CLI_GROUP_CODEGEN, "Code generation and workspace standardization"),
-    (c.Infra.CLI_GROUP_VALIDATE, "Infrastructure validators and diagnostics"),
-    (c.Infra.CLI_GROUP_DEPS, "Dependency detection, sync, and modernization"),
-    (c.Infra.CLI_GROUP_DOCS, "Documentation audit, fix, build, generate, validate"),
-    (c.Infra.CLI_GROUP_GITHUB, "GitHub workflows, linting, and PR automation"),
-    (c.Infra.CLI_GROUP_MAINTENANCE, "Python version enforcement"),
-    (c.Infra.CLI_GROUP_REFACTOR, "Declarative refactoring and modernization"),
-    (c.Infra.CLI_GROUP_RELEASE, "Release orchestration"),
-    (
-        c.Infra.CLI_GROUP_WORKSPACE,
-        "Workspace detection, sync, orchestration, migration",
-    ),
-)
-
 
 class FlextInfraCli(type(cli_facade)):
     """Single CLI entry surface for every flext-infra command group."""
@@ -40,7 +22,6 @@ class FlextInfraCli(type(cli_facade)):
     _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
     _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_BOOL_FLAGS
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
-    GROUPS: ClassVar[t.StrMapping] = MappingProxyType(dict(_CLI_GROUP_ITEMS))
     _GROUP_COMMANDS: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         **_ROUTES_CODEGEN,
         **_ROUTES_VALIDATE,
@@ -63,7 +44,7 @@ class FlextInfraCli(type(cli_facade)):
             self.print_help()
             return 0
         group, group_args = cli_args[0], cli_args[1:]
-        if group not in self.GROUPS:
+        if group not in c.Infra.CLI_GROUP_DESCRIPTIONS:
             self.display_message(
                 f"unknown group '{group}'",
                 c.Cli.MessageTypes.ERROR,
@@ -79,9 +60,9 @@ class FlextInfraCli(type(cli_facade)):
             c.Cli.MessageTypes.INFO,
         )
         self.display_message("Groups", c.Cli.MessageTypes.INFO)
-        for group in sorted(self.GROUPS):
+        for group in sorted(c.Infra.CLI_GROUP_DESCRIPTIONS):
             self.display_message(
-                f"  {group:<16}{self.GROUPS[group]}",
+                f"  {group:<16}{c.Infra.CLI_GROUP_DESCRIPTIONS[group]}",
                 c.Cli.MessageTypes.INFO,
             )
 
@@ -151,7 +132,7 @@ class FlextInfraCli(type(cli_facade)):
         """Execute a registered flext-cli group."""
         app = self.create_app_with_common_params(
             name=f"{self.app_name} {group}",
-            help_text=self.GROUPS[group],
+            help_text=c.Infra.CLI_GROUP_DESCRIPTIONS[group],
             settings=self._cli_settings(),
         )
         self._register_group_commands(group, app)

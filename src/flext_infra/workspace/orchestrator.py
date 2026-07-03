@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.workspace._orchestrator_discovery import (
     FlextInfraWorkspaceOrchestratorDiscoveryMixin,
 )

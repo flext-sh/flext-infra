@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra._base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
 from flext_infra.models import m

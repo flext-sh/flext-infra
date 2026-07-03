@@ -166,6 +166,12 @@ class FlextInfraUtilitiesRopeAnalysis:
     ) -> t.SequenceOf[m.Infra.ClassInfo]:
         """Return local class infos for one resolved Rope module."""
         class_infos: t.MutableSequenceOf[m.Infra.ClassInfo] = []
+        ast_bases_by_class = {
+            class_info.name: class_info.bases
+            for class_info in FlextInfraUtilitiesRopeAnalysis.class_info_from_source(
+                resource.read()
+            )
+        }
         for name, pyname in pymodule.get_attributes().items():
             if not FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource):
                 continue
@@ -175,12 +181,51 @@ class FlextInfraUtilitiesRopeAnalysis:
             location = pyname.get_definition_location()
             line = location[1] if location and location[1] else 1
             bases = tuple(
-                superclass.get_name()
+                base_name
                 for superclass in obj.get_superclasses()
-                if superclass.get_name()
+                if (
+                    base_name := FlextInfraUtilitiesRopeAnalysis._superclass_name(
+                        superclass
+                    )
+                )
             )
+            if not bases:
+                bases = ast_bases_by_class.get(name, ())
             class_infos.append(m.Infra.ClassInfo(name=name, line=line, bases=bases))
         return tuple(class_infos)
+
+    @staticmethod
+    def _superclass_name(
+        superclass: p.AttributeProbe,
+        *,
+        visited: frozenset[int] | None = None,
+    ) -> str:
+        """Return a superclass name from Rope objects with uneven public APIs."""
+        visited_ids = visited or frozenset()
+        superclass_id = id(superclass)
+        if superclass_id in visited_ids:
+            return ""
+        next_visited = visited_ids | {superclass_id}
+        get_name = getattr(superclass, "get_name", None)
+        if callable(get_name):
+            name = get_name()
+            if isinstance(name, str) and name:
+                return name
+        get_type = getattr(superclass, "get_type", None)
+        if callable(get_type):
+            superclass_type = get_type()
+            if superclass_type is not None:
+                type_name = FlextInfraUtilitiesRopeAnalysis._superclass_name(
+                    superclass_type,
+                    visited=next_visited,
+                )
+                if type_name:
+                    return type_name
+        for attr_name in ("name", "_name"):
+            name = getattr(superclass, attr_name, "")
+            if isinstance(name, str) and name:
+                return name
+        return ""
 
     @staticmethod
     def _module_import_maps(

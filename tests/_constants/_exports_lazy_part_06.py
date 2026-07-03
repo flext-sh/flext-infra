@@ -13,6 +13,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
         ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
         ".settings": ("TestsFlextInfraSettings",),
+        ".unit._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
         ".unit.deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
         ".unit.refactor.test_infra_refactor_census_preview_cache": (
             "TestsFlextInfraRefactorCensusPreviewCache",
@@ -75,9 +76,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ),
         ".unit.transformers.test_infra_transformer_cli_modernizer": (
             "TestsFlextInfraTransformersCliModernizer",
-        ),
-        ".unit.transformers.test_infra_transformer_helper_consolidation": (
-            "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
         ),
     },
 )

@@ -162,7 +162,9 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             ]
         if not self.include_tests:
             real_modules = [
-                name for name in real_modules if c.Infra.DIR_TESTS not in name.split(".")
+                name
+                for name in real_modules
+                if c.Infra.DIR_TESTS not in name.split(".")
             ]
         if not self.include_examples:
             real_modules = [
@@ -174,17 +176,13 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             m.Infra.ValidationReport(
                 passed=False,
                 violations=tuple(import_failures),
-                summary=(
-                    f"{project.name}: {len(import_failures)} import failure(s)"
-                ),
+                summary=(f"{project.name}: {len(import_failures)} import failure(s)"),
             )
         ]
         for module_name in real_modules:
             all_reports.extend(self._check_module(module_name))
         merged_violations = tuple(
-            violation
-            for report in all_reports
-            for violation in report.violations
+            violation for report in all_reports for violation in report.violations
         )
         passed = not merged_violations
         summary = (

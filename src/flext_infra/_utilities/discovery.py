@@ -390,6 +390,8 @@ class FlextInfraUtilitiesDiscovery:
         for family_dir in c.Infra.FAMILY_DIRECTORIES.values():
             if file_path.is_relative_to(package_dir / family_dir):
                 return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
+        if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
+            return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         return {}
 
 

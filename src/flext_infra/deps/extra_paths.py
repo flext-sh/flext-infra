@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import (
-    FlextInfraProjectSelectionServiceBase,
     c,
     m,
     p,
@@ -18,6 +17,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sources import FlextInfraExtraPathsSourceMixin
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 

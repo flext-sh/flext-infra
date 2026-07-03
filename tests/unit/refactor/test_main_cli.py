@@ -147,7 +147,7 @@ class TestsFlextInfraRefactorMainCli:
             project_name="flext-demo",
             package_name="flext_demo",
         )
-        models_dir = package_root / "models"
+        models_dir = package_root / "_models"
         models_dir.mkdir(parents=True, exist_ok=True)
         TestsFlextInfraRefactorMainCli._write(
             models_dir / "domain.py",

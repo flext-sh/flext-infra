@@ -26,6 +26,8 @@ class FlextInfraInternalImportDetector:
             return False
         importer_parts = importer_module.split(".")
         fqn_parts = fqn.split(".")
+        if fqn_parts and fqn_parts[0].startswith("_"):
+            return True
         private_index = next(
             (
                 index
@@ -38,6 +40,12 @@ class FlextInfraInternalImportDetector:
             return False
         public_prefix = fqn_parts[:private_index]
         return importer_parts[: len(public_prefix)] == public_prefix
+
+    @staticmethod
+    def _has_private_module_part(fqn: str) -> bool:
+        """Return whether the resolved import path crosses a private module."""
+        parts = fqn.split(".")
+        return any(part.startswith("_") for part in parts[:-1])
 
     @classmethod
     def facade_assembly_exempt(cls, importer_module: str, fqn: str) -> bool:
@@ -58,24 +66,30 @@ class FlextInfraInternalImportDetector:
         rope_project = ctx.rope_project
         current_module = u.Infra.package_name(file_path)
         imports = u.Infra.get_semantic_module_imports(rope_project, res)
+
+        def violates_internal_import(local: str, fqn: str) -> bool:
+            private_module = (
+                FlextInfraInternalImportDetector._has_private_module_part(fqn)
+            )
+            facade_exempt = private_module and (
+                FlextInfraInternalImportDetector._facade_assembly_exempt(
+                    current_module,
+                    fqn,
+                )
+            )
+            return (local.startswith("_") or private_module) and not facade_exempt
+
         return [
             m.Infra.InternalImportViolation(
                 file=str(file_path),
                 line=1,
                 current_import=f"from ... import {local}  # {fqn}",
                 detail="private module import"
-                if "._" in fqn
+                if FlextInfraInternalImportDetector._has_private_module_part(fqn)
                 else "private symbol import",
             )
             for local, fqn in imports.items()
-            if local.startswith("_")
-            or (
-                "._" in fqn
-                and not FlextInfraInternalImportDetector._facade_assembly_exempt(
-                    current_module,
-                    fqn,
-                )
-            )
+            if violates_internal_import(local, fqn)
         ]
 
 

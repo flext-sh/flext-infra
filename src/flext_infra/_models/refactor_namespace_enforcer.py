@@ -116,6 +116,41 @@ class FlextInfraModelsNamespaceEnforcer:
             m.Field(description="Whether the symbol is already exported by the facade"),
         ] = False
 
+    class InlineImportViolation(
+        mm.ViolationDetailMixin,
+        ImportViolationBase,
+    ):
+        """Inline or lazy import declared inside a function body."""
+
+        module_name: Annotated[
+            str,
+            m.Field(description="Imported module name (empty for importlib dynamic)"),
+        ] = ""
+        imported_symbols: Annotated[
+            t.StrSequence,
+            m.Field(description="Symbols imported from the module, if any"),
+        ] = m.Field(default_factory=tuple)
+        is_importlib: Annotated[
+            bool,
+            m.Field(description="Whether this is an importlib.import_module call"),
+        ] = False
+
+    class SilentFailureViolation(FileLineViolation):
+        """Exception-handling construct that silences failures."""
+
+        kind: Annotated[
+            str,
+            m.Field(description="Violation kind (suppress/except_pass/broad_except)"),
+        ]
+        detail: Annotated[
+            str,
+            m.Field(description="Human-readable violation description"),
+        ] = ""
+        fix_action: Annotated[
+            str,
+            m.Field(description="Recommended fix action identifier"),
+        ] = "manual"
+
     class ManualProtocolViolation(FileLineViolation):
         """Manual protocol violation."""
 

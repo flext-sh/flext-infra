@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-from flext_cli import d as d, e as e, h as h, r as r, x as x
+from flext_core import d as d, e as e, h as h, r as r, x as x
 from flext_infra.__version__ import (
     __author__ as __author__,
     __author_email__ as __author_email__,
@@ -11,10 +11,9 @@ from flext_infra.__version__ import (
     __version_info__ as __version_info__,
 )
 from flext_infra.api import FlextInfra as FlextInfra, infra as infra
-from flext_infra.base import (
+from flext_infra.base import FlextInfraServiceBase as FlextInfraServiceBase, s as s
+from flext_infra.base_selection import (
     FlextInfraProjectSelectionServiceBase as FlextInfraProjectSelectionServiceBase,
-    FlextInfraServiceBase as FlextInfraServiceBase,
-    s as s,
 )
 from flext_infra.cli import FlextInfraCli as FlextInfraCli, main as main
 from flext_infra.constants import FlextInfraConstants as FlextInfraConstants, c as c

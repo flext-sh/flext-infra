@@ -220,22 +220,43 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
         parts_pkg = pkg / "_parts"
+        nested_pkg = pkg / "nested"
         parts_pkg.mkdir(parents=True)
+        nested_pkg.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
             "[project]\nname='sample'\n",
             encoding="utf-8",
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (nested_pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "impl.py").write_text(
-            "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
+            "from __future__ import annotations\n\n"
+            "class _PartsMixin:\n"
+            "    pass\n\n"
+            "class PartsImpl(_PartsMixin):\n"
+            "    pass\n",
             encoding="utf-8",
         )
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\n"
-            "from sample_pkg._parts.impl import PartsImpl\n\n"
-            "_ = PartsImpl\n",
+            "from sample_pkg._parts.impl import PartsImpl, _PartsMixin\n\n"
+            "class Service(PartsImpl, _PartsMixin):\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+        _ = (nested_pkg / "_base.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class _NestedMixin:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+        _ = (nested_pkg / "impl.py").write_text(
+            "from __future__ import annotations\n"
+            "from ._base import _NestedMixin\n\n"
+            "class NestedService(_NestedMixin):\n"
+            "    pass\n",
             encoding="utf-8",
         )
 

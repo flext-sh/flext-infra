@@ -21,6 +21,29 @@ class FlextInfraRuntimeAliasDetector:
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None:
             return []
+        parts = file_path.parts
+        if c.Infra.RUNTIME_ALIAS_PARTS_SKIP & frozenset(parts):
+            return []
+        if ctx.project_root is not None:
+            try:
+                rel = file_path.relative_to(ctx.project_root)
+            except ValueError:
+                rel = None
+            if rel is not None:
+                rel_parts = rel.parts
+                if (
+                    len(rel_parts) >= c.Infra.RUNTIME_ALIAS_SRC_DEPTH_MIN
+                    and rel_parts[0] == "src"
+                ):
+                    # src/<package>/<facade>.py only; nested submodules are not root facades.
+                    if len(rel_parts) != c.Infra.RUNTIME_ALIAS_SRC_DEPTH_EXACT:
+                        return []
+                elif rel_parts and rel_parts[0] in c.Infra.RUNTIME_ALIAS_NON_ROOT_DIRS:
+                    # tests/<file>.py or examples/<file>.py or scripts/<file>.py only.
+                    if len(rel_parts) != c.Infra.RUNTIME_ALIAS_NON_ROOT_DEPTH_EXACT:
+                        return []
+                else:
+                    return []
         resource = u.Infra.fetch_python_resource(
             ctx.rope_project, file_path, skip_protected=True
         )

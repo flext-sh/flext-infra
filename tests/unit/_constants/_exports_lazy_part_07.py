@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
+        ".check": ("check",),
         ".codegen": ("codegen",),
         ".container": ("container",),
         ".deps": ("deps",),
@@ -32,9 +33,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".release": ("release",),
         ".test_infra_workspace_migrator_errors": (
             "test_infra_workspace_migrator_errors",
-        ),
-        ".test_infra_workspace_migrator_pyproject": (
-            "test_infra_workspace_migrator_pyproject",
         ),
         "flext_tests": (
             "d",

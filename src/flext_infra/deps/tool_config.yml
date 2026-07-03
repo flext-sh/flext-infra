@@ -695,6 +695,7 @@ lazy-init:
   root-namespace-files:
     - api.py
     - base.py
+    - base_selection.py
     - cli.py
     - constants.py
     - container.py

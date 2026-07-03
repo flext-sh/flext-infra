@@ -239,7 +239,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
         cli.pipeline(
             stages,
-            workspace_root=project_dir,
+            context=cli.stage_context(project_dir),
             fail_fast=ctx.fail_fast,
             logger=self._gate_logger,
         )

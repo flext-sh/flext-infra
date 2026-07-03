@@ -41,16 +41,6 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
     _VIOLATION_KIND: ClassVar[str] = "abstraction-boundary"
     _SCAN_KIND: ClassVar[str] = "tier-whitelist"
 
-    NON_RUNTIME_DIR_PARTS: ClassVar[frozenset[str]] = frozenset({
-        c.Infra.DIR_TESTS,
-        c.Infra.DIR_EXAMPLES,
-        c.Infra.DIR_SCRIPTS,
-    })
-
-    SETTINGS_MODULE_LIBRARIES: ClassVar[frozenset[str]] = frozenset({
-        "pydantic_settings",
-    })
-
     @override
     def _is_allowlisted(self, _file_path: Path, _module_name: str) -> bool:
         """Return True iff ``file_path`` owns ``module_name`` per OWNERS SSOT.
@@ -67,10 +57,16 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
         """
-        if any(part in self.NON_RUNTIME_DIR_PARTS for part in _file_path.parts):
+        if any(
+            part in c.Infra.TIER_WHITELIST_NON_RUNTIME_DIR_PARTS
+            for part in _file_path.parts
+        ):
             return True
         top = self._top_module(_module_name)
-        if top in self.SETTINGS_MODULE_LIBRARIES and _file_path.name == "settings.py":
+        if (
+            top in c.Infra.TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES
+            and _file_path.name == "settings.py"
+        ):
             return True
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
         if owner is None:

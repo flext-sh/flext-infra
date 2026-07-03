@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -33,6 +34,35 @@ class FlextInfraModelsCore:
                 description="Human-readable validation summary",
             ),
         ] = ""
+
+    class SkillRuleEvaluationContext(m.ArbitraryTypesModel):
+        """Resolved inputs for one skill rule evaluation pass."""
+
+        rules_list: Annotated[t.JsonList, m.Field(description="Rules to evaluate")]
+        skill_dir: Annotated[Path, m.Field(description="Skill directory path")]
+        root: Annotated[Path, m.Field(description="Workspace root path")]
+        mode: Annotated[
+            c.Infra.OperationMode,
+            m.Field(description="Skill validation mode"),
+        ]
+        include_globs: Annotated[t.StrSequence, m.Field(description="Include globs")]
+        exclude_globs: Annotated[t.StrSequence, m.Field(description="Exclude globs")]
+
+    class SkillReportContext(m.ArbitraryTypesModel):
+        """Resolved inputs for one skill validation report."""
+
+        rules: Annotated[
+            t.MappingKV[str, t.Infra.InfraValue],
+            m.Field(description="Rules payload"),
+        ]
+        root: Annotated[Path, m.Field(description="Workspace root path")]
+        skill_name: Annotated[str, m.Field(description="Skill folder name")]
+        mode: Annotated[
+            c.Infra.OperationMode,
+            m.Field(description="Skill validation mode"),
+        ]
+        counts: Annotated[t.IntMapping, m.Field(description="Violation counts")]
+        violations: Annotated[t.StrSequence, m.Field(description="Violations")]
 
     class StubAnalysisReport(
         mm.ProjectNameMixin,

@@ -143,27 +143,22 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
     def _evaluate_rules(
         self,
-        rules_list: t.JsonList,
-        skill_dir: Path,
-        root: Path,
-        mode: c.Infra.OperationMode,
-        include_globs: t.StrSequence,
-        exclude_globs: t.StrSequence,
+        context: m.Infra.SkillRuleEvaluationContext,
     ) -> tuple[t.IntMapping, t.StrSequence]:
         """Evaluate skill validation rules and return counts plus violations."""
         counts: t.MutableIntMapping = {}
         violations: t.MutableSequenceOf[str] = []
-        for rule_obj_raw in rules_list:
+        for rule_obj_raw in context.rules_list:
             rule_obj = u.Cli.json_as_mapping(rule_obj_raw)
             if not rule_obj:
                 continue
             self._evaluate_single_rule(
                 rule_obj,
-                skill_dir,
-                root,
-                mode,
-                include_globs,
-                exclude_globs,
+                context.skill_dir,
+                context.root,
+                context.mode,
+                context.include_globs,
+                context.exclude_globs,
                 counts,
                 violations,
             )
@@ -171,24 +166,28 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
     def _skill_report_model(
         self,
-        rules: t.MappingKV[str, t.Infra.InfraValue],
-        root: Path,
-        skill_name: str,
-        mode: c.Infra.OperationMode,
-        counts: t.IntMapping,
-        violations: t.StrSequence,
+        context: m.Infra.SkillReportContext,
     ) -> m.Infra.ValidationReport:
         """Build the canonical skill validation report model."""
-        total = sum(counts.values())
+        total = sum(context.counts.values())
         passed = (
             total == 0
-            if mode == c.Infra.OperationMode.STRICT
-            else self._apply_baseline_comparison(rules, root, skill_name, counts, total)
+            if context.mode == c.Infra.OperationMode.STRICT
+            else self._apply_baseline_comparison(
+                context.rules,
+                context.root,
+                context.skill_name,
+                context.counts,
+                total,
+            )
         )
-        summary = f"{skill_name}: {total} violations, {('PASS' if passed else 'FAIL')}"
+        summary = (
+            f"{context.skill_name}: {total} violations, "
+            f"{('PASS' if passed else 'FAIL')}"
+        )
         return m.Infra.ValidationReport(
             passed=passed,
-            violations=violations,
+            violations=context.violations,
             summary=summary,
         )
 
@@ -220,21 +219,25 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
                 rules_list_result.error or "rules must be a list",
             )
         counts, violations = self._evaluate_rules(
-            rules_list_result.value,
-            skills_dir / skill_name,
-            root,
-            mode,
-            include_globs,
-            exclude_globs,
+            m.Infra.SkillRuleEvaluationContext(
+                rules_list=rules_list_result.value,
+                skill_dir=skills_dir / skill_name,
+                root=root,
+                mode=mode,
+                include_globs=include_globs,
+                exclude_globs=exclude_globs,
+            ),
         )
         return r[m.Infra.ValidationReport].ok(
             self._skill_report_model(
-                rules,
-                root,
-                skill_name,
-                mode,
-                counts,
-                violations,
+                m.Infra.SkillReportContext(
+                    rules=rules,
+                    root=root,
+                    skill_name=skill_name,
+                    mode=mode,
+                    counts=counts,
+                    violations=violations,
+                ),
             ),
         )
 

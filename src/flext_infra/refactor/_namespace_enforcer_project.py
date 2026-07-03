@@ -193,6 +193,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     rope_project=rope_project,
                     parse_failures=parse_failures,
                     project_name=project_name,
+                    project_root=project_root,
                 ),
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_runtime_alias_violations(

@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t
+from flext_infra import c, m, p, r, t
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.codegen._fixer_workspace import FlextInfraCodegenFixerWorkspaceMixin
 
 

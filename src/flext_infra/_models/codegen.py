@@ -74,6 +74,38 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             description="Skipped (already existing) file paths",
         )
 
+    class ScaffoldDirRequest(m.ArbitraryTypesModel):
+        """Directory-level scaffold request and accumulation state."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True,
+            revalidate_instances="never",
+        )
+
+        target_dir: Annotated[Path, m.Field(description="Directory to scaffold")]
+        prefix: Annotated[str, m.Field(description="Generated class name prefix")]
+        modules: Annotated[
+            t.VariadicTuple[t.Quad[str, str, str, str]],
+            m.Field(description="Module skeleton definitions"),
+        ]
+        test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
+        inherit_project_facade: Annotated[
+            bool,
+            m.Field(description="Whether generated classes inherit project facade"),
+        ]
+        dry_run: Annotated[
+            bool,
+            m.Field(description="Whether to report creations without writing"),
+        ]
+        files_created: Annotated[
+            t.MutableSequenceOf[str],
+            m.Field(description="Created file accumulator"),
+        ]
+        files_skipped: Annotated[
+            t.MutableSequenceOf[str],
+            m.Field(description="Skipped file accumulator"),
+        ]
+
     class AutoFixResult(
         mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
@@ -502,7 +534,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
 
         @property
         def has_changes(self) -> bool:
-            """Return whether at least one file was modified."""
+            """Whether at least one file was modified."""
             return bool(self.files_modified)
 
         def skip(self, *, module: str, rule: str, line: int, message: str) -> None:

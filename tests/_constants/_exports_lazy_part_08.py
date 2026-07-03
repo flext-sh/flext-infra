@@ -13,6 +13,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
         ".typings": ("t",),
         ".unit": ("unit",),
         ".unit.fixtures": (
+            "modernizer_workspace_with_projects",
             "real_docs_project",
             "real_makefile_project",
             "real_python_package",

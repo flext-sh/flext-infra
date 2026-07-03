@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, p, r, s, t, u
@@ -95,52 +94,68 @@ class FlextInfraCodegenScaffolder(s[str]):
         files_created: t.MutableSequenceOf[str] = []
         files_skipped: t.MutableSequenceOf[str] = []
         if project_layout.init_path.is_file():
-            self._scaffold_dir(
-                target_dir=project_layout.package_dir,
-                prefix=project_layout.class_stem,
-                modules=c.Infra.SRC_MODULES,
-                test_prefix="",
-                inherit_project_facade=False,
-                dry_run=dry_run,
-                files_created=files_created,
-                files_skipped=files_skipped,
+            created, skipped = self._scaffold_dir(
+                m.Infra.ScaffoldDirRequest(
+                    target_dir=project_layout.package_dir,
+                    prefix=project_layout.class_stem,
+                    modules=c.Infra.SRC_MODULES,
+                    test_prefix="",
+                    inherit_project_facade=False,
+                    dry_run=dry_run,
+                    files_created=[],
+                    files_skipped=[],
+                ),
             )
+            files_created.extend(created)
+            files_skipped.extend(skipped)
         tests_dir = project_path / c.Infra.DIR_TESTS
         if tests_dir.is_dir():
-            self._scaffold_dir(
-                target_dir=tests_dir,
-                prefix=project_layout.class_stem,
-                modules=c.Infra.TESTS_MODULES,
-                test_prefix="Tests",
-                inherit_project_facade=False,
-                dry_run=dry_run,
-                files_created=files_created,
-                files_skipped=files_skipped,
+            created, skipped = self._scaffold_dir(
+                m.Infra.ScaffoldDirRequest(
+                    target_dir=tests_dir,
+                    prefix=project_layout.class_stem,
+                    modules=c.Infra.TESTS_MODULES,
+                    test_prefix="Tests",
+                    inherit_project_facade=False,
+                    dry_run=dry_run,
+                    files_created=[],
+                    files_skipped=[],
+                ),
             )
+            files_created.extend(created)
+            files_skipped.extend(skipped)
         examples_dir = project_path / c.Infra.DIR_EXAMPLES
         if examples_dir.is_dir():
-            self._scaffold_dir(
-                target_dir=examples_dir,
-                prefix=project_layout.class_stem,
-                modules=c.Infra.SRC_MODULES,
-                test_prefix="Examples",
-                inherit_project_facade=True,
-                dry_run=dry_run,
-                files_created=files_created,
-                files_skipped=files_skipped,
+            created, skipped = self._scaffold_dir(
+                m.Infra.ScaffoldDirRequest(
+                    target_dir=examples_dir,
+                    prefix=project_layout.class_stem,
+                    modules=c.Infra.SRC_MODULES,
+                    test_prefix="Examples",
+                    inherit_project_facade=True,
+                    dry_run=dry_run,
+                    files_created=[],
+                    files_skipped=[],
+                ),
             )
+            files_created.extend(created)
+            files_skipped.extend(skipped)
         scripts_dir = project_path / c.Infra.DIR_SCRIPTS
         if scripts_dir.is_dir():
-            self._scaffold_dir(
-                target_dir=scripts_dir,
-                prefix=project_layout.class_stem,
-                modules=c.Infra.SRC_MODULES,
-                test_prefix="Scripts",
-                inherit_project_facade=True,
-                dry_run=dry_run,
-                files_created=files_created,
-                files_skipped=files_skipped,
+            created, skipped = self._scaffold_dir(
+                m.Infra.ScaffoldDirRequest(
+                    target_dir=scripts_dir,
+                    prefix=project_layout.class_stem,
+                    modules=c.Infra.SRC_MODULES,
+                    test_prefix="Scripts",
+                    inherit_project_facade=True,
+                    dry_run=dry_run,
+                    files_created=[],
+                    files_skipped=[],
+                ),
             )
+            files_created.extend(created)
+            files_skipped.extend(skipped)
         return m.Infra.ScaffoldResult(
             project=project_path.name,
             files_created=files_created,
@@ -149,38 +164,35 @@ class FlextInfraCodegenScaffolder(s[str]):
 
     def _scaffold_dir(
         self,
-        *,
-        target_dir: Path,
-        prefix: str,
-        modules: t.VariadicTuple[t.Quad[str, str, str, str]],
-        test_prefix: str,
-        inherit_project_facade: bool,
-        dry_run: bool,
-        files_created: t.MutableSequenceOf[str],
-        files_skipped: t.MutableSequenceOf[str],
-    ) -> None:
-        """Generate missing modules in a directory."""
-        for filename, suffix, base_class, doc_suffix in modules:
-            filepath = target_dir / filename
+        request: m.Infra.ScaffoldDirRequest,
+    ) -> tuple[t.MutableSequenceOf[str], t.MutableSequenceOf[str]]:
+        """Generate missing modules in a directory and return file lists."""
+        files_created: t.MutableSequenceOf[str] = []
+        files_skipped: t.MutableSequenceOf[str] = []
+        for filename, suffix, base_class, doc_suffix in request.modules:
+            filepath = request.target_dir / filename
             if filepath.exists():
                 files_skipped.append(str(filepath))
                 continue
-            class_name = f"{test_prefix}{prefix}{suffix}"
+            class_name = f"{request.test_prefix}{request.prefix}{suffix}"
             resolved_base = (
-                f"{prefix}{suffix}" if inherit_project_facade else base_class
+                f"{request.prefix}{suffix}"
+                if request.inherit_project_facade
+                else base_class
             )
-            docstring = f"{doc_suffix} for {prefix.lower()}."
+            docstring = f"{doc_suffix} for {request.prefix.lower()}."
             content = u.Infra.generate_module_skeleton(
                 class_name=class_name,
                 base_class=resolved_base,
                 docstring=docstring,
             )
-            if dry_run:
+            if request.dry_run:
                 files_created.append(str(filepath))
                 continue
             u.write_file(filepath, content, encoding=c.Cli.ENCODING_DEFAULT)
             _ = u.Infra.run_ruff_fix(filepath)
             files_created.append(str(filepath))
+        return files_created, files_skipped
 
 
 __all__: list[str] = ["FlextInfraCodegenScaffolder"]

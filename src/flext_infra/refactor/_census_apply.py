@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -10,6 +11,9 @@ from flext_infra import m, p, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
+)
+from flext_infra.detectors.inline_import_detector import (
+    FlextInfraInlineImportDetector,
 )
 from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
@@ -156,6 +160,14 @@ class FlextInfraRefactorCensusApplyMixin(
                     parse_failures=parse_failures,
                 )
                 changed = True
+            elif action == "hoist_inline_import":
+                changed = self._apply_hoist_inline_imports(
+                    rope=rope,
+                    file_path=file_path,
+                    object_names=object_names,
+                )
+            elif action == "manual":
+                pass
             if not changed:
                 continue
             touched_paths.add(file_path.resolve())
@@ -195,11 +207,133 @@ class FlextInfraRefactorCensusApplyMixin(
             rope.reload()
         return frozenset(applied)
 
+    def _apply_hoist_inline_imports(
+        self,
+        *,
+        rope: p.Infra.RopeWorkspaceDsl,
+        file_path: Path,
+        object_names: set[str],
+    ) -> bool:
+        """Hoist safe inline imports to module top using rope + AST offsets.
+
+        Only stdlib imports are eligible (no cycle risk); callers already
+        filter via ``FlextInfraInlineImportDetector.fix_action_for``.
+        """
+        resource = rope.resource(file_path)
+        if resource is None:
+            return False
+        ctx = self._detector_context(rope, file_path)
+        violations = [
+            violation
+            for violation in FlextInfraInlineImportDetector.detect_file(ctx)
+            if violation.current_import in object_names
+            and FlextInfraInlineImportDetector.fix_action_for(
+                module_name=violation.module_name,
+                is_importlib=violation.is_importlib,
+            )
+            == "hoist_inline_import"
+        ]
+        if not violations:
+            return False
+        try:
+            pymodule = u.Infra.get_pymodule(rope.rope_project, resource)
+            tree = pymodule.get_ast()
+        except Exception:
+            return False
+        if not isinstance(tree, ast.Module):
+            return False
+        source = rope.source(file_path)
+        lines = source.splitlines(keepends=True)
+        line_ranges_to_remove: list[tuple[int, int]] = []
+        imports_to_add: list[tuple[str, tuple[str, ...]]] = []
+        for violation in violations:
+            target = self._find_inline_import_node(tree, violation.line)
+            if target is None:
+                continue
+            start_line = target.lineno
+            end_line = getattr(target, "end_lineno", start_line) or start_line
+            line_ranges_to_remove.append((start_line, end_line))
+            if isinstance(target, ast.Import):
+                imports_to_add.extend(("", (alias.name,)) for alias in target.names)
+            elif isinstance(target, ast.ImportFrom):
+                module_name = target.module or ""
+                imports_to_add.append((
+                    module_name,
+                    tuple(alias.name for alias in target.names),
+                ))
+        if not line_ranges_to_remove:
+            return False
+        updated_lines = self._remove_line_ranges(lines, line_ranges_to_remove)
+        new_source = "".join(updated_lines)
+        try:
+            compile(new_source, str(file_path), "exec")
+        except SyntaxError:
+            return False
+        resource.write(new_source)
+        for module_name, names in imports_to_add:
+            if module_name:
+                u.Infra.add_import(
+                    rope.rope_project,
+                    resource,
+                    module_name,
+                    names,
+                    apply=True,
+                )
+            else:
+                for name in names:
+                    top_module = name.split(".")[0]
+                    u.Infra.add_import(
+                        rope.rope_project,
+                        resource,
+                        top_module,
+                        (top_module,),
+                        apply=True,
+                    )
+        return True
+
+    @staticmethod
+    def _find_inline_import_node(
+        tree: ast.Module,
+        line: int,
+    ) -> ast.Import | ast.ImportFrom | None:
+        """Find an Import/ImportFrom node at ``line`` inside a function body."""
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Import | ast.ImportFrom):
+                continue
+            if node.lineno != line:
+                continue
+            parent = _find_parent(tree, node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef | ast.AsyncFunctionDef):
+                    return node
+                parent = _find_parent(tree, parent)
+        return None
+
+    @staticmethod
+    def _remove_line_ranges(
+        lines: list[str],
+        ranges: list[tuple[int, int]],
+    ) -> list[str]:
+        """Remove 1-based inclusive line ranges, returning the updated line list."""
+        drop: set[int] = set()
+        for start, end in ranges:
+            drop.update(range(start, end + 1))
+        return [line for index, line in enumerate(lines, start=1) if index not in drop]
+
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
         FlextInfraCodegenLazyInit(workspace=self.root).generate_inits(
             check_only=False,
         )
+
+
+def _find_parent(tree: ast.AST, target: ast.AST) -> ast.AST | None:
+    """Return the parent AST node of ``target`` within ``tree``."""
+    for parent in ast.walk(tree):
+        for child in ast.iter_child_nodes(parent):
+            if child is target:
+                return parent
+    return None
 
 
 __all__: list[str] = ["FlextInfraRefactorCensusApplyMixin"]

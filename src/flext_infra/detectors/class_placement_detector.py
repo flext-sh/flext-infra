@@ -49,7 +49,7 @@ class FlextInfraClassPlacementDetector:
                     file=str(file_path),
                     line=ci.line,
                     name=name,
-                    base_class=ci.bases[0] if ci.bases else "",
+                    base_class=ci.bases[0] if ci.bases else "object",
                     suggestion=target,
                 ),
             )

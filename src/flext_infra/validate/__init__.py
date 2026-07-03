@@ -59,6 +59,9 @@ if TYPE_CHECKING:
     from flext_infra.validate.pytest_diag import (
         FlextInfraPytestDiagExtractor as FlextInfraPytestDiagExtractor,
     )
+    from flext_infra.validate.runtime_census import (
+        FlextInfraRuntimeCensusValidator as FlextInfraRuntimeCensusValidator,
+    )
     from flext_infra.validate.scanner import (
         FlextInfraTextPatternScanner as FlextInfraTextPatternScanner,
     )
@@ -93,6 +96,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".namespace_rules": ("FlextInfraNamespaceRules",),
         ".namespace_validator": ("FlextInfraNamespaceValidator",),
         ".pytest_diag": ("FlextInfraPytestDiagExtractor",),
+        ".runtime_census": ("FlextInfraRuntimeCensusValidator",),
         ".scanner": ("FlextInfraTextPatternScanner",),
         ".silent_failure": ("FlextInfraSilentFailureValidator",),
         ".skill_validator": ("FlextInfraSkillValidator",),

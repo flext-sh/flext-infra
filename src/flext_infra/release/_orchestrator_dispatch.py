@@ -168,12 +168,14 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             active_stages = self._build_release_stages(phases, dispatch_cfg)
             pipeline_result = cli.pipeline(
                 active_stages,
-                workspace_root=workspace_root,
-                settings={
-                    "dry_run": dry_run,
-                    "push": push,
-                    "dev_suffix": dev_suffix,
-                },
+                context=cli.stage_context(
+                    workspace_root,
+                    settings={
+                        "dry_run": dry_run,
+                        "push": push,
+                        "dev_suffix": dev_suffix,
+                    },
+                ),
                 fail_fast=True,
                 logger=self.logger,
             )

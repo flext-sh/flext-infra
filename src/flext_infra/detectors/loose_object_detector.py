@@ -355,12 +355,43 @@ class FlextInfraLooseObjectDetector:
             target = cls._target_name(getattr(inner, "target", None))
             if not target or target.startswith("_"):
                 continue
+            if target in c.Infra.CLASSVAR_EXEMPT_NAMES:
+                continue
+            if not c.Infra.NAMESPACE_CONSTANT_PATTERN.match(target):
+                continue
+            if not cls._classvar_value_permitted(getattr(inner, "value", None)):
+                continue
             add(
                 getattr(inner, "lineno", 1),
                 target,
                 "classvar",
                 "Constants",
             )
+
+    @classmethod
+    def _classvar_value_permitted(cls, value: object | None) -> bool:
+        """Return True when a ClassVar default is a literal/canonical constant.
+
+        Permits literals, attributes/imports from constants, and calls to
+        canonical constant factories (Path, frozenset, tuple, dict,
+        MappingProxyType). Rejects calls that build runtime/infrastructure
+        objects (context vars, config objects, adapters, etc.).
+        """
+        if value is None:
+            return True
+        kind = FlextInfraUtilitiesRopeAnalysis.node_kind(value)
+        if kind in {"Constant", "Name", "Attribute", "Tuple", "List", "Set", "Dict"}:
+            return True
+        if kind == "Call":
+            func = getattr(value, "func", None)
+            func_name = cls._call_name(func)
+            if func_name in c.Infra.CLASSVAR_ALLOWED_CALLS:
+                return True
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(func) == "Attribute":
+                base = getattr(func, "value", None)
+                base_name = getattr(base, "id", "")
+                return base_name in c.Infra.CLASSVAR_ALLOWED_CALLS
+        return False
 
     @staticmethod
     def _detect_logger_assignments(

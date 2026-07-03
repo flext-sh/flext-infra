@@ -173,6 +173,14 @@ class FlextInfraConstantsSharedInfra:
     DIR_TESTS: Final[str] = "tests"
     DIR_EXAMPLES: Final[str] = "examples"
     DIR_SCRIPTS: Final[str] = "scripts"
+    TIER_WHITELIST_NON_RUNTIME_DIR_PARTS: Final[frozenset[str]] = frozenset({
+        DIR_TESTS,
+        DIR_EXAMPLES,
+        DIR_SCRIPTS,
+    })
+    TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: Final[frozenset[str]] = frozenset({
+        "pydantic_settings",
+    })
     DIR_TYPINGS: Final[str] = "typings"
     DIR_DOCS: Final[str] = "docs"
     DIR_BUILD: Final[str] = "build"
