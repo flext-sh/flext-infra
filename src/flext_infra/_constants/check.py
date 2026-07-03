@@ -288,17 +288,17 @@ repos:
         always_run: true
       - id: flext-abstraction-boundary
         name: Abstraction boundary (§2.7) — CLI-domain libs + concrete FlextCli imports
-        entry: uv run --all-packages python -m flext_infra check --what boundary
+        entry: uv run --all-packages python scripts/hooks/check_changed_projects.py boundary
         language: system
-        pass_filenames: false
-        always_run: true
+        pass_filenames: true
+        always_run: false
         types: [python]
       - id: flext-loc-cap
         name: 200-LOC SUPREME LAW (§3.1) — module cap via tokei
-        entry: uv run --all-packages python -m flext_infra check --what loc-cap
+        entry: uv run --all-packages python scripts/hooks/check_changed_projects.py loc-cap
         language: system
-        pass_filenames: false
-        always_run: true
+        pass_filenames: true
+        always_run: false
         types: [python]
       - id: flext-manual-command
         name: Manual-command blocker (§5) — no bare tool calls in automation
