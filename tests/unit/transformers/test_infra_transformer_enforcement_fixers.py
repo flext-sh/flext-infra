@@ -124,8 +124,50 @@ class TestsFlextInfraTransformersOpenEncoding:
         assert 'open("x.txt", "w", buffering=1, encoding="utf-8")' in code
         assert changes
 
+    def test_open_binary_mode_unchanged(self) -> None:
+        source = 'with open("x.bin", "rb") as f:\n    pass\n'
+        code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
+        assert code == source
+        assert changes == []
+
+    def test_open_keyword_binary_mode_unchanged(self) -> None:
+        source = 'with open("x.bin", mode="rb") as f:\n    pass\n'
+        code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
+        assert code == source
+        assert changes == []
+
+    def test_open_dynamic_mode_unchanged(self) -> None:
+        source = 'with open("x.txt", mode) as f:\n    pass\n'
+        code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
+        assert code == source
+        assert changes == []
+
+    def test_path_open_text_mode_gets_utf8(self) -> None:
+        source = 'Path("x.txt").open("w")\n'
+        code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
+        assert 'Path("x.txt").open("w", encoding="utf-8")' in code
+        assert changes
+
+    def test_path_open_binary_mode_unchanged(self) -> None:
+        source = 'Path("x.bin").open("rb")\n'
+        code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
+        assert code == source
+        assert changes == []
+
     def test_open_with_encoding_unchanged(self) -> None:
         source = 'with open("x.txt", encoding="latin-1") as f:\n    pass\n'
+        code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
+        assert code == source
+        assert changes == []
+
+    def test_open_dynamic_mode_return_unchanged(self) -> None:
+        source = 'def read(mode):\n    return open("x.txt", mode)\n'
+        code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
+        assert code == source
+        assert changes == []
+
+    def test_path_open_write_binary_mode_unchanged(self) -> None:
+        source = 'with Path("x.bin").open("wb") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
         assert code == source
         assert changes == []

@@ -18,6 +18,9 @@ from flext_infra.constants import c
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
+from flext_infra.detectors.compatibility_alias_detector import (
+    FlextInfraCompatibilityAliasDetector,
+)
 from flext_infra.models import m
 from flext_infra.typings import t
 
@@ -43,6 +46,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
     _INFRA_VIOLATION_FIELDS: ClassVar[frozenset[str]] = frozenset({
         "magic_literal_violations",
         "stub_file_violations",
+        "foreign_canonical_alias_violations",
     })
     _BEARTYPE_PREDICATES: ClassVar[frozenset[str]] = frozenset({
         "classvar_constant",
@@ -76,6 +80,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
                 return cls._detect_stub_files(ctx)
             if violation_field == "magic_literal_violations":
                 return cls._detect_magic_literals(ctx)
+            if violation_field == "foreign_canonical_alias_violations":
+                return cls._detect_foreign_canonical_aliases(ctx)
         elif source.kind == "beartype":
             predicate_kind = getattr(source, "predicate_kind", None)
             if getattr(predicate_kind, "value", predicate_kind) == "classvar_constant":
@@ -179,6 +185,40 @@ class FlextInfraRefactorDeclarativeEnforcement:
             for v in violations
             if v.action == "classvar_relocation"
         )
+
+    @classmethod
+    def _detect_foreign_canonical_aliases(
+        cls,
+        ctx: m.Infra.DetectorContext,
+    ) -> t.SequenceOf[p.AttributeProbe]:
+        """Delegate foreign-canonical-alias detection to the canonical scanner."""
+        try:
+            violations = FlextInfraCompatibilityAliasDetector.detect_file(ctx)
+        except c.EXC_BROAD_RUNTIME as exc:
+            msg = (
+                f"declarative enforcement {ctx.file_path} failed: "
+                f"compatibility alias detector failed: {type(exc).__name__}: {exc}"
+            )
+            raise RuntimeError(msg) from exc
+        probes: list[p.AttributeProbe] = []
+        for violation in violations:
+            action = FlextInfraCompatibilityAliasDetector.fix_action_for(
+                violation,
+                current_project=ctx.project_name,
+            )
+            if action != "rewrite_foreign_canonical_alias":
+                continue
+            probes.append(
+                cls._probe(
+                    ctx.file_path,
+                    line=violation.line,
+                    rule_id="080",
+                    object_name=violation.alias_name,
+                    target_name=violation.target_name,
+                    module_name=violation.module_name,
+                )
+            )
+        return tuple(probes)
 
     @classmethod
     def _is_magic_literal(cls, value: t.Primitives | None) -> bool:

@@ -185,8 +185,38 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                     self._ctx(rope_project, source),
                 )
 
+    def test_foreign_canonical_alias_detection(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """ENFORCE-080 detects a canonical alias imported from flext_core."""
+        source = tmp_path / "src" / "demo_pkg" / "consumer.py"
+        source.parent.mkdir(parents=True)
+        source.write_text(
+            "from __future__ import annotations\nfrom flext_core import c\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "demo_pkg"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c", "m", "p", "t", "u")},
+        )
+        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+            ctx = self._ctx(rope_project, source)
+            ctx.project_name = "demo_pkg"
+            probes = FlextInfraRefactorDeclarativeEnforcement.detect(
+                self._rule("ENFORCE-080"),
+                ctx,
+            )
+        assert len(probes) == 1
+        assert getattr(probes[0], "object_name", "") == "c"
+        assert getattr(probes[0], "rule_id", "") == "080"
+
     def test_unsupported_source_fails_loud(self, tmp_path: Path) -> None:
-        """Unsupported catalog wiring is a contract error, not an empty scan."""
         rule = FlextModelsEnforcement.EnforcementRuleSpec(
             id="ENFORCE-999",
             description="Unsupported declarative source",
@@ -310,3 +340,37 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         assert violations[0].kind == "magic_literal"
         assert violations[0].fix_action == "extract_magic_literal"
         assert not violations[0].fixable
+
+    def test_census_reports_enforce_080_foreign_canonical_alias(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """ENFORCE-080 appears in the census for foreign canonical aliases."""
+        workspace = self._build_workspace(tmp_path, "demo_pkg")
+        source = workspace / "src" / "demo_pkg" / "service.py"
+        source.write_text(
+            "from __future__ import annotations\nfrom flext_core import c\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(
+            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            {"demo_pkg": ("c", "m", "p", "t", "u")},
+        )
+
+        report_result = FlextInfraRefactorCensus(
+            workspace=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-080",),
+        ).execute()
+
+        assert report_result.success, report_result.error
+        report = report_result.unwrap()
+        violations = [
+            violation for project in report.projects for violation in project.violations
+        ]
+        assert len(violations) == 1
+        assert violations[0].kind == "foreign_canonical_alias"
+        assert violations[0].object_name == "c"
+        assert violations[0].fix_action == "rewrite_foreign_canonical_alias"
+        assert violations[0].fixable
