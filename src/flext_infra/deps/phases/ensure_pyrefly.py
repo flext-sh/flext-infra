@@ -9,6 +9,7 @@ from flext_infra.constants import c
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 from flext_infra.models import m
 from flext_infra.typings import t
+from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -27,6 +28,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         is_root: bool,
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
+        stale_error_keys: t.StrSequence = (),
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
@@ -74,8 +76,19 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 c.Infra.PROJECT_EXCLUDES,
                 sorted(set(pyrefly_rules.project_exclude_globs)),
             )
-            .nested("errors", values=error_values)
+            .nested(
+                "errors",
+                values=error_values,
+                deprecated_keys=stale_error_keys,
+            )
             .build()
+        )
+
+    def _configured_error_keys(self) -> frozenset[str]:
+        """Return pyrefly error keys governed by the canonical tool config."""
+        pyrefly_rules = self._tool_config.tools.pyrefly
+        return frozenset(
+            (*pyrefly_rules.strict_errors, *pyrefly_rules.disabled_errors),
         )
 
     def apply(
@@ -87,12 +100,23 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply canonical pyrefly table values, paths, and strict error toggles."""
+        configured_error_keys = self._configured_error_keys()
+        errors_table = u.Cli.toml_table_path(
+            doc,
+            (c.Infra.TOOL, c.Infra.PYREFLY, "errors"),
+        )
+        stale_error_keys = (
+            tuple(key for key in errors_table if key not in configured_error_keys)
+            if errors_table is not None
+            else ()
+        )
         return FlextInfraTomlPhaseService.apply_phases(
             doc,
             self._phase(
                 is_root=is_root,
                 project_dir=project_dir,
                 paths_manager=paths_manager,
+                stale_error_keys=stale_error_keys,
             ),
         )
 
@@ -105,12 +129,23 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> t.StrSequence:
         """Apply canonical pyrefly settings to one normalized payload."""
+        configured_error_keys = self._configured_error_keys()
+        errors_table = u.Cli.toml_mapping_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.PYREFLY, "errors"),
+        )
+        stale_error_keys = (
+            tuple(key for key in errors_table if key not in configured_error_keys)
+            if errors_table is not None
+            else ()
+        )
         return FlextInfraTomlPhaseService.apply_payload_phases(
             payload,
             self._phase(
                 is_root=is_root,
                 project_dir=project_dir,
                 paths_manager=paths_manager,
+                stale_error_keys=stale_error_keys,
             ),
         )
 

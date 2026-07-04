@@ -261,9 +261,9 @@ class TestsFlextInfraModernizerPyrefly:
         )
 
     def test_ensure_pyrefly_config_payload_removes_stale_error_keys(self) -> None:
-        errors: t.MutableJsonMapping = {"annotation-mismatch": "error"}
-        pyrefly: t.MutableJsonMapping = {"errors": errors}
-        tool: t.MutableJsonMapping = {"pyrefly": pyrefly}
+        errors: t.JsonDict = {"annotation-mismatch": "error"}
+        pyrefly: t.JsonDict = {"errors": errors}
+        tool: t.JsonDict = {"pyrefly": pyrefly}
         payload: t.MutableJsonMapping = {"tool": tool}
 
         changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply_payload(
