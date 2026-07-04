@@ -23,10 +23,10 @@ knew about these nodes:
 - Pattern-matching nodes mirror the source token stream closely enough for
     Rope's patched AST region walker to keep working without upstream support.
 """
-# pyright: reportPrivateUsage=none
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, ClassVar
 
 from rope.refactor import patchedast
@@ -51,9 +51,12 @@ class FlextInfraUtilitiesRopePep695Patch:
         """Install PEP 695 handlers on rope's ``_PatchingASTWalker`` once."""
         if cls._applied:
             return
-        walker = patchedast._PatchingASTWalker
-        original_function_def = walker._handle_function_def_node
-        original_class_def = walker._ClassDef
+        walker = getattr(patchedast, "_PatchingASTWalker")
+        original_function_def: Callable[..., None] = getattr(
+            walker,
+            "_handle_function_def_node",
+        )
+        original_class_def: Callable[..., None] = getattr(walker, "_ClassDef")
 
         def _type_params_children(node: ast.AST) -> list[p.AttributeProbe]:
             """Type params children."""
@@ -195,16 +198,16 @@ class FlextInfraUtilitiesRopePep695Patch:
             """Match or."""
             self._handle(node, self._child_nodes(node.patterns, "|"))
 
-        walker._handle_function_def_node = _patched_function_def
-        walker._ClassDef = _patched_class_def
-        walker._TypeAlias = _type_alias
-        walker._TypeVar = _type_var
-        walker._ParamSpec = _param_spec
-        walker._TypeVarTuple = _type_var_tuple
-        walker._MatchSequence = _match_sequence
-        walker._MatchSingleton = _match_singleton
-        walker._MatchStar = _match_star
-        walker._MatchOr = _match_or
+        setattr(walker, "_handle_function_def_node", _patched_function_def)
+        setattr(walker, "_ClassDef", _patched_class_def)
+        setattr(walker, "_TypeAlias", _type_alias)
+        setattr(walker, "_TypeVar", _type_var)
+        setattr(walker, "_ParamSpec", _param_spec)
+        setattr(walker, "_TypeVarTuple", _type_var_tuple)
+        setattr(walker, "_MatchSequence", _match_sequence)
+        setattr(walker, "_MatchSingleton", _match_singleton)
+        setattr(walker, "_MatchStar", _match_star)
+        setattr(walker, "_MatchOr", _match_or)
         cls._applied = True
 
 

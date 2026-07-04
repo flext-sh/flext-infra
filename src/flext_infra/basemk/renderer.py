@@ -24,31 +24,29 @@ from flext_infra import (
 )
 
 
+def _templates_dir() -> Path:
+    """Resolve templates directory relative to this package."""
+    return Path(__file__).resolve().parent.parent / "templates"
+
+
+def _build_default_environment() -> t.Infra.JinjaEnvironment:
+    """Create the shared Jinja environment for base.mk rendering."""
+    return Environment(
+        loader=FileSystemLoader(str(_templates_dir())),
+        trim_blocks=False,
+        lstrip_blocks=False,
+        keep_trailing_newline=True,
+        undefined=StrictUndefined,
+        autoescape=select_autoescape(),
+    )
+
+
 class FlextInfraBaseMkTemplateRenderer(s[str]):
     """Render base.mk templates with configuration context."""
 
     _environment: t.Infra.JinjaEnvironment = u.PrivateAttr(
-        default_factory=FlextInfraBaseMkTemplateRenderer._build_environment,
+        default_factory=_build_default_environment,
     )
-
-    @staticmethod
-    def _templates_dir() -> Path:
-        """Resolve templates directory relative to this package."""
-        return Path(__file__).resolve().parent.parent / "templates"
-
-    @staticmethod
-    def _build_environment() -> t.Infra.JinjaEnvironment:
-        """Create the shared Jinja environment for base.mk rendering."""
-        return Environment(
-            loader=FileSystemLoader(
-                str(FlextInfraBaseMkTemplateRenderer._templates_dir()),
-            ),
-            trim_blocks=False,
-            lstrip_blocks=False,
-            keep_trailing_newline=True,
-            undefined=StrictUndefined,
-            autoescape=select_autoescape(),
-        )
 
     @staticmethod
     def default_config() -> m.Infra.BaseMkConfig:
