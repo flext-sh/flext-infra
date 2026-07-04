@@ -25,6 +25,11 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesRopeAnalysis:
     """Rope-backed semantic analysis helpers."""
 
+    _INSTALL_LAZY_IMPORTS_ARG_INDEX: ClassVar[int] = 2
+    _STRING_LITERAL_MIN_LENGTH: ClassVar[int] = 2
+    _TRIPLE_QUOTE_LENGTH: ClassVar[int] = 3
+    _IMPORT_ALIAS_AS_PARTS: ClassVar[int] = 3
+
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
     _SEMANTIC_STATE_CACHE: ClassVar[
         dict[tuple[str, str, int], m.Infra.ModuleSemanticState]
@@ -684,6 +689,659 @@ class FlextInfraUtilitiesRopeAnalysis:
                     names.extend(previous_targets)
             previous_targets = []
         return tuple(dict.fromkeys(names))
+
+    @staticmethod
+    def module_body_nodes_source(source: str) -> t.SequenceOf[p.AttributeProbe]:
+        """Return top-level parsed statements for one source module."""
+        _ = source
+        return ()
+
+    @staticmethod
+    def module_reachable_nodes_source(source: str) -> t.SequenceOf[p.AttributeProbe]:
+        """Return parsed nodes reachable from one source module."""
+        _ = source
+        return ()
+
+    @staticmethod
+    def literal_string_sequence(node: p.AttributeProbe | None) -> t.StrSequence:
+        """Return string entries from a parsed literal sequence node."""
+        if node is None:
+            return ()
+        if FlextInfraUtilitiesRopeAnalysis.node_kind(node) not in {
+            "List",
+            "Tuple",
+            "Set",
+        }:
+            return ()
+        values: list[str] = []
+        for element in getattr(node, "elts", ()) or ():
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(element) != "Constant":
+                return ()
+            value = getattr(element, "value", None)
+            if not isinstance(value, str):
+                return ()
+            values.append(value)
+        return tuple(values)
+
+    @staticmethod
+    def module_assignment_strings_source(source: str, name: str) -> t.StrSequence:
+        """Collect strings from a literal module-level assignment."""
+        value_source = FlextInfraUtilitiesRopeAnalysis._assignment_value_source(
+            source,
+            name,
+        )
+        return FlextInfraUtilitiesRopeAnalysis._literal_string_sequence_source(
+            value_source,
+        )
+
+    @staticmethod
+    def module_mapping_assignment_source(
+        source: str,
+        name: str,
+    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+        """Collect mapping entries and referenced names from an assignment."""
+        value_source = FlextInfraUtilitiesRopeAnalysis._assignment_value_source(
+            source,
+            name,
+        )
+        return FlextInfraUtilitiesRopeAnalysis._mapping_entries_refs_source(
+            value_source,
+        )
+
+    @staticmethod
+    def mapping_entries_refs(
+        node: p.AttributeProbe | None,
+    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+        """Return literal mapping entries plus variable references."""
+        if node is None:
+            return ((), ())
+        kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
+        if kind == "Name":
+            node_name = FlextInfraUtilitiesRopeAnalysis.name_of(node)
+            return ((), (node_name,) if node_name else ())
+        if kind == "Dict":
+            return FlextInfraUtilitiesRopeAnalysis._dict_entries_refs(node)
+        if kind != "Call":
+            return ((), ())
+        function_name = FlextInfraUtilitiesRopeAnalysis.name_of(
+            getattr(node, "func", None),
+        )
+        args = getattr(node, "args", ()) or ()
+        if function_name in {"MappingProxyType", "build_lazy_import_map"} and args:
+            return FlextInfraUtilitiesRopeAnalysis.mapping_entries_refs(args[0])
+        if function_name != "merge_lazy_imports":
+            return ((), ())
+        entries: list[tuple[str, t.StrSequence]] = []
+        refs: list[str] = []
+        for argument in args:
+            next_entries, next_refs = (
+                FlextInfraUtilitiesRopeAnalysis.mapping_entries_refs(argument)
+            )
+            entries.extend(next_entries)
+            refs.extend(next_refs)
+        return (tuple(entries), tuple(dict.fromkeys(refs)))
+
+    @staticmethod
+    def _dict_entries_refs(
+        node: p.AttributeProbe,
+    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+        """Return string-sequence dict entries and unpack references."""
+        keys = getattr(node, "keys", ()) or ()
+        values = getattr(node, "values", ()) or ()
+        entries: list[tuple[str, t.StrSequence]] = []
+        refs: list[str] = []
+        for key_node, value_node in zip(keys, values, strict=False):
+            if key_node is None:
+                ref_name = FlextInfraUtilitiesRopeAnalysis.name_of(value_node)
+                if ref_name:
+                    refs.append(ref_name)
+                continue
+            key_value = getattr(key_node, "value", None)
+            if not isinstance(key_value, str):
+                continue
+            value_strings = FlextInfraUtilitiesRopeAnalysis.literal_string_sequence(
+                value_node,
+            )
+            if value_strings:
+                entries.append((key_value, value_strings))
+        return (tuple(entries), tuple(dict.fromkeys(refs)))
+
+    @staticmethod
+    def relative_import_module_name(
+        *,
+        current_module: str,
+        imported_module: str,
+        level: int,
+        package_module: bool,
+    ) -> str:
+        """Resolve a parsed ``from`` import module into an absolute module name."""
+        if level == 0:
+            return imported_module
+        current_parts = current_module.split(".")
+        base_count = len(current_parts) - level + (1 if package_module else 0)
+        base = ".".join(current_parts[: max(base_count, 0)])
+        return ".".join(part for part in (base, imported_module) if part)
+
+    @staticmethod
+    def imported_symbol_module_source(
+        source: str,
+        *,
+        current_module: str,
+        symbol_name: str,
+        package_module: bool,
+    ) -> str:
+        """Return the module that binds one imported symbol."""
+        module_name, _ = FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+            source,
+            current_module=current_module,
+            symbol_name=symbol_name,
+            package_module=package_module,
+        )
+        return module_name
+
+    @staticmethod
+    def imported_symbol_binding_source(
+        source: str,
+        *,
+        current_module: str,
+        symbol_name: str,
+        package_module: bool,
+    ) -> tuple[str, str]:
+        """Return ``(module, original_name)`` for one imported symbol binding."""
+        for module_source, level, original_name, bound_name in (
+            FlextInfraUtilitiesRopeAnalysis._from_import_bindings_source(source)
+        ):
+            if bound_name != symbol_name:
+                continue
+            module_name = FlextInfraUtilitiesRopeAnalysis.relative_import_module_name(
+                current_module=current_module,
+                imported_module=module_source,
+                level=level,
+                package_module=package_module,
+            )
+            return (module_name, original_name or symbol_name)
+        return ("", "")
+
+    @staticmethod
+    def class_bases_source(source: str, class_name: str) -> t.StrSequence:
+        """Return declared base names for one class in source."""
+        class_source = FlextInfraUtilitiesRopeAnalysis._class_header_source(
+            source,
+            class_name,
+        )
+        if not class_source:
+            return ()
+        open_index = class_source.find("(")
+        close_index = class_source.rfind(")")
+        if open_index < 0 or close_index <= open_index:
+            return ()
+        bases_source = class_source[open_index + 1 : close_index]
+        return tuple(
+            base_name
+            for base_name in (
+                FlextInfraUtilitiesRopeAnalysis._symbol_name_source(item)
+                for item in FlextInfraUtilitiesRopeAnalysis._split_top_level_commas(
+                    bases_source,
+                )
+            )
+            if base_name
+        )
+
+    @staticmethod
+    def class_declared_source(source: str, class_name: str) -> bool:
+        """Return whether one class is declared in source."""
+        return bool(
+            FlextInfraUtilitiesRopeAnalysis._class_header_source(
+                source,
+                class_name,
+            )
+        )
+
+    @staticmethod
+    def lazy_public_exports_source(source: str) -> tuple[t.StrSequence, str]:
+        """Return lazy-loader public exports or the local symbol holding them."""
+        call_args = FlextInfraUtilitiesRopeAnalysis._call_args_source(
+            source,
+            "install_lazy_exports",
+        )
+        public_exports = FlextInfraUtilitiesRopeAnalysis._keyword_value_source(
+            call_args,
+            "public_exports",
+        )
+        if public_exports:
+            values = FlextInfraUtilitiesRopeAnalysis._literal_string_sequence_source(
+                public_exports,
+            )
+            if values:
+                return (values, "")
+            return (
+                (),
+                FlextInfraUtilitiesRopeAnalysis._symbol_name_source(public_exports),
+            )
+        return ((), "")
+
+    @staticmethod
+    def lazy_imports_name_source(source: str) -> str:
+        """Return the local symbol passed as the lazy import map."""
+        call_args = FlextInfraUtilitiesRopeAnalysis._call_args_source(
+            source,
+            "install_lazy_exports",
+        )
+        if len(call_args) > FlextInfraUtilitiesRopeAnalysis._INSTALL_LAZY_IMPORTS_ARG_INDEX:
+            return FlextInfraUtilitiesRopeAnalysis._symbol_name_source(
+                call_args[
+                    FlextInfraUtilitiesRopeAnalysis._INSTALL_LAZY_IMPORTS_ARG_INDEX
+                ],
+            )
+        keyword_value = FlextInfraUtilitiesRopeAnalysis._keyword_value_source(
+            call_args,
+            "lazy_imports",
+        )
+        if keyword_value:
+            return FlextInfraUtilitiesRopeAnalysis._symbol_name_source(keyword_value)
+        return ""
+
+    @staticmethod
+    def _assignment_value_source(source: str, name: str) -> str:
+        """Return the source value assigned to one top-level symbol."""
+        lines = source.splitlines()
+        for index, line in enumerate(lines):
+            if line[: len(line) - len(line.lstrip())]:
+                continue
+            stripped = line.strip()
+            if not stripped.startswith(name):
+                continue
+            tail = stripped[len(name) :].lstrip()
+            if not tail or tail[0] not in {":", "="}:
+                continue
+            statement = FlextInfraUtilitiesRopeAnalysis._collect_statement(
+                lines,
+                index,
+            )
+            _head, separator, value = statement.partition("=")
+            if not separator:
+                return ""
+            return value.strip()
+        return ""
+
+    @staticmethod
+    def _collect_statement(lines: t.StrSequence, start_index: int) -> str:
+        """Collect a balanced Python statement starting at ``start_index``."""
+        collected: list[str] = []
+        depth = 0
+        for line in lines[start_index:]:
+            collected.append(line)
+            depth += FlextInfraUtilitiesRopeAnalysis._bracket_depth_delta(line)
+            if depth <= 0:
+                break
+        return "\n".join(collected)
+
+    @staticmethod
+    def _bracket_depth_delta(source: str) -> int:
+        """Return bracket nesting delta for one source line."""
+        depth = 0
+        quote = ""
+        escaped = False
+        for char in source:
+            if quote:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == "\\":
+                    escaped = True
+                    continue
+                if char == quote:
+                    quote = ""
+                continue
+            if char == "#":
+                break
+            if char in {"'", '"'}:
+                quote = char
+                continue
+            if char in "([{":
+                depth += 1
+            elif char in ")]}":
+                depth -= 1
+        return depth
+
+    @staticmethod
+    def _split_top_level_commas(source: str) -> t.StrSequence:
+        """Split one source fragment on commas outside nested delimiters."""
+        parts: list[str] = []
+        start = 0
+        depth = 0
+        quote = ""
+        escaped = False
+        for index, char in enumerate(source):
+            if quote:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == "\\":
+                    escaped = True
+                    continue
+                if char == quote:
+                    quote = ""
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                continue
+            if char in "([{":
+                depth += 1
+                continue
+            if char in ")]}":
+                depth -= 1
+                continue
+            if char == "," and depth == 0:
+                item = source[start:index].strip()
+                if item:
+                    parts.append(item)
+                start = index + 1
+        tail = source[start:].strip()
+        if tail:
+            parts.append(tail)
+        return tuple(parts)
+
+    @staticmethod
+    def _top_level_partition(source: str, separator: str) -> tuple[str, str, str]:
+        """Partition one source fragment at a top-level separator."""
+        depth = 0
+        quote = ""
+        escaped = False
+        for index, char in enumerate(source):
+            if quote:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == "\\":
+                    escaped = True
+                    continue
+                if char == quote:
+                    quote = ""
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                continue
+            if char in "([{":
+                depth += 1
+                continue
+            if char in ")]}":
+                depth -= 1
+                continue
+            if char == separator and depth == 0:
+                return (source[:index], separator, source[index + 1 :])
+        return (source, "", "")
+
+    @staticmethod
+    def _literal_string_source(source: str) -> str:
+        """Return the value of a simple string literal source fragment."""
+        text = source.strip()
+        while text and text[0].isalpha() and len(text) > 1 and text[1] in {"'", '"'}:
+            text = text[1:]
+        if (
+            len(text)
+            < FlextInfraUtilitiesRopeAnalysis._STRING_LITERAL_MIN_LENGTH
+            or text[0] not in {"'", '"'}
+        ):
+            return ""
+        quote = text[0]
+        triple_quote = quote * FlextInfraUtilitiesRopeAnalysis._TRIPLE_QUOTE_LENGTH
+        if text.startswith(triple_quote):
+            end = text.find(
+                triple_quote,
+                FlextInfraUtilitiesRopeAnalysis._TRIPLE_QUOTE_LENGTH,
+            )
+            return (
+                text[FlextInfraUtilitiesRopeAnalysis._TRIPLE_QUOTE_LENGTH : end]
+                if end >= FlextInfraUtilitiesRopeAnalysis._TRIPLE_QUOTE_LENGTH
+                else ""
+            )
+        end = 1
+        escaped = False
+        while end < len(text):
+            char = text[end]
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                break
+            end += 1
+        return text[1:end]
+
+    @staticmethod
+    def _literal_string_sequence_source(source: str) -> t.StrSequence:
+        """Return string entries from a literal sequence source fragment."""
+        text = source.strip()
+        if not text or text[0] not in "[{(":
+            return ()
+        close = {"[": "]", "{": "}", "(": ")"}[text[0]]
+        if not text.endswith(close):
+            return ()
+        inner = text[1:-1]
+        values: list[str] = []
+        for item in FlextInfraUtilitiesRopeAnalysis._split_top_level_commas(inner):
+            value = FlextInfraUtilitiesRopeAnalysis._literal_string_source(item)
+            if not value:
+                return ()
+            values.append(value)
+        return tuple(values)
+
+    @staticmethod
+    def _call_args_source(source: str, function_name: str) -> t.StrSequence:
+        """Return top-level argument sources for the first matching call."""
+        search_from = 0
+        while True:
+            name_index = source.find(function_name, search_from)
+            if name_index < 0:
+                return ()
+            open_index = source.find("(", name_index + len(function_name))
+            if open_index < 0:
+                return ()
+            between = source[name_index + len(function_name) : open_index].strip()
+            if between:
+                search_from = name_index + len(function_name)
+                continue
+            close_index = FlextInfraUtilitiesRopeAnalysis._matching_close_index(
+                source,
+                open_index,
+            )
+            if close_index < 0:
+                return ()
+            return FlextInfraUtilitiesRopeAnalysis._split_top_level_commas(
+                source[open_index + 1 : close_index],
+            )
+
+    @staticmethod
+    def _matching_close_index(source: str, open_index: int) -> int:
+        """Return the index of the closing delimiter matching ``open_index``."""
+        open_char = source[open_index]
+        close_char = {"(": ")", "[": "]", "{": "}"}[open_char]
+        depth = 0
+        quote = ""
+        escaped = False
+        for index in range(open_index, len(source)):
+            char = source[index]
+            if quote:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == "\\":
+                    escaped = True
+                    continue
+                if char == quote:
+                    quote = ""
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                continue
+            if char == open_char:
+                depth += 1
+                continue
+            if char == close_char:
+                depth -= 1
+                if depth == 0:
+                    return index
+        return -1
+
+    @staticmethod
+    def _keyword_value_source(args: t.StrSequence, keyword: str) -> str:
+        """Return a keyword argument value source from split call args."""
+        prefix = f"{keyword}="
+        for arg in args:
+            if arg.strip().startswith(prefix):
+                return arg.strip()[len(prefix) :].strip()
+        return ""
+
+    @staticmethod
+    def _mapping_entries_refs_source(
+        source: str,
+    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+        """Return lazy-map entries and referenced mapping symbols from source."""
+        text = source.strip()
+        if not text:
+            return ((), ())
+        if FlextInfraUtilitiesRopeAnalysis._is_symbol_source(text):
+            return ((), (text,))
+        call_name = FlextInfraUtilitiesRopeAnalysis._call_name_source(text)
+        if call_name in {"MappingProxyType", "build_lazy_import_map"}:
+            args = FlextInfraUtilitiesRopeAnalysis._call_args_source(text, call_name)
+            return (
+                FlextInfraUtilitiesRopeAnalysis._mapping_entries_refs_source(args[0])
+                if args
+                else ((), ())
+            )
+        if call_name == "merge_lazy_imports":
+            entries: list[tuple[str, t.StrSequence]] = []
+            refs: list[str] = []
+            for arg in FlextInfraUtilitiesRopeAnalysis._call_args_source(
+                text,
+                call_name,
+            ):
+                next_entries, next_refs = (
+                    FlextInfraUtilitiesRopeAnalysis._mapping_entries_refs_source(arg)
+                )
+                entries.extend(next_entries)
+                refs.extend(next_refs)
+            return (tuple(entries), tuple(dict.fromkeys(refs)))
+        if not text.startswith("{") or not text.endswith("}"):
+            return ((), ())
+        entries = []
+        refs = []
+        for item in FlextInfraUtilitiesRopeAnalysis._split_top_level_commas(
+            text[1:-1],
+        ):
+            stripped = item.strip()
+            if stripped.startswith("**"):
+                ref_name = FlextInfraUtilitiesRopeAnalysis._symbol_name_source(
+                    stripped[2:],
+                )
+                if ref_name:
+                    refs.append(ref_name)
+                continue
+            key_source, separator, value_source = (
+                FlextInfraUtilitiesRopeAnalysis._top_level_partition(stripped, ":")
+            )
+            if not separator:
+                continue
+            key = FlextInfraUtilitiesRopeAnalysis._literal_string_source(key_source)
+            values = FlextInfraUtilitiesRopeAnalysis._literal_string_sequence_source(
+                value_source,
+            )
+            if key and values:
+                entries.append((key, values))
+        return (tuple(entries), tuple(dict.fromkeys(refs)))
+
+    @staticmethod
+    def _call_name_source(source: str) -> str:
+        """Return the final symbol name for a call source fragment."""
+        text = source.strip()
+        open_index = text.find("(")
+        if open_index < 0:
+            return ""
+        return FlextInfraUtilitiesRopeAnalysis._symbol_name_source(text[:open_index])
+
+    @staticmethod
+    def _is_symbol_source(source: str) -> bool:
+        """Return whether source is a simple dotted or underscored symbol."""
+        text = source.strip()
+        return bool(text) and all(
+            char.isalnum() or char in {"_", "."} for char in text
+        )
+
+    @staticmethod
+    def _symbol_name_source(source: str) -> str:
+        """Return the final identifier from one symbol source fragment."""
+        text = source.strip()
+        if not FlextInfraUtilitiesRopeAnalysis._is_symbol_source(text):
+            return ""
+        return text.rsplit(".", maxsplit=1)[-1]
+
+    @staticmethod
+    def _from_import_bindings_source(
+        source: str,
+    ) -> tuple[tuple[str, int, str, str], ...]:
+        """Return ``(module, level, original, bound)`` for ``from`` imports."""
+        lines = source.splitlines()
+        bindings: list[tuple[str, int, str, str]] = []
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped.startswith("from ") or " import " not in stripped:
+                continue
+            statement = FlextInfraUtilitiesRopeAnalysis._collect_statement(
+                lines,
+                index,
+            ).strip()
+            import_index = statement.find(" import ")
+            module_source = statement[5:import_index].strip()
+            level = len(module_source) - len(module_source.lstrip("."))
+            module_name = module_source[level:]
+            aliases_source = statement[import_index + len(" import ") :].strip()
+            if aliases_source.startswith("(") and aliases_source.endswith(")"):
+                aliases_source = aliases_source[1:-1]
+            for alias_source in FlextInfraUtilitiesRopeAnalysis._split_top_level_commas(
+                aliases_source,
+            ):
+                original, bound = FlextInfraUtilitiesRopeAnalysis._import_alias_names(
+                    alias_source,
+                )
+                if original and bound:
+                    bindings.append((module_name, level, original, bound))
+        return tuple(bindings)
+
+    @staticmethod
+    def _import_alias_names(source: str) -> tuple[str, str]:
+        """Return ``(original, bound)`` names for one import alias source."""
+        parts = source.strip().split()
+        if (
+            len(parts) == FlextInfraUtilitiesRopeAnalysis._IMPORT_ALIAS_AS_PARTS
+            and parts[1] == "as"
+        ):
+            return (parts[0], parts[2])
+        if len(parts) == 1:
+            return (parts[0], parts[0])
+        return ("", "")
+
+    @staticmethod
+    def _class_header_source(source: str, class_name: str) -> str:
+        """Return the collected class header source for one top-level class."""
+        lines = source.splitlines()
+        prefix = f"class {class_name}"
+        for index, line in enumerate(lines):
+            if line[: len(line) - len(line.lstrip())]:
+                continue
+            stripped = line.strip()
+            if not stripped.startswith(prefix):
+                continue
+            tail = stripped[len(prefix) :]
+            if tail and tail[0] not in {"(", ":"}:
+                continue
+            statement = FlextInfraUtilitiesRopeAnalysis._collect_statement(
+                lines,
+                index,
+            )
+            return statement.rsplit(":", maxsplit=1)[0]
+        return ""
 
     @staticmethod
     def _statement_target_names(statement: object) -> list[str]:

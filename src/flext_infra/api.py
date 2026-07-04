@@ -52,6 +52,7 @@ class FlextInfra(
 
 
 infra = FlextInfra.fetch_global()
+"""Shared FlextInfra facade instance."""
 
 
 __all__: list[str] = ["FlextInfra", "infra"]

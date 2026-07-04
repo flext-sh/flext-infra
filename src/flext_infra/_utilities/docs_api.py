@@ -11,7 +11,6 @@ from flext_cli import u
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -63,22 +62,232 @@ class FlextInfraUtilitiesDocsApi:
         init_py: str = c.Infra.INIT_PY
         ext_python: str = c.Infra.EXT_PYTHON
         base = project_root / src_dir / parts[0]
-        return (
-            base / init_py
-            if len(parts) == 1
-            else base.joinpath(*parts[1:]).with_suffix(ext_python)
-        )
+        if len(parts) == 1:
+            return base / init_py
+        module_file = base.joinpath(*parts[1:]).with_suffix(ext_python)
+        if module_file.exists():
+            return module_file
+        package_init = base.joinpath(*parts[1:]) / init_py
+        return package_init if package_init.exists() else module_file
 
     @classmethod
     def _assignment_strings(cls, source: str, name: str) -> t.StrSequence:
         """Collect literal string values from one module-level assignment."""
-        for (
-            assignment_name,
-            value,
-        ) in FlextInfraUtilitiesRopeHelpers.get_module_level_assignments(source):
-            if assignment_name == name:
-                return c.Infra.STRING_LITERAL_RE.findall(value)
-        return []
+        return FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
+            source,
+            name,
+        )
+
+    @classmethod
+    def _imported_symbol_module(
+        cls,
+        source: str,
+        *,
+        current_module: str,
+        symbol_name: str,
+        package_module: bool,
+    ) -> str:
+        """Return the module that imported one symbol into ``source``."""
+        return FlextInfraUtilitiesRopeAnalysis.imported_symbol_module_source(
+            source,
+            current_module=current_module,
+            symbol_name=symbol_name,
+            package_module=package_module,
+        )
+
+    @classmethod
+    def _imported_symbol_binding(
+        cls,
+        source: str,
+        *,
+        current_module: str,
+        symbol_name: str,
+        package_module: bool,
+    ) -> tuple[str, str]:
+        """Return the source module and original name for one imported symbol."""
+        return FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+            source,
+            current_module=current_module,
+            symbol_name=symbol_name,
+            package_module=package_module,
+        )
+
+    @classmethod
+    def _resolve_assignment_strings(
+        cls,
+        project_root: Path,
+        *,
+        module_name: str,
+        symbol_name: str,
+        visited: frozenset[str] = frozenset(),
+    ) -> t.StrSequence:
+        """Resolve a literal string assignment through imported symbols."""
+        key = f"{module_name}:{symbol_name}"
+        if key in visited:
+            return []
+        module_file = cls._module_file(project_root, module_name)
+        if not module_file.exists():
+            return []
+        source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        values = cls._assignment_strings(source, symbol_name)
+        if values:
+            return values
+        imported_module = cls._imported_symbol_module(
+            source,
+            current_module=module_name,
+            symbol_name=symbol_name,
+            package_module=module_file.name == c.Infra.INIT_PY,
+        )
+        if not imported_module:
+            return []
+        return cls._resolve_assignment_strings(
+            project_root,
+            module_name=imported_module,
+            symbol_name=symbol_name,
+            visited=visited | frozenset({key}),
+        )
+
+    @staticmethod
+    def _resolve_lazy_module_name(package_name: str, module_name: str) -> str:
+        """Resolve a lazy import module string against the root package."""
+        if module_name.startswith("."):
+            return f"{package_name}{module_name}"
+        return module_name
+
+    @classmethod
+    def _resolve_lazy_import_targets(
+        cls,
+        project_root: Path,
+        *,
+        root_package: str,
+        module_name: str,
+        symbol_name: str,
+        visited: frozenset[str] = frozenset(),
+    ) -> t.StrMapping:
+        """Resolve one lazy-import map symbol into export target modules."""
+        key = f"{module_name}:{symbol_name}"
+        if key in visited:
+            return {}
+        module_file = cls._module_file(project_root, module_name)
+        if not module_file.exists():
+            return {}
+        source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        entries, refs = FlextInfraUtilitiesRopeAnalysis.module_mapping_assignment_source(
+            source,
+            symbol_name,
+        )
+        next_visited = visited | frozenset({key})
+        if not entries and not refs:
+            imported_module, imported_symbol = cls._imported_symbol_binding(
+                source,
+                current_module=module_name,
+                symbol_name=symbol_name,
+                package_module=module_file.name == c.Infra.INIT_PY,
+            )
+            if not imported_module:
+                return {}
+            return cls._resolve_lazy_import_targets(
+                project_root,
+                root_package=root_package,
+                module_name=imported_module,
+                symbol_name=imported_symbol or symbol_name,
+                visited=next_visited,
+            )
+        targets: dict[str, str] = {}
+        for target_module, export_names in entries:
+            resolved_module = cls._resolve_lazy_module_name(
+                root_package,
+                target_module,
+            )
+            for export_name in export_names:
+                targets[export_name] = resolved_module
+        for ref_name in refs:
+            local_targets = cls._resolve_lazy_import_targets(
+                project_root,
+                root_package=root_package,
+                module_name=module_name,
+                symbol_name=ref_name,
+                visited=next_visited,
+            )
+            if local_targets:
+                targets.update(local_targets)
+                continue
+            imported_module, imported_symbol = cls._imported_symbol_binding(
+                source,
+                current_module=module_name,
+                symbol_name=ref_name,
+                package_module=module_file.name == c.Infra.INIT_PY,
+            )
+            if imported_module:
+                targets.update(
+                    cls._resolve_lazy_import_targets(
+                        project_root,
+                        root_package=root_package,
+                        module_name=imported_module,
+                        symbol_name=imported_symbol or ref_name,
+                        visited=next_visited,
+                    )
+                )
+        return targets
+
+    @classmethod
+    def _lazy_export_target_map(
+        cls,
+        project_root: Path,
+        *,
+        package_name: str,
+        source: str,
+        exports: t.StrSequence,
+    ) -> t.StrMapping:
+        """Return target modules declared by the package lazy import map."""
+        lazy_imports_name = FlextInfraUtilitiesRopeAnalysis.lazy_imports_name_source(
+            source,
+        )
+        if not lazy_imports_name:
+            return {}
+        target_map = cls._resolve_lazy_import_targets(
+            project_root,
+            root_package=package_name,
+            module_name=package_name,
+            symbol_name=lazy_imports_name,
+        )
+        export_names = frozenset(exports)
+        return {
+            export_name: module_name
+            for export_name, module_name in target_map.items()
+            if export_name in export_names
+        }
+
+    @classmethod
+    def _public_export_strings(
+        cls,
+        project_root: Path,
+        package_name: str,
+        source: str,
+    ) -> t.StrSequence:
+        """Return runtime public exports from lazy-loader or ``__all__`` contracts."""
+        literal_values, export_name = (
+            FlextInfraUtilitiesRopeAnalysis.lazy_public_exports_source(source)
+        )
+        if literal_values:
+            return literal_values
+        if export_name:
+            local_values = cls._assignment_strings(source, export_name)
+            if local_values:
+                return local_values
+            imported_module = cls._imported_symbol_module(
+                source,
+                current_module=package_name,
+                symbol_name=export_name,
+                package_module=True,
+            )
+            if imported_module:
+                return cls._resolve_assignment_strings(
+                    project_root,
+                    module_name=imported_module,
+                    symbol_name=export_name,
+                )
+        return cls._assignment_strings(source, "__all__")
 
     @staticmethod
     def _export_target_map(
@@ -114,6 +323,99 @@ class FlextInfraUtilitiesDocsApi:
         ):
             return True
         return symbol_name in FlextInfraUtilitiesDocsApi._assignment_docstrings(source)
+
+    @classmethod
+    def _has_mro_docstring(
+        cls,
+        project_root: Path,
+        *,
+        module_name: str,
+        source: str,
+        symbol_name: str,
+        visited: frozenset[str],
+    ) -> bool:
+        """Return whether one class inherits documentation through its MRO chain."""
+        if not FlextInfraUtilitiesRopeAnalysis.class_declared_source(
+            source,
+            symbol_name,
+        ):
+            return False
+        for base_name in FlextInfraUtilitiesRopeAnalysis.class_bases_source(
+            source,
+            symbol_name,
+        ):
+            base_symbol = base_name.split(".")[-1]
+            if not base_symbol or base_symbol in {"ABC", "Generic", "Protocol", "Self"}:
+                continue
+            imported_module, imported_symbol = cls._imported_symbol_binding(
+                source,
+                current_module=module_name,
+                symbol_name=base_symbol,
+                package_module=cls._module_file(
+                    project_root,
+                    module_name,
+                ).name
+                == c.Infra.INIT_PY,
+            )
+            if imported_module:
+                if cls._has_exported_symbol_docstring(
+                    project_root,
+                    module_name=imported_module,
+                    symbol_name=imported_symbol or base_symbol,
+                    visited=visited,
+                ):
+                    return True
+                continue
+            if cls._has_exported_symbol_docstring(
+                project_root,
+                module_name=module_name,
+                symbol_name=base_symbol,
+                visited=visited,
+            ):
+                return True
+        return False
+
+    @classmethod
+    def _has_exported_symbol_docstring(
+        cls,
+        project_root: Path,
+        *,
+        module_name: str,
+        symbol_name: str,
+        visited: frozenset[str] = frozenset(),
+    ) -> bool:
+        """Return whether an exported symbol or its import target is documented."""
+        key = f"{module_name}:{symbol_name}"
+        if key in visited:
+            return False
+        module_file = cls._module_file(project_root, module_name)
+        if not module_file.exists():
+            return False
+        source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        if cls._has_symbol_docstring(source, symbol_name):
+            return True
+        if cls._has_mro_docstring(
+            project_root,
+            module_name=module_name,
+            source=source,
+            symbol_name=symbol_name,
+            visited=visited | frozenset({key}),
+        ):
+            return True
+        imported_module, imported_symbol = cls._imported_symbol_binding(
+            source,
+            current_module=module_name,
+            symbol_name=symbol_name,
+            package_module=module_file.name == c.Infra.INIT_PY,
+        )
+        if not imported_module:
+            return False
+        return cls._has_exported_symbol_docstring(
+            project_root,
+            module_name=imported_module,
+            symbol_name=imported_symbol or symbol_name,
+            visited=visited | frozenset({key}),
+        )
 
     @staticmethod
     def _project_keywords(
@@ -186,12 +488,26 @@ class FlextInfraUtilitiesDocsApi:
             return FlextInfraUtilitiesDocsApi.public_contract(project_root, "")
         source = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         all_exports = list(
-            FlextInfraUtilitiesDocsApi._assignment_strings(source, "__all__")
+            FlextInfraUtilitiesDocsApi._public_export_strings(
+                project_root,
+                package_name,
+                source,
+            )
         )
-        target_map = FlextInfraUtilitiesDocsApi._export_target_map(
-            source,
-            package_name,
-            all_exports,
+        target_map = dict(
+            FlextInfraUtilitiesDocsApi._export_target_map(
+                source,
+                package_name,
+                all_exports,
+            )
+        )
+        target_map.update(
+            FlextInfraUtilitiesDocsApi._lazy_export_target_map(
+                project_root,
+                package_name=package_name,
+                source=source,
+                exports=all_exports,
+            )
         )
         aliases, module_exports, symbol_exports = (
             FlextInfraUtilitiesDocsApi._classify_exports(all_exports, target_map)
@@ -352,6 +668,11 @@ class FlextInfraUtilitiesDocsApi:
         target_map = FlextInfraUtilitiesDocsApi._string_mapping(
             contract.get("target_map", {})
         )
+        module_exports = set(
+            FlextInfraUtilitiesDocsApi._string_values(
+                contract.get("module_exports", []),
+            )
+        )
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         module_docstring_checks = [
             (module_name, f"public module `{module_name}` is missing a docstring")
@@ -384,15 +705,20 @@ class FlextInfraUtilitiesDocsApi:
             for export_name, module_name in target_map.items()
             if export_name not in FlextInfraUtilitiesDocsApi._ALIAS_EXPORTS
             and not export_name.startswith("__")
+            and export_name not in module_exports
         ]
         for export_name, module_name in export_docstring_checks:
             module_file = FlextInfraUtilitiesDocsApi._module_file(
-                project_root, module_name
+                project_root,
+                module_name,
             )
             if not module_file.exists():
                 continue
-            source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            if FlextInfraUtilitiesDocsApi._has_symbol_docstring(source, export_name):
+            if FlextInfraUtilitiesDocsApi._has_exported_symbol_docstring(
+                project_root,
+                module_name=module_name,
+                symbol_name=export_name,
+            ):
                 continue
             issues.append(
                 m.Infra.AuditIssue(
