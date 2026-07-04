@@ -35,7 +35,9 @@ class TestsFlextInfraTransformersCastRemover:
         assert len(changes) == 1
 
     def test_cast_in_return_statement(self) -> None:
-        source = "from typing import cast\n\ndef f() -> int:\n    return cast(int, 1 + 1)\n"
+        source = (
+            "from typing import cast\n\ndef f() -> int:\n    return cast(int, 1 + 1)\n"
+        )
         code, _changes = _transform(source)
         assert "cast(" not in code
         assert "return 1 + 1" in code

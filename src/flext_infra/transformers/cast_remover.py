@@ -64,10 +64,7 @@ class _CastCallRewriter(ast.NodeTransformer):
     def _is_cast_call(node: ast.Call) -> bool:
         """Return True when the call is ``cast(...)`` or ``typing.cast(...)``."""
         func = node.func
-        return (
-            isinstance(func, ast.Name)
-            and func.id == "cast"
-        ) or (
+        return (isinstance(func, ast.Name) and func.id == "cast") or (
             isinstance(func, ast.Attribute)
             and func.attr == "cast"
             and isinstance(func.value, ast.Name)
