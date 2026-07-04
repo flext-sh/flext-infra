@@ -28,7 +28,9 @@ _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
 def _manager(
     workspace_root: Path | None = None,
 ) -> FlextInfraExtraPathsManager:
-    return FlextInfraExtraPathsManager(workspace_root=workspace_root or _TEST_WORKSPACE_ROOT)
+    return FlextInfraExtraPathsManager.model_validate(
+        {"workspace": workspace_root or _TEST_WORKSPACE_ROOT},
+    )
 
 
 class TestsFlextInfraDepsExtraPathsSync:

@@ -17,8 +17,8 @@ class ExtraPathsTestSupport:
         workspace_root: Path | None = None,
     ) -> FlextInfraExtraPathsManager:
         """Return a manager built through the Pydantic validation path."""
-        return FlextInfraExtraPathsManager(
-            workspace_root=workspace_root or _TEST_WORKSPACE_ROOT,
+        return FlextInfraExtraPathsManager.model_validate(
+            {"workspace": workspace_root or _TEST_WORKSPACE_ROOT},
         )
 
 

@@ -256,7 +256,9 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that("annotation-mismatch" in errors, eq=False)
         tm.that("bad-argument-count" in errors, eq=True)
         tm.that(
-            any("tool.pyrefly.errors.annotation-mismatch removed" in c for c in changes),
+            any(
+                "tool.pyrefly.errors.annotation-mismatch removed" in c for c in changes
+            ),
             eq=True,
         )
 
@@ -279,7 +281,9 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that("annotation-mismatch" in errors_after, eq=False)
         tm.that("bad-argument-count" in errors_after, eq=True)
         tm.that(
-            any("tool.pyrefly.errors.annotation-mismatch removed" in c for c in changes),
+            any(
+                "tool.pyrefly.errors.annotation-mismatch removed" in c for c in changes
+            ),
             eq=True,
         )
 
