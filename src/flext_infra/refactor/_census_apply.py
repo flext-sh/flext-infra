@@ -85,6 +85,7 @@ class FlextInfraRefactorCensusApplyMixin(
         """Apply supported fixes."""
         applied: set[str] = set()
         touched_paths: set[Path] = set()
+        applied_actions: set[str] = set()
         requested_fixes: dict[tuple[Path, str], set[str]] = defaultdict(set)
         for project in report.projects:
             for fix in project.fixes:
@@ -236,6 +237,7 @@ class FlextInfraRefactorCensusApplyMixin(
                 pass
             if not changed:
                 continue
+            applied_actions.add(action)
             touched_paths.add(file_path.resolve())
             applied.update(
                 self._fix_key(file_path, object_name, action)
@@ -273,9 +275,13 @@ class FlextInfraRefactorCensusApplyMixin(
                         *candidate.script_reference_sites,
                     )
                 )
+        stub_only = (
+            applied_actions == {"remove_stub_file"} and not report.removal_candidates
+        )
         if applied:
             self._ruff_fix_touched_files(touched_paths)
-            self._regenerate_inits_via_codegen()
+            if not stub_only:
+                self._regenerate_inits_via_codegen()
             rope.reload()
         return frozenset(applied)
 
