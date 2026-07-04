@@ -130,6 +130,27 @@ class TestExtendedRunnerExtras:
         )
 
         tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="PARSE_ERROR")
+
+    def test_bandit_reports_tool_failure_without_json(self, tmp_path: Path) -> None:
+        _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        runner = u.Tests.command_runner(
+            stderr="Failed to spawn: bandit",
+            returncode=1,
+        )
+
+        result = u.Tests.run_gate_check(
+            FlextInfraBanditGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
+        )
+
+        tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="TOOL_ERROR")
+        tm.that(result.issues[0].message, contains="Failed to spawn: bandit")
 
     def test_markdown_skips_without_markdown_files(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
