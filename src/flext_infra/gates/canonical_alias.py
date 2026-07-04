@@ -35,10 +35,16 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
     # Packages that define the canonical aliases themselves. Rewriting imports
     # inside them risks creating import cycles during package initialization.
+    # Projects that only re-export aliases (e.g. flext_cli) are NOT listed here;
+    # per-file facade guards protect their facade implementation files.
     _ALIAS_SOURCE_PACKAGES: ClassVar[frozenset[str]] = frozenset({
         c.Infra.PKG_CORE_UNDERSCORE,
-        "flext_cli",
     })
+
+    @staticmethod
+    def _normalized_project_name(project_dir: Path) -> str:
+        """Return the package name for a project directory (``flext-cli`` → ``flext_cli``)."""
+        return project_dir.name.replace("-", "_")
 
     @override
     def check(
@@ -49,7 +55,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         """Scan one project's Python sources for ENFORCE-080 violations."""
         _ = ctx
         started = time.monotonic()
-        if project_dir.name in self._ALIAS_SOURCE_PACKAGES:
+        if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._skip_result(project_dir, started)
         files_result = u.Infra.iter_python_files(
             project_dir,
@@ -135,7 +141,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
         started = time.monotonic()
-        if project_dir.name in self._ALIAS_SOURCE_PACKAGES:
+        if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._skip_result(project_dir, started)
         files_result = u.Infra.iter_python_files(
             project_dir,

@@ -29,9 +29,10 @@ _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {
 
 # Packages that define the canonical aliases themselves. Rewriting imports
 # inside them risks creating import cycles during package initialization.
+# Note: projects that only re-export aliases (e.g. flext_cli) are NOT listed
+# here; per-file facade guards already protect their facade implementation files.
 _ALIAS_SOURCE_PACKAGES: frozenset[str] = frozenset({
     c.Infra.PKG_CORE_UNDERSCORE,
-    "flext_cli",
 })
 
 
