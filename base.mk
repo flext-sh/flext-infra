@@ -522,9 +522,15 @@ test: ## Run pytest only
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
 		--skips "$$skips_file" 2>&1 | grep -v '^\[TYPER-DEBUG\]' > "$$counts_file"; \
 	. "$$counts_file"; \
+	diag_strict=0; \
+	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || [ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
+		diag_strict=1; \
+		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
+	fi; \
 	if [ "$$rc" -eq 130 ] || [ "$$interrupted" = "1" ]; then run_state="INTERRUPTED"; else run_state="COMPLETED"; fi; \
 	echo "================================================" >&2; \
 	echo "DIAG $$run_state | failed=$$failed_count errors=$$error_count warnings=$$warning_count skipped=$$skipped_count" >&2; \
+	if [ "$$diag_strict" = "1" ]; then echo "DIAG STRICT FAIL | failed/error/warning/skipped counters must be zero" >&2; fi; \
 	echo "================================================" >&2; \
 	echo "Top test durations (from $$slowest_file):" >&2; \
 	if [ -s "$$slowest_file" ]; then awk 'NR<=10 {print}' "$$slowest_file" >&2; \
