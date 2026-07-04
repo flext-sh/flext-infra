@@ -14,6 +14,7 @@ from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
 from tests.models import m
+from tests.typings import t
 from tests.utilities import u
 
 
@@ -230,6 +231,57 @@ class TestsFlextInfraModernizerPyrefly:
         assert isinstance(errors, MutableMapping)
         tm.that(errors, is_=MutableMapping)
         tm.that(len(errors), gt=0)
+
+    def test_ensure_pyrefly_config_phase_removes_stale_error_keys(self) -> None:
+        doc = tomlkit.document()
+        doc["tool"] = tomlkit.table()
+        tool = doc["tool"]
+        assert isinstance(tool, MutableMapping)
+        tm.that(tool, is_=MutableMapping)
+        tool["pyrefly"] = tomlkit.table()
+        pyrefly = tool["pyrefly"]
+        assert isinstance(pyrefly, MutableMapping)
+        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly["errors"] = tomlkit.table()
+        errors = pyrefly["errors"]
+        assert isinstance(errors, MutableMapping)
+        tm.that(errors, is_=MutableMapping)
+        errors["annotation-mismatch"] = "error"
+
+        changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+            doc,
+            is_root=True,
+        )
+
+        tm.that("annotation-mismatch" in errors, eq=False)
+        tm.that("bad-argument-count" in errors, eq=True)
+        tm.that(
+            any("tool.pyrefly.errors.annotation-mismatch removed" in c for c in changes),
+            eq=True,
+        )
+
+    def test_ensure_pyrefly_config_payload_removes_stale_error_keys(self) -> None:
+        errors: t.MutableJsonMapping = {"annotation-mismatch": "error"}
+        pyrefly: t.MutableJsonMapping = {"errors": errors}
+        tool: t.MutableJsonMapping = {"pyrefly": pyrefly}
+        payload: t.MutableJsonMapping = {"tool": tool}
+
+        changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply_payload(
+            payload,
+            is_root=True,
+        )
+
+        errors_after = u.Cli.toml_mapping_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.PYREFLY, "errors"),
+        )
+        assert errors_after is not None
+        tm.that("annotation-mismatch" in errors_after, eq=False)
+        tm.that("bad-argument-count" in errors_after, eq=True)
+        tm.that(
+            any("tool.pyrefly.errors.annotation-mismatch removed" in c for c in changes),
+            eq=True,
+        )
 
     def test_ensure_pyrefly_config_phase_is_idempotent(self) -> None:
         doc = tomlkit.document()
