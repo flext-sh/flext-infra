@@ -38,6 +38,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, self._error_text(result)
@@ -55,6 +56,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, self._error_text(result)
@@ -76,6 +78,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, self._error_text(result)
@@ -90,6 +93,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, self._error_text(result)
@@ -104,6 +108,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, self._error_text(result)
@@ -137,6 +142,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, self._error_text(result)
@@ -164,6 +170,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, self._error_text(result)

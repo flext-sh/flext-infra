@@ -39,7 +39,7 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
     to change workspace-level verbs; then run ``make sync`` to propagate.
     """
 
-    def generate(self, workspace_root: Path) -> p.Result[bool]:
+    def generate(self, workspace_root: Path, *, apply: bool = True) -> p.Result[bool]:
         """Regenerate the workspace root Makefile from the stored template.
 
         Args:
@@ -53,7 +53,7 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
         makefile = workspace_root / c.Infra.MAKEFILE_FILENAME
 
         if not self.template_path.exists():
-            return self._bootstrap_template(makefile)
+            return self._bootstrap_template(makefile, apply=apply)
 
         pr_branch = self._current_branch(workspace_root)
         render_result = self._render_template(pr_branch=pr_branch)
@@ -68,9 +68,11 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
             if u.Cli.sha256_content(read.value) == u.Cli.sha256_content(content):
                 return r[bool].ok(False)
 
+        if not apply:
+            return r[bool].ok(True)
         return u.Cli.atomic_write_text_file(makefile, content)
 
-    def _bootstrap_template(self, makefile: Path) -> p.Result[bool]:
+    def _bootstrap_template(self, makefile: Path, *, apply: bool) -> p.Result[bool]:
         """Create the template from the current Makefile (one-time bootstrap)."""
         result: p.Result[bool]
         if not makefile.exists():
@@ -88,6 +90,9 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
                     template_content = self._build_template_lines(content)
 
                     try:
+                        if not apply:
+                            result = r[bool].ok(True)
+                            return result
                         result = self._write_bootstrap_template(
                             makefile=makefile,
                             pr_branch=pr_branch,

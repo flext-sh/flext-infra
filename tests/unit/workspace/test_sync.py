@@ -100,6 +100,7 @@ class TestsFlextInfraWorkspaceSync:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -113,6 +114,23 @@ class TestsFlextInfraWorkspaceSync:
         assert isinstance(overrides, dict)
         assert overrides["reportUntypedBaseClass"] == "none"
 
+    def test_sync_dry_run_reports_changes_without_writing(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+        ).execute()
+
+        assert result.success, _error_text(result)
+        assert result.value.files_changed >= 1
+        assert not (project_root / ".gitignore").exists()
+        assert not (project_root / ".envrc").exists()
+        assert not (project_root / ".mise.toml").exists()
+        assert not (project_root / ".vscode" / "settings.json").exists()
+        assert not (project_root / "Makefile").exists()
+
     def test_sync_uses_package_tests_dir_when_present(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
@@ -121,6 +139,7 @@ class TestsFlextInfraWorkspaceSync:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -133,6 +152,7 @@ class TestsFlextInfraWorkspaceSync:
         service = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace_root=project_root,
+            apply_changes=True,
         )
 
         first_result = service.execute()
@@ -155,6 +175,7 @@ class TestsFlextInfraWorkspaceSync:
         service = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace_root=project_root,
+            apply_changes=True,
         )
 
         result = service.execute()
@@ -190,10 +211,12 @@ class TestsFlextInfraWorkspaceSync:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace_root=project_root,
+            apply_changes=True,
         ).execute()
         second_result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -250,6 +273,7 @@ class TestsFlextInfraWorkspaceSync:
         result = FlextInfraSyncService(
             canonical_root=workspace_root,
             workspace_root=workspace_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -269,6 +293,7 @@ class TestsFlextInfraWorkspaceSync:
         result = FlextInfraSyncService(
             canonical_root=workspace_root,
             workspace_root=workspace_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, _error_text(result)
@@ -293,6 +318,7 @@ class TestsFlextInfraWorkspaceSync:
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
             workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
         assert result.success, _error_text(result)

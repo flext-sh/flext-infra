@@ -217,6 +217,7 @@ class TestsFlextInfraWorkspaceMain:
             str(project_root),
             "--canonical-root",
             str(project_root.parent),
+            "--apply",
         ])
 
         assert exit_code == 0

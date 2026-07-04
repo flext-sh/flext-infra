@@ -92,10 +92,12 @@ class FlextInfraSyncService(
         changed = 0
         effective_root = canonical_root or self.canonical_root
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
+        apply = not self.effective_dry_run
         basemk_result = self._sync_basemk(
             resolved,
             settings,
             canonical_root=effective_root,
+            apply=apply,
         )
         if basemk_result.failure:
             return r[m.Infra.SyncResult].fail(
@@ -110,26 +112,27 @@ class FlextInfraSyncService(
             )
             if is_workspace_root
             else c.Infra.REQUIRED_GITIGNORE_ENTRIES,
+            apply=apply,
         )
         if gitignore_result.failure:
             return r[m.Infra.SyncResult].fail(
                 gitignore_result.error or ".gitignore sync failed",
             )
         changed += 1 if gitignore_result.value else 0
-        env_result = self._sync_environment_files(resolved)
+        env_result = self._sync_environment_files(resolved, apply=apply)
         if env_result.failure:
             return r[m.Infra.SyncResult].fail(
                 env_result.error or "workspace environment sync failed",
             )
         changed += env_result.value
-        vscode_result = self._sync_vscode_settings(resolved)
+        vscode_result = self._sync_vscode_settings(resolved, apply=apply)
         if vscode_result.failure:
             return r[m.Infra.SyncResult].fail(
                 vscode_result.error or "VS Code settings sync failed",
             )
         changed += 1 if vscode_result.value else 0
         if is_workspace_root:
-            pre_commit_result = self._sync_pre_commit_config(resolved)
+            pre_commit_result = self._sync_pre_commit_config(resolved, apply=apply)
             if pre_commit_result.failure:
                 return r[m.Infra.SyncResult].fail(
                     pre_commit_result.error or ".pre-commit-config.yaml sync failed",
@@ -138,6 +141,7 @@ class FlextInfraSyncService(
         makefile_result = self._sync_makefile_if_needed(
             resolved,
             effective_root,
+            apply=apply,
         )
         if makefile_result.failure:
             return r[m.Infra.SyncResult].fail(

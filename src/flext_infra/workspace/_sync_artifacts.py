@@ -31,12 +31,15 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         self,
         resolved: Path,
         effective_root: Path | None,
+        *,
+        apply: bool,
     ) -> p.Result[int]:
         """Sync workspace or project Makefile and surface generator failures."""
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
             workspace_makefile_result = FlextInfraWorkspaceMakefileGenerator().generate(
-                resolved
+                resolved,
+                apply=apply,
             )
             if workspace_makefile_result.failure:
                 return r[int].fail(
@@ -48,6 +51,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
             makefile_result = self._sync_project_makefile(
                 resolved,
                 effective_root or resolved,
+                apply=apply,
             )
             if makefile_result.failure:
                 return r[int].fail(
@@ -60,11 +64,14 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     def _sync_project_makefile(
         workspace_root: Path,
         canonical_root: Path,
+        *,
+        apply: bool,
     ) -> p.Result[bool]:
         """Sync the generated section of a project Makefile from pyproject.toml."""
         return FlextInfraProjectMakefileUpdater().update(
             workspace_root,
             canonical_root=canonical_root,
+            apply=apply,
         )
 
     @staticmethod
@@ -89,6 +96,8 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         self,
         workspace_root: Path,
         required: t.StrSequence,
+        *,
+        apply: bool,
     ) -> p.Result[bool]:
         """Idempotently sync one managed .gitignore block."""
         gitignore = workspace_root / c.Infra.GITIGNORE
@@ -101,6 +110,8 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         rendered = self._render_gitignore_with_managed_entries(existing, required)
         if rendered == existing:
             return r[bool].ok(False)
+        if not apply:
+            return r[bool].ok(True)
         write = u.Cli.files_write_text(gitignore, rendered)
         if write.failure:
             return r[bool].fail(write.error or ".gitignore update failed")
@@ -130,13 +141,20 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     def _sync_environment_files(
         self,
         workspace_root: Path,
+        *,
+        apply: bool,
     ) -> p.Result[int]:
         """Sync generated direnv and mise files without overwriting custom files."""
-        return FlextInfraWorkspaceEnvironment.sync_environment_files(workspace_root)
+        return FlextInfraWorkspaceEnvironment.sync_environment_files(
+            workspace_root,
+            apply=apply,
+        )
 
     def _sync_pre_commit_config(
         self,
         workspace_root: Path,
+        *,
+        apply: bool,
     ) -> p.Result[bool]:
         """Sync the workspace pre-commit config from the canonical SSOT."""
         target_path = workspace_root / ".pre-commit-config.yaml"
@@ -146,12 +164,14 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
             existing_hash = u.Cli.sha256_file(target_path)
             if content_hash == existing_hash:
                 return r[bool].ok(False)
+        if not apply:
+            return r[bool].ok(True)
         return u.Cli.atomic_write_text_file(target_path, content)
 
     @staticmethod
-    def _sync_vscode_settings(workspace_root: Path) -> p.Result[bool]:
+    def _sync_vscode_settings(workspace_root: Path, *, apply: bool) -> p.Result[bool]:
         """Sync canonical VS Code settings for Python workspaces."""
-        return FlextInfraWorkspaceVscode.sync_settings(workspace_root)
+        return FlextInfraWorkspaceVscode.sync_settings(workspace_root, apply=apply)
 
     @staticmethod
     def _is_flext_infra_root(workspace_root: Path) -> bool:
@@ -164,6 +184,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         settings: m.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
+        apply: bool,
     ) -> p.Result[bool]:
         """Sync base.mk for workspace root and subprojects.
 
@@ -184,6 +205,8 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
             existing_hash = u.Cli.sha256_file(target_path)
             if content_hash == existing_hash:
                 return r[bool].ok(False)
+        if not apply:
+            return r[bool].ok(True)
         return u.Cli.atomic_write_text_file(target_path, content)
 
 

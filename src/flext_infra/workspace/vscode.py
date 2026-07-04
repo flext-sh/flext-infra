@@ -16,7 +16,7 @@ class FlextInfraWorkspaceVscode:
     """Synchronize generated VS Code settings without replacing custom keys."""
 
     @classmethod
-    def sync_settings(cls, workspace_root: Path) -> p.Result[bool]:
+    def sync_settings(cls, workspace_root: Path, *, apply: bool = True) -> p.Result[bool]:
         """Ensure ``.vscode/settings.json`` carries the canonical FLEXT defaults."""
         if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return r[bool].ok(False)
@@ -32,6 +32,8 @@ class FlextInfraWorkspaceVscode:
         }
         if not cls.apply_required_settings(settings):
             return r[bool].ok(False)
+        if not apply:
+            return r[bool].ok(True)
         write_result = u.Cli.json_write(settings_path, settings)
         if write_result.failure:
             return r[bool].fail(write_result.error or "VS Code settings write failed")

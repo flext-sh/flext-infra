@@ -32,7 +32,13 @@ class FlextInfraProjectMakefileUpdater:
         identical to the file already on disk.
     """
 
-    def update(self, project_root: Path, *, canonical_root: Path) -> p.Result[bool]:
+    def update(
+        self,
+        project_root: Path,
+        *,
+        canonical_root: Path,
+        apply: bool = True,
+    ) -> p.Result[bool]:
         """Regenerate project Makefile from pyproject.toml.
 
         Args:
@@ -79,10 +85,14 @@ class FlextInfraProjectMakefileUpdater:
                             new_content
                         ):
                             result = r[bool].ok(False)
+                        elif not apply:
+                            result = r[bool].ok(True)
                         else:
                             result = u.Cli.atomic_write_text_file(
                                 makefile_path, new_content
                             )
+                    elif not apply:
+                        result = r[bool].ok(True)
                     else:
                         result = u.Cli.atomic_write_text_file(
                             makefile_path, new_content
