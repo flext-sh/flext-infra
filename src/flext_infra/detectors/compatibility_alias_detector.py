@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 from rope.refactor.importutils.importinfo import FromImport
@@ -152,7 +154,11 @@ class FlextInfraCompatibilityAliasDetector:
         """Detect canonical aliases imported from ``flext_core`` into local owners."""
         current_module = u.Infra.package_name(file_path)
         current_package = current_module.split(".", maxsplit=1)[0]
-        local_aliases = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS.get(current_package)
+        local_aliases = (
+            FlextInfraCompatibilityAliasDetector._project_alias_owners().get(
+                current_package
+            )
+        )
         if not local_aliases:
             return ()
         if FlextInfraCompatibilityAliasDetector._is_private_facade_implementation(
@@ -190,6 +196,19 @@ class FlextInfraCompatibilityAliasDetector:
                     )
                 )
         return violations
+
+    @staticmethod
+    def _project_alias_owners() -> t.StrSequenceMapping:
+        """Return live alias owners after test/runtime facade reloads."""
+        constants_module = sys.modules.get("flext_infra.constants")
+        if constants_module is None:
+            return c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
+        live_c = getattr(constants_module, "c")
+        owners = getattr(live_c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS")
+        if not isinstance(owners, Mapping):
+            msg = "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS is invalid"
+            raise TypeError(msg)
+        return owners
 
     @classmethod
     def _iter_runtime_from_imports(
