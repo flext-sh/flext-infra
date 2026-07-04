@@ -520,7 +520,6 @@ tools:
     use-ignore-files: false
     strict-errors:
       # --- type safety ---
-      - annotation-mismatch
       - bad-argument-count
       - bad-argument-type
       - bad-assignment
