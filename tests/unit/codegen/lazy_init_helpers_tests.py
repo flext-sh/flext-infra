@@ -304,14 +304,17 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert u.Tests.run_lazy_init(workspace_root) == 0
         init_content = self._generated_init(package_root)
+        exports_content = self._generated_exports(package_root)
 
-        assert "from flext_cli import d, e, h, m, p, r, s, t, u, x" in init_content
         for alias_name in ("d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
             assert f'    "{alias_name}",' in init_content
-        sidecar_content = package_root.joinpath("_exports_lazy_part_01.py").read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            assert f'            "{alias_name}",' in exports_content
+        assert (
+            "from flext_cli import d, e, h, m, p, r, s, t, u, x"
+            not in init_content.splitlines()
         )
-        assert '".constants": (' in sidecar_content
+        assert '"flext_cli": (' in exports_content
+        assert '".constants": (' in exports_content
 
     def test_nested_tests_namespace_exports_local_symbols_only(
         self,

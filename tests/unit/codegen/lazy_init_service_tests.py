@@ -226,6 +226,54 @@ class TestFlextInfraCodegenLazyInit:
         assert "FlextTestsService" not in stub_content
         assert '"sub"' not in stub_content
 
+    def test_explicit_public_exports_keep_internal_child_export(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A root ABI contract can publish a selected internal child export."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+        )
+        utilities_dir = package_root / "_utilities"
+        utilities_dir.mkdir(parents=True)
+        (package_root / c.Infra.ROOT_EXPORTS_FILENAME).write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "from flext_core.lazy import build_lazy_import_map\n\n"
+                "FLEXT_TEST_PROJECT_LAZY_IMPORTS = build_lazy_import_map({\n"
+                '    "._utilities.client": ("FlextTestsClient",),\n'
+                "})\n"
+                'FLEXT_TEST_PROJECT_PUBLIC_EXPORTS = ("FlextTestsClient",)\n\n'
+                "__all__ = (\n"
+                '    "FLEXT_TEST_PROJECT_LAZY_IMPORTS",\n'
+                '    "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS",\n'
+                ")\n"
+            ),
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (utilities_dir / "client.py").write_text(
+            (
+                "from __future__ import annotations\n\n"
+                "class FlextTestsClient:\n"
+                "    pass\n\n"
+                '__all__: list[str] = ["FlextTestsClient"]\n'
+            ),
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        result = u.Tests.run_lazy_init(workspace_root)
+
+        assert result == 0
+        init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
+        stub_content = self._read_generated_file(package_root, c.Infra.INIT_PYI)
+        assert "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS" in init_content
+        assert "from flext_test_project._utilities.client import (" in init_content
+        assert "FlextTestsClient as FlextTestsClient," in init_content
+        assert (
+            "from flext_test_project._utilities.client import "
+            "FlextTestsClient as FlextTestsClient"
+        ) in stub_content
+
     def test_public_root_publishes_governed_child_module_export(
         self,
         tmp_path: Path,
