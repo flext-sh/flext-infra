@@ -23,10 +23,10 @@ class FlextInfraModelsGates:
             arbitrary_types_allowed=True,
             populate_by_name=True,
         )
-        workspace_root: Annotated[
-            Path,
-            m.Field(alias="workspace", description="Workspace root directory"),
-        ]
+        workspace_root: Path = m.Field(
+            alias="workspace",
+            description="Workspace root directory",
+        )
         reports_dir: Annotated[Path, m.Field(description="Reports output directory")]
         apply_fixes: Annotated[
             bool,

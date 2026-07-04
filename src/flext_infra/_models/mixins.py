@@ -120,17 +120,14 @@ class FlextInfraModelsMixins:
                 },
             ),
         ] = False
-        gates: Annotated[
-            t.StrSequence,
-            m.Field(
-                default_factory=lambda: tuple(
-                    gate.strip()
-                    for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
-                    if gate.strip()
-                ),
-                description="Gate names for post-transform validation",
+        gates: t.StrSequence = m.Field(
+            default_factory=lambda: tuple(
+                gate.strip()
+                for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
+                if gate.strip()
             ),
-        ]
+            description="Gate names for post-transform validation",
+        )
 
         @m.field_validator("gates", mode="before")
         @classmethod

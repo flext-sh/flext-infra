@@ -551,10 +551,16 @@ class FlextInfraEnforcementFixerOrchestrator(
                     ),
                 ],
             )
+        file_paths = list(files_result.value)
+        if any(
+            getattr(rule.source, "violation_field", "") == "stub_file_violations"
+            for rule in rules
+        ):
+            file_paths.extend(self._stub_file_paths(project_dir))
         probes: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
         failures: list[fr.FailedFix] = []
         with u.Infra.open_project(self.workspace_root) as rope_project:
-            for file_path in files_result.value:
+            for file_path in file_paths:
                 ctx = m.Infra.DetectorContext(
                     file_path=file_path,
                     rope_project=rope_project,

@@ -194,10 +194,9 @@ class FlextInfraModelsDocs:
         items: Annotated[
             t.SequenceOf[FlextInfraModelsDocs.DocsPhaseItemModel],
             m.Field(
-                default_factory=_items_default,
                 description="Phase-specific item payloads",
             ),
-        ]
+        ] = m.Field(default_factory=_items_default)
 
 
 __all__: list[str] = ["FlextInfraModelsDocs"]
