@@ -26,9 +26,9 @@ class FlextInfraMROCompletenessDetector:
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None:
             return []
-        res = u.Infra.fetch_python_resource(
-            rope_project, file_path, skip_protected=True
-        )
+        if not FlextInfraMROCompletenessDetector._is_src_root_facade(ctx):
+            return []
+        res = u.Infra.fetch_python_resource(rope_project, file_path)
         if res is None:
             if parse_failures is not None:
                 parse_failures.append(
@@ -102,6 +102,21 @@ class FlextInfraMROCompletenessDetector:
             for name, line in sorted(expected.items())
             if name not in declared
         ]
+
+    @staticmethod
+    def _is_src_root_facade(ctx: m.Infra.DetectorContext) -> bool:
+        """Return whether the file is a root source facade module."""
+        project_root = ctx.project_root
+        if project_root is None:
+            return True
+        try:
+            rel_path = ctx.file_path.relative_to(project_root)
+        except ValueError:
+            return False
+        return (
+            len(rel_path.parts) == c.Infra.RUNTIME_ALIAS_SRC_DEPTH_EXACT
+            and rel_path.parts[0] == "src"
+        )
 
 
 __all__: list[str] = ["FlextInfraMROCompletenessDetector"]

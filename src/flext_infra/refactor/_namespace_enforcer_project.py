@@ -159,7 +159,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                    project_root=project_root,
                 ),
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_import_violations(
@@ -245,6 +244,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
+                    project_root=project_root,
                 ),
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_missing_future_annotations(
@@ -328,6 +328,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
+                    project_root=project_root,
                 ),
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_mro_completeness_violations(

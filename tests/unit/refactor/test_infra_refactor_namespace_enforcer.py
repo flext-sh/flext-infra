@@ -880,6 +880,44 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.total_cyclic_imports, gte=1)
 
+    def test_namespace_enforcer_skips_mro_completeness_for_tests_typings(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        project = workspace / "sample-proj"
+        pkg = project / "src" / "sample_pkg"
+        test_pkg = project / "tests"
+        pkg.mkdir(parents=True)
+        test_pkg.mkdir(parents=True)
+        _ = (project / "pyproject.toml").write_text(
+            "[project]\nname='sample'\n",
+            encoding="utf-8",
+        )
+        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (pkg / "typings.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class SampleTypes:\n"
+            "    pass\n\n"
+            "t = SampleTypes\n",
+            encoding="utf-8",
+        )
+        _ = (test_pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (test_pkg / "typings.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class TestsSampleTypes:\n"
+            "    pass\n\n"
+            "t = TestsSampleTypes\n",
+            encoding="utf-8",
+        )
+
+        report = FlextInfraNamespaceEnforcer(workspace_root=workspace).enforce(
+            apply=False,
+        )
+
+        tm.that(report.total_parse_failures, eq=0)
+
     def test_namespace_enforcer_detects_missing_runtime_alias_outside_src(
         self,
         tmp_path: Path,

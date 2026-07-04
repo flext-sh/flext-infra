@@ -113,6 +113,34 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
 
         assert violations == []
 
+    def test_skips_tests_facade_like_files_without_parse_failure(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_root = tmp_path / "flext-example"
+        tests_dir = project_root / "tests"
+        tests_dir.mkdir(parents=True)
+        target = tests_dir / "typings.py"
+        target.write_text(
+            "from __future__ import annotations\n\n"
+            "class TestsFlextExampleTypes:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+        parse_failures: list[m.Infra.ParseFailureViolation] = []
+
+        violations = FlextInfraMROCompletenessDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=target,
+                rope_project=_make_rope(project_root),
+                parse_failures=parse_failures,
+                project_root=project_root,
+            ),
+        )
+
+        assert violations == []
+        assert parse_failures == []
+
     def test_skips_private_candidate_classes(self, tmp_path: Path) -> None:
         facade_file, rope_project = _write_models_project(
             tmp_path=tmp_path,

@@ -52,7 +52,19 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
             line = getattr(probe, "line", 0)
             object_name = getattr(probe, "object_name", "")
             literal = getattr(probe, "literal", "")
-            message = self._message(rule, object_name=object_name, literal=literal)
+            class_name = getattr(probe, "class_name", "")
+            first_base = getattr(probe, "first_base", "")
+            expected_base = getattr(probe, "expected_base", "")
+            detail = getattr(probe, "detail", "")
+            message = self._message(
+                rule,
+                object_name=object_name,
+                literal=literal,
+                class_name=class_name,
+                first_base=first_base,
+                expected_base=expected_base,
+                detail=detail,
+            )
             if ctx.apply:
                 failed.append(
                     fr.FailedFix(
@@ -84,10 +96,23 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
         *,
         object_name: str,
         literal: str,
+        class_name: str = "",
+        first_base: str = "",
+        expected_base: str = "",
+        detail: str = "",
     ) -> str:
         """Build a concise human-readable preview message."""
         if rule.id == "ENFORCE-097" and literal:
             return f"magic literal {literal} should become a named constant"
+        if class_name and first_base:
+            message = f"class {class_name!r} has invalid first base {first_base!r}"
+            if expected_base:
+                message = f"{message}; expected {expected_base}"
+            if detail:
+                message = f"{message} ({detail})"
+            return message
         if object_name:
             return f"{object_name} requires manual relocation/remediation"
+        if detail:
+            return detail
         return "requires manual remediation"
