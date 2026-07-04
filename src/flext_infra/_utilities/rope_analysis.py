@@ -848,9 +848,12 @@ class FlextInfraUtilitiesRopeAnalysis:
         package_module: bool,
     ) -> tuple[str, str]:
         """Return ``(module, original_name)`` for one imported symbol binding."""
-        for module_source, level, original_name, bound_name in (
-            FlextInfraUtilitiesRopeAnalysis._from_import_bindings_source(source)
-        ):
+        for (
+            module_source,
+            level,
+            original_name,
+            bound_name,
+        ) in FlextInfraUtilitiesRopeAnalysis._from_import_bindings_source(source):
             if bound_name != symbol_name:
                 continue
             module_name = FlextInfraUtilitiesRopeAnalysis.relative_import_module_name(
@@ -927,7 +930,10 @@ class FlextInfraUtilitiesRopeAnalysis:
             source,
             "install_lazy_exports",
         )
-        if len(call_args) > FlextInfraUtilitiesRopeAnalysis._INSTALL_LAZY_IMPORTS_ARG_INDEX:
+        if (
+            len(call_args)
+            > FlextInfraUtilitiesRopeAnalysis._INSTALL_LAZY_IMPORTS_ARG_INDEX
+        ):
             return FlextInfraUtilitiesRopeAnalysis._symbol_name_source(
                 call_args[
                     FlextInfraUtilitiesRopeAnalysis._INSTALL_LAZY_IMPORTS_ARG_INDEX
@@ -1078,11 +1084,11 @@ class FlextInfraUtilitiesRopeAnalysis:
         text = source.strip()
         while text and text[0].isalpha() and len(text) > 1 and text[1] in {"'", '"'}:
             text = text[1:]
-        if (
-            len(text)
-            < FlextInfraUtilitiesRopeAnalysis._STRING_LITERAL_MIN_LENGTH
-            or text[0] not in {"'", '"'}
-        ):
+        if len(
+            text
+        ) < FlextInfraUtilitiesRopeAnalysis._STRING_LITERAL_MIN_LENGTH or text[
+            0
+        ] not in {"'", '"'}:
             return ""
         quote = text[0]
         triple_quote = quote * FlextInfraUtilitiesRopeAnalysis._TRIPLE_QUOTE_LENGTH
@@ -1265,9 +1271,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     def _is_symbol_source(source: str) -> bool:
         """Return whether source is a simple dotted or underscored symbol."""
         text = source.strip()
-        return bool(text) and all(
-            char.isalnum() or char in {"_", "."} for char in text
-        )
+        return bool(text) and all(char.isalnum() or char in {"_", "."} for char in text)
 
     @staticmethod
     def _symbol_name_source(source: str) -> str:

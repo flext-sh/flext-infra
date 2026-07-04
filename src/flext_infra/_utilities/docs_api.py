@@ -172,9 +172,11 @@ class FlextInfraUtilitiesDocsApi:
         if not module_file.exists():
             return {}
         source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        entries, refs = FlextInfraUtilitiesRopeAnalysis.module_mapping_assignment_source(
-            source,
-            symbol_name,
+        entries, refs = (
+            FlextInfraUtilitiesRopeAnalysis.module_mapping_assignment_source(
+                source,
+                symbol_name,
+            )
         )
         next_visited = visited | frozenset({key})
         if not entries and not refs:

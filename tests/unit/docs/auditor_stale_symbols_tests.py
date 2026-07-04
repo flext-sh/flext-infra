@@ -21,7 +21,7 @@ def _stale_symbol_scope(tmp_path: Path) -> m.Infra.DocScope:
     _write(
         workspace / "docs" / "docs_config.json",
         (
-            '{\n'
+            "{\n"
             '  "audit": {\n'
             '    "stale_symbols": ["LiveSymbol", "DeadSymbol"],\n'
             '    "stale_symbol_exempt_paths": []\n'
@@ -32,7 +32,7 @@ def _stale_symbol_scope(tmp_path: Path) -> m.Infra.DocScope:
     _write(
         project / "pyproject.toml",
         (
-            '[project]\n'
+            "[project]\n"
             'name = "flext-demo"\n'
             'version = "0.1.0"\n'
             'description = "Demo docs audit project"\n'
@@ -108,7 +108,7 @@ def test_public_contract_resolves_imported_lazy_public_exports(
     _write(
         tmp_path / "pyproject.toml",
         (
-            '[project]\n'
+            "[project]\n"
             'name = "demo-pkg"\n'
             'version = "0.1.0"\n'
             'description = "Demo public exports project"\n'
@@ -183,7 +183,7 @@ def test_public_contract_resolves_imported_lazy_import_map(
     _write(
         tmp_path / "pyproject.toml",
         (
-            '[project]\n'
+            "[project]\n"
             'name = "demo-pkg"\n'
             'version = "0.1.0"\n'
             'description = "Demo public exports project"\n'
@@ -252,7 +252,7 @@ def test_docstring_issues_accepts_direct_part_mro_docstring(
     _write(
         tmp_path / "pyproject.toml",
         (
-            '[project]\n'
+            "[project]\n"
             'name = "demo-pkg"\n'
             'version = "0.1.0"\n'
             'description = "Demo public exports project"\n'

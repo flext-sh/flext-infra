@@ -175,8 +175,10 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         if not tokens:
             return issues
-        live_public_symbols = FlextInfraUtilitiesDocsAudit.docs_live_public_symbol_names(
-            scope,
+        live_public_symbols = (
+            FlextInfraUtilitiesDocsAudit.docs_live_public_symbol_names(
+                scope,
+            )
         )
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path / c.Infra.DIR_DOCS).as_posix()
