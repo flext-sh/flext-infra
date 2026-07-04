@@ -24,7 +24,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
                 u.Cli.run_checked(
                     ["git", "remote", "add", "origin", origin_url],
                     cwd=repo_root,
-                )
+                ),
             )
         project_root = repo_root / "project"
         project_root.mkdir()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import pytest
 from flext_tests import r, tm
@@ -9,8 +9,10 @@ from flext_tests import r, tm
 from flext_infra import c, u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from tests.models import m
-from tests.protocols import p
 from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests.protocols import p
 
 
 @pytest.fixture
@@ -48,7 +50,7 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
                 self._observed_make_args.append(make_args)
             exit_code = self._exit_code_by_project.get(project, 0)
             return r[m.Cli.CommandOutput].ok(
-                TestsFlextInfraInfraWorkspaceOrchestrator._command_output(exit_code)
+                TestsFlextInfraInfraWorkspaceOrchestrator._command_output(exit_code),
             )
 
     class RunnerOrchestrator(FlextInfraOrchestratorService):

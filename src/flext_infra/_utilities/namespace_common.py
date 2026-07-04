@@ -8,11 +8,14 @@ import tokenize
 from collections import defaultdict
 from io import StringIO
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.iteration import FlextInfraUtilitiesIteration
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorNamespaceCommon:
@@ -47,7 +50,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         ):
             return None
         module_name, separator, imported_names = stripped.removeprefix(
-            "from "
+            "from ",
         ).partition(" import ")
         if not separator or not module_name or not imported_names:
             return None
@@ -65,7 +68,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
             return list(lines)
         insert_idx = (
             FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
-                lines
+                lines,
             )
         )
         return [*lines[:insert_idx], *imports, *lines[insert_idx:]]

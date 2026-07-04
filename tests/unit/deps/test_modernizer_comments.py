@@ -92,7 +92,7 @@ class TestsFlextInfraDepsModernizerComments:
         )
         first_result, first_changes = FlextInfraInjectCommentsPhase().apply(rendered)
         second_result, second_changes = FlextInfraInjectCommentsPhase().apply(
-            first_result
+            first_result,
         )
         tm.that(first_changes, len=(1, 20))
         tm.that(second_result, eq=first_result)

@@ -76,7 +76,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             )
             if smoke_result.failure:
                 violations.append(
-                    f"{package}: {smoke_result.error or 'execution error'}"
+                    f"{package}: {smoke_result.error or 'execution error'}",
                 )
                 continue
             output = smoke_result.value

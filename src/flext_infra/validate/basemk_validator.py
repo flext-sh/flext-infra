@@ -9,17 +9,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraBaseMkValidator(s[bool]):
@@ -77,7 +80,8 @@ class FlextInfraBaseMkValidator(s[bool]):
             )
         try:
             existing_hash, generated_hash = self._base_mk_hash_pair(
-                source, gen_result.value
+                source,
+                gen_result.value,
             )
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
@@ -99,7 +103,7 @@ class FlextInfraBaseMkValidator(s[bool]):
         violations: t.MutableSequenceOf[str] = []
         if generated_hash != existing_hash:
             violations.append(
-                "root base.mk is stale (does not match generated template)"
+                "root base.mk is stale (does not match generated template)",
             )
         passed = not violations
         summary = (

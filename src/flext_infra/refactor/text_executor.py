@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
@@ -29,6 +28,11 @@ from flext_infra.transformers.tier0_import_fixer import (
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
@@ -98,7 +102,8 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     @staticmethod
     def _apply_mro_class_migration(
-        source: str, file_path: Path
+        source: str,
+        file_path: Path,
     ) -> t.Infra.TransformResult:
         """Apply mro class migration."""
         if file_path.name != c.Infra.CONSTANTS_PY:
@@ -118,7 +123,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         return (
             updated,
             [
-                f"migrated constants into facade class: {', '.join(migration.moved_symbols)}"
+                f"migrated constants into facade class: {', '.join(migration.moved_symbols)}",
             ],
         )
 
@@ -130,7 +135,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         """Apply import modernizer."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
-            settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
+            settings_mapping,
+            c.Infra.RK_FIX_ACTION,
+            case="lower",
         )
         if fix_action == "hoist_to_module_top":
             return self._apply_change_tracker_transformer(
@@ -179,7 +186,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         """Apply pattern corrections."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
-            settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
+            settings_mapping,
+            c.Infra.RK_FIX_ACTION,
+            case="lower",
         )
         if fix_action == "fix_silent_failure_sentinels":
             return u.Infra.apply_transformer_to_source(
@@ -204,7 +213,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         )
 
     def _apply_typing_unification(
-        self, source: str, file_path: Path
+        self,
+        source: str,
+        file_path: Path,
     ) -> t.Infra.TransformResult:
         """Apply typing unification."""
         return self._apply_change_tracker_transformer(
@@ -224,16 +235,16 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         """Apply typing annotation fix."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
         fix_action = u.Cli.json_get_str_key(
-            settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
+            settings_mapping,
+            c.Infra.RK_FIX_ACTION,
+            case="lower",
         )
         if fix_action != "replace_object_annotations":
             return (source, list[str]())
         return u.Infra.apply_transformer_to_source(
             source,
             file_path,
-            lambda rope_project, resource: self._replace_object_annotations(
-                rope_project, resource
-            ),
+            self._replace_object_annotations,
         )
 
     @staticmethod
@@ -314,8 +325,8 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 c.Infra.RK_CORE_ALIASES,
                 tuple(
                     u.read_project_constants(
-                        "flext-infra"
-                    ).UNIVERSAL_ALIAS_PARENT_SOURCES
+                        "flext-infra",
+                    ).UNIVERSAL_ALIAS_PARENT_SOURCES,
                 ),
             ),
         )
@@ -325,14 +336,17 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         transformer = FlextInfraTransformerTier0ImportFixer.Transformer(
             analysis=analysis,
             alias_to_submodule=self._mapping_setting(
-                settings, c.Infra.RK_ALIAS_TO_SUBMODULE
+                settings,
+                c.Infra.RK_ALIAS_TO_SUBMODULE,
             ),
             core_package=str(
-                settings.get(c.Infra.RK_CORE_PACKAGE, c.Infra.PKG_CORE_UNDERSCORE)
+                settings.get(c.Infra.RK_CORE_PACKAGE, c.Infra.PKG_CORE_UNDERSCORE),
             ),
         )
         return u.Infra.apply_transformer_to_source(
-            source, file_path, transformer.transform
+            source,
+            file_path,
+            transformer.transform,
         )
 
     def _apply_symbol_propagation(
@@ -343,11 +357,12 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         """Apply symbol propagation."""
         transformer = FlextInfraRefactorSymbolPropagator(
             target_modules=set(
-                u.Infra.string_list(settings.get(c.Infra.RK_TARGET_MODULES, []))
+                u.Infra.string_list(settings.get(c.Infra.RK_TARGET_MODULES, [])),
             ),
             module_renames=self._mapping_setting(settings, c.Infra.RK_MODULE_RENAMES),
             import_symbol_renames=self._mapping_setting(
-                settings, c.Infra.RK_IMPORT_SYMBOL_RENAMES
+                settings,
+                c.Infra.RK_IMPORT_SYMBOL_RENAMES,
             ),
         )
         return self._apply_change_tracker_transformer(transformer, source)

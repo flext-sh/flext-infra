@@ -5,12 +5,15 @@ from __future__ import annotations
 import importlib
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.constants import c
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 
 class TestProcessDirectory:
@@ -76,7 +79,7 @@ class TestProcessDirectory:
 
         assert result == 0
         assert (package_root / "__init__.py").read_text(
-            encoding="utf-8"
+            encoding="utf-8",
         ) == original_init
 
     def test_skips_directory_without_package(self, tmp_path: Path) -> None:
@@ -245,7 +248,8 @@ class TestProcessDirectory:
         assert "module_name=__name__" not in init_content
 
     def test_child_package_keeps_exports_without_root_leak(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Child package keeps its exports without leaking them through public root."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -379,7 +383,8 @@ class TestProcessDirectory:
         assert f'"{"t"}"' in init_content
 
     def test_subpackage_keeps_module_entries_without_symbol_exports(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Generated subpackages keep importable modules without leaking internals."""
         workspace_root, _package_root = u.Tests.create_lazy_init_workspace(

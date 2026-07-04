@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 import pytest
 
@@ -19,9 +19,11 @@ from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import (
     FlextInfraEnforcementFixerOrchestrator,
 )
-from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from tests.constants import c
+
+if TYPE_CHECKING:
+    from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -344,7 +346,8 @@ class TestsEnforcementFixerOrchestrator:
             severity=me.EnforcementRuleSeverity.HIGH,
             source=me.EnforcementRuntimeWarningSource(category="UserWarning"),
             fix_action=me.EnforcementFixAction(
-                kind="transformer", target="unregistered"
+                kind="transformer",
+                target="unregistered",
             ),
         )
 

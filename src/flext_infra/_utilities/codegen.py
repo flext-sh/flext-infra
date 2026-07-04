@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesCodegen:
@@ -52,13 +56,13 @@ class FlextInfraUtilitiesCodegen:
                     lambda _: _step(
                         [c.Infra.RUFF, "format", str(path)],
                         f"ruff format failed: {path}",
-                    )
+                    ),
                 )
                 .flat_map(
                     lambda _: _step(
                         [c.Infra.RUFF, "check", str(path)],
                         f"ruff check failed: {path}",
-                    )
+                    ),
                 )
                 .map(lambda _: True)
             )
@@ -72,14 +76,17 @@ class FlextInfraUtilitiesCodegen:
                 lambda _: _step(
                     [c.Infra.RUFF, "format", str(path)],
                     f"ruff format failed: {path}",
-                )
+                ),
             )
             .map(lambda _: True)
         )
 
     @staticmethod
     def generate_module_skeleton(
-        *, class_name: str, base_class: str, docstring: str
+        *,
+        class_name: str,
+        base_class: str,
+        docstring: str,
     ) -> str:
         """Generate one minimal module skeleton used by codegen scaffolding."""
         if base_class.startswith("FlextTests"):

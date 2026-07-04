@@ -7,14 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Iterable
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import u as core_u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraMROShapeDetector:
@@ -38,7 +41,9 @@ class FlextInfraMROShapeDetector:
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         res = u.Infra.fetch_python_resource(
-            rope_project, file_path, skip_protected=True
+            rope_project,
+            file_path,
+            skip_protected=True,
         )
         if res is None:
             FlextInfraMROShapeDetector._record_parse_failure(
@@ -128,7 +133,7 @@ class FlextInfraMROShapeDetector:
                 stage="mro_shape",
                 error_type=error_type,
                 detail=detail,
-            )
+            ),
         )
 
     @staticmethod
@@ -167,7 +172,7 @@ class FlextInfraMROShapeDetector:
         """Return True when ``base_name`` is an alias, alias-base, or service root."""
         unparametrized = base_name.split("[", 1)[0]
         return unparametrized == "FlextService" or unparametrized.endswith(
-            valid_suffixes
+            valid_suffixes,
         )
 
     @staticmethod
@@ -239,7 +244,7 @@ class FlextInfraMROShapeDetector:
                 unparametrized,
                 valid_suffixes,
                 pymodule,
-            )
+            ),
         )
 
     @staticmethod
@@ -304,7 +309,7 @@ class FlextInfraMROShapeDetector:
                 FlextInfraMROShapeDetector._all_superclasses(
                     superclass,
                     visited=next_visited,
-                )
+                ),
             )
         return tuple(result)
 
@@ -325,15 +330,19 @@ class FlextInfraMROShapeDetector:
             return None
         unparametrized = first_base.split("[", 1)[0]
         if FlextInfraMROShapeDetector._is_utilities_self_root(
-            file_path, unparametrized
+            file_path,
+            unparametrized,
         ):
             return None
         if FlextInfraMROShapeDetector._is_alias_or_service_base(
-            unparametrized, valid_suffixes
+            unparametrized,
+            valid_suffixes,
         ):
             return None
         if FlextInfraMROShapeDetector._is_service_alias_base(
-            first_base, project_prefix, pymodule
+            first_base,
+            project_prefix,
+            pymodule,
         ):
             return None
         if len(bases) == 1 and FlextInfraMROShapeDetector._single_peer_base_allowed(
@@ -414,7 +423,8 @@ class FlextInfraMROShapeDetector:
         if len(bases) < FlextInfraMROShapeDetector._BINARY_ARITY:
             return None
         if not FlextInfraMROShapeDetector._is_utilities_self_root(
-            file_path, first_base
+            file_path,
+            first_base,
         ):
             return None
         if not FlextInfraMROShapeDetector._class_body_uses_name(node, "u"):
@@ -537,7 +547,9 @@ class FlextInfraMROShapeDetector:
                 ):
                     return True
                 if u.Infra.node_kind(child) == "Attribute" and getattr(
-                    child, "attr", ""
+                    child,
+                    "attr",
+                    "",
                 ):
                     value = getattr(child, "value", None)
                     if (

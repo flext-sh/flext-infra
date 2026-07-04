@@ -4,18 +4,21 @@ from __future__ import annotations
 
 import shutil
 import sys
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraCodegenQualityGate(s[bool]):
@@ -197,7 +200,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
         modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
         violations_by_rule: dict[str, t.Infra.InfraValue] = dict(
-            sorted(by_kind.items())
+            sorted(by_kind.items()),
         )
         summary: dict[str, t.Infra.InfraValue] = {
             "total_violations": census_report.total_violations,
@@ -347,7 +350,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
         checks = u.Cli.json_deep_mapping_list(report, "checks")
         after = u.Cli.json_deep_mapping(report, "after")
         duplicate_groups = u.Cli.json_deep_mapping_list(
-            report, "duplicate_constant_groups"
+            report,
+            "duplicate_constant_groups",
         )
         lines: t.MutableSequenceOf[str] = [
             f"Workspace: {report.get('workspace', '')}",
@@ -358,7 +362,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         for check in checks:
             status = "PASS" if u.Cli.json_pick_bool(check, "passed") else "FAIL"
             lines.append(
-                f"- [{status}] {u.Cli.json_pick_str(check, 'name', 'unknown')}"
+                f"- [{status}] {u.Cli.json_pick_str(check, 'name', 'unknown')}",
             )
             detail = u.Cli.json_pick_str(check, "detail")
             if detail:

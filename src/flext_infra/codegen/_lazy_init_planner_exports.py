@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import p
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInitPlannerExportsMixin:
@@ -26,11 +27,14 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
 
         @classmethod
         def _is_private_test_fixture_package(
-            cls, pkg_dir: Path, surface: str
+            cls,
+            pkg_dir: Path,
+            surface: str,
         ) -> bool: ...
 
         def _package_entry(
-            self, pkg_dir: Path
+            self,
+            pkg_dir: Path,
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
@@ -147,8 +151,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     "require_explicit_all": (
                         resolved_export_options.require_explicit_all
                         and not resolved_export_options.include_dunder
-                    )
-                }
+                    ),
+                },
             ),
         )
         exports = {

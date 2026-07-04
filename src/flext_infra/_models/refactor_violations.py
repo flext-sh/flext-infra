@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsRefactorViolations:
@@ -44,7 +46,8 @@ class FlextInfraModelsRefactorViolations:
         confidence: Annotated[t.NonEmptyStr, m.Field(description="Confidence level")]
         reason: Annotated[str, m.Field(description="Optional mapping rationale")] = ""
         rewrite_scope: Annotated[
-            str | None, m.Field(description="Rewrite scope (file/project/workspace)")
+            str | None,
+            m.Field(description="Rewrite scope (file/project/workspace)"),
         ] = None
 
     class ClassNestingViolation(
@@ -58,7 +61,8 @@ class FlextInfraModelsRefactorViolations:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
         class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         target_namespace: Annotated[
-            str, m.Field(description="Expected namespace class")
+            str,
+            m.Field(description="Expected namespace class"),
         ] = ""
 
     class ClassNestingPolicy(m.ContractModel):
@@ -136,19 +140,24 @@ class FlextInfraModelsRefactorViolations:
             description="Parameters that block rewriting when present.",
         )
         allow_vararg: Annotated[
-            bool, m.Field(description="Allow variadic positional parameter usage")
+            bool,
+            m.Field(description="Allow variadic positional parameter usage"),
         ] = True
         allow_kwarg: Annotated[
-            bool, m.Field(description="Allow variadic keyword parameter usage")
+            bool,
+            m.Field(description="Allow variadic keyword parameter usage"),
         ] = True
         allow_positional_only_params: Annotated[
-            bool, m.Field(description="Allow positional-only parameters")
+            bool,
+            m.Field(description="Allow positional-only parameters"),
         ] = True
         allow_keyword_only_params: Annotated[
-            bool, m.Field(description="Allow keyword-only parameters")
+            bool,
+            m.Field(description="Allow keyword-only parameters"),
         ] = True
         propagate_imports: Annotated[
-            bool, m.Field(description="Allow propagating import rewrite rules")
+            bool,
+            m.Field(description="Allow propagating import rewrite rules"),
         ] = True
         propagate_name_references: Annotated[
             bool,
@@ -206,10 +215,12 @@ class FlextInfraModelsRefactorViolations:
             description="Dependency symbols referenced by the helper.",
         )
         manual_review: Annotated[
-            bool, m.Field(description="Whether manual review is required")
+            bool,
+            m.Field(description="Whether manual review is required"),
         ] = False
         review_reason: Annotated[
-            str, m.Field(description="Manual review rationale")
+            str,
+            m.Field(description="Manual review rationale"),
         ] = ""
 
     class HelperClassificationReport(m.ArbitraryTypesModel):
@@ -246,7 +257,8 @@ class FlextInfraModelsRefactorViolations:
             FlextInfraModelsRefactorViolations.HelperClassification,
             ...,
         ] = m.Field(
-            default_factory=tuple, description="Helpers requiring manual review"
+            default_factory=tuple,
+            description="Helpers requiring manual review",
         )
 
     class ViolationTopFileSection(m.ArbitraryTypesModel):
@@ -279,10 +291,10 @@ class FlextInfraModelsRefactorViolations:
         ] = m.Field(default_factory=tuple, description="Top hotspot files")
         files_scanned: Annotated[t.NonNegativeInt, m.Field(description="Files scanned")]
         helper_classification: FlextInfraModelsRefactorViolations.HelperClassificationReport = m.Field(
-            description="Helper classification summary"
+            description="Helper classification summary",
         )
         class_nesting: FlextInfraModelsRefactorViolations.ClassNestingReport = m.Field(
-            description="Class nesting analysis summary"
+            description="Class nesting analysis summary",
         )
 
 

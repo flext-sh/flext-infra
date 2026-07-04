@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from rope.base.exceptions import RopeError
@@ -13,9 +13,13 @@ from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInvento
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests.constants import c
 from tests.models import m
-from tests.protocols import p
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.protocols import p
+    from tests.typings import t
 
 
 class TestsFlextInfraInfraRopeService:
@@ -44,7 +48,7 @@ class TestsFlextInfraInfraRopeService:
             exports = rope.exports(
                 module_path,
                 export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_assignments": True
+                    "allow_assignments": True,
                 }),
             )
             assert "FlextTestsModels" in exports
@@ -98,13 +102,13 @@ class TestsFlextInfraInfraRopeService:
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             assert rope.rope_workspace_root == workspace_root.resolve()
             assert {entry.project_root for entry in rope.modules()} == {
-                workspace_root.resolve()
+                workspace_root.resolve(),
             }
 
         with flext_infra.infra.rope_workspace(package_root) as rope:
             assert rope.rope_workspace_root == workspace_root.resolve()
             assert {entry.project_root for entry in rope.modules()} == {
-                workspace_root.resolve()
+                workspace_root.resolve(),
             }
 
     def test_workspace_exports_fixture_functions_when_requested(
@@ -133,7 +137,7 @@ class TestsFlextInfraInfraRopeService:
             exports = rope.exports(
                 fixture_module,
                 export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_functions": True
+                    "allow_functions": True,
                 }),
             )
 
@@ -221,7 +225,8 @@ class TestsFlextInfraInfraRopeService:
             assert objects["FlextDemoModels", "class"].is_facade_member
 
     def test_workspace_dsl_reload_refreshes_cached_objects(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Reload drops Rope caches and reflects updated module objects."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -548,10 +553,10 @@ class TestsFlextInfraInfraRopeService:
         assert len(candidate.test_reference_sites) == 2
         assert sorted(site.line for site in candidate.test_reference_sites) == [3, 6]
         assert {site.file_path for site in candidate.test_reference_sites} == {
-            str(test_path)
+            str(test_path),
         }
         assert {site.surface for site in candidate.test_reference_sites} == {
-            c.Infra.DIR_TESTS
+            c.Infra.DIR_TESTS,
         }
 
     def test_workspace_dsl_skips_reference_scan_for_facade_members(
@@ -710,7 +715,7 @@ class TestsFlextInfraInfraRopeService:
         assert candidate.example_references_count == 2
         assert candidate.script_references_count == 0
         assert {site.file_path for site in candidate.example_reference_sites} == {
-            str(consumer_path)
+            str(consumer_path),
         }
         assert sorted(site.line for site in candidate.example_reference_sites) == [3, 5]
 
@@ -772,7 +777,7 @@ class TestsFlextInfraInfraRopeService:
         assert candidate.example_references_count == 2
         assert candidate.script_references_count == 0
         assert {site.file_path for site in candidate.example_reference_sites} == {
-            str(facade_path)
+            str(facade_path),
         }
         assert sorted(site.line for site in candidate.example_reference_sites) == [3, 6]
 
@@ -810,6 +815,6 @@ class TestsFlextInfraInfraRopeService:
         assert candidate.example_references_count == 0
         assert candidate.script_references_count == 0
         assert {site.file_path for site in candidate.runtime_reference_sites} == {
-            str(module_path)
+            str(module_path),
         }
         assert [site.line for site in candidate.runtime_reference_sites] == [6]

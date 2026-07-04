@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import fnmatch
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -78,7 +80,8 @@ class FlextInfraUtilitiesDocsRender:
     def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
         patterns = FlextInfraUtilitiesDocsRender.as_string_sequence(
-            data, "exclude_docs"
+            data,
+            "exclude_docs",
         )
         if not patterns:
             return []
@@ -95,7 +98,7 @@ class FlextInfraUtilitiesDocsRender:
             dict.fromkeys([
                 *FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs"),
                 "README.md",
-            ])
+            ]),
         )
         return [
             "exclude_docs: |",
@@ -164,7 +167,8 @@ class FlextInfraUtilitiesDocsRender:
         """
         _ = scope
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "AGENTS.md"
+            link_prefix,
+            "AGENTS.md",
         )
         return [
             "## Collection Rules",
@@ -189,13 +193,17 @@ class FlextInfraUtilitiesDocsRender:
     def _governance_pointer_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical governance surface."""
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "AGENTS.md"
+            link_prefix,
+            "AGENTS.md",
         )
         skills_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, ".agents/skills/", is_dir=True
+            link_prefix,
+            ".agents/skills/",
+            is_dir=True,
         )
         onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, "docs/guides/onboarding.md"
+            link_prefix,
+            "docs/guides/onboarding.md",
         )
         return [
             "## Governance Pointer",
@@ -237,15 +245,16 @@ class FlextInfraUtilitiesDocsRender:
                 *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
                 "",
                 *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                    scope, link_prefix=link_prefix
+                    scope,
+                    link_prefix=link_prefix,
                 ),
                 "",
                 *FlextInfraUtilitiesDocsRender._quality_gates_lines(
-                    link_prefix=link_prefix
+                    link_prefix=link_prefix,
                 ),
                 "",
                 *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                    link_prefix=link_prefix
+                    link_prefix=link_prefix,
                 ),
             ],
         )
@@ -284,7 +293,8 @@ class FlextInfraUtilitiesDocsRender:
             *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
             "",
             *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                scope, link_prefix=link_prefix
+                scope,
+                link_prefix=link_prefix,
             ),
             "",
             "## Operation Flow",
@@ -300,11 +310,11 @@ class FlextInfraUtilitiesDocsRender:
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",
             *FlextInfraUtilitiesDocsRender._quality_gates_lines(
-                link_prefix=link_prefix
+                link_prefix=link_prefix,
             ),
             "",
             *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                link_prefix=link_prefix
+                link_prefix=link_prefix,
             ),
             "- Full project portal: [`docs/index.md`](docs/index.md).",
             "",
@@ -584,11 +594,11 @@ class FlextInfraUtilitiesDocsRender:
             + " | ".join([
                 f"[{entry['name']}]({entry['api_page']})",
                 FlextInfraUtilitiesDocsRender._escape_table_cell(
-                    entry["project_class"]
+                    entry["project_class"],
                 ),
                 f"`{entry['package_name']}`",
                 FlextInfraUtilitiesDocsRender._escape_table_cell(
-                    entry["description"] or "_not declared_"
+                    entry["description"] or "_not declared_",
                 ),
             ])
             + " |"

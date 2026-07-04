@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import main
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests.constants import c
 from tests.utilities import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_release_group_help_returns_zero() -> None:

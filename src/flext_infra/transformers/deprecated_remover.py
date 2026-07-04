@@ -6,8 +6,12 @@ warning usage in __init__, using regex analysis on source text.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorDeprecatedRemover:
@@ -38,7 +42,7 @@ class FlextInfraRefactorDeprecatedRemover:
         if "deprecated" in class_name.lower():
             return True
         return c.Infra.DUNDER_INIT in class_body and bool(
-            c.Infra.DEPRECATION_WARN_RE.search(class_body)
+            c.Infra.DEPRECATION_WARN_RE.search(class_body),
         )
 
     def _record_change(self, message: str) -> None:

@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from tests.models import m
 
 
 class TestsFlextInfraInfraWorkspaceMigratorInternal:

@@ -11,18 +11,21 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.utilities import u
 from flext_infra.workspace._sync_artifacts import (
     FlextInfraWorkspaceSyncArtifactsMixin,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraSyncService(
@@ -38,7 +41,8 @@ class FlextInfraSyncService(
     """
 
     canonical_root: Annotated[
-        Path | None, m.Field(description="Optional canonical root path")
+        Path | None,
+        m.Field(description="Optional canonical root path"),
     ] = None
 
     def _resolved_workspace_root(self) -> Path:
@@ -52,7 +56,7 @@ class FlextInfraSyncService(
         resolved = self._resolved_workspace_root()
         if not resolved.exists():
             return r[m.Infra.SyncResult].fail(
-                f"workspace_root '{resolved}' does not exist"
+                f"workspace_root '{resolved}' does not exist",
             )
 
         lock_file = resolved / ".flext-sync.lock"

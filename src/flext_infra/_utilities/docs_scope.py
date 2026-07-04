@@ -5,6 +5,7 @@ from __future__ import annotations
 from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli.utilities import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
@@ -13,8 +14,10 @@ from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.protocols import FlextInfraProtocols as p
 from flext_infra.typings import FlextInfraTypes as t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import FlextInfraProtocols as p
 
 
 class FlextInfraUtilitiesDocsScope:
@@ -38,7 +41,7 @@ class FlextInfraUtilitiesDocsScope:
         dependency_names = tuple(
             FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
                 payload,
-            )
+            ),
         )
         if not payload:
             empty_state: mw.ProjectPyprojectState = (

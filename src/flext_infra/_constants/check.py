@@ -132,7 +132,8 @@ class FlextInfraConstantsCheck:
     BOUNDARY_SIMPLE_RULES: Final[tuple[tuple[t.RegexPattern, str], ...]] = (
         (
             re.compile(
-                rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE
+                rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)",
+                re.MULTILINE,
             ),
             "imports subprocess — use cli.run / cli.capture",
         ),
@@ -170,7 +171,7 @@ class FlextInfraConstantsCheck:
         re.MULTILINE,
     )
     BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(
-        r"\bFlextCli[A-Z]\w*"
+        r"\bFlextCli[A-Z]\w*",
     )
 
     # --- 200-LOC SUPREME LAW (§3.1) gate SSOT ---

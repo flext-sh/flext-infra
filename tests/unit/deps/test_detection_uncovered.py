@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests.models import m
 from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
 
 
 class TestsFlextInfraDepsDetectionUncovered:
@@ -29,7 +33,7 @@ class TestsFlextInfraDepsDetectionUncovered:
             command_output=u.Tests.create_command_output(),
         )
         deptry_result: t.Pair[t.SequenceOf[t.Infra.ContainerDict], int] = tm.ok(
-            service.run_deptry(project, venv_bin, json_output_path=out_file)
+            service.run_deptry(project, venv_bin, json_output_path=out_file),
         )
         issues, exit_code = deptry_result
         tm.that(len(issues), eq=1)
@@ -46,7 +50,7 @@ class TestsFlextInfraDepsDetectionUncovered:
             command_output=u.Tests.create_command_output(),
         )
         pip_check_result: t.Pair[t.StrSequence, int] = tm.ok(
-            service.run_pip_check(tmp_path, venv_bin)
+            service.run_pip_check(tmp_path, venv_bin),
         )
         lines, exit_code = pip_check_result
         assert list(lines) == []

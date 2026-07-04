@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -11,6 +10,10 @@ from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    import re
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesDocsFix:
@@ -47,7 +50,8 @@ class FlextInfraUtilitiesDocsFix:
         changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             original = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Cli.ENCODING_DEFAULT,
+                errors=c.Infra.IGNORE,
             )
 
             def _replace_fence(
@@ -96,7 +100,8 @@ class FlextInfraUtilitiesDocsFix:
     ) -> m.Infra.DocsPhaseItemModel:
         """Fix one markdown file and return the phase item summary."""
         original = md_file.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+            encoding=c.Cli.ENCODING_DEFAULT,
+            errors=c.Infra.IGNORE,
         )
         link_count = 0
 

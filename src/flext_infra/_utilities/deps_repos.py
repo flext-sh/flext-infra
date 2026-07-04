@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import configparser
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
 from flext_infra import FlextInfraSettings
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraInternalSyncRepoMixin:
@@ -106,7 +110,8 @@ class FlextInfraInternalSyncRepoMixin:
         return mapping
 
     def parse_repo_map(
-        self, path: Path
+        self,
+        path: Path,
     ) -> p.Result[t.MappingKV[str, m.Infra.RepoUrls]]:
         """Parse flext-repo-map TOML into repository URL entries."""
         data_result = self._read_plain(path)

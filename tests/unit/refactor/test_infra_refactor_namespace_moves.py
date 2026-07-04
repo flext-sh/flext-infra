@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _write_file(path: Path, content: str) -> None:
@@ -66,12 +69,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     file=str(source_file),
                     line=5,
                     name="External",
-                )
+                ),
             ],
         )
 
         assert "class External(Protocol):" not in source_file.read_text(
-            encoding="utf-8"
+            encoding="utf-8",
         )
         assert "from demo_pkg.protocols import External" in consumer_file.read_text(
             encoding="utf-8",
@@ -112,7 +115,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     file=str(source_file),
                     line=6,
                     name="PayloadMap",
-                )
+                ),
             ],
             parse_failures=[],
         )
@@ -150,7 +153,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     line=6,
                     alias_name="LegacyThing",
                     target_name="NewThing",
-                )
+                ),
             ],
             parse_failures=[],
         )

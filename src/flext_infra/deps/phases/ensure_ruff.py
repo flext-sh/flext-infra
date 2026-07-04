@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -147,7 +151,8 @@ class FlextInfraEnsureRuffConfigPhase:
     ) -> t.StrSequence:
         """Apply canonical Ruff tables with namespace-aware first-party detection."""
         per_file_ignores = u.Cli.toml_table_path(
-            doc, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores")
+            doc,
+            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
         )
         stale_patterns = (
             [
@@ -194,12 +199,12 @@ class FlextInfraEnsureRuffConfigPhase:
                 self._phase(
                     path=path,
                     workspace_namespaces=u.Infra.workspace_dep_namespaces_from_payload(
-                        payload
+                        payload,
                     ),
                     stale_patterns=stale_patterns,
                     include_handler=False,
                 ),
-            )
+            ),
         )
         changes.extend(self._remove_stale_lint_section_payload(payload))
         return changes

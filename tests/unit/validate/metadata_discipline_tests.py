@@ -6,7 +6,7 @@ must remain in canonical metadata utility modules only.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tf, tm
@@ -15,7 +15,11 @@ from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
 )
 from tests.models import m
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 @pytest.fixture

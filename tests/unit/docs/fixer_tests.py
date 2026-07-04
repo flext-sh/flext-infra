@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_fix_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:

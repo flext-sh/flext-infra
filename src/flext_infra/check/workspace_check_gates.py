@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 import time
-from collections.abc import (
-    MutableMapping,
-)
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate
-from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -29,9 +24,17 @@ from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+    from pathlib import Path
+
+    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraGateRegistry:
@@ -83,16 +86,16 @@ class _LoopOutcome(m.ArbitraryTypesModel):
     """Bundled results from the project-checking loop."""
 
     results: tuple[m.Infra.ProjectResult, ...] = m.Field(
-        description="Individual project execution results."
+        description="Individual project execution results.",
     )
     failed: int = m.Field(
-        description="Number of projects that failed one or more gates."
+        description="Number of projects that failed one or more gates.",
     )
     skipped: int = m.Field(
-        description="Number of projects that were skipped during execution."
+        description="Number of projects that were skipped during execution.",
     )
     total_elapsed: float = m.Field(
-        description="Total time elapsed in seconds for the entire loop."
+        description="Total time elapsed in seconds for the entire loop.",
     )
 
 

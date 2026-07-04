@@ -3,11 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import (
-    MutableMapping,
-)
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
@@ -19,6 +15,12 @@ from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModu
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesRefactorNamespaceFacades:
@@ -63,12 +65,12 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         if payload is None:
             return {}
         dep_names = FlextInfraUtilitiesDependencies.local_dependency_names_from_payload(
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload),
         )
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:
             if dep_name == c.Infra.PKG_CORE or not dep_name.startswith(
-                c.Infra.PKG_PREFIX_HYPHEN
+                c.Infra.PKG_PREFIX_HYPHEN,
             ):
                 continue
             stem = m.derive_class_stem(dep_name)
@@ -166,7 +168,8 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
             file_name = c.Infra.FAMILY_FILES.get(
-                status.family, c.Infra.UTILITIES_PY
+                status.family,
+                c.Infra.UTILITIES_PY,
             ).lstrip("*")
             target_path = package_dir / file_name
             if target_path.exists():
@@ -232,7 +235,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
                 FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
                     lines=lines,
                     imports=[base_import, ""],
-                )
+                ),
             )
         class_line_indices = [
             idx

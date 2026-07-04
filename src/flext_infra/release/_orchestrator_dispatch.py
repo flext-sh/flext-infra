@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraReleaseOrchestratorDispatchMixin:
@@ -186,7 +189,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             )
             if pipeline_result.failure:
                 final_result = r[bool].fail(
-                    pipeline_result.error or "pipeline execution failed"
+                    pipeline_result.error or "pipeline execution failed",
                 )
             elif failed := next(
                 (s for s in pipeline_result.value.failed_stages if s.error),
@@ -287,7 +290,8 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             )
             return r[bool].ok(True)
         return u.Cli.run_checked(
-            [c.Infra.MAKE, "val", "VALIDATE_SCOPE=workspace"], cwd=workspace_root
+            [c.Infra.MAKE, "val", "VALIDATE_SCOPE=workspace"],
+            cwd=workspace_root,
         )
 
     def _make_phase_handler(

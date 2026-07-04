@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from rope.base import ast
 from rope.base.exceptions import ModuleSyntaxError
 
@@ -9,8 +11,10 @@ from flext_infra._utilities.silent_failure_ast import (
     collect_silent_failure_findings,
 )
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraSilentFailureDetector:

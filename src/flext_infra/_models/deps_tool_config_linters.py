@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsDepsToolConfigLinters:
@@ -99,7 +101,7 @@ class FlextInfraModelsDepsToolConfigLinters:
             m.Field(description="Ruff lint rule ignore list."),
         ] = m.Field(default_factory=tuple)
         isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
-            description="Ruff isort configuration"
+            description="Ruff isort configuration",
         )
         per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
@@ -118,13 +120,15 @@ class FlextInfraModelsDepsToolConfigLinters:
         ] = m.Field(default_factory=tuple)
         fix: Annotated[bool, m.Field(description="Enable automatic ruff fixes")]
         line_length: Annotated[
-            int, m.Field(alias="line-length", description="Maximum line length.")
+            int,
+            m.Field(alias="line-length", description="Maximum line length."),
         ]
         preview: Annotated[bool, m.Field(description="Enable preview ruff behavior.")]
         respect_gitignore: Annotated[
             bool,
             m.Field(
-                alias="respect-gitignore", description="Respect .gitignore exclusions."
+                alias="respect-gitignore",
+                description="Respect .gitignore exclusions.",
             ),
         ]
         show_fixes: Annotated[
@@ -141,21 +145,23 @@ class FlextInfraModelsDepsToolConfigLinters:
         target_version: Annotated[
             str,
             m.Field(
-                alias="target-version", description="Python target version for ruff."
+                alias="target-version",
+                description="Python target version for ruff.",
             ),
         ]
         format: FlextInfraModelsDepsToolConfigLinters.RuffFormatConfig = m.Field(
-            description="Ruff format configuration"
+            description="Ruff format configuration",
         )
         lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = m.Field(
-            description="Ruff lint configuration"
+            description="Ruff lint configuration",
         )
 
     class MypyOverrideConfig(m.ArbitraryTypesModel):
         """Single [[tool.mypy.overrides]] entry."""
 
         modules: Annotated[
-            t.StrSequence, m.Field(description="Module patterns for this override.")
+            t.StrSequence,
+            m.Field(description="Module patterns for this override."),
         ]
         disable_error_codes: Annotated[
             t.StrSequence,
@@ -215,7 +221,7 @@ class FlextInfraModelsDepsToolConfigLinters:
         overrides: Annotated[
             tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
             m.Field(
-                description="Per-module mypy overrides for auto-generated files and PEP 695 generics."
+                description="Per-module mypy overrides for auto-generated files and PEP 695 generics.",
             ),
         ] = m.Field(
             default_factory=tuple,
@@ -228,19 +234,19 @@ class FlextInfraModelsDepsToolConfigLinters:
         init_forbid_extra: Annotated[
             bool,
             m.Field(
-                description="Enable forbid-extra init behavior in pydantic mypy plugin."
+                description="Enable forbid-extra init behavior in pydantic mypy plugin.",
             ),
         ]
         init_typed: Annotated[
             bool,
             m.Field(
-                description="Enable typed __init__ signatures in pydantic mypy plugin."
+                description="Enable typed __init__ signatures in pydantic mypy plugin.",
             ),
         ]
         warn_required_dynamic_aliases: Annotated[
             bool,
             m.Field(
-                description="Warn on required dynamic aliases in pydantic mypy plugin."
+                description="Warn on required dynamic aliases in pydantic mypy plugin.",
             ),
         ]
         warn_untyped_fields: Annotated[

@@ -1,21 +1,26 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
 
 
 class TestsFlextInfraInfraWorkspaceMigrator:
     """Behavior contract for test_infra_workspace_migrator."""
 
     def test_migrator_dry_run_reports_changes_without_writes(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "project-a"
         u.Tests.write_migrator_project(project_root)
@@ -56,7 +61,8 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         )
 
     def test_migrator_handles_missing_pyproject_gracefully(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = u.Tests.create_migrator_dir_layout(
             tmp_path,
@@ -112,14 +118,18 @@ class TestsFlextInfraInfraWorkspaceMigrator:
 
     def test_migrator_workspace_root_not_exists(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace_root=tmp_path / "nonexistent", dry_run=False, apply_changes=True
+            workspace_root=tmp_path / "nonexistent",
+            dry_run=False,
+            apply_changes=True,
         )
         result = migrator.execute()
         tm.fail(result, has="does not exist")
 
     def test_migrator_discovery_failure(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace_root=tmp_path, dry_run=False, apply_changes=True
+            workspace_root=tmp_path,
+            dry_run=False,
+            apply_changes=True,
         )
         migrator.discovery = u.Tests.create_migrator_discovery(error="Discovery failed")
         result = migrator.execute()
@@ -127,7 +137,9 @@ class TestsFlextInfraInfraWorkspaceMigrator:
 
     def test_migrator_execute_returns_failure(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace_root=tmp_path, dry_run=False, apply_changes=True
+            workspace_root=tmp_path,
+            dry_run=False,
+            apply_changes=True,
         )
         migrator.discovery = u.Tests.create_migrator_discovery(error="Execution failed")
         result = migrator.execute()
@@ -140,7 +152,9 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         (tmp_path / "tests").mkdir()
         (tmp_path / "src").mkdir()
         migrator = FlextInfraProjectMigrator(
-            workspace_root=tmp_path, dry_run=True, apply_changes=False
+            workspace_root=tmp_path,
+            dry_run=True,
+            apply_changes=False,
         )
         migrator.discovery = u.Tests.create_migrator_discovery([])
         migrator.generator = u.Tests.create_migrator_generator("base.mk")

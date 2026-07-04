@@ -12,16 +12,20 @@ from __future__ import annotations
 from collections.abc import (
     Sequence,
 )
-from pathlib import Path
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import r
 from tests.constants import c
 from tests.models import m
-from tests.protocols import p
 from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.protocols import p
 
 
 @pytest.fixture

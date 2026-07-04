@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests.constants import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def make_command(

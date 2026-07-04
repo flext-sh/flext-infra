@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_anchorize_normalizes_headings() -> None:
@@ -44,7 +47,7 @@ def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
             workspace_root=workspace,
             projects=["flext-a"],
             apply=True,
-        )
+        ),
     )
 
     assert result.success

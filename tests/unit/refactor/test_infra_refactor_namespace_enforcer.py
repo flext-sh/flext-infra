@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -12,7 +13,9 @@ from flext_infra.detectors.manual_protocol_detector import (
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from tests.models import m
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
@@ -184,7 +187,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(rendered, has="Manual protocol violations: 1")
 
     def test_namespace_enforcer_detects_internal_private_imports(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"

@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import tomlkit
 import tomlkit.items
 from flext_tests import tm
-from tomlkit.toml_document import TOMLDocument
 
 from tests.constants import c
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tomlkit.toml_document import TOMLDocument
+
+    from tests.typings import t
 
 
 @pytest.fixture
@@ -228,7 +233,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         expect_pytest: bool,
     ) -> None:
         result = u.Infra.canonical_dev_dependencies(
-            _doc_with_optional_deps(optional_deps)
+            _doc_with_optional_deps(optional_deps),
         )
         tm.that(result, length=expected_length)
         if expect_pytest:

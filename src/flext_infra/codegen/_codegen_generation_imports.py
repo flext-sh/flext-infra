@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen._codegen_generation_paths import (
     FlextInfraCodegenGenerationPathsMixin,
 )
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMixin):
@@ -96,8 +99,10 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
             for export_name, _ in alias_items:
                 lines.append(
                     FlextInfraCodegenGenerationImportsMixin._format_module_alias_import(
-                        indent, mod, export_name
-                    )
+                        indent,
+                        mod,
+                        export_name,
+                    ),
                 )
             if not sorted_items:
                 return
@@ -109,8 +114,10 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
             ]
             lines.extend(
                 FlextInfraCodegenGenerationImportsMixin._format_import(
-                    indent, mod, parts
-                )
+                    indent,
+                    mod,
+                    parts,
+                ),
             )
 
         prev_top: str | None = None

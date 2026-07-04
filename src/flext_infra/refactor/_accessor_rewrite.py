@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import io
 from operator import itemgetter
-from pathlib import Path
 from tokenize import NAME, generate_tokens
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraAccessorMigrationRewriteMixin:
@@ -37,7 +40,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
         for src, (repl, reason) in c.ENFORCEMENT_ACCESSOR_RENAMES.items()
     )
     _AUTOMATED_NAMES: ClassVar[frozenset[str]] = frozenset(
-        c.ENFORCEMENT_ACCESSOR_RENAMES
+        c.ENFORCEMENT_ACCESSOR_RENAMES,
     )
     _MANUAL_WARNING_REASON: ClassVar[str] = (
         "Public {prefix}-prefixed accessor: rename to canonical verb "
@@ -102,7 +105,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
                     replacement_name=replacement_name,
                     automated=True,
                     reason=reason,
-                )
+                ),
             )
         if not rewrite_ranges:
             return source, ()
@@ -189,7 +192,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
                     reason=self._MANUAL_WARNING_REASON.format(
                         prefix=matched_prefix.rstrip("_"),
                     ),
-                )
+                ),
             )
         return warnings
 

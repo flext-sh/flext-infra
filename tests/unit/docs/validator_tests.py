@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_validate_report_model_fields() -> None:
@@ -36,7 +39,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
             workspace_root=workspace,
             projects=["flext-a"],
             apply=False,
-        )
+        ),
     )
 
     assert result.success
@@ -54,7 +57,7 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
             workspace_root=workspace,
             projects=["flext-a"],
             apply=True,
-        )
+        ),
     )
     assert generated.success
     result = FlextInfraDocValidator().validate_workspace(
@@ -62,7 +65,7 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
             workspace_root=workspace,
             projects=["flext-a"],
             apply=True,
-        )
+        ),
     )
 
     assert result.success
@@ -80,14 +83,14 @@ def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
             workspace_root=workspace,
             projects=["flext-a"],
             apply=True,
-        )
+        ),
     )
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
             workspace_root=workspace,
             projects=["flext-a"],
             apply=True,
-        )
+        ),
     )
 
     assert result.success

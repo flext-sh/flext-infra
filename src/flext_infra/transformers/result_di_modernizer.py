@@ -19,14 +19,16 @@ result is unambiguous and records every change.
 from __future__ import annotations
 
 import ast
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewriter,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):

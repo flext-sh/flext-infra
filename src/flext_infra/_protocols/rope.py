@@ -9,12 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from types import TracebackType
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
     import ast  # Why: TYPE_CHECKING-only — Protocol signatures reference ast.AST without runtime import.
+    from pathlib import Path
+    from types import TracebackType
 
     from flext_infra import m, p, t
 

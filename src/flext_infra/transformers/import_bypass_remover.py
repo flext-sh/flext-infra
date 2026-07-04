@@ -5,11 +5,13 @@ Replaces try/except ImportError fallback blocks with the primary import.
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):

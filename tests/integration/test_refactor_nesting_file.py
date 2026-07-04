@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import pytest
 
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from tests.models import m
+    from tests.typings import t
 
 pytestmark = [pytest.mark.integration]
 
@@ -56,7 +58,8 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
     """Behavior contract for test_refactor_nesting_file."""
 
     def test_class_nesting_refactor_single_file_end_to_end(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Verify class nesting refactor handles unknown module families gracefully."""
         fixture_file = (

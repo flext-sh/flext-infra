@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -11,9 +11,13 @@ from flext_infra import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests.constants import c
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
@@ -108,7 +112,9 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
 
     def test_gitignore_read_failure(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", gitignore=None
+            tmp_path,
+            base_mk="base",
+            gitignore=None,
         )
         (root / ".gitignore").mkdir()
         migrator = u.Tests.build_project_migrator(
@@ -135,7 +141,9 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         (root / ".gitignore").write_text("", encoding="utf-8")
         proj = u.Tests.create_migrator_project(root, "workspace-root")
         migrator = FlextInfraProjectMigrator(
-            workspace_root=tmp_path, dry_run=False, apply_changes=True
+            workspace_root=tmp_path,
+            dry_run=False,
+            apply_changes=True,
         )
         migrator.discovery = u.Tests.create_migrator_discovery([proj])
         migrator.generator = u.Tests.create_migrator_generator(fail="Generation failed")

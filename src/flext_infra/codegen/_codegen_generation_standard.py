@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.codegen._codegen_generation_renderers import (
     FlextInfraCodegenGenerationRenderersMixin,
 )
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationStandardMixin(
-    FlextInfraCodegenGenerationRenderersMixin
+    FlextInfraCodegenGenerationRenderersMixin,
 ):
     """Assemble standard generated package files from typed template context."""
 
@@ -65,7 +69,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         if publish_all:
             return True
         if current_pkg.split(".", maxsplit=1)[0].startswith(
-            c.Infra.PKG_PREFIX_UNDERSCORE
+            c.Infra.PKG_PREFIX_UNDERSCORE,
         ):
             return True
         return current_pkg in {
@@ -154,8 +158,8 @@ class FlextInfraCodegenGenerationStandardMixin(
         body_lines = body.splitlines()
         out.extend(
             cls._collapse_blank_runs(
-                body_lines[1:] if body_lines and not body_lines[0] else body_lines
-            )
+                body_lines[1:] if body_lines and not body_lines[0] else body_lines,
+            ),
         )
         out.append("")
         getattr_content = cls.get_template(

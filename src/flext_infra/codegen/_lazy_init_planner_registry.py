@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import ast
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCodegenLazyInitPlannerRegistryMixin:
@@ -40,7 +43,7 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
             exports_path = constants_dir / c.Infra.ROOT_EXPORTS_FILENAME
         if exports_path.is_file():
             names = FlextInfraCodegenLazyInitPlannerRegistryMixin._all_exports(
-                exports_path
+                exports_path,
             )
             lazy_names = frozenset(
                 name for name in names if name.endswith("LAZY_IMPORTS")
@@ -150,8 +153,8 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
             for statement in tree.body:
                 exports.update(
                     FlextInfraCodegenLazyInitPlannerRegistryMixin._all_export_statement_names(
-                        statement
-                    )
+                        statement,
+                    ),
                 )
         except (TypeError, ValueError) as exc:
             msg = f"{exports_path}: {exc}"
@@ -165,21 +168,21 @@ class FlextInfraCodegenLazyInitPlannerRegistryMixin:
             case ast.Assign(targets=targets, value=value):
                 if any(
                     FlextInfraCodegenLazyInitPlannerRegistryMixin._is_all_exports_target(
-                        target
+                        target,
                     )
                     for target in targets
                 ):
                     return FlextInfraCodegenLazyInitPlannerRegistryMixin._literal_string_names(
-                        value
+                        value,
                     )
             case ast.AnnAssign(target=target, value=value):
                 if value is not None and (
                     FlextInfraCodegenLazyInitPlannerRegistryMixin._is_all_exports_target(
-                        target
+                        target,
                     )
                 ):
                     return FlextInfraCodegenLazyInitPlannerRegistryMixin._literal_string_names(
-                        value
+                        value,
                     )
             case _:
                 return frozenset()

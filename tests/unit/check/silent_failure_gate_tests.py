@@ -7,13 +7,17 @@ that the gate detects violations universally and accepts clean code.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 _DIRTY_UTILITIES = (
     "from __future__ import annotations\n\n"
@@ -45,7 +49,9 @@ def _create_gate_project(tmp_path: Path, *, name: str, utilities_src: str) -> Pa
 class TestSilentFailureGate:
     def test_silent_failure_detected_in_any_project(self, tmp_path: Path) -> None:
         project = _create_gate_project(
-            tmp_path, name="demo-project", utilities_src=_DIRTY_UTILITIES
+            tmp_path,
+            name="demo-project",
+            utilities_src=_DIRTY_UTILITIES,
         )
 
         result = u.Tests.run_gate_check(FlextInfraSilentFailureGate, tmp_path, project)
@@ -56,7 +62,9 @@ class TestSilentFailureGate:
 
     def test_clean_project_passes(self, tmp_path: Path) -> None:
         project = _create_gate_project(
-            tmp_path, name="demo-project", utilities_src=_CLEAN_UTILITIES
+            tmp_path,
+            name="demo-project",
+            utilities_src=_CLEAN_UTILITIES,
         )
 
         result = u.Tests.run_gate_check(FlextInfraSilentFailureGate, tmp_path, project)

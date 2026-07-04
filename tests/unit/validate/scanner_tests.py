@@ -6,14 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from tests.constants import c
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 def _scanner() -> FlextInfraTextPatternScanner:

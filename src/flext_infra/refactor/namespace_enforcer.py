@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
 from flext_core import r
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor._namespace_enforcer_project import (
     FlextInfraNamespaceEnforcerProjectMixin,
 )
 from flext_infra.refactor.namespace_enforcer_phases import (
     FlextInfraNamespaceEnforcerPhasesMixin,
 )
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+    )
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraNamespaceEnforcer(
@@ -164,7 +167,7 @@ class FlextInfraNamespaceEnforcer(
         cli.display_text(cls.render_text(report))
         if report.has_violations:
             return r[m.Infra.WorkspaceEnforcementReport].fail(
-                "Namespace violations found"
+                "Namespace violations found",
             )
         return r[m.Infra.WorkspaceEnforcementReport].ok(report)
 

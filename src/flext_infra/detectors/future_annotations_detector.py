@@ -6,10 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraFutureAnnotationsDetector:
@@ -21,7 +25,9 @@ class FlextInfraFutureAnnotationsDetector:
     ) -> t.SequenceOf[m.Infra.FutureAnnotationsViolation]:
         """Detect missing future annotations in a single file."""
         resource = u.Infra.fetch_python_resource(
-            ctx.rope_project, ctx.file_path, skip_protected=True
+            ctx.rope_project,
+            ctx.file_path,
+            skip_protected=True,
         )
         if resource is None:
             return []

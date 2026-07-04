@@ -3,16 +3,19 @@ from __future__ import annotations
 from collections.abc import (
     Sequence,
 )
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_tests import tm
 
 from flext_infra import r
 from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 from tests.models import m
-from tests.protocols import p
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.protocols import p
+    from tests.typings import t
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:
@@ -56,7 +59,7 @@ class TestsFlextInfraDepsPathSyncMainProjectObj:
                 m.Infra.PathSyncCommand.model_validate({
                     "workspace": str(tmp_path),
                     "mode": "standalone",
-                })
+                }),
             ),
             eq=0,
         )
@@ -77,7 +80,7 @@ class TestsFlextInfraDepsPathSyncMainProjectObj:
                 m.Infra.PathSyncCommand.model_validate({
                     "workspace": str(tmp_path),
                     "mode": "standalone",
-                })
+                }),
             ),
             eq=0,
         )

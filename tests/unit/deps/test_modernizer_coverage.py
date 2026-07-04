@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import tomlkit
 from flext_tests import tm
 from tomlkit import TOMLDocument
 
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
-from tests.models import m
 from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from tests.models import m
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
@@ -56,10 +60,10 @@ class TestsFlextInfraDepsModernizerCoverage:
         assert report["skip_covered"] is False
         assert report["precision"] == tool_config.tools.coverage.precision
         assert list(_strings(report["exclude_also"])) == sorted(
-            set(tool_config.tools.coverage.exclude_also)
+            set(tool_config.tools.coverage.exclude_also),
         )
         assert list(_strings(run["omit"])) == sorted(
-            set(tool_config.tools.coverage.omit)
+            set(tool_config.tools.coverage.omit),
         )
 
     def test_apply_is_idempotent(self) -> None:

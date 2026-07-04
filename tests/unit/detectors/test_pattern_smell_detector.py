@@ -6,11 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.detectors.pattern_smell_detector import FlextInfraPatternSmellDetector
 from tests.models import m
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestsFlextInfraPatternSmellDetector:

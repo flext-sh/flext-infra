@@ -6,10 +6,13 @@ from collections.abc import (
     Mapping,
     MutableSequence,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from tests.models import m
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraIntegrationRefactorNestingWorkspace:

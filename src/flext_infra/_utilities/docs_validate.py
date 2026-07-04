@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
@@ -13,9 +13,13 @@ from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.models import m
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDocsValidate:
@@ -25,7 +29,8 @@ class FlextInfraUtilitiesDocsValidate:
     def docs_has_adr_reference(skill_path: Path) -> bool:
         """Return whether a skill file contains an ADR reference."""
         text = skill_path.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+            encoding=c.Cli.ENCODING_DEFAULT,
+            errors=c.Infra.IGNORE,
         )
         return "adr" in text.lower()
 
@@ -133,7 +138,7 @@ class FlextInfraUtilitiesDocsValidate:
         if not init_path.exists():
             messages.append(
                 "missing public package init: "
-                f"{init_path.relative_to(scope.path).as_posix()}"
+                f"{init_path.relative_to(scope.path).as_posix()}",
             )
             return messages
         contract = FlextInfraUtilitiesDocsApi.public_contract(

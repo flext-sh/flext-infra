@@ -6,8 +6,7 @@ Handlers are called by the canonical CLI via FlextInfraCliDeps.register_deps.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra import (
     c,
@@ -20,6 +19,9 @@ from flext_infra import (
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sources import FlextInfraExtraPathsSourceMixin
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraExtraPathsManager(
@@ -41,7 +43,7 @@ class FlextInfraExtraPathsManager(
             raise ValueError(msg)
         self._tool_config = tool_config_result.value
         self._workspace_project_names = set(
-            u.Infra.workspace_member_names(self.workspace_root)
+            u.Infra.workspace_member_names(self.workspace_root),
         )
 
     @override
@@ -72,7 +74,7 @@ class FlextInfraExtraPathsManager(
             u.Infra.local_dependency_names_from_payload(
                 payload,
                 workspace_project_names=tuple(self._workspace_project_names),
-            )
+            ),
         ):
             if isinstance(current_project_name, str) and name == current_project_name:
                 continue

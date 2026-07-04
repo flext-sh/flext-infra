@@ -7,12 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestRunProjectsPublicBehavior:
@@ -50,7 +53,9 @@ class TestRunProjectsPublicBehavior:
 
     @pytest.mark.parametrize("report_name", ["check-report.md", "check-report.sarif"])
     def test_run_projects_creates_reports(
-        self, tmp_path: Path, report_name: str
+        self,
+        tmp_path: Path,
+        report_name: str,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
@@ -72,7 +77,8 @@ class TestRunProjectsPublicBehavior:
         assert (tmp_path / "reports" / report_name).exists()
 
     def test_run_projects_creates_project_scoped_reports_dir(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
@@ -98,7 +104,8 @@ class TestRunProjectsPublicBehavior:
         for name in ("p1", "p2", "p3"):
             project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
-                "value = 1\n", encoding="utf-8"
+                "value = 1\n",
+                encoding="utf-8",
             )
         original_path = self._install_fake_ruff(
             tmp_path,
@@ -126,7 +133,8 @@ class TestRunProjectsPublicBehavior:
         for name in ("p1", "p2"):
             project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
-                "value = 1\n", encoding="utf-8"
+                "value = 1\n",
+                encoding="utf-8",
             )
         original_path = self._install_fake_ruff(
             tmp_path,

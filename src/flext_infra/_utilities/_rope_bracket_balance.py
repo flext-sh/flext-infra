@@ -55,7 +55,7 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
         total = 0
         for line in text.splitlines():
             total += FlextInfraUtilitiesRopeBracketBalanceMixin.bracket_balance_line(
-                line
+                line,
             )
         return total
 
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
             )
         except tokenize.TokenError:
             return FlextInfraUtilitiesRopeBracketBalanceMixin._fallback_bracket_balance_line(
-                line
+                line,
             )
 
     @staticmethod

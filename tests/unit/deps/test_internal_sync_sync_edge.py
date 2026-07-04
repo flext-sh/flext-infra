@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import os
-from collections.abc import (
-    Callable,
-    Generator,
-)
 from contextlib import contextmanager
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.protocols import p
 from tests.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+        Generator,
+    )
+    from pathlib import Path
+
+    from tests.protocols import p
 
 
 def _set_toml_stub(
@@ -30,7 +33,8 @@ def _set_toml_stub(
 
     class _TomlReaderStub:
         def __init__(
-            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+            self,
+            fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
         ) -> None:
             self._fn = fn
 

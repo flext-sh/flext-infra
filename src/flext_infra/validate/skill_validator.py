@@ -10,18 +10,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.validate._skill_rule_runner import (
     FlextInfraSkillRuleRunnerMixin,
 )
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
@@ -209,7 +211,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         rules_path = skills_dir / skill_name / "rules.yml"
         if not rules_path.exists():
             return r[m.Infra.ValidationReport].ok(
-                self._missing_rules_report(skill_name)
+                self._missing_rules_report(skill_name),
             )
         rules = u.Cli.yaml_load_mapping(rules_path)
         scan_targets_raw = rules.get("scan_targets", {})

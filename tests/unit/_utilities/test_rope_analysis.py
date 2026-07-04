@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import u
 from flext_infra.detectors.facade_scanner import FlextInfraScanner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraRopeAnalysis:

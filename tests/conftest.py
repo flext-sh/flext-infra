@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Iterator
 from pathlib import Path
-from types import ModuleType
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import (
@@ -18,8 +17,13 @@ from flext_tests import (
 import flext_infra as infra_pkg
 from flext_infra.settings import FlextInfraSettings
 from tests.constants import c
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from types import ModuleType
+
+    from tests.typings import t
 
 reset_settings = _shared_reset_settings
 settings = _shared_settings

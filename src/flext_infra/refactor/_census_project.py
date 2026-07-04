@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from collections import Counter
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 _log = u.fetch_logger(__name__)
 
@@ -89,16 +92,24 @@ class FlextInfraRefactorCensusProjectMixin:
         if selected_rules is None and rule_names:
             selected_rules = frozenset(rule_names)
         include_unused = self._include_rule(
-            "unused", rule_names=rule_names, selected_rules=selected_rules
+            "unused",
+            rule_names=rule_names,
+            selected_rules=selected_rules,
         )
         include_test_only = self._include_rule(
-            "test_only", rule_names=rule_names, selected_rules=selected_rules
+            "test_only",
+            rule_names=rule_names,
+            selected_rules=selected_rules,
         )
         include_duplicate = self._include_rule(
-            "duplicate", rule_names=rule_names, selected_rules=selected_rules
+            "duplicate",
+            rule_names=rule_names,
+            selected_rules=selected_rules,
         )
         include_wrong_tier = self._include_rule(
-            "wrong_tier", rule_names=rule_names, selected_rules=selected_rules
+            "wrong_tier",
+            rule_names=rule_names,
+            selected_rules=selected_rules,
         )
         unused_count = 0
         test_only_count = 0
@@ -112,7 +123,7 @@ class FlextInfraRefactorCensusProjectMixin:
                         item,
                         kind="duplicate",
                         description="Duplicate definition in workspace",
-                    )
+                    ),
                 )
             if is_unused and include_unused:
                 unused_count += 1
@@ -121,7 +132,7 @@ class FlextInfraRefactorCensusProjectMixin:
                         item,
                         kind="unused",
                         description="Object has no non-definition references",
-                    )
+                    ),
                 )
             if is_test_only and include_test_only:
                 test_only_count += 1
@@ -130,7 +141,7 @@ class FlextInfraRefactorCensusProjectMixin:
                         item,
                         kind="test_only",
                         description="Object is referenced only from tests/",
-                    )
+                    ),
                 )
             if (
                 include_wrong_tier
@@ -143,7 +154,7 @@ class FlextInfraRefactorCensusProjectMixin:
                         item,
                         kind="wrong_tier",
                         description=f"Expected tier '{item.expected_tier}' but found '{item.actual_tier}'",
-                    )
+                    ),
                 )
             candidate = self._removal_candidate(
                 item,

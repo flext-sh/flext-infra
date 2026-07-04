@@ -6,16 +6,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 from tests.constants import c
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
 
 
 class TestSafeLoadYaml:
@@ -78,7 +82,7 @@ class TestSkillValidatorCore:
         skills = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skills.mkdir(parents=True)
         report: m.Infra.ValidationReport = tm.ok(
-            validator.build_report(tmp_path, "test-skill")
+            validator.build_report(tmp_path, "test-skill"),
         )
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, contains="no rules.yml")
@@ -109,12 +113,13 @@ class TestSkillValidatorCore:
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
         report: m.Infra.ValidationReport = tm.ok(
-            validator.build_report(tmp_path, "test-skill")
+            validator.build_report(tmp_path, "test-skill"),
         )
         tm.that(report.passed, eq=True)
 
     def test_validate_scalar_rules_yml_yields_empty_success(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Scalar rules.yml content yields an empty successful report."""
         validator = FlextInfraSkillValidator(skill="test-skill")
@@ -122,7 +127,7 @@ class TestSkillValidatorCore:
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
         report: m.Infra.ValidationReport = tm.ok(
-            validator.build_report(tmp_path, "test-skill")
+            validator.build_report(tmp_path, "test-skill"),
         )
         tm.that(report.passed, eq=True)
         tm.that(report.violations, empty=True)

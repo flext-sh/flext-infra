@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import u
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _transform_source(tmp_path: Path, source: str) -> str:
@@ -34,7 +37,8 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
     """Behavior contract for test_infra_transformer_class_nesting."""
 
     def test_class_nesting_moves_top_level_class_into_new_namespace(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = '@decorator\nclass TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):\n    """timeout docs"""\n    value: T\n'
         code = _transform_source(tmp_path, source)
@@ -63,7 +67,8 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
         assert "class FlextDispatcher:\n    pass\n" not in code
 
     def test_class_nesting_keeps_unmapped_top_level_classes(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = "class TimeoutEnforcer:\n    pass\n\nclass OtherClass:\n    pass\n"
         code = _transform_source(tmp_path, source)

@@ -7,14 +7,18 @@ from collections.abc import (
     MutableMapping,
 )
 from importlib import import_module
-from pathlib import Path
-from types import ModuleType
+from typing import TYPE_CHECKING
 
 from flext_cli.utilities import u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
+
+if TYPE_CHECKING:
+    from pathlib import Path
+    from types import ModuleType
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDocsBuild:
@@ -166,11 +170,12 @@ class FlextInfraUtilitiesDocsBuild:
         mkdocs_config = import_module("mkdocs.config")
         mkdocs_exceptions = import_module("mkdocs.exceptions")
         load = FlextInfraUtilitiesDocsBuild._module_callable(
-            mkdocs_config, "load_config"
+            mkdocs_config,
+            "load_config",
         )
         build = FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build")
         mkdocs_error_types = FlextInfraUtilitiesDocsBuild._mkdocs_exception_types(
-            mkdocs_exceptions
+            mkdocs_exceptions,
         )
         site_dir.parent.mkdir(parents=True, exist_ok=True)
         try:

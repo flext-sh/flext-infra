@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import tomlkit
 from flext_tests import tm
 
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from tests.typings import t
 from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+    from tests.typings import t
 
 
 def _manager(

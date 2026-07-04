@@ -12,18 +12,21 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
@@ -102,7 +105,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                             strict_top_level=is_facade,
                             strict_single_class=is_facade,
                             require_public_class=is_facade,
-                        )
+                        ),
                     )
                     if is_facade and not is_test_file:
                         violations.extend(self.check_rule_1(tree, rel))
@@ -114,7 +117,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                             rel,
                             class_stem=prefix,
                             package_name=package_name,
-                        )
+                        ),
                     )
         return self._validation_report(files=files, violations=violations)
 

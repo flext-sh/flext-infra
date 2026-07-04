@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.protocols import p
 from tests.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+    )
+    from pathlib import Path
+
+    from tests.protocols import p
 
 
 def _set_toml_sequence(
@@ -26,7 +30,8 @@ def _set_toml_sequence(
 
     class _TomlReaderStub:
         def __init__(
-            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+            self,
+            fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
         ) -> None:
             self._fn = fn
 

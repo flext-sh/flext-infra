@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import textwrap
 from collections import defaultdict
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
@@ -104,7 +106,9 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         nested_block = "\n".join(extracted)
         if ns_exists:
             appended: str = u.Infra.append_to_class_body(
-                source, namespace, nested_block
+                source,
+                namespace,
+                nested_block,
             )
             return appended
         return source.rstrip("\n") + f"\n\nclass {namespace}:\n{nested_block}\n"

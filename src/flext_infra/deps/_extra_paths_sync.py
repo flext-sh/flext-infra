@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraExtraPathsSyncMixin:
@@ -55,7 +56,7 @@ class FlextInfraExtraPathsSyncMixin:
                 self._resolve_transitive_deps(
                     transitive,
                     visited=resolved_visited,
-                )
+                ),
             )
         return sorted(all_paths)
 
@@ -81,7 +82,7 @@ class FlextInfraExtraPathsSyncMixin:
         changes: t.MutableSequenceOf[str] = []
         pyright_extra_paths = u.Cli.toml_item_child(pyright_table, "extraPaths")
         current_pyright = u.Cli.toml_as_string_list(
-            pyright_extra_paths if pyright_extra_paths is not None else []
+            pyright_extra_paths if pyright_extra_paths is not None else [],
         )
         if current_pyright != expected:
             pyright_table["extraPaths"] = expected
@@ -89,7 +90,7 @@ class FlextInfraExtraPathsSyncMixin:
         if mypy_table is not None:
             mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
             current_mypy = u.Cli.toml_as_string_list(
-                mypy_path_item if mypy_path_item is not None else []
+                mypy_path_item if mypy_path_item is not None else [],
             )
             if current_mypy != expected:
                 mypy_table["mypy_path"] = expected

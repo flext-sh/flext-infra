@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from tests.models import m
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestInventoryServiceCore:
@@ -120,7 +124,7 @@ class TestInventoryServiceReports:
         output_dir = tmp_path / "reports"
         output_dir.mkdir()
         report: m.Infra.InventoryReport = tm.ok(
-            service.generate(tmp_path, output_dir=output_dir)
+            service.generate(tmp_path, output_dir=output_dir),
         )
         tm.that(report.reports_written, is_=list)
 

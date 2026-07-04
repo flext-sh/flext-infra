@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen._codegen_generation_imports import (
     FlextInfraCodegenGenerationImportsMixin,
 )
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationTypeCheckingMixin(
-    FlextInfraCodegenGenerationImportsMixin
+    FlextInfraCodegenGenerationImportsMixin,
 ):
     """TYPE_CHECKING block generation helper methods."""
 
@@ -94,7 +97,10 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             key=lambda item: (item[1] or item[0], item[0] != (item[1] or item[0])),
         ):
             if FlextInfraCodegenGenerationTypeCheckingMixin._should_skip_type_checking_module_export(
-                mod, export_name, attr_name, root_name
+                mod,
+                export_name,
+                attr_name,
+                root_name,
             ):
                 continue
             if not attr_name:
@@ -105,15 +111,19 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         for export_name in tuple(dict.fromkeys(alias_exports)):
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_type_checking_module_alias_import(
-                    "    ", mod, export_name
-                )
+                    "    ",
+                    mod,
+                    export_name,
+                ),
             )
         deduped_parts = tuple(dict.fromkeys(parts))
         if deduped_parts:
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_import(
-                    "    ", mod, deduped_parts
-                )
+                    "    ",
+                    mod,
+                    deduped_parts,
+                ),
             )
 
     @staticmethod
@@ -136,11 +146,14 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 local_package_root,
             )
             FlextInfraCodegenGenerationTypeCheckingMixin._reject_non_absolute_import(
-                resolved, local_package_root, items
+                resolved,
+                local_package_root,
+                items,
             )
             normalized_groups[resolved] = items
         collapsed = FlextInfraCodegenGenerationTypeCheckingMixin._collapse_to_children(
-            normalized_groups, child_packages
+            normalized_groups,
+            child_packages,
         )
         root_name = "" if not local_package_root else local_package_root.split(".")[0]
         lines: t.MutableSequenceOf[str] = ["if TYPE_CHECKING:"]

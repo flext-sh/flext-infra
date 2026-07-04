@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -10,7 +10,11 @@ from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDocsAuditDetectorsMixin:
@@ -34,7 +38,8 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             text = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Cli.ENCODING_DEFAULT,
+                errors=c.Infra.IGNORE,
             )
             for token in tokens:
                 if token in text:
@@ -64,7 +69,8 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             if not md_file.exists():
                 continue
             text = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+                encoding=c.Cli.ENCODING_DEFAULT,
+                errors=c.Infra.IGNORE,
             )
             for token in excluded:
                 if token in text:
@@ -100,7 +106,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             ):
                 continue
             if rel == "docs/api-reference/README.md" or rel.startswith(
-                "docs/api-reference/generated/"
+                "docs/api-reference/generated/",
             ):
                 continue
             issues.append(
@@ -121,7 +127,8 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
         contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path, scope.package_name
+            scope.path,
+            scope.package_name,
         )
         return FlextInfraUtilitiesDocsApi.docstring_issues(scope.path, contract)
 

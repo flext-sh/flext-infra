@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -11,6 +11,9 @@ from flext_infra import m, p, r, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from tests.utilities import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestBanditAndMarkdownGates:
@@ -37,7 +40,7 @@ class TestBanditAndMarkdownGates:
                         u.Tests.stub_run(
                             stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
                             returncode=1,
-                        )
+                        ),
                     ),
                 ),
                 False,
@@ -91,7 +94,7 @@ class TestBanditAndMarkdownGates:
                     u.Tests.stub_run(
                         stdout="README.md:1:1 error MD001 Heading level",
                         returncode=1,
-                    )
+                    ),
                 ),
                 False,
                 1,
@@ -104,7 +107,7 @@ class TestBanditAndMarkdownGates:
                     u.Tests.stub_run(
                         stderr="markdownlint failed",
                         returncode=1,
-                    )
+                    ),
                 ),
                 False,
                 0,

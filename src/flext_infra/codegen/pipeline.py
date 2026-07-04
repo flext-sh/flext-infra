@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
 from flext_infra import (
@@ -17,6 +16,9 @@ from flext_infra import (
 )
 from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 _log = u.fetch_logger(__name__)
 
 
@@ -24,7 +26,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
     """Run the full codegen pipeline directly from the validated CLI model."""
 
     _state: m.Infra.CodegenPipelineState = u.PrivateAttr(
-        default_factory=lambda: m.Infra.CodegenPipelineState(),
+        default_factory=m.Infra.CodegenPipelineState,
     )
 
     @override

@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import (
-    Generator,
-)
 from contextlib import contextmanager
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rope.base.project import Project
 
@@ -24,7 +21,14 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 from flext_infra._utilities.rope_pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Generator,
+    )
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeCore(

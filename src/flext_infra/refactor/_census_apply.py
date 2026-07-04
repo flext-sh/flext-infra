@@ -30,16 +30,18 @@ from flext_infra.detectors.mro_completeness_detector import (
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor._census_apply_formatting import (
     FlextInfraRefactorCensusApplyFormattingMixin,
 )
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 _log = u.fetch_logger(__name__)
 
@@ -74,7 +76,10 @@ class FlextInfraRefactorCensusApplyMixin(
         def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _rewrite_runtime_alias_source(
-            source: str, *, alias: str, target_name: str
+            source: str,
+            *,
+            alias: str,
+            target_name: str,
         ) -> str: ...
 
     def _apply_supported_fixes(
@@ -119,7 +124,7 @@ class FlextInfraRefactorCensusApplyMixin(
                 violations = tuple(
                     violation
                     for violation in FlextInfraManualTypingAliasDetector.detect_file(
-                        ctx
+                        ctx,
                     )
                     if violation.name in object_names
                 )
@@ -264,7 +269,7 @@ class FlextInfraRefactorCensusApplyMixin(
                 continue
             if apply_result.unwrap_or(False):
                 applied.add(
-                    self._fix_key(Path(candidate.file_path), candidate.object_name)
+                    self._fix_key(Path(candidate.file_path), candidate.object_name),
                 )
                 touched_paths.add(Path(candidate.file_path).resolve())
                 touched_paths.update(

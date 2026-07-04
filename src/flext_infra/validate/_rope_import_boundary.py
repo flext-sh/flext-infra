@@ -12,15 +12,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class _RopeImportBoundaryBase(s[bool]):
@@ -96,13 +99,13 @@ class _RopeImportBoundaryBase(s[bool]):
             module_name = u.Infra.import_statement_module_name(stmt)
             if module_name is not None:
                 if self._top_module(
-                    module_name
+                    module_name,
                 ) in self._BANNED and not self._is_allowlisted(file_path, module_name):
                     out.append(self._format_violation(file_path, module_name))
                 continue
             for imported, _alias in u.Infra.import_statement_names_and_aliases(stmt):
                 if self._top_module(
-                    imported
+                    imported,
                 ) in self._BANNED and not self._is_allowlisted(file_path, imported):
                     out.append(self._format_violation(file_path, imported))
         return tuple(out)

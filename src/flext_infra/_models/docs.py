@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsDocs:
@@ -52,11 +54,13 @@ class FlextInfraModelsDocs:
         severity: Annotated[str, m.Field(description="Audit issue severity")] = ""
         message: Annotated[str, m.Field(description="Item detail message")] = ""
         links: Annotated[
-            t.NonNegativeInt, m.Field(description="Applied link fixes")
+            t.NonNegativeInt,
+            m.Field(description="Applied link fixes"),
         ] = 0
         toc: Annotated[t.NonNegativeInt, m.Field(description="Applied TOC updates")] = 0
         codeblocks: Annotated[
-            t.NonNegativeInt, m.Field(description="Applied python codeblock fixes")
+            t.NonNegativeInt,
+            m.Field(description="Applied python codeblock fixes"),
         ] = 0
         path: Annotated[str, m.Field(description="Generated file path")] = ""
         written: Annotated[bool, m.Field(description="Generated file write flag")] = (
@@ -73,10 +77,12 @@ class FlextInfraModelsDocs:
             m.Field(description="Report output directory for scope"),
         ]
         project_class: Annotated[
-            str, m.Field(description="Docs scope classification")
+            str,
+            m.Field(description="Docs scope classification"),
         ] = "root"
         package_name: Annotated[
-            str, m.Field(description="Primary package name for scope")
+            str,
+            m.Field(description="Primary package name for scope"),
         ] = ""
 
     class AuditIssue(m.ContractModel):
@@ -157,7 +163,8 @@ class FlextInfraModelsDocs:
         result: Annotated[str, m.Field(description="Result status")] = ""
         reason: Annotated[str, m.Field(description="Result reason")] = ""
         message: Annotated[
-            str, m.Field(description="Human-readable summary message")
+            str,
+            m.Field(description="Human-readable summary message"),
         ] = ""
         site_dir: Annotated[str, m.Field(description="Built site directory path")] = ""
         checks: Annotated[
@@ -167,11 +174,13 @@ class FlextInfraModelsDocs:
         strict: Annotated[bool, m.Field(description="Strict-mode flag")] = False
         passed: Annotated[bool, m.Field(description="Whether phase passed")] = False
         changed_files: Annotated[
-            t.NonNegativeInt, m.Field(description="Changed files count")
+            t.NonNegativeInt,
+            m.Field(description="Changed files count"),
         ] = 0
         applied: Annotated[bool, m.Field(description="Apply mode flag")] = False
         generated: Annotated[
-            t.NonNegativeInt, m.Field(description="Generated files count")
+            t.NonNegativeInt,
+            m.Field(description="Generated files count"),
         ] = 0
         source: Annotated[
             str,

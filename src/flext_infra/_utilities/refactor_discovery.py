@@ -10,17 +10,21 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import (
-    Iterator,
-)
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli.utilities import u
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.constants import c
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Iterator,
+    )
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorDiscovery:
@@ -36,7 +40,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
                 dict(settings),
                 scope_key=c.Infra.RK_REFACTOR,
                 allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
-            )
+            ),
         )
 
     @staticmethod
@@ -96,7 +100,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
                 pattern=pattern,
                 ignore_patterns=set(ign),
                 allowed_extensions=set(ext),
-            )
+            ),
         )
 
     @staticmethod
@@ -140,7 +144,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
                     pattern=pattern,
                     ignore_patterns=ignore_patterns,
                     allowed_extensions=allowed_extensions,
-                )
+                ),
             )
         return all_files
 

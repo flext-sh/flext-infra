@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import os
-from collections.abc import (
-    Generator,
-)
 from contextlib import contextmanager
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Generator,
+    )
+    from pathlib import Path
 
 
 @contextmanager
@@ -120,7 +123,8 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         assert result == tmp_path
 
     def test_workspace_root_from_parents_returns_none_when_missing(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project = tmp_path / "isolated"
         project.mkdir()
@@ -157,7 +161,8 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         assert root == tmp_path
 
     def test_is_workspace_mode_detects_real_git_superproject(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         workspace, submodule = create_workspace_with_submodule(tmp_path)
 
@@ -172,7 +177,8 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         assert root == workspace
 
     def test_is_workspace_mode_falls_back_to_gitmodules_heuristic(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         (tmp_path / ".gitmodules").touch()
         project = tmp_path / "sub"
@@ -189,7 +195,8 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         assert root == tmp_path
 
     def test_is_workspace_mode_returns_false_for_isolated_project(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project = tmp_path / "isolated"
         project.mkdir()

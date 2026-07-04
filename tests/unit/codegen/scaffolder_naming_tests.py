@@ -9,15 +9,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests.constants import c
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
 
 
 def _parse_class_names(source: str) -> t.StrSequence:
@@ -58,7 +62,9 @@ def _validate_class_names(
 
 
 def _project_info(
-    project: Path, *, package_name: str = "test_project"
+    project: Path,
+    *,
+    package_name: str = "test_project",
 ) -> m.Infra.ProjectInfo:
     return u.Tests.create_project_info(
         project,
@@ -156,8 +162,8 @@ class TestGeneratedClassNamingConvention:
                     project,
                     name="empty-project",
                     package_name="",
-                )
-            ]
+                ),
+            ],
         )
         tm.that(result.files_created, empty=True)
         tm.that(result.files_skipped, empty=True)

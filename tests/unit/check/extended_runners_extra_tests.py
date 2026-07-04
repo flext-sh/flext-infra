@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -12,12 +12,16 @@ from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests.utilities import u
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 class TestExtendedRunnerExtras:
     """Declarative public-gate tests."""
 
     def test_pyright_skips_when_project_has_no_python_files(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
 

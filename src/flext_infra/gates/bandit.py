@@ -5,16 +5,19 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraBanditGate(FlextInfraGate):
@@ -72,15 +75,15 @@ class FlextInfraBanditGate(FlextInfraGate):
         except c.EXC_VALIDATION_TYPE as err:
             issues.append(
                 self._parse_error_issue(
-                    f"Tool output parsing failed: {type(err).__name__}"
-                )
+                    f"Tool output parsing failed: {type(err).__name__}",
+                ),
             )
             return False, issues
         if parsed_payload.failure:
             issues.append(
                 self._parse_error_issue(
-                    parsed_payload.error or "Tool output parsing failed"
-                )
+                    parsed_payload.error or "Tool output parsing failed",
+                ),
             )
             return False, issues
         issues.extend(self._bandit_issues(parsed_payload.unwrap()))
@@ -94,7 +97,7 @@ class FlextInfraBanditGate(FlextInfraGate):
                     code="TOOL_ERROR",
                     message=f"bandit exited with code {result.exit_code}: {detail}",
                     severity="ERROR",
-                )
+                ),
             )
         return result.exit_code == 0, issues
 
@@ -106,14 +109,14 @@ class FlextInfraBanditGate(FlextInfraGate):
         parsed_result = u.Cli.json_parse(stdout or "{}")
         if parsed_result.failure:
             return r[t.MappingKV[str, t.Infra.InfraValue]].fail(
-                parsed_result.error or "Tool output parsing failed"
+                parsed_result.error or "Tool output parsing failed",
             )
         raw_payload = parsed_result.unwrap()
         if not isinstance(raw_payload, Mapping):
             empty_mapping: t.MappingKV[str, t.Infra.InfraValue] = {}
             return r[t.MappingKV[str, t.Infra.InfraValue]].ok(empty_mapping)
         return r[t.MappingKV[str, t.Infra.InfraValue]].ok(
-            u.Cli.json_as_mapping(raw_payload)
+            u.Cli.json_as_mapping(raw_payload),
         )
 
     @staticmethod

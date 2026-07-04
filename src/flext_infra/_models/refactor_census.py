@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsRefactorCensus:
@@ -142,7 +144,8 @@ class FlextInfraModelsRefactorCensus:
             FlextInfraModelsRefactorCensus.CensusProjectMethodUsage
         ] = m.Field(default_factory=tuple, description="Per-method usages")
         total: Annotated[
-            t.NonNegativeInt, m.Field(description="Total usages in project")
+            t.NonNegativeInt,
+            m.Field(description="Total usages in project"),
         ]
 
     class UtilitiesCensusReport(m.ArbitraryTypesModel):

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import u
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _transform_source(tmp_path: Path, source: str) -> str:

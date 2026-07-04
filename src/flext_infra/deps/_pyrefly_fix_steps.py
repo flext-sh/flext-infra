@@ -10,15 +10,19 @@ from collections.abc import (
     Mapping,
     MutableMapping,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.models import m
+    from flext_infra.protocols import p
 
 
 class FlextInfraConfigFixerSteps:
@@ -40,7 +44,7 @@ class FlextInfraConfigFixerSteps:
             return r[t.StrSequence].ok([])
         try:
             current_paths: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
-                list(search_raw)
+                list(search_raw),
             )
         except c.ValidationError as err:
             return r[t.StrSequence].fail_op("validate-search-path", err)
@@ -71,7 +75,7 @@ class FlextInfraConfigFixerSteps:
             return r[t.StrSequence].ok([])
         try:
             current_items: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python(
-                list(includes_raw)
+                list(includes_raw),
             )
         except c.ValidationError as err:
             return r[t.StrSequence].fail_op("validate-project-includes", err)
@@ -87,7 +91,7 @@ class FlextInfraConfigFixerSteps:
         if current_includes != expected_includes:
             pyrefly[c.Infra.PROJECT_INCLUDES] = u.Cli.toml_array(expected_includes)
             return r[t.StrSequence].ok([
-                "synchronized project-includes from YAML rules"
+                "synchronized project-includes from YAML rules",
             ])
         return r[t.StrSequence].ok([])
 
@@ -125,7 +129,7 @@ class FlextInfraConfigFixerSteps:
             new_configs.append(conf_out)
         if len(new_configs) != len(configs):
             pyrefly[c.Infra.SUB_CONFIG] = list(
-                t.Cli.JSON_LIST_ADAPTER.validate_python(new_configs)
+                t.Cli.JSON_LIST_ADAPTER.validate_python(new_configs),
             )
         return r[tuple[t.StrSequence, bool]].ok((fixes, removed_ignore))
 
@@ -139,18 +143,18 @@ class FlextInfraConfigFixerSteps:
         if isinstance(excludes, list):
             try:
                 exclude_items: t.JsonList = t.Cli.JSON_LIST_ADAPTER.validate_python([
-                    *excludes
+                    *excludes,
                 ])
             except c.ValidationError as err:
                 return r[t.StrSequence].fail_op("validate-project-excludes", err)
             current_excludes = [str(value) for value in exclude_items]
         expected_excludes = sorted(
-            set(self._tool_config.tools.pyrefly.project_exclude_globs)
+            set(self._tool_config.tools.pyrefly.project_exclude_globs),
         )
         if current_excludes != expected_excludes:
             pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Cli.toml_array(expected_excludes)
             return r[t.StrSequence].ok([
-                "synchronized project-excludes from YAML rules"
+                "synchronized project-excludes from YAML rules",
             ])
         return r[t.StrSequence].ok([])
 

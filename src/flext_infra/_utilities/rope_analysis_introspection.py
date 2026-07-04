@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeAnalysisIntrospection:
@@ -82,8 +85,8 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
             for node in body:
                 result.extend(
                     FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(
-                        node
-                    )
+                        node,
+                    ),
                 )
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return result
@@ -131,7 +134,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 if (
                     name
                     := FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(
-                        target
+                        target,
                     )
                 )
             )
@@ -198,7 +201,8 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                         methods.append((
                             method_name,
                             FlextInfraUtilitiesRopeAnalysisIntrospection._METHOD_KIND_LABELS.get(
-                                method_kind, "instance"
+                                method_kind,
+                                "instance",
                             ),
                             py_file.name,
                         ))

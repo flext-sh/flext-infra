@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -21,6 +19,11 @@ from flext_infra.transformers.nested_class_propagation import (
 )
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
 
 
 class FlextInfraClassNestingPostCheckGate:
@@ -42,7 +45,7 @@ class FlextInfraClassNestingPostCheckGate:
         quality_gates = u.Infra.string_list(expected.get(c.Infra.RK_QUALITY_GATES))
         source_symbol = str(expected.get(c.Infra.RK_SOURCE_SYMBOL, ""))
         expected_chain = u.Infra.string_list(
-            expected.get(c.Infra.RK_EXPECTED_BASE_CHAIN)
+            expected.get(c.Infra.RK_EXPECTED_BASE_CHAIN),
         )
         if c.Infra.RK_IMPORTS_RESOLVE in post_checks:
             errors.extend(self._validate_imports(file_path))
@@ -191,7 +194,10 @@ class FlextInfraRefactorFileExecutor:
             )
         changes: t.MutableSequenceOf[str] = []
         updated = self._apply_class_nesting_transforms(
-            source, class_map, helper_map, changes
+            source,
+            class_map,
+            helper_map,
+            changes,
         )
         modified = updated != source
         if modified and not dry_run:
@@ -258,7 +264,7 @@ class FlextInfraRefactorFileExecutor:
             return self._class_nesting_config
         rules_dir = Path(__file__).resolve().parent.parent / c.Infra.RK_RULES
         loaded = u.Cli.yaml_load_mapping(
-            rules_dir / c.Infra.CLASS_NESTING_MAPPINGS_FILENAME
+            rules_dir / c.Infra.CLASS_NESTING_MAPPINGS_FILENAME,
         )
         settings: MutableMapping[str, t.Infra.InfraValue] = {}
         threshold = loaded.get(c.Infra.RK_CONFIDENCE_THRESHOLD)
@@ -270,7 +276,7 @@ class FlextInfraRefactorFileExecutor:
                 settings[key] = [
                     dict(entry)
                     for entry in self._coerce_class_nesting_entries(
-                        u.Cli.json_as_mapping_list(raw)
+                        u.Cli.json_as_mapping_list(raw),
                     )
                 ]
         self._class_nesting_config = settings
@@ -282,7 +288,7 @@ class FlextInfraRefactorFileExecutor:
             rules_dir = Path(__file__).resolve().parent.parent / c.Infra.RK_RULES
             self._class_nesting_policy_by_family = (
                 u.Infra.class_nesting_policy_by_family(
-                    rules_dir / c.Infra.CLASS_NESTING_POLICY_FILENAME
+                    rules_dir / c.Infra.CLASS_NESTING_POLICY_FILENAME,
                 )
             )
         return self._class_nesting_policy_by_family
@@ -301,12 +307,13 @@ class FlextInfraRefactorFileExecutor:
                     u.Infra.entry_list(config.get(key)),
                     file_path,
                     threshold,
-                )
+                ),
             )
         violations: t.MutableSequenceOf[str] = []
         for entry in entries:
             ok, violation = u.Infra.validate_class_nesting_entry(
-                entry, policy_by_family=self._class_nesting_policy()
+                entry,
+                policy_by_family=self._class_nesting_policy(),
             )
             if not ok and violation is not None:
                 violation_parts: list[str] = [
@@ -354,12 +361,13 @@ class FlextInfraRefactorFileExecutor:
                 continue
             current_module = u.Infra.normalize_module_path(Path(current_file))
             if current_module != module_path and not module_path.endswith(
-                f"/{current_module}"
+                f"/{current_module}",
             ):
                 continue
             confidence = entry.get(c.Infra.RK_CONFIDENCE, c.Infra.SeverityLevel.LOW)
             if c.Infra.CONFIDENCE_RANKS.get(
-                u.norm_str(confidence, case="lower"), 0
+                u.norm_str(confidence, case="lower"),
+                0,
             ) < c.Infra.CONFIDENCE_RANKS.get(threshold, 0):
                 continue
             result.append(entry)

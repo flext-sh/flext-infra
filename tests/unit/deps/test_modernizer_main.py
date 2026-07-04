@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from tests.constants import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraDepsModernizerMain:
@@ -51,7 +54,7 @@ class TestsFlextInfraDepsModernizerMain:
         tm.that(exit_code, eq=0)
         tm.that(
             (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-                encoding="utf-8"
+                encoding="utf-8",
             ),
             has='build-backend = "hatchling.build"',
         )

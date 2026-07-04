@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -16,9 +16,14 @@ from tests.models import m
 from tests.typings import t
 from tests.utilities import u
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def _create_silent_failure_project(
-    tmp_path: Path, *, name: str = "flext-infra"
+    tmp_path: Path,
+    *,
+    name: str = "flext-infra",
 ) -> Path:
     project: Path = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
@@ -61,7 +66,7 @@ class TestSilentFailureDetector:
                     file_path=file_path,
                     project_root=project,
                     rope_project=rope_project,
-                )
+                ),
             )
         finally:
             rope_project.close()

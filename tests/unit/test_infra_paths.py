@@ -29,7 +29,8 @@ class TestsFlextInfraInfraPaths:
         tm.that(result, eq=Path.cwd().resolve())
 
     def test_resolve_workspace_root_with_file_returns_parent(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         file_path = tmp_path / "some_file.txt"
         file_path.write_text("", encoding="utf-8")

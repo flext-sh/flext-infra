@@ -189,8 +189,8 @@ class TestsFlextInfraDepsDetectorMain:
                 deps=deps,
                 runner=_RunnerStub(
                     lambda cmd, *, cwd, timeout, env: r[m.Cli.CommandOutput].ok(
-                        m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
-                    )
+                        m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
+                    ),
                 ),
             ),
             workspace_report_factory=m.Infra.WorkspaceDependencyReport,
@@ -203,8 +203,8 @@ class TestsFlextInfraDepsDetectorMain:
                 FlextInfraModelsDeps.DetectCommand(
                     workspace=str(tmp_path),
                     no_pip_check=True,
-                )
-            )
+                ),
+            ),
         )
         tm.that(deps.typings_calls, eq=0)
 
@@ -213,7 +213,7 @@ class TestsFlextInfraDepsDetectorMain:
         tmp_path: Path,
     ) -> None:
         run_result = r[m.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
         )
         runtime, calls = _setup_typings_detector(
             tmp_path,
@@ -235,7 +235,7 @@ class TestsFlextInfraDepsDetectorMain:
         tmp_path: Path,
     ) -> None:
         run_result = r[m.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
         )
         runtime, calls = _setup_typings_detector(
             tmp_path,
@@ -257,7 +257,7 @@ class TestsFlextInfraDepsDetectorMain:
         tmp_path: Path,
     ) -> None:
         run_result = r[m.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=1)
+            m.Cli.CommandOutput(stdout="", stderr="", exit_code=1),
         )
         runtime, _ = _setup_typings_detector(
             tmp_path,

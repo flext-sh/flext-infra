@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from operator import itemgetter
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra.constants import c
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 @dataclass(slots=True)
@@ -190,7 +193,9 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         """Apply ``(start, end, replacement)`` triples to ``source`` (right-to-left)."""
         updated = source
         for start, end, replacement in sorted(
-            rewrites, key=itemgetter(0), reverse=True
+            rewrites,
+            key=itemgetter(0),
+            reverse=True,
         ):
             updated = updated[:start] + replacement + updated[end:]
         return updated

@@ -17,17 +17,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from git import GitCommandError, Repo
 
 from flext_core import r
 from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.utilities import u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
@@ -46,7 +49,8 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
     def _snapshot(self) -> p.Result[Path]:
         """Snapshot."""
         return FlextInfraUtilitiesSnapshot.rsync(
-            src=self.root.resolve(), dst=self._sandbox_path
+            src=self.root.resolve(),
+            dst=self._sandbox_path,
         )
 
     def _orchestrate_in(self, workspace_root: Path) -> p.Result[bool]:
@@ -76,11 +80,11 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
                 return r[bool].fail(
                     f"sandbox failed and rollback failed: "
                     f"{sandbox_result.error or '<no detail>'} | "
-                    f"{rollback.error or '<no detail>'}"
+                    f"{rollback.error or '<no detail>'}",
                 )
             return r[bool].fail(
                 f"sandbox '{self.verb}' failed; sandbox reverted, live workspace untouched: "
-                f"{sandbox_result.error or '<no detail>'}"
+                f"{sandbox_result.error or '<no detail>'}",
             )
         return self._orchestrate_in(self.root.resolve())
 

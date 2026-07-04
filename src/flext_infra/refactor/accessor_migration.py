@@ -110,7 +110,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                 if file_report.automated_changes:
                     files_with_changes += 1
                 if (file_report.automated_changes or file_report.warnings) and len(
-                    previews
+                    previews,
                 ) < self.preview_limit:
                     previews.append(file_report)
                 self._accumulate_lint_totals(
@@ -138,7 +138,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                 lint_after_totals=lint_after_totals,
                 new_lint_error_totals=new_lint_error_totals,
                 files=tuple(previews),
-            )
+            ),
         )
 
     @classmethod

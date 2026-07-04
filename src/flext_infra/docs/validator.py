@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.docs.base import FlextInfraDocServiceBase
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraDocValidator(FlextInfraDocServiceBase):
@@ -40,7 +43,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
                 projects=self.selected_projects,
                 output_dir=self.output_dir,
                 apply=self.apply_changes,
-            )
+            ),
         )
         return self._propagate_phase_outcome(
             "validate",
@@ -94,7 +97,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
             if code != 0:
                 status = c.Infra.ResultStatus.FAIL
                 messages.append(
-                    f"missing adr references in skills: {', '.join(missing)}"
+                    f"missing adr references in skills: {', '.join(missing)}",
                 )
         missing_paths = u.Infra.docs_missing_required_paths(scope)
         if missing_paths:

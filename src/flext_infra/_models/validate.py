@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.constants import c
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsCore:
@@ -102,7 +105,8 @@ class FlextInfraModelsCore:
             m.Field(description="Failed test case count"),
         ]
         error_count: Annotated[
-            t.NonNegativeInt, m.Field(description="Error trace count")
+            t.NonNegativeInt,
+            m.Field(description="Error trace count"),
         ]
         warning_count: Annotated[
             t.NonNegativeInt,

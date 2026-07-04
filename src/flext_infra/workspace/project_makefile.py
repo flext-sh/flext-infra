@@ -11,13 +11,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.protocols import p
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -82,20 +85,22 @@ class FlextInfraProjectMakefileUpdater:
                         if read.failure:
                             result = r[bool].fail(read.error or "Makefile read failed")
                         elif u.Cli.sha256_content(read.value) == u.Cli.sha256_content(
-                            new_content
+                            new_content,
                         ):
                             result = r[bool].ok(False)
                         elif not apply:
                             result = r[bool].ok(True)
                         else:
                             result = u.Cli.atomic_write_text_file(
-                                makefile_path, new_content
+                                makefile_path,
+                                new_content,
                             )
                     elif not apply:
                         result = r[bool].ok(True)
                     else:
                         result = u.Cli.atomic_write_text_file(
-                            makefile_path, new_content
+                            makefile_path,
+                            new_content,
                         )
         return result
 

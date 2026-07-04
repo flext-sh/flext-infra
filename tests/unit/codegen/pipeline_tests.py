@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -18,6 +18,9 @@ from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _SRC_MODULES = (
     "constants.py",
@@ -157,7 +160,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     tm.that(fix_by_project, has="project-c")
     project_b_fixed = fix_by_project["project-b"]
     all_violations = list(project_b_fixed.violations_fixed) + list(
-        project_b_fixed.violations_skipped
+        project_b_fixed.violations_skipped,
     )
     tm.that(
         any(v.rule.startswith("NS-002") for v in all_violations),

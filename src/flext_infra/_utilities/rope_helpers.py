@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from importlib import import_module
-from pathlib import Path
-from typing import ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from flext_infra._utilities._rope_bracket_balance import (
     FlextInfraUtilitiesRopeBracketBalanceMixin,
@@ -13,9 +12,13 @@ from flext_infra._utilities._rope_method_order import (
     FlextInfraUtilitiesRopeMethodOrderMixin,
 )
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.models import m
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeHelpers(
@@ -39,7 +42,7 @@ class FlextInfraUtilitiesRopeHelpers(
         module = import_module(cls._default_post_hook_module)
         owner = getattr(module, cls._default_post_hook_owner)
         cls.register_rope_post_hook(
-            cast("p.Infra.RopePostHook", getattr(owner, "run_as_hook")),
+            cast("p.Infra.RopePostHook", owner.run_as_hook),
         )
         cls._default_post_hooks_registered = True
 

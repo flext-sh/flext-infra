@@ -19,8 +19,7 @@ constants — no ``ast`` parsing or tree walking is required:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.transformers._canonical_t_import import (
@@ -30,7 +29,11 @@ from flext_infra.transformers._typing_rewrite import (
     FlextInfraRefactorTypingUnifierRewriteMixin,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorTypingUnifier(
@@ -88,7 +91,7 @@ class FlextInfraRefactorTypingUnifier(
         if did_add:
             self._record_change(
                 "Added canonical t import from "
-                f"{self._canonical_import_module(self._file_path)}"
+                f"{self._canonical_import_module(self._file_path)}",
             )
         source = added
         return source, list(self.changes)

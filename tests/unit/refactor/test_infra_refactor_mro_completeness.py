@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
 from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:
@@ -80,7 +84,8 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
         assert violations[0].family == "m"
 
     def test_skips_when_candidate_is_already_in_facade_bases(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         facade_file, rope_project = _write_models_project(
             tmp_path=tmp_path,

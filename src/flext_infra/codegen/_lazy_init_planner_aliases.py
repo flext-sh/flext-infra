@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from flext_infra import p
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInitPlannerAliasesMixin:
@@ -31,7 +31,8 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         ) -> t.MutableLazyAliasMap: ...
 
         def _package_entry(
-            self, pkg_dir: Path
+            self,
+            pkg_dir: Path,
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _parents_from_constants_module(
@@ -92,7 +93,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             dict.fromkeys((
                 *self.lazy_init.inherited_exports.get(inherited_key, ()),
                 *runtime_alias_names,
-            ))
+            )),
         )
         local_alias_names = frozenset(
             alias_name
@@ -140,7 +141,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                     module_file,
                     module_name,
                     export_options=m.Infra.ExportOptions.model_validate({
-                        "allow_assignments": True
+                        "allow_assignments": True,
                     }),
                 ):
                     lazy_map[alias_name] = (module_name, alias_name)
@@ -150,7 +151,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                         package_dir / c.Infra.INIT_PY,
                         module_name,
                         export_options=m.Infra.ExportOptions.model_validate({
-                            "allow_assignments": True
+                            "allow_assignments": True,
                         }),
                     )
                     if alias_name in package_exports:
@@ -167,13 +168,13 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             if not package_name or package_name in ordered:
                 continue
             package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-                package_name
+                package_name,
             )
             if package_dir is not None:
                 ordered.extend(
                     self._resolve_transitive_parent_packages(
-                        self._parent_packages(package_dir)
-                    )
+                        self._parent_packages(package_dir),
+                    ),
                 )
             if package_name not in ordered:
                 ordered.append(package_name)

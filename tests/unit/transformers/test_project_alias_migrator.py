@@ -19,7 +19,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x: t.StrSequence = ()\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core import c, m, t, u" not in updated
@@ -36,7 +36,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "log = r.Result\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core import r" in updated
@@ -55,7 +55,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "VALUE = c.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core import" in updated
@@ -86,7 +86,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = c.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core import FlextConstants as c" not in updated
@@ -100,7 +100,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = constants_ns.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert updated == source
@@ -113,7 +113,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = c.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core import" not in updated
@@ -127,7 +127,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = c.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert updated == source
@@ -140,7 +140,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = u.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_ldif"
+            current_project="flext_ldif",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core.utilities import FlextUtilities as u" not in updated
@@ -155,7 +155,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = u.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_ldif"
+            current_project="flext_ldif",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core.utilities import FlextUtilities as u" not in updated
@@ -171,7 +171,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = 1\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_infra"
+            current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
         assert "from flext_core import t" in updated
@@ -184,7 +184,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
             "x = c.MAX_SIZE\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project="flext_core"
+            current_project="flext_core",
         )
         updated, changes = transformer.apply_to_source(source)
         assert updated == source
@@ -215,7 +215,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
             file_path=Path(
-                "/workspace/flext-observability/src/flext_observability/constants.py"
+                "/workspace/flext-observability/src/flext_observability/constants.py",
             ),
         )
         updated, changes = transformer.apply_to_source(source)

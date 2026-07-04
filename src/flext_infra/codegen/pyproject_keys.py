@@ -10,14 +10,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenPyprojectKeys(s[bool]):
@@ -55,10 +57,12 @@ class FlextInfraCodegenPyprojectKeys(s[bool]):
             dumped = tool_flext_config.model_dump(exclude_none=True)
 
             tool: t.Cli.TomlTable = doc.setdefault(
-                "tool", u.Cli.toml_table(super_table=True)
+                "tool",
+                u.Cli.toml_table(super_table=True),
             )
             flext: t.Cli.TomlTable = tool.setdefault(
-                "flext", u.Cli.toml_table(super_table=True)
+                "flext",
+                u.Cli.toml_table(super_table=True),
             )
 
             for section_key in ("project", "namespace", "docs", "aliases"):

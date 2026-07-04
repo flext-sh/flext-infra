@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
-from typing import ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final
 
 from flext_cli import u
 from flext_core import r
@@ -18,8 +15,14 @@ from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -112,7 +115,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         inherited_aliases = tuple(
             alias
             for alias in settings.inherited_exports.get(
-                cls.surface_name(package_name), ()
+                cls.surface_name(package_name),
+                (),
             )
             if alias in export_set and alias not in local_aliases
         )
@@ -261,7 +265,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             and resolved_rel_path.name == c.Infra.API_PY
         ):
             resolved_alias = cls.package_alias(
-                package_name=".".join(package_parts) if package_parts else ""
+                package_name=".".join(package_parts) if package_parts else "",
             )
         return (
             is_fixture_module,
@@ -309,7 +313,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Return the derived Pydantic policy for one governed module."""
         settings = cls._lazy_init_config()
         package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
-            file_path
+            file_path,
         )
         resolved_rel_path = rel_path or Path(file_path.name)
         package_parts = tuple(part for part in package_name.split(".") if part)
@@ -442,7 +446,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                         rule,
                         module,
                     ),
-                )
+                ),
             )
         return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(parsed))
 
@@ -485,7 +489,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Normalize facade base."""
         if file_path.is_file():
             with FlextInfraUtilitiesRopeCore.open_project(
-                file_path.parent
+                file_path.parent,
             ) as rope_project:
                 resource: t.Infra.RopeResource | None = (
                     FlextInfraUtilitiesRopeCore.get_resource_from_path(

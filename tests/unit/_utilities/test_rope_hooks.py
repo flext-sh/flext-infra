@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
@@ -46,7 +50,7 @@ class TestsFlextInfraUtilitiesRopeHooks:
         workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
 
         results: list[m.Infra.Result] = list(
-            u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
+            u.Infra.run_rope_post_hooks(workspace_root, dry_run=False),
         )
 
         assert any(
@@ -68,7 +72,7 @@ class TestsFlextInfraUtilitiesRopeHooks:
         original_consumer = consumer_path.read_text(encoding="utf-8")
 
         results: list[m.Infra.Result] = list(
-            u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
+            u.Infra.run_rope_post_hooks(workspace_root, dry_run=True),
         )
 
         assert any(result.file_path == consumer_path for result in results)

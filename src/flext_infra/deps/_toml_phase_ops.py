@@ -10,10 +10,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraTomlPhaseOps:
@@ -71,7 +75,9 @@ class FlextInfraTomlPhaseOps:
                     c.Infra.TomlMergeMode.MERGE,
                 }:
                     if u.Cli.toml_mapping_merge_string_list(
-                        tbl, operation.key, operation.values
+                        tbl,
+                        operation.key,
+                        operation.values,
                     ):
                         out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
                 elif u.Cli.toml_mapping_sync_string_list(
@@ -83,7 +89,10 @@ class FlextInfraTomlPhaseOps:
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             case c.Infra.TomlOperationKind.REMOVE:
                 FlextInfraTomlPhaseOps._remove_payload_operation(
-                    tbl, operation, out, pfx
+                    tbl,
+                    operation,
+                    out,
+                    pfx,
                 )
             case _:
                 msg = f"unsupported TOML operation kind: {operation.kind}"

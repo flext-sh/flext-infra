@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraWorkspaceEnvironment:
@@ -222,7 +226,7 @@ class FlextInfraWorkspaceEnvironment:
         delete_result = u.Cli.files_delete(target_path)
         if delete_result.failure:
             return r[bool].fail(
-                delete_result.error or f"{target_path.name} delete failed"
+                delete_result.error or f"{target_path.name} delete failed",
             )
         return r[bool].ok(True)
 

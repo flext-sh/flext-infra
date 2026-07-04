@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +12,9 @@ from flext_infra import (
     t,
     u,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 
 class FlextInfraInternalSyncCollectMixin:
@@ -42,7 +44,8 @@ class FlextInfraInternalSyncCollectMixin:
         return None
 
     def collect_internal_deps(
-        self, project_root: Path
+        self,
+        project_root: Path,
     ) -> p.Result[t.MappingKV[str, Path]]:
         """Collect internal path dependencies from pyproject metadata."""
         pyproject = project_root / c.Infra.PYPROJECT_FILENAME
@@ -55,7 +58,10 @@ class FlextInfraInternalSyncCollectMixin:
             )
         data = data_result.value
         deps = u.Cli.json_deep_mapping(
-            data, c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES
+            data,
+            c.Infra.TOOL,
+            c.Infra.POETRY,
+            c.Infra.DEPENDENCIES,
         )
         result: MutableMapping[str, Path] = {}
         for dep_name, dep_value in deps.items():

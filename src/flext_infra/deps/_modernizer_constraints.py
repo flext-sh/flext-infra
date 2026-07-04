@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraPyprojectModernizerConstraintsMixin:
@@ -67,7 +71,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 continue
             dependencies[dependency_name] = rewritten_value
             changes.append(
-                f"{location}.{dependency_name}: {current_value!r} -> {rewritten_value!r}"
+                f"{location}.{dependency_name}: {current_value!r} -> {rewritten_value!r}",
             )
         return tuple(changes)
 
@@ -148,7 +152,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                     internal_names=internal_names,
                     policy=policy,
                     location="tool.poetry.dependencies",
-                )
+                ),
             )
         poetry_groups = u.Cli.toml_mapping_path(
             payload,
@@ -175,7 +179,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                         internal_names=internal_names,
                         policy=policy,
                         location=(f"tool.poetry.group.{group_name}.dependencies"),
-                    )
+                    ),
                 )
         return tuple(changes)
 

@@ -4,12 +4,15 @@ import tomllib
 from collections.abc import (
     Sequence,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import main
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _nested_value(pyproject_path: Path, *keys: str) -> object:

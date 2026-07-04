@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from time import perf_counter
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 from flext_core import r
@@ -13,7 +12,6 @@ from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor._migrate_mro_report import (
     FlextInfraRefactorMigrateMroReportMixin,
 )
@@ -22,7 +20,12 @@ from flext_infra.refactor.mro_migration_validator import (
     FlextInfraRefactorMROMigrationValidator,
 )
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixin):

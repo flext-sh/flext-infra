@@ -6,13 +6,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import FlextUtilitiesEnforcement
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorCensusRulesDispatchMixin:
@@ -197,7 +199,9 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
 
         def selected(rule_name: str) -> bool:
             return self._include_rule(
-                rule_name, rule_names=rule_names, selected_rules=selected_rules
+                rule_name,
+                rule_names=rule_names,
+                selected_rules=selected_rules,
             )
 
         if selected("runtime_alias"):
@@ -391,7 +395,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                         description=description,
                         fixable=fixable,
                         fix_action=action,
-                    )
+                    ),
                 )
                 if action:
                     fixes.append(
@@ -402,7 +406,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                             files_changed=1,
                             applied=self._fix_key(file_path, object_name, action)
                             in applied,
-                        )
+                        ),
                     )
         return violations, fixes
 

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorCensusObjectsMixin:

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
 from tests.models import m
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 def _write_file(tmp_path: Path, rel_path: str, source: str) -> Path:

@@ -9,8 +9,7 @@ project-name allowlist.
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.detectors.silent_failure_detector import (
@@ -18,8 +17,12 @@ from flext_infra.detectors.silent_failure_detector import (
 )
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraSilentFailureGate(FlextInfraGate):
@@ -74,7 +77,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
                         file_path=file_path,
                         project_root=project_dir,
                         rope_project=rope_project,
-                    )
+                    ),
                 )
             ]
         finally:

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import (
     c,
@@ -21,6 +20,9 @@ from flext_infra.workspace._migrator_pyproject import (
     FlextInfraProjectMigratorPyprojectMixin,
 )
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraProjectMigrator(
@@ -74,7 +76,7 @@ class FlextInfraProjectMigrator(
         total_changes = sum(len(migration.changes) for migration in migrations)
         total_errors = sum(len(migration.errors) for migration in migrations)
         u.Cli.info(
-            f"Total: {total_changes} change(s), {total_errors} error(s) across {len(migrations)} project(s)"
+            f"Total: {total_changes} change(s), {total_errors} error(s) across {len(migrations)} project(s)",
         )
         if dry_run:
             u.Cli.info("(dry-run — no files modified)")
@@ -109,8 +111,7 @@ class FlextInfraProjectMigrator(
         if workspace_project is not None:
             projects_by_path.setdefault(resolved_root, workspace_project)
         projects = [
-            projects_by_path[path]
-            for path in sorted(projects_by_path, key=lambda current: str(current))
+            projects_by_path[path] for path in sorted(projects_by_path, key=str)
         ]
         migrations = [
             self._migrate_project(

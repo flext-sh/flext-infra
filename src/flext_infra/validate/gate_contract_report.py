@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraGateContractReportMixin:
@@ -88,7 +91,7 @@ class FlextInfraGateContractReportMixin:
                 else ansi.YELLOW
             )
             self._eprint(
-                f"  {color}[{violation.check}]{ansi.RESET} {violation.message}"
+                f"  {color}[{violation.check}]{ansi.RESET} {violation.message}",
             )
 
     def _print_results(
@@ -98,7 +101,7 @@ class FlextInfraGateContractReportMixin:
         ansi = FlextInfraGateContractModels.Ansi
         self._eprint(f"{ansi.CYAN}Gate Contract Validation{ansi.RESET}")
         self._eprint(
-            f"{ansi.CYAN}{'SCRIPT':<60} {'ROLE':<10} {'STATUS':<10} DETAILS{ansi.RESET}"
+            f"{ansi.CYAN}{'SCRIPT':<60} {'ROLE':<10} {'STATUS':<10} DETAILS{ansi.RESET}",
         )
         for script in self._visible_scripts(scripts):
             self._print_script_result(script)

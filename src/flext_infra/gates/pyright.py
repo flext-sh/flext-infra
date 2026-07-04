@@ -6,14 +6,17 @@ import sys
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraPyrightGate(FlextInfraGate):
@@ -121,7 +124,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     code="PARSE_ERROR",
                     message=f"Tool output parsing failed: {type(err).__name__}",
                     severity="ERROR",
-                )
+                ),
             )
             return False, issues
         if (not issues) and result.exit_code != 0:
@@ -139,7 +142,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     code="pyright-exec",
                     message=message,
                     severity=c.Infra.ERROR,
-                )
+                ),
             )
         return result.exit_code == 0, issues
 

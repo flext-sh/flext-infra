@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraPyprojectModernizerRunMixin:
@@ -35,7 +38,8 @@ class FlextInfraPyprojectModernizerRunMixin:
         def project_names(self) -> t.StrSequence | None: ...
 
         def _read_document_state(
-            self, path: Path
+            self,
+            path: Path,
         ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
 
         def _process_document_state(
@@ -94,7 +98,7 @@ class FlextInfraPyprojectModernizerRunMixin:
             [] if files_result.failure else sorted(files_result.unwrap())
         )
         root_state_result = self._read_document_state(
-            self.root / c.Infra.PYPROJECT_FILENAME
+            self.root / c.Infra.PYPROJECT_FILENAME,
         )
         if root_state_result.failure:
             return 2
@@ -120,8 +124,9 @@ class FlextInfraPyprojectModernizerRunMixin:
                 return 2
             internal_names = tuple(
                 sorted(
-                    set(u.Infra.workspace_member_names(self.root)) | {root_project_name}
-                )
+                    set(u.Infra.workspace_member_names(self.root))
+                    | {root_project_name},
+                ),
             )
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []

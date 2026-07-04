@@ -6,14 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from tests.constants import c
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestScannerHelpers:
@@ -42,7 +46,8 @@ class TestScannerHelpers:
         tm.that(len(files), eq=1)
 
     def test_iter_matching_files_prefers_git_tracked_files(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Canonical file selection prefers tracked files when Git is active."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)

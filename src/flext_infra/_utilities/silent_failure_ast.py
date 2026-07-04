@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import NamedTuple, override
+from typing import TYPE_CHECKING, NamedTuple, override
 
 from rope.base import ast
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class _SilentFailureFinding(NamedTuple):
@@ -102,7 +104,7 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
                 detail=detail,
                 fix_action=fix_action,
                 replacement=replacement,
-            )
+            ),
         )
 
     @override
@@ -196,14 +198,14 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
             if type_name in self._BROAD_EXCEPTION_NAMES or not type_name:
                 return False
         return not self._body_has_raise_or_fail(
-            node.body
+            node.body,
         ) and self._body_has_sentinel_return(node.body)
 
     def _body_has_sentinel_return(self, body: list[ast.stmt]) -> bool:
         for stmt in body:
             for child in ast.walk(stmt):
                 if isinstance(child, ast.Return) and self._is_sentinel_value(
-                    child.value
+                    child.value,
                 ):
                     return True
         return False
@@ -321,7 +323,7 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
         for stmt in body:
             for child in ast.walk(stmt):
                 if isinstance(child, ast.Return) and self._is_sentinel_value(
-                    child.value
+                    child.value,
                 ):
                     return child
         return None

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra import main as infra_main
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 
 def main(argv: t.StrSequence | None = None) -> int:

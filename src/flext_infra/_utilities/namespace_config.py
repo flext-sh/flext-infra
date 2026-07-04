@@ -6,12 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesNamespaceConfig:
@@ -43,7 +47,7 @@ class FlextInfraUtilitiesNamespaceConfig:
         3. Fixed candidate list filtered by ``is_dir()`` (fallback).
         """
         configured = FlextInfraUtilitiesNamespaceConfig.namespace_meta(
-            project_root
+            project_root,
         ).get(
             "scan_dirs",
         )

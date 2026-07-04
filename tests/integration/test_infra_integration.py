@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -21,6 +21,9 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = [pytest.mark.integration]
 
@@ -216,11 +219,13 @@ class TestsFlextInfraIntegrationInfraIntegration:
         init_result = u.Cli.run_checked(["git", "init"], cwd=repo_root)
         assert init_result.success
         email_result = u.Cli.run_checked(
-            ["git", "config", "user.email", "infra@example.com"], cwd=repo_root
+            ["git", "config", "user.email", "infra@example.com"],
+            cwd=repo_root,
         )
         assert email_result.success
         name_result = u.Cli.run_checked(
-            ["git", "config", "user.name", "Infra Test"], cwd=repo_root
+            ["git", "config", "user.name", "Infra Test"],
+            cwd=repo_root,
         )
         assert name_result.success
         sample_file = repo_root / "README.md"
@@ -228,7 +233,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
         add_result = u.Cli.run_checked(["git", "add", "README.md"], cwd=repo_root)
         assert add_result.success
         commit_result = u.Cli.run_checked(
-            ["git", "commit", "-m", "initial"], cwd=repo_root
+            ["git", "commit", "-m", "initial"],
+            cwd=repo_root,
         )
         assert commit_result.success
         branch_result = u.Cli.capture(

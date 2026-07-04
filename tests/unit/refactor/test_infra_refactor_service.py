@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.refactor.service import FlextInfraRefactorService
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraRefactorInfraRefactorService:
@@ -39,7 +42,8 @@ class TestsFlextInfraRefactorInfraRefactorService:
         ]
 
     def test_rule_dispatch_fails_on_invalid_pattern_rule_config(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir(parents=True)
@@ -87,7 +91,8 @@ class TestsFlextInfraRefactorInfraRefactorService:
         assert service.rule_loader.file_rules == []
 
     def test_rule_dispatch_drops_legacy_id_fallback_mapping(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir(parents=True)
@@ -104,7 +109,8 @@ class TestsFlextInfraRefactorInfraRefactorService:
         assert service.rule_loader.rules == []
 
     def test_refactor_project_scans_tests_and_scripts_dirs(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir(parents=True)

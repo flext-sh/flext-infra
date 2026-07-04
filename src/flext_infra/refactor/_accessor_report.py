@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import difflib
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraAccessorMigrationReportMixin:
@@ -89,7 +92,7 @@ class FlextInfraAccessorMigrationReportMixin:
                             replacement_name="",
                             automated=False,
                             reason=" ; ".join(report[:3]) or "protected write failed",
-                        )
+                        ),
                     )
                 after = (
                     u.Infra.lint_snapshot(
@@ -107,7 +110,7 @@ class FlextInfraAccessorMigrationReportMixin:
                 lint_before = self._freeze_lints(before)
                 lint_after = self._freeze_lints(after)
                 new_lint_errors = self._freeze_lints(
-                    u.Infra.lint_new_errors(before, after)
+                    u.Infra.lint_new_errors(before, after),
                 )
         return m.Infra.AccessorMigrationFile(
             file=str(py_file),
@@ -139,7 +142,7 @@ class FlextInfraAccessorMigrationReportMixin:
                 fromfile=f"a/{py_file}",
                 tofile=f"b/{py_file}",
                 n=3,
-            )
+            ),
         )
         return "".join(diff_lines[:80])
 
@@ -158,7 +161,7 @@ class FlextInfraAccessorMigrationReportMixin:
         ]
         for tool in report.lint_tools:
             lines.append(
-                f"lint-totals:{tool} before={report.lint_before_totals.get(tool, 0)} after={report.lint_after_totals.get(tool, 0)} new={report.new_lint_error_totals.get(tool, 0)}"
+                f"lint-totals:{tool} before={report.lint_before_totals.get(tool, 0)} after={report.lint_after_totals.get(tool, 0)} new={report.new_lint_error_totals.get(tool, 0)}",
             )
         for file_report in report.files:
             lines.append(f"\n{file_report.file}")

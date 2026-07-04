@@ -7,9 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-
-from tomlkit import TOMLDocument
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra._utilities.pyproject import (
@@ -17,7 +15,13 @@ from flext_infra._utilities.pyproject import (
     _validate_infra_payload,
 )
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tomlkit import TOMLDocument
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
@@ -87,7 +91,8 @@ class FlextInfraUtilitiesDependencies:
                                 raw_name = raw_package.get("name")
                                 raw_version = raw_package.get(c.Infra.VERSION)
                                 if not isinstance(raw_name, str) or not isinstance(
-                                    raw_version, str
+                                    raw_version,
+                                    str,
                                 ):
                                     continue
                                 dependency_name = cls.dep_name(raw_name)
@@ -113,7 +118,7 @@ class FlextInfraUtilitiesDependencies:
             requirement_part, marker_separator, marker_part = raw_text.partition(";")
             if " @ " not in requirement_part:
                 head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(
-                    requirement_part.strip()
+                    requirement_part.strip(),
                 )
                 if head_match is not None:
                     head = head_match.group("head").strip()
@@ -154,7 +159,8 @@ class FlextInfraUtilitiesDependencies:
             locked_version = locked_versions.get(normalized_name)
             if locked_version is not None:
                 rewritten_specifier = cls.constraint_specifier(
-                    locked_version, policy=policy
+                    locked_version,
+                    policy=policy,
                 )
                 if isinstance(raw_value, str):
                     result = (
@@ -425,7 +431,7 @@ class FlextInfraUtilitiesDependencies:
                                         normalized,
                                         workspace_project_names=workspace_project_names,
                                     )
-                                )
+                                ),
                             )
         return result
 

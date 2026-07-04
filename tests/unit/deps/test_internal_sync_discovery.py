@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.protocols import p
 from tests.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+    )
+
+    from tests.protocols import p
 
 
 class _TomlReaderStub:
@@ -70,21 +74,24 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         path = tmp_path / ".gitmodules"
         path.write_text("")
         tm.that(
-            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
+            empty=True,
         )
 
     def test_parse_gitmodules_no_url(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text('[submodule "test"]\n\tpath = test\n')
         tm.that(
-            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
+            empty=True,
         )
 
     def test_parse_gitmodules_non_submodule_section(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text("[other]\nfoo = bar\n")
         tm.that(
-            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
+            empty=True,
         )
 
     def test_parse_repo_map_success(self) -> None:

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import textwrap
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):

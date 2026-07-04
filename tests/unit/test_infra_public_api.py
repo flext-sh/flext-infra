@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
-from types import ModuleType
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -12,6 +12,9 @@ import flext_infra as infra_pkg
 from tests.base import s
 from tests.constants import c
 from tests.models import m
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
 class TestsFlextInfraPublicApi:
@@ -80,7 +83,7 @@ class TestsFlextInfraPublicApi:
 
     def test_public_version_module_matches_package_version(self) -> None:
         version_module = importlib.reload(
-            importlib.import_module("flext_infra.__version__")
+            importlib.import_module("flext_infra.__version__"),
         )
         assert version_module.__version__ == infra_pkg.__version__
 

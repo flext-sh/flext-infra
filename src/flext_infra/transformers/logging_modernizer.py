@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.transformers._rewrite import (
@@ -24,8 +24,10 @@ from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewriter,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
@@ -109,7 +111,7 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
                 removed_get_logger = True
                 continue
             names_to_keep.append(
-                alias.asname if alias.asname is not None else alias.name
+                alias.asname if alias.asname is not None else alias.name,
             )
         if not removed_get_logger:
             return None, ""

@@ -10,9 +10,12 @@ import io
 import token
 import tokenize
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 @dataclass
@@ -47,7 +50,10 @@ class _HeaderSpan:
         if self.last_import_end:
             return self.last_import_end
         return max(
-            self.shebang_end, self.encoding_end, self.comments_end, self.docstring_end
+            self.shebang_end,
+            self.encoding_end,
+            self.comments_end,
+            self.docstring_end,
         )
 
 
@@ -234,7 +240,9 @@ def _leading_comments_end(source: str, start: int) -> int:
 
 
 def _find_import_line_end(
-    source: str, tokens: t.SequenceOf[tokenize.TokenInfo], from_index: int
+    source: str,
+    tokens: t.SequenceOf[tokenize.TokenInfo],
+    from_index: int,
 ) -> int:
     """Return the byte offset just after the import statement starting at from_index."""
     for tok in tokens[from_index:]:

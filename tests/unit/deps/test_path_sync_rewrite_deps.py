@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TypeGuard
+from typing import TYPE_CHECKING, TypeGuard
 
 import tomlkit
 from flext_tests import tm
@@ -9,6 +8,9 @@ from flext_tests import tm
 from tests.constants import c
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:
@@ -185,7 +187,8 @@ class TestsFlextInfraDepsPathSyncRewriteDeps:
         )
 
     def test_root_workspace_sources_cover_all_workspace_members(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(

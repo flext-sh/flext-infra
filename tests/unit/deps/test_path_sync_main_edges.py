@@ -1,18 +1,22 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import main
 from tests.utilities import u
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 class TestsFlextInfraDepsPathSyncMainEdges:
     """Behavior contract for test_path_sync_main_edges."""
 
     def test_main_returns_error_for_missing_workspace_root(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         missing_root = tmp_path / "missing"
 
@@ -28,7 +32,8 @@ class TestsFlextInfraDepsPathSyncMainEdges:
         tm.that(exit_code, eq=1)
 
     def test_main_returns_error_for_invalid_root_pyproject(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         workspace = u.Tests.create_path_sync_workspace(
             tmp_path,

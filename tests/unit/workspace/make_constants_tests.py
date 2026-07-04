@@ -6,10 +6,14 @@ Make routing is owned by the registry discovered from ``scripts/cmd``.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_tests import tm
 
 from flext_infra import c
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 _PHASED_VERBS = frozenset({
     "boot",

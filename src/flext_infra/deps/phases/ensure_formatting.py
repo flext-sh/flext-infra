@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraEnsureFormattingToolingPhase:
@@ -105,7 +109,7 @@ class FlextInfraEnsureFormattingToolingPhase:
     ) -> t.StrSequence:
         """Apply formatting defaults directly to one normalized payload."""
         changes = list(
-            FlextInfraTomlPhaseService.apply_payload_phases(payload, *self._phases())
+            FlextInfraTomlPhaseService.apply_payload_phases(payload, *self._phases()),
         )
         changes.extend(self._remove_codespell_skip_payload(payload))
         return changes

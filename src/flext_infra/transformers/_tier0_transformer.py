@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.typings import t
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer,
     )
+    from flext_infra.typings import t
 
 
 class FlextInfraTier0TransformerMixin:

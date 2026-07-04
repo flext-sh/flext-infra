@@ -6,10 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraNamespaceSourceDetector:
@@ -34,12 +38,15 @@ class FlextInfraNamespaceSourceDetector:
                         file_path=file_path,
                     )
                     resource = u.Infra.fetch_python_resource(
-                        ctx.rope_project, file_path, skip_init_py=True
+                        ctx.rope_project,
+                        file_path,
+                        skip_init_py=True,
                     )
                     if resource is not None:
                         source = resource.read()
                         if not u.Infra.looks_like_facade_file(
-                            file_path=file_path, source=source
+                            file_path=file_path,
+                            source=source,
                         ):
                             source_lines = source.splitlines()
                             violations: list[m.Infra.NamespaceSourceViolation] = []
@@ -51,13 +58,13 @@ class FlextInfraNamespaceSourceDetector:
                                 if (
                                     current_source == project_layout.package_name
                                     or current_source.startswith(
-                                        f"{project_layout.package_name}."
+                                        f"{project_layout.package_name}.",
                                     )
                                 ):
                                     continue
                                 if not (
                                     current_source.startswith(
-                                        c.Infra.PKG_PREFIX_UNDERSCORE
+                                        c.Infra.PKG_PREFIX_UNDERSCORE,
                                     )
                                     and "." not in current_source
                                 ):

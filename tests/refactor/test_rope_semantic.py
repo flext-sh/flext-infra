@@ -140,7 +140,10 @@ class TestsFlextInfraRefactorRopeSemantic:
     ) -> None:
         proj, _ = rope_workspace
         methods = u.Infra.get_class_methods(
-            proj, models_resource, "Dog", include_private=True
+            proj,
+            models_resource,
+            "Dog",
+            include_private=True,
         )
         assert "_wag" in methods
         assert methods["_wag"] == "method"

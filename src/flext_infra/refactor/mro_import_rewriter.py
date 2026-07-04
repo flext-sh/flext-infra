@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra.models import m
 from flext_infra.refactor._mro_import_collect import (
@@ -15,8 +12,14 @@ from flext_infra.refactor._mro_import_collect import (
 from flext_infra.transformers.mro_symbol_propagator import (
     FlextInfraRefactorMROSymbolPropagator,
 )
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorMROImportRewriter(
@@ -28,7 +31,7 @@ class FlextInfraRefactorMROImportRewriter(
         """Typed input envelope for workspace rewrite execution."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True
+            arbitrary_types_allowed=True,
         )
 
         workspace_root: Path

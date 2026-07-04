@@ -6,13 +6,17 @@ accepts modules under the cap, exercised through the public gate runner.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 _OVER_CAP = (
     "from __future__ import annotations\n\n"

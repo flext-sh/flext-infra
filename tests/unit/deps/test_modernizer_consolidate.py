@@ -71,10 +71,12 @@ class TestsFlextInfraDepsModernizerConsolidate:
         doc["project"] = project
         changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
         tm.that(
-            any("optional-dependencies.docs removed" in c for c in changes), eq=True
+            any("optional-dependencies.docs removed" in c for c in changes),
+            eq=True,
         )
         tm.that(
-            any("optional-dependencies.test removed" in c for c in changes), eq=True
+            any("optional-dependencies.test removed" in c for c in changes),
+            eq=True,
         )
 
     def test_consolidate_groups_phase_apply_with_empty_poetry_group(self) -> None:

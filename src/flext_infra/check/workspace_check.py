@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import shlex
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra.base import s
@@ -17,9 +16,13 @@ from flext_infra.check.workspace_check_gates import (
 )
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraWorkspaceChecker(
@@ -91,7 +94,7 @@ class FlextInfraWorkspaceChecker(
         project_targets_result = cls._resolve_project_targets(params)
         if project_targets_result.failure:
             return r[bool].fail(
-                project_targets_result.error or "project resolution failed"
+                project_targets_result.error or "project resolution failed",
             )
         project_targets = project_targets_result.value
         gates = params.gates
@@ -139,7 +142,7 @@ class FlextInfraWorkspaceChecker(
         discovered = u.Infra.resolve_projects(params.workspace_path, ())
         if discovered.failure:
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
-                discovered.error or "project discovery failed"
+                discovered.error or "project discovery failed",
             )
         project_targets = tuple(
             m.Infra.CheckProjectTarget(name=project.name, path=project.path)
@@ -147,7 +150,7 @@ class FlextInfraWorkspaceChecker(
         )
         if not project_targets:
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
-                "no projects discovered"
+                "no projects discovered",
             )
         return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(project_targets)
 

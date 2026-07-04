@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import concurrent.futures
 import hashlib
-from collections.abc import MutableMapping
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -352,11 +355,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     and normalized
                     not in {
                         FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            item
+                            item,
                         )
                         for item in before.get(tool, [])
                         if FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            item
+                            item,
                         )
                     }
                 ]

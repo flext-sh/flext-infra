@@ -62,7 +62,10 @@ class TestsFlextInfraInfraReportingCore:
     ) -> None:
         """Test getting project-level report file path."""
         result = service.resolve_report_path(
-            tmp_path, "project", "check", "report.json"
+            tmp_path,
+            "project",
+            "check",
+            "report.json",
         )
         assert isinstance(result, Path)
         assert result.name == "report.json"

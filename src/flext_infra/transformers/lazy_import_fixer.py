@@ -6,12 +6,14 @@ existing imports.
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
@@ -99,7 +101,7 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
     def starts_body_scope(cls, *, in_body: bool, stripped_line: str) -> bool:
         """Return whether the current line starts a def/class body scope."""
         return (not in_body) and c.Infra.DEF_ASYNC_CLASS_RE.match(
-            stripped_line
+            stripped_line,
         ) is not None
 
     @staticmethod

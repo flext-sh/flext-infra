@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from flext_core.constants import FlextConstantsEnforcement as _fce
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from flext_infra.typings import t
 
 
 def _build_namespace_file_to_family(
@@ -667,7 +670,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
 
     # --- MRO scan patterns ---
     MRO_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"^_?[A-Za-z][A-Za-z0-9_]*$"
+        r"^_?[A-Za-z][A-Za-z0-9_]*$",
     )
     "Regex: valid Python identifier (used for MRO type/class name validation)."
     MRO_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
@@ -700,7 +703,8 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
 
     # --- Lazy import fixer ---
     DEF_ASYNC_CLASS_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:def |async def |class )", re.MULTILINE
+        r"^(?:def |async def |class )",
+        re.MULTILINE,
     )
     "Regex: top-level def/async def/class keyword (for lazy import detection)."
 

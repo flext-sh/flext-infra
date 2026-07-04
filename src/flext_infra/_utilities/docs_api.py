@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
@@ -14,6 +14,9 @@ from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesDocsApi:
@@ -228,7 +231,7 @@ class FlextInfraUtilitiesDocsApi:
                         module_name=imported_module,
                         symbol_name=imported_symbol or ref_name,
                         visited=next_visited,
-                    )
+                    ),
                 )
         return targets
 
@@ -427,7 +430,7 @@ class FlextInfraUtilitiesDocsApi:
         return [
             text
             for entry in FlextInfraUtilitiesDocsApi._string_values(
-                project_meta.get("keywords", [])
+                project_meta.get("keywords", []),
             )
             if (text := entry.strip())
         ]
@@ -442,7 +445,8 @@ class FlextInfraUtilitiesDocsApi:
             symbols: t.MutableSequenceOf[str] = []
             for export_name, module_name in target_map.items():
                 module_file = FlextInfraUtilitiesDocsApi._module_file(
-                    project_root, module_name
+                    project_root,
+                    module_name,
                 )
                 if not module_file.exists():
                     continue
@@ -494,14 +498,14 @@ class FlextInfraUtilitiesDocsApi:
                 project_root,
                 package_name,
                 source,
-            )
+            ),
         )
         target_map = dict(
             FlextInfraUtilitiesDocsApi._export_target_map(
                 source,
                 package_name,
                 all_exports,
-            )
+            ),
         )
         target_map.update(
             FlextInfraUtilitiesDocsApi._lazy_export_target_map(
@@ -509,7 +513,7 @@ class FlextInfraUtilitiesDocsApi:
                 package_name=package_name,
                 source=source,
                 exports=all_exports,
-            )
+            ),
         )
         aliases, module_exports, symbol_exports = (
             FlextInfraUtilitiesDocsApi._classify_exports(all_exports, target_map)
@@ -665,15 +669,15 @@ class FlextInfraUtilitiesDocsApi:
         """Return audit issues for public modules and exports missing docstrings."""
         package_name = str(contract.get("package_name", ""))
         module_list = FlextInfraUtilitiesDocsApi._string_values(
-            contract.get("modules", [])
+            contract.get("modules", []),
         )
         target_map = FlextInfraUtilitiesDocsApi._string_mapping(
-            contract.get("target_map", {})
+            contract.get("target_map", {}),
         )
         module_exports = set(
             FlextInfraUtilitiesDocsApi._string_values(
                 contract.get("module_exports", []),
-            )
+            ),
         )
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         module_docstring_checks = [
@@ -687,7 +691,8 @@ class FlextInfraUtilitiesDocsApi:
             )
         for module_name, message in module_docstring_checks:
             module_file = FlextInfraUtilitiesDocsApi._module_file(
-                project_root, module_name
+                project_root,
+                module_name,
             )
             if not module_file.exists():
                 continue

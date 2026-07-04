@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeMethodOrderMixin:
@@ -34,16 +36,16 @@ class FlextInfraUtilitiesRopeMethodOrderMixin:
                 visibility_matches = not method.name.startswith("_")
             case "protected":
                 visibility_matches = method.name.startswith(
-                    "_"
+                    "_",
                 ) and not method.name.startswith("__")
             case "private":
                 visibility_matches = method.name.startswith(
-                    "__"
+                    "__",
                 ) and not method.name.endswith("__")
             case _:
                 visibility_matches = True
         decorators_match = not rule.decorators or bool(
-            decorators.intersection(rule.decorators)
+            decorators.intersection(rule.decorators),
         )
         excluded = bool(excludes and decorators.intersection(excludes))
         patterns = rule.patterns

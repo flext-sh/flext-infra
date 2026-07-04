@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli.utilities import u
 from flext_infra.constants import c
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraRefactorRuleLoader:
@@ -34,7 +37,7 @@ class FlextInfraRefactorRuleLoader:
         )
         if result.success:
             self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                dict(result.value)
+                dict(result.value),
             )
             u.Cli.info(f"Loaded settings from {self.config_path}")
         return result
@@ -83,18 +86,18 @@ class FlextInfraRefactorRuleLoader:
         return [
             {
                 c.Infra.RK_ID: str(
-                    settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
+                    settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
                 ),
                 c.NAME: str(
                     settings.get(
                         c.NAME,
                         settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
-                    )
+                    ),
                 ),
                 c.Infra.RK_DESCRIPTION: str(settings.get(c.Infra.RK_DESCRIPTION, "")),
                 c.Infra.RK_ENABLED: bool(settings.get(c.Infra.RK_ENABLED, True)),
                 c.Infra.RK_SEVERITY: str(
-                    settings.get(c.Infra.RK_SEVERITY, c.Infra.SeverityLevel.WARNING)
+                    settings.get(c.Infra.RK_SEVERITY, c.Infra.SeverityLevel.WARNING),
                 ),
             }
             for _, settings in self.rules

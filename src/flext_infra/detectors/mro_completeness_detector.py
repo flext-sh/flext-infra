@@ -6,10 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraMROCompletenessDetector:
@@ -37,7 +41,7 @@ class FlextInfraMROCompletenessDetector:
                         stage="mro-completeness",
                         error_type="ResourceNotFound",
                         detail=f"Cannot resolve {file_path.name}",
-                    )
+                    ),
                 )
             return []
         # Resolve facade class from declared module classes.
@@ -96,7 +100,8 @@ class FlextInfraMROCompletenessDetector:
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:
             for base in u.Infra.build_expected_base_chains(project_root=root).get(
-                family, []
+                family,
+                [],
             ):
                 expected.setdefault(base, 1)
         return [

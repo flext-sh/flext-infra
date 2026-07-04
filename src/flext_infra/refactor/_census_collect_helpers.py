@@ -7,14 +7,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import FlextUtilitiesEnforcement
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorCensusCollectHelpersMixin:
@@ -184,7 +186,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
                 module.project_root.resolve()
                 for module in modules
                 if module.project_root is not None
-            })
+            }),
         )
         project_filter = frozenset(project_names or ())
         entries: list[m.Infra.RopeModuleIndexEntry] = []
@@ -250,17 +252,18 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             selected_kinds=frozenset(kind_names) if kind_names else None,
             selected_rules=selected_rules,
             collect_object_inventory=self._should_collect_object_inventory(
-                rule_names, selected_rules=selected_rules
+                rule_names,
+                selected_rules=selected_rules,
             ),
             include_object_references=self._should_collect_object_references(
-                rule_names
+                rule_names,
             ),
             include_local_scopes=include_local_scopes,
             applied=applied,
         )
         project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
         project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
-            list
+            list,
         )
         project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
         report_projects: set[str] = set()

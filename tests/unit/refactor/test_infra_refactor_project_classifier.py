@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _write_pyproject(project_root: Path, content: str) -> None:

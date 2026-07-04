@@ -22,7 +22,7 @@ class FlextInfraUtilitiesDocsGenerate:
         """Extract normalized module names from one docs contract payload."""
         try:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(
-                contract.get("modules", [])
+                contract.get("modules", []),
             )
         except c.ValidationError:
             return []
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 m.Infra.GeneratedFile(
                     path=path.as_posix(),
                     written=apply,
-                )
+                ),
             )
         return removed
 
@@ -61,7 +61,8 @@ class FlextInfraUtilitiesDocsGenerate:
     ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Generate the managed docs artifacts for one FLEXT project."""
         contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path, scope.package_name
+            scope.path,
+            scope.package_name,
         )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
         expected_generated: t.MutableSequenceOf[Path] = [
@@ -123,10 +124,11 @@ class FlextInfraUtilitiesDocsGenerate:
         ]
         for module_name in module_names:
             relative = module_name.removeprefix(f"{scope.package_name}.").replace(
-                ".", "/"
+                ".",
+                "/",
             )
             expected_generated.append(
-                scope.path / "docs/api-reference/generated/modules" / f"{relative}.md"
+                scope.path / "docs/api-reference/generated/modules" / f"{relative}.md",
             )
             files.append(
                 FlextInfraUtilitiesDocsContract.docs_write_if_needed(
@@ -145,14 +147,14 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope.path / "docs/api-reference/generated",
                 expected_generated,
                 apply=apply,
-            )
+            ),
         )
         files.extend(
             FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
                 scope.path / "docs/projects/generated",
                 [],
                 apply=apply,
-            )
+            ),
         )
         return files
 
@@ -183,7 +185,8 @@ class FlextInfraUtilitiesDocsGenerate:
         if path.exists():
             return []
         contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path, scope.package_name
+            scope.path,
+            scope.package_name,
         )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
         return [
@@ -196,7 +199,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 ),
                 apply=apply,
                 overwrite=False,
-            )
+            ),
         ]
 
     @staticmethod
@@ -208,10 +211,11 @@ class FlextInfraUtilitiesDocsGenerate:
     ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Generate root workspace docs artifacts from discovered FLEXT projects."""
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
-            workspace_root
+            workspace_root,
         )
         exclude_docs = FlextInfraUtilitiesDocsRender.as_string_sequence(
-            workspace_contract, "exclude_docs"
+            workspace_contract,
+            "exclude_docs",
         )
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root,
@@ -230,7 +234,8 @@ class FlextInfraUtilitiesDocsGenerate:
                 class_counts.get(scope.project_class, 0) + 1
             )
             project_contract = FlextInfraUtilitiesDocsApi.public_contract(
-                scope.path, scope.package_name
+                scope.path,
+                scope.package_name,
             )
             catalog_entries.append({
                 "name": scope.name,
@@ -271,7 +276,7 @@ class FlextInfraUtilitiesDocsGenerate:
         ]
         for scope in scopes:
             expected_api_generated.append(
-                workspace_root / "docs/api-reference/generated" / f"{scope.name}.md"
+                workspace_root / "docs/api-reference/generated" / f"{scope.name}.md",
             )
             files.append(
                 FlextInfraUtilitiesDocsContract.docs_write_if_needed(
@@ -290,14 +295,14 @@ class FlextInfraUtilitiesDocsGenerate:
                 workspace_root / "docs/api-reference/generated",
                 expected_api_generated,
                 apply=apply,
-            )
+            ),
         )
         files.extend(
             FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
                 workspace_root / "docs/projects/generated",
                 expected_project_generated,
                 apply=apply,
-            )
+            ),
         )
         return files
 
@@ -346,7 +351,7 @@ class FlextInfraUtilitiesDocsGenerate:
             else FlextInfraUtilitiesDocsGenerate.docs_project_generated_files(
                 scope,
                 apply=apply,
-            )
+            ),
         )
         files.extend(
             FlextInfraUtilitiesDocsGenerate.docs_sanitize_scope_fences(

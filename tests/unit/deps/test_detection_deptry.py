@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from tests.constants import c
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestsFlextInfraDepsDetectionDeptry:
@@ -101,7 +105,8 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.fail(service.run_deptry(project, venv_bin))
 
     def test_invalid_and_empty_json_output_surfaces_failure(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Unparseable deptry output (deptry exited 0) surfaces as a failure.
 

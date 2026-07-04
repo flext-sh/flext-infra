@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -18,6 +17,9 @@ from flext_infra.refactor._project_classifier_family import (
 )
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraProjectClassifier(

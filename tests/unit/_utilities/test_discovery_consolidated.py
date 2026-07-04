@@ -338,11 +338,13 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         )
 
     def test_discover_projects_accepts_project_root_as_workspace(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         (tmp_path / c.Infra.DEFAULT_SRC_DIR / "demo_pkg").mkdir(parents=True)
         (tmp_path / c.Infra.DEFAULT_SRC_DIR / "demo_pkg" / c.Infra.INIT_PY).write_text(
-            "", encoding="utf-8"
+            "",
+            encoding="utf-8",
         )
         (tmp_path / c.Infra.DIR_TESTS).mkdir()
         (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(

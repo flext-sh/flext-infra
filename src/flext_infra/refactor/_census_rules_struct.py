@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.detectors.class_placement_detector import (
@@ -27,8 +26,12 @@ from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorCensusRulesStructMixin:
@@ -66,7 +69,8 @@ class FlextInfraRefactorCensusRulesStructMixin:
         def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _named_object(
-            objects: tuple[m.Infra.Census.Object, ...], name: str
+            objects: tuple[m.Infra.Census.Object, ...],
+            name: str,
         ) -> m.Infra.Census.Object | None: ...
 
     def _rule_class_placement(
@@ -107,7 +111,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.suggestion,
                     fixable=detector_violation.fixable,
                     fix_action=action,
-                )
+                ),
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -121,7 +125,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                         action,
                     )
                     in applied,
-                )
+                ),
             )
         return violations, fixes
 
@@ -161,7 +165,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=fixable,
                     fix_action=action,
-                )
+                ),
             )
             if fixable:
                 fixes.append(
@@ -176,7 +180,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                             action,
                         )
                         in applied,
-                    )
+                    ),
                 )
         return violations, fixes
 
@@ -231,7 +235,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     ),
                     fixable=True,
                     fix_action=action,
-                )
+                ),
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -245,7 +249,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                         action,
                     )
                     in applied,
-                )
+                ),
             )
         return violations, fixes
 
@@ -301,7 +305,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.suggestion,
                     fixable=True,
                     fix_action=action,
-                )
+                ),
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -315,7 +319,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                         action,
                     )
                     in applied,
-                )
+                ),
             )
         return violations, fixes
 
@@ -352,7 +356,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=detector_violation.fixable,
                     fix_action=action,
-                )
+                ),
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -366,7 +370,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                         action,
                     )
                     in applied,
-                )
+                ),
             )
         return violations, fixes
 
@@ -407,7 +411,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=fixable,
                     fix_action=action,
-                )
+                ),
             )
             if fixable:
                 fixes.append(
@@ -422,7 +426,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                             action,
                         )
                         in applied,
-                    )
+                    ),
                 )
         return violations, fixes
 
@@ -444,7 +448,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
         for detector_violation in FlextInfraSilentFailureDetector.detect_violations(
-            ctx
+            ctx,
         ):
             object_kind = "statement"
             if selected_kinds and object_kind not in selected_kinds:
@@ -462,7 +466,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=fixable,
                     fix_action=action,
-                )
+                ),
             )
             if fixable:
                 fixes.append(
@@ -477,7 +481,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                             action,
                         )
                         in applied,
-                    )
+                    ),
                 )
         return violations, fixes
 

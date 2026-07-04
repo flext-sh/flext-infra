@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
@@ -28,9 +27,13 @@ from flext_infra.codegen._lazy_init_planner_public_api import (
 )
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
@@ -50,21 +53,21 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         t.LazyAliasMap,
     ] = u.PrivateAttr(default_factory=dict)
     _package_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _source_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _source_plan_cache: dict[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _source_exports_visiting: set[str] = u.PrivateAttr(default_factory=set)
     _parent_package_cache: dict[str, t.StrSequence] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _module_file_by_name: dict[str, Path] = u.PrivateAttr(default_factory=dict)
     _version_module_name: str = u.PrivateAttr(
-        default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
+        default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
     )
     _collision_count: int = u.PrivateAttr(default_factory=int)
 
@@ -107,7 +110,7 @@ class FlextInfraCodegenLazyInitPlanner(
             context.pkg_dir / self._version_module_name,
             f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
             export_options=m.Infra.ExportOptions.model_validate({
-                "include_dunder": True
+                "include_dunder": True,
             }),
         )
         child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)

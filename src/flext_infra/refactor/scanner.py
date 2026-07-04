@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraRefactorLooseClassScanner:
@@ -97,7 +100,7 @@ class FlextInfraRefactorLooseClassScanner:
         ]
         confidence_counts: t.MappingKV[str, t.Infra.InfraValue] = dict(counters)
         required_targets_infra: t.MappingKV[str, t.Infra.InfraValue] = dict(
-            targets_found
+            targets_found,
         )
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "rule": c.Infra.RK_CLASS_NESTING,

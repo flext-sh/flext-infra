@@ -8,8 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import pytest
 from flext_tests import tf, tm
@@ -17,8 +16,12 @@ from flext_tests import tf, tm
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 _ROOT: Final[str] = "# root content"
 

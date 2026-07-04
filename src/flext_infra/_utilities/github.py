@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
@@ -16,8 +17,10 @@ from flext_infra._utilities._github_sync import (
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
@@ -62,7 +65,9 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
             )
         if request.report_path is not None:
             _ = u.Cli.json_write(
-                request.report_path, payload, m.Cli.JsonWriteOptions(sort_keys=True)
+                request.report_path,
+                payload,
+                m.Cli.JsonWriteOptions(sort_keys=True),
             )
         if payload.status == c.Infra.WorkflowLintStatus.FAIL.value and request.strict:
             return r[m.Infra.GithubWorkflowLintOutcome].fail(
@@ -117,7 +122,9 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
         )
         if request.report_path is not None:
             _ = u.Cli.json_write(
-                request.report_path, report, m.Cli.JsonWriteOptions(sort_keys=True)
+                request.report_path,
+                report,
+                m.Cli.JsonWriteOptions(sort_keys=True),
             )
         return r[m.Infra.GithubWorkflowSyncReport].ok(report)
 

@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import m
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRelease:
@@ -73,7 +74,8 @@ class FlextInfraUtilitiesRelease:
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
             u.fetch_logger(__name__).info(
-                "release_notes_written", path=str(output_path)
+                "release_notes_written",
+                path=str(output_path),
             )
             return r[bool].ok(True)
         except OSError as exc:

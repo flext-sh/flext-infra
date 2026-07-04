@@ -8,11 +8,14 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesGitScope:
@@ -128,7 +131,7 @@ class FlextInfraUtilitiesGitScope:
     ) -> frozenset[str] | None:
         """Return tracked top-level directory names under one scope when Git is active."""
         relative_paths = cls._git_tracked_scope_relative_paths(
-            str(scope_root.resolve())
+            str(scope_root.resolve()),
         )
         if relative_paths is None:
             return None

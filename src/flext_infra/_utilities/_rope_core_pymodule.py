@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import re
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import rope.refactor.importutils as rope_importutils
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-from rope.base.project import Project
 from rope.base.pyobjectsdef import PyModule
-from rope.base.resources import File
-from rope.refactor.importutils.module_imports import ModuleImports
 
-from flext_infra.typings import t
+if TYPE_CHECKING:
+    from rope.base.project import Project
+    from rope.base.resources import File
+    from rope.refactor.importutils.module_imports import ModuleImports
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeCorePyModuleMixin:
@@ -46,7 +48,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
         for (
             match
         ) in FlextInfraUtilitiesRopeCorePyModuleMixin._IDENTIFIER_PATTERN.finditer(
-            source_line
+            source_line,
         ):
             if match.group(0) == symbol:
                 offset: int = line_start + match.start()
@@ -75,7 +77,8 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
             module_imports = rope_importutils.get_module_imports(
                 rope_project,
                 FlextInfraUtilitiesRopeCorePyModuleMixin.get_pymodule(
-                    rope_project, resource
+                    rope_project,
+                    resource,
                 ),
             )
         except (RefactoringError, ResourceNotFoundError, AttributeError):

@@ -6,12 +6,14 @@ and adds missing runtime alias imports to the module header.
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
@@ -158,14 +160,14 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         for bare_name, bound in u.Infra.parse_import_names(names_part):
             if bare_name not in self._symbols_to_replace:
                 unmapped.append(
-                    bare_name if bare_name == bound else f"{bare_name} as {bound}"
+                    bare_name if bare_name == bound else f"{bare_name} as {bound}",
                 )
                 continue
             alias_path = self._symbols_to_replace[bare_name]
             alias_root = alias_path.split(".")[0]
             if alias_root in self._blocked_aliases:
                 unmapped.append(
-                    bare_name if bare_name == bound else f"{bare_name} as {bound}"
+                    bare_name if bare_name == bound else f"{bare_name} as {bound}",
                 )
                 continue
             self.active_symbol_replacements[bound] = alias_path

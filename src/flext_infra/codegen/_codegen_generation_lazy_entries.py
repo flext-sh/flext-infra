@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen._codegen_generation_type_checking import (
     FlextInfraCodegenGenerationTypeCheckingMixin,
 )
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 type _LazyEntryContext = tuple[str, frozenset[str], bool]
 
 
 class FlextInfraCodegenGenerationLazyEntriesMixin(
-    FlextInfraCodegenGenerationTypeCheckingMixin
+    FlextInfraCodegenGenerationTypeCheckingMixin,
 ):
     """Lazy-entry grouping and publication helper methods."""
 
@@ -32,7 +35,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
                 continue
             mod, attr = lazy_filtered[exp]
             module_or_package_export = FlextInfraCodegenGenerationLazyEntriesMixin._is_module_or_package_export(
-                attr
+                attr,
             )
             if module_or_package_export and not include_module_exports:
                 continue
@@ -43,7 +46,8 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
             )
             compact_mod = (
                 FlextInfraCodegenGenerationLazyEntriesMixin._compact_lazy_module_path(
-                    current_pkg, mod
+                    current_pkg,
+                    mod,
                 )
             )
             if mod in child_aliases and not attr and not child_package_module:
@@ -69,13 +73,15 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         module_items = tuple(
             (mod, tuple(sorted(names)))
             for mod, names in sorted(
-                module_groups.items(), key=lambda item: item[0].lower()
+                module_groups.items(),
+                key=lambda item: item[0].lower(),
             )
         )
         alias_items = tuple(
             (mod, tuple(sorted(pairs)))
             for mod, pairs in sorted(
-                alias_groups.items(), key=lambda item: item[0].lower()
+                alias_groups.items(),
+                key=lambda item: item[0].lower(),
             )
         )
         return module_items, alias_items

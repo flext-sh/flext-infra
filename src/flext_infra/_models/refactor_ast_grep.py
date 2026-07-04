@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
@@ -39,10 +41,12 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
         moved_symbols: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Symbols moved to facade class"
+            default_factory=tuple,
+            description="Symbols moved to facade class",
         )
         created_classes: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Facade classes created during migration"
+            default_factory=tuple,
+            description="Facade classes created during migration",
         )
 
     class MRORewriteResult(m.ArbitraryTypesModel):
@@ -105,7 +109,8 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             m.Field(description="MRO validation failures"),
         ]
         scan_duration_seconds: Annotated[
-            float, m.Field(ge=0.0, description="Scan phase duration in seconds")
+            float,
+            m.Field(ge=0.0, description="Scan phase duration in seconds"),
         ] = 0.0
         rewrite_duration_seconds: Annotated[
             float,
@@ -122,13 +127,16 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             ),
         ] = 0.0
         total_duration_seconds: Annotated[
-            float, m.Field(ge=0.0, description="Total run duration in seconds")
+            float,
+            m.Field(ge=0.0, description="Total run duration in seconds"),
         ] = 0.0
         warnings: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Warnings"
+            default_factory=tuple,
+            description="Warnings",
         )
         errors: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple, description="Errors"
+            default_factory=tuple,
+            description="Errors",
         )
 
     class RefactorConfig(m.ContractModel):
@@ -146,7 +154,8 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             description="Relative directories scanned for candidate files",
         )
         ignore_patterns: t.StrSequence = m.Field(
-            default_factory=tuple, description="Glob/file patterns ignored during scan"
+            default_factory=tuple,
+            description="Glob/file patterns ignored during scan",
         )
         file_extensions: t.StrSequence = m.Field(
             default_factory=tuple,
@@ -273,14 +282,16 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             m.Field(description="Original accessor or helper name"),
         ]
         replacement_name: Annotated[
-            str, m.Field(description="Suggested or applied replacement name")
+            str,
+            m.Field(description="Suggested or applied replacement name"),
         ] = ""
         automated: Annotated[
             bool,
             m.Field(description="Whether the migration was performed automatically"),
         ]
         reason: Annotated[
-            str, m.Field(description="Human-readable migration rationale")
+            str,
+            m.Field(description="Human-readable migration rationale"),
         ]
 
     class AccessorMigrationFile(m.ArbitraryTypesModel):
@@ -310,7 +321,8 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             description="Manual follow-up warnings for this file",
         )
         diff: Annotated[
-            str, m.Field(description="Unified diff preview for the file")
+            str,
+            m.Field(description="Unified diff preview for the file"),
         ] = ""
         lint_before: Annotated[
             t.MappingKV[str, t.StrSequence],

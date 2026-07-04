@@ -195,7 +195,7 @@ class TestsFlextInfraLazyInitRegistryWrapper:
                     name="FLEXT_CORE_LAZY_IMPORTS",
                     generated=True,
                 ),
-            }
+            },
         )
         plan.context.pkg_dir.mkdir(parents=True)
 
@@ -225,7 +225,7 @@ class TestsFlextInfraLazyInitRegistryWrapper:
                     name="TESTS_LAZY_IMPORTS",
                     generated=True,
                 ),
-            }
+            },
         )
         plan.context.pkg_dir.mkdir(parents=True)
         registry_path = plan.context.pkg_dir / c.Infra.ROOT_EXPORTS_FILENAME

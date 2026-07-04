@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, t
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _apply_rule(
@@ -29,7 +32,8 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
     """Behavior contract for test_infra_refactor_pattern_corrections."""
 
     def test_pattern_rule_converts_dict_annotations_to_mapping(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = "def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    return data\n"
         updated, _ = _apply_rule(
@@ -60,7 +64,8 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
         assert "-> t.JsonMapping" in updated
 
     def test_pattern_rule_keeps_dict_param_when_subscript_mutated(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = 'def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    data["k"] = "v"\n    return data\n'
         updated, _ = _apply_rule(
@@ -100,7 +105,8 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
         assert "def f(data: t.JsonMapping) -> str:" in updated
 
     def test_pattern_rule_removes_configured_redundant_casts(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = 'value = cast("m.ConfigMap", result.unwrap_or(m.ConfigMap(root={})))\n'
         updated, _ = _apply_rule(
@@ -115,7 +121,8 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
         assert "value = result.unwrap_or(m.ConfigMap(root={}))" in updated
 
     def test_pattern_rule_removes_nested_type_object_cast_chain(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = 'value = cast("type", cast("t.JsonValue", FlextSettings))\n'
         updated, _ = _apply_rule(

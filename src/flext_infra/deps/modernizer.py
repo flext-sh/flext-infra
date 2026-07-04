@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
@@ -21,8 +21,10 @@ from flext_infra.deps._modernizer_run import (
 )
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraPyprojectModernizer(
@@ -64,7 +66,7 @@ class FlextInfraPyprojectModernizer(
                 c.Infra.DependencyConstraintPolicy(v.strip().lower())
                 if isinstance(v, str)
                 else v
-            )
+            ),
         ),
     ] = c.Infra.DependencyConstraintPolicy.FLOOR
     _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()

@@ -6,14 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import c
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorDryrun:
@@ -36,7 +40,9 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
 
     def test_migrator_makefile_not_found_dry_run(self, tmp_path: Path) -> None:
         project_root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", makefile=None
+            tmp_path,
+            base_mk="base",
+            makefile=None,
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
@@ -56,7 +62,9 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
 
     def test_migrator_pyproject_not_found_dry_run(self, tmp_path: Path) -> None:
         project_root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", pyproject=None
+            tmp_path,
+            base_mk="base",
+            pyproject=None,
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
@@ -76,7 +84,9 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
 
     def test_migrator_flext_core_dry_run(self, tmp_path: Path) -> None:
         project_root = u.Tests.create_migrator_dir_layout(
-            tmp_path, name="flext-core", base_mk="base"
+            tmp_path,
+            name="flext-core",
+            base_mk="base",
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root, name="flext-core"),
@@ -95,7 +105,8 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
         )
 
     def test_migrator_gitignore_already_normalized_dry_run(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = u.Tests.create_migrator_dir_layout(
             tmp_path,

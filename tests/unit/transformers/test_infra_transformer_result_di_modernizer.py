@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _transform(source: str) -> tuple[str, Sequence[str]]:

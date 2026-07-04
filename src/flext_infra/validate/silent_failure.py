@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
@@ -11,20 +11,24 @@ from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraSilentFailureValidator(s[bool]):
     """Validate that failure paths do not collapse into sentinel returns."""
 
     project_filter: Annotated[
-        str | None, m.Field(description="Project filter (comma-separated)")
+        str | None,
+        m.Field(description="Project filter (comma-separated)"),
     ] = None
 
     include_tests: Annotated[
-        bool, m.Field(description="Scan test trees in addition to source trees")
+        bool,
+        m.Field(description="Scan test trees in addition to source trees"),
     ] = True
 
     def _selected_projects(
@@ -44,7 +48,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
         issues: t.MutableSequenceOf[str] = []
         projects_result = u.Infra.projects(self.workspace_root)
         projects = self._selected_projects(
-            tuple(projects_result.unwrap()) if projects_result.success else ()
+            tuple(projects_result.unwrap()) if projects_result.success else (),
         )
         for project in projects:
             iter_result = u.Infra.iter_python_files(
@@ -67,7 +71,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
                                 file_path=file_path,
                                 project_root=project.path,
                                 rope_project=rope_project,
-                            )
+                            ),
                         )
                     )
             finally:
@@ -96,7 +100,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
         report_result = self.build_report()
         if report_result.failure:
             return r[bool].fail(
-                report_result.error or "silent failure validation failed"
+                report_result.error or "silent failure validation failed",
             )
         report = report_result.value
         if report.passed:

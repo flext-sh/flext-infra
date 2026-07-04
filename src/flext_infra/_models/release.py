@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsRelease:
@@ -70,7 +72,8 @@ class FlextInfraModelsRelease:
         dry_run: Annotated[bool, m.Field(description="Dry run flag")] = False
         phases: Annotated[t.StrSequence, m.Field(description="Ordered list of phases")]
         create_branches: Annotated[
-            bool, m.Field(description="Create branches flag")
+            bool,
+            m.Field(description="Create branches flag"),
         ] = True
         next_dev: Annotated[bool, m.Field(description="Next dev flag")] = False
         next_bump: Annotated[str, m.Field(description="Next bump")] = "minor"

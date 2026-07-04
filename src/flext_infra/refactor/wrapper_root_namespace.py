@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_infra import (
     c,
@@ -19,6 +18,9 @@ from flext_infra.refactor._wrapper_rewrite import (
     FlextInfraWrapperRootNamespaceRewriteMixin,
     _WrapperRewriteAccumulator,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class FlextInfraWrapperRootNamespaceRefactor(
@@ -143,10 +145,10 @@ class FlextInfraWrapperRootNamespaceRefactor(
             else "apply"
         )
         per_project_changes_payload: t.JsonDict = dict(
-            accumulator.per_project_changes.items()
+            accumulator.per_project_changes.items(),
         )
         per_project_replacements_payload: t.JsonDict = dict(
-            accumulator.per_project_replacements.items()
+            accumulator.per_project_replacements.items(),
         )
         changed_files_preview: t.JsonValueList = list(accumulator.changed_files[:200])
         report_payload: t.MutableJsonMapping = {

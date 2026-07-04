@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra._utilities._docs_scope_selection import (
@@ -12,8 +12,12 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDocsScopeBuildMixin(
@@ -85,7 +89,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
                 report_dir=(workspace_root / output_dir).resolve(),
                 project_class="root",
                 package_name="",
-            )
+            ),
         ]
         discovered = FlextInfraUtilitiesDocsScopeBuildMixin._discover_projects(
             workspace_root,
@@ -101,7 +105,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
                     discovered,
                     selected_names,
                     output_dir,
-                )
+                ),
             )
             return tuple(scopes)
         scopes.extend(

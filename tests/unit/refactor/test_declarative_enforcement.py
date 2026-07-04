@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -16,7 +16,11 @@ from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:
@@ -53,7 +57,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         assert getattr(probes[0], "rule_id", "") == "090"
 
     def test_supported_rules_are_selected_by_source_metadata(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Declarative support is source-driven, not tied to catalog IDs."""
         rule = FlextModelsEnforcement.EnforcementRuleSpec(

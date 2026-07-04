@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesGithubSyncMixin:
@@ -37,7 +40,8 @@ class FlextInfraUtilitiesGithubSyncMixin:
     def _github_render_project_template(cls, rendered_template: str) -> str:
         """Adapt workspace workflow commands to standalone project bootstrap semantics."""
         return rendered_template.replace(
-            "- name: Boot (advisory)", "- name: Setup (advisory)"
+            "- name: Boot (advisory)",
+            "- name: Setup (advisory)",
         ).replace("run: make boot", "run: make setup")
 
     @classmethod

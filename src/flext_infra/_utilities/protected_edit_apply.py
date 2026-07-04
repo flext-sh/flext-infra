@@ -5,9 +5,7 @@ from __future__ import annotations
 import ast
 import difflib
 import shutil
-from collections.abc import MutableMapping
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_core import r
@@ -16,8 +14,13 @@ from flext_infra._utilities.protected_edit_preview import (
 )
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
@@ -94,7 +97,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                     before_sources[path] or "",
                     new_errors,
                     test_fail,
-                )
+                ),
             )
         return (not failed, reports)
 
@@ -132,7 +135,8 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             return False
         for node in ast.walk(tree):
             if isinstance(
-                node, ast.FunctionDef | ast.AsyncFunctionDef
+                node,
+                ast.FunctionDef | ast.AsyncFunctionDef,
             ) and node.name.startswith("test_"):
                 return True
             if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
@@ -272,7 +276,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 fromfile=f"a/{rel}",
                 tofile=f"b/{rel}",
                 n=3,
-            )
+            ),
         )
         _restore()
         report: t.MutableSequenceOf[str] = [f"  REVERTED {rel}:"]

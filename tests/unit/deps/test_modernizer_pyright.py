@@ -5,14 +5,18 @@ from __future__ import annotations
 from collections.abc import (
     MutableMapping,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomlkit
 from flext_tests._utilities.matchers import tm
 
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
 
 
 class TestsFlextInfraDepsModernizerPyright:
@@ -88,7 +92,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.root_venv_path)
         assert u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]) == "none"
         assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"])),
         ) == sorted(
             set(rules.default_excludes)
             | {
@@ -98,10 +102,10 @@ class TestsFlextInfraDepsModernizerPyright:
             },
         )
         assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"])),
         ) == sorted([*rules.root_typings_paths, *rules.ignored_diagnostic_globs])
         assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"])),
         ) == sorted([
             f"flext-api/{rules.source_dir}",
             f"flext-core/{rules.source_dir}",
@@ -152,7 +156,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         assert u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]) == "none"
         assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"])),
         ) == sorted(rules.env_dirs)
         expected_envs = [
             {
@@ -209,13 +213,13 @@ class TestsFlextInfraDepsModernizerPyright:
         if not isinstance(pyright, MutableMapping):
             return
         assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"])),
         ) == sorted([
             rules.project_typings_paths[0],
             *rules.ignored_diagnostic_globs,
         ])
         assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))
+            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"])),
         ) == sorted([rules.source_dir, rules.test_like_dirs[0]])
         exclude = list(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"])))
         tm.that(exclude, has="**/tests/fixtures")

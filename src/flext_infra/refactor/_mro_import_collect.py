@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorMROImportRewriterFileOpsMixin:
@@ -150,7 +154,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         paths: list[Path] = []
         project_name_set: set[str] = set(project_names or ())
         for project_root in u.Infra.discover_project_roots(
-            workspace_root=workspace_root
+            workspace_root=workspace_root,
         ):
             if project_name_set and project_root.name not in project_name_set:
                 continue

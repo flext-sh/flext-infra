@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -74,7 +78,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         if file_path.name != c.Infra.INIT_PYI:
             return False
         return file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).startswith(
-            c.Infra.AUTOGEN_HEADER
+            c.Infra.AUTOGEN_HEADER,
         )
 
     @staticmethod
@@ -92,7 +96,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             & c.Infra.ITERATION_EXCLUDED_PARTS
         }
         return tuple(
-            sorted(python_paths | stub_paths, key=lambda path: path.as_posix())
+            sorted(python_paths | stub_paths, key=lambda path: path.as_posix()),
         )
 
     @classmethod

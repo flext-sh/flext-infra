@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import m, p, r
-from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests.utilities import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.gates.base_gate import FlextInfraGate
 
 
 class TestTypeGates:
@@ -38,7 +42,7 @@ class TestTypeGates:
                     u.Tests.stub_run(
                         stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}',
                         returncode=1,
-                    )
+                    ),
                 ),
                 False,
                 1,
@@ -51,7 +55,7 @@ class TestTypeGates:
                     u.Tests.stub_run(
                         stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
                         returncode=1,
-                    )
+                    ),
                 ),
                 False,
                 1,

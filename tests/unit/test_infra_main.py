@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
 from flext_infra import main
+
+if TYPE_CHECKING:
+    import pytest
 
 
 class TestsFlextInfraInfraMain:
@@ -24,7 +27,8 @@ class TestsFlextInfraInfraMain:
         assert main(["unknown"]) == 1
 
     def test_main_help_lists_core_groups(
-        self, capsys: pytest.CaptureFixture[str]
+        self,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         assert main(["--help"]) == 0
         out = capsys.readouterr().out

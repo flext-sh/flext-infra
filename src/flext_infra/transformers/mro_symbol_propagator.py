@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+    )
+
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
@@ -107,7 +110,8 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
             source,
             symbol_paths,
             pattern_fn=lambda old, _: c.Infra.compile_mro_import_rewrite(
-                module_name, old
+                module_name,
+                old,
             ),
             replacement_fn=lambda _, __: rf"\1{facade_alias}",
             message_fn=lambda old, tp: (
@@ -147,7 +151,8 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
             source,
             symbol_paths,
             pattern_fn=lambda old, _: c.Infra.compile_mro_prefixed_annotation(
-                prefix, old
+                prefix,
+                old,
             ),
             replacement_fn=lambda _, tp: rf"\1{facade_alias}.{tp}",
             message_fn=lambda old, tp: (

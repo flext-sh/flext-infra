@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from operator import itemgetter
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rope.base.exceptions import RopeError
 from rope.base.pynames import DefinedName, ImportedName
@@ -17,7 +18,9 @@ from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeInventory:
@@ -92,7 +95,7 @@ class FlextInfraUtilitiesRopeInventory:
                     record_options=record_options,
                     include_local_scopes=include_local_scopes,
                     include_references=include_references,
-                )
+                ),
             )
         return tuple(items)
 
@@ -114,7 +117,7 @@ class FlextInfraUtilitiesRopeInventory:
                     "name": name,
                     "pyname": pyname,
                     "child_scope": child_scope,
-                }
+                },
             )
             record = cls._record(
                 record_options,
@@ -129,7 +132,7 @@ class FlextInfraUtilitiesRopeInventory:
                     child_scope=child_scope,
                     record_options=record_options,
                     include_references=include_references,
-                )
+                ),
             )
         return tuple(items)
 
@@ -173,7 +176,7 @@ class FlextInfraUtilitiesRopeInventory:
                 "class_chain": tuple(
                     part for part in record.class_path.split(".") if part
                 ),
-            }
+            },
         )
 
     @staticmethod
@@ -331,7 +334,8 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _child_scope_for(
-        scopes: t.SequenceOf[p.Infra.RopeScopeDsl], pyname: t.Infra.RopePyName
+        scopes: t.SequenceOf[p.Infra.RopeScopeDsl],
+        pyname: t.Infra.RopePyName,
     ) -> p.Infra.RopeScopeDsl | None:
         """Child scope for."""
         location = pyname.get_definition_location()
@@ -496,7 +500,7 @@ class FlextInfraUtilitiesRopeInventory:
             runtime_reference_sites.append(reference_site)
         if not skipped_definition and definition_path is not None:
             surface = FlextInfraUtilitiesRopeInventory._reference_surface(
-                definition_path
+                definition_path,
             )
             if surface == c.Infra.DIR_TESTS:
                 FlextInfraUtilitiesRopeInventory._discard_definition_site(
@@ -526,7 +530,7 @@ class FlextInfraUtilitiesRopeInventory:
             runtime_reference_sites
             or test_reference_sites
             or example_reference_sites
-            or script_reference_sites
+            or script_reference_sites,
         )
         if (
             not has_reference_sites
@@ -598,13 +602,13 @@ class FlextInfraUtilitiesRopeInventory:
                     raise TypeError(msg)
                 dependent_paths.add(
                     FlextInfraUtilitiesRopeInventory._normalize_file_path(
-                        path.resolve()
-                    )
+                        path.resolve(),
+                    ),
                 )
         if not dependent_paths:
             return ((), (), (), ())
         normalized_definition = FlextInfraUtilitiesRopeInventory._normalize_file_path(
-            definition_path.resolve()
+            definition_path.resolve(),
         )
         runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         test_reference_sites: list[m.Infra.Census.ReferenceSite] = []
@@ -613,7 +617,7 @@ class FlextInfraUtilitiesRopeInventory:
         seen_sites: set[tuple[str, int, str]] = set()
         for path, surface, lines in name_index_getter().get(name, ()):
             normalized_path = FlextInfraUtilitiesRopeInventory._normalize_file_path(
-                path.resolve()
+                path.resolve(),
             )
             if path.name == c.Infra.INIT_PY or normalized_path == normalized_definition:
                 continue
@@ -770,7 +774,7 @@ class FlextInfraUtilitiesRopeInventory:
         return bool(
             definition_path is not None
             and location_path == definition_path
-            and location_line == line
+            and location_line == line,
         )
 
     @staticmethod
@@ -846,7 +850,7 @@ class FlextInfraUtilitiesRopeInventory:
         if name == alias:
             return True
         return bool(
-            layout is not None and family and name == f"{layout.class_stem}{family}"
+            layout is not None and family and name == f"{layout.class_stem}{family}",
         )
 
 

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
@@ -48,7 +50,9 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
             namespace = rename_parts[0]
             aliases = self._find_import_aliases(updated, old_name=old_name)
             updated = self._rewrite_import(
-                updated, old_name=old_name, namespace=namespace
+                updated,
+                old_name=old_name,
+                namespace=namespace,
             )
             if self._should_propagate(old_name, "propagate_name_references"):
                 updated = self._qualify_name_references(

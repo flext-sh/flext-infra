@@ -187,7 +187,8 @@ class TestRunnerPublicBehavior:
         assert len(result.issues) == 1
 
     def test_run_pyrefly_limits_check_to_local_python_dirs(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"

@@ -5,11 +5,14 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraSkillRuleRunnerMixin:
@@ -86,7 +89,9 @@ class FlextInfraSkillRuleRunnerMixin:
             cmd.extend(["--globs", f"!{pat}"])
         cmd.append(str(project_path))
         result_wrapper = u.Cli.run_raw(
-            cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
+            cmd,
+            cwd=project_path,
+            timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         if result_wrapper.failure:
             return 0
@@ -144,7 +149,9 @@ class FlextInfraSkillRuleRunnerMixin:
         if bool(rule.get("pass_mode")):
             cmd.extend(["--mode", mode.value])
         result_wrapper = u.Cli.run_raw(
-            cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
+            cmd,
+            cwd=project_path,
+            timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         if result_wrapper.failure:
             return 0

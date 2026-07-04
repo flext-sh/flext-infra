@@ -28,7 +28,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     """Render base.mk templates with configuration context."""
 
     _environment: t.Infra.JinjaEnvironment = u.PrivateAttr(
-        default_factory=lambda: FlextInfraBaseMkTemplateRenderer._build_environment(),
+        default_factory=FlextInfraBaseMkTemplateRenderer._build_environment,
     )
 
     @staticmethod
@@ -87,7 +87,8 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
             return r[m.Infra.BaseMkConfig].ok(normalized)
         except c.EXC_TYPE_VALIDATION as exc:
             return r[m.Infra.BaseMkConfig].fail_op(
-                "base.mk configuration validation", exc
+                "base.mk configuration validation",
+                exc,
             )
 
     @staticmethod

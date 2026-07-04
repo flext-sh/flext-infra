@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
@@ -144,7 +145,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
     ) -> bool:
         """Return whether a root package uses the governed public facade contract."""
         return bool(explicit_public_exports) or bool(
-            set(root_namespace_files) & present_files
+            set(root_namespace_files) & present_files,
         )
 
     @staticmethod

@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra.base import s
@@ -21,10 +21,12 @@ from flext_infra.codegen._lazy_init_generation import (
 )
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):

@@ -19,7 +19,8 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
     """Behavior contract for test_infra_refactor_migrate_to_class_mro."""
 
     def test_migrate_to_mro_moves_constant_and_rewrites_reference(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "sample"
         src_pkg = project_root / "src" / "sample_pkg"
@@ -133,7 +134,8 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             _ = migrator.run(target="unknown", apply=False)
 
     def test_migrate_typings_rewrites_references_with_t_alias(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "sample"
         src_pkg = project_root / "src" / "sample_pkg"
@@ -173,7 +175,8 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         tm.that(consumer_source, has="value: t.ValueType = 1")
 
     def test_migrate_protocols_rewrites_references_with_p_alias(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "sample"
         src_pkg = project_root / "src" / "sample_pkg"
@@ -242,13 +245,14 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
                 encoding="utf-8",
             )
         discovered = FlextInfraUtilitiesIteration.iter_python_files(
-            workspace_root=tmp_path
+            workspace_root=tmp_path,
         )
         tm.ok(discovered)
         tm.that(sorted(discovered.value), eq=sorted(expected_paths))
 
     def test_discover_project_roots_without_nested_git_dirs(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         workspace_root = tmp_path / "workspace"
         workspace_root.mkdir(parents=True)
@@ -302,7 +306,8 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         tm.that(report_files, eq={"src/sample_pkg/constants.py"})
 
     def test_migrate_to_mro_moves_manual_uppercase_assignment(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "sample"
         src_pkg = project_root / "src" / "sample_pkg"

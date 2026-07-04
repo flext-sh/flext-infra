@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsCensus:
@@ -48,7 +50,7 @@ class FlextInfraModelsCensus:
             kind: Annotated[
                 str,
                 m.Field(
-                    description="Object kind (class/function/method/constant/local/...)"
+                    description="Object kind (class/function/method/constant/local/...)",
                 ),
             ]
             module_name: Annotated[
@@ -220,7 +222,7 @@ class FlextInfraModelsCensus:
             object_kind: Annotated[
                 str,
                 m.Field(
-                    description="Object kind (constant/type/protocol/model/utility)"
+                    description="Object kind (constant/type/protocol/model/utility)",
                 ),
             ]
             kind: Annotated[
@@ -238,13 +240,16 @@ class FlextInfraModelsCensus:
             file_path: Annotated[str, m.Field(description="File containing violation")]
             line: Annotated[t.NonNegativeInt, m.Field(description="Line number")] = 0
             fixable: Annotated[
-                bool, m.Field(description="Whether auto-fix is available")
+                bool,
+                m.Field(description="Whether auto-fix is available"),
             ] = False
             fix_action: Annotated[
-                str, m.Field(description="Recommended fix action identifier")
+                str,
+                m.Field(description="Recommended fix action identifier"),
             ] = ""
             description: Annotated[
-                str, m.Field(description="Human-readable violation description")
+                str,
+                m.Field(description="Human-readable violation description"),
             ] = ""
 
         class Fix(m.ArbitraryTypesModel):
@@ -259,21 +264,25 @@ class FlextInfraModelsCensus:
             action: Annotated[
                 str,
                 m.Field(
-                    description="Fix action applied (move_to_tier/deduplicate/...)"
+                    description="Fix action applied (move_to_tier/deduplicate/...)",
                 ),
             ]
             source_file: Annotated[str, m.Field(description="Original file path")]
             target_file: Annotated[
-                str, m.Field(description="Destination file path (for moves)")
+                str,
+                m.Field(description="Destination file path (for moves)"),
             ] = ""
             files_changed: Annotated[
-                t.NonNegativeInt, m.Field(description="Number of files modified")
+                t.NonNegativeInt,
+                m.Field(description="Number of files modified"),
             ] = 0
             applied: Annotated[
-                bool, m.Field(description="Whether fix was actually applied")
+                bool,
+                m.Field(description="Whether fix was actually applied"),
             ] = False
             dry_run_diff: Annotated[
-                str, m.Field(description="Unified diff preview (dry-run mode)")
+                str,
+                m.Field(description="Unified diff preview (dry-run mode)"),
             ] = ""
 
         class ScanConfig(m.ArbitraryTypesModel):
@@ -282,32 +291,40 @@ class FlextInfraModelsCensus:
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             kind_names: Annotated[
-                t.StrSequence | None, m.Field(description="Symbol-kind filters")
+                t.StrSequence | None,
+                m.Field(description="Symbol-kind filters"),
             ]
             rule_names: Annotated[
-                t.StrSequence | None, m.Field(description="Violation-rule filters")
+                t.StrSequence | None,
+                m.Field(description="Violation-rule filters"),
             ]
             selected_families: Annotated[
-                frozenset[str], m.Field(description="Resolved namespace families")
+                frozenset[str],
+                m.Field(description="Resolved namespace families"),
             ]
             selected_kinds: Annotated[
-                frozenset[str] | None, m.Field(description="Precomputed kind set")
+                frozenset[str] | None,
+                m.Field(description="Precomputed kind set"),
             ]
             selected_rules: Annotated[
-                frozenset[str] | None, m.Field(description="Precomputed rule set")
+                frozenset[str] | None,
+                m.Field(description="Precomputed rule set"),
             ]
             collect_object_inventory: Annotated[
                 bool,
                 m.Field(description="Whether to collect the full object inventory"),
             ]
             include_object_references: Annotated[
-                bool, m.Field(description="Whether to resolve object references")
+                bool,
+                m.Field(description="Whether to resolve object references"),
             ]
             include_local_scopes: Annotated[
-                bool, m.Field(description="Whether to include local/nested scopes")
+                bool,
+                m.Field(description="Whether to include local/nested scopes"),
             ]
             applied: Annotated[
-                frozenset[str], m.Field(description="Fix keys already applied")
+                frozenset[str],
+                m.Field(description="Fix keys already applied"),
             ]
 
         class DuplicateGroup(m.ArbitraryTypesModel):
@@ -321,7 +338,7 @@ class FlextInfraModelsCensus:
             ]
             kind: Annotated[str, m.Field(description="Object kind")]
             definitions: list[FlextInfraModelsCensus.Census.Object] = m.Field(
-                description="All definitions of this object"
+                description="All definitions of this object",
             )
             canonical: Annotated[
                 str,
@@ -349,7 +366,8 @@ class FlextInfraModelsCensus:
                 description="Objects discovered for this project",
             )
             objects_total: Annotated[
-                t.NonNegativeInt, m.Field(description="Total objects discovered")
+                t.NonNegativeInt,
+                m.Field(description="Total objects discovered"),
             ] = 0
             objects_by_kind: Annotated[
                 t.IntMapping,
@@ -358,17 +376,20 @@ class FlextInfraModelsCensus:
                 ),
             ] = m.Field(default_factory=lambda: MappingProxyType({}))
             violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = m.Field(
-                default_factory=tuple, description="Detected violations"
+                default_factory=tuple,
+                description="Detected violations",
             )
             fixes: tuple[FlextInfraModelsCensus.Census.Fix, ...] = m.Field(
                 default_factory=tuple,
                 description="Proposed or applied fixes",
             )
             violations_total: Annotated[
-                t.NonNegativeInt, m.Field(description="Total violation count")
+                t.NonNegativeInt,
+                m.Field(description="Total violation count"),
             ] = 0
             fixes_applied: Annotated[
-                t.NonNegativeInt, m.Field(description="Fixes applied count")
+                t.NonNegativeInt,
+                m.Field(description="Fixes applied count"),
             ] = 0
             unused_count: Annotated[
                 t.NonNegativeInt,
@@ -394,28 +415,34 @@ class FlextInfraModelsCensus:
             """Workspace-wide census summary."""
 
             projects: tuple[FlextInfraModelsCensus.Census.ProjectReport, ...] = m.Field(
-                default_factory=tuple, description="Per-project reports"
+                default_factory=tuple,
+                description="Per-project reports",
             )
             total_objects: Annotated[
-                t.NonNegativeInt, m.Field(description="Total objects across workspace")
+                t.NonNegativeInt,
+                m.Field(description="Total objects across workspace"),
             ] = 0
             total_violations: Annotated[
                 t.NonNegativeInt,
                 m.Field(description="Total violations across workspace"),
             ] = 0
             total_fixable: Annotated[
-                t.NonNegativeInt, m.Field(description="Total fixable violations")
+                t.NonNegativeInt,
+                m.Field(description="Total fixable violations"),
             ] = 0
             fixes_total: Annotated[
-                t.NonNegativeInt, m.Field(description="Total proposed or applied fixes")
+                t.NonNegativeInt,
+                m.Field(description="Total proposed or applied fixes"),
             ] = 0
             duplicates: tuple[FlextInfraModelsCensus.Census.DuplicateGroup, ...] = (
                 m.Field(
-                    default_factory=tuple, description="Cross-project duplicate groups"
+                    default_factory=tuple,
+                    description="Cross-project duplicate groups",
                 )
             )
             unused_count: Annotated[
-                t.NonNegativeInt, m.Field(description="Total unused objects")
+                t.NonNegativeInt,
+                m.Field(description="Total unused objects"),
             ] = 0
             test_only_count: Annotated[
                 t.NonNegativeInt,
@@ -424,7 +451,7 @@ class FlextInfraModelsCensus:
             removal_candidate_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(
-                    description="Total objects eligible for aggressive removal review"
+                    description="Total objects eligible for aggressive removal review",
                 ),
             ] = 0
             removal_candidates: tuple[
@@ -435,10 +462,12 @@ class FlextInfraModelsCensus:
                 description="Explicit aggressive-removal candidates across workspace",
             )
             scan_duration_seconds: Annotated[
-                float, m.Field(description="Wall-clock scan duration")
+                float,
+                m.Field(description="Wall-clock scan duration"),
             ] = 0.0
             parse_errors: Annotated[
-                t.NonNegativeInt, m.Field(description="Files that failed to parse")
+                t.NonNegativeInt,
+                m.Field(description="Files that failed to parse"),
             ] = 0
 
 

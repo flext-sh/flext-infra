@@ -10,10 +10,9 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_tests import FlextTestsUtilities, r
-from tomlkit import TOMLDocument
 
 from flext_cli import cli as cli_facade
 from flext_infra import u
@@ -23,13 +22,17 @@ from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests.constants import c
 from tests.models import m
 from tests.protocols import p
 from tests.typings import t
+
+if TYPE_CHECKING:
+    from tomlkit import TOMLDocument
+
+    from flext_infra.gates.base_gate import FlextInfraGate
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):
@@ -837,7 +840,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     if run_error is not None
                     else r[m.Cli.CommandOutput].ok(
                         command_output
-                        or TestsFlextInfraUtilities.Tests.create_command_output()
+                        or TestsFlextInfraUtilities.Tests.create_command_output(),
                     )
                 ),
             )
@@ -1013,7 +1016,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 scan_results=[
                     TestsFlextInfraUtilities.Tests.create_mro_scan_report(
                         constants_path,
-                    )
+                    ),
                 ],
                 apply=apply,
             )
@@ -1258,7 +1261,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 del project_path, venv_bin
                 if self.deptry_failure is not None:
                     return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
-                        self.deptry_failure
+                        self.deptry_failure,
                     )
                 return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(
                     ([], 0),

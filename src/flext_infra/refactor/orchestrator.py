@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -17,11 +16,15 @@ from flext_infra.refactor.file_executor import (
     FlextInfraClassNestingPostCheckGate,
     FlextInfraRefactorFileExecutor,
 )
-from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
+    from flext_infra.typings import t
 
 _log = u.fetch_logger(__name__)
 
@@ -226,7 +229,7 @@ class FlextInfraRefactorOrchestrator(
             results.append(result)
             if result.success and result.modified:
                 u.Cli.info(
-                    f"{'[DRY-RUN] ' if dry_run else ''}Modified: {file_path.name}"
+                    f"{'[DRY-RUN] ' if dry_run else ''}Modified: {file_path.name}",
                 )
                 for change in result.changes:
                     u.Cli.info(f"  - {change}")

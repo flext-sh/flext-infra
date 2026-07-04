@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import ast
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInitPlannerParentAstMixin:
@@ -48,7 +51,7 @@ class FlextInfraCodegenLazyInitPlannerParentAstMixin:
             for base in node.bases
             if (
                 package_name := self._package_name_from_target(
-                    imports.get(self._ast_dotted_name(base), "")
+                    imports.get(self._ast_dotted_name(base), ""),
                 )
             )
         )
@@ -82,7 +85,7 @@ class FlextInfraCodegenLazyInitPlannerParentAstMixin:
                     *same_package_parents,
                 )
                 if package_name and package_name != current_pkg
-            )
+            ),
         )
 
     @staticmethod

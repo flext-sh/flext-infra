@@ -12,14 +12,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tf, tm
 
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 from tests.models import m
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 @pytest.fixture
@@ -54,7 +58,8 @@ class TestTierWhitelistAbstractionBoundary:
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create(
-            "from flext_core import m, c\nX = m.BaseModel\n", "good.py"
+            "from flext_core import m, c\nX = m.BaseModel\n",
+            "good.py",
         )
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
@@ -91,7 +96,8 @@ class TestTierWhitelistAbstractionBoundary:
         src.mkdir(parents=True, exist_ok=True)
         (src / "__init__.py").write_text("", encoding="utf-8")
         tf(base_dir=src).create(
-            "from pydantic import BaseModel\nX = BaseModel\n", "abstractions.py"
+            "from pydantic import BaseModel\nX = BaseModel\n",
+            "abstractions.py",
         )
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)

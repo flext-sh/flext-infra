@@ -97,21 +97,19 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=c.Infra.VERB_RUN,
             help_text="Run workspace quality gates",
             model_cls=m.Infra.RunCommand,
-            handler=lambda params: FlextInfraWorkspaceChecker.execute_command(params),
+            handler=FlextInfraWorkspaceChecker.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="fix-pyrefly-settings",
             help_text="Repair [tool.pyrefly] blocks",
             model_cls=m.Infra.FixPyreflyConfigCommand,
-            handler=lambda params: FlextInfraConfigFixer.execute_command(params),
+            handler=FlextInfraConfigFixer.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="fix-enforcement",
             help_text="Auto-fix enforcement-catalog violations",
             model_cls=m.Infra.FixEnforcementCommand,
-            handler=lambda params: (
-                FlextInfraEnforcementFixerOrchestrator.execute_command(params)
-            ),
+            handler=FlextInfraEnforcementFixerOrchestrator.execute_command,
         ),
     ),
     c.Infra.CLI_GROUP_CODEGEN: tuple(
@@ -222,7 +220,7 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name="path-sync",
             help_text="Rewrite internal FLEXT dependency paths",
             model_cls=m.Infra.PathSyncCommand,
-            handler=lambda params: u.Infra.execute_command(params),
+            handler=u.Infra.execute_command,
         ),
     ),
 }
@@ -300,9 +298,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=c.Infra.VERB_RUN,
             help_text="Enforce Python version constraints",
             model_cls=FlextInfraPythonVersionEnforcer,
-            handler=lambda params: FlextInfraPythonVersionEnforcer.execute_command(
-                params
-            ),
+            handler=FlextInfraPythonVersionEnforcer.execute_command,
             success_message="Maintenance completed",
         ),
     ),
@@ -325,7 +321,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Generate scripts inventory",
                 FlextInfraInventoryService,
                 lambda params, mc=FlextInfraInventoryService: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -333,7 +329,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Post-import Beartype enforcement census for flext_* modules",
                 FlextInfraRuntimeCensusValidator,
                 lambda params, mc=FlextInfraRuntimeCensusValidator: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -341,7 +337,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Extract pytest diagnostics",
                 FlextInfraPytestDiagExtractor,
                 lambda params, mc=FlextInfraPytestDiagExtractor: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -349,7 +345,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Scan text files for patterns",
                 FlextInfraTextPatternScanner,
                 lambda params, mc=FlextInfraTextPatternScanner: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -363,7 +359,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Validate silent failure sentinel returns",
                 FlextInfraSilentFailureValidator,
                 lambda params, mc=FlextInfraSilentFailureValidator: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -377,7 +373,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Guard 7: fresh-process import smoke test",
                 FlextInfraValidateFreshImport,
                 lambda params, mc=FlextInfraValidateFreshImport: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -385,7 +381,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Guard 1: ROPE-backed import cycle detector",
                 FlextInfraValidateImportCycles,
                 lambda params, mc=FlextInfraValidateImportCycles: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -401,7 +397,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Guard: static namespace rules (NS-000..003) via rope",
                 FlextInfraNamespaceValidator,
                 lambda params, mc=FlextInfraNamespaceValidator: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -409,7 +405,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Guard 5: tier-whitelist/abstraction-boundary enforcer",
                 FlextInfraValidateTierWhitelist,
                 lambda params, mc=FlextInfraValidateTierWhitelist: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
             (
@@ -425,7 +421,7 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Manual-command blocker (§5): pre-commit config drift gate",
                 FlextInfraManualCommandValidator,
                 lambda params, mc=FlextInfraManualCommandValidator: mc.execute_command(
-                    params
+                    params,
                 ),
             ),
         )
@@ -441,15 +437,13 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name="migrate-mro",
             help_text="Migrate loose declarations into MRO facade classes",
             model_cls=m.Infra.RefactorMigrateMroInput,
-            handler=lambda params: FlextInfraRefactorMigrateToClassMRO.execute_command(
-                params
-            ),
+            handler=FlextInfraRefactorMigrateToClassMRO.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
-            handler=lambda params: FlextInfraNamespaceEnforcer.execute_command(params),
+            handler=FlextInfraNamespaceEnforcer.execute_command,
         ),
         *(
             m.Cli.ResultCommandRoute(
@@ -552,9 +546,7 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=c.Infra.VERB_RUN,
             help_text="Run release orchestration CLI flow",
             model_cls=FlextInfraReleaseOrchestrator,
-            handler=lambda params: FlextInfraReleaseOrchestrator.execute_command(
-                params
-            ),
+            handler=FlextInfraReleaseOrchestrator.execute_command,
             success_message="Release completed successfully",
         ),
     ),

@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSet,
-)
-from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m, u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
@@ -18,7 +14,14 @@ from flext_infra._models.refactor_namespace_enforcer import (
 from flext_infra._models.refactor_violations import (
     FlextInfraModelsRefactorViolations,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableSet,
+    )
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsRefactor(
@@ -83,7 +86,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Whether the file was actually modified"),
         ]
         error: Annotated[
-            str | None, m.Field(description="Error message on failure")
+            str | None,
+            m.Field(description="Error message on failure"),
         ] = None
         changes: Annotated[
             t.StrSequence,
@@ -175,7 +179,8 @@ class FlextInfraModelsRefactor(
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         line: Annotated[
-            t.NonNegativeInt, m.Field(description="Line number (0 = unknown)")
+            t.NonNegativeInt,
+            m.Field(description="Line number (0 = unknown)"),
         ]
         is_top_level: Annotated[
             bool,
@@ -194,7 +199,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Violating class name"),
         ]
         expected_prefix: Annotated[
-            str, m.Field(description="Expected namespace prefix")
+            str,
+            m.Field(description="Expected namespace prefix"),
         ]
         rule: Annotated[t.NonEmptyStr, m.Field(description="Violated rule id")]
         reason: Annotated[str, m.Field(description="Human-readable reason")]
@@ -228,7 +234,7 @@ class FlextInfraModelsRefactor(
         project_kind: Annotated[
             t.NonEmptyStr,
             m.Field(
-                description="Project kind (core, domain, platform, integration, app)"
+                description="Project kind (core, domain, platform, integration, app)",
             ),
         ]
         family_chains: Annotated[

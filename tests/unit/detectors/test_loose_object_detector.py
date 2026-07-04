@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import m, u
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraLooseObjectDetector:

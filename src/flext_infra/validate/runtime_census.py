@@ -13,15 +13,17 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import FlextUtilitiesEnforcement, r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRuntimeCensusValidator(s[bool]):
@@ -107,7 +109,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     passed=False,
                     violations=(f"{module_name}: import failed: {exc}",),
                     summary=f"{module_name}: import failed",
-                )
+                ),
             ]
         violations: list[str] = []
         for _name, obj in inspect.getmembers(module, inspect.isclass):
@@ -117,7 +119,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 report = FlextUtilitiesEnforcement.check(obj)
             except Exception as exc:
                 violations.append(
-                    f"{module_name}:{obj.__qualname__}: check raised: {exc}"
+                    f"{module_name}:{obj.__qualname__}: check raised: {exc}",
                 )
                 continue
             for violation in report.violations:
@@ -126,7 +128,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 rule_part = f" [{violation.rule_id}]" if violation.rule_id else ""
                 violations.append(
                     f"{file_part}{line_part}{obj.__qualname__}{rule_part}: "
-                    f"{violation.message}"
+                    f"{violation.message}",
                 )
         return [
             m.Infra.ValidationReport(
@@ -137,7 +139,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     if violations
                     else f"{module_name}: clean"
                 ),
-            )
+            ),
         ]
 
     def _project_report(
@@ -184,7 +186,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 passed=False,
                 violations=tuple(import_failures),
                 summary=(f"{project.name}: {len(import_failures)} import failure(s)"),
-            )
+            ),
         ]
         for module_name in real_modules:
             all_reports.extend(self._check_module(module_name))
@@ -217,7 +219,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     passed=True,
                     violations=(),
                     summary="runtime census: no projects selected",
-                )
+                ),
             )
         merged_violations: list[str] = []
         for project in projects:
@@ -234,7 +236,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 passed=passed,
                 violations=tuple(merged_violations),
                 summary=summary,
-            )
+            ),
         )
 
     @override

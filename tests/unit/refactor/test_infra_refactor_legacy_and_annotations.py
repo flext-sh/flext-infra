@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 
 class _TextRuleHarness:
@@ -59,7 +62,8 @@ class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:
     def test_legacy_wrapper_function_is_inlined_as_alias(self) -> None:
         source = "def run(value: int) -> int:\n    return execute(value)\n"
         rule = _TextRuleHarness(
-            c.Infra.RefactorRuleKind.LEGACY_REMOVAL, {"id": "remove-wrapper-functions"}
+            c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+            {"id": "remove-wrapper-functions"},
         )
         updated, _ = rule.apply(source)
         assert "def run" not in updated
@@ -68,7 +72,8 @@ class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:
     def test_legacy_wrapper_forwarding_keywords_is_inlined_as_alias(self) -> None:
         source = "def run(a: int, b: int) -> int:\n    return execute(a=a, b=b)\n"
         rule = _TextRuleHarness(
-            c.Infra.RefactorRuleKind.LEGACY_REMOVAL, {"id": "remove-wrapper-functions"}
+            c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+            {"id": "remove-wrapper-functions"},
         )
         updated, _ = rule.apply(source)
         assert "def run" not in updated
@@ -77,7 +82,8 @@ class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:
     def test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias(self) -> None:
         source = "def run(a: int, *args, **kwargs: t.Scalar) -> int:\n    return execute(a, *args, **kwargs)\n"
         rule = _TextRuleHarness(
-            c.Infra.RefactorRuleKind.LEGACY_REMOVAL, {"id": "remove-wrapper-functions"}
+            c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+            {"id": "remove-wrapper-functions"},
         )
         updated, _ = rule.apply(source)
         assert "def run" not in updated
@@ -86,7 +92,8 @@ class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:
     def test_legacy_wrapper_non_passthrough_is_not_inlined(self) -> None:
         source = "def run(a: int, b: int) -> int:\n    return execute(a, b + 1)\n"
         rule = _TextRuleHarness(
-            c.Infra.RefactorRuleKind.LEGACY_REMOVAL, {"id": "remove-wrapper-functions"}
+            c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+            {"id": "remove-wrapper-functions"},
         )
         updated, _ = rule.apply(source)
         assert "def run" in updated
@@ -107,7 +114,8 @@ class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:
     def test_legacy_import_bypass_collapses_to_primary_import(self) -> None:
         source = "try:\n    from new_mod import Thing\nexcept ImportError:\n    from old_mod import Thing\n"
         rule = _TextRuleHarness(
-            c.Infra.RefactorRuleKind.LEGACY_REMOVAL, {"id": "remove-import-bypasses"}
+            c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+            {"id": "remove-import-bypasses"},
         )
         updated, _ = rule.apply(source)
         assert "try:" not in updated

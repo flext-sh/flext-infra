@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.transformers._rewrite import (
@@ -26,8 +26,10 @@ from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewriter,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
@@ -68,7 +70,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
             if updated != before:
                 self._record_change(
                     f"Added from {self._FLEXT_TESTS_BASE} "
-                    f"import {self._FLEXT_TESTS_CASE}"
+                    f"import {self._FLEXT_TESTS_CASE}",
                 )
 
         if visitor.needs_tm_import:
@@ -80,7 +82,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
             )
             if updated != before:
                 self._record_change(
-                    f"Added from {self._TM_MODULE} import {self._TM_NAME}"
+                    f"Added from {self._TM_MODULE} import {self._TM_NAME}",
                 )
 
         for change in visitor.changes:
@@ -200,7 +202,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
             pattern = re.compile(
                 r"^(?P<indent>\s*)class\s+"
                 + re.escape(old_name)
-                + r"\s*\([^)]*\)\s*:(?P<rest>.*)$"
+                + r"\s*\([^)]*\)\s*:(?P<rest>.*)$",
             )
             match = pattern.match(line)
             if match is None:
@@ -216,7 +218,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
             )
             self.changes.append(
                 f"Renamed {old_name} to {new_name} and replaced base "
-                "with FlextTestsCase"
+                "with FlextTestsCase",
             )
             self.needs_flext_tests_case_import = True
 
@@ -250,7 +252,7 @@ class FlextInfraRefactorTestsModernizer(FlextInfraRopeTransformer):
             method = node.func.attr
             if method == "assertRaises":
                 self.changes.append(
-                    "Noted self.assertRaises(...) requires semantic conversion"
+                    "Noted self.assertRaises(...) requires semantic conversion",
                 )
                 return
 

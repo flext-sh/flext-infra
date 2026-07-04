@@ -9,13 +9,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.constants import c
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from tests.models import m
+    from tests.typings import t
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 

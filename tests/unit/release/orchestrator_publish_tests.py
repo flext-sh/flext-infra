@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests.constants import c
 from tests.models import m
 from tests.utilities import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def publish_ctx(
@@ -50,7 +53,8 @@ def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
     assert not (workspace / "docs" / "CHANGELOG.md").exists()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+            cwd=workspace,
         ).unwrap()
         == ""
     )
@@ -72,7 +76,8 @@ def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> Non
     ).is_file()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+            cwd=workspace,
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )
@@ -94,7 +99,8 @@ def test_phase_publish_push_without_origin_fails_after_local_tagging(
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+            cwd=workspace,
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )

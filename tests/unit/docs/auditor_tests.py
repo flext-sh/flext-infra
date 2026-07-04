@@ -6,10 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -17,6 +14,12 @@ from flext_tests import tm
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+    )
+    from pathlib import Path
 
 
 @pytest.fixture

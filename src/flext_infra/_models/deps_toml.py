@@ -6,15 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
 from itertools import chain
-from typing import Annotated, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Literal, Self
 
 from flext_cli import m
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+    )
+
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsDepsToml:
@@ -57,7 +60,8 @@ class FlextInfraModelsDepsToml:
                 sort: Annotated[
                     bool,
                     m.Field(
-                        description="Sort values before sync", validate_default=True
+                        description="Sort values before sync",
+                        validate_default=True,
                     ),
                 ] = True
 
@@ -73,7 +77,8 @@ class FlextInfraModelsDepsToml:
                 table_path: Annotated[
                     t.StrSequence,
                     m.Field(
-                        description="Relative sub-table path", validate_default=True
+                        description="Relative sub-table path",
+                        validate_default=True,
                     ),
                 ] = ()
 
@@ -93,7 +98,8 @@ class FlextInfraModelsDepsToml:
                     ),
                 ] = (c.Infra.TOOL,)
                 table_path: Annotated[
-                    t.StrSequence, m.Field(description="Primary table path")
+                    t.StrSequence,
+                    m.Field(description="Primary table path"),
                 ] = ()
                 operations: Annotated[
                     t.SequenceOf[FlextInfraModelsDepsToml.Deps.Toml.Operation],
@@ -114,15 +120,17 @@ class FlextInfraModelsDepsToml:
                 ] = None
 
                 class Builder(
-                    m.Builder.Identity["FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"]
+                    m.Builder.Identity[
+                        "FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"
+                    ],
                 ):
                     """Fluent builder for ``m.Infra.Deps.Toml.PhaseConfig``."""
 
                     def __init__(self, name: str) -> None:
                         super().__init__(
                             state=FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig(
-                                name=name
-                            )
+                                name=name,
+                            ),
                         )
 
                     @classmethod
@@ -152,7 +160,7 @@ class FlextInfraModelsDepsToml:
                                 ),
                                 (
                                     FlextInfraModelsDepsToml.Deps.Toml.RemoveOp.model_validate({
-                                        "key": key
+                                        "key": key,
                                     })
                                     for key in deprecated_keys
                                 ),
@@ -176,8 +184,8 @@ class FlextInfraModelsDepsToml:
                                         *self.state.operations,
                                         operation_item,
                                     ),
-                                }
-                            )
+                                },
+                            ),
                         )
                         return replaced
 
@@ -241,7 +249,7 @@ class FlextInfraModelsDepsToml:
                                     values=values,
                                     lists=lists,
                                     deprecated_keys=deprecated_keys,
-                                )
+                                ),
                             ),
                         )
                         replaced: Self = self._replace(
@@ -250,16 +258,16 @@ class FlextInfraModelsDepsToml:
                                     "nested_tables": (
                                         *self.state.nested_tables,
                                         nested_table,
-                                    )
-                                }
-                            )
+                                    ),
+                                },
+                            ),
                         )
                         return replaced
 
                     def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
                         """Handler."""
                         replaced: Self = self._replace(
-                            self.state.model_copy(update={"custom_handler": fn})
+                            self.state.model_copy(update={"custom_handler": fn}),
                         )
                         return replaced
 

@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSequence,
-)
 from pathlib import Path
-from typing import overload, override
+from typing import TYPE_CHECKING, overload, override
 
 from flext_tests import r
 
-from flext_infra import t
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.service import FlextInfraRefactorService
-from tests.protocols import p
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableSequence,
+    )
+
+    from flext_infra import t
+    from tests.protocols import p
 
 
 class RefactorSafetyStub(FlextInfraRefactorSafetyManager):

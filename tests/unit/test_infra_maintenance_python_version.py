@@ -9,14 +9,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _MINOR: int = sys.version_info.minor
 _BAD: int = _MINOR + 1

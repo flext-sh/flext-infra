@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import difflib
-from collections.abc import Callable, MutableMapping
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, MutableMapping
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesProtectedEditPreview(
@@ -45,7 +49,7 @@ class FlextInfraUtilitiesProtectedEditPreview(
                     tuple(existing_paths),
                     workspace,
                     gates=gates,
-                )
+                ),
             )
         for path in updates:
             if before_sources[path] is not None:
@@ -94,7 +98,7 @@ class FlextInfraUtilitiesProtectedEditPreview(
                 fromfile=f"a/{rel}",
                 tofile=f"b/{rel}",
                 n=3,
-            )
+            ),
         )
         report_lines = [f"  REVERTED {rel}:"]
         report_lines.extend(f"    {line.rstrip()}" for line in diff[:30])
@@ -137,7 +141,7 @@ class FlextInfraUtilitiesProtectedEditPreview(
                     workspace,
                     before_sources[path] or "",
                     new_errors,
-                )
+                ),
             )
         return (not failed, reports)
 

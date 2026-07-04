@@ -8,11 +8,13 @@ are provably equivalent under FLEXT law.
 from __future__ import annotations
 
 from abc import abstractmethod
-from pathlib import Path
-from typing import ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final
 
-from flext_infra.models import m
-from flext_infra.typings import t
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraSmellFixer:

@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m, u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsWorkspace:
@@ -28,7 +31,8 @@ class FlextInfraModelsWorkspace:
         """Discovered project metadata for workspace operations."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, validate_default=False
+            frozen=True,
+            validate_default=False,
         )
 
         path: Annotated[Path, m.Field(description="Absolute or relative project path")]
@@ -40,7 +44,8 @@ class FlextInfraModelsWorkspace:
             False
         )
         has_src: Annotated[
-            bool, m.Field(description="Project has source directory")
+            bool,
+            m.Field(description="Project has source directory"),
         ] = True
         project_class: Annotated[
             t.NonEmptyStr,
@@ -49,7 +54,8 @@ class FlextInfraModelsWorkspace:
             ),
         ] = "platform"
         package_name: Annotated[
-            str, m.Field(description="Primary Python package name")
+            str,
+            m.Field(description="Primary Python package name"),
         ] = ""
         workspace_role: Annotated[
             c.Infra.WorkspaceProjectRole,
@@ -66,7 +72,8 @@ class FlextInfraModelsWorkspace:
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, validate_default=False
+            frozen=True,
+            validate_default=False,
         )
 
         project_root: Annotated[Path, m.Field(description="Project root path")]
@@ -90,7 +97,8 @@ class FlextInfraModelsWorkspace:
         """Result payload for sync operations."""
 
         files_changed: Annotated[
-            t.NonNegativeInt, m.Field(description="Total changed files")
+            t.NonNegativeInt,
+            m.Field(description="Total changed files"),
         ] = 0
         source: Annotated[Path, m.Field(description="Sync source path")]
         target: Annotated[Path, m.Field(description="Sync target path")]
@@ -99,7 +107,7 @@ class FlextInfraModelsWorkspace:
             m.Field(
                 description="Execution timestamp in the configured timezone",
             ),
-        ] = m.Field(default_factory=lambda: u.now())
+        ] = m.Field(default_factory=u.now)
 
         @u.field_serializer("source", "target", when_used="json")
         def serialize_paths(self, value: Path) -> str:

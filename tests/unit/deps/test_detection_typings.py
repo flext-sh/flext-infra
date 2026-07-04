@@ -27,7 +27,7 @@ class TestsFlextInfraDepsDetectionTypings:
     def test_success(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([
-            tr[t.Infra.ContainerDict].ok({"key": "value", "num": 42})
+            tr[t.Infra.ContainerDict].ok({"key": "value", "num": 42}),
         ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert result.get("key") == "value"
@@ -41,7 +41,7 @@ class TestsFlextInfraDepsDetectionTypings:
     def test_unconvertible_values_skipped(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([
-            tr[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]})
+            tr[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]}),
         ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "good" in result
@@ -60,7 +60,7 @@ class TestsFlextInfraDepsDetectionTypings:
             service,
             "_run_raw",
             return_value=tr[m.Cli.CommandOutput].ok(
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
             ),
         ):
             tm.that(tm.ok(service.run_mypy_stub_hints(tmp_path)), eq=([], []))
@@ -78,7 +78,7 @@ class TestsFlextInfraDepsDetectionTypings:
                     stdout='note: hint: "pip install types-pyyaml"',
                     stderr='error: Library stubs not installed for "requests"',
                     exit_code=1,
-                )
+                ),
             ),
         ):
             tm.that(

@@ -8,15 +8,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra._models.refactor_namespace_enforcer import (
-    FlextInfraModelsNamespaceEnforcer,
-)
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra._models.refactor_namespace_enforcer import (
+        FlextInfraModelsNamespaceEnforcer,
+    )
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsScan:
@@ -68,7 +71,8 @@ class FlextInfraModelsScan:
         ]
         severity: Annotated[str, m.Field(description="Violation severity level")]
         rule_id: Annotated[
-            str | None, m.Field(description="Optional rule identifier")
+            str | None,
+            m.Field(description="Optional rule identifier"),
         ] = None
 
     class ScanResult(m.ArbitraryTypesModel):

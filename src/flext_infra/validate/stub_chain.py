@@ -9,16 +9,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
@@ -29,7 +32,8 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     """
 
     all_projects: Annotated[
-        bool, m.Field(alias="all", description="Validate all projects")
+        bool,
+        m.Field(alias="all", description="Validate all projects"),
     ] = False
     runner: Annotated[
         p.Cli.CommandRunner | None,

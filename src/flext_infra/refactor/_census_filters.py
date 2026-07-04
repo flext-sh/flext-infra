@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorCensusFiltersMixin:
@@ -25,7 +27,7 @@ class FlextInfraRefactorCensusFiltersMixin:
     ) -> tuple[m.Infra.Census.DuplicateGroup, ...]:
         """Duplicate groups."""
         groups: dict[tuple[str, str, str], list[m.Infra.Census.Object]] = defaultdict(
-            list
+            list,
         )
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]
@@ -50,7 +52,7 @@ class FlextInfraRefactorCensusFiltersMixin:
                     canonical=canonical.project,
                     value_identical=len({item.fingerprint for item in definitions})
                     == 1,
-                )
+                ),
             )
         return tuple(duplicates)
 
@@ -119,7 +121,7 @@ class FlextInfraRefactorCensusFiltersMixin:
         if objects is None:
             return None
         target_name = FlextInfraRefactorCensusFiltersMixin._runtime_alias_target_name(
-            convention
+            convention,
         )
         if not target_name:
             return None

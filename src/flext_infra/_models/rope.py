@@ -6,15 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
-from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra._models.codegen import FlextInfraModelsCodegen
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsRope:
@@ -42,7 +45,7 @@ class FlextInfraModelsRope:
         require_explicit_all: Annotated[
             bool,
             m.Field(
-                description="Whether __all__ must exist for exports to be returned."
+                description="Whether __all__ must exist for exports to be returned.",
             ),
         ] = False
 
@@ -74,7 +77,8 @@ class FlextInfraModelsRope:
 
         name: Annotated[str, m.Field(description="Symbol name")]
         kind: Annotated[
-            str, m.Field(description="Symbol kind: class, function, assignment")
+            str,
+            m.Field(description="Symbol kind: class, function, assignment"),
         ]
 
     class ModuleSemanticState(m.ContractModel):
@@ -114,7 +118,7 @@ class FlextInfraModelsRope:
         package_name: Annotated[
             str,
             m.Field(
-                description="Importable package resolved for the containing directory"
+                description="Importable package resolved for the containing directory",
             ),
         ]
         package_dir: Annotated[
@@ -148,7 +152,7 @@ class FlextInfraModelsRope:
         package_name: Annotated[
             str,
             m.Field(
-                description="Importable package name, or empty when non-importable"
+                description="Importable package name, or empty when non-importable",
             ),
         ]
         project_root: Annotated[
@@ -182,7 +186,7 @@ class FlextInfraModelsRope:
         workspace_root: Annotated[
             Path,
             m.Field(
-                description="Absolute workspace root used to open the Rope project"
+                description="Absolute workspace root used to open the Rope project",
             ),
         ]
         package_dirs: Annotated[

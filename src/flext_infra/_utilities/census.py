@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import shutil
 from collections import defaultdict
-from collections.abc import (
-    Callable as _CensusCallable,
-)
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
@@ -20,8 +18,14 @@ from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable as _CensusCallable,
+    )
+
+    from flext_infra.protocols import p
 
 _log = u.fetch_logger(__name__)
 
@@ -120,7 +124,7 @@ class FlextInfraUtilitiesRefactorCensus:
             list,
         )
         for site in FlextInfraUtilitiesRefactorCensus._supporting_reference_sites(
-            candidate
+            candidate,
         ):
             sites_by_path[Path(site.file_path).resolve()].append(site)
         for site_path, file_sites in sites_by_path.items():
@@ -277,7 +281,7 @@ class FlextInfraUtilitiesRefactorCensus:
             return r[t.MappingKV[Path, str]].ok(updates)
         return r[t.MappingKV[Path, str]].fail(
             "simple removal planning failed for "
-            f"{candidate.file_path}:{candidate.line} {candidate.object_name}"
+            f"{candidate.file_path}:{candidate.line} {candidate.object_name}",
         )
 
     @staticmethod
@@ -383,7 +387,7 @@ class FlextInfraUtilitiesRefactorCensus:
             return ()
         target_pyname = attributes.get(target_name)
         if target_pyname is None or FlextInfraUtilitiesRopeAnalysis.is_imported_name(
-            target_pyname
+            target_pyname,
         ):
             return ()
         try:
@@ -393,7 +397,7 @@ class FlextInfraUtilitiesRefactorCensus:
         alias_names: set[str] = set()
         for name, pyname in attributes.items():
             if name == target_name or FlextInfraUtilitiesRopeAnalysis.is_imported_name(
-                pyname
+                pyname,
             ):
                 continue
             line = FlextInfraUtilitiesRefactorCensus._pyname_definition_line(
@@ -541,7 +545,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 next_line = rewritten_lines[next_index]
                 header_lines.append(next_line)
                 header_balance += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(
-                    next_line
+                    next_line,
                 )
             header = "".join(header_lines)
             rewritten_header, header_changed, disqualified = (
@@ -735,7 +739,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
         if updates_result.failure:
             return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
+                updates_result.error or "simple removal planning failed",
             )
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
@@ -802,7 +806,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
         if updates_result.failure:
             return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
+                updates_result.error or "simple removal planning failed",
             )
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
@@ -1018,7 +1022,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if start_index < 0 or start_index >= len(lines):
             return None
         bracket_balance = FlextInfraUtilitiesRopeHelpers.bracket_balance_line(
-            lines[start_index]
+            lines[start_index],
         )
         end = start_index
         for index in range(start_index + 1, len(lines)):
@@ -1027,7 +1031,7 @@ class FlextInfraUtilitiesRefactorCensus:
             if bracket_balance > 0:
                 end = index
                 bracket_balance += FlextInfraUtilitiesRopeHelpers.bracket_balance_line(
-                    line
+                    line,
                 )
                 continue
             if not stripped:

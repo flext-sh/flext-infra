@@ -66,7 +66,8 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
     def test_root_generation_uses_real_classes_and_aliases(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         workspace_root, package_root = self._workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
@@ -170,7 +171,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tests_support_root.mkdir(parents=True)
         tests_support_root.parent.parent.joinpath(
-            c.Infra.PYPROJECT_FILENAME
+            c.Infra.PYPROJECT_FILENAME,
         ).write_text(
             '[project]\nname = "flext-tests"\nversion = "0.1.0"\n',
             encoding=c.Cli.ENCODING_DEFAULT,
@@ -206,7 +207,8 @@ class TestsFlextInfraLazyInitHelpers:
         tests_root = workspace_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
         tests_root.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+            "",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
@@ -260,7 +262,8 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         core_root.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+            "",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         u.Tests.write_lazy_init_namespace_module(
             core_root / "result.py",
@@ -328,7 +331,8 @@ class TestsFlextInfraLazyInitHelpers:
         tests_unit_root = workspace_root / c.Infra.DIR_TESTS / "unit"
         tests_unit_root.mkdir(parents=True)
         tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+            "",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_unit_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
@@ -360,10 +364,12 @@ class TestsFlextInfraLazyInitHelpers:
         deep_dir = package_root / "services" / "http"
         deep_dir.mkdir(parents=True)
         (package_root / "services" / c.Infra.INIT_PY).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+            "",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         deep_dir.joinpath(c.Infra.INIT_PY).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+            "",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         deep_dir.joinpath("transport.py").write_text(
             "from __future__ import annotations\n\n"
@@ -379,7 +385,8 @@ class TestsFlextInfraLazyInitHelpers:
         assert "FlextDemoHttpTransport" in exports_content
 
     def test_duplicate_public_export_resolved_by_canonical_scorer(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Duplicate public exports are resolved deterministically (warn + generate)."""
         workspace_root, package_root = self._workspace(tmp_path)

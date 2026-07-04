@@ -6,19 +6,23 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from tests.constants import c
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestsFlextInfraUtilitiesLogParser:
     def test_missing_file_returns_zero_empty(self, tmp_path: Path) -> None:
         result = FlextInfraUtilitiesLogParser.extract_errors(
-            tmp_path / "nonexistent.log"
+            tmp_path / "nonexistent.log",
         )
 
         assert result == (0, [])
@@ -77,7 +81,8 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file.write_text(error_lines + "\n", encoding="utf-8")
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(
-            log_file, max_lines=3
+            log_file,
+            max_lines=3,
         )
 
         assert count == 10
@@ -115,7 +120,10 @@ class TestsFlextInfraUtilitiesLogParser:
         c.Tests.LOG_PATTERN_CASES,
     )
     def test_pattern_matching(
-        self, tmp_path: Path, line: str, expected_count: int
+        self,
+        tmp_path: Path,
+        line: str,
+        expected_count: int,
     ) -> None:
         log_file = tmp_path / "pattern.log"
         log_file.write_text(line + "\n", encoding="utf-8")

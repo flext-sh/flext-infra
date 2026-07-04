@@ -7,10 +7,14 @@ call ``python -m flext_infra`` (never the retired audit scripts).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_tests import tm
 
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 _V = FlextInfraManualCommandValidator
 

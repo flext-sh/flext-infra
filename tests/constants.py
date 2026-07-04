@@ -12,11 +12,14 @@ from __future__ import annotations
 
 import re
 from types import MappingProxyType
-from typing import ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final
 
 from flext_tests import FlextTestsConstants
 
-from flext_infra import c, t
+from flext_infra import c
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class TestsFlextInfraConstants(FlextTestsConstants, c):

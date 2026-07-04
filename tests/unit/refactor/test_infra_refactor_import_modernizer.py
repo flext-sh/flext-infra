@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 
 class _ImportModernizerHarness:

@@ -23,7 +23,9 @@ class FlextInfraImportAliasDetector:
     ) -> t.SequenceOf[m.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
         resource = u.Infra.fetch_python_resource(
-            ctx.rope_project, ctx.file_path, skip_init_py=True
+            ctx.rope_project,
+            ctx.file_path,
+            skip_init_py=True,
         )
         if resource is None:
             return []
@@ -69,7 +71,7 @@ class FlextInfraImportAliasDetector:
                     suggested_import=(
                         f"from {root_module} import {', '.join(alias_names)}"
                     ),
-                )
+                ),
             )
         return violations
 

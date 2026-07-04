@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import tomlkit
 
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
-from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from tests.models import m
 
 
 class TestsFlextInfraDepsModernizerMypy:

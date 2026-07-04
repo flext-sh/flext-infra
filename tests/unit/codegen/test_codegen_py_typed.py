@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from tests.constants import c
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestsFlextInfraCodegenPyTyped:
@@ -62,7 +66,9 @@ class TestsFlextInfraCodegenPyTyped:
 
     @pytest.mark.parametrize("skip_dir", tuple(c.Tests.CODEGEN_SKIPPED_DIRS))
     def test_skips_known_excluded_directories(
-        self, tmp_path: Path, skip_dir: str
+        self,
+        tmp_path: Path,
+        skip_dir: str,
     ) -> None:
         skipped_pkg = tmp_path / "src" / skip_dir / "mypkg"
         skipped_pkg.mkdir(parents=True)

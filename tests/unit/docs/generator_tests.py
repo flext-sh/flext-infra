@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:
@@ -20,7 +23,7 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
             workspace_root=workspace,
             projects=["flext-a"],
             apply=False,
-        )
+        ),
     )
 
     assert result.success
@@ -38,7 +41,7 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
             workspace_root=workspace,
             projects=["flext-a"],
             apply=True,
-        )
+        ),
     )
 
     assert result.success
@@ -54,7 +57,7 @@ def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:
         m.Infra.DocsGenerateRequest(
             workspace_root=workspace,
             apply=False,
-        )
+        ),
     )
 
     assert result.success

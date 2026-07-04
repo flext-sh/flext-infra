@@ -5,7 +5,7 @@ from collections.abc import (
     Mapping,
     Sequence,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -13,8 +13,12 @@ from flext_infra import (
     main,
 )
 from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 def _nested_value(pyproject_path: Path, *keys: str) -> object:
@@ -118,7 +122,7 @@ class TestsFlextInfraDepsPathSyncMainMore:
                 apply=True,
                 projects=["flext-cli"],
                 mode="workspace",
-            )
+            ),
         )
 
         tm.that(exit_code, eq=0)

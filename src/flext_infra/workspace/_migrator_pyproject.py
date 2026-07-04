@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraProjectMigratorPyprojectMixin:
@@ -55,7 +58,9 @@ class FlextInfraProjectMigratorPyprojectMixin:
                 dry_run=dry_run,
             )
         return self._apply_flext_core_dependency(
-            document, pyproject_path, dry_run=dry_run
+            document,
+            pyproject_path,
+            dry_run=dry_run,
         )
 
     def _apply_flext_core_dependency(

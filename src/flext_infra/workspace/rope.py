@@ -5,16 +5,19 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from types import TracebackType
-from typing import Annotated, ClassVar, Self, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, Self, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
@@ -56,32 +59,32 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     _rope_workspace_root: Path = u.PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
-        default_factory=lambda: None
+        default_factory=lambda: None,
     )
     _workspace_index: m.Infra.RopeWorkspaceIndex | None = u.PrivateAttr(
-        default_factory=lambda: None
+        default_factory=lambda: None,
     )
     _codegen_projects: tuple[p.Infra.ProjectInfo, ...] | None = u.PrivateAttr(
         default_factory=lambda: None,
     )
     _project_layout_cache: dict[str, m.Infra.RopeProjectLayout | None] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _package_context_cache: dict[str, m.Infra.LazyInitPackageContext] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _module_policy_cache: dict[tuple[str, str, str], m.Infra.NamespaceModulePolicy] = (
         u.PrivateAttr(default_factory=dict)
     )
     _module_convention_cache: dict[str, m.Infra.RopeModuleConvention] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _module_object_cache: dict[
         tuple[str, bool, bool],
         tuple[m.Infra.Census.Object, ...],
     ] = u.PrivateAttr(default_factory=dict)
     _resource_cache: dict[str, t.Infra.RopeResource | None] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
     _name_index: dict[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None = (
         u.PrivateAttr(default_factory=lambda: None)
@@ -250,7 +253,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             sorted(
                 self.workspace_index.modules_by_path.values(),
                 key=lambda entry: entry.file_path.as_posix(),
-            )
+            ),
         )
         if not project_names:
             return modules

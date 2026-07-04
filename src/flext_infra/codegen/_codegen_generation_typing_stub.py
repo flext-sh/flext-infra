@@ -10,11 +10,13 @@ from flext_infra.codegen._codegen_generation_lazy_entries import (
 )
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationTypingStubMixin(
-    FlextInfraCodegenGenerationLazyEntriesMixin
+    FlextInfraCodegenGenerationLazyEntriesMixin,
 ):
     """Render static typing stubs for registry-backed wrappers."""
 
@@ -22,7 +24,9 @@ class FlextInfraCodegenGenerationTypingStubMixin(
 
         @classmethod
         def _render_model(
-            cls, template_name: str, context: m.ArbitraryTypesModel
+            cls,
+            template_name: str,
+            context: m.ArbitraryTypesModel,
         ) -> str:
             _ = (template_name, context)
             return ""
@@ -59,7 +63,7 @@ class FlextInfraCodegenGenerationTypingStubMixin(
                         "",
                         parent_mod,
                         (f"{child_name} as {export_name}",),
-                    )
+                    ),
                 )
             if attr_items:
                 parts = tuple(
@@ -134,7 +138,7 @@ class FlextInfraCodegenGenerationTypingStubMixin(
             root_typing_parts_exports_module.FLEXT_CORE__ROOT_TYPING_PARTS_LAZY_IMPORTS
         )
         root_typing_names: tuple[str, ...] = tuple(root_all) + tuple(
-            root_typing_only_names
+            root_typing_only_names,
         )
         type_map: dict[str, t.StrPair] = {
             name: (

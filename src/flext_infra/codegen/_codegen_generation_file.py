@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.codegen._codegen_generation_standard import (
     FlextInfraCodegenGenerationStandardMixin,
 )
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMixin):
@@ -42,17 +46,21 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
                     name for name in exports if name in direct_filtered
                 )
             return FlextInfraCodegenGenerationFileMixin._generate_direct_bootstrap_file(
-                direct_exports, direct_filtered, inline_constants, current_pkg
+                direct_exports,
+                direct_filtered,
+                inline_constants,
+                current_pkg,
             )
         lazy_filtered: t.LazyAliasMap = dict(filtered)
         publish_all = (
             FlextInfraCodegenGenerationFileMixin._is_public_api_root_namespace(
-                current_pkg
+                current_pkg,
             )
         )
         published_exports = (
             FlextInfraCodegenGenerationFileMixin._build_published_exports(
-                exports, lazy_filtered
+                exports,
+                lazy_filtered,
             )
             if publish_all
             else tuple(sorted(exports))
@@ -64,7 +72,8 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
         )
         rendered_child_module_paths = tuple(
             FlextInfraCodegenGenerationFileMixin._compact_lazy_module_path(
-                current_pkg, child_module_path
+                current_pkg,
+                child_module_path,
             )
             for child_module_path in children_lazy
         )

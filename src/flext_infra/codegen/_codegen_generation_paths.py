@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenGenerationPathsMixin:
@@ -47,11 +51,11 @@ class FlextInfraCodegenGenerationPathsMixin:
             return True
         module_path, attr_name = target
         if FlextInfraCodegenGenerationPathsMixin._is_module_or_package_export(
-            attr_name
+            attr_name,
         ):
             return export_name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
         if not FlextInfraCodegenGenerationPathsMixin._is_private_subpackage_source(
-            module_path
+            module_path,
         ):
             return True
         return (
@@ -70,7 +74,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         """Return whether ``current_pkg`` is a generated public package ABI root."""
         return (
             FlextInfraCodegenGenerationPathsMixin._is_root_namespace_package(
-                current_pkg
+                current_pkg,
             )
             and current_pkg not in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )

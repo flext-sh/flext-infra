@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from contextlib import redirect_stdout
 from io import StringIO
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import main as infra_main
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
@@ -40,7 +43,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             "--dry-run",
         ]
         with redirect_stdout(buffer):
-            result = infra_main(["refactor"] + cli_args)
+            result = infra_main(["refactor", *cli_args])
         assert result != 0
 
     def test_wrapper_root_namespace_cli_dry_run_succeeds(

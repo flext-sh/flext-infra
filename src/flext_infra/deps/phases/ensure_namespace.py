@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraEnsureNamespaceToolingPhase:
@@ -52,7 +56,8 @@ class FlextInfraEnsureNamespaceToolingPhase:
         if not detected:
             return []
         return FlextInfraTomlPhaseService.apply_payload_phases(
-            payload, self._phase(detected)
+            payload,
+            self._phase(detected),
         )
 
 

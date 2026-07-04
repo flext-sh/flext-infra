@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-)
 from operator import itemgetter
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from rope.base import ast
 
@@ -18,6 +14,12 @@ from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fix
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Iterable,
+    )
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesRopeSource:
@@ -172,7 +174,7 @@ class FlextInfraUtilitiesRopeSource:
             bound_names.update(
                 bound
                 for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2)
+                    match.group(2),
                 )
             )
         for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(source):
@@ -181,7 +183,7 @@ class FlextInfraUtilitiesRopeSource:
             bound_names.update(
                 bound
                 for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2)
+                    match.group(2),
                 )
             )
         return bound_names

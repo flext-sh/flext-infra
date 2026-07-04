@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import (
     c,
@@ -14,6 +14,9 @@ from flext_infra import (
     t,
     u,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraScanner:
@@ -71,6 +74,6 @@ class FlextInfraScanner:
                     class_name=found_class,
                     file=found_file,
                     symbol_count=symbols,
-                )
+                ),
             )
         return results

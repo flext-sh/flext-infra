@@ -6,10 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraRuntimeAliasDetector:
@@ -48,7 +52,9 @@ class FlextInfraRuntimeAliasDetector:
                 else:
                     return []
         resource = u.Infra.fetch_python_resource(
-            ctx.rope_project, file_path, skip_protected=True
+            ctx.rope_project,
+            file_path,
+            skip_protected=True,
         )
         if resource is None:
             return []
@@ -65,7 +71,7 @@ class FlextInfraRuntimeAliasDetector:
                     kind="missing",
                     alias=family,
                     detail=f"No '{family} = ...' assignment found",
-                )
+                ),
             ]
         if len(matches) > 1:
             return [
@@ -74,7 +80,7 @@ class FlextInfraRuntimeAliasDetector:
                     kind="duplicate",
                     alias=family,
                     detail=f"Found {len(matches)} '{family} = ...' assignments",
-                )
+                ),
             ]
         return []
 

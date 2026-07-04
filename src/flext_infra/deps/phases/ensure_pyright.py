@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+    from flext_infra.typings import t
 
 
 class FlextInfraEnsurePyrightConfigPhase:
@@ -135,7 +136,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         source_dir=rules.source_dir,
                     ),
                     rules=rules,
-                )
+                ),
             )
         discovered = u.Infra.discover_projects(workspace_root)
         child_projects = (
@@ -172,7 +173,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                             source_dir=rules.source_dir,
                         ),
                         rules=rules,
-                    )
+                    ),
                 )
         return expected_envs
 
@@ -269,7 +270,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             ignores.extend(self._existing_paths(root_dir, rules.root_typings_paths))
         else:
             ignores.extend(
-                self._existing_paths(project_dir, rules.project_typings_paths)
+                self._existing_paths(project_dir, rules.project_typings_paths),
             )
         for pattern in rules.ignored_diagnostic_globs:
             if pattern not in ignores:
@@ -354,7 +355,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             project_dir=project_dir,
         )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
-            c.Infra.PYRIGHT
+            c.Infra.PYRIGHT,
         )
         if expected_excludes:
             phase_builder = phase_builder.list(c.Infra.EXCLUDE, expected_excludes)

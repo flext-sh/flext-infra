@@ -10,16 +10,19 @@ import ast
 import io
 import re
 import tokenize
-from collections.abc import Callable
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from rope.base.exceptions import ModuleSyntaxError
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraPatternSmellDetector:
@@ -289,7 +292,8 @@ class _PatternSmellVisitor(ast.NodeVisitor):
         for alias in node.names:
             canonical = alias.name
             if canonical in self._banned_module_imports and not self._owned_exempt(
-                self.project_name, canonical
+                self.project_name,
+                canonical,
             ):
                 kind, detail = self._banned_module_imports[canonical]
                 self._add_violation(node.lineno, kind, detail)
@@ -309,7 +313,8 @@ class _PatternSmellVisitor(ast.NodeVisitor):
                     kind, detail = banned_from[key]
                     self._add_violation(node.lineno, kind, detail)
         if module in self._banned_module_imports and not self._owned_exempt(
-            self.project_name, module
+            self.project_name,
+            module,
         ):
             kind, detail = self._banned_module_imports[module]
             self._add_violation(node.lineno, kind, detail)

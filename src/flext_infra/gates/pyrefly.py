@@ -6,16 +6,19 @@ import sys
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraPyreflyGate(FlextInfraGate):
@@ -39,7 +42,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         if discovered_dirs:
             return discovered_dirs
         if any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
-            project_dir.glob("*.pyi")
+            project_dir.glob("*.pyi"),
         ):
             return ["."]
         return []
@@ -92,7 +95,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         code="PARSE_ERROR",
                         message=f"pyrefly output unreadable/invalid: {read.error}",
                         severity="ERROR",
-                    )
+                    ),
                 )
                 return False, issues
             parsed_value = read.value
@@ -101,7 +104,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 issues.append(
                     self._parse_error_issue(
                         error_items.error or "Tool output parsing failed",
-                    )
+                    ),
                 )
                 return False, issues
             try:
@@ -118,7 +121,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                             f"{type(err).__name__}"
                         ),
                         severity=c.Infra.ERROR,
-                    )
+                    ),
                 )
         if (not issues) and result.exit_code != 0:
             message = (result.stderr or result.stdout).strip()
@@ -135,7 +138,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     code="pyrefly-exec",
                     message=message,
                     severity=c.Infra.ERROR,
-                )
+                ),
             )
         return result.exit_code == 0, issues
 

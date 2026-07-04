@@ -20,10 +20,11 @@ from rope.refactor import occurrences
 from rope.refactor.occurrences import worder
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from rope.base.project import Project
+
+    from flext_infra.typings import t
 
 
 _DOCSTRING_DELIMITER_COUNT = 2

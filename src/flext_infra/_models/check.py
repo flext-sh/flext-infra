@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli.models import FlextCliModels as m
 from flext_cli.utilities import u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsCheck:
@@ -207,7 +210,8 @@ class FlextInfraModelsCheck:
             description="Gate result model",
         )
         issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
-            default_factory=tuple, description="Detected issues"
+            default_factory=tuple,
+            description="Detected issues",
         )
         raw_output: str = m.Field(
             "",
@@ -330,10 +334,12 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
         rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
-            default_factory=tuple, description="Rule descriptors"
+            default_factory=tuple,
+            description="Rule descriptors",
         )
         results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
-            default_factory=tuple, description="Run results"
+            default_factory=tuple,
+            description="Run results",
         )
 
         @u.model_serializer(mode="plain")
@@ -371,7 +377,8 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
         runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
-            default_factory=tuple, description="SARIF runs"
+            default_factory=tuple,
+            description="SARIF runs",
         )
 
 

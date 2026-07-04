@@ -13,14 +13,17 @@ in Singer-SDK boundary files), ``subprocess``, ``tomllib``/``tomlkit`` outside
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
@@ -107,13 +110,16 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             and project not in c.Infra.BOUNDARY_TOML_ALLOWED
         ):
             issues.append(
-                self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file")
+                self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file"),
             )
         issues.extend(self._concrete_cli_issues(path, text, posix))
         return issues
 
     def _concrete_cli_issues(
-        self, path: Path, text: str, posix: str
+        self,
+        path: Path,
+        text: str,
+        posix: str,
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Flag concrete FlextCli<X> imports outside src extension files."""
         if "/src/" in posix and path.name in c.Infra.BOUNDARY_EXTENSION_FILES:
@@ -121,12 +127,13 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for match in c.Infra.BOUNDARY_CONCRETE_IMPORT_RE.finditer(text):
             for name in c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.findall(
-                match.group("imports")
+                match.group("imports"),
             ):
                 issues.append(
                     self._issue(
-                        path, f"imports concrete `{name}` (use cli/c/m/p/t/u/s)"
-                    )
+                        path,
+                        f"imports concrete `{name}` (use cli/c/m/p/t/u/s)",
+                    ),
                 )
         return issues
 

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import os
 import stat
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _MAKE_ISOLATION_ENV_KEYS = (
     "FLEXT_ROOT",
@@ -70,7 +73,10 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
 
 
 def _write_venv_python_stub(
-    project_root: Path, log_path: Path, *, include_env: bool = False
+    project_root: Path,
+    log_path: Path,
+    *,
+    include_env: bool = False,
 ) -> None:
     venv_bin = project_root / ".venv" / "bin"
     venv_bin.mkdir(parents=True, exist_ok=True)
@@ -91,7 +97,8 @@ def _write_venv_python_stub(
 def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
     if include_parent:
         (project_root.parent / "base.mk").write_text(
-            _render_base_mk(), encoding="utf-8"
+            _render_base_mk(),
+            encoding="utf-8",
         )
         makefile_content = "PROJECT_NAME := demo-project\ninclude ../base.mk\n"
     else:
@@ -101,7 +108,9 @@ def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
 
 
 def _run_make(
-    project_root: Path, *args: str, env: dict[str, str] | None = None
+    project_root: Path,
+    *args: str,
+    env: dict[str, str] | None = None,
 ) -> m.Cli.CommandOutput:
     active_env = os.environ.copy()
     for key in _MAKE_TEST_ENV_KEYS:
@@ -301,7 +310,8 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_full_run_forwards_fix_and_tool_args(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
@@ -334,7 +344,8 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_fast_path_check_only_suppresses_fix_writes(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
@@ -359,7 +370,8 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that("--fix" not in log_path.read_text(encoding="utf-8"), eq=True)
 
     def test_make_check_file_scope_rejects_unsupported_gates(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         _write_project(tmp_path)
         _write_venv_python_stub(tmp_path, tmp_path / "tool.log")

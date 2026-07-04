@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesMroScanSource:
@@ -15,7 +17,7 @@ class FlextInfraUtilitiesMroScanSource:
 
     _CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
     _IDENTIFIER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
-        r"^_?[A-Za-z][A-Za-z0-9_]*$"
+        r"^_?[A-Za-z][A-Za-z0-9_]*$",
     )
     _FACADE_ALIAS_TEMPLATE: ClassVar[str] = r"(?m)^\s*{alias}\s*=\s*(\w+{suffix})\s*$"
     _CLASS_SUFFIX_TEMPLATE: ClassVar[str] = r"(?m)^class\s+(\w+{suffix})\b"
@@ -31,12 +33,12 @@ class FlextInfraUtilitiesMroScanSource:
             cls._FACADE_ALIAS_TEMPLATE.format(
                 alias=re.escape(spec.family_alias),
                 suffix=re.escape(spec.class_suffix),
-            )
+            ),
         )
         if alias_match := alias_pattern.search(source):
             return alias_match.group(1)
         suffix_pattern = re.compile(
-            cls._CLASS_SUFFIX_TEMPLATE.format(suffix=re.escape(spec.class_suffix))
+            cls._CLASS_SUFFIX_TEMPLATE.format(suffix=re.escape(spec.class_suffix)),
         )
         return (
             suffix_match.group(1)

@@ -8,14 +8,17 @@ for this tool-driven gate (tokei reports at file granularity only).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
@@ -65,7 +68,8 @@ class FlextInfraLocCapGate(FlextInfraGate):
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for language, payload in data.items():
             if language != c.Infra.TOKEI_PYTHON_LANG or not isinstance(
-                payload, Mapping
+                payload,
+                Mapping,
             ):
                 continue
             reports = payload.get("reports")

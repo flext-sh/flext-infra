@@ -10,7 +10,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -24,11 +23,12 @@ from flext_infra.detectors.compatibility_alias_detector import (
 from flext_infra.detectors.mro_shape_detector import (
     FlextInfraMROShapeDetector,
 )
-from flext_infra.models import m
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
+    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorDeclarativeEnforcement:
@@ -168,7 +168,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
                     line=line,
                     rule_id=rule_id,
                     literal=repr(value),
-                )
+                ),
             )
         return tuple(probes)
 
@@ -272,7 +272,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
                     object_name=violation.alias_name,
                     target_name=violation.target_name,
                     module_name=violation.module_name,
-                )
+                ),
             )
         return tuple(probes)
 

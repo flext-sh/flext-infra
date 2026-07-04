@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.models import m
+    from flext_infra.protocols import p
 
 
 class FlextInfraDependencyDetectionRunnersMixin:
@@ -134,7 +137,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         )
         if result.failure:
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
-                result.error or "mypy execution failed"
+                result.error or "mypy execution failed",
             )
         command_output: m.Cli.CommandOutput = result.value
         output = f"{command_output.stdout}\n{command_output.stderr}"
@@ -171,7 +174,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         )
         if result.failure:
             return r[t.Pair[t.StrSequence, int]].fail(
-                result.error or "pip check failed"
+                result.error or "pip check failed",
             )
         cmd_result: m.Cli.CommandOutput = result.value
         output = cmd_result.stdout

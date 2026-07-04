@@ -5,14 +5,17 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.constants import c
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraRuffLintGate(FlextInfraGate):
@@ -75,7 +78,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                                 file=u.Cli.json_pick_str(entry, "filename", "?"),
                                 line=u.Cli.json_nested_int(entry, "location", "row"),
                                 column=u.Cli.json_nested_int(
-                                    entry, "location", "column"
+                                    entry,
+                                    "location",
+                                    "column",
                                 ),
                                 code=u.Cli.json_pick_str(entry, "code"),
                                 message=u.Cli.json_pick_str(entry, "message"),
@@ -90,7 +95,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     code="PARSE_ERROR",
                     message=f"Tool output parsing failed: {type(err).__name__}",
                     severity="ERROR",
-                )
+                ),
             )
             return False, issues
         return result.exit_code == 0, issues

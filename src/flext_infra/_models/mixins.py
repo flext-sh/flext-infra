@@ -87,10 +87,12 @@ class FlextInfraModelsMixins:
         """
 
         report: Annotated[
-            str | None, m.Field(description="Output report file path")
+            str | None,
+            m.Field(description="Output report file path"),
         ] = None
         output_dir: Annotated[
-            str | None, m.Field(description="Output directory for reports")
+            str | None,
+            m.Field(description="Output directory for reports"),
         ] = None
 
         @property
@@ -200,10 +202,12 @@ class FlextInfraModelsMixins:
         merge_method: Annotated[str, m.Field(description="Merge method")] = "squash"
         auto: Annotated[bool, m.Field(description="Auto-merge")] = False
         delete_branch: Annotated[
-            bool, m.Field(description="Delete branch on merge")
+            bool,
+            m.Field(description="Delete branch on merge"),
         ] = True
         checks_strict: Annotated[
-            bool, m.Field(description="Strict checks required")
+            bool,
+            m.Field(description="Strict checks required"),
         ] = True
         release_on_merge: Annotated[bool, m.Field(description="Release on merge")] = (
             True
@@ -305,7 +309,8 @@ class FlextInfraModelsMixins:
         """Shared optional project-name collection."""
 
         project_names: Annotated[
-            t.StrSequence | None, m.Field(description="Project names")
+            t.StrSequence | None,
+            m.Field(description="Project names"),
         ] = None
 
     class ProjectNamesListMixin:

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import r, tm
 
@@ -14,6 +14,9 @@ from flext_cli import u as cli_u
 from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests.utilities import u as test_u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestFlextInfraWorkspaceChecker:

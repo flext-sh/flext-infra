@@ -9,14 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from defusedxml import ElementTree as DefusedET
 
 from flext_infra.constants import c
 from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class _DiagResult:
@@ -50,7 +53,9 @@ class FlextInfraPytestDiagXmlMixin:
 
     @staticmethod
     def _build_trace_chunk(
-        heading: str, label: str, element: p.Infra.XmlElementLike
+        heading: str,
+        label: str,
+        element: p.Infra.XmlElementLike,
     ) -> str:
         """Build an error/failure trace chunk from a JUnit XML element."""
         msg = (element.attrib.get(c.Infra.RK_MESSAGE) or "").strip()
@@ -79,7 +84,9 @@ class FlextInfraPytestDiagXmlMixin:
             diag.failed_cases.append(label)
             diag.error_traces.append(
                 FlextInfraPytestDiagXmlMixin._build_trace_chunk(
-                    "FAILURE", label, failure
+                    "FAILURE",
+                    label,
+                    failure,
                 ),
             )
         if (error := case.find(c.Infra.ERROR)) is not None:

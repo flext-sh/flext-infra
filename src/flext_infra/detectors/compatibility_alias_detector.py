@@ -9,14 +9,18 @@ from __future__ import annotations
 import ast
 import sys
 from collections.abc import Mapping
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rope.refactor.importutils.importinfo import FromImport
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraCompatibilityAliasDetector:
@@ -77,7 +81,7 @@ class FlextInfraCompatibilityAliasDetector:
                     line=line_number,
                     alias_name=alias_name,
                     target_name=target_name,
-                )
+                ),
             )
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return violations
@@ -95,7 +99,7 @@ class FlextInfraCompatibilityAliasDetector:
                 bound_name = alias if alias is not None else name
                 if bound_name in alias_renames.values():
                     canonical_aliases_by_module.setdefault(module_name, set()).add(
-                        bound_name
+                        bound_name,
                     )
         for from_import in cls._all_from_imports(ctx.rope_project, resource):
             module_name = cls._resolve_imported_module(
@@ -114,7 +118,8 @@ class FlextInfraCompatibilityAliasDetector:
                     # compatibility-alias violation.
                     continue
                 if canonical_alias in canonical_aliases_by_module.get(
-                    module_name, set()
+                    module_name,
+                    set(),
                 ):
                     # The canonical short alias is also imported from the same
                     # module; this is a re-export/facade file, not a consumer
@@ -134,14 +139,14 @@ class FlextInfraCompatibilityAliasDetector:
                         alias_name=name,
                         target_name=canonical_alias,
                         module_name=module_name,
-                    )
+                    ),
                 )
 
         violations.extend(
             cls._detect_foreign_canonical_aliases(
                 source=source,
                 file_path=file_path,
-            )
+            ),
         )
         return violations
 
@@ -156,13 +161,13 @@ class FlextInfraCompatibilityAliasDetector:
         current_package = current_module.split(".", maxsplit=1)[0]
         local_aliases = (
             FlextInfraCompatibilityAliasDetector._project_alias_owners().get(
-                current_package
+                current_package,
             )
         )
         if not local_aliases:
             return ()
         if FlextInfraCompatibilityAliasDetector._is_private_facade_implementation(
-            file_path
+            file_path,
         ):
             return ()
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
@@ -175,11 +180,11 @@ class FlextInfraCompatibilityAliasDetector:
         local_aliases_set = frozenset(local_aliases)
         violations: list[m.Infra.CompatibilityAliasViolation] = []
         for node in FlextInfraCompatibilityAliasDetector._iter_runtime_from_imports(
-            tree
+            tree,
         ):
             module = node.module or ""
             if module != c.Infra.PKG_CORE_UNDERSCORE and not module.startswith(
-                f"{c.Infra.PKG_CORE_UNDERSCORE}."
+                f"{c.Infra.PKG_CORE_UNDERSCORE}.",
             ):
                 continue
             for alias in node.names:
@@ -193,7 +198,7 @@ class FlextInfraCompatibilityAliasDetector:
                         alias_name=bound_name,
                         target_name=bound_name,
                         module_name=current_package,
-                    )
+                    ),
                 )
         return violations
 
@@ -203,8 +208,8 @@ class FlextInfraCompatibilityAliasDetector:
         constants_module = sys.modules.get("flext_infra.constants")
         if constants_module is None:
             return c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
-        live_c = getattr(constants_module, "c")
-        owners = getattr(live_c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS")
+        live_c = constants_module.c
+        owners = live_c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
         if not isinstance(owners, Mapping):
             msg = "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS is invalid"
             raise TypeError(msg)
@@ -292,7 +297,7 @@ class FlextInfraCompatibilityAliasDetector:
             return module_name
         package_parts = current_parts[: -from_import.level]
         if module_name:
-            return ".".join(package_parts + [module_name])
+            return ".".join([*package_parts, module_name])
         return ".".join(package_parts)
 
     @staticmethod

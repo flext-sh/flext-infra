@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from _pytest.capture import CaptureFixture
+from typing import TYPE_CHECKING
 
 from flext_infra import m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+
+if TYPE_CHECKING:
+    from _pytest.capture import CaptureFixture
 
 
 def basemk_main(argv: list[str]) -> int:
@@ -46,7 +49,7 @@ class TestsFlextInfraBasemkRenderer:
 
     def test_render_single_missing_template_fails(self) -> None:
         result = FlextInfraBaseMkTemplateRenderer().render_single(
-            "missing-template.mk.j2"
+            "missing-template.mk.j2",
         )
 
         assert result.failure

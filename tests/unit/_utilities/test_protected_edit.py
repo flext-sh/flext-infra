@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.constants import c
 from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraUtilitiesProtectedEdit:
@@ -46,7 +49,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
         assert result == (True, [])
         assert py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip(
-            "\n"
+            "\n",
         ) == updated_source.rstrip("\n")
 
     def test_protected_source_write_treats_no_tests_collected_as_success(
@@ -71,7 +74,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
         assert result == (True, [])
         assert py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip(
-            "\n"
+            "\n",
         ) == updated_source.rstrip("\n")
 
     def test_protected_source_writes_applies_request_options(

@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_infra.typings import t
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraConstantsSourceCode:
@@ -356,7 +357,7 @@ class FlextInfraConstantsSourceCode:
         r"""Compile ``(from <module> import )(\b<old>\b)`` — captures both groups."""
         return re.compile(
             rf"(from\s+{re.escape(module_name)}\s+import\s+)"
-            rf"(\b{re.escape(old_symbol)}\b)"
+            rf"(\b{re.escape(old_symbol)}\b)",
         )
 
     @staticmethod
@@ -366,7 +367,7 @@ class FlextInfraConstantsSourceCode:
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
             rf"\b{escaped}\b"
-            rf"(?!\s*[=:](?!=))(?!\s*\()"
+            rf"(?!\s*[=:](?!=))(?!\s*\()",
         )
 
     @staticmethod
@@ -688,11 +689,11 @@ class FlextInfraConstantsSourceCode:
     CODE_FRAME_BODY_RE: Final[t.RegexPattern] = re.compile(r"^\s*\|")
     "Regex: code frame continuation lines."
     UNUSED_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"`([^`]+)` imported but unused"
+        r"`([^`]+)` imported but unused",
     )
     "Regex: ruff F401 unused import message, capturing the import name."
     LINT_SUMMARY_RE: Final[t.RegexPattern] = re.compile(
-        r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$"
+        r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$",
     )
     "Regex: ruff summary line (Found N errors / N fixable)."
 

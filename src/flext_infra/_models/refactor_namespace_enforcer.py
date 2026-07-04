@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Self
+from typing import TYPE_CHECKING, Annotated, Self
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsNamespaceEnforcer:
@@ -32,7 +34,8 @@ class FlextInfraModelsNamespaceEnforcer:
         class_name: Annotated[str, m.Field(description="Facade class name")] = ""
         file: Annotated[str, m.Field(description="Facade file path")] = ""
         symbol_count: Annotated[
-            t.NonNegativeInt, m.Field(description="Symbol count")
+            t.NonNegativeInt,
+            m.Field(description="Symbol count"),
         ] = 0
 
     class LooseObjectViolation(FileLineViolation):
@@ -97,7 +100,8 @@ class FlextInfraModelsNamespaceEnforcer:
         family: Annotated[t.NonEmptyStr, m.Field(description="Facade family")]
         facade_class: Annotated[t.NonEmptyStr, m.Field(description="Facade class name")]
         missing_base: Annotated[
-            t.NonEmptyStr, m.Field(description="Missing base class")
+            t.NonEmptyStr,
+            m.Field(description="Missing base class"),
         ]
         suggestion: Annotated[str, m.Field(description="Fix suggestion")]
 
@@ -106,20 +110,25 @@ class FlextInfraModelsNamespaceEnforcer:
 
         class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         rule_id: Annotated[
-            t.NonEmptyStr, m.Field(description="Rule identifier (046/047/049/051)")
+            t.NonEmptyStr,
+            m.Field(description="Rule identifier (046/047/049/051)"),
         ]
         detail: Annotated[str, m.Field(description="Human-readable description")]
         first_base: Annotated[
-            t.NonEmptyStr, m.Field(description="First base class name")
+            t.NonEmptyStr,
+            m.Field(description="First base class name"),
         ]
         expected_base: Annotated[
-            str, m.Field(description="Expected base class name or pattern")
+            str,
+            m.Field(description="Expected base class name or pattern"),
         ] = ""
         fix_action: Annotated[
-            str, m.Field(description="Recommended fix action identifier")
+            str,
+            m.Field(description="Recommended fix action identifier"),
         ] = "manual"
         fixable: Annotated[
-            bool, m.Field(description="Whether the violation can be auto-fixed")
+            bool,
+            m.Field(description="Whether the violation can be auto-fixed"),
         ] = False
 
     class InternalImportViolation(
@@ -127,8 +136,6 @@ class FlextInfraModelsNamespaceEnforcer:
         ImportViolationBase,
     ):
         """Internal import violation."""
-
-        pass
 
     class PrivateImportBypassViolation(
         mm.ViolationDetailMixin,
@@ -203,7 +210,8 @@ class FlextInfraModelsNamespaceEnforcer:
         """Cyclic import violation."""
 
         cycle: Annotated[
-            t.VariadicTuple[str], m.Field(description="Import cycle chain")
+            t.VariadicTuple[str],
+            m.Field(description="Import cycle chain"),
         ]
         files: Annotated[
             t.VariadicTuple[str],
@@ -226,8 +234,6 @@ class FlextInfraModelsNamespaceEnforcer:
         m.ContractModel,
     ):
         """Future annotations violation."""
-
-        pass
 
     class ManualTypingAliasViolation(
         mm.ViolationDetailMixin,
@@ -472,7 +478,8 @@ class FlextInfraModelsNamespaceEnforcer:
             ),
         ]
         files_scanned: Annotated[
-            t.NonNegativeInt, m.Field(description="Files scanned")
+            t.NonNegativeInt,
+            m.Field(description="Files scanned"),
         ] = 0
 
         @m.computed_field()
@@ -523,38 +530,48 @@ class FlextInfraModelsNamespaceEnforcer:
             ),
         ]
         total_facades_missing: Annotated[
-            t.NonNegativeInt, m.Field(description="Total missing facades")
+            t.NonNegativeInt,
+            m.Field(description="Total missing facades"),
         ] = 0
         total_loose_objects: Annotated[
-            t.NonNegativeInt, m.Field(description="Total loose objects")
+            t.NonNegativeInt,
+            m.Field(description="Total loose objects"),
         ] = 0
         total_import_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total import violations")
+            t.NonNegativeInt,
+            m.Field(description="Total import violations"),
         ] = 0
         total_namespace_source_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total namespace source violations")
+            t.NonNegativeInt,
+            m.Field(description="Total namespace source violations"),
         ] = 0
         total_internal_import_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total internal import violations")
+            t.NonNegativeInt,
+            m.Field(description="Total internal import violations"),
         ] = 0
         total_private_import_bypass_violations: Annotated[
             t.NonNegativeInt,
             m.Field(description="Total private-import bypass violations"),
         ] = 0
         total_manual_protocol_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total manual protocol violations")
+            t.NonNegativeInt,
+            m.Field(description="Total manual protocol violations"),
         ] = 0
         total_cyclic_imports: Annotated[
-            t.NonNegativeInt, m.Field(description="Total cyclic imports")
+            t.NonNegativeInt,
+            m.Field(description="Total cyclic imports"),
         ] = 0
         total_runtime_alias_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total runtime alias violations")
+            t.NonNegativeInt,
+            m.Field(description="Total runtime alias violations"),
         ] = 0
         total_future_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total future annotations violations")
+            t.NonNegativeInt,
+            m.Field(description="Total future annotations violations"),
         ] = 0
         total_manual_typing_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total manual typing violations")
+            t.NonNegativeInt,
+            m.Field(description="Total manual typing violations"),
         ] = 0
         total_compatibility_alias_violations: Annotated[
             t.NonNegativeInt,
@@ -565,16 +582,20 @@ class FlextInfraModelsNamespaceEnforcer:
             m.Field(description="Total foreign canonical alias import violations"),
         ] = 0
         total_class_placement_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total class placement violations")
+            t.NonNegativeInt,
+            m.Field(description="Total class placement violations"),
         ] = 0
         total_mro_completeness_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total MRO completeness violations")
+            t.NonNegativeInt,
+            m.Field(description="Total MRO completeness violations"),
         ] = 0
         total_bare_except_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total bare `except:` violations")
+            t.NonNegativeInt,
+            m.Field(description="Total bare `except:` violations"),
         ] = 0
         total_print_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total `print()` violations")
+            t.NonNegativeInt,
+            m.Field(description="Total `print()` violations"),
         ] = 0
         total_breakpoint_violations: Annotated[
             t.NonNegativeInt,
@@ -585,7 +606,8 @@ class FlextInfraModelsNamespaceEnforcer:
             m.Field(description="Total `open()` without encoding violations"),
         ] = 0
         total_dict_annotation_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total `dict` annotation violations")
+            t.NonNegativeInt,
+            m.Field(description="Total `dict` annotation violations"),
         ] = 0
         total_typing_dict_attr_violations: Annotated[
             t.NonNegativeInt,
@@ -616,10 +638,12 @@ class FlextInfraModelsNamespaceEnforcer:
             m.Field(description="Total silent-failure violations"),
         ] = 0
         total_parse_failures: Annotated[
-            t.NonNegativeInt, m.Field(description="Total parse failures")
+            t.NonNegativeInt,
+            m.Field(description="Total parse failures"),
         ] = 0
         total_files_scanned: Annotated[
-            t.NonNegativeInt, m.Field(description="Total files scanned")
+            t.NonNegativeInt,
+            m.Field(description="Total files scanned"),
         ] = 0
 
         @classmethod

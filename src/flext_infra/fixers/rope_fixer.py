@@ -8,14 +8,12 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Callable
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from rope.refactor.move import MoveGlobal, create_move
 
 from flext_core import r
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.constants import c
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -32,12 +30,17 @@ from flext_infra.detectors.private_import_bypass_detector import (
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
@@ -406,7 +409,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="rope resource not found",
-                        )
+                        ),
                     )
                     continue
                 try:
@@ -421,7 +424,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"silent failure sentinel fix failed: {exc}",
-                        )
+                        ),
                     )
                     continue
                 if not changes:
@@ -430,7 +433,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no changes produced",
-                        )
+                        ),
                     )
                     continue
                 if ctx.apply:
@@ -445,7 +448,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             message=message,
-                        )
+                        ),
                     )
                 else:
                     previewed.append(
@@ -453,7 +456,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             message=message,
-                        )
+                        ),
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -617,7 +620,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"private import bypass detector failed: {exc}",
-                        )
+                        ),
                     )
                     continue
                 auto_fixable = tuple(v for v in file_violations if v.symbol_exported)
@@ -627,7 +630,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no auto-fixable private import bypass violations",
-                        )
+                        ),
                     )
                     continue
                 try:
@@ -643,7 +646,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"private import bypass rewrite failed: {exc}",
-                        )
+                        ),
                     )
                     continue
                 if ctx.apply:
@@ -658,7 +661,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             message=message,
-                        )
+                        ),
                     )
                 else:
                     previewed.append(
@@ -666,7 +669,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             message=message,
-                        )
+                        ),
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -739,7 +742,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"inline import detector failed: {exc}",
-                        )
+                        ),
                     )
                     continue
                 hoistable = tuple(
@@ -757,7 +760,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason=empty_reason,
-                        )
+                        ),
                     )
                     continue
                 resource = u.Infra.get_resource_from_path(rope_project, file_path)
@@ -767,7 +770,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="rope resource not found",
-                        )
+                        ),
                     )
                     continue
                 try:
@@ -782,7 +785,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"inline import hoist failed: {exc}",
-                        )
+                        ),
                     )
                     continue
                 if not changes:
@@ -791,7 +794,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no changes produced",
-                        )
+                        ),
                     )
                     continue
                 if ctx.apply:
@@ -807,7 +810,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             message=message,
-                        )
+                        ),
                     )
                 else:
                     previewed.append(
@@ -815,7 +818,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             message=message,
-                        )
+                        ),
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,

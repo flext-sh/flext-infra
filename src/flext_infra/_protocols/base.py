@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterator,
-)
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import (
+        Iterator,
+    )
+    from pathlib import Path
+
     from flext_core import p
     from flext_infra import m, t
 
@@ -408,7 +409,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         def iter(
-            self, tag: str | None = None
+            self,
+            tag: str | None = None,
         ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
             """Iterate over matching elements."""
             ...

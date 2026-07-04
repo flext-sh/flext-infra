@@ -6,10 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraManualProtocolDetector:
@@ -34,7 +38,9 @@ class FlextInfraManualProtocolDetector:
             return []
         return [
             m.Infra.ManualProtocolViolation(
-                file=str(file_path), line=ci.line, name=ci.name
+                file=str(file_path),
+                line=ci.line,
+                name=ci.name,
             )
             for ci in u.Infra.class_info_from_source(source)
             if "Protocol" in ci.bases

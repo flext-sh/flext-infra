@@ -6,12 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestConfigFixerPublicBehavior:
@@ -39,7 +42,8 @@ class TestConfigFixerPublicBehavior:
         assert result.value == []
 
     def test_run_returns_verbose_messages_for_selected_project(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         u.Tests.mk_project(
             tmp_path,

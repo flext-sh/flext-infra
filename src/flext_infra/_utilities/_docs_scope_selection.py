@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDocsScopeSelectionMixin:
@@ -22,7 +26,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
     ) -> t.SequenceOf[m.Infra.DocScope]:
         """Build docs scopes for selected project names."""
         project_by_name = FlextInfraUtilitiesDocsScopeSelectionMixin._project_by_name(
-            discovered
+            discovered,
         )
         scopes: list[m.Infra.DocScope] = []
         for name in selected_names:

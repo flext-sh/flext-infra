@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraGateContractScanMixin:

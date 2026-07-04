@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import ast
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.codegen._lazy_init_planner_public_root import (
     FlextInfraCodegenLazyInitPlannerPublicRootMixin,
@@ -13,6 +12,9 @@ from flext_infra.codegen._lazy_init_planner_registry import (
     FlextInfraCodegenLazyInitPlannerRegistryMixin,
 )
 from flext_infra.constants import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCodegenLazyInitPlannerPublicApiMixin(
@@ -40,7 +42,7 @@ class FlextInfraCodegenLazyInitPlannerPublicApiMixin(
                 exports.update(
                     FlextInfraCodegenLazyInitPlannerPublicApiMixin._public_export_statement_names(
                         statement,
-                    )
+                    ),
                 )
         except (TypeError, ValueError) as exc:
             msg = f"{exports_path}: {exc}"
@@ -54,21 +56,21 @@ class FlextInfraCodegenLazyInitPlannerPublicApiMixin(
             case ast.Assign(targets=targets, value=value):
                 if any(
                     FlextInfraCodegenLazyInitPlannerPublicApiMixin._is_public_exports_target(
-                        target
+                        target,
                     )
                     for target in targets
                 ):
                     return FlextInfraCodegenLazyInitPlannerPublicApiMixin._literal_string_names(
-                        value
+                        value,
                     )
             case ast.AnnAssign(target=target, value=value):
                 if value is not None and (
                     FlextInfraCodegenLazyInitPlannerPublicApiMixin._is_public_exports_target(
-                        target
+                        target,
                     )
                 ):
                     return FlextInfraCodegenLazyInitPlannerPublicApiMixin._literal_string_names(
-                        value
+                        value,
                     )
             case _:
                 return frozenset()
@@ -78,7 +80,7 @@ class FlextInfraCodegenLazyInitPlannerPublicApiMixin(
     def _is_public_exports_target(target: ast.expr) -> bool:
         """Return whether an assignment target declares root public exports."""
         return isinstance(target, ast.Name) and target.id.endswith(
-            c.Infra.ROOT_PUBLIC_EXPORTS_SUFFIX
+            c.Infra.ROOT_PUBLIC_EXPORTS_SUFFIX,
         )
 
 

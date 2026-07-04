@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
 from flext_infra._models.deps_tool_config_linters import (
@@ -12,7 +12,9 @@ from flext_infra._models.deps_tool_config_linters import (
 from flext_infra._models.deps_tool_config_type_checkers import (
     FlextInfraModelsDepsToolConfigTypeCheckers,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsDepsToolSettings(
@@ -45,7 +47,8 @@ class FlextInfraModelsDepsToolSettings(
         all: Annotated[bool, m.Field(description="Sort all TOML tables and entries.")]
         in_place: Annotated[bool, m.Field(description="Apply TOML sorting in place.")]
         sort_first: Annotated[
-            t.StrSequence, m.Field(description="Top-level TOML sections ordered first.")
+            t.StrSequence,
+            m.Field(description="Top-level TOML sections ordered first."),
         ]
 
     class YamlfixConfig(m.ArbitraryTypesModel):
@@ -53,35 +56,39 @@ class FlextInfraModelsDepsToolSettings(
 
         line_length: Annotated[int, m.Field(description="Maximum YAML line length.")]
         preserve_quotes: Annotated[
-            bool, m.Field(description="Preserve quote style in YAML output.")
+            bool,
+            m.Field(description="Preserve quote style in YAML output."),
         ]
         whitelines: Annotated[
-            int, m.Field(description="Blank line count between YAML entries.")
+            int,
+            m.Field(description="Blank line count between YAML entries."),
         ]
         section_whitelines: Annotated[
-            int, m.Field(description="Blank line count between YAML sections.")
+            int,
+            m.Field(description="Blank line count between YAML sections."),
         ]
         explicit_start: Annotated[
-            bool, m.Field(description="Emit explicit YAML start marker.")
+            bool,
+            m.Field(description="Emit explicit YAML start marker."),
         ]
 
     class CoverageFailUnderConfig(m.ArbitraryTypesModel):
         """Coverage fail-under thresholds by layer."""
 
         core: int = m.Field(
-            description="Minimum coverage percentage required for core layer."
+            description="Minimum coverage percentage required for core layer.",
         )
         domain: int = m.Field(
-            description="Minimum coverage percentage required for domain layer."
+            description="Minimum coverage percentage required for domain layer.",
         )
         platform: int = m.Field(
-            description="Minimum coverage percentage required for platform layer."
+            description="Minimum coverage percentage required for platform layer.",
         )
         integration: int = m.Field(
-            description="Minimum coverage percentage required for integration layer."
+            description="Minimum coverage percentage required for integration layer.",
         )
         app: int = m.Field(
-            description="Minimum coverage percentage required for app layer."
+            description="Minimum coverage percentage required for app layer.",
         )
 
     class CoverageConfig(m.ArbitraryTypesModel):
@@ -106,7 +113,8 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ] = False
         precision: Annotated[
-            int, m.Field(description="Decimal precision for coverage percentages.")
+            int,
+            m.Field(description="Decimal precision for coverage percentages."),
         ] = 2
         exclude_also: Annotated[
             t.StrSequence,
@@ -128,34 +136,35 @@ class FlextInfraModelsDepsToolSettings(
         """Tool map loaded from YAML."""
 
         codespell: FlextInfraModelsDepsToolSettings.CodespellConfig = m.Field(
-            description="Codespell settings"
+            description="Codespell settings",
         )
         ruff: FlextInfraModelsDepsToolSettings.RuffConfig = m.Field(
-            description="Ruff settings"
+            description="Ruff settings",
         )
         mypy: FlextInfraModelsDepsToolSettings.MypyConfig = m.Field(
-            description="Mypy settings"
+            description="Mypy settings",
         )
         pydantic_mypy: FlextInfraModelsDepsToolSettings.PydanticMypyConfig = m.Field(
-            alias="pydantic-mypy", description="Pydantic mypy plugin configuration."
+            alias="pydantic-mypy",
+            description="Pydantic mypy plugin configuration.",
         )
         pyright: FlextInfraModelsDepsToolSettings.PyrightConfig = m.Field(
-            description="Pyright settings"
+            description="Pyright settings",
         )
         pyrefly: FlextInfraModelsDepsToolSettings.PyreflyConfig = m.Field(
-            description="Pyrefly settings"
+            description="Pyrefly settings",
         )
         pytest: FlextInfraModelsDepsToolSettings.PytestConfig = m.Field(
-            description="Pytest settings"
+            description="Pytest settings",
         )
         tomlsort: FlextInfraModelsDepsToolSettings.TomlsortConfig = m.Field(
-            description="Tomlsort settings"
+            description="Tomlsort settings",
         )
         yamlfix: FlextInfraModelsDepsToolSettings.YamlfixConfig = m.Field(
-            description="Yamlfix settings"
+            description="Yamlfix settings",
         )
         coverage: FlextInfraModelsDepsToolSettings.CoverageConfig = m.Field(
-            description="Coverage configuration with per-project-type thresholds."
+            description="Coverage configuration with per-project-type thresholds.",
         )
 
     class ProjectTypeOverrideConfig(m.ArbitraryTypesModel):
@@ -170,19 +179,19 @@ class FlextInfraModelsDepsToolSettings(
         """Project-type-specific override matrix from tool_config.yml."""
 
         core: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
-            description="Core overrides"
+            description="Core overrides",
         )
         domain: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
-            description="Domain overrides"
+            description="Domain overrides",
         )
         platform: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
-            description="Platform overrides"
+            description="Platform overrides",
         )
         integration: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = (
             m.Field(description="Integration overrides")
         )
         app: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
-            description="App overrides"
+            description="App overrides",
         )
 
     class LazyInitConfig(m.ArbitraryTypesModel):
@@ -242,7 +251,7 @@ class FlextInfraModelsDepsToolSettings(
         """Root schema for tool_config.yml."""
 
         tools: FlextInfraModelsDepsToolSettings.ToolConfigTools = m.Field(
-            description="Tools"
+            description="Tools",
         )
         project_type_overrides: FlextInfraModelsDepsToolSettings.ProjectTypeOverridesConfig = m.Field(
             alias="project-type-overrides",

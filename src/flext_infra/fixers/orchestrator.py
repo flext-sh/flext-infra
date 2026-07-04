@@ -8,15 +8,12 @@ from __future__ import annotations
 
 import importlib
 from collections import defaultdict
-from pathlib import Path
 from types import SimpleNamespace
-from typing import Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_core import FlextUtilitiesEnforcement, r
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.constants import c
-from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
@@ -29,6 +26,12 @@ from flext_infra.refactor.declarative_enforcement import (
 )
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_infra.fixers.base import FlextInfraFixerAdapter
 
 
 class FlextInfraEnforcementFixerOrchestrator(

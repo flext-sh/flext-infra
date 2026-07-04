@@ -6,11 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
 from tests.constants import c
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 _WORKSPACE_PYPROJECT = """\
 [project]
@@ -120,7 +124,8 @@ class TestsFlextInfraCodegenVersionFile:
         assert first_content == second_content
 
     def test_project_filter_only_generates_for_matching_project(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         # Create workspace with two projects
         ws = tmp_path / "workspace"

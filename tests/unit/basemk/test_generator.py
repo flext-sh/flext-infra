@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraBasemkGenerator:
@@ -45,7 +48,7 @@ class TestsFlextInfraBasemkGenerator:
 
     def test_generator_generate_with_invalid_mapping_fails(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(
-            settings={"invalid_key": "x"}
+            settings={"invalid_key": "x"},
         )
 
         assert result.failure
@@ -65,7 +68,8 @@ class TestsFlextInfraBasemkGenerator:
         output_path = tmp_path / "nested" / "dir" / "test.mk"
 
         result = FlextInfraBaseMkGenerator().write(
-            "all:\n\t@true\n", output=output_path
+            "all:\n\t@true\n",
+            output=output_path,
         )
 
         assert result.success, result.error

@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableSet,
-)
-from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal, Self
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableSet,
+    )
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
@@ -28,7 +31,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
 
         module: t.NonEmptyStr = m.Field(description="Module file path")
         rule: t.NonEmptyStr = m.Field(
-            description="Violated rule identifier (e.g. NS-001)"
+            description="Violated rule identifier (e.g. NS-001)",
         )
         message: t.NonEmptyStr = m.Field(description="Human-readable violation message")
         fixable: bool = m.Field(description="Whether this violation can be auto-fixed")
@@ -142,7 +145,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         """Per-file result emitted by the constants consolidator."""
 
         file: Annotated[
-            t.NonEmptyStr, m.Field(description="Workspace-relative file path")
+            t.NonEmptyStr,
+            m.Field(description="Workspace-relative file path"),
         ]
         status: Annotated[
             Literal["applied", "reverted"],
@@ -370,7 +374,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Auto-fixable violations"),
         ]
         validator_passed: Annotated[
-            bool, m.Field(description="Whether validator passed")
+            bool,
+            m.Field(description="Whether validator passed"),
         ]
         mro_failures: Annotated[
             t.NonNegativeInt,
@@ -406,7 +411,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Source repr (e.g., '30', '\"localhost\"')"),
         ]
         type_annotation: Annotated[
-            str, m.Field(description="Type annotation string")
+            str,
+            m.Field(description="Type annotation string"),
         ] = ""
 
     class DuplicateConstantGroup(m.ArbitraryTypesModel):
@@ -418,7 +424,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         )
         is_value_identical: bool = m.Field(description="Whether all values match")
         canonical_ref: Annotated[
-            str, m.Field(description="Canonical parent reference")
+            str,
+            m.Field(description="Canonical parent reference"),
         ] = ""
 
     class DirectConstantRef(
@@ -454,7 +461,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ]
         canonical_ref: str = m.Field(description="Canonical reference")
         semantic_names: t.StrSequence = m.Field(
-            default_factory=tuple, description="semantic_names"
+            default_factory=tuple,
+            description="semantic_names",
         )
 
         @u.model_validator(mode="after")
@@ -482,7 +490,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         description: str = m.Field(description="Rule description")
         fixable: bool = m.Field(description="Whether the rule is fixable")
         fixable_exclusion: Annotated[
-            str | None, m.Field(description="Fixable exclusion reason")
+            str | None,
+            m.Field(description="Fixable exclusion reason"),
         ] = None
 
     class ConstantsGovernanceConfig(m.ArbitraryTypesModel):
@@ -490,13 +499,13 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
 
         version: str = m.Field(description="Config version")
         rules: list[FlextInfraModelsCodegen.NsRule] = m.Field(
-            description="Governance rules"
+            description="Governance rules",
         )
         canonical_values: list[FlextInfraModelsCodegen.CanonicalValueRule] = m.Field(
-            description="Canonical values settings"
+            description="Canonical values settings",
         )
         constants_class_pattern: str = m.Field(
-            description="Constants class pattern regex"
+            description="Constants class pattern regex",
         )
 
     class FixContext(m.ArbitraryTypesModel):
@@ -552,7 +561,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             """Skip."""
             self.violations_skipped.append(
                 FlextInfraModelsCodegen.CensusViolation(
-                    module=module, rule=rule, line=line, message=message, fixable=False
+                    module=module,
+                    rule=rule,
+                    line=line,
+                    message=message,
+                    fixable=False,
                 ),
             )
 
@@ -560,7 +573,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             """Fix."""
             self.violations_fixed.append(
                 FlextInfraModelsCodegen.CensusViolation(
-                    module=module, rule=rule, line=line, message=message, fixable=True
+                    module=module,
+                    rule=rule,
+                    line=line,
+                    message=message,
+                    fixable=True,
                 ),
             )
 
@@ -575,7 +592,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         module: Annotated[str, m.Field(description="Module containing the violation")]
         rule: Annotated[str, m.Field(description="Rule that was violated")]
         content_hash: Annotated[
-            str, m.Field(description="SHA256 of surrounding context lines")
+            str,
+            m.Field(description="SHA256 of surrounding context lines"),
         ]
 
         def __hash__(self) -> int:

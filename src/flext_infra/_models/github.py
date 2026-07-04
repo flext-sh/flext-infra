@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsGithub:
@@ -85,7 +87,8 @@ class FlextInfraModelsGithub:
             m.Field(description="Total repositories processed"),
         ]
         success: Annotated[
-            t.NonNegativeInt, m.Field(description="Successful executions")
+            t.NonNegativeInt,
+            m.Field(description="Successful executions"),
         ]
         fail: Annotated[t.NonNegativeInt, m.Field(description="Failed executions")]
         outcomes: t.VariadicTuple[FlextInfraModelsGithub.GithubPullRequestOutcome] = (

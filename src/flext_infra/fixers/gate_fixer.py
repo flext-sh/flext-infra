@@ -6,18 +6,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.constants import c
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
@@ -172,7 +175,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     rule_id=rule.id,
                     file_path=str(project_dir),
                     error=execution.raw_output or "gate fix failed",
-                )
+                ),
             ]
         return fr.ProjectFixResult(
             project=project_dir.name,

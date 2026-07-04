@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import p
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInitPlannerChildrenMixin:
@@ -18,7 +19,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
         def _package_entry(
-            self, pkg_dir: Path
+            self,
+            pkg_dir: Path,
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
@@ -91,7 +93,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 for child_package in child_packages
                 for name in self._merged_child_export_names(child_package, dir_exports)
                 if name not in allowed_export_names and name not in runtime_lazy_names
-            })
+            }),
         )
 
     def _child_packages_without_main_export(

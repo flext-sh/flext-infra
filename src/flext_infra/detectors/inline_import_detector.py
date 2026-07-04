@@ -7,17 +7,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from rope.base import ast
 
 from flext_infra._constants.detectors import FlextInfraConstantsDetectors
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraInlineImportDetector:
@@ -213,7 +216,7 @@ class _InlineImportVisitor(ast.NodeVisitor):
                 module_name=module_name,
                 imported_symbols=imported_symbols,
                 is_importlib=is_importlib,
-            )
+            ),
         )
 
 

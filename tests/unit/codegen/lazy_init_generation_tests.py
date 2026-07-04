@@ -7,10 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import (
-    MutableMapping,
-)
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -18,8 +15,15 @@ from flext_tests import tm
 import flext_infra as mod
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        MutableMapping,
+    )
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 def test_public_root_keeps_inherited_aliases_lazy() -> None:
@@ -81,7 +85,8 @@ class TestGenerateTypeChecking:
         lines = FlextInfraCodegenGeneration.generate_type_checking(groups)
         joined = " ".join(lines)
         tm.that(
-            joined, contains="from module import FlextConstants as c, FlextModels as m"
+            joined,
+            contains="from module import FlextConstants as c, FlextModels as m",
         )
 
     def test_with_long_import_line(self) -> None:
@@ -375,7 +380,8 @@ class TestGenerateFile:
         )
         tm.that(content, contains="build_lazy_import_map(")
         tm.that(
-            content, contains='"._enforcement_parts.flextconstantsenforcement_part_01"'
+            content,
+            contains='"._enforcement_parts.flextconstantsenforcement_part_01"',
         )
         tm.that(content, lacks="merge_lazy_imports(")
         tm.that(content, lacks='("._enforcement_parts",)')

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.constants import c
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from tests.typings import t
 
 
 class TestFlextInfraCodegenLazyInit:
@@ -326,7 +329,8 @@ class TestFlextInfraCodegenLazyInit:
         assert '"""Flext Test Project package."""' in content
 
     def test_resolves_public_export_collision_via_canonical_scorer(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Conflicting exports are resolved deterministically.
 
@@ -428,7 +432,8 @@ class TestFlextInfraCodegenLazyInit:
         assert not (pkg_dir / c.Infra.INIT_PYI).exists()
 
     def test_generates_when_namespace_module_shape_is_invalid(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Namespace enforcement is not part of lazy-init generation."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(

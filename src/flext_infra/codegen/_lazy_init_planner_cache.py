@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import p
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInitPlannerCacheMixin:
@@ -44,7 +45,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
     def _package_init_exports(self, package_name: str) -> frozenset[str]:
         """Return names exported from the package __init__.py."""
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-            package_name
+            package_name,
         )
         if package_dir is None:
             return frozenset()
@@ -55,7 +56,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             self.rope_workspace.exports(
                 init_path,
                 export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_assignments": True
+                    "allow_assignments": True,
                 }),
             ),
         )
@@ -68,7 +69,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         if package_name in self._source_exports_visiting:
             return frozenset()
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-            package_name
+            package_name,
         )
         if package_dir is None:
             return frozenset()

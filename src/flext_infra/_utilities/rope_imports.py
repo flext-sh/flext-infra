@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections import defaultdict
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import rope.contrib.findit as rope_findit
 import rope.refactor.importutils as rope_importutils
@@ -24,12 +24,14 @@ from flext_cli import u
 from flext_core import r
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -102,7 +104,7 @@ class FlextInfraUtilitiesRopeImports:
                     offset,
                     resources=resources,
                     in_hierarchy=in_hierarchy,
-                )
+                ),
             )
         except (
             RefactoringError,
@@ -227,7 +229,7 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(change_list_raw, list):
             return r[bool].fail(
                 "unexpected rope organize_imports result type: "
-                f"{type(changes).__name__}"
+                f"{type(changes).__name__}",
             )
         change_list = tuple(change_list_raw)
         if not change_list:
@@ -287,7 +289,7 @@ class FlextInfraUtilitiesRopeImports:
             )
             if organize_result.failure:
                 return r[bool].fail(
-                    organize_result.error or "rope organize_imports failed"
+                    organize_result.error or "rope organize_imports failed",
                 )
             rope_changed = rope_changed or organize_result.unwrap_or(False)
         normalized_paths = tuple(str(path) for path in existing_paths)
@@ -304,7 +306,7 @@ class FlextInfraUtilitiesRopeImports:
             )
             if restore_result.failure:
                 return r[bool].fail(
-                    restore_result.error or "canonical alias restore failed"
+                    restore_result.error or "canonical alias restore failed",
                 )
             rope_changed = rope_changed or restore_result.unwrap_or(False)
         format_result = u.Cli.run_raw(
@@ -388,7 +390,7 @@ class FlextInfraUtilitiesRopeImports:
             tree = ast.parse(source)
         except SyntaxError as exc:
             return r[frozenset[str]].fail(
-                f"source is not parseable after import cleanup: {exc!s}"
+                f"source is not parseable after import cleanup: {exc!s}",
             )
         for node in ast.walk(tree):
             if isinstance(node, ast.Name) and node.id in alias_set:
@@ -428,7 +430,7 @@ class FlextInfraUtilitiesRopeImports:
             )
             if referenced_aliases_result.failure:
                 return r[bool].fail(
-                    referenced_aliases_result.error or "alias reference scan failed"
+                    referenced_aliases_result.error or "alias reference scan failed",
                 )
             referenced_aliases = referenced_aliases_result.unwrap_or(frozenset())
             current: dict[str, set[str]] = defaultdict(set)
@@ -445,7 +447,7 @@ class FlextInfraUtilitiesRopeImports:
             for module_name, alias_names in entries:
                 missing = sorted(
                     (frozenset(alias_names) & referenced_aliases)
-                    - current.get(module_name, set())
+                    - current.get(module_name, set()),
                 )
                 if not missing:
                     continue
@@ -475,7 +477,7 @@ class FlextInfraUtilitiesRopeImports:
                             break
                 else:
                     module_imports.add_import(
-                        FromImport(module_name, 0, [(name, None) for name in missing])
+                        FromImport(module_name, 0, [(name, None) for name in missing]),
                     )
                     changed = True
             if changed:
@@ -500,7 +502,7 @@ class FlextInfraUtilitiesRopeImports:
         if module_imports is None:
             return ()
         import_statements = FlextInfraUtilitiesRopeImports.import_statements(
-            module_imports
+            module_imports,
         )
         return tuple(
             import_stmt.import_info
@@ -679,7 +681,7 @@ class FlextInfraUtilitiesRopeImports:
     ) -> str | None:
         """Hoist ``from package.sub import alias`` into ``from package import alias``."""
         effective_aliases = aliases or tuple(
-            u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
+            u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES,
         )
         requested_aliases = frozenset(
             alias for alias in effective_aliases if len(alias) == 1 and alias.islower()
@@ -703,7 +705,7 @@ class FlextInfraUtilitiesRopeImports:
                         else None
                     )
                     if from_import is None or not from_import.module_name.startswith(
-                        package_prefix
+                        package_prefix,
                     ):
                         continue
                     kept_pairs: list[tuple[str, str | None]] = []
@@ -725,7 +727,7 @@ class FlextInfraUtilitiesRopeImports:
                             package_name,
                             0,
                             [(name, None) for name in sorted(moved_aliases)],
-                        )
+                        ),
                     )
                     module_imports.remove_duplicates()
                     module_imports.sort_imports()
@@ -753,7 +755,7 @@ class FlextInfraUtilitiesRopeImports:
         if module_imports is None:
             return None
         module_imports.add_import(
-            FromImport(from_module, 0, [(name, None) for name in sorted(names)])
+            FromImport(from_module, 0, [(name, None) for name in sorted(names)]),
         )
         module_imports.remove_duplicates()
         module_imports.sort_imports()
@@ -783,7 +785,7 @@ class FlextInfraUtilitiesRopeImports:
             return None
         changed = False
         import_statements = FlextInfraUtilitiesRopeImports.import_statements(
-            module_imports
+            module_imports,
         )
         for import_stmt in import_statements:
             import_info = import_stmt.import_info

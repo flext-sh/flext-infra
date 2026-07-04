@@ -159,7 +159,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 FlextInfraUtilitiesRopeAnalysis._module_class_infos(
                     pymodule=pymodule,
                     resource=resource,
-                )
+                ),
             ),
             declared_imports=declared_imports,
             semantic_imports=semantic_imports,
@@ -176,7 +176,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         ast_bases_by_class = {
             class_info.name: class_info.bases
             for class_info in FlextInfraUtilitiesRopeAnalysis.class_info_from_source(
-                resource.read()
+                resource.read(),
             )
         }
         for name, pyname in pymodule.get_attributes().items():
@@ -192,7 +192,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 for superclass in obj.get_superclasses()
                 if (
                     base_name := FlextInfraUtilitiesRopeAnalysis._superclass_name(
-                        superclass
+                        superclass,
                     )
                 )
             )
@@ -511,7 +511,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 and name.endswith("__")
                 and isinstance(pyname, RopeAssignedName)
                 and FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource)
-            )
+            ),
         )
 
     @staticmethod
@@ -897,7 +897,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             FlextInfraUtilitiesRopeAnalysis._class_header_source(
                 source,
                 class_name,
-            )
+            ),
         )
 
     @staticmethod
@@ -1085,7 +1085,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         while text and text[0].isalpha() and len(text) > 1 and text[1] in {"'", '"'}:
             text = text[1:]
         if len(
-            text
+            text,
         ) < FlextInfraUtilitiesRopeAnalysis._STRING_LITERAL_MIN_LENGTH or text[
             0
         ] not in {"'", '"'}:
@@ -1540,7 +1540,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         node_kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
         if node_kind == "AnnAssign":
             target_name = FlextInfraUtilitiesRopeAnalysis.name_of(
-                getattr(node, "target", None)
+                getattr(node, "target", None),
             )
             return (target_name,) if target_name else ()
         if node_kind != "Assign":
@@ -1671,7 +1671,8 @@ class FlextInfraUtilitiesRopeAnalysis:
     ) -> t.StrSequence:
         """Return base class names for a given class in a module."""
         for info in FlextInfraUtilitiesRopeAnalysis.get_class_info(
-            rope_project, resource
+            rope_project,
+            resource,
         ):
             if info.name == class_name:
                 return list(info.bases)

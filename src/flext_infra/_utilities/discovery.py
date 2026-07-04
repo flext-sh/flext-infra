@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
@@ -12,8 +12,10 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra.constants import c
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDiscovery:
@@ -63,7 +65,7 @@ class FlextInfraUtilitiesDiscovery:
         if path_parts and path_parts[-1] == c.Infra.INIT_PY:
             return path_parts[:-1]
         if resolved.suffix == c.Infra.EXT_PYTHON and path_parts:
-            return path_parts[:-1] + (resolved.stem,)
+            return (*path_parts[:-1], resolved.stem)
         return path_parts
 
     @staticmethod
@@ -290,7 +292,7 @@ class FlextInfraUtilitiesDiscovery:
                             part.startswith(".") or part in effective_skip
                             for part in path.relative_to(scan_root).parts[:-1]
                         )
-                    )
+                    ),
                 )
         except OSError as exc:
             return r[t.SequenceOf[Path]].fail_op("pyproject file scan", exc)

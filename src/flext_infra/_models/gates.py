@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal
 
 from flext_cli import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsGates:
@@ -41,7 +44,7 @@ class FlextInfraModelsGates:
         gate_mode: Annotated[
             Literal["error", "warn"],
             m.Field(
-                description="Gate failure mode: error fails the pipeline, warn reports only"
+                description="Gate failure mode: error fails the pipeline, warn reports only",
             ),
         ] = "error"
         ruff_args: Annotated[

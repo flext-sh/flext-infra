@@ -9,15 +9,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import m, main, u
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pytest
+
+    from tests.typings import t
 
 
 class TestConstantsQualityGateCLIDispatch:
@@ -107,7 +112,7 @@ class TestConstantsQualityGateVerdict:
                             "file_path": str(
                                 (
                                     tmp_path / "flext-core" / "src" / "sample.py"
-                                ).resolve()
+                                ).resolve(),
                             ),
                             "line": 1,
                             "project": "flext-core",
@@ -116,7 +121,9 @@ class TestConstantsQualityGateVerdict:
                             "name": "SHARED_TIMEOUT",
                             "kind": "constant",
                             "file_path": str(
-                                (tmp_path / "flext-cli" / "src" / "sample.py").resolve()
+                                (
+                                    tmp_path / "flext-cli" / "src" / "sample.py"
+                                ).resolve(),
                             ),
                             "line": 1,
                             "project": "flext-cli",
@@ -125,7 +132,7 @@ class TestConstantsQualityGateVerdict:
                     "canonical": "flext-core",
                     "value_identical": True,
                 },
-            )
+            ),
         })
 
         monkeypatch.setattr(

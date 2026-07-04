@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra._models.deps import FlextInfraModelsDeps
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDependencyPathSync:
@@ -187,19 +191,19 @@ class FlextInfraUtilitiesDependencyPathSync:
             original_rendered = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError:
             return r[m.Infra.PyprojectDocumentState].fail(
-                f"failed to read TOML: {path}"
+                f"failed to read TOML: {path}",
             )
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
             return r[m.Infra.PyprojectDocumentState].fail(
-                f"TOML parse failed for: {path}"
+                f"TOML parse failed for: {path}",
             )
         return r[m.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,
                 original_rendered=original_rendered,
                 payload={key: payload_source[key] for key in payload_source},
-            )
+            ),
         )
 
     @staticmethod
@@ -253,14 +257,14 @@ class FlextInfraUtilitiesDependencyPathSync:
                 internal_names=internal_names,
                 internal_deps=internal_deps,
                 workspace_members=workspace_members,
-            )
+            ),
         )
         changes += list(
             self._rewrite_uv_workspace(
                 payload,
                 is_root=is_root,
                 members=workspace_members,
-            )
+            ),
         )
         changes += list(self._rewrite_poetry(payload, is_root=is_root, mode=mode))
         if changes and (not command.dry_run):

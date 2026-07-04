@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rope.base.exceptions import RopeError
 
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor._census_rules_dispatch import (
     FlextInfraRefactorCensusRulesDispatchMixin,
 )
 from flext_infra.refactor._census_validate import (
     FlextInfraRefactorCensusValidateMixin,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     *FlextInfraConstantsRope.RUNTIME_ERRORS,
@@ -45,7 +48,11 @@ class FlextInfraRefactorCensusCollectMixin(
             convention: m.Infra.RopeModuleConvention,
         ) -> str: ...
         def _handle_rope_stage_failure(
-            self, *, file_path: Path, stage: str, exc: BaseException
+            self,
+            *,
+            file_path: Path,
+            stage: str,
+            exc: BaseException,
         ) -> None: ...
         @staticmethod
         def _include_object(
@@ -98,11 +105,13 @@ class FlextInfraRefactorCensusCollectMixin(
                         module.file_path,
                         include_local_scopes=config.include_local_scopes,
                         include_references=config.include_object_references,
-                    )
+                    ),
                 )
             except _ROPE_SAFE_EXCEPTIONS as exc:
                 self._handle_rope_stage_failure(
-                    file_path=module.file_path, stage="inventory", exc=exc
+                    file_path=module.file_path,
+                    stage="inventory",
+                    exc=exc,
                 )
                 return
             objects = tuple(
@@ -134,7 +143,9 @@ class FlextInfraRefactorCensusCollectMixin(
             )
         except _ROPE_SAFE_EXCEPTIONS as exc:
             self._handle_rope_stage_failure(
-                file_path=module.file_path, stage="rules", exc=exc
+                file_path=module.file_path,
+                stage="rules",
+                exc=exc,
             )
             return
         report_projects.add(project)
@@ -167,7 +178,7 @@ class FlextInfraRefactorCensusCollectMixin(
                 | set(project_objects)
                 | set(project_violations)
                 | set(project_fixes),
-            )
+            ),
         )
         project_reports = tuple(
             self._project_report(

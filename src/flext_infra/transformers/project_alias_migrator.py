@@ -8,7 +8,7 @@ it from the local facade instead of from flext_core.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
@@ -16,7 +16,9 @@ from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 # Map canonical alias -> local facade module suffix inside a FLEXT project.
 _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {
@@ -241,7 +243,8 @@ def _insert_local_imports(
                     insert_pos = idx + 1
                     continue
             if isinstance(body_stmt, cst.Expr) and isinstance(
-                body_stmt.value, cst.SimpleString
+                body_stmt.value,
+                cst.SimpleString,
             ):
                 insert_pos = idx + 1
                 continue

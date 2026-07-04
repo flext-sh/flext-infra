@@ -27,12 +27,13 @@ knew about these nodes:
 
 from __future__ import annotations
 
-import ast  # Why: documented SSOT — this module patches rope internals that take ast.AST nodes as parameters; ast import is intrinsic to the patch's purpose.
 from typing import TYPE_CHECKING, ClassVar
 
 from rope.refactor import patchedast
 
 if TYPE_CHECKING:
+    import ast
+
     from flext_infra import p
 
 
@@ -50,9 +51,9 @@ class FlextInfraUtilitiesRopePep695Patch:
         """Install PEP 695 handlers on rope's ``_PatchingASTWalker`` once."""
         if cls._applied:
             return
-        walker = getattr(patchedast, "_PatchingASTWalker")
-        original_function_def = getattr(walker, "_handle_function_def_node")
-        original_class_def = getattr(walker, "_ClassDef")
+        walker = patchedast._PatchingASTWalker
+        original_function_def = walker._handle_function_def_node
+        original_class_def = walker._ClassDef
 
         def _type_params_children(node: ast.AST) -> list[p.AttributeProbe]:
             """Type params children."""
@@ -194,16 +195,16 @@ class FlextInfraUtilitiesRopePep695Patch:
             """Match or."""
             self._handle(node, self._child_nodes(node.patterns, "|"))
 
-        setattr(walker, "_handle_function_def_node", _patched_function_def)
-        setattr(walker, "_ClassDef", _patched_class_def)
-        setattr(walker, "_TypeAlias", _type_alias)
-        setattr(walker, "_TypeVar", _type_var)
-        setattr(walker, "_ParamSpec", _param_spec)
-        setattr(walker, "_TypeVarTuple", _type_var_tuple)
-        setattr(walker, "_MatchSequence", _match_sequence)
-        setattr(walker, "_MatchSingleton", _match_singleton)
-        setattr(walker, "_MatchStar", _match_star)
-        setattr(walker, "_MatchOr", _match_or)
+        walker._handle_function_def_node = _patched_function_def
+        walker._ClassDef = _patched_class_def
+        walker._TypeAlias = _type_alias
+        walker._TypeVar = _type_var
+        walker._ParamSpec = _param_spec
+        walker._TypeVarTuple = _type_var_tuple
+        walker._MatchSequence = _match_sequence
+        walker._MatchSingleton = _match_singleton
+        walker._MatchStar = _match_star
+        walker._MatchOr = _match_or
         cls._applied = True
 
 

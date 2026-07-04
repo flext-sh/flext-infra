@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests.protocols import p
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.protocols import p
 
 
 class TestsFlextInfraWorkspaceSyncEnvironment:
@@ -179,7 +183,8 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         assert "old" not in envrc_text
 
     def test_environment_sync_skips_workspace_without_pyproject(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
@@ -192,7 +197,8 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         assert not (project_root / ".mise.toml").exists()
 
     def test_environment_sync_removes_generated_files_without_pyproject(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
@@ -213,7 +219,8 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         assert not (project_root / ".mise.toml").exists()
 
     def test_environment_sync_preserves_custom_env_without_pyproject(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()

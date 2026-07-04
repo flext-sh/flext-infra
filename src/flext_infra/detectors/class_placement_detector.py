@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraClassPlacementDetector:
@@ -59,7 +63,7 @@ class FlextInfraClassPlacementDetector:
                     ci=ci,
                     family=family,
                     fixable=single_governed_class,
-                )
+                ),
             )
 
         # 2. Class-level constants outside _constants → classvar_relocation action.
@@ -128,7 +132,7 @@ class FlextInfraClassPlacementDetector:
                         "t",
                     ),
                     family="t",
-                )
+                ),
             )
 
         return violations
@@ -306,7 +310,7 @@ class FlextInfraClassPlacementDetector:
     def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
         """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
         target_name = FlextInfraUtilitiesRopeAnalysis.name_of(
-            getattr(node, "target", None)
+            getattr(node, "target", None),
         )
         if not target_name or target_name.startswith("_"):
             return None
@@ -389,7 +393,7 @@ class FlextInfraClassPlacementDetector:
                 ):
                     continue
                 target_name = FlextInfraUtilitiesRopeAnalysis.name_of(
-                    getattr(node, "target", None)
+                    getattr(node, "target", None),
                 )
                 line = getattr(node, "lineno", 1)
                 if target_name:

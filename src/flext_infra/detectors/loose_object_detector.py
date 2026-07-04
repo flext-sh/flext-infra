@@ -6,8 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import (
     c,
@@ -18,6 +17,10 @@ from flext_infra import (
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 class FlextInfraLooseObjectDetector:
@@ -59,7 +62,7 @@ class FlextInfraLooseObjectDetector:
                 lines=lines,
                 file_str=file_str,
                 class_stem=class_stem,
-            )
+            ),
         )
         logger_keys = {
             (violation.line, violation.name)
@@ -76,7 +79,7 @@ class FlextInfraLooseObjectDetector:
                     name=symbol.name,
                     kind=kind,
                     suggestion=f"{class_stem}{suffix}",
-                )
+                ),
             )
 
         class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
@@ -111,7 +114,7 @@ class FlextInfraLooseObjectDetector:
                 resource=res,
                 file_path=file_path,
                 class_stem=class_stem,
-            )
+            ),
         )
 
         if not violations and not class_symbols:
@@ -127,7 +130,7 @@ class FlextInfraLooseObjectDetector:
                     name=file_path.stem,
                     kind="single_class",
                     suggestion=f"{class_stem}Utilities",
-                )
+                ),
             )
 
         return violations
@@ -218,7 +221,7 @@ class FlextInfraLooseObjectDetector:
                     name=name,
                     kind=kind,
                     suggestion=f"{class_stem}{suffix}",
-                )
+                ),
             )
 
         body = getattr(tree, "body", []) or []

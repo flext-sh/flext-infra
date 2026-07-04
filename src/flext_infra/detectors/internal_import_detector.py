@@ -6,12 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraInternalImportDetector:
@@ -95,7 +99,9 @@ class FlextInfraInternalImportDetector:
     ) -> t.SequenceOf[m.Infra.InternalImportViolation]:
         """Detect private module/symbol imports in a single file."""
         res = u.Infra.fetch_python_resource(
-            ctx.rope_project, ctx.file_path, skip_init_py=True
+            ctx.rope_project,
+            ctx.file_path,
+            skip_init_py=True,
         )
         if res is None:
             return []
@@ -107,7 +113,7 @@ class FlextInfraInternalImportDetector:
         def violates_internal_import(local: str, fqn: str) -> bool:
             _ = local
             private_module = FlextInfraInternalImportDetector._has_private_module_part(
-                fqn
+                fqn,
             )
             private_symbol = FlextInfraInternalImportDetector._is_private_module_part(
                 fqn.rsplit(".", maxsplit=1)[-1],

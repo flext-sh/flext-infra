@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomlkit
 from flext_tests import tm
@@ -14,8 +14,12 @@ from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from tests.models import m
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
 
 
 class TestsFlextInfraDepsModernizerTooling:
@@ -253,7 +257,9 @@ select = ["E501"]
             exist_ok=True,
         )
         _ = project_dir.joinpath(
-            "src", "demo_migration_tool", "__init__.py"
+            "src",
+            "demo_migration_tool",
+            "__init__.py",
         ).write_text(
             "",
             encoding="utf-8",

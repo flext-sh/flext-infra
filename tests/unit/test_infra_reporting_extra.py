@@ -38,7 +38,10 @@ class TestsFlextInfraInfraReportingExtra:
     ) -> None:
         """Test that resolve_report_path returns Path type."""
         result = service.resolve_report_path(
-            tmp_path, "project", "check", "report.json"
+            tmp_path,
+            "project",
+            "check",
+            "report.json",
         )
         assert isinstance(result, Path)
         assert result.is_absolute()

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from importlib.resources import files
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
@@ -15,8 +16,10 @@ from flext_infra._models.deps_tool_config import (
     FlextInfraModelsDepsToolSettings as mdts,
 )
 from flext_infra.constants import c
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesBase:

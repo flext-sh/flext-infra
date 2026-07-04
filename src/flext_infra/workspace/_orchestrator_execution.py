@@ -7,13 +7,16 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraWorkspaceOrchestratorExecutionMixin:
@@ -177,7 +180,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 failed=failed,
                 skipped=skipped,
                 elapsed=elapsed_total,
-            )
+            ),
         )
         if failed > 0:
             failures = self._collect_failures(projects, results)
@@ -226,7 +229,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                     log_path=log_path,
                     error_count=error_count,
                     errors=list(error_lines),
-                )
+                ),
             )
             if error_lines:
                 stderr = "\n".join(error_lines)

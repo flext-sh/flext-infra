@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsMroScan:
@@ -55,7 +57,8 @@ class FlextInfraModelsMroScan:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_alias: Annotated[
-            t.NonEmptyStr, m.Field(description="Family alias letter")
+            t.NonEmptyStr,
+            m.Field(description="Family alias letter"),
         ]
         file_names: Annotated[frozenset[str], m.Field(description="File name patterns")]
         package_directory: Annotated[

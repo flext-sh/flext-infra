@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraModelsCodegenRender:
@@ -15,7 +17,8 @@ class FlextInfraModelsCodegenRender:
         """Template context for standard lazy-init package rendering."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", validate_assignment=True
+            extra="forbid",
+            validate_assignment=True,
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
@@ -66,7 +69,8 @@ class FlextInfraModelsCodegenRender:
         """Template context for thin registry-backed wrappers."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", validate_assignment=True
+            extra="forbid",
+            validate_assignment=True,
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
@@ -167,7 +171,8 @@ class FlextInfraModelsCodegenRender:
             description="Rendered ``__all__`` literal entries for the stub.",
         )
         exports: t.StrSequence = m.Field(
-            default_factory=tuple, description="Published generated exports."
+            default_factory=tuple,
+            description="Published generated exports.",
         )
 
     class LazyInitDirectBootstrapRender(m.ArbitraryTypesModel):

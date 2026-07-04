@@ -10,20 +10,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.validate._pytest_diag_xml import (
     FlextInfraPytestDiagXmlMixin,
     _DiagResult,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
@@ -39,19 +42,23 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         m.Field(description="Pytest log path"),
     ] = m.Field(alias="log")
     failed: Annotated[
-        Path | None, m.Field(description="Path to write failed cases")
+        Path | None,
+        m.Field(description="Path to write failed cases"),
     ] = None
     errors: Annotated[
-        Path | None, m.Field(description="Path to write error traces")
+        Path | None,
+        m.Field(description="Path to write error traces"),
     ] = None
     warnings: Annotated[Path | None, m.Field(description="Path to write warnings")] = (
         None
     )
     slowest: Annotated[
-        Path | None, m.Field(description="Path to write slowest entries")
+        Path | None,
+        m.Field(description="Path to write slowest entries"),
     ] = None
     skips: Annotated[
-        Path | None, m.Field(description="Path to write skipped cases")
+        Path | None,
+        m.Field(description="Path to write skipped cases"),
     ] = None
 
     @staticmethod
@@ -122,7 +129,8 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             return self._extract_diagnostics(junit_path, log_path)
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.PytestDiagnostics].fail_op(
-                "pytest diagnostics extraction", exc
+                "pytest diagnostics extraction",
+                exc,
             )
 
     @staticmethod

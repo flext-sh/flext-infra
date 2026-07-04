@@ -80,7 +80,7 @@ class FlextInfraConstantsDocs:
     INLINE_CODE_RE: Final[t.RegexPattern] = re.compile(r"`[^`]*`")
     """Match inline code spans for stripping before analysis."""
     STRING_LITERAL_RE: Final[t.RegexPattern] = re.compile(
-        r"""["']([a-zA-Z0-9_\.]+)["']"""
+        r"""["']([a-zA-Z0-9_\.]+)["']""",
     )
     """Match quoted string literals, capturing the content."""
 

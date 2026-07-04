@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
@@ -59,7 +62,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 self._write_generated_typing_stub(plan, check_only=check_only)
             except c.EXC_OS_VALUE as exc:
                 u.Cli.error(
-                    f"generating registry stub for {plan.context.pkg_dir}: {exc}"
+                    f"generating registry stub for {plan.context.pkg_dir}: {exc}",
                 )
                 return -1
             return 0
@@ -68,7 +71,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             registry.module,
         )
         registry_rel_module = registry.module.removeprefix(
-            f"{plan.context.current_pkg}."
+            f"{plan.context.current_pkg}.",
         )
         registry_filename = f"{registry_rel_module.replace('.', '/')}.py"
         files = FlextInfraCodegenGeneration.generate_registry_files(

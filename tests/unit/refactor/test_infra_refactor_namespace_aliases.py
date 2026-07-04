@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.detectors.import_alias_detector import FlextInfraImportAliasDetector
 from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
@@ -78,7 +82,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         assert violations == []
 
     def test_namespace_rewriter_only_rewrites_runtime_alias_imports(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         sample_file = tmp_path / "sample.py"
         source = (
@@ -100,7 +105,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         assert rewritten == source
 
     def test_namespace_rewriter_keeps_contextual_alias_subset(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         sample_file = tmp_path / "sample.py"
         source = "from __future__ import annotations\nfrom flext_core import u\n"
@@ -116,7 +122,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         assert rewritten == source
 
     def test_namespace_rewriter_skips_facade_and_subclass_files(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         sample_file = tmp_path / "models.py"
         source = (

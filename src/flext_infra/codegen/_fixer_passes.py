@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -12,8 +13,10 @@ from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 _log = u.fetch_logger(__name__)
 

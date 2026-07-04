@@ -69,7 +69,10 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         return r[bool].ok(True)
 
     def process_file(
-        self, path: Path, *, dry_run: bool = False
+        self,
+        path: Path,
+        *,
+        dry_run: bool = False,
     ) -> p.Result[t.StrSequence]:
         """Process one pyproject.toml file and apply fixes."""
         document_result = u.Cli.toml_read_document(path)

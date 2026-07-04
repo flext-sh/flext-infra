@@ -5,10 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.models import m
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 _log = u.fetch_logger(__name__)
 
@@ -95,7 +97,7 @@ class FlextInfraRefactorCensusValidateMixin:
                             file_path=Path(candidate.file_path),
                             line=candidate.line,
                             description=msg,
-                        )
+                        ),
                     )
                     continue
                 if preview_result.unwrap_or(False):
@@ -108,8 +110,8 @@ class FlextInfraRefactorCensusValidateMixin:
                         "violations_total": len(validated_violations),
                         "removal_candidate_count": len(validated_candidates),
                         "removal_candidates": validated_candidates,
-                    }
-                )
+                    },
+                ),
             )
         return tuple(validated_reports)
 

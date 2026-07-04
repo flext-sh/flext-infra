@@ -7,12 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra._iteration_workspace import FlextInfraUtilitiesIterationWorkspace
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesIterationModules:
@@ -51,7 +54,8 @@ class FlextInfraUtilitiesIterationModules:
             return r[t.SequenceOf[t.Pair[Path, Path]]].ok(result)
         except OSError as exc:
             return r[t.SequenceOf[t.Pair[Path, Path]]].fail_op(
-                "workspace python module iteration", exc
+                "workspace python module iteration",
+                exc,
             )
 
     @staticmethod

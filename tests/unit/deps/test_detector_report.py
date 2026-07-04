@@ -121,7 +121,7 @@ class TestsFlextInfraDepsDetectorReport:
         )
         tm.that(default_output.exists(), eq=True)
         payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
-            tm.ok(u.Cli.json_read(default_output))
+            tm.ok(u.Cli.json_read(default_output)),
         )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
 
@@ -148,7 +148,7 @@ class TestsFlextInfraDepsDetectorReport:
         )
         tm.that(custom_output.exists(), eq=True)
         payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
-            tm.ok(u.Cli.json_read(custom_output))
+            tm.ok(u.Cli.json_read(custom_output)),
         )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
 

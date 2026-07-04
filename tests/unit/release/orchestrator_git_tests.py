@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests.constants import c
 from tests.models import m
 from tests.utilities import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def make_config(
@@ -91,7 +94,8 @@ def test_run_release_creates_branches_for_root_and_selected_project(
 
     assert result.success
     assert git_ref_exists(
-        workspace, f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}"
+        workspace,
+        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
     )
     assert git_ref_exists(
         workspace / "flext-a",
@@ -126,7 +130,8 @@ def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+            cwd=workspace,
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )
@@ -146,7 +151,8 @@ def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
     assert result.success
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+            cwd=workspace,
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )

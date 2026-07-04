@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -13,7 +13,11 @@ from flext_infra.refactor.classvar_constant_autofix import (
 )
 from tests.constants import c
 from tests.models import m
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 class TestsFlextInfraRefactorInfraRefactorClassPlacement:
@@ -533,7 +537,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         assert "from __future__ import annotations" in source_text
         assert "from . import _constants" in source_text
         assert source_text.index(
-            "from __future__ import annotations"
+            "from __future__ import annotations",
         ) < source_text.index(
             "from . import _constants",
         )

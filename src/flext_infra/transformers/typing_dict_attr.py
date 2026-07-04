@@ -7,14 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra.transformers._canonical_t_import import (
     FlextInfraEnsureCanonicalTImportMixin,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorTypingDictAttr(
@@ -56,7 +59,7 @@ class FlextInfraRefactorTypingDictAttr(
             if did_add:
                 self._record_change(
                     "Added canonical t import from "
-                    f"{self._canonical_import_module(self._file_path)}"
+                    f"{self._canonical_import_module(self._file_path)}",
                 )
             updated = added
         return updated, list(self.changes)
@@ -66,7 +69,7 @@ class FlextInfraRefactorTypingDictAttr(
 
         def replacer(_match: re.Match[str]) -> str:
             self._record_change(
-                "Rewrote typing.Dict[...] annotation to t.MappingKV[...]"
+                "Rewrote typing.Dict[...] annotation to t.MappingKV[...]",
             )
             return "t.MappingKV["
 

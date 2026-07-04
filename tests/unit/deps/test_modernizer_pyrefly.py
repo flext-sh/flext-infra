@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import (
     MutableMapping,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomlkit
 from flext_tests import tm
@@ -13,9 +13,13 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:

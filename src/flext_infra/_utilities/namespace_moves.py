@@ -6,6 +6,7 @@ import tokenize
 from collections import defaultdict
 from io import StringIO
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rope.refactor.rename import Rename
 
@@ -25,7 +26,9 @@ from flext_infra.models import m
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:
@@ -43,7 +46,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             return
         with FlextInfraUtilitiesRopeCore.open_project(
             FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
-                py_files=py_files
+                py_files=py_files,
             ),
         ) as rope_project:
             for file_path in py_files:
@@ -79,9 +82,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         aliases=tuple(
                             sorted(
                                 u.read_project_constants(
-                                    "flext-infra"
-                                ).RUNTIME_ALIAS_NAMES
-                            )
+                                    "flext-infra",
+                                ).RUNTIME_ALIAS_NAMES,
+                            ),
                         ),
                         apply=True,
                     )
@@ -111,13 +114,14 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         )
         for violation in violations:
             grouped[Path(violation.file)][
-                violation.current_source, violation.correct_source
+                violation.current_source,
+                violation.correct_source,
             ].add(violation.alias)
         if not grouped:
             return
         workspace_root = (
             FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
-                py_files=tuple(grouped)
+                py_files=tuple(grouped),
             )
         )
         with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as rope_project:
@@ -168,7 +172,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             return
         workspace_root = (
             FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
-                py_files=py_files
+                py_files=py_files,
             )
         )
         with FlextInfraUtilitiesRopeCore.open_project(
@@ -343,7 +347,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         ]
         workspace_root = (
             FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
-                py_files=all_import_files
+                py_files=all_import_files,
             )
             if all_import_files
             else None
@@ -415,7 +419,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             return
         original_source = resource.read()
         backup_path = file_path.with_suffix(
-            file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
+            file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX,
         )
         if not backup_path.exists():
             backup_path.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
@@ -762,7 +766,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         try:
             module_name = ".".join(
-                target_file.relative_to(src_root).with_suffix("").parts
+                target_file.relative_to(src_root).with_suffix("").parts,
             )
         except ValueError:
             return ()
@@ -798,21 +802,21 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             imported_aliases.update(
                 bound
                 for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2)
+                    match.group(2),
                 )
             )
         for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(target_source):
             imported_aliases.update(
                 bound
                 for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2)
+                    match.group(2),
                 )
             )
         missing_aliases = sorted(moved_aliases - imported_aliases)
         if not missing_aliases:
             return ()
         return [
-            f"from {c.Infra.PKG_CORE_UNDERSCORE} import {', '.join(missing_aliases)}"
+            f"from {c.Infra.PKG_CORE_UNDERSCORE} import {', '.join(missing_aliases)}",
         ]
 
     @staticmethod
@@ -872,19 +876,23 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             mappings: t.MutableSequenceOf[t.Triple[str, str, t.VariadicTuple[str]]] = []
             for source, target, names in moves:
                 source_resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project, source
+                    rope_project,
+                    source,
                 )
                 target_resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project, target
+                    rope_project,
+                    target,
                 )
                 if source_resource is None or target_resource is None:
                     continue
                 try:
                     source_module = FlextInfraUtilitiesRopeCore.get_pymodule(
-                        rope_project, source_resource
+                        rope_project,
+                        source_resource,
                     ).get_name()
                     target_module = FlextInfraUtilitiesRopeCore.get_pymodule(
-                        rope_project, target_resource
+                        rope_project,
+                        target_resource,
                     ).get_name()
                 except (
                     *FlextInfraConstantsRope.RUNTIME_ERRORS,
@@ -896,7 +904,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     mappings.append((source_module, target_module, names))
             for py_file in py_files:
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project, py_file
+                    rope_project,
+                    py_file,
                 )
                 if resource is None:
                     continue

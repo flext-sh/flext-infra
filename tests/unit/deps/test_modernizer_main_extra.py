@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from tests.constants import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraDepsModernizerMainExtra:
@@ -145,7 +148,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
 
         tm.that(modernizer.run(), eq=0)
         rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-            encoding="utf-8"
+            encoding="utf-8",
         )
         tm.that(rendered, has='"requests>=2.32.4"')
         tm.that(
@@ -194,7 +197,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         tm.that(modernizer.run(), eq=0)
         tm.that(
             (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-                encoding="utf-8"
+                encoding="utf-8",
             ),
             has='"requests~=2.32.4"',
         )

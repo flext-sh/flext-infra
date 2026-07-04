@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraProjectClassifierFamilyMixin:
@@ -39,7 +42,8 @@ class FlextInfraProjectClassifierFamilyMixin:
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             file_pattern = c.Infra.FAMILY_FILES[family]
             for file_path in u.Infra.iter_matching_files(
-                self._src_path, includes=[file_pattern]
+                self._src_path,
+                includes=[file_pattern],
             ):
                 class_bases, class_names = self._parse_family_file(file_path, suffix)
                 family_bases[family].update(class_bases)

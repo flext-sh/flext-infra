@@ -5,12 +5,15 @@ from __future__ import annotations
 from collections.abc import (
     Mapping,
 )
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesDocsContract:
@@ -48,12 +51,12 @@ class FlextInfraUtilitiesDocsContract:
             "site_url": str(
                 project_urls.get("Documentation")
                 or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL
+                or c.Infra.GITHUB_REPO_URL,
             ).strip(),
             "repo_url": str(
                 project_urls.get("Repository")
                 or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL
+                or c.Infra.GITHUB_REPO_URL,
             ).strip(),
             "exclude_docs": list(exclude_docs),
         })

@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_cli import cli
 from flext_core import r
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor._census_apply import (
     FlextInfraRefactorCensusApplyMixin,
 )
@@ -51,9 +49,14 @@ from flext_infra.refactor._census_symbols import (
 from flext_infra.refactor._census_validate import (
     FlextInfraRefactorCensusValidateMixin,
 )
-from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorCensus(
@@ -93,7 +96,7 @@ class FlextInfraRefactorCensus(
     families: Annotated[
         t.StrSequence | None,
         m.Field(
-            description="Optional namespace-family filters; repeat --families NAME"
+            description="Optional namespace-family filters; repeat --families NAME",
         ),
     ] = None
     include_local_scopes: Annotated[
@@ -197,7 +200,7 @@ class FlextInfraRefactorCensus(
                     rope.reload()
                     report = collect(applied)
         finalized_report = report.model_copy(
-            update={"scan_duration_seconds": time.monotonic() - started}
+            update={"scan_duration_seconds": time.monotonic() - started},
         )
         return finalized_report, impact_map_report
 
@@ -221,7 +224,7 @@ class FlextInfraRefactorCensus(
             )
             if impact_result.failure:
                 return r[m.Infra.Census.WorkspaceReport].fail(
-                    impact_result.error or "impact map write failed"
+                    impact_result.error or "impact map write failed",
                 )
             u.Cli.info(f"Impact map exported to: {self.impact_map_output_path}")
         return r[m.Infra.Census.WorkspaceReport].ok(report)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
@@ -10,8 +10,12 @@ from flext_infra.transformers.nested_class_propagation import (
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.typings import t
 
 
 def _apply_transformer(
@@ -154,7 +158,8 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
         assert text_changes == rope_changes
 
     def test_apply_transformer_to_source_restores_disk_state(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Temporary rope sync must not leak source updates to the real file."""
         file_path = tmp_path / "src" / "demo.py"

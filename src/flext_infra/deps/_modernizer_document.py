@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from flext_infra.deps.phases.ensure_formatting import (
@@ -27,10 +24,16 @@ from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPh
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+    from flext_infra.protocols import p
 
 
 class FlextInfraPyprojectModernizerDocumentMixin:
@@ -73,7 +76,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         return r[str].ok(classifier.classify().project_kind)
 
     def _read_document_state(
-        self, path: Path
+        self,
+        path: Path,
     ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Read one pyproject once and keep one validated plain payload state."""
         read = u.Cli.files_read_text(path)
@@ -91,7 +95,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         except c.ValidationError as exc:
             return r[m.Infra.PyprojectDocumentState].fail_op(
-                "TOML payload validation", exc
+                "TOML payload validation",
+                exc,
             )
         return r[m.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState.model_validate(
@@ -164,7 +169,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                     locked_versions=locked_versions or {},
                     internal_names=internal_names,
                     policy=constraint_policy,
-                )
+                ),
             )
         changes.extend(
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
@@ -185,12 +190,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply_payload(
-                payload
+                payload,
             ),
         )
         changes.extend(
             FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply_payload(
-                payload
+                payload,
             ),
         )
         changes.extend(

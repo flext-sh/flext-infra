@@ -69,7 +69,9 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             return source, list(self.changes)
         updated = source
         for start, end, replacement in sorted(
-            edits, key=operator.itemgetter(0), reverse=True
+            edits,
+            key=operator.itemgetter(0),
+            reverse=True,
         ):
             updated = f"{updated[:start]}{replacement}{updated[end:]}"
         return updated, list(self.changes)
@@ -88,7 +90,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         source = "".join(lines)
         edits: list[tuple[int, int, str]] = []
         for block in self._contiguous_method_blocks(
-            method_chunks=method_chunks, source=source
+            method_chunks=method_chunks,
+            source=source,
         ):
             if len(block) < c.Infra.MIN_METHODS_FOR_REORDER:
                 continue
@@ -183,7 +186,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         if not method_chunks:
             return []
         blocks: list[list[tuple[m.Infra.MethodInfo, int, int, str]]] = [
-            [method_chunks[0]]
+            [method_chunks[0]],
         ]
         for chunk in method_chunks[1:]:
             previous = blocks[-1][-1]

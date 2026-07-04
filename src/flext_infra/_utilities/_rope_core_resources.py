@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rope.base.exceptions import ResourceNotFoundError
-from rope.base.project import Project
 from rope.base.resources import File
 
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra.iteration import FlextInfraUtilitiesIteration
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from rope.base.project import Project
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeCoreResourcesMixin:
@@ -102,7 +106,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         return tuple(
             resource
             for file_path in FlextInfraUtilitiesRopeCoreResourcesMixin.python_file_paths(
-                rope_project
+                rope_project,
             )
             if (
                 resource

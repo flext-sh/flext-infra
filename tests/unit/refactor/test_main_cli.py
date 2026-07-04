@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from rope.base.exceptions import RopeError
@@ -10,10 +10,14 @@ from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests.models import m
-from tests.protocols import p
 from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.protocols import p
 
 
 def _parse_source_ast(source: str) -> object | None:
@@ -642,7 +646,8 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         with pytest.raises(
-            RuntimeError, match=r"census rope inventory failed for .*models.*\.py"
+            RuntimeError,
+            match=r"census rope inventory failed for .*models.*\.py",
         ):
             FlextInfraRefactorCensus(
                 workspace_root=workspace,
@@ -1315,7 +1320,7 @@ class TestsFlextInfraRefactorMainCli:
         assert service_entry["modified"] is True
         assert service_entry["success"] is True
         assert list(_strings(service_entry["changes"])) == [
-            "delete_object_definition: only_for_cleanup (unused)"
+            "delete_object_definition: only_for_cleanup (unused)",
         ]
 
     def test_refactor_census_dry_run_excludes_unsupported_local_unused_object(
@@ -1362,7 +1367,7 @@ class TestsFlextInfraRefactorMainCli:
         assert service_entry["modified"] is True
         assert service_entry["success"] is True
         assert list(_strings(service_entry["changes"])) == [
-            "delete_object_and_test_references: only_for_tests (test_only)"
+            "delete_object_and_test_references: only_for_tests (test_only)",
         ]
         assert test_entry["modified"] is True
         assert test_entry["success"] is True

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 from flext_infra._utilities.mro_scan_catalog import FlextInfraUtilitiesMroScanCatalog
 from flext_infra._utilities.mro_scan_source import FlextInfraUtilitiesMroScanSource
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorMroScan:
@@ -34,7 +38,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             project_names,
         ):
             for file_path in FlextInfraUtilitiesMroScanCatalog.python_files(
-                project_root
+                project_root,
             ):
                 for spec in specs:
                     if not FlextInfraUtilitiesMroScanCatalog.matches_target(

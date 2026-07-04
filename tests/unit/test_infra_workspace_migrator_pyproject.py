@@ -6,14 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import c
-from tests.models import m
-from tests.typings import t
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorPyproject:
@@ -34,7 +38,9 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
 
     def test_flext_core_dry_run(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path, name="flext-core", base_mk="base"
+            tmp_path,
+            name="flext-core",
+            base_mk="base",
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root, "flext-core"),
@@ -72,7 +78,9 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
 
     def test_poetry_table_missing(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", pyproject="[tool]\n"
+            tmp_path,
+            base_mk="base",
+            pyproject="[tool]\n",
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -108,7 +116,9 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
 
     def test_makefile_not_found(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", makefile=None
+            tmp_path,
+            base_mk="base",
+            makefile=None,
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -128,7 +138,9 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
 
     def test_pyproject_not_found(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", pyproject=None
+            tmp_path,
+            base_mk="base",
+            pyproject=None,
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),

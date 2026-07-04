@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import os
-from collections.abc import (
-    Generator,
-)
 from contextlib import contextmanager
-from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Generator,
+    )
+    from pathlib import Path
 
 _REPO_URL: Final[str] = "https://github.com/flext-sh/flext.git"
 
@@ -106,7 +108,8 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         assert wrong_link.resolve() == source.resolve()
 
     def test_ensure_symlink_fails_when_parent_path_is_a_file(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = tmp_path / "source"
         source.mkdir()
@@ -121,7 +124,8 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         assert result.failure
 
     def test_ensure_checkout_clones_with_local_github_rewrite(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = create_git_repo(tmp_path, "source")
         remotes = tmp_path / "remotes"
@@ -141,7 +145,8 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         assert (dep_path / ".git").exists()
 
     def test_ensure_checkout_existing_repo_fetches_and_checks_out(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = create_git_repo(tmp_path, "source")
         remote_repo = create_bare_remote(source, tmp_path / "remotes", "origin.git")
@@ -157,20 +162,24 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         assert result.success
 
     def test_ensure_checkout_rejects_invalid_repo_url_and_ref(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         service = FlextInfraInternalDependencySyncService()
 
         invalid_repo = service.ensure_checkout(tmp_path / "dep-a", "not-a-url", "main")
         invalid_ref = service.ensure_checkout(
-            tmp_path / "dep-b", _REPO_URL, "invalid@ref!"
+            tmp_path / "dep-b",
+            _REPO_URL,
+            "invalid@ref!",
         )
 
         assert invalid_repo.failure
         assert invalid_ref.failure
 
     def test_ensure_checkout_fails_when_fetch_cannot_reach_origin(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         dep_path = create_git_repo(tmp_path, "dep")
 
@@ -183,7 +192,8 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         assert result.failure
 
     def test_ensure_checkout_fails_when_requested_ref_is_missing(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         source = create_git_repo(tmp_path, "source")
         remote_repo = create_bare_remote(source, tmp_path / "remotes", "origin.git")

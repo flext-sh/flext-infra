@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraDepsInternalSyncResolve:
@@ -95,7 +98,8 @@ class TestsFlextInfraDepsInternalSyncResolve:
         assert result == "flext-sh"
 
     def test_infer_owner_from_origin_returns_none_without_remote(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         repo = self.create_git_repo(tmp_path, "repo")
 

@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import difflib
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.constants import c
+    from flext_infra.protocols import p
+    from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
+    from flext_infra.typings import t
 
 
 class FlextInfraRefactorOrchestratorDispatchMixin:
@@ -138,7 +141,8 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         return 0
 
     def _collect_files(
-        self, args: p.Infra.RefactorCliArgs
+        self,
+        args: p.Infra.RefactorCliArgs,
     ) -> t.MutableSequenceOf[Path] | None:
         """Collect files."""
         result: t.MutableSequenceOf[Path] | None
@@ -155,7 +159,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
                     self.loader.settings,
                     args.workspace,
                     pattern=args.pattern,
-                )
+                ),
             )
         elif args.file:
             if not args.file.exists():
@@ -177,7 +181,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
                     args.project,
                     dry_run=args.dry_run,
                     pattern=args.pattern,
-                )
+                ),
             )
         elif args.workspace:
             results = list(
@@ -185,7 +189,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
                     args.workspace,
                     dry_run=args.dry_run,
                     pattern=args.pattern,
-                )
+                ),
             )
         elif args.file:
             if not args.file.exists():

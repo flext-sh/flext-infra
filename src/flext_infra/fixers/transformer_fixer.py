@@ -8,16 +8,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.constants import c
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.transformers.base import FlextInfraRopeTransformer
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
@@ -42,8 +38,14 @@ from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_infra.models import m
+    from flext_infra.protocols import p
+    from flext_infra.transformers.base import FlextInfraRopeTransformer
+    from flext_infra.typings import t
 
 
 class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):

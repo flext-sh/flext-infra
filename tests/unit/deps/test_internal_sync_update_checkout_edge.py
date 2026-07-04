@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge:

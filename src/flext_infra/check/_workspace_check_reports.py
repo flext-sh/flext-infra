@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraWorkspaceCheckReportsMixin:
@@ -73,7 +77,8 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     rules_by_id.setdefault(
                         rule_id,
                         m.Infra.SarifRule(
-                            id=rule_id, short_description=f"{gate} issue"
+                            id=rule_id,
+                            short_description=f"{gate} issue",
                         ),
                     )
                     sarif_results.append(
@@ -88,9 +93,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
                                     uri=issue.file,
                                     start_line=issue.line,
                                     start_column=issue.column,
-                                )
+                                ),
                             ],
-                        )
+                        ),
                     )
         return m.Infra.SarifReport(
             runs=(
@@ -134,7 +139,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
             u.Infra.export_pydantic_json(sarif_report, sarif_path)
         except OSError as exc:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                f"failed to write sarif report: {exc}"
+                f"failed to write sarif report: {exc}",
             )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed
@@ -146,7 +151,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 failed=outcome.failed,
                 skipped=outcome.skipped,
                 elapsed=outcome.total_elapsed,
-            )
+            ),
         )
         u.Cli.info(f"Reports: {md_path}")
         u.Cli.info(f"         {sarif_path}")

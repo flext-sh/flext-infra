@@ -7,12 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsExtendedProjectRunners:
@@ -44,7 +47,9 @@ class TestsExtendedProjectRunners:
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(
-        self, gate_method: str, tmp_path: Path
+        self,
+        gate_method: str,
+        tmp_path: Path,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)

@@ -10,15 +10,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
 from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
@@ -36,7 +38,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
         ),
     ]
     _table_cache: dict[t.StrSequence, t.Cli.TomlTable] = u.PrivateAttr(
-        default_factory=dict
+        default_factory=dict,
     )
 
     @classmethod
@@ -109,7 +111,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
                     payload,
                     nested,
                     parent_path=phase_path,
-                )
+                ),
             )
         return out
 

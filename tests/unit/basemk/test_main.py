@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import main as infra_main
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def basemk_main(argv: list[str]) -> int:
@@ -28,7 +31,8 @@ class TestsFlextInfraBasemkMain:
         assert output_file.read_text(encoding="utf-8")
 
     def test_basemk_main_with_project_name_overrides_output(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         output_file = tmp_path / "base.mk"
 

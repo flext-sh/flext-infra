@@ -4,15 +4,17 @@ from collections.abc import (
     Sequence,
 )
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_tests import tm
 
 from flext_infra import r
-from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from tests.protocols import p
 from tests.typings import t
 from tests.utilities import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 
 
 class _ReportStub:
