@@ -120,7 +120,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
         )
 
         pyrefly = tool["pyrefly"]
@@ -153,7 +153,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
         )
 
         pyrefly = tool["pyrefly"]
@@ -204,7 +204,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=True,
             project_dir=tmp_path,
-            paths_manager=FlextInfraExtraPathsManager(workspace=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
         )
 
         pyrefly = tool["pyrefly"]
