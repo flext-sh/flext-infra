@@ -260,7 +260,6 @@ use-ignore-files = false
 
 [tool.pyrefly.errors]
 abstract-method-call = false
-annotation-mismatch = "error"
 bad-argument-count = "error"
 bad-argument-type = "error"
 bad-assignment = "error"

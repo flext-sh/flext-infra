@@ -239,6 +239,26 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         assert included_file in result.value
         assert skipped_file not in result.value
 
+    def test_find_all_pyproject_files_skips_hidden_agent_worktrees(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Hidden agent worktrees are not managed workspace projects."""
+        included = tmp_path / "project"
+        hidden = tmp_path / ".claude" / "worktrees" / "agent" / "project"
+        included.mkdir()
+        hidden.mkdir(parents=True)
+        included_file = included / c.Infra.PYPROJECT_FILENAME
+        hidden_file = hidden / c.Infra.PYPROJECT_FILENAME
+        included_file.write_text("[project]\nname='ok'\n", encoding="utf-8")
+        hidden_file.write_text("[project]\nname='hidden'\n", encoding="utf-8")
+
+        result = u.Infra.find_all_pyproject_files(tmp_path)
+
+        assert result.success
+        assert included_file in result.value
+        assert hidden_file not in result.value
+
     def test_find_all_pyproject_files_includes_external_workspace_siblings(
         self,
         tmp_path: Path,

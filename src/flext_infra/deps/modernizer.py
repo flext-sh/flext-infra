@@ -87,7 +87,7 @@ class FlextInfraPyprojectModernizer(
         """Create the extra-paths manager only when a phase actually needs it."""
         if self._paths_manager is None:
             self._paths_manager = FlextInfraExtraPathsManager(
-                workspace=self.root,
+                workspace_root=self.root,
             )
         return self._paths_manager
 

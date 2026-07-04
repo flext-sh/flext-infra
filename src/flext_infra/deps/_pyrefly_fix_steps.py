@@ -48,7 +48,7 @@ class FlextInfraConfigFixerSteps:
             path_item for path_item in current_paths if isinstance(path_item, str)
         ]
         expected_search = FlextInfraExtraPathsManager(
-            workspace=self._workspace_root
+            workspace_root=self._workspace_root
         ).pyrefly_search_paths(
             project_dir=project_dir,
             is_root=is_root,
@@ -79,7 +79,7 @@ class FlextInfraConfigFixerSteps:
             path_item for path_item in current_items if isinstance(path_item, str)
         ]
         expected_includes = FlextInfraExtraPathsManager(
-            workspace=self._workspace_root
+            workspace_root=self._workspace_root
         ).pyrefly_project_includes(
             project_dir=project_dir,
             is_root=is_root,

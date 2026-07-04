@@ -287,7 +287,7 @@ class FlextInfraUtilitiesDiscovery:
                         path
                         for path in scan_root.rglob(c.Infra.PYPROJECT_FILENAME)
                         if not any(
-                            part in effective_skip
+                            part.startswith(".") or part in effective_skip
                             for part in path.relative_to(scan_root).parts[:-1]
                         )
                     )

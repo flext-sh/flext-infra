@@ -17,7 +17,7 @@ from tests.utilities import u
 
 
 def _extra_paths_manager(workspace_root: Path) -> FlextInfraExtraPathsManager:
-    return FlextInfraExtraPathsManager(workspace=workspace_root)
+    return FlextInfraExtraPathsManager(workspace_root=workspace_root)
 
 
 class TestConfigFixerProcessFile:
