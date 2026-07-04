@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, Self, override
+from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import cli, p as cli_p, u as cli_u
 from flext_core import s
@@ -11,10 +11,8 @@ from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.typings import t
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
 
 
 class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
@@ -179,6 +177,8 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         """Execute the validated CLI service instance directly."""
         return params.execute()
 
+
+FlextInfraServiceBase.model_rebuild()
 
 s = FlextInfraServiceBase
 
