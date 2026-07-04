@@ -139,12 +139,6 @@ class FlextInfraCodegenLazyInitPlanner(
             and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
-        if is_public_project_root:
-            self._promote_public_root_eager_aliases(
-                current_pkg=context.current_pkg,
-                lazy_map=lazy_map,
-                eager_imports=eager_dunders,
-            )
         export_names = {*lazy_map, *eager_dunders}
         if is_public_project_root:
             export_names, lazy_map, child_lazy, excluded_lazy_names = (

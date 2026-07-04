@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from flext_infra.fixers.gate_fixer import (
         FlextInfraGateFixerAdapter as FlextInfraGateFixerAdapter,
     )
+    from flext_infra.fixers.manual_fixer import (
+        FlextInfraManualFixerAdapter as FlextInfraManualFixerAdapter,
+    )
     from flext_infra.fixers.orchestrator import (
         FlextInfraEnforcementFixerOrchestrator as FlextInfraEnforcementFixerOrchestrator,
     )
@@ -28,6 +31,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".base": ("FlextInfraFixerAdapter",),
         ".gate_fixer": ("FlextInfraGateFixerAdapter",),
+        ".manual_fixer": ("FlextInfraManualFixerAdapter",),
         ".orchestrator": ("FlextInfraEnforcementFixerOrchestrator",),
         ".result": ("FlextInfraFixersResult",),
         ".rope_fixer": ("FlextInfraRopeFixerAdapter",),

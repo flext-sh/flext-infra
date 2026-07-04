@@ -19,6 +19,8 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",
             "TestsFlextInfraTransformersPattern",
+            "TestsFlextInfraTransformersPatternList",
+            "TestsFlextInfraTransformersPatternStructlog",
             "TestsFlextInfraTransformersTypingDictAttr",
             "TestsFlextInfraTransformersTypingDictImport",
             "TestsFlextInfraTransformersTypingUnifier",

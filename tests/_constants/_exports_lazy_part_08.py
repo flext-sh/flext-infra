@@ -28,22 +28,26 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
             "real_workspace",
             "rope_workspace",
             "services_resource",
-            "tool_config_document",
         ),
         ".unit.fixtures_git": ("real_git_repo",),
+        ".unit.workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
+        ".unit.workspace.test_makefile_dry_run": (
+            "TestsFlextInfraWorkspaceMakefileDryRun",
+        ),
+        ".unit.workspace.test_makefile_generator": (
+            "TestsFlextInfraWorkspaceMakefileGenerator",
+        ),
+        ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
         ".unit.workspace.test_sync_environment": (
             "TestsFlextInfraWorkspaceSyncEnvironment",
         ),
+        ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         "flext_tests": (
             "d",
             "e",
             "h",
             "r",
             "td",
-            "tf",
-            "tk",
-            "tm",
-            "tv",
         ),
     },
 )

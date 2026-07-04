@@ -7,6 +7,10 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        ".test_declarative_enforcement": (
+            "TestsFlextInfraRefactorDeclarativeEnforcement",
+            "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
+        ),
         ".test_infra_refactor_census_preview_cache": (
             "TestsFlextInfraRefactorCensusPreviewCache",
         ),
@@ -33,6 +37,9 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".test_infra_refactor_mro_import_rewriter": (
             "test_infra_refactor_mro_import_rewriter",
+        ),
+        ".test_infra_refactor_mro_shape": (
+            "TestsFlextInfraRefactorInfraRefactorMroShape",
         ),
         ".test_infra_refactor_namespace_aliases": (
             "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",

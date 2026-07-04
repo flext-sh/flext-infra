@@ -910,6 +910,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         ctx: m.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Move class-level constants to canonical _constants modules."""
+        rule_id = self._rule_id(violations)
         fixed: list[fr.FixedViolation] = []
         previewed: list[fr.PreviewedViolation] = []
         skipped: list[fr.SkippedViolation] = []
@@ -923,7 +924,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if not file_path.is_file():
                     skipped.append(
                         fr.SkippedViolation(
-                            rule_id="ENFORCE-079",
+                            rule_id=rule_id,
                             file_path=file_path_str,
                             reason="file not found",
                         ),
@@ -942,7 +943,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 except c.EXC_BROAD_RUNTIME:
                     failed.append(
                         fr.FailedFix(
-                            rule_id="ENFORCE-079",
+                            rule_id=rule_id,
                             file_path=file_path_str,
                             error="detector raised runtime error",
                         ),
@@ -960,7 +961,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if not module_name:
                     skipped.append(
                         fr.SkippedViolation(
-                            rule_id="ENFORCE-079",
+                            rule_id=rule_id,
                             file_path=file_path_str,
                             reason="could not resolve module name",
                         ),
@@ -974,7 +975,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if not constants_module:
                     failed.append(
                         fr.FailedFix(
-                            rule_id="ENFORCE-079",
+                            rule_id=rule_id,
                             file_path=file_path_str,
                             error=(
                                 "could not resolve canonical constants module "
@@ -996,7 +997,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     except c.EXC_BROAD_RUNTIME as exc:
                         failed.append(
                             fr.FailedFix(
-                                rule_id="ENFORCE-079",
+                                rule_id=rule_id,
                                 file_path=file_path_str,
                                 error=f"autofix failed: {exc}",
                             ),
@@ -1006,7 +1007,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     if not isinstance(touched_raw, (list, tuple)):
                         failed.append(
                             fr.FailedFix(
-                                rule_id="ENFORCE-079",
+                                rule_id=rule_id,
                                 file_path=file_path_str,
                                 error="autofix returned invalid touched_files",
                             ),
@@ -1023,7 +1024,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     if ctx.apply:
                         fixed.append(
                             fr.FixedViolation(
-                                rule_id="ENFORCE-079",
+                                rule_id=rule_id,
                                 file_path=file_path_str,
                                 message=message,
                             ),
@@ -1031,7 +1032,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     else:
                         previewed.append(
                             fr.PreviewedViolation(
-                                rule_id="ENFORCE-079",
+                                rule_id=rule_id,
                                 file_path=file_path_str,
                                 message=message,
                             ),

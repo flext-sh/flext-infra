@@ -7,14 +7,19 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
-        "._utilities.test_discovery_consolidated": (
-            "TestsFlextInfraUtilitiesdiscoveryconsolidated",
-        ),
-        "._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
-        "._utilities.test_protected_edit": ("TestsFlextInfraUtilitiesProtectedEdit",),
         "._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
-        "._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
-        "._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
+        ".refactor.test_infra_refactor_namespace_moves": (
+            "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
+        ),
+        ".refactor.test_infra_refactor_pattern_corrections": (
+            "TestsFlextInfraRefactorInfraRefactorPatternCorrections",
+        ),
+        ".refactor.test_infra_refactor_policy_family_rules": (
+            "TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules",
+        ),
+        ".refactor.test_infra_refactor_project_classifier": (
+            "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
+        ),
         ".refactor.test_infra_refactor_safety": (
             "TestsFlextInfraRefactorInfraRefactorSafety",
         ),
@@ -40,6 +45,8 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
             "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",
             "TestsFlextInfraTransformersPattern",
+            "TestsFlextInfraTransformersPatternList",
+            "TestsFlextInfraTransformersPatternStructlog",
             "TestsFlextInfraTransformersTypingDictAttr",
             "TestsFlextInfraTransformersTypingDictImport",
             "TestsFlextInfraTransformersTypingUnifier",

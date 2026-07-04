@@ -7,17 +7,22 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
-        ".base": ("TestsFlextInfraServiceBase",),
         ".models": ("TestsFlextInfraModels",),
         ".protocols": ("TestsFlextInfraProtocols",),
         ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
         ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
-        ".unit._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
         ".unit.codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
         ".unit.codegen.lazy_init_transforms_tests": (
             "TestsFlextInfraLazyInitTransforms",
         ),
         ".unit.deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
+        ".unit.detectors.test_pattern_smell_detector": (
+            "TestsFlextInfraPatternSmellDetector",
+        ),
+        ".unit.refactor.test_declarative_enforcement": (
+            "TestsFlextInfraRefactorDeclarativeEnforcement",
+            "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
+        ),
         ".unit.refactor.test_infra_refactor_census_preview_cache": (
             "TestsFlextInfraRefactorCensusPreviewCache",
         ),
@@ -41,6 +46,9 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ),
         ".unit.refactor.test_infra_refactor_mro_completeness": (
             "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
+        ),
+        ".unit.refactor.test_infra_refactor_mro_shape": (
+            "TestsFlextInfraRefactorInfraRefactorMroShape",
         ),
         ".unit.refactor.test_infra_refactor_namespace_aliases": (
             "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
@@ -72,8 +80,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ".unit.refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
         ".unit.release.test_release_dag": ("TestsFlextInfraReleaseDag",),
         ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
-        ".unit.test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
-        ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
         ".unit.transformers.test_project_alias_migrator": (
             "TestsFlextInfraRefactorProjectAliasMigrator",
         ),

@@ -22,25 +22,32 @@ from tests.typings import t
 from tests.utilities import u
 
 
-def test_public_root_keeps_flext_core_aliases_lazy() -> None:
-    """Public root generation must not eager-load flext_core aliases."""
-    lazy_map: t.MutableLazyAliasMap = {
-        "r": ("flext_core", "r"),
-        "u": ("flext_core", "u"),
-        "tc": ("flext_tests", "tc"),
+def test_public_root_keeps_inherited_aliases_lazy() -> None:
+    """Public root generation must not eager-load inherited aliases."""
+    exports = ("FlextDemo", "d", "r")
+    filtered = {
+        "FlextDemo": ("flext_demo.api", "FlextDemo"),
+        "d": ("flext_cli", "d"),
+        "r": ("flext_cli", "r"),
     }
-    eager_imports: t.MutableLazyAliasMap = {}
 
-    FlextInfraCodegenLazyInitPlanner._promote_public_root_eager_aliases(
-        current_pkg="flext_cli",
-        lazy_map=lazy_map,
-        eager_imports=eager_imports,
+    content = FlextInfraCodegenGeneration.generate_file(
+        exports,
+        filtered,
+        {},
+        "flext_demo",
     )
+    lines = content.splitlines()
 
-    assert lazy_map["r"] == ("flext_core", "r")
-    assert lazy_map["u"] == ("flext_core", "u")
-    assert "tc" not in lazy_map
-    assert eager_imports == {"tc": ("flext_tests", "tc")}
+    assert "from typing import TYPE_CHECKING" in content
+    assert "    from flext_cli import d as d, r as r" in content
+    assert "from flext_cli import d, r" not in lines
+    assert '"flext_cli": (' in content
+    assert '            "d",' in content
+    assert '            "r",' in content
+    assert "_EAGER_EXPORTS" not in content
+    assert "    d," not in content
+    assert "    r," not in content
 
 
 class TestGenerateTypeChecking:

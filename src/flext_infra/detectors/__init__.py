@@ -44,6 +44,9 @@ if TYPE_CHECKING:
     from flext_infra.detectors.mro_completeness_detector import (
         FlextInfraMROCompletenessDetector as FlextInfraMROCompletenessDetector,
     )
+    from flext_infra.detectors.mro_shape_detector import (
+        FlextInfraMROShapeDetector as FlextInfraMROShapeDetector,
+    )
     from flext_infra.detectors.namespace_source_detector import (
         FlextInfraNamespaceSourceDetector as FlextInfraNamespaceSourceDetector,
     )
@@ -73,6 +76,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
         ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
         ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
+        ".mro_shape_detector": ("FlextInfraMROShapeDetector",),
         ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
         ".pattern_smell_detector": ("FlextInfraPatternSmellDetector",),
         ".private_import_bypass_detector": ("FlextInfraPrivateImportBypassDetector",),

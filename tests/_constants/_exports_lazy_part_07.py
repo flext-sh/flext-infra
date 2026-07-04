@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
+        ".base": ("TestsFlextInfraServiceBase",),
         ".settings": ("TestsFlextInfraSettings",),
         ".typings": ("TestsFlextInfraTypes",),
         ".unit._utilities.test_discovery_consolidated": (
@@ -16,9 +17,12 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".unit._utilities.test_protected_edit": (
             "TestsFlextInfraUtilitiesProtectedEdit",
         ),
+        ".unit._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
         ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
+        ".unit.test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
+        ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
         ".unit.transformers.test_infra_transformer_class_nesting": (
             "TestsFlextInfraTransformersInfraTransformerClassNesting",
         ),
@@ -31,6 +35,8 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "TestsFlextInfraTransformersHardcodedVersion",
             "TestsFlextInfraTransformersOpenEncoding",
             "TestsFlextInfraTransformersPattern",
+            "TestsFlextInfraTransformersPatternList",
+            "TestsFlextInfraTransformersPatternStructlog",
             "TestsFlextInfraTransformersTypingDictAttr",
             "TestsFlextInfraTransformersTypingDictImport",
             "TestsFlextInfraTransformersTypingUnifier",
@@ -56,15 +62,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".unit.transformers.test_infra_transformer_tests_modernizer": (
             "TestsFlextInfraTransformersTestsModernizer",
         ),
-        ".unit.workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
-        ".unit.workspace.test_makefile_dry_run": (
-            "TestsFlextInfraWorkspaceMakefileDryRun",
-        ),
-        ".unit.workspace.test_makefile_generator": (
-            "TestsFlextInfraWorkspaceMakefileGenerator",
-        ),
-        ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
-        ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         ".utilities": ("TestsFlextInfraUtilities",),
     },
 )

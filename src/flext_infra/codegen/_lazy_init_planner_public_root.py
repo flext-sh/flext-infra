@@ -53,25 +53,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             dir_exports: t.MappingKV[str, t.LazyAliasMap],
         ) -> frozenset[str]: ...
 
-    @staticmethod
-    def _promote_public_root_eager_aliases(
-        *,
-        current_pkg: str,
-        lazy_map: t.MutableLazyAliasMap,
-        eager_imports: t.MutableLazyAliasMap,
-    ) -> None:
-        """Promote inherited root aliases to eager imports for reentrant loads."""
-        current_prefix = f"{current_pkg}."
-        for name, target in tuple(lazy_map.items()):
-            module_path = target[0]
-            if (
-                name in c.Infra.ALIAS_NAMES
-                and module_path not in {current_pkg, c.Infra.PKG_CORE_UNDERSCORE}
-                and not module_path.startswith(current_prefix)
-            ):
-                eager_imports[name] = target
-                lazy_map.pop(name, None)
-
     def _filter_public_root_exports(
         self,
         *,

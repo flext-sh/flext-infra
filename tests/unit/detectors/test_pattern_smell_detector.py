@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra.detectors.pattern_smell_detector import FlextInfraPatternSmellDetector
 from tests.models import m
 from tests.typings import t
-
-from flext_infra.detectors.pattern_smell_detector import FlextInfraPatternSmellDetector
 
 
 class TestsFlextInfraPatternSmellDetector:

@@ -10,8 +10,15 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
         ".codegen.lazy_init_transforms_tests": ("TestsFlextInfraLazyInitTransforms",),
         ".deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
+        ".detectors.test_pattern_smell_detector": (
+            "TestsFlextInfraPatternSmellDetector",
+        ),
         ".io.test_infra_terminal_detection": (
             "TestsFlextInfraIoInfraTerminalDetection",
+        ),
+        ".refactor.test_declarative_enforcement": (
+            "TestsFlextInfraRefactorDeclarativeEnforcement",
+            "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
         ),
         ".refactor.test_infra_refactor_census_preview_cache": (
             "TestsFlextInfraRefactorCensusPreviewCache",
@@ -37,23 +44,14 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".refactor.test_infra_refactor_mro_completeness": (
             "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
         ),
+        ".refactor.test_infra_refactor_mro_shape": (
+            "TestsFlextInfraRefactorInfraRefactorMroShape",
+        ),
         ".refactor.test_infra_refactor_namespace_aliases": (
             "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
         ),
         ".refactor.test_infra_refactor_namespace_enforcer": (
             "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
-        ),
-        ".refactor.test_infra_refactor_namespace_moves": (
-            "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
-        ),
-        ".refactor.test_infra_refactor_pattern_corrections": (
-            "TestsFlextInfraRefactorInfraRefactorPatternCorrections",
-        ),
-        ".refactor.test_infra_refactor_policy_family_rules": (
-            "TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules",
-        ),
-        ".refactor.test_infra_refactor_project_classifier": (
-            "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
         ),
         ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
         ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),

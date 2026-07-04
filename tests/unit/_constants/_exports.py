@@ -49,6 +49,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS = merge_lazy_imports(
         ".codegen",
         ".container",
         ".deps",
+        ".detectors",
         ".discovery",
         ".docs",
         ".github",
