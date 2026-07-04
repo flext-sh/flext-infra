@@ -253,8 +253,8 @@ class FlextInfraModelsNamespaceEnforcer:
         target_name: Annotated[t.NonEmptyStr, m.Field(description="Target name")]
         module_name: Annotated[
             str,
-            m.Field(default="", description="Source module for import-kind violations"),
-        ]
+            m.Field(description="Source module for import-kind violations"),
+        ] = ""
 
     class ParseFailureViolation(
         mm.FilePathMixin,
@@ -455,17 +455,15 @@ class FlextInfraModelsNamespaceEnforcer:
         inline_import_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.InlineImportViolation],
             m.Field(
-                default_factory=tuple,
                 description="Inline/lazy import violations collected for the project.",
             ),
-        ]
+        ] = ()
         silent_failure_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.SilentFailureViolation],
             m.Field(
-                default_factory=tuple,
                 description="Silent-failure violations collected for the project.",
             ),
-        ]
+        ] = ()
         parse_failures: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ParseFailureViolation],
             m.Field(

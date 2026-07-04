@@ -101,11 +101,8 @@ class FlextInfraModelsCheck:
 
         rules: Annotated[
             t.StrSequence,
-            m.Field(
-                default_factory=tuple,
-                description="Comma-separated enforcement rule IDs to fix",
-            ),
-        ]
+            m.Field(description="Comma-separated enforcement rule IDs to fix"),
+        ] = ()
         safe_only: Annotated[
             bool,
             m.Field(

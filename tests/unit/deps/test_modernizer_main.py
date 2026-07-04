@@ -18,7 +18,7 @@ class TestsFlextInfraDepsModernizerMain:
         self,
         modernizer_workspace: Path,
     ) -> None:
-        modernizer = FlextInfraPyprojectModernizer(workspace=modernizer_workspace)
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
         tm.that(modernizer.root, eq=modernizer_workspace)
 
     def test_process_file_returns_invalid_toml(
@@ -28,7 +28,7 @@ class TestsFlextInfraDepsModernizerMain:
         pyproject = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
         pyproject.write_text("invalid [[[", encoding="utf-8")
         changes = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
         ).process_file(
             pyproject,
             canonical_dev=[],
@@ -42,7 +42,7 @@ class TestsFlextInfraDepsModernizerMain:
         modernizer_workspace: Path,
     ) -> None:
         modernizer = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
             apply_changes=True,
             skip_comments=True,
             skip_check=True,
@@ -61,7 +61,7 @@ class TestsFlextInfraDepsModernizerMain:
         modernizer_workspace: Path,
     ) -> None:
         modernizer = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
             selected_projects=["missing-project"],
         )
         tm.that(modernizer.run(), eq=2)

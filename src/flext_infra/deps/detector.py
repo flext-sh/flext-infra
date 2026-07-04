@@ -49,19 +49,17 @@ class FlextInfraRuntimeDevDependencyDetector(
     deps: Annotated[
         p.Infra.DepsService,
         m.Field(
-            default_factory=FlextInfraDependencyDetectionService,
             exclude=True,
             description="Dependency analysis service",
         ),
-    ]
+    ] = m.Field(default_factory=FlextInfraDependencyDetectionService)
     runner: Annotated[
         p.Infra.RunnerService,
         m.Field(
-            default_factory=lambda: u.Cli,
             exclude=True,
             description="Command runner for follow-up operations",
         ),
-    ]
+    ] = m.Field(default_factory=lambda: u.Cli)
 
     @property
     def output_path(self) -> Path | None:

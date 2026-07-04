@@ -36,8 +36,8 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     junit: Annotated[Path, m.Field(description="JUnit XML path")]
     log_path: Annotated[
         Path,
-        m.Field(alias="log", description="Pytest log path"),
-    ]
+        m.Field(description="Pytest log path"),
+    ] = m.Field(alias="log")
     failed: Annotated[
         Path | None, m.Field(description="Path to write failed cases")
     ] = None

@@ -73,7 +73,7 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
             if not needs_sync:
                 continue
             sync_result = FlextInfraSyncService(
-                workspace=project_root,
+                workspace_root=project_root,
                 canonical_root=workspace_root,
                 apply_changes=True,
             ).execute()

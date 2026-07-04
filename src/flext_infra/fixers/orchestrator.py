@@ -585,21 +585,6 @@ class FlextInfraEnforcementFixerOrchestrator(
                     probes.extend((rule, probe) for probe in detected)
         return probes, failures
 
-    def _collect_stub_file_violations(
-        self,
-        project_dir: Path,
-        rule: me.EnforcementRuleSpec,
-    ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        list[fr.FailedFix],
-    ]:
-        """Return one probe per prohibited source ``.pyi`` file."""
-        probes = [
-            (rule, self._probe_for_path(path))
-            for path in self._stub_file_paths(project_dir)
-        ]
-        return probes, []
-
     @staticmethod
     def _stub_file_paths(project_dir: Path) -> tuple[Path, ...]:
         """Return source stub files while respecting canonical excluded dirs."""

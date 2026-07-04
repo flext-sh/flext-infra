@@ -48,7 +48,7 @@ def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
             "class TestProjBase:\n    pass\n",
         },
     )
-    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     results = fixer.fix_workspace()
     project_names = [res.project for res in results]
     tm.that("external-project" not in project_names, eq=True)
@@ -61,7 +61,7 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     (project / "Makefile").touch()
     (project / "pyproject.toml").write_text("[project]\nname='no-src-proj'\n")
     (project / ".git").mkdir()
-    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     [result] = fixer.fix_workspace(
         projects=[_project_info(project, package_name="")],
     )
@@ -81,7 +81,7 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
             "class TestProjBase:\n    pass\n",
         },
     )
-    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project)])
     modified_str = " ".join(result.files_modified)
     tm.that(modified_str, contains="__init__.py")

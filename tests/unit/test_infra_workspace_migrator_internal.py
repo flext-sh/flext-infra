@@ -156,7 +156,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
     def test_invalid_workspace(self) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace=Path("/nonexistent"),
+            workspace_root=Path("/nonexistent"),
             dry_run=False,
             apply_changes=True,
         )

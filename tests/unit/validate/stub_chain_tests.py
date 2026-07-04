@@ -27,7 +27,7 @@ class TestStubChain:
         all_projects: bool = False,
     ) -> FlextInfraStubSupplyChain:
         return FlextInfraStubSupplyChain(
-            workspace=workspace_root,
+            workspace_root=workspace_root,
             selected_projects=projects,
             all_projects=all_projects,
             runner=u.Tests.DeptryRunner(
@@ -40,14 +40,14 @@ class TestStubChain:
         return "\n".join(lines)
 
     def test_init_defaults(self, tmp_path: Path) -> None:
-        chain = FlextInfraStubSupplyChain(workspace=tmp_path)
+        chain = FlextInfraStubSupplyChain(workspace_root=tmp_path)
         tm.that(chain.runner is None, eq=True)
         tm.that(chain.project_names is None, eq=True)
         tm.that(chain.project_dirs is None, eq=True)
 
     def test_project_names_and_dirs_are_normalized(self, tmp_path: Path) -> None:
         chain = FlextInfraStubSupplyChain(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             selected_projects=[" alpha, beta ", "gamma delta"],
         )
         tm.that(chain.project_names, eq=["alpha", "beta", "gamma", "delta"])
@@ -63,7 +63,7 @@ class TestStubChain:
 
     def test_project_dirs_are_disabled_for_all_projects(self, tmp_path: Path) -> None:
         chain = FlextInfraStubSupplyChain(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             selected_projects=["alpha"],
             all_projects=True,
         )

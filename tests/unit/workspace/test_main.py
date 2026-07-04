@@ -126,7 +126,7 @@ class TestsFlextInfraWorkspaceMain:
         member_root = workspace_root / "demo-a"
 
         result = FlextInfraWorkspaceDetector(
-            workspace=member_root,
+            workspace_root=member_root,
             apply_changes=False,
         ).execute()
 
@@ -139,7 +139,7 @@ class TestsFlextInfraWorkspaceMain:
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace=project_root,
+            workspace_root=project_root,
             apply_changes=False,
         ).execute()
 

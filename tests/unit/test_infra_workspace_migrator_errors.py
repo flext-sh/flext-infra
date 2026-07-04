@@ -135,7 +135,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         (root / ".gitignore").write_text("", encoding="utf-8")
         proj = u.Tests.create_migrator_project(root, "workspace-root")
         migrator = FlextInfraProjectMigrator(
-            workspace=tmp_path, dry_run=False, apply_changes=True
+            workspace_root=tmp_path, dry_run=False, apply_changes=True
         )
         migrator.discovery = u.Tests.create_migrator_discovery([proj])
         migrator.generator = u.Tests.create_migrator_generator(fail="Generation failed")

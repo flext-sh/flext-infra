@@ -106,7 +106,7 @@ class TestSilentFailureValidator:
     def test_execute_reports_detected_issues(self, tmp_path: Path) -> None:
         _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             project_filter="flext-infra",
         ).execute()
 
@@ -121,7 +121,7 @@ class TestSilentFailureValidator:
     ) -> None:
         _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             project_filter="flext-infra",
             output_format="json",
         ).execute()
@@ -154,7 +154,7 @@ class TestSilentFailureValidator:
             files={"utilities.py": source},
         )
         result = FlextInfraSilentFailureValidator(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             project_filter="flext-infra",
         ).execute()
 

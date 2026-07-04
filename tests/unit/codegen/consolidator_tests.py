@@ -168,7 +168,7 @@ def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     service = FlextInfraCodegenConsolidator(
-        workspace=workspace_root,
+        workspace_root=workspace_root,
         dry_run=False,
         output_format="json",
     )
@@ -193,7 +193,7 @@ def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
 def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
     workspace_root = _build_consolidator_workspace(tmp_path)
     service = FlextInfraCodegenConsolidator(
-        workspace=workspace_root,
+        workspace_root=workspace_root,
         dry_run=False,
         output_format="json",
     )
@@ -212,7 +212,7 @@ def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
 def test_execute_dry_run_json_output(tmp_path: Path) -> None:
     workspace_root = _build_consolidator_workspace(tmp_path)
     service = FlextInfraCodegenConsolidator(
-        workspace=workspace_root,
+        workspace_root=workspace_root,
         dry_run=True,
         output_format="json",
     )

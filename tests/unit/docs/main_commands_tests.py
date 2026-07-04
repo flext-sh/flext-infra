@@ -20,7 +20,7 @@ def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) ->
     )
 
     result = FlextInfraDocAuditor(
-        workspace=workspace,
+        workspace_root=workspace,
         strict_mode=True,
     ).execute()
 
@@ -34,7 +34,7 @@ def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
     )
 
     result = FlextInfraDocFixer(
-        workspace=workspace,
+        workspace_root=workspace,
         apply_changes=True,
     ).execute()
 
@@ -53,7 +53,7 @@ def test_generator_execute_writes_reports_for_root_and_selected_project(
     )
 
     result = FlextInfraDocGenerator(
-        workspace=workspace,
+        workspace_root=workspace,
         selected_projects=["flext-a"],
         apply_changes=True,
     ).execute()
@@ -73,18 +73,18 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
     )
 
     before = FlextInfraDocValidator(
-        workspace=workspace,
+        workspace_root=workspace,
         selected_projects=["flext-a"],
     ).execute()
     assert before.failure
     generated = FlextInfraDocGenerator(
-        workspace=workspace,
+        workspace_root=workspace,
         selected_projects=["flext-a"],
         apply_changes=True,
     ).execute()
     assert generated.success
     after = FlextInfraDocValidator(
-        workspace=workspace,
+        workspace_root=workspace,
         selected_projects=["flext-a"],
         apply_changes=True,
     ).execute()
@@ -95,7 +95,7 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
 def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
-    result = FlextInfraDocBuilder(workspace=workspace).execute()
+    result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
     assert result.success
     assert (workspace / ".reports/docs/build-report.md").exists()
@@ -105,6 +105,6 @@ def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> Non
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "mkdocs.yml").write_text("site_name: [", encoding="utf-8")
 
-    result = FlextInfraDocBuilder(workspace=workspace).execute()
+    result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
     assert result.failure

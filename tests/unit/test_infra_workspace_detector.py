@@ -76,7 +76,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
     def test_execute_uses_workspace_root(self, tmp_path: Path) -> None:
         tm.ok(
-            FlextInfraWorkspaceDetector(workspace=tmp_path).execute(),
+            FlextInfraWorkspaceDetector(workspace_root=tmp_path).execute(),
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 

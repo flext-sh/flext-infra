@@ -902,14 +902,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             check_only: bool = False,
         ) -> int:
             return FlextInfraCodegenLazyInit(
-                workspace=workspace_root,
+                workspace_root=workspace_root,
             ).generate_inits(check_only=check_only)
 
         @staticmethod
         def create_lazy_init_service(
             workspace_root: Path,
         ) -> FlextInfraCodegenLazyInit:
-            return FlextInfraCodegenLazyInit(workspace=workspace_root)
+            return FlextInfraCodegenLazyInit(workspace_root=workspace_root)
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
@@ -929,7 +929,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             dry_run: bool = True,
         ) -> p.Result[str]:
             service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
-                workspace=workspace_root,
+                workspace_root=workspace_root,
                 dry_run=dry_run,
                 project_name=project,
             )
@@ -1050,7 +1050,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             dry_run: bool = False,
         ) -> FlextInfraProjectMigrator:
             migrator = FlextInfraProjectMigrator(
-                workspace=workspace_root or Path("/dummy"),
+                workspace_root=workspace_root or Path("/dummy"),
                 apply_changes=not dry_run,
                 dry_run=dry_run,
             )
@@ -1092,12 +1092,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 deptry_path.write_text("", encoding="utf-8")
             if runner is not None:
                 return FlextInfraRuntimeDevDependencyDetector(
-                    workspace=tmp_path,
+                    workspace_root=tmp_path,
                     deps=deps,
                     runner=runner,
                 )
             return FlextInfraRuntimeDevDependencyDetector(
-                workspace=tmp_path,
+                workspace_root=tmp_path,
                 deps=deps,
             )
 

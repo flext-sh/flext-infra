@@ -23,7 +23,7 @@ def _extractor(
 ) -> FlextInfraPytestDiagExtractor:
     return FlextInfraPytestDiagExtractor(
         junit=junit,
-        log=log,
+        log_path=log,
         failed=failed,
         errors=errors,
         warnings=warnings,

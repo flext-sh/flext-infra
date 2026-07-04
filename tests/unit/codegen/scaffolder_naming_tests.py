@@ -76,7 +76,7 @@ class TestGeneratedFilesAreValidPython:
             tmp_path=tmp_path,
             with_all_modules=False,
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
         _validate_modules_parse(
@@ -94,7 +94,7 @@ class TestGeneratedFilesAreValidPython:
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         _validate_modules_parse(
             tests_dir,
@@ -108,7 +108,7 @@ class TestGeneratedClassNamingConvention:
             tmp_path=tmp_path,
             with_all_modules=False,
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
         _validate_class_names(
@@ -132,7 +132,7 @@ class TestGeneratedClassNamingConvention:
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         _validate_class_names(
             tests_dir,
@@ -149,7 +149,7 @@ class TestGeneratedClassNamingConvention:
         project = tmp_path / "empty-project"
         project.mkdir()
         (project / "Makefile").touch()
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         [result] = scaffolder.run(
             projects=[
                 u.Tests.create_project_info(

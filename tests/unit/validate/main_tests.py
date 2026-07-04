@@ -32,7 +32,7 @@ class TestMainBaseMkValidate:
         """basemk-validate returns r[bool] based on base.mk match."""
         (tmp_path / "base.mk").write_text("# root")
         result = FlextInfraBaseMkValidator(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
         ).execute()
         assert isinstance(result.success, bool)
 
@@ -44,13 +44,13 @@ class TestMainBaseMkValidate:
         (proj / "pyproject.toml").write_text("")
         (proj / "base.mk").write_text("# different")
         result = FlextInfraBaseMkValidator(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
         ).execute()
         tm.that(result.failure, eq=True)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
         """basemk-validate returns failure when root base.mk missing."""
-        result = FlextInfraBaseMkValidator(workspace=tmp_path).execute()
+        result = FlextInfraBaseMkValidator(workspace_root=tmp_path).execute()
         tm.that(result.failure, eq=True)
 
 
@@ -59,7 +59,7 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        result = FlextInfraInventoryService(workspace=tmp_path).execute()
+        result = FlextInfraInventoryService(workspace_root=tmp_path).execute()
         tm.that(result.success, eq=True)
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
@@ -67,7 +67,7 @@ class TestMainInventory:
         output = tmp_path / "output"
         output.mkdir()
         result = FlextInfraInventoryService(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             output_dir=output,
         )
         result = result.execute()
@@ -81,7 +81,7 @@ class TestMainScan:
         """Scan returns success when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
         result = FlextInfraTextPatternScanner(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             pattern="NONEXISTENT_PATTERN",
             include=["*.txt"],
             exclude=[],
@@ -94,7 +94,7 @@ class TestMainScan:
         """Scan returns failure when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
         result = FlextInfraTextPatternScanner(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             pattern="TODO",
             include=["*.txt"],
             exclude=[],

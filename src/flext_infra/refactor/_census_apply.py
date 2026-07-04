@@ -543,7 +543,7 @@ class FlextInfraRefactorCensusApplyMixin(
 
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
-        FlextInfraCodegenLazyInit(workspace=self.root).generate_inits(
+        FlextInfraCodegenLazyInit(workspace_root=self.root).generate_inits(
             check_only=False,
         )
 

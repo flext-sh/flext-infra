@@ -35,7 +35,7 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
         """Run the tier-whitelist scan scoped to ``project_dir``."""
         _ = ctx
         started = time.monotonic()
-        validator = FlextInfraValidateTierWhitelist(workspace=project_dir)
+        validator = FlextInfraValidateTierWhitelist(workspace_root=project_dir)
         result = validator.execute()
         passed = result.success and result.value is True
         errors: list[str] = []

@@ -410,7 +410,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace, _ = self._build_runtime_alias_duplicate_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class",),
             rules=("runtime_alias",),
@@ -453,7 +453,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace, _ = self._build_basic_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("assignment",),
             rules=("manual_typing_alias",),
@@ -478,7 +478,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace, _ = self._build_compatibility_alias_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class",),
             rules=("compatibility_alias",),
@@ -503,7 +503,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace = self._build_mro_incomplete_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class",),
             rules=("mro_completeness",),
@@ -539,7 +539,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class",),
             rules=("mro_completeness",),
@@ -610,7 +610,7 @@ class TestsFlextInfraRefactorMainCli:
         monkeypatch.setattr(FlextInfraRopeWorkspace, "objects", _explode)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=kinds,
             rules=rules,
@@ -645,7 +645,7 @@ class TestsFlextInfraRefactorMainCli:
             RuntimeError, match=r"census rope inventory failed for .*models.*\.py"
         ):
             FlextInfraRefactorCensus(
-                workspace=workspace,
+                workspace_root=workspace,
                 include_local_scopes=False,
                 kinds=("class",),
                 rules=("unused",),
@@ -687,7 +687,7 @@ class TestsFlextInfraRefactorMainCli:
         monkeypatch.setattr(FlextInfraRopeWorkspace, "objects", _guard)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class",),
             rules=("mro_completeness",),
@@ -773,7 +773,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace = self._build_test_only_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
             rules=("test_only",),
@@ -810,7 +810,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace, _module_path = self._build_facade_member_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class", "assignment"),
             rules=("unused", "test_only"),
@@ -851,7 +851,7 @@ class TestsFlextInfraRefactorMainCli:
         assert _parse_source_ast(test_source) is not None
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
             rules=("test_only",),
@@ -897,7 +897,7 @@ class TestsFlextInfraRefactorMainCli:
         assert _parse_source_ast(test_source) is not None
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
             rules=("test_only",),
@@ -1033,7 +1033,7 @@ class TestsFlextInfraRefactorMainCli:
         assert "helper_used" in clone_init.read_text(encoding="utf-8")
 
         report_result = FlextInfraRefactorCensus(
-            workspace=clone,
+            workspace_root=clone,
             include_local_scopes=False,
             kinds=("function",),
             rules=("test_only",),
@@ -1067,7 +1067,7 @@ class TestsFlextInfraRefactorMainCli:
         assert _parse_source_ast(service_source) is not None
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
             rules=("unused",),
@@ -1087,7 +1087,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
             rules=("test_only",),
@@ -1111,7 +1111,7 @@ class TestsFlextInfraRefactorMainCli:
         test_file = workspace / "tests" / "test_service.py"
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             apply_changes=True,
             dry_run=True,
             include_local_scopes=False,
@@ -1152,7 +1152,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             dry_run=True,
             include_local_scopes=False,
             kinds=("function",),
@@ -1197,7 +1197,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             apply_changes=True,
             include_local_scopes=False,
             kinds=("function",),
@@ -1225,7 +1225,7 @@ class TestsFlextInfraRefactorMainCli:
         produced, empty impact-map ``files``.
         """
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             impact_map_output=str(impact_map_path),
             include_local_scopes=True,
             kinds=(kind,),
@@ -1285,7 +1285,7 @@ class TestsFlextInfraRefactorMainCli:
         impact_map_path = tmp_path / "unused-impact-map.json"
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             impact_map_output=str(impact_map_path),
             include_local_scopes=False,
             kinds=("function",),
@@ -1339,7 +1339,7 @@ class TestsFlextInfraRefactorMainCli:
         impact_map_path = tmp_path / "impact-map.json"
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             impact_map_output=str(impact_map_path),
             include_local_scopes=False,
             kinds=("function",),
@@ -1407,7 +1407,7 @@ class TestsFlextInfraRefactorMainCli:
         impact_map_path = tmp_path / "apply-impact-map.json"
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             impact_map_output=str(impact_map_path),
             apply_changes=True,
             include_local_scopes=False,

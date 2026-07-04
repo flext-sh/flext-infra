@@ -609,10 +609,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         discovered_projects: Annotated[
             t.SequenceOf[p.Infra.ProjectInfo],
             m.Field(
-                default_factory=tuple,
                 description="Projects discovered at pipeline start",
             ),
-        ]
+        ] = ()
         census_service: Annotated[
             p.Infra.CodegenCensusService | None,
             m.Field(
@@ -622,25 +621,23 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         reports_before: Annotated[
             t.SequenceOf[FlextInfraModelsCodegen.CensusReport],
             m.Field(
-                default_factory=tuple,
                 description="Census reports collected before fixes",
             ),
-        ]
+        ] = ()
         reports_after: Annotated[
             t.SequenceOf[FlextInfraModelsCodegen.CensusReport],
             m.Field(
-                default_factory=tuple,
                 description="Census reports collected after fixes",
             ),
-        ]
+        ] = ()
         scaffold_results: Annotated[
             t.SequenceOf[FlextInfraModelsCodegen.ScaffoldResult],
-            m.Field(default_factory=tuple, description="Scaffolding stage results"),
-        ]
+            m.Field(description="Scaffolding stage results"),
+        ] = ()
         fix_results: Annotated[
             t.SequenceOf[FlextInfraModelsCodegen.AutoFixResult],
-            m.Field(default_factory=tuple, description="Auto-fix stage results"),
-        ]
+            m.Field(description="Auto-fix stage results"),
+        ] = ()
 
 
 __all__: list[str] = ["FlextInfraModelsCodegen"]

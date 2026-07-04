@@ -270,7 +270,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             rules=("ENFORCE-079",),
         ).execute()
@@ -296,7 +296,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         stub.write_text("x: int\n", encoding="utf-8")
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             rules=("ENFORCE-090",),
         ).execute()
@@ -321,7 +321,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         stub.write_text("x: int\n", encoding="utf-8")
 
         dry_run_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             apply_changes=True,
             dry_run=True,
             include_local_scopes=False,
@@ -332,7 +332,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         assert stub.exists()
 
         apply_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             apply_changes=True,
             include_local_scopes=False,
             rules=("ENFORCE-090",),
@@ -356,7 +356,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             rules=("ENFORCE-097",),
         ).execute()
@@ -389,7 +389,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace=workspace,
+            workspace_root=workspace,
             include_local_scopes=False,
             rules=("ENFORCE-080",),
         ).execute()

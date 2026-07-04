@@ -35,7 +35,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
                 content,
                 encoding="utf-8",
             )
-        modernizer = FlextInfraPyprojectModernizer(workspace=workspace)
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=workspace)
         tm.that(modernizer.run(), eq=expected)
 
     def test_audit_returns_zero_after_workspace_is_canonical(
@@ -43,13 +43,13 @@ class TestsFlextInfraDepsModernizerMainExtra:
         modernizer_workspace: Path,
     ) -> None:
         apply_exit = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
             apply_changes=True,
             skip_comments=True,
             skip_check=True,
         ).run()
         audit_exit = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
             audit=True,
             skip_comments=True,
         ).run()
@@ -65,7 +65,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         )
         selected_pyproject.write_text("[invalid", encoding="utf-8")
         modernizer = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace_with_projects,
+            workspace_root=modernizer_workspace_with_projects,
             apply_changes=True,
             skip_comments=True,
             skip_check=False,
@@ -77,7 +77,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         modernizer_workspace: Path,
     ) -> None:
         modernizer = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
             skip_comments=True,
@@ -136,7 +136,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         )
 
         modernizer = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
             skip_comments=True,
@@ -183,7 +183,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         )
 
         modernizer = FlextInfraPyprojectModernizer(
-            workspace=modernizer_workspace,
+            workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
             constraint_policy=c.Infra.DependencyConstraintPolicy.COMPATIBLE,

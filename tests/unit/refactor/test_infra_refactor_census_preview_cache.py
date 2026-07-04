@@ -311,7 +311,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             encoding="utf-8",
         )
         service = FlextInfraRefactorCensus(
-            workspace=workspace_root,
+            workspace_root=workspace_root,
             selected_projects=("flext-demo",),
             include_local_scopes=False,
         )
@@ -423,7 +423,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             encoding="utf-8",
         )
         service = FlextInfraRefactorCensus(
-            workspace=workspace_root,
+            workspace_root=workspace_root,
             selected_projects=("flext-demo",),
             include_local_scopes=False,
         )

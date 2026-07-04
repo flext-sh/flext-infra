@@ -38,7 +38,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             {"workspace_root": self.workspace_root},
         ).generate_inits()
         census_report = FlextInfraRefactorCensus(
-            workspace=self.workspace_root,
+            workspace_root=self.workspace_root,
             include_local_scopes=False,
             kinds=("constant",),
         ).build_report()

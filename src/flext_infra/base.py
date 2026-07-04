@@ -81,9 +81,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         default=False,
         alias="apply",
         description="Apply changes",
-        json_schema_extra={
-            "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
-        },
+        json_schema_extra={"typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)},
     )
     check_only: bool = m.Field(
         default=False,
