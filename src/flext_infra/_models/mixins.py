@@ -70,12 +70,12 @@ class FlextInfraModelsMixins:
 
         @property
         def workspace_path(self) -> Path:
-            """Return the resolved workspace path for CLI execution."""
+            """Resolved workspace path for CLI execution."""
             return Path(self.workspace).resolve()
 
         @property
         def project_names(self) -> t.StrSequence | None:
-            """Return normalized project names from repeated selectors."""
+            """Normalized project names from repeated selectors."""
             return ub.normalize_sequence_values(self.projects)
 
     class ReadMixin(ScopeMixin):
@@ -95,12 +95,12 @@ class FlextInfraModelsMixins:
 
         @property
         def report_path(self) -> Path | None:
-            """Return the resolved report path when provided."""
+            """Resolved report path when provided."""
             return ub.normalize_optional_path(self.report)
 
         @property
         def output_dir_path(self) -> Path | None:
-            """Return the resolved output directory when provided."""
+            """Resolved output directory when provided."""
             return ub.normalize_optional_path(self.output_dir)
 
     class WriteMixin(ScopeMixin):

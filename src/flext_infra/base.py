@@ -59,7 +59,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     @property
     @override
     def settings(self) -> cli_p.Cli.Settings:
-        """Return the typed CLI settings via the canonical cli facade."""
+        """Typed CLI settings via the canonical cli facade."""
         return cli.settings
 
     @classmethod
@@ -163,13 +163,13 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     @m.computed_field()
     @property
     def root(self) -> Path:
-        """Return the canonical normalized workspace root."""
+        """Canonical normalized workspace root."""
         return self.workspace_root
 
     @m.computed_field()
     @property
     def effective_dry_run(self) -> bool:
-        """Return the normalized write-mode decision for CLI services."""
+        """Normalized write-mode decision for CLI services."""
         return self.dry_run or self.check_only or (not self.apply_changes)
 
     @override
@@ -179,7 +179,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
 
     @property
     def log(self) -> p.Logger:
-        """Return the service logger through the canonical FlextService kernel."""
+        """Service logger through the canonical FlextService kernel."""
         return self.logger
 
     @classmethod

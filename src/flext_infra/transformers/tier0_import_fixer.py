@@ -63,7 +63,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
         @m.computed_field()
         @property
         def has_violations(self) -> bool:
-            """Return True if any imports need redirecting or moving."""
+            """True if any imports need redirecting or moving."""
             return bool(self.category_b or self.category_c or self.category_d)
 
     class Analyzer:

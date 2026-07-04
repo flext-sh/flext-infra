@@ -122,12 +122,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     @property
     def rope_workspace_root(self) -> Path:
-        """Return the canonical root used for the shared Rope project."""
+        """Canonical root used for the shared Rope project."""
         return self._rope_workspace_root
 
     @property
     def rope_project(self) -> t.Infra.RopeProject:
-        """Return the shared Rope project, opening it lazily once."""
+        """Shared Rope project, opening it lazily once."""
         rope_project = self._rope_project
         if rope_project is None:
             started_at = perf_counter()
@@ -148,7 +148,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     @property
     def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
-        """Return the cached workspace index for the shared Rope project."""
+        """Cached workspace index for the shared Rope project."""
         workspace_index = self._workspace_index
         if workspace_index is None:
             started_at = perf_counter()

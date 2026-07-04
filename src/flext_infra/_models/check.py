@@ -61,7 +61,7 @@ class FlextInfraModelsCheck:
 
         @property
         def reports_dir_path(self) -> Path:
-            """Return the resolved reports directory path."""
+            """Resolved reports directory path."""
             reports_dir = Path(self.reports_dir).expanduser()
             if reports_dir.is_absolute():
                 return reports_dir.resolve()

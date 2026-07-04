@@ -518,21 +518,30 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 default_factory=_violations_default,
                 description="List of violations that were fixed",
             ),
-        ]
+        ] = m.Field(
+            default_factory=_violations_default,
+            description="List of violations that were fixed",
+        )
         violations_skipped: Annotated[
             t.MutableSequenceOf[FlextInfraModelsCodegen.CensusViolation],
             m.Field(
                 default_factory=_violations_default,
                 description="List of violations that were skipped",
             ),
-        ]
+        ] = m.Field(
+            default_factory=_violations_default,
+            description="List of violations that were skipped",
+        )
         files_modified: Annotated[
             MutableSet[str],
             m.Field(
                 default_factory=set,
                 description="Set of unique modified file paths",
             ),
-        ]
+        ] = m.Field(
+            default_factory=set,
+            description="Set of unique modified file paths",
+        )
 
         @property
         def has_changes(self) -> bool:

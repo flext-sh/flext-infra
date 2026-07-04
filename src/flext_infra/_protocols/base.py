@@ -62,17 +62,17 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def name(self) -> str:
-            """Return the project name."""
+            """Project name."""
             ...
 
         @property
         def path(self) -> Path:
-            """Return the project path."""
+            """Project path."""
             ...
 
         @property
         def package_name(self) -> str:
-            """Return the primary Python package name."""
+            """Primary Python package name."""
             ...
 
     @runtime_checkable

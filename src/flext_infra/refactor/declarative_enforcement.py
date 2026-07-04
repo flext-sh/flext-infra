@@ -73,19 +73,20 @@ class FlextInfraRefactorDeclarativeEnforcement:
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for violations of ``rule`` inside ``ctx.file_path``."""
+        rule_id = cls._rule_id_short(rule.id)
         source = rule.source
         if source.kind == "flext_infra_detector":
             violation_field = getattr(source, "violation_field", "")
             if violation_field == "stub_file_violations":
-                return cls._detect_stub_files(ctx)
+                return cls._detect_stub_files(ctx, rule_id=rule_id)
             if violation_field == "magic_literal_violations":
-                return cls._detect_magic_literals(ctx)
+                return cls._detect_magic_literals(ctx, rule_id=rule_id)
             if violation_field == "foreign_canonical_alias_violations":
-                return cls._detect_foreign_canonical_aliases(ctx)
+                return cls._detect_foreign_canonical_aliases(ctx, rule_id=rule_id)
         elif source.kind == "beartype":
             predicate_kind = getattr(source, "predicate_kind", None)
             if getattr(predicate_kind, "value", predicate_kind) == "classvar_constant":
-                return cls._detect_classvar_constants(ctx)
+                return cls._detect_classvar_constants(ctx, rule_id=rule_id)
         violation_field = getattr(source, "violation_field", "")
         predicate_kind = getattr(source, "predicate_kind", "")
         msg = (
@@ -99,17 +100,21 @@ class FlextInfraRefactorDeclarativeEnforcement:
     def _detect_stub_files(
         cls,
         ctx: m.Infra.DetectorContext,
+        *,
+        rule_id: str,
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return a probe for ``ctx.file_path`` when it is a prohibited ``.pyi``."""
         file_path = ctx.file_path
         if file_path.suffix != ".pyi":
             return ()
-        return (cls._probe(file_path, line=1, rule_id="090"),)
+        return (cls._probe(file_path, line=1, rule_id=rule_id),)
 
     @classmethod
     def _detect_magic_literals(
         cls,
         ctx: m.Infra.DetectorContext,
+        *,
+        rule_id: str,
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for magic numbers/strings in executable code."""
         res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
@@ -154,7 +159,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
                 cls._probe(
                     ctx.file_path,
                     line=line,
-                    rule_id="097",
+                    rule_id=rule_id,
                     literal=repr(value),
                 )
             )
@@ -164,6 +169,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
     def _detect_classvar_constants(
         cls,
         ctx: m.Infra.DetectorContext,
+        *,
+        rule_id: str,
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate ClassVar-outside-_constants detection to the canonical scanner."""
         try:
@@ -178,7 +185,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
             cls._probe(
                 Path(v.file),
                 line=v.line,
-                rule_id="079",
+                rule_id=rule_id,
                 object_name=v.name,
                 base_class=v.base_class,
             )
@@ -190,6 +197,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
     def _detect_foreign_canonical_aliases(
         cls,
         ctx: m.Infra.DetectorContext,
+        *,
+        rule_id: str,
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate foreign-canonical-alias detection to the canonical scanner."""
         try:
@@ -212,13 +221,18 @@ class FlextInfraRefactorDeclarativeEnforcement:
                 cls._probe(
                     ctx.file_path,
                     line=violation.line,
-                    rule_id="080",
+                    rule_id=rule_id,
                     object_name=violation.alias_name,
                     target_name=violation.target_name,
                     module_name=violation.module_name,
                 )
             )
         return tuple(probes)
+
+    @staticmethod
+    def _rule_id_short(rule_id: str) -> str:
+        """Return the numeric suffix of an ENFORCE-NNN identifier."""
+        return rule_id.rsplit("-", maxsplit=1)[-1]
 
     @classmethod
     def _is_magic_literal(cls, value: t.Primitives | None) -> bool:

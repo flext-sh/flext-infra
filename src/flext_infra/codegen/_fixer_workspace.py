@@ -23,7 +23,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
 
         @property
         def project_names(self) -> t.StrSequence | None:
-            """Return normalized selected project names."""
+            """Normalized selected project names."""
 
     def _fix_project(
         self,

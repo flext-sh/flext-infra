@@ -70,7 +70,7 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
 
     @property
     def collision_count(self) -> int:
-        """Return the number of export collisions resolved so far."""
+        """Number of export collisions resolved so far."""
         return self._collision_count
 
 

@@ -103,13 +103,13 @@ class FlextInfraRefactorCensus(
 
     @property
     def json_output_path(self) -> Path | None:
-        """Return the resolved JSON export path when provided."""
+        """Resolved JSON export path when provided."""
         path: Path | None = u.Infra.normalize_optional_path(self.json_output)
         return path
 
     @property
     def impact_map_output_path(self) -> Path | None:
-        """Return the resolved impact-map export path when provided."""
+        """Resolved impact-map export path when provided."""
         path: Path | None = u.Infra.normalize_optional_path(
             self.impact_map_output,
         )
@@ -117,23 +117,23 @@ class FlextInfraRefactorCensus(
 
     @property
     def kind_names(self) -> t.StrSequence | None:
-        """Return normalized symbol-kind filters."""
+        """Normalized symbol-kind filters."""
         return u.Infra.normalize_sequence_values(self.kinds)
 
     @property
     def rule_names(self) -> t.StrSequence | None:
-        """Return normalized violation-rule filters."""
+        """Normalized violation-rule filters."""
         return u.Infra.normalize_sequence_values(self.rules)
 
     @property
     def family_names(self) -> t.StrSequence | None:
-        """Return normalized family filters."""
+        """Normalized family filters."""
         return u.Infra.normalize_sequence_values(self.families)
 
     @property
     @override
     def dry_run_gate_names(self) -> t.StrSequence:
-        """Return the per-candidate gate set (``lint`` + ``pyrefly``).
+        """Per-candidate gate set (``lint`` + ``pyrefly``).
 
         Mypy and pyright perform transitive module analysis that flags
         ``__init__.py`` lazy-import references to just-removed symbols

@@ -38,7 +38,7 @@ class FlextInfraOrchestratorService(
 
     @property
     def make_args(self) -> t.StrSequence:
-        """Return normalized make arguments."""
+        """Normalized make arguments."""
         return u.Infra.normalize_make_args(self.make_arg)
 
     @override

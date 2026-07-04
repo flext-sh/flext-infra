@@ -341,6 +341,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         """
         violations: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
         failures: list[fr.FailedFix] = []
+        declarative_rules: list[me.EnforcementRuleSpec] = []
         for rule in rules:
             source = rule.source
             if source.kind == "flext_tests_validator":
@@ -350,26 +351,8 @@ class FlextInfraEnforcementFixerOrchestrator(
                 )
                 violations.extend(collected)
                 failures.extend(errors)
-            elif (
-                source.kind == "flext_infra_detector"
-                and source.violation_field == "stub_file_violations"
-            ):
-                collected, errors = self._collect_stub_file_violations(
-                    project_dir,
-                    rule,
-                )
-                violations.extend(collected)
-                failures.extend(errors)
-            elif (
-                source.kind == "flext_infra_detector"
-                and source.violation_field == "magic_literal_violations"
-            ):
-                collected, errors = self._collect_declarative_violations(
-                    project_dir,
-                    rule,
-                )
-                violations.extend(collected)
-                failures.extend(errors)
+            elif FlextInfraRefactorDeclarativeEnforcement.supports(rule):
+                declarative_rules.append(rule)
             elif source.kind in {"flext_infra_detector", "beartype"}:
                 collected, errors = self._collect_python_file_violations(
                     project_dir,
@@ -389,6 +372,13 @@ class FlextInfraEnforcementFixerOrchestrator(
                         f"unsupported enforcement source kind {source.kind!r}",
                     ),
                 )
+        if declarative_rules:
+            collected, errors = self._collect_declarative_violations(
+                project_dir,
+                declarative_rules,
+            )
+            violations.extend(collected)
+            failures.extend(errors)
         return violations, failures
 
     def _collect_tests_validator_violations(
@@ -530,7 +520,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     def _collect_declarative_violations(
         self,
         project_dir: Path,
-        rule: me.EnforcementRuleSpec,
+        rules: t.SequenceOf[me.EnforcementRuleSpec],
     ) -> tuple[
         list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         list[fr.FailedFix],
@@ -539,7 +529,8 @@ class FlextInfraEnforcementFixerOrchestrator(
 
         Unlike the generic per-file probe, this asks the declarative engine
         to actually inspect each file and emit violation probes with line
-        numbers and metadata.
+        numbers and metadata. All ``rules`` are evaluated inside a single rope
+        project to avoid repeated project open/close overhead.
         """
         files_result = u.Infra.iter_python_files(
             workspace_root=self.workspace_root,
@@ -555,12 +546,13 @@ class FlextInfraEnforcementFixerOrchestrator(
                 [
                     self._collection_failure(
                         project_dir,
-                        rule,
+                        rules[0],
                         files_result.error or "unable to enumerate Python files",
                     ),
                 ],
             )
         probes: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
+        failures: list[fr.FailedFix] = []
         with u.Infra.open_project(self.workspace_root) as rope_project:
             for file_path in files_result.value:
                 ctx = m.Infra.DetectorContext(
@@ -569,24 +561,23 @@ class FlextInfraEnforcementFixerOrchestrator(
                     project_name=project_dir.name,
                     project_root=project_dir,
                 )
-                try:
-                    detected = FlextInfraRefactorDeclarativeEnforcement.detect(
-                        rule,
-                        ctx,
-                    )
-                except c.EXC_BROAD_RUNTIME as exc:
-                    return (
-                        [],
-                        [
+                for rule in rules:
+                    try:
+                        detected = FlextInfraRefactorDeclarativeEnforcement.detect(
+                            rule,
+                            ctx,
+                        )
+                    except c.EXC_BROAD_RUNTIME as exc:
+                        failures.append(
                             self._collection_failure(
                                 project_dir,
                                 rule,
                                 f"declarative engine failed: {exc}",
                             ),
-                        ],
-                    )
-                probes.extend((rule, probe) for probe in detected)
-        return probes, []
+                        )
+                        continue
+                    probes.extend((rule, probe) for probe in detected)
+        return probes, failures
 
     def _collect_stub_file_violations(
         self,

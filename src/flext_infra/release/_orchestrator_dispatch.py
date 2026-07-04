@@ -78,7 +78,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     @property
     def phase_names(self) -> t.StrSequence:
-        """Return normalized phase sequence for release execution."""
+        """Normalized phase sequence for release execution."""
         return u.Infra.resolve_phase_names(self.phase)
 
     def _resolve_version(

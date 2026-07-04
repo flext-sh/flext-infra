@@ -34,7 +34,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     @property
     def _get_runner(self) -> p.Cli.CommandRunner:
-        """Return the command runner."""
+        """Command runner."""
         return u.Cli()
 
     @override
@@ -69,7 +69,8 @@ class FlextInfraBaseMkGenerator(s[str]):
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
         render_result = (
-            self.template_renderer or FlextInfraBaseMkTemplateRenderer()
+            self.template_renderer
+            or FlextInfraBaseMkTemplateRenderer(workspace_root=self.workspace_root)
         ).render_all(config_value)
         if render_result.failure:
             return r[str].fail(render_result.error or "base.mk render failed")

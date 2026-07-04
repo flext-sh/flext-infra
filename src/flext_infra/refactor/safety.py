@@ -35,7 +35,7 @@ class FlextInfraRefactorSafetyManager:
 
     @property
     def emergency_stop_requested(self) -> bool:
-        """Return whether an emergency stop has been requested."""
+        """Whether an emergency stop has been requested."""
         return bool(self._emergency_stop_reason)
 
     def create_pre_transformation_checkpoint(

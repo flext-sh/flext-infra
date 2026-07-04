@@ -71,14 +71,14 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
 
         @property
         def output_path(self) -> Path | None:
-            """Return the resolved explicit output path when provided."""
+            """Resolved explicit output path when provided."""
             if self.output is None:
                 return None
             return Path(self.output).expanduser().resolve()
 
         @property
         def limits_path(self) -> Path | None:
-            """Return the resolved dependency limits path when provided."""
+            """Resolved dependency limits path when provided."""
             if self.limits is None:
                 return None
             return Path(self.limits).expanduser().resolve()

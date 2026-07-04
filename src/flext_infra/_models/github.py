@@ -24,7 +24,7 @@ class FlextInfraModelsGithub:
 
         @property
         def report_path(self) -> Path | None:
-            """Return the resolved report path when provided."""
+            """Resolved report path when provided."""
             return Path(self.report).resolve() if self.report else None
 
     class GithubWorkflowLintRequest(
@@ -46,7 +46,7 @@ class FlextInfraModelsGithub:
 
         @property
         def repo_root_path(self) -> Path:
-            """Return the resolved repository root path."""
+            """Resolved repository root path."""
             return Path(self.repo_root).resolve()
 
     class GithubPullRequestWorkspaceRequest(
@@ -74,7 +74,7 @@ class FlextInfraModelsGithub:
 
         @property
         def message(self) -> str:
-            """Return the CLI-facing success or failure summary."""
+            """CLI-facing success or failure summary."""
             return f"{self.display}: {self.status} (exit={self.exit_code})"
 
     class GithubPullRequestWorkspaceReport(m.ArbitraryTypesModel):
@@ -94,7 +94,7 @@ class FlextInfraModelsGithub:
 
         @property
         def message(self) -> str:
-            """Return the CLI-facing workspace summary."""
+            """CLI-facing workspace summary."""
             return f"workspace PR run: {self.success}/{self.total} successful"
 
     class RepoUrls(m.ArbitraryTypesModel):
@@ -117,7 +117,7 @@ class FlextInfraModelsGithub:
 
         @property
         def message(self) -> str:
-            """Return the CLI-facing lint summary."""
+            """CLI-facing lint summary."""
             if self.status == "ok":
                 return "workflow lint passed"
             if self.status == "skipped" and self.reason:
@@ -180,7 +180,7 @@ class FlextInfraModelsGithub:
 
         @property
         def message(self) -> str:
-            """Return the CLI-facing sync summary."""
+            """CLI-facing sync summary."""
             return f"github workflows {self.mode}: {len(self.operations)} operations"
 
     class GithubWorkflowSyncContext(

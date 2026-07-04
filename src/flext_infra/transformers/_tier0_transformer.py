@@ -66,7 +66,7 @@ class FlextInfraTier0TransformerMixin:
 
         @property
         def changes(self) -> t.StrSequence:
-            """Return recorded transformation changes."""
+            """Recorded transformation changes."""
             return self._changes
 
         def transform(

@@ -27,13 +27,13 @@ class FlextInfraProjectSelectionMixin:
 
     @property
     def root(self) -> Path:
-        """Return the workspace root supplied by the composed service base."""
+        """Workspace root supplied by the composed service base."""
         raise NotImplementedError
 
     @m.computed_field()
     @property
     def project_names(self) -> t.StrSequence | None:
-        """Return normalized selected project names."""
+        """Normalized selected project names."""
         return ub.normalize_sequence_values(self.selected_projects)
 
     @m.computed_field()

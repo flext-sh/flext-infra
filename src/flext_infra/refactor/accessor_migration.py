@@ -45,13 +45,13 @@ class FlextInfraAccessorMigrationOrchestrator(
     @property
     @override
     def gate_names(self) -> t.StrSequence:
-        """Return normalized lint gate names."""
+        """Normalized lint gate names."""
         return u.Infra.normalize_cli_values(self.gates)
 
     @property
     @override
     def lint_tool_names(self) -> t.StrSequence:
-        """Return selected lint tool names resolved from gate names."""
+        """Selected lint tool names resolved from gate names."""
         return u.Infra.selected_lint_tool_names(
             self.gate_names,
         )
