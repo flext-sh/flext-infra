@@ -18,6 +18,7 @@ from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
 )
@@ -65,6 +66,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             type[FlextInfraRopeTransformer],
         ]
     ] = {
+        "cast_remover": FlextInfraRefactorCastRemover,
         "compatibility_alias": FlextInfraRefactorCompatibilityAlias,
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
