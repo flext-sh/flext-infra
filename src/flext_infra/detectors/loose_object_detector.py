@@ -29,7 +29,14 @@ class FlextInfraLooseObjectDetector:
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
+        if ctx.project_root is not None and not cls._is_src_file(
+            file_path=ctx.file_path,
+            project_root=ctx.project_root,
+        ):
+            return []
         if cls._is_pytest_test_module(ctx.file_path):
+            return []
+        if cls._is_generated_lazy_registry(ctx.file_path):
             return []
         res = u.Infra.fetch_python_resource(
             ctx.rope_project,
@@ -107,6 +114,8 @@ class FlextInfraLooseObjectDetector:
             )
         )
 
+        if not violations and not class_symbols:
+            return []
         if len(class_symbols) != 1 and not cls._allows_private_base_module_classes(
             file_path=file_path,
             class_symbols=class_symbols,
@@ -122,6 +131,26 @@ class FlextInfraLooseObjectDetector:
             )
 
         return violations
+
+    @classmethod
+    def _is_src_file(cls, *, file_path: Path, project_root: Path) -> bool:
+        """Return whether the path belongs to the project source tree."""
+        try:
+            relative_path = file_path.resolve().relative_to(project_root.resolve())
+        except ValueError:
+            return False
+        return (
+            bool(relative_path.parts)
+            and relative_path.parts[0] == c.Infra.DEFAULT_SRC_DIR
+        )
+
+    @classmethod
+    def _is_generated_lazy_registry(cls, file_path: Path) -> bool:
+        """Return whether the file is generated lazy export registry plumbing."""
+        return file_path.name == c.Infra.ROOT_EXPORTS_FILENAME or (
+            file_path.stem == "_exports_lazy"
+            or file_path.stem.startswith("_exports_lazy_part_")
+        )
 
     @classmethod
     def _is_pytest_test_module(cls, file_path: Path) -> bool:
@@ -277,7 +306,7 @@ class FlextInfraLooseObjectDetector:
         if cls._annotation_contains(getattr(node, "annotation", None), "Final"):
             return
         target = cls._target_name(getattr(node, "target", None))
-        if target and not target.startswith("_"):
+        if target and not target.startswith("_") and target not in c.Infra.ALIAS_NAMES:
             add(
                 getattr(node, "lineno", 1),
                 target,

@@ -65,6 +65,7 @@ class FlextInfraMROCompletenessDetector:
         # get_class_info returns ClassInfo(name, line, bases) — reuse for declared bases
         expected: dict[str, int] = {}
         declared: set[str] = set()
+        local_bases_by_class: dict[str, set[str]] = {}
         scan_paths = [file_path]
         dn = c.Infra.FAMILY_DIRECTORIES.get(family, "")
         if dn:
@@ -78,12 +79,20 @@ class FlextInfraMROCompletenessDetector:
             r = u.Infra.get_resource_from_path(rope_project, path)
             if r is None:
                 continue
+            source = r.read()
             for ci in u.Infra.get_class_info(rope_project, r):
+                class_bases = set(ci.bases)
+                class_bases.update(u.Infra.parse_class_bases(source, ci.name))
+                local_bases_by_class[ci.name] = class_bases
                 if ci.name == facade:
-                    declared = set(ci.bases)
+                    declared = class_bases
                 elif not ci.name.startswith("_") and ci.name.startswith(facade):
                     expected[ci.name] = ci.line
         declared.update(u.Infra.parse_class_bases(res.read(), facade))
+        declared = FlextInfraMROCompletenessDetector._expand_declared_bases(
+            declared,
+            local_bases_by_class,
+        )
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:
             for base in u.Infra.build_expected_base_chains(project_root=root).get(
@@ -102,6 +111,23 @@ class FlextInfraMROCompletenessDetector:
             for name, line in sorted(expected.items())
             if name not in declared
         ]
+
+    @staticmethod
+    def _expand_declared_bases(
+        declared: set[str],
+        local_bases_by_class: t.MappingKV[str, set[str]],
+    ) -> set[str]:
+        """Return direct and local-transitive bases declared by the facade."""
+        expanded = set(declared)
+        pending = list(declared)
+        while pending:
+            base_name = pending.pop()
+            for parent_base in local_bases_by_class.get(base_name, set()):
+                if parent_base in expanded:
+                    continue
+                expanded.add(parent_base)
+                pending.append(parent_base)
+        return expanded
 
     @staticmethod
     def _is_src_root_facade(ctx: m.Infra.DetectorContext) -> bool:

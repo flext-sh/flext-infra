@@ -97,6 +97,49 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
 
         assert violations == []
 
+    def test_skips_when_candidate_is_in_local_aggregate_base(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_root = tmp_path / "flext-example"
+        package_dir = project_root / "src" / "flext_example"
+        models_dir = package_dir / "_models"
+        models_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        (models_dir / "__init__.py").write_text("", encoding="utf-8")
+        (package_dir / "models.py").write_text(
+            "from __future__ import annotations\n"
+            "from flext_example._models.auth import FlextExampleModelsAuth\n\n"
+            "class FlextExampleModelsBase:\n"
+            "    pass\n\n"
+            "class FlextExampleModels(FlextExampleModelsBase, FlextExampleModelsAuth):\n"
+            "    pass\n\n"
+            "m = FlextExampleModels\n",
+            encoding="utf-8",
+        )
+        (models_dir / "auth.py").write_text(
+            "from __future__ import annotations\n"
+            "from flext_example._models.domain import FlextExampleModelsDomain\n\n"
+            "class FlextExampleModelsAuth(FlextExampleModelsDomain):\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+        (models_dir / "domain.py").write_text(
+            "from __future__ import annotations\n"
+            "class FlextExampleModelsDomain:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+
+        violations = FlextInfraMROCompletenessDetector.detect_file(
+            m.Infra.DetectorContext(
+                file_path=package_dir / "models.py",
+                rope_project=_make_rope(tmp_path),
+            ),
+        )
+
+        assert violations == []
+
     def test_skips_non_facade_files(self, tmp_path: Path) -> None:
         target = tmp_path / "consumer.py"
         target.write_text("from __future__ import annotations\n", encoding="utf-8")

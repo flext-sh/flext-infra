@@ -397,12 +397,21 @@ class FlextInfraUtilitiesDiscovery:
         )
         if not parent_packages:
             return {}
+        transitive_parent_packages = (
+            FlextInfraUtilitiesDiscovery.resolve_transitive_parent_packages(
+                project_root.parent,
+                parent_packages,
+            )
+        )
         allowed_sources = frozenset(
-            package.split(".", maxsplit=1)[0] for package in parent_packages
+            package.split(".", maxsplit=1)[0]
+            for package in (*parent_packages, *transitive_parent_packages)
         )
         for family_dir in c.Infra.FAMILY_DIRECTORIES.values():
             if file_path.is_relative_to(package_dir / family_dir):
                 return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
+        if file_path.name in {"base.py", c.Infra.NAMESPACE_PRIVATE_BASE_MODULE}:
+            return dict.fromkeys(c.Infra.ENFORCEMENT_CANONICAL_ALIASES, allowed_sources)
         if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
             return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         return {}

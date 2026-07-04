@@ -1181,6 +1181,10 @@ class FlextInfraUtilitiesRopeAnalysis:
             resource = pymodule.get_resource()
             if resource is None:
                 return ()
+            source_class_bases = {
+                class_info.name: class_info.bases
+                for class_info in cls.class_info_from_source(resource.read())
+            }
             state = cls.get_module_semantic_state(rope_project, resource)
         finally:
             rope_project.close()
@@ -1189,7 +1193,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         for class_info in state.class_infos:
             if "Constants" not in class_info.name:
                 continue
-            for base_name in class_info.bases:
+            for base_name in (
+                *class_info.bases,
+                *source_class_bases.get(class_info.name, ()),
+            ):
                 full_path = state.declared_imports.get(
                     base_name,
                     "",

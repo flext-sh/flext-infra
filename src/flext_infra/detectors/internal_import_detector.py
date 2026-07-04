@@ -47,10 +47,15 @@ class FlextInfraInternalImportDetector:
         return importer_parts[: len(public_prefix)] == public_prefix
 
     @staticmethod
-    def _has_private_module_part(fqn: str) -> bool:
+    def _is_private_module_part(part: str) -> bool:
+        """Return whether a module path segment is private."""
+        return part.startswith("_") and part not in c.Infra.DUNDER_ALLOWED
+
+    @classmethod
+    def _has_private_module_part(cls, fqn: str) -> bool:
         """Return whether the resolved import path crosses a private module."""
         parts = fqn.split(".")
-        return any(part.startswith("_") for part in parts[:-1])
+        return any(cls._is_private_module_part(part) for part in parts[:-1])
 
     @classmethod
     def facade_assembly_exempt(cls, importer_module: str, fqn: str) -> bool:
@@ -100,8 +105,12 @@ class FlextInfraInternalImportDetector:
         imports = u.Infra.get_semantic_module_imports(rope_project, res)
 
         def violates_internal_import(local: str, fqn: str) -> bool:
+            _ = local
             private_module = FlextInfraInternalImportDetector._has_private_module_part(
                 fqn
+            )
+            private_symbol = FlextInfraInternalImportDetector._is_private_module_part(
+                fqn.rsplit(".", maxsplit=1)[-1],
             )
             facade_exempt = private_module and (
                 FlextInfraInternalImportDetector._facade_assembly_exempt(
@@ -116,7 +125,7 @@ class FlextInfraInternalImportDetector:
                 )
             )
             return (
-                (local.startswith("_") or private_module)
+                (private_symbol or private_module)
                 and not facade_exempt
                 and not whitebox_exempt
             )
