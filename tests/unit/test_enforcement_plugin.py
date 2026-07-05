@@ -8,10 +8,11 @@ flext-tests dispatcher.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from importlib.metadata import entry_points
 
 import pytest
-from flext_tests._fixtures._enforcement_parts.registry import (
+from flext_tests.enforcement import (
     clear,
     get,
 )
@@ -23,7 +24,7 @@ class TestsFlextInfraEnforcementPlugin:
     """Entry-point and registration contract for the flext-infra plugin."""
 
     @pytest.fixture
-    def _clear_registry(self) -> None:
+    def _clear_registry(self) -> Iterator[None]:
         """Keep the shared contribution registry isolated between cases."""
         clear()
         yield
@@ -41,7 +42,7 @@ class TestsFlextInfraEnforcementPlugin:
         _clear_registry: None,
     ) -> None:
         """Loading the module registers the flext-infra detector contribution."""
-        flext_infra_enforcement_plugin._register()
+        flext_infra_enforcement_plugin.FlextInfraEnforcementPytestPlugin.register()
 
         contribution = get("flext_infra_detector")
         assert contribution is not None

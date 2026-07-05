@@ -486,59 +486,70 @@ class FlextInfraUtilitiesCodegenNamespace:
         base_name: str,
         ctx: m.Infra.FixContext,
     ) -> None:
-        """Normalize facade base."""
-        if file_path.is_file():
-            with FlextInfraUtilitiesRopeCore.open_project(
-                file_path.parent,
-            ) as rope_project:
-                resource: t.Infra.RopeResource | None = (
-                    FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                        rope_project,
-                        file_path,
-                    )
+        """Add the canonical flext-core base to a *baseless* facade class only.
+
+        A facade that already declares a base inherits from its proper owning
+        project — flext-core directly, or an intermediate such as flext-web
+        (``FlextApiConstants(FlextWebConstants)``). Those are left untouched:
+        the pass never rebases an already-parented facade onto flext-core, so
+        it is idempotent and correct across project boundaries.
+        """
+        if not file_path.is_file():
+            return
+        with FlextInfraUtilitiesRopeCore.open_project(
+            file_path.parent,
+        ) as rope_project:
+            resource: t.Infra.RopeResource | None = (
+                FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                    rope_project,
+                    file_path,
                 )
-                if resource is not None:
-                    source = resource.read()
-                    class_infos = sorted(
-                        FlextInfraUtilitiesRopeAnalysis.get_class_info(
-                            rope_project,
-                            resource,
-                        ),
-                        key=lambda item: item.line,
-                    )
-                    if class_infos:
-                        class_info = class_infos[0]
-                        class_name = class_info.name
-                        lines = source.splitlines()
-                        header_idx = class_info.line - 1
-                        if 0 <= header_idx < len(lines):
-                            rewritten_header = cls._normalize_class_header(
-                                line=lines[header_idx],
-                                class_name=class_name,
-                                base_name=base_name,
-                            )
-                            if (
-                                rewritten_header != lines[header_idx]
-                                or base_import not in source
-                            ):
-                                lines[header_idx] = rewritten_header
-                                updated = "\n".join(lines)
-                                if source.endswith("\n"):
-                                    updated += "\n"
-                                if base_import not in updated:
-                                    updated = cls._insert_import_line(
-                                        source=updated,
-                                        import_line=base_import,
-                                    )
-                                if updated != source:
-                                    resource.write(updated)
-                                    ctx.files_modified.add(str(file_path))
-                                    ctx.fix(
-                                        module=str(file_path),
-                                        rule="NAMESPACE",
-                                        line=1,
-                                        message=f"normalized {class_name} to inherit from {base_name}",
-                                    )
+            )
+            if resource is None:
+                return
+            source = resource.read()
+            class_infos = sorted(
+                FlextInfraUtilitiesRopeAnalysis.get_class_info(
+                    rope_project,
+                    resource,
+                ),
+                key=lambda item: item.line,
+            )
+            if not class_infos:
+                return
+            class_info = class_infos[0]
+            if class_info.bases:
+                return
+            lines = source.splitlines()
+            header_idx = class_info.line - 1
+            if not 0 <= header_idx < len(lines):
+                return
+            rewritten_header = cls._normalize_class_header(
+                line=lines[header_idx],
+                class_name=class_info.name,
+                base_name=base_name,
+            )
+            if rewritten_header == lines[header_idx]:
+                return
+            lines[header_idx] = rewritten_header
+            updated = "\n".join(lines)
+            if source.endswith("\n"):
+                updated += "\n"
+            if base_import not in updated:
+                updated = cls._insert_import_line(
+                    source=updated,
+                    import_line=base_import,
+                )
+            if updated == source:
+                return
+            resource.write(updated)
+            ctx.files_modified.add(str(file_path))
+            ctx.fix(
+                module=str(file_path),
+                rule="NAMESPACE",
+                line=1,
+                message=(f"normalized {class_info.name} to inherit from {base_name}"),
+            )
 
     @staticmethod
     def _normalize_class_header(*, line: str, class_name: str, base_name: str) -> str:
@@ -552,13 +563,19 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _insert_import_line(cls, *, source: str, import_line: str) -> str:
-        """Insert import line."""
+        """Insert an import after the module docstring and future imports.
+
+        Uses the docstring-aware position helper so the import can never land
+        inside a multi-line module docstring (the cause of the F821/"unexpected
+        indent" corruption).
+        """
         lines = source.splitlines()
         if import_line in lines:
             return source
-        insert_at = FlextInfraUtilitiesRopeSource.find_import_insert_position(
-            lines,
-            past_existing=False,
+        insert_at = (
+            FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
+                lines,
+            )
         )
         before = lines[:insert_at]
         after = lines[insert_at:]

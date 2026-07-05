@@ -1,11 +1,17 @@
-"""Pytest plugin for flext-infra enforcement detectors."""
+"""Pytest plugin for flext-infra enforcement detectors.
+
+This module is loaded automatically via the ``flext_infra_enforcement`` pytest11
+entry-point. It registers the detector contribution with the central
+``flext_tests`` enforcement dispatcher so that infra detector violations are
+tracked during test sessions.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import p as tests_p
 from flext_tests.enforcement import (
-    EnforcementBuildContext,
     EnforcementCollector,
     EnforcementContribution,
     EnforcementItem,
@@ -21,20 +27,22 @@ if TYPE_CHECKING:
     from flext_tests import m as tests_m
 
 
-class FlextInfraEnforcementPytestPlugin:
+class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
     """Class-owned pytest contribution for flext-infra detector rules."""
+
+    _SOURCE_KIND: str = m.EnforcementSourceKind.FLEXT_INFRA_DETECTOR.value
 
     @classmethod
     def source_kind(cls) -> str:
         """Return the catalog source kind owned by this plugin."""
-        return m.EnforcementSourceKind.FLEXT_INFRA_DETECTOR.value
+        return cls._SOURCE_KIND
 
     @classmethod
     def contribution(cls) -> EnforcementContribution:
         """Return the registry contribution for the flext-tests dispatcher."""
         return EnforcementContribution(
             source_kind=cls.source_kind(),
-            builder=FlextInfraEnforcementPytestPlugin.build_items,
+            builder=cls(),
         )
 
     @classmethod
@@ -42,12 +50,12 @@ class FlextInfraEnforcementPytestPlugin:
         """Register this plugin in the flext-tests enforcement registry."""
         register_enforcement_contribution(cls.source_kind(), cls.contribution())
 
-    @staticmethod
-    def build_items(
+    def __call__(
+        self,
         session: pytest.Session,
         cfg: tests_m.Tests.EnforcementDispatcherConfig,
         rule: tests_m.EnforcementRuleSpec,
-        context: EnforcementBuildContext,
+        context: tests_p.Tests.EnforcementBuildContext,
     ) -> list[pytest.Item]:
         """Build enforcement items from a flext-infra namespace detector report."""
         _ = cfg
@@ -55,7 +63,7 @@ class FlextInfraEnforcementPytestPlugin:
         if infra_report is None:
             return []
 
-        grouped = FlextInfraEnforcementPytestPlugin.group_violations(
+        grouped = self.group_violations(
             rule,
             infra_report,
         )
@@ -120,4 +128,7 @@ class FlextInfraEnforcementPytestPlugin:
 
 FlextInfraEnforcementPytestPlugin.register()
 
-__all__: list[str] = ["FlextInfraEnforcementPytestPlugin"]
+
+__all__: list[str] = [
+    "FlextInfraEnforcementPytestPlugin",
+]
