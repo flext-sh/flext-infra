@@ -16,8 +16,9 @@ class TestsFlextInfraRefactorRopeStubs:
     def test_rope_project_wrapper(self, tmp_path: Path) -> None:
         """Confirm the Rope project wrapper creates a live project."""
         project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+        assert project is not None
         try:
-            assert project is not None
+            assert project.root.real_path
         finally:
             project.close()
 
@@ -32,6 +33,7 @@ class TestsFlextInfraRefactorRopeStubs:
             encoding="utf-8",
         )
         project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+        assert project is not None
         try:
             resource = u.Infra.get_resource_from_path(project, target)
             assert resource is not None

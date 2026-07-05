@@ -87,7 +87,7 @@ class FlextInfraUtilitiesRopeImports:
     ) -> t.SequenceOf[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
         try:
-            return FlextInfraUtilitiesRopeRuntime.find_occurrences(
+            return FlextInfraUtilitiesRopeRuntime.runtime_find_occurrences(
                 rope_project,
                 resource,
                 offset,

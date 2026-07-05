@@ -53,7 +53,10 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def is_pyclass(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopePyObject]:
+    def is_runtime_pyclass(
+        cls,
+        value: p.AttributeProbe,
+    ) -> TypeGuard[t.Infra.RopePyObject]:
         return isinstance(value, cls.runtime_type("rope.base.pyobjects", "PyClass"))
 
     module_syntax_error_type = classmethod(

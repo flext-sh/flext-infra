@@ -69,7 +69,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
     ) -> t.Infra.RopeModuleImports | None:
         """Get module imports."""
         try:
-            module_imports = FlextInfraUtilitiesRopeRuntime.get_module_imports(
+            module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
                 rope_project,
                 FlextInfraUtilitiesRopeCorePyModuleMixin.get_pymodule(
                     rope_project,

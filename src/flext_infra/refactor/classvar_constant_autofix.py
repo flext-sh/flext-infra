@@ -80,7 +80,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
             msg = f"{class_module} did not resolve to a file resource"
             raise TypeError(msg)
         pyclass = source_mod.get_attribute(class_name).get_object()
-        if not FlextInfraUtilitiesRopeRuntime.is_pyclass(pyclass):
+        if not FlextInfraUtilitiesRopeRuntime.is_runtime_pyclass(pyclass):
             msg = f"{class_full_name} did not resolve to a class"
             raise TypeError(msg)
         source_text = source_resource.read()

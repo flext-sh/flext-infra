@@ -153,7 +153,12 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 method_obj,
                 default_line=location[1],
             )
-            end_line = method_obj.get_scope().get_end() or location[1]
+            method_scope = method_obj.get_scope()
+            end_line = (
+                method_scope.get_end()
+                if method_scope is not None and method_scope.get_end() is not None
+                else location[1]
+            )
             method_info = m.Infra.MethodInfo(
                 name=method_name,
                 category=u.Infra.categorize_method(method_name, decorators),

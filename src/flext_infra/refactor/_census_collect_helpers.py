@@ -6,12 +6,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_core import FlextUtilitiesEnforcement
+from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.refactor.declarative_enforcement import (
-    FlextInfraRefactorDeclarativeEnforcement,
-)
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
@@ -97,23 +94,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         rule_names: t.StrSequence | None,
     ) -> tuple[me.EnforcementRuleSpec, ...]:
         """Return catalog declarative rules selected by the census request."""
-        selected = frozenset(rule_names) if rule_names else None
-        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
-        return tuple(
-            rule
-            for rule in catalog.enabled_rules()
-            if (selected is None or rule.id in selected)
-            and FlextInfraRefactorDeclarativeEnforcement.supports(rule)
-        )
+        return FlextInfraEnforcementEngine.declarative_rules(rule_names)
 
     @staticmethod
     def _rule_requires_stub_file(rule: me.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` must scan ``.pyi`` files outside Rope modules."""
-        source = rule.source
-        return (
-            source.kind == "flext_infra_detector"
-            and source.violation_field == "stub_file_violations"
-        )
+        return FlextInfraEnforcementEngine.rule_requires_stub_file(rule)
 
     @staticmethod
     def _project_name_for_module(

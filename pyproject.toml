@@ -51,6 +51,9 @@ name = "FLEXT Team"
 email = "team@flext.sh"
 name = "FLEXT Team"
 
+[project.entry-points.pytest11]
+flext_infra_enforcement = "flext_infra._fixtures.enforcement"
+
 # [MANAGED] consolidated development dependencies
 [project.optional-dependencies]
 dev = [
@@ -154,7 +157,10 @@ show_missing = true
 skip_covered = false
 
 [tool.coverage.run]
-omit = [ "*/dependency_injector/providers.pyx" ]
+omit = [
+    "*/dependency_injector/providers.pyx",
+    "*/pytest-of-*/**",
+]
 
 # [MANAGED] deptry
 [tool.deptry]

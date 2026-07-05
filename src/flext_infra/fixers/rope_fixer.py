@@ -243,47 +243,6 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         package_init = project_root / relative / c.Infra.INIT_PY
         return module_file.is_file() or package_init.is_file()
 
-    def _group_by_target(
-        self,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-    ) -> dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]]:
-        """Group violations by the rope target declared in their fix_action."""
-        grouped: dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]] = {}
-        for rule, probe in violations:
-            fix_action = rule.fix_action
-            if fix_action is None:
-                continue
-            grouped.setdefault(fix_action.target, []).append((rule, probe))
-        return grouped
-
-    @staticmethod
-    def _collect_file_paths(
-        project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-    ) -> tuple[Path, ...]:
-        """Extract unique existing file paths from violation probes."""
-        seen: set[Path] = set()
-        paths: list[Path] = []
-        for _rule, probe in violations:
-            raw_path = getattr(probe, "file_path", None) or getattr(probe, "file", "")
-            if not raw_path:
-                continue
-            file_path = Path(str(raw_path))
-            if not file_path.is_absolute():
-                file_path = project_dir / file_path
-            file_path = file_path.resolve()
-            if file_path.is_file() and file_path not in seen:
-                seen.add(file_path)
-                paths.append(file_path)
-        return tuple(paths)
-
-    @staticmethod
-    def _rule_id(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-    ) -> str:
-        """Return the first rule id in a grouped violation batch."""
-        return violations[0][0].id if violations else ""
-
     def _detect_and_rewrite_files[V](
         self,
         *,

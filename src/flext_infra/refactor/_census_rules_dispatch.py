@@ -5,11 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import FlextUtilitiesEnforcement
+from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 from flext_infra.models import m
-from flext_infra.refactor.declarative_enforcement import (
-    FlextInfraRefactorDeclarativeEnforcement,
-)
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
@@ -337,12 +334,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
     @staticmethod
     def _declarative_catalog_rules() -> tuple[me.EnforcementRuleSpec, ...]:
         """Return enabled catalog rules handled by the declarative engine."""
-        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
-        return tuple(
-            rule
-            for rule in catalog.enabled_rules()
-            if FlextInfraRefactorDeclarativeEnforcement.supports(rule)
-        )
+        return FlextInfraEnforcementEngine.declarative_rules()
 
     def _rule_declarative(
         self,
@@ -370,11 +362,11 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                 selected_rules=selected_rules,
             ):
                 continue
-            kind = self._declarative_kind(rule)
-            object_kind = self._declarative_object_kind(kind)
+            kind = FlextInfraEnforcementEngine.violation_kind(rule)
+            object_kind = FlextInfraEnforcementEngine.object_kind(kind)
             if selected_kinds and kind not in selected_kinds:
                 continue
-            probes = FlextInfraRefactorDeclarativeEnforcement.detect(rule, ctx)
+            probes = FlextInfraEnforcementEngine.detect_declarative(rule, ctx)
             fix_action = rule.fix_action
             fixable = fix_action is not None and fix_action.safe
             action = fix_action.target if fix_action is not None else ""
@@ -382,8 +374,12 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                 line = getattr(probe, "line", 0)
                 if not isinstance(line, int) or line < 0:
                     line = 0
-                object_name = self._declarative_object_name(probe, kind)
-                description = self._declarative_description(rule, probe, object_name)
+                object_name = FlextInfraEnforcementEngine.object_name(probe, kind)
+                description = FlextInfraEnforcementEngine.description(
+                    rule,
+                    probe,
+                    object_name,
+                )
                 violations.append(
                     self._raw_violation(
                         project=project_name,
@@ -409,55 +405,6 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                         ),
                     )
         return violations, fixes
-
-    @staticmethod
-    def _declarative_kind(rule: me.EnforcementRuleSpec) -> str:
-        """Return the violation kind declared by the catalog source metadata."""
-        source = rule.source
-        if source.kind == "flext_infra_detector":
-            raw = source.violation_field
-        elif source.kind == "beartype":
-            predicate_kind = source.predicate_kind
-            raw = str(getattr(predicate_kind, "value", predicate_kind))
-        else:
-            raw = rule.id.lower().replace("-", "_")
-        return (
-            raw.removesuffix("_violations").removesuffix("_violation") or "declarative"
-        )
-
-    @staticmethod
-    def _declarative_object_kind(kind: str) -> str:
-        """Return a stable object kind from a normalized violation kind."""
-        return kind.rsplit("_", maxsplit=1)[-1] if kind else "object"
-
-    @staticmethod
-    def _declarative_object_name(probe: p.AttributeProbe, kind: str) -> str:
-        """Return a stable object name from a declarative probe."""
-        name = getattr(probe, "object_name", "")
-        if name:
-            return str(name)
-        literal = getattr(probe, "literal", "")
-        if literal:
-            return f"{kind}_{literal}"
-        file_path = getattr(probe, "file_path", "")
-        if file_path:
-            return Path(str(file_path)).name
-        return kind or "declarative"
-
-    @staticmethod
-    def _declarative_description(
-        rule: me.EnforcementRuleSpec,
-        probe: p.AttributeProbe,
-        object_name: str,
-    ) -> str:
-        """Return a human-readable description for a declarative violation."""
-        base = rule.description
-        literal = getattr(probe, "literal", "")
-        if literal:
-            return f"{base}: {literal}"
-        if object_name and object_name != rule.id.lower().replace("-", "_"):
-            return f"{base}: {object_name}"
-        return base
 
 
 __all__: list[str] = ["FlextInfraRefactorCensusRulesDispatchMixin"]

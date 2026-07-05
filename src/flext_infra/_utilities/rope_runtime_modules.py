@@ -36,7 +36,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         return project
 
     @classmethod
-    def get_module_imports(
+    def module_imports_for_pymodule(
         cls,
         rope_project: t.Infra.RopeProject,
         pymodule: t.Infra.RopePyModule,
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         return organizer
 
     @classmethod
-    def find_occurrences(
+    def runtime_find_occurrences(
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,

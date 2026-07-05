@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -106,12 +105,10 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         files_modified: set[str] = set()
-        for target, target_violations in self._group_violations_by_target(
-            violations,
-        ).items():
+        for target, target_violations in self._group_by_target(violations).items():
             transformer_cls = self._TRANSFORMERS.get(target)
             if transformer_cls is None:
-                rule_id = target_violations[0][0].id
+                rule_id = self._rule_id(target_violations)
                 failed.append(
                     fr.FailedFix(
                         rule_id=rule_id,
@@ -121,12 +118,12 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 )
                 continue
             fix_action = target_violations[0][0].fix_action
-            file_paths = self._collect_file_paths(target_violations, project_dir)
+            file_paths = self._collect_file_paths(project_dir, target_violations)
             for file_path in file_paths:
                 if self._is_owned_library_exempt(project_dir, fix_action, file_path):
                     skipped.append(
                         fr.SkippedViolation(
-                            rule_id=target_violations[0][0].id,
+                            rule_id=self._rule_id(target_violations),
                             file_path=str(file_path),
                             reason=(
                                 f"project {project_dir.name} owns library abstraction"
@@ -139,7 +136,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                     transformer_cls=transformer_cls,
                     fix_action=fix_action,
                     ctx=ctx,
-                    rule_id=target_violations[0][0].id,
+                    rule_id=self._rule_id(target_violations),
                 )
                 fixed.extend(result.fixed)
                 previewed.extend(result.previewed)
@@ -375,43 +372,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             )
         # Remaining enforcement transformers require no runtime params.
         return transformer_cls()
-
-    @staticmethod
-    def _collect_file_paths(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        project_dir: Path,
-    ) -> tuple[Path, ...]:
-        """Extract unique file paths from violation probes."""
-        seen: set[Path] = set()
-        paths: list[Path] = []
-        for _rule, probe in violations:
-            raw = getattr(probe, "file_path", None) or getattr(probe, "file", "")
-            if not raw:
-                continue
-            path = Path(raw)
-            if not path.is_absolute():
-                path = project_dir / path
-            path = path.resolve()
-            if path not in seen and path.is_file():
-                seen.add(path)
-                paths.append(path)
-        return tuple(paths)
-
-    @staticmethod
-    def _group_violations_by_target(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-    ) -> dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]]:
-        """Group violations by the transformer target declared in ``fix_action``."""
-        grouped: dict[
-            str,
-            list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ] = defaultdict(list)
-        for rule, probe in violations:
-            fix_action = rule.fix_action
-            if fix_action is None:
-                continue
-            grouped[fix_action.target].append((rule, probe))
-        return grouped
 
 
 __all__: list[str] = ["FlextInfraTransformerFixerAdapter"]
