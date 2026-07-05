@@ -28,7 +28,7 @@ class TestFlextInfraCodegenLazyInit:
         *,
         expected_names: t.StrSequence,
         expected_modules: t.StrSequence,
-    ) -> tuple[str, str, str, str]:
+    ) -> tuple[str, str, str]:
         init_content = cls._read_generated_file(package_root, c.Infra.INIT_PY)
         registry_content = cls._read_generated_file(
             package_root,
@@ -38,7 +38,6 @@ class TestFlextInfraCodegenLazyInit:
             package_root,
             "_exports_lazy_part_01.py",
         )
-        stub_content = cls._read_generated_file(package_root, c.Infra.INIT_PYI)
 
         assert "from flext_core.lazy import install_lazy_exports" in init_content
         assert (
@@ -51,6 +50,7 @@ class TestFlextInfraCodegenLazyInit:
         assert "merge_lazy_imports(" not in init_content
         assert "from typing import TYPE_CHECKING" in init_content
         assert "if TYPE_CHECKING:" in init_content
+        assert not (package_root / c.Infra.INIT_PYI).exists()
 
         assert "merge_lazy_imports(" in registry_content
         assert "_exports_lazy_part_01" in registry_content
@@ -61,9 +61,8 @@ class TestFlextInfraCodegenLazyInit:
             assert f'"{export_name}"' in init_content
             assert f'"{export_name}"' in lazy_part_content
             assert f"{export_name} as {export_name}" in init_content
-            assert f"{export_name} as {export_name}" in stub_content
 
-        return (init_content, registry_content, lazy_part_content, stub_content)
+        return (init_content, registry_content, lazy_part_content)
 
     def test_init_accepts_workspace_root(self, tmp_path: Path) -> None:
         """Test generator initialization with workspace root."""
@@ -173,7 +172,7 @@ class TestFlextInfraCodegenLazyInit:
         child_init = sub_dir / "__init__.py"
         assert child_init.exists()
         assert "FlextTestsService" in child_init.read_text(encoding="utf-8")
-        _init_content, registry_content, _lazy_part_content, _stub_content = (
+        _init_content, registry_content, _lazy_part_content = (
             self._assert_root_lazy_contract(
                 package_root,
                 expected_names=("FlextTestsModels", "FlextTestsService", "m"),
@@ -224,12 +223,12 @@ class TestFlextInfraCodegenLazyInit:
         result = u.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
-        stub_content = self._read_generated_file(package_root, c.Infra.INIT_PYI)
         init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
         assert "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS" in init_content
-        assert "FlextTestsModels" in stub_content
-        assert "FlextTestsService" not in stub_content
-        assert '"sub"' not in stub_content
+        assert "FlextTestsModels" in init_content
+        assert "FlextTestsService" not in init_content
+        assert '"sub"' not in init_content
+        assert not (package_root / c.Infra.INIT_PYI).exists()
 
     def test_explicit_public_exports_keep_internal_child_export(
         self,
@@ -270,14 +269,10 @@ class TestFlextInfraCodegenLazyInit:
 
         assert result == 0
         init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
-        stub_content = self._read_generated_file(package_root, c.Infra.INIT_PYI)
         assert "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS" in init_content
         assert "from flext_test_project._utilities.client import (" in init_content
         assert "FlextTestsClient as FlextTestsClient," in init_content
-        assert (
-            "from flext_test_project._utilities.client import "
-            "FlextTestsClient as FlextTestsClient"
-        ) in stub_content
+        assert not (package_root / c.Infra.INIT_PYI).exists()
 
     def test_public_root_publishes_governed_child_module_export(
         self,
@@ -300,12 +295,10 @@ class TestFlextInfraCodegenLazyInit:
 
         assert result == 0
         init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
-        stub_content = self._read_generated_file(package_root, c.Infra.INIT_PYI)
         assert '"basemk"' in init_content
         assert "FlextTestsBaseMkGenerator" not in init_content
-        assert "from flext_test_project import basemk as basemk" in stub_content
-        assert '"basemk"' in stub_content
-        assert "FlextTestsBaseMkGenerator" not in stub_content
+        assert "import flext_test_project.basemk as basemk" in init_content
+        assert not (package_root / c.Infra.INIT_PYI).exists()
 
     def test_generate_rewrites_to_canonical_docstring(self, tmp_path: Path) -> None:
         """Generated wrappers use the canonical package docstring."""
@@ -356,14 +349,14 @@ class TestFlextInfraCodegenLazyInit:
         result = u.Tests.run_lazy_init(workspace_root)
 
         assert result == 0
-        _init_content, _registry_content, lazy_part_content, stub_content = (
+        init_content, _registry_content, lazy_part_content = (
             self._assert_root_lazy_contract(
                 src_dir,
                 expected_names=("Shared",),
                 expected_modules=(),
             )
         )
-        # Exactly one of the two sources wins; the lazy registry and typing stub
+        # Exactly one of the two sources wins; the registry and static contract
         # publish the single canonical source selected by the scorer.
         alpha_imports = lazy_part_content.count('".alpha"')
         beta_imports = lazy_part_content.count('".beta"')
@@ -371,8 +364,8 @@ class TestFlextInfraCodegenLazyInit:
             alpha_imports == 0 and beta_imports == 1
         ), lazy_part_content
         assert (
-            "from flext_test_project.alpha import Shared as Shared" in stub_content
-        ) != ("from flext_test_project.beta import Shared as Shared" in stub_content)
+            "from flext_test_project.alpha import Shared as Shared" in init_content
+        ) != ("from flext_test_project.beta import Shared as Shared" in init_content)
 
     def test_accepts_service_base_in_services_package(self, tmp_path: Path) -> None:
         """services/base.py must accept the canonical ServiceBase exception."""

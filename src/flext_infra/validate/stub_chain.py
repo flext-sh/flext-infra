@@ -236,6 +236,10 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return (f"{project_dir.name}: {result.error}",)
         data = result.value
         violations: t.MutableSequenceOf[str] = []
+        if data.mypy_hints:
+            violations.append(
+                f"{project_dir.name}: {len(data.mypy_hints)} missing typing packages",
+            )
         if data.internal_missing:
             violations.append(
                 f"{project_dir.name}: {len(data.internal_missing)} internal missing imports",

@@ -78,6 +78,8 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         if export_name != export_name.lower():
             return False
         if not attr_name:
+            if export_name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS:
+                return False
             return export_name == mod.rsplit(".", maxsplit=1)[-1]
         return mod == root_name and attr_name == export_name
 

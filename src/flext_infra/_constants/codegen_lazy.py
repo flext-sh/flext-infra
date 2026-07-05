@@ -25,8 +25,6 @@ class FlextInfraConstantsCodegenLazy:
     "Standard Python package initializer filename."
     INIT_PYI: Final[str] = "__init__.pyi"
     "Typing stub paired with generated thin package initializers."
-    STUB_STRING_LITERAL_LIMIT: Final[int] = 50
-    "Maximum string-literal length accepted by Ruff for ``.pyi`` files."
     ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
     "Suffix for tuple constants that declare frozen public root exports."
     LAZY_REGISTRY_PART_SIZE: Final[int] = 32

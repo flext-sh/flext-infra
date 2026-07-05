@@ -24,16 +24,10 @@ class FlextInfraConstantsCodegenRenderNames:
     "Generated split lazy registry aggregator."
     TEMPLATE_REGISTRY_PART: Final[str] = "lazy_init_registry_part.py.j2"
     "Generated split lazy registry part."
-    TEMPLATE_TYPING_STUB: Final[str] = "lazy_init_typing_stub.pyi.j2"
-    "Generated package typing stub for thin registry wrappers."
     TEMPLATE_DIRECT_BOOTSTRAP: Final[str] = "lazy_init_direct_bootstrap.py.j2"
     "Direct-import bootstrap package initializer."
     TEMPLATE_FLEXT_CORE_ROOT: Final[str] = "lazy_init_flext_core_root.py.j2"
     "Canonical flext-core root package initializer."
-    TEMPLATE_FLEXT_CORE_ROOT_TYPING_STUB: Final[str] = (
-        "lazy_init_flext_core_root.pyi.j2"
-    )
-    "Canonical flext-core root package typing stub."
     TEMPLATE_VERSION_FILE: Final[str] = "version_file.py.j2"
     "Per-project ``__version__.py`` template."
     TEMPLATE_MKDOCS_PROJECT: Final[str] = "mkdocs_project.yml.j2"

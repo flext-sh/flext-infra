@@ -715,9 +715,13 @@ class FlextInfraUtilitiesRopeAnalysis:
             return ()
         values: list[str] = []
         for element in getattr(node, "elts", ()) or ():
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(element) != "Constant":
+            element_kind = FlextInfraUtilitiesRopeAnalysis.node_kind(element)
+            if element_kind == "Constant":
+                value = getattr(element, "value", None)
+            elif element_kind == "Str":
+                value = getattr(element, "s", None)
+            else:
                 return ()
-            value = getattr(element, "value", None)
             if not isinstance(value, str):
                 return ()
             values.append(value)

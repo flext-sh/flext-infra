@@ -32,22 +32,26 @@ class TestsFlextInfraLazyInitRegistryWrapper:
             ),
         )
 
-    def test_typing_stub_emission_is_public_surface_only(
+    def test_generated_typing_stub_is_removed_from_public_surfaces(
         self,
         tmp_path: Path,
     ) -> None:
-        """Only public runtime roots own generated static ``__init__.pyi`` stubs."""
-        assert (
-            FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
-                self._lazy_init_plan(tmp_path, "flext_core"),
-            )
+        """Generated ``__init__.pyi`` files are stale and must be removed."""
+        writer = FlextInfraCodegenLazyInitGenerationRegistryMixin()
+        writer._modified_files = set()
+        plan = self._lazy_init_plan(tmp_path, "flext_core")
+        plan.context.pkg_dir.mkdir(parents=True)
+        stub = plan.context.pkg_dir / c.Infra.INIT_PYI
+        stub.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        assert not FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
-            self._lazy_init_plan(tmp_path, "tests"),
-        )
-        assert not FlextInfraCodegenLazyInitGenerationRegistryMixin._should_emit_typing_stub(
-            self._lazy_init_plan(tmp_path, "flext_core._root_typing_parts"),
-        )
+
+        status = writer._write_generated_registry(plan, "")
+
+        assert status == 0
+        assert not stub.exists()
+        assert stub in {Path(path) for path in writer._modified_files}
 
     def test_tests_package_uses_split_registry_wrapper(self) -> None:
         """Test packages import a pre-split registry instead of inline maps."""
@@ -175,13 +179,10 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         assert "for name, target in FLEXT_DEMO_LAZY_IMPORTS.items()" in content
         assert "if name in FLEXT_DEMO_PUBLIC_EXPORTS" in content
         assert "_PUBLIC_EXPORTS: tuple[str, ...] = FLEXT_DEMO_PUBLIC_EXPORTS" in content
-        assert '"FlextDemo",' not in content
-        assert '"m"' not in content
-        assert '"r"' not in content
         assert "__all__ =" not in content
         assert "public_exports=_PUBLIC_EXPORTS" in content
 
-    def test_flext_core_root_writes_typing_stub_without_registry_import(
+    def test_flext_core_root_removes_typing_stub_without_registry_import(
         self,
         tmp_path: Path,
     ) -> None:
@@ -198,18 +199,19 @@ class TestsFlextInfraLazyInitRegistryWrapper:
             },
         )
         plan.context.pkg_dir.mkdir(parents=True)
+        stub = plan.context.pkg_dir / c.Infra.INIT_PYI
+        stub.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
 
         status = writer._write_generated_registry(
             plan,
             "from flext_core._root_exports import ROOT_ALL\n",
         )
 
-        stub = plan.context.pkg_dir / c.Infra.INIT_PYI
         assert status == 0
-        assert stub.exists()
-        assert "from flext_core._root_typing import" not in stub.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        assert not stub.exists()
 
     def test_check_only_reports_stale_generated_registry_without_removing(
         self,

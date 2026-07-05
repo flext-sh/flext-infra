@@ -150,29 +150,6 @@ class FlextInfraModelsCodegenRender:
             description="Lazy alias imports grouped by module.",
         )
 
-    class LazyInitTypingStubRender(m.ArbitraryTypesModel):
-        """Template context for a generated package typing stub."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            validate_assignment=True,
-        )
-
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        import_lines: str = m.Field(description="Rendered static import declarations.")
-        inline_constant_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Inline constant names declared directly in the stub.",
-        )
-        all_lines: str = m.Field(
-            default_factory=str,
-            description="Rendered ``__all__`` literal entries for the stub.",
-        )
-        exports: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Published generated exports.",
-        )
-
     class LazyInitDirectBootstrapRender(m.ArbitraryTypesModel):
         """Template context for direct bootstrap generated packages."""
 

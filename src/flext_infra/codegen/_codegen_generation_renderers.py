@@ -10,8 +10,8 @@ from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_infra.codegen._codegen_generation_typing_stub import (
-    FlextInfraCodegenGenerationTypingStubMixin,
+from flext_infra.codegen._codegen_generation_static_contract import (
+    FlextInfraCodegenGenerationStaticContractMixin,
 )
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenGenerationRenderersMixin(
-    FlextInfraCodegenGenerationTypingStubMixin,
+    FlextInfraCodegenGenerationStaticContractMixin,
 ):
     """Jinja-backed renderer helper methods."""
 

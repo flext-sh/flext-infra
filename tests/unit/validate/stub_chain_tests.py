@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import r
@@ -73,18 +72,9 @@ class TestStubChain:
         )
         tm.that(chain.project_dirs is None, eq=True)
 
-    @pytest.mark.parametrize(
-        ("stub_path", "expected_unresolved"),
-        [
-            (None, ["requests"]),
-            ("typings/requests.pyi", []),
-        ],
-    )
     def test_analyze_classifies_public_results(
         self,
         tmp_path: Path,
-        stub_path: str | None,
-        expected_unresolved: t.StrSequence,
     ) -> None:
         project_dir = u.Tests.mk_project(
             tmp_path,
@@ -92,15 +82,11 @@ class TestStubChain:
             pyproject="[project]\nname = 'project'\n",
             with_src=True,
         )
-        if stub_path is not None:
-            stub_file = tmp_path / stub_path
-            stub_file.parent.mkdir(parents=True, exist_ok=True)
-            stub_file.write_text("", encoding="utf-8")
         chain = self.make_chain(
             workspace_root=tmp_path,
             stdout=self._stub_output(
-                "note: hint: install stub package `types-requests`",
-                "src/project.py:1: error: Cannot find module `requests` [missing-import]",
+                "note: hint: install stub package `types-definitely-missing-external`",
+                "src/project.py:1: error: Cannot find module `definitely_missing_external` [missing-import]",
                 "src/project.py:2: error: Cannot find module `flext_core` [missing-import]",
             ),
         )
@@ -112,9 +98,9 @@ class TestStubChain:
             result.value,
             eq=m.Infra.StubAnalysisReport(
                 project="project",
-                mypy_hints=["types-requests"],
+                mypy_hints=["types-definitely-missing-external"],
                 internal_missing=["flext_core"],
-                unresolved_missing=list(expected_unresolved),
+                unresolved_missing=["definitely_missing_external"],
                 total_missing=2,
             ),
         )
@@ -134,7 +120,7 @@ class TestStubChain:
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 2 projects, 0 issues")
+        tm.that(result.value.summary, eq="typed dependency chain: 2 projects, 0 issues")
         tm.that(result.value.violations, empty=True)
         tm.that(valid_project.exists(), eq=True)
 
@@ -148,7 +134,7 @@ class TestStubChain:
         )
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
+        tm.that(result.value.summary, eq="typed dependency chain: 1 projects, 0 issues")
 
     def test_build_report_includes_untracked_git_projects(self, tmp_path: Path) -> None:
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
@@ -182,7 +168,7 @@ class TestStubChain:
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 2 projects, 0 issues")
+        tm.that(result.value.summary, eq="typed dependency chain: 2 projects, 0 issues")
         tm.that(tracked_project.exists(), eq=True)
 
     def test_build_report_fails_for_missing_workspace(self, tmp_path: Path) -> None:
@@ -196,7 +182,7 @@ class TestStubChain:
         chain = self.make_chain(
             workspace_root=tmp_path,
             stdout=self._stub_output(
-                "src/project.py:1: error: Cannot find module `requests` [missing-import]",
+                "note: hint: install stub package `types-definitely-missing-external`",
             ),
             all_projects=True,
         )
@@ -204,7 +190,7 @@ class TestStubChain:
         result = chain.execute()
 
         tm.fail(result)
-        tm.that(result.error, has="stub chain: 1 projects, 1 issues")
+        tm.that(result.error, has="typed dependency chain: 1 projects, 1 issues")
 
     def test_execute_passes_for_selected_projects(self, tmp_path: Path) -> None:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)

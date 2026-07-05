@@ -38,7 +38,6 @@ class TestsFlextInfraDepsModernizerPyright:
         flext_api = tmp_path / "flext-api"
         detached_project = tmp_path / "demo-migration-tool"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
-        (tmp_path / "typings" / "generated").mkdir(parents=True, exist_ok=True)
         flext_core.mkdir(parents=True, exist_ok=True)
         flext_api.mkdir(parents=True, exist_ok=True)
         detached_project.mkdir(parents=True, exist_ok=True)
@@ -101,9 +100,13 @@ class TestsFlextInfraDepsModernizerPyright:
                 if (tmp_path / directory).is_dir()
             },
         )
-        assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"])),
-        ) == sorted([*rules.root_typings_paths, *rules.ignored_diagnostic_globs])
+        expected_ignores = [*rules.root_typings_paths, *rules.ignored_diagnostic_globs]
+        if expected_ignores:
+            assert sorted(
+                u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"])),
+            ) == sorted(expected_ignores)
+        else:
+            assert "ignore" not in pyright
         assert sorted(
             u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"])),
         ) == sorted([
@@ -195,7 +198,6 @@ class TestsFlextInfraDepsModernizerPyright:
             encoding="utf-8",
         )
         (project_dir / "tests" / "fixtures").mkdir(parents=True, exist_ok=True)
-        (tmp_path / "typings").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -212,12 +214,16 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        assert sorted(
-            u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"])),
-        ) == sorted([
-            rules.project_typings_paths[0],
+        expected_ignores = [
+            *rules.project_typings_paths,
             *rules.ignored_diagnostic_globs,
-        ])
+        ]
+        if expected_ignores:
+            assert sorted(
+                u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"])),
+            ) == sorted(expected_ignores)
+        else:
+            assert "ignore" not in pyright
         assert sorted(
             u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"])),
         ) == sorted([rules.source_dir, rules.test_like_dirs[0]])

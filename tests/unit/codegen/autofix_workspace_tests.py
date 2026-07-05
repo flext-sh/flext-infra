@@ -51,7 +51,8 @@ def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
         pkg_name="test_proj",
         files={
             "base.py": "import typing\nT = typing.TypeVar('T')\n"
-            "class TestProjBase:\n    pass\n",
+            "class TestProjBase:\n    pass\n\n"
+            '__all__: list[str] = ["TestProjBase", "T"]\n',
         },
     )
     fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
@@ -84,14 +85,16 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
         pkg_name="test_proj",
         files={
             "base.py": "from typing import Final\nMAX_RETRIES: Final = 3\n"
-            "class TestProjBase:\n    pass\n",
+            "class TestProjBase:\n    pass\n\n"
+            '__all__: list[str] = ["MAX_RETRIES", "TestProjBase"]\n',
         },
     )
     fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project)])
     modified_str = " ".join(result.files_modified)
-    tm.that(modified_str, contains="__init__.py")
-    tm.that(len(result.files_modified) >= 1, eq=True)
+    tm.that(modified_str, contains="constants.py")
+    tm.that(modified_str, contains="typings.py")
+    tm.that(len(result.files_modified) >= 2, eq=True)
 
 
 __all__: t.StrSequence = []

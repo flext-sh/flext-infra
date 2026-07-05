@@ -1,4 +1,4 @@
-"""Typing-stub renderer for generated thin lazy-init wrappers."""
+"""Static type-checking contract renderer for generated lazy-init wrappers."""
 
 from __future__ import annotations
 
@@ -15,10 +15,10 @@ if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraCodegenGenerationTypingStubMixin(
+class FlextInfraCodegenGenerationStaticContractMixin(
     FlextInfraCodegenGenerationLazyEntriesMixin,
 ):
-    """Render static typing stubs for registry-backed wrappers."""
+    """Render static import contracts for generated package initializers."""
 
     if TYPE_CHECKING:
 
@@ -32,11 +32,11 @@ class FlextInfraCodegenGenerationTypingStubMixin(
             return ""
 
     @classmethod
-    def _generate_stub_import_lines(
+    def _generate_static_import_lines(
         cls,
         import_map: t.LazyAliasMap,
     ) -> t.StrSequence:
-        """Generate explicit re-export imports for ``.pyi`` files."""
+        """Generate explicit imports for static analysis contracts."""
         groups = cls._group_imports(import_map)
         if not groups:
             return ()
@@ -78,22 +78,16 @@ class FlextInfraCodegenGenerationTypingStubMixin(
         return tuple(lines)
 
     @staticmethod
-    def _format_stub_all_entry(export_name: str) -> t.StrSequence:
-        """Render one ``__all__`` entry accepted by ``.pyi`` lint rules."""
-        if len(export_name) > c.Infra.STUB_STRING_LITERAL_LIMIT:
-            message = (
-                "public stub export exceeds Ruff's .pyi string literal limit: "
-                f"{export_name}"
-            )
-            raise ValueError(message)
+    def _format_all_entry(export_name: str) -> t.StrSequence:
+        """Render one public ``__all__`` entry for a generated Python module."""
         return (f'    "{export_name}",',)
 
     @classmethod
-    def _generate_stub_all_lines(cls, exports: t.StrSequence) -> str:
-        """Generate sorted ``__all__`` entries for a typing stub."""
+    def _generate_all_lines(cls, exports: t.StrSequence) -> str:
+        """Generate sorted public ``__all__`` entries."""
         lines: t.MutableSequenceOf[str] = []
         for export_name in sorted(dict.fromkeys(exports)):
-            lines.extend(cls._format_stub_all_entry(export_name))
+            lines.extend(cls._format_all_entry(export_name))
         return "\n".join(lines)
 
     @classmethod
@@ -132,41 +126,9 @@ class FlextInfraCodegenGenerationTypingStubMixin(
             })
         return m.Infra.LazyInitFlextCoreRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
-            import_lines="\n".join(cls._generate_stub_import_lines(type_map)),
-            all_lines=cls._generate_stub_all_lines(root_all),
+            import_lines="\n".join(cls._generate_static_import_lines(type_map)),
+            all_lines=cls._generate_all_lines(root_all),
         )
 
-    @classmethod
-    def generate_typing_stub(
-        cls,
-        exports: t.StrSequence,
-        type_map: t.LazyAliasMap,
-        inline_constants: t.StrMapping,
-        *,
-        include_all: bool = True,
-    ) -> str:
-        """Generate a static typing stub for a thin registry-backed wrapper."""
-        published = tuple(dict.fromkeys(exports))
-        import_map = {name: type_map[name] for name in published if name in type_map}
-        inline_constant_names = tuple(
-            name for name in published if name in inline_constants
-        )
-        if not import_map and not inline_constant_names:
-            return ""
-        context = m.Infra.LazyInitTypingStubRender(
-            autogen_header=c.Infra.AUTOGEN_HEADER,
-            import_lines="\n".join(cls._generate_stub_import_lines(import_map)),
-            inline_constant_names=inline_constant_names,
-            all_lines=cls._generate_stub_all_lines(published) if include_all else "",
-            exports=published,
-        )
-        return cls._render_model(c.Infra.TEMPLATE_TYPING_STUB, context)
 
-    @classmethod
-    def generate_flext_core_root_typing_stub(cls) -> str:
-        """Generate flext-core root from lazy attributes and public ``__all__``."""
-        context = cls.flext_core_root_static_contract(include_metadata=True)
-        return cls._render_model(c.Infra.TEMPLATE_FLEXT_CORE_ROOT_TYPING_STUB, context)
-
-
-__all__: list[str] = ["FlextInfraCodegenGenerationTypingStubMixin"]
+__all__: list[str] = ["FlextInfraCodegenGenerationStaticContractMixin"]

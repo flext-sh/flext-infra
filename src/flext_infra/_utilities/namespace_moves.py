@@ -625,6 +625,45 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return required_imports
 
     @staticmethod
+    def _drop_moved_alias_exports(
+        *,
+        source: str,
+        alias_names: t.Infra.StrSet,
+    ) -> str:
+        """Remove moved aliases from a literal module ``__all__`` assignment."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return source
+        lines = source.splitlines()
+        for node in getattr(pymodule.get_ast(), "body", ()) or ():
+            if c.Infra.DUNDER_ALL not in (
+                FlextInfraUtilitiesRopeAnalysis.assignment_target_names(node)
+            ):
+                continue
+            exports = FlextInfraUtilitiesRopeAnalysis.literal_string_sequence(
+                getattr(node, "value", None),
+            )
+            if not exports:
+                return source
+            kept_exports = tuple(name for name in exports if name not in alias_names)
+            if kept_exports == tuple(exports):
+                return source
+            line_range = FlextInfraUtilitiesRopeAnalysis.line_col_range(node)
+            if line_range is None:
+                return source
+            start_line, _, end_line, _ = line_range
+            rendered_exports = ", ".join(f'"{name}"' for name in kept_exports)
+            replacement = f"__all__: list[str] = [{rendered_exports}]"
+            return "\n".join(
+                (
+                    *lines[: start_line - 1],
+                    replacement,
+                    *lines[end_line:],
+                ),
+            )
+        return source
+
+    @staticmethod
     def _move_typing_alias_lines(
         *,
         project_root: Path,
@@ -655,6 +694,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         if not moved_lines:
             return
         kept_source = "\n".join(kept_lines)
+        kept_source = (
+            FlextInfraUtilitiesRefactorNamespaceMoves._drop_moved_alias_exports(
+                source=kept_source,
+                alias_names=alias_names,
+            )
+        )
+        kept_lines = kept_source.splitlines()
         required_imports = (
             FlextInfraUtilitiesRefactorNamespaceMoves._collect_required_import_lines(
                 source=source,

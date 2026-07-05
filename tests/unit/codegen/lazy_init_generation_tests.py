@@ -110,30 +110,21 @@ class TestGenerateTypeChecking:
         tm.that(joined, contains="from alpha_pkg.module import Test1")
         tm.that(joined, contains="from beta_pkg.module import Test2")
 
-    def test_typing_stub_omits_all_when_disabled(self) -> None:
-        """Non-public typing stubs keep static exports without ``__all__``."""
+    def test_static_contract_accepts_long_public_export_names(self) -> None:
+        """Static contracts live in generated Python modules, not ``.pyi`` stubs."""
         export_name = "TestsFlextInfraIntegrationRefactorNestingIdempotency"
-        content = FlextInfraCodegenGeneration.generate_typing_stub(
+        content = FlextInfraCodegenGeneration.generate_file(
             (export_name,),
             {export_name: ("tests.sample", export_name)},
             {},
-            include_all=False,
+            "test_pkg",
         )
         tm.that(content, contains=f"{export_name} as {export_name}")
-        tm.that(content, lacks="__all__ = (")
+        tm.that(content, contains=f'    "{export_name}",')
+        tm.that(content, contains="public_exports=__all__")
 
-    def test_typing_stub_rejects_long_public_all_entries(self) -> None:
-        """Public typing stubs fail loud on invalid long ``__all__`` literals."""
-        export_name = "TestsFlextInfraIntegrationRefactorNestingIdempotency"
-        with pytest.raises(ValueError, match="public stub export exceeds"):
-            FlextInfraCodegenGeneration.generate_typing_stub(
-                (export_name,),
-                {export_name: ("tests.sample", export_name)},
-                {},
-            )
-
-    def test_flext_core_root_typing_stub_uses_public_facade_contract(self) -> None:
-        content = FlextInfraCodegenGeneration.generate_flext_core_root_typing_stub()
+    def test_flext_core_root_static_contract_uses_public_facade_contract(self) -> None:
+        content = FlextInfraCodegenGeneration.generate_file((), {}, {}, "flext_core")
 
         tm.that(content, contains="from flext_core._root_typing_parts.facades import (")
         tm.that(content, contains="FlextConstants as FlextConstants,")
@@ -835,26 +826,6 @@ class TestRunRuffFix:
         result = u.Infra.run_ruff_fix(generated)
         tm.that(result.success, eq=True)
         tm.that(generated.read_text(encoding="utf-8"), eq="__all__ = []\n")
-
-    def test_preserves_stub_all_literal_strings(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Typing stubs keep literal ``__all__`` names after post-processing."""
-        generated = tmp_path / "__init__.pyi"
-        export_name = "TestsFlextInfraRootExportContract"
-        generated.write_text(
-            f"from tests.sample import {export_name} as {export_name}\n"
-            "__all__ = (\n"
-            f'    "{export_name}",\n'
-            ")\n",
-            encoding="utf-8",
-        )
-        result = u.Infra.run_ruff_fix(generated)
-        content = generated.read_text(encoding="utf-8")
-        tm.that(result.success, eq=True)
-        tm.that(content, contains=f'"{export_name}"')
-        tm.that(content, lacks="    ...,")
 
     def test_raises_when_ruff_postprocess_fails(
         self,

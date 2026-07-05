@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
-    """Write split lazy registries for generated test wrappers."""
+    """Write split lazy registries for generated package initializers."""
 
     if TYPE_CHECKING:
         _modified_files: t.Infra.StrSet
@@ -28,21 +28,13 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         *,
         check_only: bool = False,
     ) -> int:
-        """Write split registries and static stubs for generated init files."""
+        """Write split registries and remove stale generated ``__init__.pyi`` files."""
         if plan.context.current_pkg == "flext_core":
-            try:
-                self._write_generated_typing_stub(plan, check_only=check_only)
-            except c.EXC_OS_VALUE as exc:
-                u.Cli.error(f"generating typing stub for {plan.context.pkg_dir}: {exc}")
-                return -1
+            self._remove_generated_typing_stub(plan, check_only=check_only)
             return 0
         registry = plan.registry_wrapper
         if registry is None:
-            try:
-                self._write_generated_typing_stub(plan, check_only=check_only)
-            except c.EXC_OS_VALUE as exc:
-                u.Cli.error(f"generating typing stub for {plan.context.pkg_dir}: {exc}")
-                return -1
+            self._remove_generated_typing_stub(plan, check_only=check_only)
             return 0
         import_line = f"from {registry.module} import {registry.name}"
         import_block = f"from {registry.module} import ("
@@ -58,13 +50,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             self._remove_generated_typing_stub(plan, check_only=check_only)
             return 0
         if not registry.generated:
-            try:
-                self._write_generated_typing_stub(plan, check_only=check_only)
-            except c.EXC_OS_VALUE as exc:
-                u.Cli.error(
-                    f"generating registry stub for {plan.context.pkg_dir}: {exc}",
-                )
-                return -1
+            self._remove_generated_typing_stub(plan, check_only=check_only)
             return 0
         registry_dir = self._registry_dir_for_module(
             plan.context.pkg_dir,
@@ -98,55 +84,11 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                     content,
                     check_only=check_only,
                 )
-            self._write_generated_typing_stub(plan, check_only=check_only)
+            self._remove_generated_typing_stub(plan, check_only=check_only)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating registry for {plan.context.pkg_dir}: {exc}")
             return -1
         return 0
-
-    def _write_generated_typing_stub(
-        self,
-        plan: m.Infra.LazyInitPlan,
-        *,
-        check_only: bool = False,
-    ) -> None:
-        """Write the static typing stub for generated lazy exports."""
-        if not self._should_emit_typing_stub(plan):
-            self._remove_generated_typing_stub(plan, check_only=check_only)
-            return
-        stub = (
-            FlextInfraCodegenGeneration.generate_flext_core_root_typing_stub()
-            if plan.context.current_pkg == "flext_core"
-            else FlextInfraCodegenGeneration.generate_typing_stub(
-                plan.exports,
-                {**plan.type_checking_map, **plan.eager_dunders},
-                plan.inline_constants,
-                include_all=True,
-            )
-        )
-        if stub:
-            self._write_changed_generated_file(
-                plan.context.pkg_dir / c.Infra.INIT_PYI,
-                stub,
-                check_only=check_only,
-            )
-            return
-        self._remove_generated_typing_stub(plan, check_only=check_only)
-
-    @staticmethod
-    def _should_emit_typing_stub(plan: m.Infra.LazyInitPlan) -> bool:
-        """Return whether a package owns a public static typing stub."""
-        segments = tuple(
-            segment for segment in plan.context.current_pkg.split(".") if segment
-        )
-        if not segments:
-            return False
-        if any(segment in c.Infra.NON_PUBLIC_LAZY_ROOTS for segment in segments):
-            return False
-        return not any(
-            segment.startswith("_") and not segment.startswith("__")
-            for segment in segments[1:]
-        )
 
     def _remove_generated_typing_stub(
         self,
@@ -154,7 +96,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         *,
         check_only: bool = False,
     ) -> None:
-        """Remove stale codegen-owned typing stubs when no static contract exists."""
+        """Remove stale codegen-owned ``__init__.pyi`` files."""
         stub_path = plan.context.pkg_dir / c.Infra.INIT_PYI
         previous = self._read_generated_file(stub_path)
         if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
