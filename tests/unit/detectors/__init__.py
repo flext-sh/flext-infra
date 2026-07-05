@@ -7,6 +7,8 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        ".test_internal_import_detector": ("TestsFlextInfraInternalImportDetector",),
+        ".test_loose_object_detector": ("TestsFlextInfraLooseObjectDetector",),
         ".test_pattern_smell_detector": ("TestsFlextInfraPatternSmellDetector",),
         "flext_tests": (
             "c",

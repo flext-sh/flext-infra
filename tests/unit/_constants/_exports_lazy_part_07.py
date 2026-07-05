@@ -25,13 +25,16 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ".detectors": ("detectors",),
         ".discovery": ("discovery",),
         ".docs": ("docs",),
-        ".fixtures": (
-            "deptry_report_payload",
-            "models_resource",
-            "modernizer_workspace",
-        ),
+        ".fixtures": ("deptry_report_payload",),
         ".github": ("github",),
-        ".io": ("io",),
+        ".transformers.test_infra_transformer_enforcement_fixers": (
+            "TestsFlextInfraTransformersTypingDictAttr",
+            "TestsFlextInfraTransformersTypingDictImport",
+            "TestsFlextInfraTransformersTypingUnifier",
+        ),
+        ".transformers.test_infra_transformer_tests_modernizer": (
+            "TestsFlextInfraTransformersTestsModernizer",
+        ),
         ".workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
         ".workspace.test_makefile_dry_run": ("TestsFlextInfraWorkspaceMakefileDryRun",),
         ".workspace.test_makefile_generator": (
@@ -47,7 +50,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "d",
             "e",
             "h",
-            "m",
         ),
     },
 )

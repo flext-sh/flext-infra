@@ -16,6 +16,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         "._exports_lazy_part_06": ("TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06",),
         "._exports_lazy_part_07": ("TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07",),
         "._exports_lazy_part_08": ("TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08",),
+        "._exports_lazy_part_09": ("TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_09",),
         "flext_tests": (
             "c",
             "d",

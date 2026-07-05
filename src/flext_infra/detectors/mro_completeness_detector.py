@@ -144,10 +144,8 @@ class FlextInfraMROCompletenessDetector:
             rel_path = ctx.file_path.relative_to(project_root)
         except ValueError:
             return False
-        return (
-            len(rel_path.parts) == c.Infra.RUNTIME_ALIAS_SRC_DEPTH_EXACT
-            and rel_path.parts[0] == "src"
-        )
+        expected_depth: int = c.Infra.RUNTIME_ALIAS_SRC_DEPTH_EXACT
+        return len(rel_path.parts) == expected_depth and rel_path.parts[0] == "src"
 
 
 __all__: list[str] = ["FlextInfraMROCompletenessDetector"]

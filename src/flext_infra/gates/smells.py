@@ -174,8 +174,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @staticmethod
     def _resolve_binary() -> str | None:
         """Locate qlty on PATH, else the user-local install; None when absent."""
-        found = shutil.which(c.Infra.QLTY_BINARY)
-        if found:
+        found: object = shutil.which(c.Infra.QLTY_BINARY)
+        if isinstance(found, str):
             return found
         fallback = Path.home() / c.Infra.QLTY_BINARY_FALLBACK_SUFFIX
         return str(fallback) if fallback.is_file() else None
@@ -248,7 +248,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @classmethod
     def _result_uri(cls, result: t.JsonMapping) -> str:
         """Workspace-relative URI of the finding's first location."""
-        return u.Cli.json_pick_str(
+        uri: str = u.Cli.json_pick_str(
             u.Cli.json_deep_mapping(
                 cls._first_location(result),
                 "physicalLocation",
@@ -256,6 +256,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             ),
             "uri",
         )
+        return uri
 
     @staticmethod
     def _first_location(result: t.JsonMapping) -> t.JsonMapping:

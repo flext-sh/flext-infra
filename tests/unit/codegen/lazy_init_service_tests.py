@@ -49,7 +49,8 @@ class TestFlextInfraCodegenLazyInit:
         assert "public_exports=_PUBLIC_EXPORTS" in init_content
         assert "build_lazy_import_map(" not in init_content
         assert "merge_lazy_imports(" not in init_content
-        assert "TYPE_CHECKING" not in init_content
+        assert "from typing import TYPE_CHECKING" in init_content
+        assert "if TYPE_CHECKING:" in init_content
 
         assert "merge_lazy_imports(" in registry_content
         assert "_exports_lazy_part_01" in registry_content
@@ -59,6 +60,7 @@ class TestFlextInfraCodegenLazyInit:
         for export_name in expected_names:
             assert f'"{export_name}"' in init_content
             assert f'"{export_name}"' in lazy_part_content
+            assert f"{export_name} as {export_name}" in init_content
             assert f"{export_name} as {export_name}" in stub_content
 
         return (init_content, registry_content, lazy_part_content, stub_content)

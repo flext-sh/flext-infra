@@ -8,21 +8,21 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
         ".base": ("TestsFlextInfraServiceBase",),
+        ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
+        ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
         ".settings": ("TestsFlextInfraSettings",),
         ".typings": ("TestsFlextInfraTypes",),
-        ".unit._utilities.test_discovery_consolidated": (
-            "TestsFlextInfraUtilitiesdiscoveryconsolidated",
-        ),
-        ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
         ".unit._utilities.test_protected_edit": (
             "TestsFlextInfraUtilitiesProtectedEdit",
         ),
         ".unit._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
         ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
-        ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
-        ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
+        ".unit.release.test_release_dag": ("TestsFlextInfraReleaseDag",),
         ".unit.test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
         ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
+        ".unit.transformers.test_infra_transformer_cast_remover": (
+            "TestsFlextInfraTransformersCastRemover",
+        ),
         ".unit.transformers.test_infra_transformer_class_nesting": (
             "TestsFlextInfraTransformersInfraTransformerClassNesting",
         ),

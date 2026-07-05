@@ -5,18 +5,16 @@ from __future__ import annotations
 import sys
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
 
 
 class FlextInfraBaseMkGenerator(s[str]):

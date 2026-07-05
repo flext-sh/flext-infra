@@ -9,15 +9,22 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
         ".models": ("TestsFlextInfraModels",),
         ".protocols": ("TestsFlextInfraProtocols",),
-        ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
-        ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
         ".unit.codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
         ".unit.codegen.lazy_init_transforms_tests": (
             "TestsFlextInfraLazyInitTransforms",
         ),
         ".unit.deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
+        ".unit.detectors.test_internal_import_detector": (
+            "TestsFlextInfraInternalImportDetector",
+        ),
+        ".unit.detectors.test_loose_object_detector": (
+            "TestsFlextInfraLooseObjectDetector",
+        ),
         ".unit.detectors.test_pattern_smell_detector": (
             "TestsFlextInfraPatternSmellDetector",
+        ),
+        ".unit.io.test_infra_terminal_detection": (
+            "TestsFlextInfraIoInfraTerminalDetection",
         ),
         ".unit.refactor.test_declarative_enforcement": (
             "TestsFlextInfraRefactorDeclarativeEnforcement",
@@ -78,7 +85,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
             "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
         ),
         ".unit.refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
-        ".unit.release.test_release_dag": ("TestsFlextInfraReleaseDag",),
         ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
         ".unit.transformers.test_project_alias_migrator": (
             "TestsFlextInfraRefactorProjectAliasMigrator",

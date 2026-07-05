@@ -7,6 +7,9 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 _LAZY_IMPORTS = build_lazy_import_map(
     {
+        ".test_infra_transformer_cast_remover": (
+            "TestsFlextInfraTransformersCastRemover",
+        ),
         ".test_infra_transformer_class_nesting": (
             "TestsFlextInfraTransformersInfraTransformerClassNesting",
         ),

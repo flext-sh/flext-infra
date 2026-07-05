@@ -31,6 +31,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".check.extended_resolve_gates_tests": ("TestWorkspaceCheckerResolveGates",),
         ".check.extended_run_projects_tests": ("TestRunProjectsPublicBehavior",),
         ".check.extended_runners_tests": ("TestRunnerPublicBehavior",),
+        ".check.pyrefly_tests": ("TestFlextInfraConfigFixer",),
         ".check.tests_cli": ("TestWorkspaceCheckCli",),
         ".check.workspace_tests": ("TestFlextInfraWorkspaceChecker",),
         ".cli_what_selector_tests": ("TestsFlextInfraCliWhatSelector",),
@@ -45,7 +46,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
             "TestGeneratedFilesAreValidPython",
         ),
         ".container.test_infra_container": ("TestsFlextInfraContainerInfraContainer",),
-        ".deps.test_detection_classify": ("TestsFlextInfraDepsDetectionClassify",),
         ".docs.auditor_budgets_tests": ("TestLoadAuditBudgets",),
         ".docs.shared_iter_tests": (
             "TestIterMarkdownFiles",

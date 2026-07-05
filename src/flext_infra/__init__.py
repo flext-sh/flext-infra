@@ -38,59 +38,50 @@ _LAZY_IMPORTS = FLEXT_INFRA_LAZY_IMPORTS
 
 
 _EAGER_EXPORTS = (
-
     __author__,
-
     __author_email__,
-
     __description__,
-
     __license__,
-
     __title__,
-
     __url__,
-
     __version__,
-
     __version_info__,
-
 )
 
 
 _PUBLIC_EXPORTS: tuple[str, ...] = (
-"FlextInfra",
-"FlextInfraCli",
-"FlextInfraConstants",
-"FlextInfraModels",
-"FlextInfraProjectSelectionServiceBase",
-"FlextInfraProtocols",
-"FlextInfraServiceBase",
-"FlextInfraSettings",
-"FlextInfraTypes",
-"FlextInfraUtilities",
-"basemk",
-"__author__",
-"__author_email__",
-"__description__",
-"__license__",
-"__title__",
-"__url__",
-"__version__",
-"__version_info__",
-"c",
-"d",
-"e",
-"h",
-"infra",
-"m",
-"main",
-"p",
-"r",
-"s",
-"t",
-"u",
-"x",
+    "FlextInfra",
+    "FlextInfraCli",
+    "FlextInfraConstants",
+    "FlextInfraModels",
+    "FlextInfraProjectSelectionServiceBase",
+    "FlextInfraProtocols",
+    "FlextInfraServiceBase",
+    "FlextInfraSettings",
+    "FlextInfraTypes",
+    "FlextInfraUtilities",
+    "basemk",
+    "__author__",
+    "__author_email__",
+    "__description__",
+    "__license__",
+    "__title__",
+    "__url__",
+    "__version__",
+    "__version_info__",
+    "c",
+    "d",
+    "e",
+    "h",
+    "infra",
+    "m",
+    "main",
+    "p",
+    "r",
+    "s",
+    "t",
+    "u",
+    "x",
 )
 
 __all__: tuple[str, ...] = (
@@ -133,7 +124,5 @@ install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,
-
     public_exports=_PUBLIC_EXPORTS,
-
 )

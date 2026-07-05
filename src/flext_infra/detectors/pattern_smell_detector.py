@@ -157,8 +157,8 @@ class FlextInfraPatternSmellDetector:
         the owning project's facade definition; consumers must route through the
         canonical project facade.
         """
-        owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(module_name)
-        if owner is None or project_name is None:
+        owner: object = c.ENFORCEMENT_LIBRARY_OWNERS.get(module_name)
+        if project_name is None or not isinstance(owner, str):
             return False
         return project_name == owner
 

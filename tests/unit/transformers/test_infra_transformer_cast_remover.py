@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 def _transform(source: str) -> tuple[str, Sequence[str]]:
     """Apply the cast remover to source text."""
     transformer = FlextInfraRefactorCastRemover()
-    return transformer.apply_to_source(source)
+    result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
+    return result
 
 
 class TestsFlextInfraTransformersCastRemover:

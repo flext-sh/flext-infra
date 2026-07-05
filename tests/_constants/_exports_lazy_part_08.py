@@ -8,14 +8,18 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
     {
         "._constants": ("_constants",),
-        ".base": ("s",),
         ".conftest": ("conftest",),
         ".constants": ("c",),
         ".integration": ("integration",),
         ".models": ("m",),
         ".protocols": ("p",),
         ".refactor": ("refactor",),
-        ".typings": ("t",),
+        ".unit._utilities.test_discovery_consolidated": (
+            "TestsFlextInfraUtilitiesdiscoveryconsolidated",
+        ),
+        ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+        ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
+        ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
         ".unit.fixtures": (
             "deptry_report_payload",
             "models_resource",
@@ -27,7 +31,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
             "real_toml_project",
             "real_workspace",
             "rope_workspace",
-            "services_resource",
         ),
         ".unit.fixtures_git": ("real_git_repo",),
         ".unit.workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
@@ -47,7 +50,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
             "e",
             "h",
             "r",
-            "td",
         ),
     },
 )

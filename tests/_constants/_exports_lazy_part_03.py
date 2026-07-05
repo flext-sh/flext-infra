@@ -16,6 +16,9 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
         ".unit.basemk.test_main": ("TestsFlextInfraBasemkMain",),
         ".unit.basemk.test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
         ".unit.basemk.test_renderer": ("TestsFlextInfraBasemkRenderer",),
+        ".unit.check.enforcement_fixer_orchestrator_tests": (
+            "TestsEnforcementFixerOrchestrator",
+        ),
         ".unit.check.extended_project_runners_tests": ("TestsExtendedProjectRunners",),
         ".unit.cli_what_selector_tests": ("TestsFlextInfraCliWhatSelector",),
         ".unit.container.test_infra_container": (
@@ -56,9 +59,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_03 = build_lazy_import_map(
             "TestsFlextInfraDepsInternalSyncResolve",
         ),
         ".unit.deps.test_internal_sync_sync": ("TestsFlextInfraDepsInternalSyncSync",),
-        ".unit.deps.test_internal_sync_sync_edge": (
-            "TestsFlextInfraDepsInternalSyncSyncEdge",
-        ),
     },
 )
 

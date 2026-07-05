@@ -12,6 +12,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
             "TestsFlextInfraExtraPathsSearchPaths",
         ),
         ".deps.test_extra_paths_uv_sources": ("TestsFlextInfraExtraPathsUvSources",),
+        ".deps.test_modernizer_main": ("TestsFlextInfraDepsModernizerMain",),
         ".deps.test_modernizer_main_extra": ("TestsFlextInfraDepsModernizerMainExtra",),
         ".deps.test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
         ".deps.test_modernizer_pyright": ("TestsFlextInfraDepsModernizerPyright",),
@@ -54,7 +55,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
             "TestsFlextInfraInfraRefactorRopeMigrations",
         ),
         ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
-        ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
     },
 )
 

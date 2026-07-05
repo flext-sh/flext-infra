@@ -18,6 +18,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "TestAuditorForbiddenTerms",
             "TestAuditorScope",
         ),
+        ".auditor_stale_symbols_tests": ("auditor_stale_symbols_tests",),
         ".auditor_tests": (
             "TestAuditorCore",
             "TestAuditorNormalize",

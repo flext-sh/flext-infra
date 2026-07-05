@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated, ClassVar
+from typing import Annotated, ClassVar
 
 from flext_cli import m, u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from pathlib import Path
-
-    from flext_infra.typings import t
+from flext_infra.typings import t
 
 
 class FlextInfraModelsWorkspace:

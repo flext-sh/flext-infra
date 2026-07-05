@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Self
+from typing import Annotated, Self
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-
-if TYPE_CHECKING:
-    from flext_infra.typings import t
+from flext_infra.typings import t
 
 
 class FlextInfraModelsNamespaceEnforcer:

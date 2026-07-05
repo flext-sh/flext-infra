@@ -15,7 +15,7 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".utilities": ("u",),
         ".validate": ("validate",),
         ".workspace": ("workspace",),
-        "flext_core": (
+        "flext_cli": (
             "r",
             "x",
         ),

@@ -1195,8 +1195,11 @@ class FlextInfraUtilitiesRopeAnalysis:
         """Return a keyword argument value source from split call args."""
         prefix = f"{keyword}="
         for arg in args:
-            if arg.strip().startswith(prefix):
-                return arg.strip()[len(prefix) :].strip()
+            if not isinstance(arg, str):
+                continue
+            text = arg.strip()
+            if text.startswith(prefix):
+                return text[len(prefix) :].strip()
         return ""
 
     @staticmethod

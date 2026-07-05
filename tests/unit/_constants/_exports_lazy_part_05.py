@@ -10,6 +10,12 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
         ".codegen.lazy_init_transforms_tests": ("TestsFlextInfraLazyInitTransforms",),
         ".deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
+        ".detectors.test_internal_import_detector": (
+            "TestsFlextInfraInternalImportDetector",
+        ),
+        ".detectors.test_loose_object_detector": (
+            "TestsFlextInfraLooseObjectDetector",
+        ),
         ".detectors.test_pattern_smell_detector": (
             "TestsFlextInfraPatternSmellDetector",
         ),
@@ -44,16 +50,8 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".refactor.test_infra_refactor_mro_completeness": (
             "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
         ),
-        ".refactor.test_infra_refactor_mro_shape": (
-            "TestsFlextInfraRefactorInfraRefactorMroShape",
-        ),
-        ".refactor.test_infra_refactor_namespace_aliases": (
-            "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
-        ),
-        ".refactor.test_infra_refactor_namespace_enforcer": (
-            "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
-        ),
         ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
+        ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
         ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
         ".test_infra_selection": ("TestsFlextInfraInfraSelection",),
         ".test_infra_typings": ("TestsFlextInfraInfraTypings",),

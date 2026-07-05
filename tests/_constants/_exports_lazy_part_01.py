@@ -60,11 +60,11 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".unit._constants._exports_lazy_part_08": (
             "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08",
         ),
-        ".unit.check.extended_models_tests": ("TestCheckIssueFormatted",),
-        ".unit.codegen.lazy_init_tests": (
-            "TestAllDirectoriesScanned",
-            "TestCheckOnlyMode",
+        ".unit._constants._exports_lazy_part_09": (
+            "TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_09",
         ),
+        ".unit.check.extended_models_tests": ("TestCheckIssueFormatted",),
+        ".unit.codegen.lazy_init_tests": ("TestAllDirectoriesScanned",),
         ".unit.docs.auditor_links_tests": (
             "TestAuditorBrokenLinks",
             "TestAuditorToMarkdown",

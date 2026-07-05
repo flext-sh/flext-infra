@@ -58,9 +58,9 @@ def _sarif_fixture(project: str) -> str:
             },
         ],
     })
-    return m.TypeAdapter(str).validate_python(
-        u.Cli.json_dumps({"runs": [{"results": results}]}).unwrap(),
-    )
+    payload = u.Cli.json_dumps({"runs": [{"results": results}]}).unwrap()
+    assert isinstance(payload, str)
+    return payload
 
 
 def _seeded_gate(
