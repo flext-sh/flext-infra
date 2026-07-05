@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from flext_cli import m
 from flext_infra._models.deps_tool_config_linters import (
@@ -12,9 +12,7 @@ from flext_infra._models.deps_tool_config_linters import (
 from flext_infra._models.deps_tool_config_type_checkers import (
     FlextInfraModelsDepsToolConfigTypeCheckers,
 )
-
-if TYPE_CHECKING:
-    from flext_infra.typings import t
+from flext_infra.typings import t
 
 
 class FlextInfraModelsDepsToolSettings(

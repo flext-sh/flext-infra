@@ -7,8 +7,10 @@ from flext_infra.base import FlextInfraServiceBase
 from flext_infra.models import m
 from flext_infra.typings import t
 
+type _InfraResultValue = t.Cli.ResultValue
 
-class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](
+
+class FlextInfraProjectSelectionServiceBase[TDomainResult: _InfraResultValue](
     FlextInfraServiceBase[TDomainResult],
     FlextInfraProjectSelectionMixin,
 ):

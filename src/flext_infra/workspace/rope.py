@@ -5,19 +5,16 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Annotated, ClassVar, Self, override
+from types import TracebackType
+from typing import Annotated, ClassVar, Self, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from types import TracebackType
-
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
 
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
@@ -25,12 +22,6 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     _IDENTIFIER_PATTERN: ClassVar[t.Infra.RegexPattern] = c.Infra.IDENTIFIER_PATTERN
 
-    workspace_root: Annotated[
-        Path,
-        m.Field(
-            description="Resolved workspace root requested by the caller",
-        ),
-    ]
     rope_workspace_root_override: Annotated[
         Path | None,
         m.Field(

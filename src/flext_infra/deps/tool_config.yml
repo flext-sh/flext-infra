@@ -483,14 +483,9 @@ tools:
         - .git
         - .reports
         - vendor
-      root-typings-paths:
-        - typings
-        - typings/generated
-      project-typings-paths:
-        - ../typings
-        - ../typings/generated
-      ignored-diagnostic-globs:
-        - "**/*.pyi"
+      root-typings-paths: []
+      project-typings-paths: []
+      ignored-diagnostic-globs: []
       source-report-private-usage: error
       test-like-report-private-usage: none
       other-report-private-usage: none

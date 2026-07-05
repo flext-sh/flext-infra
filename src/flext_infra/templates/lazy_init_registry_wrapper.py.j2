@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-{% if public_exports_name and type_checking_lines -%}
+{% if type_checking_lines -%}
 from typing import TYPE_CHECKING
 
 {% endif -%}
@@ -21,7 +21,7 @@ from {{ registry_module }} import {{ registry_name }}
 {{ runtime_import_lines }}
 
 {% endif -%}
-{% if public_exports_name and type_checking_lines -%}
+{% if type_checking_lines -%}
 {{ type_checking_lines }}
 
 {% endif -%}
@@ -52,11 +52,16 @@ _EAGER_EXPORTS = (
 _PUBLIC_EXPORTS: tuple[str, ...] = {{ public_exports_name }}
 {% else %}
 _PUBLIC_EXPORTS: tuple[str, ...] = (
-{% for export_name in exports %}
+{% for export_name in exports -%}
     "{{ export_name }}",
-{% endfor %}
+{% endfor -%}
 )
 {% endif %}
+__all__: tuple[str, ...] = (
+{% for export_name in exports -%}
+    "{{ export_name }}",
+{% endfor -%}
+)
 {% endif %}
 
 install_lazy_exports(

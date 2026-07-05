@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from jinja2.environment import Environment
+from jinja2.loaders import FileSystemLoader
+from jinja2.runtime import StrictUndefined
+from jinja2.utils import select_autoescape
 
 from flext_infra.codegen._codegen_generation_typing_stub import (
     FlextInfraCodegenGenerationTypingStubMixin,
@@ -161,9 +164,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
     @classmethod
     def _generate_flext_core_root_file(cls) -> str:
         """Generate flext-core root from its canonical root export map."""
-        context = m.Infra.LazyInitFlextCoreRootRender(
-            autogen_header=c.Infra.AUTOGEN_HEADER,
-        )
+        context = cls.flext_core_root_static_contract()
         return cls._render_model(c.Infra.TEMPLATE_FLEXT_CORE_ROOT, context)
 
     @staticmethod

@@ -14,8 +14,10 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
+type _InfraResultValue = t.Cli.ResultValue
 
-class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
+
+class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     s[TDomainResult],
     FlextInfraCommandPayloadMixin,
 ):
@@ -26,35 +28,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     """
 
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-    settings_type: Annotated[
-        type | None,
-        m.Field(
-            exclude=True,
-            description="Internal settings type for runtime bootstrap",
-        ),
-    ] = None
-    runtime_settings: Annotated[
-        p.Settings | None,
-        m.Field(
-            exclude=True,
-            description="Internal runtime settings instance for service execution",
-        ),
-    ] = None
-    settings_overrides: Annotated[
-        t.JsonMapping | None,
-        m.Field(
-            exclude=True,
-            description="Internal settings override mapping for service bootstrap",
-        ),
-    ] = None
-    initial_context: Annotated[
-        p.Context | None,
-        m.Field(
-            exclude=True,
-            description="Internal execution context overrides for service bootstrap",
-        ),
-    ] = None
 
     @property
     @override
@@ -177,8 +150,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         """Execute the validated CLI service instance directly."""
         return params.execute()
 
-
-FlextInfraServiceBase.model_rebuild()
 
 s = FlextInfraServiceBase
 

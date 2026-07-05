@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from pathlib import Path
+from typing import Annotated
 
 from flext_cli import m
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra.constants import c
-    from flext_infra.typings import t
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraModelsCore:
@@ -72,7 +69,7 @@ class FlextInfraModelsCore:
         mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
     ):
-        """Structured stub-chain analysis result for a project."""
+        """Structured typed-dependency analysis result for a project."""
 
         mypy_hints: Annotated[
             t.MutableSequenceOf[str],
@@ -89,7 +86,7 @@ class FlextInfraModelsCore:
         unresolved_missing: Annotated[
             t.MutableSequenceOf[str],
             m.Field(
-                description="Missing external imports without stubs",
+                description="Missing external imports without an installed typed dependency",
             ),
         ] = m.Field(default_factory=list)
         total_missing: Annotated[

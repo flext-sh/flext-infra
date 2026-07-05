@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar
+from typing import Annotated, ClassVar
 
 from flext_cli.models import FlextCliModels as m
 from flext_cli.utilities import u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra.constants import c
-
-if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
-
-    from flext_infra.typings import t
+from flext_infra.typings import t
 
 
 class FlextInfraModelsCheck:

@@ -11,21 +11,18 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.utilities import u
 from flext_infra.workspace._sync_artifacts import (
     FlextInfraWorkspaceSyncArtifactsMixin,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra.protocols import p
 
 
 class FlextInfraSyncService(

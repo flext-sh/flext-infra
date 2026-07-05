@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
@@ -27,13 +28,9 @@ from flext_infra.codegen._lazy_init_planner_public_api import (
 )
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra.protocols import p
 
 
 class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
@@ -41,7 +38,6 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
 
     rope_workspace: Annotated[
         p.Infra.RopeWorkspaceDsl,
-        t.SkipValidation,
         m.Field(description="Shared Rope workspace DSL reused by the planner"),
     ]
     lazy_init: m.Infra.LazyInitConfig = m.Field(

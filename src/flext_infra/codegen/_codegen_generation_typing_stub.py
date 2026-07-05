@@ -97,6 +97,46 @@ class FlextInfraCodegenGenerationTypingStubMixin(
         return "\n".join(lines)
 
     @classmethod
+    def flext_core_root_static_contract(
+        cls,
+        *,
+        include_metadata: bool = False,
+    ) -> m.Infra.LazyInitFlextCoreRootRender:
+        """Generate flext-core root static imports and public ``__all__`` lines."""
+        root_exports_module = import_module("flext_core._root_exports")
+        root_typing_parts_exports_module = import_module(
+            "flext_core._root_typing_parts._exports",
+        )
+        root_all: t.StrSequence = root_exports_module.ROOT_ALL
+        root_typing_only_names: t.StrSequence = (
+            root_exports_module.ROOT_TYPING_ONLY_NAMES
+        )
+        root_typing_parts_imports: t.StrMapping = (
+            root_typing_parts_exports_module.FLEXT_CORE__ROOT_TYPING_PARTS_LAZY_IMPORTS
+        )
+        root_typing_names: tuple[str, ...] = tuple(root_all) + tuple(
+            root_typing_only_names,
+        )
+        type_map: dict[str, t.StrPair] = {
+            name: (
+                f"flext_core._root_typing_parts{root_typing_parts_imports[name]}",
+                name,
+            )
+            for name in root_typing_names
+            if name in root_typing_parts_imports
+        }
+        if include_metadata:
+            root_metadata_names: t.StrSequence = root_exports_module.ROOT_METADATA_NAMES
+            type_map.update({
+                name: ("flext_core.__version__", name) for name in root_metadata_names
+            })
+        return m.Infra.LazyInitFlextCoreRootRender(
+            autogen_header=c.Infra.AUTOGEN_HEADER,
+            import_lines="\n".join(cls._generate_stub_import_lines(type_map)),
+            all_lines=cls._generate_stub_all_lines(root_all),
+        )
+
+    @classmethod
     def generate_typing_stub(
         cls,
         exports: t.StrSequence,
@@ -125,37 +165,7 @@ class FlextInfraCodegenGenerationTypingStubMixin(
     @classmethod
     def generate_flext_core_root_typing_stub(cls) -> str:
         """Generate flext-core root from lazy attributes and public ``__all__``."""
-        root_exports_module = import_module("flext_core._root_exports")
-        root_typing_parts_exports_module = import_module(
-            "flext_core._root_typing_parts._exports",
-        )
-        root_all: t.StrSequence = root_exports_module.ROOT_ALL
-        root_metadata_names: t.StrSequence = root_exports_module.ROOT_METADATA_NAMES
-        root_typing_only_names: t.StrSequence = (
-            root_exports_module.ROOT_TYPING_ONLY_NAMES
-        )
-        root_typing_parts_imports: t.StrMapping = (
-            root_typing_parts_exports_module.FLEXT_CORE__ROOT_TYPING_PARTS_LAZY_IMPORTS
-        )
-        root_typing_names: tuple[str, ...] = tuple(root_all) + tuple(
-            root_typing_only_names,
-        )
-        type_map: dict[str, t.StrPair] = {
-            name: (
-                f"flext_core._root_typing_parts{root_typing_parts_imports[name]}",
-                name,
-            )
-            for name in root_typing_names
-            if name in root_typing_parts_imports
-        }
-        type_map.update({
-            name: ("flext_core.__version__", name) for name in root_metadata_names
-        })
-        context = m.Infra.LazyInitFlextCoreRootRender(
-            autogen_header=c.Infra.AUTOGEN_HEADER,
-            import_lines="\n".join(cls._generate_stub_import_lines(type_map)),
-            all_lines=cls._generate_stub_all_lines(root_all),
-        )
+        context = cls.flext_core_root_static_contract(include_metadata=True)
         return cls._render_model(c.Infra.TEMPLATE_FLEXT_CORE_ROOT_TYPING_STUB, context)
 
 

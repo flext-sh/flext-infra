@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from flext_cli import m
-
-if TYPE_CHECKING:
-    from flext_infra.typings import t
+from flext_infra.typings import t
 
 
 class FlextInfraModelsDepsToolConfigLinters:
