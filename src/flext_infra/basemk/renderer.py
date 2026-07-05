@@ -5,13 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from jinja2 import (
-    Environment,
-    FileSystemLoader,
-    StrictUndefined,
-    TemplateError,
-    select_autoescape,
-)
+from jinja2.environment import Environment
+from jinja2.exceptions import TemplateError
+from jinja2.loaders import FileSystemLoader
+from jinja2.runtime import StrictUndefined
+from jinja2.utils import select_autoescape
 
 from flext_infra import (
     c,

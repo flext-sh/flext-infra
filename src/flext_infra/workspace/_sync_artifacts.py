@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_core import r
 from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
@@ -14,13 +17,6 @@ from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra.models import m
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
