@@ -8,23 +8,21 @@ violations are surfaced as synthetic pytest items.
 
 from __future__ import annotations
 
-from contextlib import suppress
 from typing import TYPE_CHECKING
+
+from flext_tests.enforcement import (
+    EnforcementCollector,
+    EnforcementContribution,
+    EnforcementItem,
+    register,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     import pytest
     from flext_tests import m, p
-    from flext_tests._fixtures._enforcement_parts.registry import (
-        EnforcementBuildContext,
-    )
-
-with suppress(ImportError):
-    from flext_tests._fixtures._enforcement_parts.items import (  # noqa: PLC2701
-        EnforcementCollector,
-        EnforcementItem,
-    )
+    from flext_tests.enforcement import EnforcementBuildContext
 
 
 def _iter_infra_violations(
@@ -94,19 +92,11 @@ def _build_infra_detector_items(
 
 def _register() -> None:
     """Register flext-infra enforcement contribution when flext-tests is present."""
-    try:
-        from flext_tests._fixtures._enforcement_parts.registry import (  # noqa: PLC0415, PLC2701
-            EnforcementContribution,
-            register,
-        )
-    except ImportError:
-        return
-
     register(
         "flext_infra_detector",
         EnforcementContribution(
             source_kind="flext_infra_detector",
-            builder=lambda *args, **kwargs: _build_infra_detector_items(*args, **kwargs),
+            builder=_build_infra_detector_items,
         ),
     )
 
