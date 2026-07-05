@@ -137,6 +137,36 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
         return r[str].ok(output.stdout)
 
+    def _project_is_flext_child(self, project_dir: Path) -> bool:
+        """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
+
+        A workspace *root* owns the canonical virtualenv locally
+        (``<project>/.venv``); a *child* (any flext-based consumer repo)
+        references the parent workspace venv (``../.venv``). This keeps the
+        pyright ``venvPath`` / pyrefly interpreter classification correct even
+        when ``deps modernize`` is invoked from inside the child itself (so
+        ``workspace_root`` defaults to the child dir). The committed
+        ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
+        no virtualenv exists at modernize time.
+        """
+        rules = self._tool_config.tools.pyright.path_rules
+        venv_name = rules.venv_name
+        if (project_dir / venv_name).is_dir():
+            return False
+        if (project_dir.parent / venv_name).is_dir():
+            return True
+        makefile = project_dir / "Makefile"
+        read = u.Cli.files_read_text(makefile)
+        if read.success:
+            for raw_line in read.value.splitlines():
+                stripped = raw_line.strip()
+                if not stripped.startswith("WORKSPACE_ROOT") or ":=" not in stripped:
+                    continue
+                _, _, value = stripped.partition(":=")
+                if value.strip().startswith(".."):
+                    return True
+        return False
+
     def _process_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
@@ -153,7 +183,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        is_root = path.parent.resolve() == self.root.resolve()
+        is_root = path.parent.resolve() == self.root.resolve() and not (
+            self._project_is_flext_child(path.parent)
+        )
         project_kind = "core"
         if not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
