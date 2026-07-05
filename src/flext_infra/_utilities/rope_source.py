@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 from operator import itemgetter
 from typing import TYPE_CHECKING, ClassVar
-
-from rope.base import ast
 
 from flext_cli import u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery

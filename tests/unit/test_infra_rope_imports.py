@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-import rope.refactor.importutils as rope_importutils
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests.utilities import u
 
@@ -137,16 +137,14 @@ class TestsFlextInfraRopeImports:
             encoding="utf-8",
         )
 
-        def _no_changes(
-            _self: rope_importutils.ImportOrganizer,
-            _resource: object,
-        ) -> None:
-            return None
+        class _NoChangesOrganizer:
+            def organize_imports(self, _resource: object) -> None:
+                return None
 
         monkeypatch.setattr(
-            rope_importutils.ImportOrganizer,
-            "organize_imports",
-            _no_changes,
+            FlextInfraUtilitiesRopeRuntime,
+            "import_organizer",
+            staticmethod(lambda _rope_project: _NoChangesOrganizer()),
         )
 
         with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
@@ -178,16 +176,14 @@ class TestsFlextInfraRopeImports:
             encoding="utf-8",
         )
 
-        def _unexpected_result(
-            _self: rope_importutils.ImportOrganizer,
-            _resource: object,
-        ) -> object:
-            return object()
+        class _UnexpectedOrganizer:
+            def organize_imports(self, _resource: object) -> object:
+                return object()
 
         monkeypatch.setattr(
-            rope_importutils.ImportOrganizer,
-            "organize_imports",
-            _unexpected_result,
+            FlextInfraUtilitiesRopeRuntime,
+            "import_organizer",
+            staticmethod(lambda _rope_project: _UnexpectedOrganizer()),
         )
 
         with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:

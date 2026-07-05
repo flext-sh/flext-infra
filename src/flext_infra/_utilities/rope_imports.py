@@ -5,24 +5,13 @@ from __future__ import annotations
 import ast
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
-
-import rope.contrib.findit as rope_findit
-import rope.refactor.importutils as rope_importutils
-from rope.base.exceptions import (
-    ModuleSyntaxError,
-    RefactoringError,
-    ResourceNotFoundError,
-)
-from rope.refactor.importutils.importinfo import (
-    FromImport,
-    ImportStatement,
-    NormalImport,
-)
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.constants import c
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
@@ -42,9 +31,7 @@ class FlextInfraUtilitiesRopeImports:
         module_imports: t.Infra.RopeModuleImports,
     ) -> t.SequenceOf[t.Infra.RopeImportStatement]:
         """Return validated Rope import statements from one module import collection."""
-        # Rope exposes imports via a cached descriptor whose third-party typing differs across analyzers.
-        import_statements = cast("list[ImportStatement]", module_imports.imports)
-        return tuple(import_statements)
+        return tuple(module_imports.imports)
 
     @staticmethod
     def import_statement_module_name(
@@ -52,7 +39,7 @@ class FlextInfraUtilitiesRopeImports:
     ) -> str | None:
         """Return the absolute module name represented by one Rope import statement."""
         import_info = import_statement.import_info
-        if not isinstance(import_info, FromImport):
+        if not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info):
             return None
         module_name = import_info.module_name
         return module_name or None
@@ -63,7 +50,10 @@ class FlextInfraUtilitiesRopeImports:
     ) -> t.SequenceOf[tuple[str, str | None]]:
         """Return validated imported-name pairs from one Rope import statement."""
         import_info = import_statement.import_info
-        if not isinstance(import_info, FromImport | NormalImport):
+        if not (
+            FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
+            or FlextInfraUtilitiesRopeRuntime.is_normal_import(import_info)
+        ):
             return ()
         return tuple(import_info.names_and_aliases)
 
@@ -97,19 +87,15 @@ class FlextInfraUtilitiesRopeImports:
     ) -> t.SequenceOf[t.Infra.RopeLocation]:
         """Find all occurrences of the symbol at offset across the project."""
         try:
-            return list(
-                rope_findit.find_occurrences(
-                    rope_project,
-                    resource,
-                    offset,
-                    resources=resources,
-                    in_hierarchy=in_hierarchy,
-                ),
+            return FlextInfraUtilitiesRopeRuntime.find_occurrences(
+                rope_project,
+                resource,
+                offset,
+                resources=resources,
+                in_hierarchy=in_hierarchy,
             )
         except (
-            RefactoringError,
-            ResourceNotFoundError,
-            AttributeError,
+            *FlextInfraConstantsRope.RUNTIME_ERRORS,
             TypeError,
             RecursionError,
         ) as exc:
@@ -212,14 +198,11 @@ class FlextInfraUtilitiesRopeImports:
         """
         try:
             original_source = resource.read()
-            organizer = rope_importutils.ImportOrganizer(rope_project)
+            organizer = FlextInfraUtilitiesRopeRuntime.import_organizer(rope_project)
             changes = organizer.organize_imports(resource)
         except (
-            ModuleSyntaxError,
-            SyntaxError,
-            RefactoringError,
-            ResourceNotFoundError,
-            AttributeError,
+            *FlextInfraConstantsRope.SYNTAX_ERRORS,
+            *FlextInfraConstantsRope.RUNTIME_ERRORS,
             TypeError,
         ) as exc:
             return r[bool].fail(f"rope organize_imports raised: {exc!s}")
@@ -347,7 +330,10 @@ class FlextInfraUtilitiesRopeImports:
             entries: list[tuple[str, tuple[str, ...]]] = []
             for import_stmt in cls.import_statements(module_imports):
                 import_info = import_stmt.import_info
-                if not isinstance(import_info, FromImport) or import_info.level != 0:
+                if (
+                    not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
+                    or import_info.level != 0
+                ):
                     continue
                 if import_info.module_name not in canonical_modules:
                     continue
@@ -436,7 +422,10 @@ class FlextInfraUtilitiesRopeImports:
             current: dict[str, set[str]] = defaultdict(set)
             for import_stmt in cls.import_statements(module_imports):
                 import_info = import_stmt.import_info
-                if not isinstance(import_info, FromImport) or import_info.level != 0:
+                if (
+                    not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
+                    or import_info.level != 0
+                ):
                     continue
                 current[import_info.module_name].update(
                     name
@@ -457,7 +446,7 @@ class FlextInfraUtilitiesRopeImports:
                     for import_stmt in cls.import_statements(module_imports):
                         import_info = import_stmt.import_info
                         if (
-                            isinstance(import_info, FromImport)
+                            FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
                             and import_info.level == 0
                             and import_info.module_name == module_name
                         ):
@@ -468,16 +457,22 @@ class FlextInfraUtilitiesRopeImports:
                                 for name in sorted(missing)
                                 if name not in present
                             )
-                            import_stmt.import_info = FromImport(
-                                module_name,
-                                0,
-                                merged,
+                            import_stmt.import_info = (
+                                FlextInfraUtilitiesRopeRuntime.from_import(
+                                    module_name,
+                                    0,
+                                    merged,
+                                )
                             )
                             changed = True
                             break
                 else:
                     module_imports.add_import(
-                        FromImport(module_name, 0, [(name, None) for name in missing]),
+                        FlextInfraUtilitiesRopeRuntime.from_import(
+                            module_name,
+                            0,
+                            [(name, None) for name in missing],
+                        ),
                     )
                     changed = True
             if changed:
@@ -507,7 +502,7 @@ class FlextInfraUtilitiesRopeImports:
         return tuple(
             import_stmt.import_info
             for import_stmt in import_statements
-            if isinstance(import_stmt.import_info, FromImport)
+            if FlextInfraUtilitiesRopeRuntime.is_from_import(import_stmt.import_info)
             and import_stmt.import_info.level == 0
         )
 
@@ -584,7 +579,10 @@ class FlextInfraUtilitiesRopeImports:
             return target_import_stmt, moved_aliases
         for import_stmt in import_statements:
             import_info = import_stmt.import_info
-            if not (isinstance(import_info, FromImport) and import_info.level == 0):
+            if not (
+                FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
+                and import_info.level == 0
+            ):
                 continue
             if import_info.module_name == target_module:
                 target_import_stmt = import_stmt
@@ -598,7 +596,11 @@ class FlextInfraUtilitiesRopeImports:
                 kept_pairs.append((name, alias))
             if len(kept_pairs) == len(import_info.names_and_aliases):
                 continue
-            import_stmt.import_info = FromImport(source_module, 0, kept_pairs)
+            import_stmt.import_info = FlextInfraUtilitiesRopeRuntime.from_import(
+                source_module,
+                0,
+                kept_pairs,
+            )
         return target_import_stmt, moved_aliases
 
     @staticmethod
@@ -613,13 +615,17 @@ class FlextInfraUtilitiesRopeImports:
         sorted_moved = sorted(moved_aliases)
         if target_import_stmt is None:
             module_imports.add_import(
-                FromImport(target_module, 0, [(name, None) for name in sorted_moved]),
+                FlextInfraUtilitiesRopeRuntime.from_import(
+                    target_module,
+                    0,
+                    [(name, None) for name in sorted_moved],
+                ),
             )
             module_imports.sort_imports()
             return tuple((name, None) for name in sorted_moved)
         import_info = target_import_stmt.import_info
         if not (
-            isinstance(import_info, FromImport)
+            FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
             and import_info.level == 0
             and import_info.module_name == target_module
         ):
@@ -633,7 +639,7 @@ class FlextInfraUtilitiesRopeImports:
         merged_pairs.extend(
             (name, None) for name in sorted_moved if name not in existing_plain_names
         )
-        target_import_stmt.import_info = FromImport(
+        target_import_stmt.import_info = FlextInfraUtilitiesRopeRuntime.from_import(
             target_module,
             0,
             list(merged_pairs),
@@ -700,7 +706,7 @@ class FlextInfraUtilitiesRopeImports:
                     import_info = import_stmt.import_info
                     from_import = (
                         import_info
-                        if isinstance(import_info, FromImport)
+                        if FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
                         and import_info.level == 0
                         else None
                     )
@@ -716,14 +722,16 @@ class FlextInfraUtilitiesRopeImports:
                         kept_pairs.append((name, alias))
                     if len(kept_pairs) == len(from_import.names_and_aliases):
                         continue
-                    import_stmt.import_info = FromImport(
-                        from_import.module_name,
-                        0,
-                        kept_pairs,
+                    import_stmt.import_info = (
+                        FlextInfraUtilitiesRopeRuntime.from_import(
+                            from_import.module_name,
+                            0,
+                            kept_pairs,
+                        )
                     )
                 if moved_aliases:
                     module_imports.add_import(
-                        FromImport(
+                        FlextInfraUtilitiesRopeRuntime.from_import(
                             package_name,
                             0,
                             [(name, None) for name in sorted(moved_aliases)],
@@ -755,7 +763,11 @@ class FlextInfraUtilitiesRopeImports:
         if module_imports is None:
             return None
         module_imports.add_import(
-            FromImport(from_module, 0, [(name, None) for name in sorted(names)]),
+            FlextInfraUtilitiesRopeRuntime.from_import(
+                from_module,
+                0,
+                [(name, None) for name in sorted(names)],
+            ),
         )
         module_imports.remove_duplicates()
         module_imports.sort_imports()
@@ -791,7 +803,7 @@ class FlextInfraUtilitiesRopeImports:
             import_info = import_stmt.import_info
             from_import = (
                 import_info
-                if isinstance(import_info, FromImport)
+                if FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
                 and import_info.level == 0
                 and import_info.module_name == from_module
                 else None
@@ -804,7 +816,11 @@ class FlextInfraUtilitiesRopeImports:
                 if name not in names_to_remove
             ]
             if len(kept) < len(from_import.names_and_aliases):
-                import_stmt.import_info = FromImport(from_module, 0, kept)
+                import_stmt.import_info = FlextInfraUtilitiesRopeRuntime.from_import(
+                    from_module,
+                    0,
+                    kept,
+                )
                 changed = True
         if not changed:
             return None
@@ -862,7 +878,7 @@ class FlextInfraUtilitiesRopeImports:
             ):
                 import_info = import_stmt.import_info
                 if (
-                    not isinstance(import_info, FromImport)
+                    not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
                     or import_info.module_name != private_module
                 ):
                     continue
@@ -874,11 +890,17 @@ class FlextInfraUtilitiesRopeImports:
                 if len(kept) == len(import_info.names_and_aliases):
                     continue
                 if kept:
-                    import_stmt.import_info = FromImport(private_module, 0, kept)
+                    import_stmt.import_info = (
+                        FlextInfraUtilitiesRopeRuntime.from_import(
+                            private_module,
+                            0,
+                            kept,
+                        )
+                    )
                 else:
                     stmts_to_drop.append(import_stmt)
                 changed = True
-            imports_list = cast("list[ImportStatement]", module_imports.imports)
+            imports_list = module_imports.imports
             for import_stmt in stmts_to_drop:
                 imports_list.remove(import_stmt)
             if not changed:

@@ -34,7 +34,9 @@ class FlextInfraEnsurePyreflyConfigPhase:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
         venv_rules = self._tool_config.tools.pyright.path_rules
-        venv_path = venv_rules.root_venv_path if is_root else venv_rules.project_venv_path
+        venv_path = (
+            venv_rules.root_venv_path if is_root else venv_rules.project_venv_path
+        )
         interpreter_path = f"{venv_path}/{venv_rules.venv_name}/bin/python"
         if project_dir is not None and paths_manager is not None:
             expected_search = paths_manager.pyrefly_search_paths(

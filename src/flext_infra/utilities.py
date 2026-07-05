@@ -73,6 +73,7 @@ from flext_infra._utilities.rope_mro_transform import (
 from flext_infra._utilities.rope_pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
@@ -106,6 +107,7 @@ class FlextInfraUtilities(u, FlextUtilitiesProjectMetadata):
         FlextInfraUtilitiesRopeInventory,
         FlextInfraUtilitiesRopeImports,
         FlextInfraUtilitiesRopeModulePatch,
+        FlextInfraUtilitiesRopeRuntime,
         FlextInfraUtilitiesRopeSource,
         FlextInfraUtilitiesRopePep695Patch,
         FlextInfraUtilitiesDocs,

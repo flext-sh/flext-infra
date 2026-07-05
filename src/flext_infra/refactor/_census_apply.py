@@ -8,8 +8,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rope.refactor.move import MoveGlobal, create_move
-
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.constants import c
 from flext_infra.detectors.class_placement_detector import (
@@ -324,7 +322,7 @@ class FlextInfraRefactorCensusApplyMixin(
         try:
             pymodule = u.Infra.get_pymodule(rope.rope_project, resource)
             tree = pymodule.get_ast()
-        except Exception:
+        except (*c.Infra.RUNTIME_ERRORS, TypeError):
             return False
         if not isinstance(tree, ast.Module):
             return False
@@ -505,10 +503,8 @@ class FlextInfraRefactorCensusApplyMixin(
         if target_resource is None:
             return False
         try:
-            mover = create_move(rope.rope_project, source_resource, offset)
-        except Exception:
-            return False
-        if not isinstance(mover, MoveGlobal):
+            mover = u.Infra.create_move(rope.rope_project, source_resource, offset)
+        except (*c.Infra.RUNTIME_ERRORS, TypeError):
             return False
         try:
             changes = mover.get_changes(target_resource)

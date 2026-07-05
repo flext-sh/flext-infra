@@ -11,8 +11,6 @@ import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from rope.refactor.importutils.importinfo import FromImport
-
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.utilities import u
@@ -268,7 +266,7 @@ class FlextInfraCompatibilityAliasDetector:
     def _all_from_imports(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> t.SequenceOf[FromImport]:
+    ) -> t.SequenceOf[t.Infra.RopeFromImport]:
         """Return all ``from ... import ...`` descriptors in a module."""
         module_imports = u.Infra.get_module_imports(rope_project, resource)
         if module_imports is None:
@@ -277,14 +275,14 @@ class FlextInfraCompatibilityAliasDetector:
         return tuple(
             import_stmt.import_info
             for import_stmt in import_statements
-            if isinstance(import_stmt.import_info, FromImport)
+            if u.Infra.is_from_import(import_stmt.import_info)
         )
 
     @staticmethod
     def _resolve_imported_module(
         *,
         current_module: str,
-        from_import: FromImport,
+        from_import: t.Infra.RopeFromImport,
     ) -> str:
         """Return the absolute module name for a possibly-relative ``FromImport``."""
         module_name: str = from_import.module_name

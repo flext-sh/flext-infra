@@ -11,8 +11,6 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from rope.refactor.move import MoveGlobal, create_move
-
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.detectors.class_placement_detector import (
@@ -1280,11 +1278,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         if target_resource is None:
             return r[str].fail("target rope resource not found")
         try:
-            mover = create_move(rope_project, source_resource, offset)
+            mover = u.Infra.create_move(rope_project, source_resource, offset)
         except c.EXC_BROAD_RUNTIME as exc:
             return r[str].fail(f"create_move failed: {exc}")
-        if not isinstance(mover, MoveGlobal):
-            return r[str].fail("rope move is not a MoveGlobal")
         try:
             changes = mover.get_changes(target_resource)
             rope_project.do(changes)

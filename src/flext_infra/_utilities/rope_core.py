@@ -6,8 +6,6 @@ import warnings
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
-from rope.base.project import Project
-
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._utilities._rope_core_pymodule import (
@@ -21,6 +19,7 @@ from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectD
 from flext_infra._utilities.rope_pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from collections.abc import (
@@ -44,7 +43,7 @@ class FlextInfraUtilitiesRopeCore(
         project_prefix: str = FlextInfraConstantsSharedInfra.PKG_PREFIX_HYPHEN,
         src_dir: str = FlextInfraConstantsSharedInfra.DEFAULT_SRC_DIR,
         ignored_resources: t.StrSequence = FlextInfraConstantsRope.ROPE_IGNORED_RESOURCES,
-    ) -> Project:
+    ) -> t.Infra.RopeProject:
         """Create a rope Project over workspace_root with no disk artifacts."""
         _ = (project_prefix, src_dir)
         FlextInfraUtilitiesRopePep695Patch.apply()
@@ -75,7 +74,7 @@ class FlextInfraUtilitiesRopeCore(
                 message="Delete once deprecated functions are gone",
                 category=DeprecationWarning,
             )
-            return Project(
+            return FlextInfraUtilitiesRopeRuntime.new_project(
                 str(resolved_root),
                 ropefolder="",
                 save_objectdb=False,
@@ -87,7 +86,7 @@ class FlextInfraUtilitiesRopeCore(
     @contextmanager
     def open_project(
         workspace_root: Path,
-    ) -> Generator[Project]:
+    ) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary."""
         rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
         try:

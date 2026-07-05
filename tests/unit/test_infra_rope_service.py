@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from rope.base.exceptions import RopeError
 
 import flext_infra
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
@@ -327,7 +326,7 @@ class TestsFlextInfraInfraRopeService:
 
         def _explode(*args: object, **kwargs: object) -> object:
             msg = "boom"
-            raise RopeError(msg)
+            raise c.Infra.ROPE_ERROR_TYPES[0](msg)
 
         monkeypatch.setattr(
             u.Infra,

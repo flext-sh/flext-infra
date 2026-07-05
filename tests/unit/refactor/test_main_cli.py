@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from rope.base.exceptions import RopeError
 
 from flext_infra import main as infra_main
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from tests.constants import c
 from tests.typings import t
 from tests.utilities import u
 
@@ -637,7 +637,7 @@ class TestsFlextInfraRefactorMainCli:
         rope_error_message = "boom"
 
         def _explode(*args: object, **kwargs: object) -> object:
-            raise RopeError(rope_error_message)
+            raise c.Infra.ROPE_ERROR_TYPES[0](rope_error_message)
 
         monkeypatch.setattr(
             FlextInfraUtilitiesRopeInventory,

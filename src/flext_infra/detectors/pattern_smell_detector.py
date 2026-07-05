@@ -12,8 +12,6 @@ import re
 import tokenize
 from typing import TYPE_CHECKING, ClassVar, override
 
-from rope.base.exceptions import ModuleSyntaxError
-
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.utilities import u
@@ -174,7 +172,7 @@ class FlextInfraPatternSmellDetector:
         try:
             pymodule = u.Infra.get_pymodule(ctx.rope_project, resource)
             tree = pymodule.get_ast()
-        except (ModuleSyntaxError, SyntaxError) as exc:
+        except (*c.Infra.SYNTAX_ERRORS,) as exc:
             if ctx.parse_failures is None:
                 raise
             ctx.parse_failures.append(

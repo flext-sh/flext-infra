@@ -5,15 +5,10 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar
 
-import rope.refactor.importutils as rope_importutils
-from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-from rope.base.pyobjectsdef import PyModule
+from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-    from rope.base.project import Project
-    from rope.base.resources import File
-    from rope.refactor.importutils.module_imports import ModuleImports
-
     from flext_infra.typings import t
 
 
@@ -57,31 +52,31 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
 
     @staticmethod
     def get_pymodule(
-        rope_project: Project,
-        resource: File,
-    ) -> PyModule:
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> t.Infra.RopePyModule:
         """Resolve one concrete rope PyModule through the validated API boundary."""
         pymodule = rope_project.get_pymodule(resource)
-        if not isinstance(pymodule, PyModule):
+        if not FlextInfraUtilitiesRopeRuntime.is_pymodule(pymodule):
             msg = "rope project returned non-PyModule"
             raise TypeError(msg)
         return pymodule
 
     @staticmethod
     def get_module_imports(
-        rope_project: Project,
-        resource: File,
-    ) -> ModuleImports | None:
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> t.Infra.RopeModuleImports | None:
         """Get module imports."""
         try:
-            module_imports = rope_importutils.get_module_imports(
+            module_imports = FlextInfraUtilitiesRopeRuntime.get_module_imports(
                 rope_project,
                 FlextInfraUtilitiesRopeCorePyModuleMixin.get_pymodule(
                     rope_project,
                     resource,
                 ),
             )
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except (*FlextInfraConstantsRope.RUNTIME_ERRORS, TypeError):
             return None
         return module_imports
 

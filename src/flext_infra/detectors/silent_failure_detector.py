@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
-
-from rope.base import ast
-from rope.base.exceptions import ModuleSyntaxError
 
 from flext_infra._utilities.silent_failure_ast import (
     collect_silent_failure_findings,
 )
+from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.utilities import u
 
@@ -89,7 +88,7 @@ def _rope_module_ast(
     try:
         pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
-    except (ModuleSyntaxError, SyntaxError):
+    except (*c.Infra.SYNTAX_ERRORS,):
         return None
     return tree if isinstance(tree, ast.Module) else None
 

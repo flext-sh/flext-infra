@@ -29,7 +29,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, ClassVar
 
-from rope.refactor import patchedast
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     import ast
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesRopePep695Patch:
         """Install PEP 695 handlers on rope's ``_PatchingASTWalker`` once."""
         if cls._applied:
             return
-        walker = getattr(patchedast, "_PatchingASTWalker")
+        walker = FlextInfraUtilitiesRopeRuntime.patched_ast_walker()
         original_function_def: Callable[..., None] = getattr(
             walker,
             "_handle_function_def_node",

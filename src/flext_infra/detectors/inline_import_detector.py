@@ -6,10 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sys
 from typing import TYPE_CHECKING, ClassVar, override
-
-from rope.base import ast
 
 from flext_infra._constants.detectors import FlextInfraConstantsDetectors
 from flext_infra.constants import c
@@ -76,7 +75,7 @@ class FlextInfraInlineImportDetector:
         try:
             pymodule = u.Infra.get_pymodule(ctx.rope_project, res)
             tree = pymodule.get_ast()
-        except Exception:
+        except (*c.Infra.SYNTAX_ERRORS, *c.Infra.RUNTIME_ERRORS, TypeError):
             return ()
         if not isinstance(tree, ast.Module):
             return ()

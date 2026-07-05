@@ -13,17 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rope.base.exceptions import ModuleNotFoundError as RopeModuleNotFoundError
-from rope.base.pyobjects import PyClass
-from rope.base.resources import File
-from rope.refactor import occurrences
-from rope.refactor.occurrences import worder
-
+from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-    from rope.base.project import Project
-
     from flext_infra.typings import t
 
 
@@ -74,7 +68,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
 
     @staticmethod
     def _plan_with_project(
-        project: Project,
+        project: t.Infra.RopeProject,
         class_full_name: str,
         constant_name: str,
         constants_module: str,
@@ -82,12 +76,11 @@ class FlextInfraRefactorClassvarConstantAutofix:
         class_module, class_name = class_full_name.rsplit(".", maxsplit=1)
         source_mod = project.get_module(class_module)
         source_resource = source_mod.get_resource()
-        if not isinstance(source_resource, File):
+        if not FlextInfraUtilitiesRopeRuntime.is_resource(source_resource):
             msg = f"{class_module} did not resolve to a file resource"
             raise TypeError(msg)
         pyclass = source_mod.get_attribute(class_name).get_object()
-        if not isinstance(pyclass, PyClass):
-            # Expected PyClass; if rope gives something else, fail loud.
+        if not FlextInfraUtilitiesRopeRuntime.is_pyclass(pyclass):
             msg = f"{class_full_name} did not resolve to a class"
             raise TypeError(msg)
         source_text = source_resource.read()
@@ -141,7 +134,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
 
     @staticmethod
     def _apply_with_project(
-        project: Project,
+        project: t.Infra.RopeProject,
         plan: ClassvarConstantAutofixPlan,
         *,
         dry_run: bool,
@@ -190,7 +183,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         class_module_obj = project.get_module(plan.class_module)
         pyclass = class_module_obj.get_attribute(plan.class_name).get_object()
         pyname = pyclass.get_attribute(plan.constant_name)
-        finder = occurrences.create_finder(
+        finder = FlextInfraUtilitiesRopeRuntime.create_occurrence_finder(
             project,
             plan.constant_name,
             pyname,
@@ -206,10 +199,16 @@ class FlextInfraRefactorClassvarConstantAutofix:
                 source = resource.read()
                 prefix = _attribute_prefix(source, offset)
                 if _should_rewrite_prefix(prefix, plan.class_name):
-                    word_finder = worder.Worder(source, True)
                     try:
-                        start, end = word_finder.get_primary_range(offset)
-                    except Exception:
+                        start, end = FlextInfraUtilitiesRopeRuntime.word_primary_range(
+                            source,
+                            offset,
+                        )
+                    except (
+                        *FlextInfraConstantsRope.RUNTIME_ERRORS,
+                        TypeError,
+                        ValueError,
+                    ):
                         start, end = occurrence.get_word_range()
                     replacement = (
                         f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
@@ -281,17 +280,17 @@ def _class_start_lineno(source: str, class_name: str) -> int:
 
 
 def _target_resource_for_module(
-    project: Project,
+    project: t.Infra.RopeProject,
     constants_module: str,
 ) -> t.Infra.RopeResource:
     """Return the existing canonical constants module resource."""
     try:
         target_mod = project.get_module(constants_module)
-    except RopeModuleNotFoundError:
+    except FlextInfraConstantsRope.MODULE_NOT_FOUND_ERROR_TYPES:
         msg = f"constants module {constants_module} does not exist"
         raise TypeError(msg) from None
     target_resource = target_mod.get_resource()
-    if not isinstance(target_resource, File):
+    if not FlextInfraUtilitiesRopeRuntime.is_resource(target_resource):
         target_resource = _target_package_init_resource(project, constants_module)
         if target_resource is None:
             msg = (
@@ -306,9 +305,9 @@ def _target_resource_for_module(
 
 
 def _target_package_init_resource(
-    project: Project,
+    project: t.Infra.RopeProject,
     constants_module: str,
-) -> File | None:
+) -> t.Infra.RopeResource | None:
     """Return ``__init__.py`` for a package-backed constants module."""
     root_real_path = getattr(getattr(project, "root", None), "real_path", None)
     if not isinstance(root_real_path, str):
@@ -610,12 +609,14 @@ def _attribute_prefix(source: str, offset: int) -> str:
     For ``cls.BAR`` returns ``"cls"``.  For ``self.__class__.BAR`` returns
     ``"self.__class__"``.  For bare ``BAR`` returns the empty string.
     """
-    word_finder = worder.Worder(source, True)
     try:
-        primary = word_finder.get_primary_at(offset)
-    except Exception:
-        primary = ""
-    return str(primary)
+        return FlextInfraUtilitiesRopeRuntime.word_primary_at(source, offset)
+    except (
+        *FlextInfraConstantsRope.RUNTIME_ERRORS,
+        TypeError,
+        ValueError,
+    ):
+        return ""
 
 
 def _should_rewrite_prefix(prefix: str, class_name: str) -> bool:

@@ -6,15 +6,9 @@ import importlib.util as _importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from rope.base import libutils as rope_libutils
-from rope.base.pynames import (
-    DefinedName as RopeDefinedName,
-    ImportedName as RopeImportedName,
-)
-from rope.base.pynamesdef import AssignedName as RopeAssignedName
-
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.constants import c
 from flext_infra.models import m
 
@@ -509,7 +503,7 @@ class FlextInfraUtilitiesRopeAnalysis:
                 if name != c.Infra.DUNDER_ALL
                 and name.startswith("__")
                 and name.endswith("__")
-                and isinstance(pyname, RopeAssignedName)
+                and isinstance(pyname, FlextInfraConstantsRope.ASSIGNED_NAME_TYPES)
                 and FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource)
             ),
         )
@@ -523,7 +517,12 @@ class FlextInfraUtilitiesRopeAnalysis:
     ) -> t.StrSequence | None:
         """Return explicit ``__all__`` export names when declared locally."""
         explicit_all_name = attributes.get(c.Infra.DUNDER_ALL)
-        if not isinstance(explicit_all_name, RopeAssignedName):
+        if (
+            explicit_all_name is None
+            or not FlextInfraUtilitiesRopeRuntime.is_assigned_name(
+                explicit_all_name,
+            )
+        ):
             return None
         if not FlextInfraUtilitiesRopeAnalysis._is_local_name(
             explicit_all_name,
@@ -565,12 +564,12 @@ class FlextInfraUtilitiesRopeAnalysis:
         pyname: t.Infra.RopePyName,
     ) -> bool:
         """Return whether one Rope name is exportable under the options."""
-        if isinstance(pyname, RopeImportedName):
+        if isinstance(pyname, FlextInfraConstantsRope.IMPORTED_NAME_TYPES):
             return False
-        if isinstance(pyname, RopeAssignedName):
+        if isinstance(pyname, FlextInfraConstantsRope.ASSIGNED_NAME_TYPES):
             allow_assignments: bool = export_options.allow_assignments
             return allow_assignments
-        if not isinstance(pyname, RopeDefinedName):
+        if not isinstance(pyname, FlextInfraConstantsRope.DEFINED_NAME_TYPES):
             return False
         obj = pyname.get_object()
         if isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
@@ -619,7 +618,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def is_imported_name(pyname: t.Infra.RopePyName) -> bool:
         """Return whether a rope ``PyName`` is an ``ImportedName``."""
-        return isinstance(pyname, RopeImportedName)
+        return isinstance(pyname, FlextInfraConstantsRope.IMPORTED_NAME_TYPES)
 
     @staticmethod
     def is_pyclass(obj: object) -> bool:
@@ -1415,7 +1414,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         """
         rope_project = FlextInfraUtilitiesRopeAnalysis._shared_parse_project()
         try:
-            pymodule = rope_libutils.get_string_module(rope_project, source)
+            pymodule = FlextInfraUtilitiesRopeRuntime.get_string_module(
+                rope_project,
+                source,
+            )
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return None
         return pymodule

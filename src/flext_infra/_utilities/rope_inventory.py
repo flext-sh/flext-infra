@@ -6,12 +6,6 @@ from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rope.base.exceptions import RopeError
-from rope.base.pynames import DefinedName, ImportedName
-from rope.base.pynamesdef import AssignedName, ParameterName
-from rope.base.pyobjects import AbstractClass
-from rope.base.pyobjectsdef import PyFunction, PyModule
-
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
@@ -49,7 +43,12 @@ class FlextInfraUtilitiesRopeInventory:
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"
             )
             raise RuntimeError(msg) from exc
-        except (RecursionError, SyntaxError, ValueError, RopeError) as exc:
+        except (
+            RecursionError,
+            SyntaxError,
+            ValueError,
+            *FlextInfraConstantsRope.ROPE_ERROR_TYPES,
+        ) as exc:
             msg = (
                 "rope inventory failed to load "
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"
@@ -181,7 +180,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _sorted_module_names(
-        pymodule: PyModule,
+        pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeResource,
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
         """Sorted module names."""
@@ -209,7 +208,7 @@ class FlextInfraUtilitiesRopeInventory:
         """Sorted names."""
         candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in names.items():
-            if isinstance(pyname, ImportedName):
+            if isinstance(pyname, FlextInfraConstantsRope.IMPORTED_NAME_TYPES):
                 continue
             line = FlextInfraUtilitiesRopeInventory._definition_line(pyname, resource)
             if line is None:
@@ -347,7 +346,13 @@ class FlextInfraUtilitiesRopeInventory:
         scope = next((scope for scope in scopes if scope.get_start() == line), None)
         if scope is not None:
             return scope
-        if isinstance(pyname, (AssignedName, ParameterName)):
+        if isinstance(
+            pyname,
+            (
+                *FlextInfraConstantsRope.ASSIGNED_NAME_TYPES,
+                *FlextInfraConstantsRope.PARAMETER_NAME_TYPES,
+            ),
+        ):
             return None
         getter = getattr(pyname.get_object(), "get_scope", None)
         candidate = getter() if callable(getter) else None
@@ -363,9 +368,9 @@ class FlextInfraUtilitiesRopeInventory:
     ) -> str:
         """Kind for."""
         result: str
-        if isinstance(pyname, ParameterName):
+        if isinstance(pyname, FlextInfraConstantsRope.PARAMETER_NAME_TYPES):
             result = "parameter"
-        elif isinstance(pyname, AssignedName):
+        elif isinstance(pyname, FlextInfraConstantsRope.ASSIGNED_NAME_TYPES):
             if class_chain and len(scope_chain) == len(class_chain):
                 result = "attribute"
             elif scope_chain:
@@ -376,9 +381,9 @@ class FlextInfraUtilitiesRopeInventory:
                 result = "assignment"
         else:
             obj = pyname.get_object()
-            if isinstance(obj, AbstractClass):
+            if isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
                 result = "class"
-            elif isinstance(obj, PyFunction):
+            elif isinstance(obj, FlextInfraConstantsRope.PY_FUNCTION_TYPES):
                 result = (
                     "method"
                     if class_chain and len(scope_chain) == len(class_chain)
@@ -388,7 +393,10 @@ class FlextInfraUtilitiesRopeInventory:
                 result = "attribute"
             elif scope_chain:
                 result = "local" if not name.isupper() else "constant"
-            elif isinstance(pyname, DefinedName) and name.isupper():
+            elif (
+                isinstance(pyname, FlextInfraConstantsRope.DEFINED_NAME_TYPES)
+                and name.isupper()
+            ):
                 result = "constant"
             else:
                 result = "assignment"

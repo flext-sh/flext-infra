@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING, NamedTuple, override
-
-from rope.base import ast
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
