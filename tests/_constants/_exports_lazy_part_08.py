@@ -18,6 +18,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
             "TestsFlextInfraUtilitiesdiscoveryconsolidated",
         ),
         ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
+        ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
         ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
         ".unit.fixtures": (
@@ -30,7 +31,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
             "real_python_package",
             "real_toml_project",
             "real_workspace",
-            "rope_workspace",
         ),
         ".unit.fixtures_git": ("real_git_repo",),
         ".unit.workspace.test_main": ("TestsFlextInfraWorkspaceMain",),

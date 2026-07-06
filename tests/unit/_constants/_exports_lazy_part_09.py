@@ -9,7 +9,10 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_09 = build_lazy_import_map(
     {
         ".validate": ("validate",),
         ".workspace": ("workspace",),
-        "flext_tests": ("x",),
+        "flext_tests": (
+            "u",
+            "x",
+        ),
     },
 )
 

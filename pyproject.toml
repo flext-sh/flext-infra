@@ -158,8 +158,8 @@ skip_covered = false
 
 [tool.coverage.run]
 omit = [
-    "*/dependency_injector/providers.pyx",
-    "*/pytest-of-*/**",
+  "*/dependency_injector/providers.pyx",
+  "*/pytest-of-*/**",
 ]
 
 # [MANAGED] deptry
@@ -206,10 +206,10 @@ follow_imports = "normal"
 local_partial_types = true
 mypy_path = [
   ".",
-  "src",
   "../flext-cli/src",
   "../flext-core/src",
   "../flext-tests/src",
+  "src",
 ]
 namespace_packages = true
 no_implicit_reexport = true

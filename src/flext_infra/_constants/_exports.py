@@ -17,7 +17,7 @@ _LOCAL_LAZY_IMPORTS = {
 }
 
 FLEXT_INFRA_LAZY_IMPORTS = merge_lazy_imports(
-    (),
+    ("._enforcement",),
     _LOCAL_LAZY_IMPORTS,
     exclude_names=(
         "cleanup_submodule_namespace",

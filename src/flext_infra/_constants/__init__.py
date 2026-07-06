@@ -40,6 +40,9 @@ if TYPE_CHECKING:
         VALIDATE_ROUTES as VALIDATE_ROUTES,
         WORKSPACE_ROUTES as WORKSPACE_ROUTES,
     )
+    from flext_infra._constants.cli_routes_validate_commands import (
+        VALIDATE_COMMAND_ROUTES as VALIDATE_COMMAND_ROUTES,
+    )
     from flext_infra._constants.codegen import (
         FlextInfraConstantsCodegen as FlextInfraConstantsCodegen,
     )
@@ -104,6 +107,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
             "VALIDATE_ROUTES",
             "WORKSPACE_ROUTES",
         ),
+        ".cli_routes_validate_commands": ("VALIDATE_COMMAND_ROUTES",),
         ".codegen": ("FlextInfraConstantsCodegen",),
         ".codegen_detection": ("FlextInfraConstantsCodegenDetection",),
         ".codegen_lazy": ("FlextInfraConstantsCodegenLazy",),

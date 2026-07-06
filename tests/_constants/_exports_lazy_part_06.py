@@ -7,6 +7,9 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
+        ".integration.test_refactor_policy_mro": (
+            "TestsFlextInfraIntegrationRefactorPolicyMro",
+        ),
         ".models": ("TestsFlextInfraModels",),
         ".protocols": ("TestsFlextInfraProtocols",),
         ".unit.codegen.lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
@@ -86,9 +89,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ),
         ".unit.refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
         ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
-        ".unit.transformers.test_project_alias_migrator": (
-            "TestsFlextInfraRefactorProjectAliasMigrator",
-        ),
     },
 )
 

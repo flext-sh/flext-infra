@@ -11,6 +11,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_09 = build_lazy_import_map(
         ".typings": ("t",),
         ".unit": ("unit",),
         ".unit.fixtures": (
+            "rope_workspace",
             "services_resource",
             "tool_config_document",
         ),

@@ -35,6 +35,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
         ".test_version_diag2": ("test_version_diag2",),
         ".transformers": ("transformers",),
         "flext_tests": (
+            "h",
             "m",
             "p",
             "r",
@@ -45,7 +46,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_08 = build_lazy_import_map(
             "tk",
             "tm",
             "tv",
-            "u",
         ),
     },
 )

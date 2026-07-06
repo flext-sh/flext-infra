@@ -19,7 +19,11 @@ from flext_infra.__version__ import (
 from flext_infra._constants._exports import FLEXT_INFRA_LAZY_IMPORTS
 
 if TYPE_CHECKING:
-    from flext_cli import d as d, e as e, h as h, r as r, x as x
+    from flext_core._root_typing_parts import d as d, e as e, h as h, r as r, x as x
+    from flext_infra import basemk
+    from flext_infra._fixtures.enforcement import (
+        FlextInfraEnforcementPytestPlugin as FlextInfraEnforcementPytestPlugin,
+    )
     from flext_infra.api import FlextInfra as FlextInfra, infra as infra
     from flext_infra.base import FlextInfraServiceBase as FlextInfraServiceBase, s as s
     from flext_infra.base_selection import (
@@ -53,6 +57,7 @@ _PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
+    "FlextInfraEnforcementPytestPlugin",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
@@ -88,6 +93,7 @@ __all__: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
+    "FlextInfraEnforcementPytestPlugin",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",

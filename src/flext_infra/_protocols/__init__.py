@@ -17,11 +17,15 @@ if TYPE_CHECKING:
     from flext_infra._protocols.rope import (
         FlextInfraProtocolsRope as FlextInfraProtocolsRope,
     )
+    from flext_infra._protocols.rope_runtime import (
+        FlextInfraProtocolsRopeRuntime as FlextInfraProtocolsRopeRuntime,
+    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".base": ("FlextInfraProtocolsBase",),
         ".check": ("FlextInfraProtocolsCheck",),
         ".rope": ("FlextInfraProtocolsRope",),
+        ".rope_runtime": ("FlextInfraProtocolsRopeRuntime",),
     },
 )
 

@@ -7,7 +7,14 @@ from flext_core.lazy import build_lazy_import_map
 
 FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
     {
+        ".api": ("infra",),
         ".base": ("s",),
+        ".cli": ("main",),
+        ".fixers": ("fixers",),
+        ".gates": ("gates",),
+        ".maintenance": ("maintenance",),
+        ".models": ("m",),
+        ".protocols": ("p",),
         ".refactor": ("refactor",),
         ".release": ("release",),
         ".transformers": ("transformers",),
@@ -15,7 +22,9 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".utilities": ("u",),
         ".validate": ("validate",),
         ".workspace": ("workspace",),
-        "flext_cli": (
+        "flext_core._root_typing_parts": (
+            "e",
+            "h",
             "r",
             "x",
         ),

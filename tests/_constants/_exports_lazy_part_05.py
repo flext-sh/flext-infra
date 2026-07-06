@@ -25,9 +25,7 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".integration.test_refactor_nesting_workspace": (
             "TestsFlextInfraIntegrationRefactorNestingWorkspace",
         ),
-        ".integration.test_refactor_policy_mro": (
-            "TestsFlextInfraIntegrationRefactorPolicyMro",
-        ),
+        ".unit.test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
         ".unit.test_infra_main": ("TestsFlextInfraInfraMain",),
         ".unit.test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
         ".unit.test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),

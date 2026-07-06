@@ -47,10 +47,8 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_05 = build_lazy_import_map(
         ".refactor.test_infra_refactor_migrate_to_class_mro": (
             "TestsFlextInfraRefactorInfraRefactorMigrateToClassMro",
         ),
-        ".refactor.test_infra_refactor_mro_completeness": (
-            "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
-        ),
         ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
+        ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
         ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
         ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
         ".test_infra_selection": ("TestsFlextInfraInfraSelection",),

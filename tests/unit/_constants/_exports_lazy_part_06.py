@@ -8,6 +8,9 @@ from flext_core.lazy import build_lazy_import_map
 TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
     {
         "._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
+        ".refactor.test_infra_refactor_mro_completeness": (
+            "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
+        ),
         ".refactor.test_infra_refactor_mro_shape": (
             "TestsFlextInfraRefactorInfraRefactorMroShape",
         ),
@@ -74,9 +77,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_06 = build_lazy_import_map(
         ),
         ".transformers.test_infra_transformer_pydantic_modernizer": (
             "TestsFlextInfraTransformersPydanticModernizer",
-        ),
-        ".transformers.test_infra_transformer_result_di_modernizer": (
-            "TestsFlextInfraTransformersResultDiModernizer",
         ),
         ".transformers.test_project_alias_migrator": (
             "TestsFlextInfraRefactorProjectAliasMigrator",

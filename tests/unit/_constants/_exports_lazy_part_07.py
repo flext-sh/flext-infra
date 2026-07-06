@@ -32,6 +32,9 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "TestsFlextInfraTransformersTypingDictImport",
             "TestsFlextInfraTransformersTypingUnifier",
         ),
+        ".transformers.test_infra_transformer_result_di_modernizer": (
+            "TestsFlextInfraTransformersResultDiModernizer",
+        ),
         ".transformers.test_infra_transformer_tests_modernizer": (
             "TestsFlextInfraTransformersTestsModernizer",
         ),
@@ -49,7 +52,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "c",
             "d",
             "e",
-            "h",
         ),
     },
 )

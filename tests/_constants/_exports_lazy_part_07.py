@@ -16,7 +16,6 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "TestsFlextInfraUtilitiesProtectedEdit",
         ),
         ".unit._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
-        ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
         ".unit.release.test_release_dag": ("TestsFlextInfraReleaseDag",),
         ".unit.test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
         ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
@@ -61,6 +60,9 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
         ),
         ".unit.transformers.test_infra_transformer_tests_modernizer": (
             "TestsFlextInfraTransformersTestsModernizer",
+        ),
+        ".unit.transformers.test_project_alias_migrator": (
+            "TestsFlextInfraRefactorProjectAliasMigrator",
         ),
         ".utilities": ("TestsFlextInfraUtilities",),
     },

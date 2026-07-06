@@ -38,6 +38,7 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
         ".discovery.test_infra_discovery_edge_cases": (
             "TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases",
         ),
+        ".test_enforcement_plugin": ("TestsFlextInfraEnforcementPlugin",),
         ".test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
         ".test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
         ".test_infra_main": ("TestsFlextInfraInfraMain",),
@@ -54,7 +55,6 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_04 = build_lazy_import_map(
         ".test_infra_refactor_rope_migrations": (
             "TestsFlextInfraInfraRefactorRopeMigrations",
         ),
-        ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
     },
 )
 
