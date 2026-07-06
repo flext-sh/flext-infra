@@ -13,97 +13,111 @@ from flext_core.lazy import (
 
 if TYPE_CHECKING:
     from flext_infra.transformers.base import (
-        FlextInfraChangeTrackingTransformer,
-        FlextInfraRopeTransformer,
+        FlextInfraChangeTrackingTransformer as FlextInfraChangeTrackingTransformer,
+        FlextInfraRopeTransformer as FlextInfraRopeTransformer,
     )
-    from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
+    from flext_infra.transformers.cast_remover import (
+        FlextInfraRefactorCastRemover as FlextInfraRefactorCastRemover,
+    )
     from flext_infra.transformers.census_visitors import (
-        FlextInfraCensusImportDiscoveryVisitor,
-        FlextInfraCensusUsageCollector,
+        FlextInfraCensusImportDiscoveryVisitor as FlextInfraCensusImportDiscoveryVisitor,
+        FlextInfraCensusUsageCollector as FlextInfraCensusUsageCollector,
     )
     from flext_infra.transformers.class_nesting import (
-        FlextInfraRefactorClassNestingTransformer,
+        FlextInfraRefactorClassNestingTransformer as FlextInfraRefactorClassNestingTransformer,
     )
     from flext_infra.transformers.class_reconstructor import (
-        FlextInfraRefactorClassReconstructor,
+        FlextInfraRefactorClassReconstructor as FlextInfraRefactorClassReconstructor,
     )
-    from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
+    from flext_infra.transformers.cli_modernizer import (
+        FlextInfraRefactorCliModernizer as FlextInfraRefactorCliModernizer,
+    )
     from flext_infra.transformers.compatibility_alias import (
-        FlextInfraRefactorCompatibilityAlias,
+        FlextInfraRefactorCompatibilityAlias as FlextInfraRefactorCompatibilityAlias,
     )
     from flext_infra.transformers.deprecated_remover import (
-        FlextInfraRefactorDeprecatedRemover,
+        FlextInfraRefactorDeprecatedRemover as FlextInfraRefactorDeprecatedRemover,
     )
-    from flext_infra.transformers.future_import import FlextInfraRefactorFutureImport
+    from flext_infra.transformers.future_import import (
+        FlextInfraRefactorFutureImport as FlextInfraRefactorFutureImport,
+    )
     from flext_infra.transformers.hardcoded_version import (
-        FlextInfraRefactorHardcodedVersion,
+        FlextInfraRefactorHardcodedVersion as FlextInfraRefactorHardcodedVersion,
     )
     from flext_infra.transformers.helper_consolidation import (
-        FlextInfraHelperConsolidationTransformer,
+        FlextInfraHelperConsolidationTransformer as FlextInfraHelperConsolidationTransformer,
     )
     from flext_infra.transformers.import_bypass_remover import (
-        FlextInfraRefactorImportBypassRemover,
+        FlextInfraRefactorImportBypassRemover as FlextInfraRefactorImportBypassRemover,
     )
     from flext_infra.transformers.import_modernizer import (
-        FlextInfraRefactorImportModernizer,
+        FlextInfraRefactorImportModernizer as FlextInfraRefactorImportModernizer,
     )
     from flext_infra.transformers.lazy_import_fixer import (
-        FlextInfraRefactorLazyImportFixer,
+        FlextInfraRefactorLazyImportFixer as FlextInfraRefactorLazyImportFixer,
     )
     from flext_infra.transformers.logging_modernizer import (
-        FlextInfraRefactorLoggingModernizer,
+        FlextInfraRefactorLoggingModernizer as FlextInfraRefactorLoggingModernizer,
     )
-    from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
+    from flext_infra.transformers.mro_remover import (
+        FlextInfraRefactorMRORemover as FlextInfraRefactorMRORemover,
+    )
     from flext_infra.transformers.mro_symbol_propagator import (
-        FlextInfraRefactorMROSymbolPropagator,
+        FlextInfraRefactorMROSymbolPropagator as FlextInfraRefactorMROSymbolPropagator,
     )
     from flext_infra.transformers.nested_class_propagation import (
-        FlextInfraNestedClassPropagationTransformer,
+        FlextInfraNestedClassPropagationTransformer as FlextInfraNestedClassPropagationTransformer,
     )
-    from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
-    from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
+    from flext_infra.transformers.open_encoding import (
+        FlextInfraRefactorOpenEncoding as FlextInfraRefactorOpenEncoding,
+    )
+    from flext_infra.transformers.pattern import (
+        FlextInfraRefactorPatternTransformer as FlextInfraRefactorPatternTransformer,
+    )
     from flext_infra.transformers.pattern_modernizer import (
-        FlextInfraRefactorPatternModernizer,
+        FlextInfraRefactorPatternModernizer as FlextInfraRefactorPatternModernizer,
     )
     from flext_infra.transformers.project_alias_migrator import (
-        FlextInfraRefactorProjectAliasMigrator,
+        FlextInfraRefactorProjectAliasMigrator as FlextInfraRefactorProjectAliasMigrator,
     )
     from flext_infra.transformers.pydantic_modernizer import (
-        FlextInfraRefactorPydanticModernizer,
+        FlextInfraRefactorPydanticModernizer as FlextInfraRefactorPydanticModernizer,
     )
     from flext_infra.transformers.result_di_modernizer import (
-        FlextInfraRefactorResultDiModernizer,
+        FlextInfraRefactorResultDiModernizer as FlextInfraRefactorResultDiModernizer,
     )
     from flext_infra.transformers.signature_propagator import (
-        FlextInfraRefactorSignaturePropagator,
+        FlextInfraRefactorSignaturePropagator as FlextInfraRefactorSignaturePropagator,
     )
     from flext_infra.transformers.smells.base import (
-        FlextInfraSmellFixer,
-        auto_fixable_smell_tags,
-        register_smell_fixer,
-        smell_fixer_for,
+        FlextInfraSmellFixer as FlextInfraSmellFixer,
+        auto_fixable_smell_tags as auto_fixable_smell_tags,
+        register_smell_fixer as register_smell_fixer,
+        smell_fixer_for as smell_fixer_for,
     )
     from flext_infra.transformers.smells.boolean_logic import (
-        FlextInfraBooleanLogicFixer,
+        FlextInfraBooleanLogicFixer as FlextInfraBooleanLogicFixer,
     )
     from flext_infra.transformers.symbol_propagator import (
-        FlextInfraRefactorSymbolPropagator,
+        FlextInfraRefactorSymbolPropagator as FlextInfraRefactorSymbolPropagator,
     )
     from flext_infra.transformers.tests_modernizer import (
-        FlextInfraRefactorTestsModernizer,
+        FlextInfraRefactorTestsModernizer as FlextInfraRefactorTestsModernizer,
     )
     from flext_infra.transformers.tier0_import_fixer import (
-        FlextInfraTransformerTier0ImportFixer,
+        FlextInfraTransformerTier0ImportFixer as FlextInfraTransformerTier0ImportFixer,
     )
     from flext_infra.transformers.typing_dict_attr import (
-        FlextInfraRefactorTypingDictAttr,
+        FlextInfraRefactorTypingDictAttr as FlextInfraRefactorTypingDictAttr,
     )
     from flext_infra.transformers.typing_dict_import import (
-        FlextInfraRefactorTypingDictImport,
+        FlextInfraRefactorTypingDictImport as FlextInfraRefactorTypingDictImport,
     )
-    from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+    from flext_infra.transformers.typing_unifier import (
+        FlextInfraRefactorTypingUnifier as FlextInfraRefactorTypingUnifier,
+    )
     from flext_infra.transformers.violation_census_visitor import (
-        FlextInfraViolationCensusVisitor,
+        FlextInfraViolationCensusVisitor as FlextInfraViolationCensusVisitor,
     )
 _LAZY_IMPORTS = merge_lazy_imports(
     (".smells",),

@@ -8,13 +8,25 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.fixers.base import FlextInfraFixerAdapter
-    from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
-    from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
-    from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
-    from flext_infra.fixers.result import FlextInfraFixersResult
-    from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
-    from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
+    from flext_infra.fixers.base import FlextInfraFixerAdapter as FlextInfraFixerAdapter
+    from flext_infra.fixers.gate_fixer import (
+        FlextInfraGateFixerAdapter as FlextInfraGateFixerAdapter,
+    )
+    from flext_infra.fixers.manual_fixer import (
+        FlextInfraManualFixerAdapter as FlextInfraManualFixerAdapter,
+    )
+    from flext_infra.fixers.orchestrator import (
+        FlextInfraEnforcementFixerOrchestrator as FlextInfraEnforcementFixerOrchestrator,
+    )
+    from flext_infra.fixers.result import (
+        FlextInfraFixersResult as FlextInfraFixersResult,
+    )
+    from flext_infra.fixers.rope_fixer import (
+        FlextInfraRopeFixerAdapter as FlextInfraRopeFixerAdapter,
+    )
+    from flext_infra.fixers.transformer_fixer import (
+        FlextInfraTransformerFixerAdapter as FlextInfraTransformerFixerAdapter,
+    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".base": ("FlextInfraFixerAdapter",),

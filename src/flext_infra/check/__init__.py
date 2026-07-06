@@ -8,10 +8,12 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+    from flext_infra.check.workspace_check import (
+        FlextInfraWorkspaceChecker as FlextInfraWorkspaceChecker,
+    )
     from flext_infra.check.workspace_check_gates import (
-        FlextInfraGateRegistry,
-        FlextInfraWorkspaceCheckGatesMixin,
+        FlextInfraGateRegistry as FlextInfraGateRegistry,
+        FlextInfraWorkspaceCheckGatesMixin as FlextInfraWorkspaceCheckGatesMixin,
     )
 _LAZY_IMPORTS = build_lazy_import_map(
     {

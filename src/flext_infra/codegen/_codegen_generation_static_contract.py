@@ -67,7 +67,7 @@ class FlextInfraCodegenGenerationStaticContractMixin(
                 )
             if attr_items:
                 parts = tuple(
-                    cls._format_import_part(attr_name, export_name)
+                    cls._format_reexport_import_part(attr_name, export_name)
                     for export_name, attr_name in sorted(
                         attr_items,
                         key=lambda item: (item[1], item[0] != item[1]),

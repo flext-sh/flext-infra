@@ -114,7 +114,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 target.append(export_name)
                 continue
             parts.append(
-                FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
+                FlextInfraCodegenGenerationTypeCheckingMixin._format_reexport_import_part(
                     attr_name,
                     export_name,
                 ),

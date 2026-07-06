@@ -12,42 +12,66 @@ from flext_core.lazy import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-    from flext_infra.deps.detection_analysis import (
-        FlextInfraDependencyDetectionAnalysis,
+    from flext_infra.deps.detection import (
+        FlextInfraDependencyDetectionService as FlextInfraDependencyDetectionService,
     )
-    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-    from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-    from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+    from flext_infra.deps.detection_analysis import (
+        FlextInfraDependencyDetectionAnalysis as FlextInfraDependencyDetectionAnalysis,
+    )
+    from flext_infra.deps.detector import (
+        FlextInfraRuntimeDevDependencyDetector as FlextInfraRuntimeDevDependencyDetector,
+    )
+    from flext_infra.deps.detector_runtime import (
+        FlextInfraDependencyDetectorRuntime as FlextInfraDependencyDetectorRuntime,
+    )
+    from flext_infra.deps.extra_paths import (
+        FlextInfraExtraPathsManager as FlextInfraExtraPathsManager,
+    )
+    from flext_infra.deps.fix_pyrefly_config import (
+        FlextInfraConfigFixer as FlextInfraConfigFixer,
+    )
+    from flext_infra.deps.internal_sync import (
+        FlextInfraInternalDependencySyncService as FlextInfraInternalDependencySyncService,
+    )
+    from flext_infra.deps.modernizer import (
+        FlextInfraPyprojectModernizer as FlextInfraPyprojectModernizer,
+    )
     from flext_infra.deps.phases.consolidate_groups import (
-        FlextInfraConsolidateGroupsPhase,
+        FlextInfraConsolidateGroupsPhase as FlextInfraConsolidateGroupsPhase,
     )
     from flext_infra.deps.phases.ensure_coverage import (
-        FlextInfraEnsureCoverageConfigPhase,
+        FlextInfraEnsureCoverageConfigPhase as FlextInfraEnsureCoverageConfigPhase,
     )
     from flext_infra.deps.phases.ensure_formatting import (
-        FlextInfraEnsureFormattingToolingPhase,
+        FlextInfraEnsureFormattingToolingPhase as FlextInfraEnsureFormattingToolingPhase,
     )
-    from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+    from flext_infra.deps.phases.ensure_mypy import (
+        FlextInfraEnsureMypyConfigPhase as FlextInfraEnsureMypyConfigPhase,
+    )
     from flext_infra.deps.phases.ensure_namespace import (
-        FlextInfraEnsureNamespaceToolingPhase,
+        FlextInfraEnsureNamespaceToolingPhase as FlextInfraEnsureNamespaceToolingPhase,
     )
     from flext_infra.deps.phases.ensure_pydantic_mypy import (
-        FlextInfraEnsurePydanticMypyConfigPhase,
+        FlextInfraEnsurePydanticMypyConfigPhase as FlextInfraEnsurePydanticMypyConfigPhase,
     )
     from flext_infra.deps.phases.ensure_pyrefly import (
-        FlextInfraEnsurePyreflyConfigPhase,
+        FlextInfraEnsurePyreflyConfigPhase as FlextInfraEnsurePyreflyConfigPhase,
     )
     from flext_infra.deps.phases.ensure_pyright import (
-        FlextInfraEnsurePyrightConfigPhase,
+        FlextInfraEnsurePyrightConfigPhase as FlextInfraEnsurePyrightConfigPhase,
     )
-    from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-    from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-    from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-    from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
+    from flext_infra.deps.phases.ensure_pytest import (
+        FlextInfraEnsurePytestConfigPhase as FlextInfraEnsurePytestConfigPhase,
+    )
+    from flext_infra.deps.phases.ensure_ruff import (
+        FlextInfraEnsureRuffConfigPhase as FlextInfraEnsureRuffConfigPhase,
+    )
+    from flext_infra.deps.phases.inject_comments import (
+        FlextInfraInjectCommentsPhase as FlextInfraInjectCommentsPhase,
+    )
+    from flext_infra.deps.toml_phase import (
+        FlextInfraTomlPhaseService as FlextInfraTomlPhaseService,
+    )
 _LAZY_IMPORTS = merge_lazy_imports(
     (".phases",),
     build_lazy_import_map(
