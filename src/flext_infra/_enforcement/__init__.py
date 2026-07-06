@@ -9,24 +9,18 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._enforcement.collection_base import (
-        FlextInfraEnforcementCollectionBase as FlextInfraEnforcementCollectionBase,
-        FlextInfraEnforcementEvaluation as FlextInfraEnforcementEvaluation,
+        FlextInfraEnforcementCollectionBase,
+        FlextInfraEnforcementEvaluation,
     )
     from flext_infra._enforcement.collection_sources import (
-        FlextInfraEnforcementSourceCollectors as FlextInfraEnforcementSourceCollectors,
+        FlextInfraEnforcementSourceCollectors,
     )
     from flext_infra._enforcement.collection_tests import (
-        FlextInfraEnforcementTestsCollector as FlextInfraEnforcementTestsCollector,
+        FlextInfraEnforcementTestsCollector,
     )
-    from flext_infra._enforcement.engine import (
-        FlextInfraEnforcementEngine as FlextInfraEnforcementEngine,
-    )
-    from flext_infra._enforcement.metadata import (
-        FlextInfraEnforcementMetadata as FlextInfraEnforcementMetadata,
-    )
-    from flext_infra._enforcement.selection import (
-        FlextInfraEnforcementSelection as FlextInfraEnforcementSelection,
-    )
+    from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
+    from flext_infra._enforcement.metadata import FlextInfraEnforcementMetadata
+    from flext_infra._enforcement.selection import FlextInfraEnforcementSelection
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".collection_base": (

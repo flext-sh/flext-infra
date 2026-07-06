@@ -9,13 +9,13 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.transformers.smells.base import (
-        FlextInfraSmellFixer as FlextInfraSmellFixer,
-        auto_fixable_smell_tags as auto_fixable_smell_tags,
-        register_smell_fixer as register_smell_fixer,
-        smell_fixer_for as smell_fixer_for,
+        FlextInfraSmellFixer,
+        auto_fixable_smell_tags,
+        register_smell_fixer,
+        smell_fixer_for,
     )
     from flext_infra.transformers.smells.boolean_logic import (
-        FlextInfraBooleanLogicFixer as FlextInfraBooleanLogicFixer,
+        FlextInfraBooleanLogicFixer,
     )
 _LAZY_IMPORTS = build_lazy_import_map(
     {

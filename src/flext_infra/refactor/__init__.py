@@ -9,74 +9,52 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.refactor.accessor_migration import (
-        FlextInfraAccessorMigrationOrchestrator as FlextInfraAccessorMigrationOrchestrator,
+        FlextInfraAccessorMigrationOrchestrator,
     )
-    from flext_infra.refactor.census import (
-        FlextInfraRefactorCensus as FlextInfraRefactorCensus,
-    )
+    from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.class_nesting_analyzer import (
-        FlextInfraRefactorClassNestingAnalyzer as FlextInfraRefactorClassNestingAnalyzer,
+        FlextInfraRefactorClassNestingAnalyzer,
     )
     from flext_infra.refactor.classvar_constant_autofix import (
-        FlextInfraRefactorClassvarConstantAutofix as FlextInfraRefactorClassvarConstantAutofix,
+        FlextInfraRefactorClassvarConstantAutofix,
     )
     from flext_infra.refactor.declarative_enforcement import (
-        FlextInfraRefactorDeclarativeEnforcement as FlextInfraRefactorDeclarativeEnforcement,
+        FlextInfraRefactorDeclarativeEnforcement,
     )
     from flext_infra.refactor.file_executor import (
-        FlextInfraClassNestingPostCheckGate as FlextInfraClassNestingPostCheckGate,
-        FlextInfraRefactorFileExecutor as FlextInfraRefactorFileExecutor,
+        FlextInfraClassNestingPostCheckGate,
+        FlextInfraRefactorFileExecutor,
     )
-    from flext_infra.refactor.legacy_text_ops import (
-        FlextInfraRefactorLegacyTextOps as FlextInfraRefactorLegacyTextOps,
-    )
-    from flext_infra.refactor.loader import (
-        FlextInfraRefactorRuleLoader as FlextInfraRefactorRuleLoader,
-    )
+    from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
+    from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
     from flext_infra.refactor.migrate_to_class_mro import (
-        FlextInfraRefactorMigrateToClassMRO as FlextInfraRefactorMigrateToClassMRO,
+        FlextInfraRefactorMigrateToClassMRO,
     )
     from flext_infra.refactor.modernize_orchestrator import (
-        FlextInfraModernizeOrchestrator as FlextInfraModernizeOrchestrator,
+        FlextInfraModernizeOrchestrator,
     )
     from flext_infra.refactor.mro_import_rewriter import (
-        FlextInfraRefactorMROImportRewriter as FlextInfraRefactorMROImportRewriter,
+        FlextInfraRefactorMROImportRewriter,
     )
     from flext_infra.refactor.mro_migration_validator import (
-        FlextInfraRefactorMROMigrationValidator as FlextInfraRefactorMROMigrationValidator,
+        FlextInfraRefactorMROMigrationValidator,
     )
-    from flext_infra.refactor.mro_resolver import (
-        FlextInfraRefactorMROResolver as FlextInfraRefactorMROResolver,
-    )
-    from flext_infra.refactor.namespace_enforcer import (
-        FlextInfraNamespaceEnforcer as FlextInfraNamespaceEnforcer,
-    )
+    from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
+    from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from flext_infra.refactor.namespace_enforcer_phases import (
-        FlextInfraNamespaceEnforcerPhasesMixin as FlextInfraNamespaceEnforcerPhasesMixin,
+        FlextInfraNamespaceEnforcerPhasesMixin,
     )
-    from flext_infra.refactor.orchestrator import (
-        FlextInfraRefactorOrchestrator as FlextInfraRefactorOrchestrator,
-    )
-    from flext_infra.refactor.project_classifier import (
-        FlextInfraProjectClassifier as FlextInfraProjectClassifier,
-    )
-    from flext_infra.refactor.safety import (
-        FlextInfraRefactorSafetyManager as FlextInfraRefactorSafetyManager,
-    )
-    from flext_infra.refactor.scanner import (
-        FlextInfraRefactorLooseClassScanner as FlextInfraRefactorLooseClassScanner,
-    )
-    from flext_infra.refactor.service import (
-        FlextInfraRefactorService as FlextInfraRefactorService,
-    )
-    from flext_infra.refactor.text_executor import (
-        FlextInfraRefactorTextExecutor as FlextInfraRefactorTextExecutor,
-    )
+    from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
+    from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+    from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
+    from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+    from flext_infra.refactor.service import FlextInfraRefactorService
+    from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
     from flext_infra.refactor.violation_analyzer import (
-        FlextInfraRefactorViolationAnalyzer as FlextInfraRefactorViolationAnalyzer,
+        FlextInfraRefactorViolationAnalyzer,
     )
     from flext_infra.refactor.wrapper_root_namespace import (
-        FlextInfraWrapperRootNamespaceRefactor as FlextInfraWrapperRootNamespaceRefactor,
+        FlextInfraWrapperRootNamespaceRefactor,
     )
 _LAZY_IMPORTS = build_lazy_import_map(
     {

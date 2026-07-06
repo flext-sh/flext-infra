@@ -743,7 +743,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             ]
             if import_line not in target_lines
             if (
-                filtered := FlextInfraUtilitiesRefactorNamespaceMoves._strip_self_bound_aliases(
+                filtered
+                := FlextInfraUtilitiesRefactorNamespaceMoves._strip_self_bound_aliases(
                     import_line=import_line,
                     target_source=target_source,
                 )

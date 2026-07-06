@@ -9,58 +9,54 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.detectors.class_placement_detector import (
-        FlextInfraClassPlacementDetector as FlextInfraClassPlacementDetector,
+        FlextInfraClassPlacementDetector,
     )
     from flext_infra.detectors.compatibility_alias_detector import (
-        FlextInfraCompatibilityAliasDetector as FlextInfraCompatibilityAliasDetector,
+        FlextInfraCompatibilityAliasDetector,
     )
     from flext_infra.detectors.cyclic_import_detector import (
-        FlextInfraCyclicImportDetector as FlextInfraCyclicImportDetector,
+        FlextInfraCyclicImportDetector,
     )
-    from flext_infra.detectors.facade_scanner import (
-        FlextInfraScanner as FlextInfraScanner,
-    )
+    from flext_infra.detectors.facade_scanner import FlextInfraScanner
     from flext_infra.detectors.future_annotations_detector import (
-        FlextInfraFutureAnnotationsDetector as FlextInfraFutureAnnotationsDetector,
+        FlextInfraFutureAnnotationsDetector,
     )
     from flext_infra.detectors.import_alias_detector import (
-        FlextInfraImportAliasDetector as FlextInfraImportAliasDetector,
+        FlextInfraImportAliasDetector,
     )
     from flext_infra.detectors.inline_import_detector import (
-        FlextInfraInlineImportDetector as FlextInfraInlineImportDetector,
+        FlextInfraInlineImportDetector,
     )
     from flext_infra.detectors.internal_import_detector import (
-        FlextInfraInternalImportDetector as FlextInfraInternalImportDetector,
+        FlextInfraInternalImportDetector,
     )
     from flext_infra.detectors.loose_object_detector import (
-        FlextInfraLooseObjectDetector as FlextInfraLooseObjectDetector,
+        FlextInfraLooseObjectDetector,
     )
     from flext_infra.detectors.manual_protocol_detector import (
-        FlextInfraManualProtocolDetector as FlextInfraManualProtocolDetector,
+        FlextInfraManualProtocolDetector,
     )
     from flext_infra.detectors.manual_typing_alias_detector import (
-        FlextInfraManualTypingAliasDetector as FlextInfraManualTypingAliasDetector,
+        FlextInfraManualTypingAliasDetector,
     )
     from flext_infra.detectors.mro_completeness_detector import (
-        FlextInfraMROCompletenessDetector as FlextInfraMROCompletenessDetector,
+        FlextInfraMROCompletenessDetector,
     )
-    from flext_infra.detectors.mro_shape_detector import (
-        FlextInfraMROShapeDetector as FlextInfraMROShapeDetector,
-    )
+    from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
     from flext_infra.detectors.namespace_source_detector import (
-        FlextInfraNamespaceSourceDetector as FlextInfraNamespaceSourceDetector,
+        FlextInfraNamespaceSourceDetector,
     )
     from flext_infra.detectors.pattern_smell_detector import (
-        FlextInfraPatternSmellDetector as FlextInfraPatternSmellDetector,
+        FlextInfraPatternSmellDetector,
     )
     from flext_infra.detectors.private_import_bypass_detector import (
-        FlextInfraPrivateImportBypassDetector as FlextInfraPrivateImportBypassDetector,
+        FlextInfraPrivateImportBypassDetector,
     )
     from flext_infra.detectors.runtime_alias_detector import (
-        FlextInfraRuntimeAliasDetector as FlextInfraRuntimeAliasDetector,
+        FlextInfraRuntimeAliasDetector,
     )
     from flext_infra.detectors.silent_failure_detector import (
-        FlextInfraSilentFailureDetector as FlextInfraSilentFailureDetector,
+        FlextInfraSilentFailureDetector,
     )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
