@@ -22,7 +22,7 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_02 = build_lazy_import_map(
         ".utilities": ("u",),
         ".validate": ("validate",),
         ".workspace": ("workspace",),
-        "flext_core._root_typing_parts": (
+        "flext_core._root_typing_parts.facades": (
             "e",
             "h",
             "r",

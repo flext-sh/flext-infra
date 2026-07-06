@@ -42,7 +42,7 @@ FLEXT_INFRA_LAZY_IMPORTS_PART_01 = build_lazy_import_map(
         ".settings": ("FlextInfraSettings",),
         ".typings": ("FlextInfraTypes",),
         ".utilities": ("FlextInfraUtilities",),
-        "flext_core._root_typing_parts": ("d",),
+        "flext_core._root_typing_parts.facades": ("d",),
     },
 )
 
