@@ -14,7 +14,6 @@ from flext_core.lazy import (
 if TYPE_CHECKING:
     from flext_tests import d, e, h, r, td, tf, tk, tm, tv, x
 
-    from tests._constants._exports import TESTS_FLEXT_INFRA_LAZY_IMPORTS
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.integration.test_infra_integration import (
@@ -467,7 +466,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
     build_lazy_import_map(
         {
             "._constants": ("_constants",),
-            "._constants._exports": ("TESTS_FLEXT_INFRA_LAZY_IMPORTS",),
             ".base": (
                 "TestsFlextInfraServiceBase",
                 "s",

@@ -61,10 +61,6 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         check_only: bool = False,
     ) -> None:
         """Remove generated ``_exports*`` files no longer used by codegen."""
-        stale_names = (
-            c.Infra.ROOT_EXPORTS_FILENAME,
-            "_exports_lazy.py",
-        )
         search_dirs = {
             plan.context.pkg_dir,
             plan.context.pkg_dir / c.Infra.ROOT_EXPORTS_DIR,
@@ -72,11 +68,12 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         for base_dir in sorted(search_dirs):
             if not base_dir.is_dir():
                 continue
-            stale_paths = [
-                *(base_dir / name for name in stale_names),
-                *base_dir.glob("_exports_lazy_part_*.py"),
-            ]
-            for path in sorted(stale_paths):
+            stale_paths = sorted(
+                path
+                for path in base_dir.glob("*.py")
+                if c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name)
+            )
+            for path in stale_paths:
                 previous = self._read_generated_file(path)
                 if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
                     continue

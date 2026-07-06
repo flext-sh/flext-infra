@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._constants._exports import FLEXT_INFRA_LAZY_IMPORTS
     from flext_infra._constants.adapters import FlextInfraConstantsAdapters
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.basemk import FlextInfraConstantsBasemk
@@ -45,7 +44,6 @@ if TYPE_CHECKING:
     from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
 _LAZY_IMPORTS = build_lazy_import_map(
     {
-        "._exports": ("FLEXT_INFRA_LAZY_IMPORTS",),
         ".adapters": ("FlextInfraConstantsAdapters",),
         ".base": ("FlextInfraConstantsBase",),
         ".basemk": ("FlextInfraConstantsBasemk",),

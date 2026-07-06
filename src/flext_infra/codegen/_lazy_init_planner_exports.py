@@ -66,8 +66,10 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            if py_file.name in skip_names or (
-                child_entry is not None and child_entry.package_name
+            if (
+                py_file.name in skip_names
+                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
+                or (child_entry is not None and child_entry.package_name)
             ):
                 continue
             convention = self.rope_workspace.convention(
