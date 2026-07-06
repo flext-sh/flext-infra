@@ -74,8 +74,6 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                     FlextInfraRefactorMRORemover(),
                     source,
                 )
-            case _:
-                result = (source, list[str]())
         return result
 
     @staticmethod

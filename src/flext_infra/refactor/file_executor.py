@@ -115,16 +115,8 @@ class FlextInfraRefactorFileExecutor:
         dry_run: bool = False,
     ) -> m.Infra.Result:
         """Apply file rule selection."""
-        _ = settings
-        if kind == c.Infra.RefactorFileRuleKind.CLASS_NESTING:
-            return self._apply_class_nesting(rope_project, resource, dry_run=dry_run)
-        return m.Infra.Result(
-            file_path=Path(resource.real_path),
-            success=True,
-            modified=False,
-            changes=[],
-            refactored_code=resource.read(),
-        )
+        _ = (kind, settings)
+        return self._apply_class_nesting(rope_project, resource, dry_run=dry_run)
 
     def _apply_class_nesting(
         self,
