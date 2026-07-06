@@ -123,11 +123,16 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
     @staticmethod
     def _canonical_inherited_alias_source(package_name: str, alias_name: str) -> str:
         """Return the static module that owns an inherited alias."""
+        root_typing_parts_module: str = c.Infra.FLEXT_CORE_ROOT_TYPING_PARTS_MODULE
+        root_typing_facades_module: str = c.Infra.FLEXT_CORE_ROOT_TYPING_FACADES_MODULE
+        root_typing_facade_aliases: frozenset[str] = frozenset(
+            c.Infra.FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES
+        )
         if (
-            package_name == c.Infra.FLEXT_CORE_ROOT_TYPING_PARTS_MODULE
-            and alias_name in c.Infra.FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES
+            package_name == root_typing_parts_module
+            and alias_name in root_typing_facade_aliases
         ):
-            return c.Infra.FLEXT_CORE_ROOT_TYPING_FACADES_MODULE
+            return root_typing_facades_module
         return package_name
 
     def _resolve_local_aliases(
