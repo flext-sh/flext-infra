@@ -98,15 +98,14 @@ class FlextInfraCodegenGenerationStaticContractMixin(
     ) -> m.Infra.LazyInitFlextCoreRootRender:
         """Generate flext-core root static imports and public ``__all__`` lines."""
         root_exports_module = import_module("flext_core._root_exports")
-        root_typing_parts_exports_module = import_module(
-            "flext_core._root_typing_parts._exports",
-        )
+        root_typing_parts_module = import_module("flext_core._root_typing_parts")
         root_all: t.StrSequence = root_exports_module.ROOT_ALL
         root_typing_only_names: t.StrSequence = (
             root_exports_module.ROOT_TYPING_ONLY_NAMES
         )
-        root_typing_parts_imports: t.StrMapping = (
-            root_typing_parts_exports_module.FLEXT_CORE__ROOT_TYPING_PARTS_LAZY_IMPORTS
+        root_typing_parts_imports: t.StrMapping = getattr(
+            root_typing_parts_module,
+            "_LAZY_IMPORTS",
         )
         root_typing_names: tuple[str, ...] = tuple(root_all) + tuple(
             root_typing_only_names,
