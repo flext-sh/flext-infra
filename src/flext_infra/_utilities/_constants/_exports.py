@@ -3,22 +3,93 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import merge_lazy_imports
-from flext_infra._utilities._constants._exports_lazy_part_01 import (
-    FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_01,
-)
-from flext_infra._utilities._constants._exports_lazy_part_02 import (
-    FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_02,
-)
-from flext_infra._utilities._constants._exports_lazy_part_03 import (
-    FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_03,
-)
+from flext_core.lazy import build_lazy_import_map, merge_lazy_imports
 
-_LOCAL_LAZY_IMPORTS = {
-    **FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_01,
-    **FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_02,
-    **FLEXT_INFRA__UTILITIES_LAZY_IMPORTS_PART_03,
-}
+_LOCAL_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        "._constants": ("_constants",),
+        "._constants._exports": ("FLEXT_INFRA__UTILITIES_LAZY_IMPORTS",),
+        "._docs_audit_detectors": ("FlextInfraUtilitiesDocsAuditDetectorsMixin",),
+        "._docs_scope_build": ("FlextInfraUtilitiesDocsScopeBuildMixin",),
+        "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
+        "._github_pr_single": ("FlextInfraUtilitiesGithubPrSingleMixin",),
+        "._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
+        "._project_discovery_candidates": (
+            "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
+        ),
+        "._project_discovery_shape": ("FlextInfraUtilitiesProjectDiscoveryShapeMixin",),
+        "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
+        "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
+        "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
+        "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
+        ".base": ("FlextInfraUtilitiesBase",),
+        ".census": ("FlextInfraUtilitiesRefactorCensus",),
+        ".codegen": ("FlextInfraUtilitiesCodegen",),
+        ".dependencies": ("FlextInfraUtilitiesDependencies",),
+        ".deps_path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
+        ".deps_repos": ("FlextInfraInternalSyncRepoMixin",),
+        ".discovery": ("FlextInfraUtilitiesDiscovery",),
+        ".docs": ("FlextInfraUtilitiesDocs",),
+        ".docs_api": ("FlextInfraUtilitiesDocsApi",),
+        ".docs_audit": ("FlextInfraUtilitiesDocsAudit",),
+        ".docs_build": ("FlextInfraUtilitiesDocsBuild",),
+        ".docs_contract": ("FlextInfraUtilitiesDocsContract",),
+        ".docs_fix": ("FlextInfraUtilitiesDocsFix",),
+        ".docs_generate": ("FlextInfraUtilitiesDocsGenerate",),
+        ".docs_render": ("FlextInfraUtilitiesDocsRender",),
+        ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
+        ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
+        ".git_scope": ("FlextInfraUtilitiesGitScope",),
+        ".github": ("FlextInfraUtilitiesGithub",),
+        ".github_pr": ("FlextInfraUtilitiesGithubPr",),
+        ".log_parser": ("FlextInfraUtilitiesLogParser",),
+        ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
+        ".mro_scan_catalog": ("FlextInfraUtilitiesMroScanCatalog",),
+        ".mro_scan_source": ("FlextInfraUtilitiesMroScanSource",),
+        ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
+        ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceMro",),
+        ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),
+        ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
+        ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
+        ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
+        ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
+        ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
+        ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
+        ".protected_edit_apply": ("FlextInfraUtilitiesProtectedEditApply",),
+        ".protected_edit_linting": ("FlextInfraUtilitiesProtectedEditLinting",),
+        ".protected_edit_preview": ("FlextInfraUtilitiesProtectedEditPreview",),
+        ".protected_edit_writes": ("FlextInfraUtilitiesProtectedEditWrites",),
+        ".pyproject": ("FlextInfraUtilitiesPyproject",),
+        ".refactor": ("FlextInfraUtilitiesRefactor",),
+        ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
+        ".release": ("FlextInfraUtilitiesRelease",),
+        ".rope_analysis": ("FlextInfraUtilitiesRopeAnalysis",),
+        ".rope_analysis_introspection": (
+            "FlextInfraUtilitiesRopeAnalysisIntrospection",
+        ),
+        ".rope_analysis_workspace": ("FlextInfraUtilitiesRopeAnalysisWorkspace",),
+        ".rope_core": ("FlextInfraUtilitiesRopeCore",),
+        ".rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
+        ".rope_imports": ("FlextInfraUtilitiesRopeImports",),
+        ".rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
+        ".rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
+        ".rope_mro_transform": ("FlextInfraUtilitiesRopeMroTransform",),
+        ".rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
+        ".rope_runtime": ("FlextInfraUtilitiesRopeRuntime",),
+        ".rope_runtime_base": ("FlextInfraUtilitiesRopeRuntimeBase",),
+        ".rope_runtime_modules": ("FlextInfraUtilitiesRopeRuntimeModules",),
+        ".rope_runtime_refactors": ("FlextInfraUtilitiesRopeRuntimeRefactors",),
+        ".rope_runtime_types": ("FlextInfraUtilitiesRopeRuntimeTypes",),
+        ".rope_source": ("FlextInfraUtilitiesRopeSource",),
+        ".safety": ("FlextInfraUtilitiesSafety",),
+        ".silent_failure_ast": (
+            "collect_silent_failure_findings",
+            "collect_silent_failure_fixes",
+        ),
+        ".snapshot": ("FlextInfraUtilitiesSnapshot",),
+        ".versioning": ("FlextInfraUtilitiesVersioning",),
+    },
+)
 
 FLEXT_INFRA__UTILITIES_LAZY_IMPORTS = merge_lazy_imports(
     ("._constants",),

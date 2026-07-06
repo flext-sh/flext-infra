@@ -165,4 +165,4 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     ),
 }
 
-__all__: list[str] = ["CODEGEN_ROUTES"]
+__all__: list[str] = []

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from flext_infra._enforcement.collection_base import (
-    FlextInfraEnforcementEvaluation,
-)
 from flext_infra._enforcement.collection_sources import (
     FlextInfraEnforcementSourceCollectors,
 )
@@ -16,5 +13,4 @@ class FlextInfraEnforcementEngine(FlextInfraEnforcementSourceCollectors):
 
 __all__: list[str] = [
     "FlextInfraEnforcementEngine",
-    "FlextInfraEnforcementEvaluation",
 ]

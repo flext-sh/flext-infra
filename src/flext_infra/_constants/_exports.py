@@ -3,18 +3,83 @@
 
 from __future__ import annotations
 
-from flext_core.lazy import merge_lazy_imports
-from flext_infra._constants._exports_lazy_part_01 import (
-    FLEXT_INFRA_LAZY_IMPORTS_PART_01,
-)
-from flext_infra._constants._exports_lazy_part_02 import (
-    FLEXT_INFRA_LAZY_IMPORTS_PART_02,
-)
+from flext_core.lazy import build_lazy_import_map, merge_lazy_imports
 
-_LOCAL_LAZY_IMPORTS = {
-    **FLEXT_INFRA_LAZY_IMPORTS_PART_01,
-    **FLEXT_INFRA_LAZY_IMPORTS_PART_02,
-}
+_LOCAL_LAZY_IMPORTS = build_lazy_import_map(
+    {
+        "._constants": ("_constants",),
+        "._enforcement": ("_enforcement",),
+        "._enforcement.collection_base": (
+            "FlextInfraEnforcementCollectionBase",
+            "FlextInfraEnforcementEvaluation",
+        ),
+        "._enforcement.collection_sources": ("FlextInfraEnforcementSourceCollectors",),
+        "._enforcement.collection_tests": ("FlextInfraEnforcementTestsCollector",),
+        "._enforcement.engine": ("FlextInfraEnforcementEngine",),
+        "._enforcement.metadata": ("FlextInfraEnforcementMetadata",),
+        "._enforcement.selection": ("FlextInfraEnforcementSelection",),
+        "._fixtures.enforcement": ("FlextInfraEnforcementPytestPlugin",),
+        "._models": ("_models",),
+        "._protocols": ("_protocols",),
+        "._typings": ("_typings",),
+        "._utilities": ("_utilities",),
+        ".api": (
+            "FlextInfra",
+            "infra",
+        ),
+        ".base": (
+            "FlextInfraServiceBase",
+            "s",
+        ),
+        ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
+        ".basemk": ("basemk",),
+        ".check": ("check",),
+        ".cli": (
+            "FlextInfraCli",
+            "main",
+        ),
+        ".codegen": ("codegen",),
+        ".constants": (
+            "FlextInfraConstants",
+            "c",
+        ),
+        ".deps": ("deps",),
+        ".detectors": ("detectors",),
+        ".docs": ("docs",),
+        ".fixers": ("fixers",),
+        ".gates": ("gates",),
+        ".maintenance": ("maintenance",),
+        ".models": (
+            "FlextInfraModels",
+            "m",
+        ),
+        ".protocols": (
+            "FlextInfraProtocols",
+            "p",
+        ),
+        ".refactor": ("refactor",),
+        ".release": ("release",),
+        ".settings": ("FlextInfraSettings",),
+        ".transformers": ("transformers",),
+        ".typings": (
+            "FlextInfraTypes",
+            "t",
+        ),
+        ".utilities": (
+            "FlextInfraUtilities",
+            "u",
+        ),
+        ".validate": ("validate",),
+        ".workspace": ("workspace",),
+        "flext_cli": (
+            "d",
+            "e",
+            "h",
+            "r",
+            "x",
+        ),
+    },
+)
 
 FLEXT_INFRA_LAZY_IMPORTS = merge_lazy_imports(
     ("._enforcement",),

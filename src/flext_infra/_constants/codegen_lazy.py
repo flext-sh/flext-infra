@@ -27,8 +27,6 @@ class FlextInfraConstantsCodegenLazy:
     "Typing stub paired with generated thin package initializers."
     ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
     "Suffix for tuple constants that declare frozen public root exports."
-    LAZY_REGISTRY_PART_SIZE: Final[int] = 32
-    "Maximum lazy import entry groups emitted per generated registry part."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (
         "src/**/__init__.py",
         "tests/**/__init__.py",
@@ -140,6 +138,26 @@ class FlextInfraConstantsCodegenLazy:
         "x",
     )
     "Canonical order for public root aliases and operational entry points."
+    FLEXT_CORE_ROOT_TYPING_PARTS_MODULE: Final[str] = "flext_core._root_typing_parts"
+    "Runtime package aggregating flext-core root typing exports lazily."
+    FLEXT_CORE_ROOT_TYPING_FACADES_MODULE: Final[str] = (
+        "flext_core._root_typing_parts.facades"
+    )
+    "Static module owning flext-core root typing facade aliases."
+    FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES: Final[frozenset[str]] = frozenset({
+        "c",
+        "d",
+        "e",
+        "h",
+        "m",
+        "p",
+        "r",
+        "s",
+        "t",
+        "u",
+        "x",
+    })
+    "Root aliases exported by flext-core root typing facades."
     ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
         "docs",
         "src",

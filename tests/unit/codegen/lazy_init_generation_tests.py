@@ -54,6 +54,21 @@ def test_public_root_keeps_inherited_aliases_lazy() -> None:
     assert "    r," not in content
 
 
+def test_root_typing_inherited_aliases_use_static_facades() -> None:
+    """Inherited flext-core typing aliases use the static facade owner."""
+    source = FlextInfraCodegenLazyInitPlanner._canonical_inherited_alias_source(
+        mod.c.Infra.FLEXT_CORE_ROOT_TYPING_PARTS_MODULE,
+        "d",
+    )
+    unchanged = FlextInfraCodegenLazyInitPlanner._canonical_inherited_alias_source(
+        "flext_cli",
+        "d",
+    )
+
+    assert source == mod.c.Infra.FLEXT_CORE_ROOT_TYPING_FACADES_MODULE
+    assert unchanged == "flext_cli"
+
+
 class TestGenerateTypeChecking:
     """Test generate_type_checking function."""
 

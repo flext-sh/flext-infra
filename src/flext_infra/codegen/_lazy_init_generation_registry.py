@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
-    """Write split lazy registries for generated package initializers."""
+    """Write lazy registries for generated package initializers."""
 
     if TYPE_CHECKING:
         _modified_files: t.Infra.StrSet
@@ -28,7 +28,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         *,
         check_only: bool = False,
     ) -> int:
-        """Write split registries and remove stale generated ``__init__.pyi`` files."""
+        """Write registries and remove stale generated support files."""
         if plan.context.current_pkg == "flext_core":
             self._remove_generated_typing_stub(plan, check_only=check_only)
             return 0

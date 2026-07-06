@@ -115,7 +115,20 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 use_test_runtime_aliases=is_test_runtime_alias_surface,
             )
             if package_name and package_name != current_pkg:
-                lazy_map[alias_name] = (package_name, alias_name)
+                lazy_map[alias_name] = (
+                    self._canonical_inherited_alias_source(package_name, alias_name),
+                    alias_name,
+                )
+
+    @staticmethod
+    def _canonical_inherited_alias_source(package_name: str, alias_name: str) -> str:
+        """Return the static module that owns an inherited alias."""
+        if (
+            package_name == c.Infra.FLEXT_CORE_ROOT_TYPING_PARTS_MODULE
+            and alias_name in c.Infra.FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES
+        ):
+            return c.Infra.FLEXT_CORE_ROOT_TYPING_FACADES_MODULE
+        return package_name
 
     def _resolve_local_aliases(
         self,

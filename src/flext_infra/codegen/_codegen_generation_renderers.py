@@ -47,7 +47,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
         *,
         publish_all: bool,
     ) -> str:
-        """Generate a thin package initializer backed by a split lazy registry."""
+        """Generate a thin package initializer backed by a lazy registry."""
         context = m.Infra.LazyInitRegistryWrapperRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(
@@ -65,17 +65,6 @@ class FlextInfraCodegenGenerationRenderersMixin(
         )
         return cls._render_model(c.Infra.TEMPLATE_REGISTRY_WRAPPER, context)
 
-    @staticmethod
-    def _registry_part_chunks(
-        lazy_entries: t.SequenceOf[tuple[str, str, str]],
-    ) -> tuple[tuple[tuple[str, str, str], ...], ...]:
-        """Split lazy entries into generated registry parts."""
-        entries = tuple(lazy_entries)
-        return tuple(
-            tuple(entries[index : index + c.Infra.LAZY_REGISTRY_PART_SIZE])
-            for index in range(0, len(entries), c.Infra.LAZY_REGISTRY_PART_SIZE)
-        )
-
     @classmethod
     def generate_registry_files(
         cls,
@@ -86,46 +75,22 @@ class FlextInfraCodegenGenerationRenderersMixin(
         excluded_lazy_names: t.StrSequence,
         registry_filename: str = c.Infra.ROOT_EXPORTS_FILENAME,
     ) -> dict[str, str]:
-        """Generate split lazy registry files for a registry-backed wrapper."""
+        """Generate lazy registry files for a registry-backed wrapper."""
         lazy_entries = cls._build_lazy_entries(
             tuple(sorted(lazy_map)),
             lazy_map,
             (current_pkg, frozenset(child_packages_for_lazy), True),
         )
-        chunks = cls._registry_part_chunks(lazy_entries)
-        if not chunks:
+        if not lazy_entries:
             return {}
+        lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
         generated: dict[str, str] = {}
-        part_imports: list[t.StrPair] = []
-        registry_path = Path(registry_filename)
-        part_dir = registry_path.parent
-        part_module_prefix = (
-            f"{current_pkg}.{'.'.join(part_dir.parts)}"
-            if part_dir.parts
-            else current_pkg
-        )
-        for index, chunk in enumerate(chunks, start=1):
-            suffix = f"{index:02d}"
-            part_name = f"{registry_name}_PART_{suffix}"
-            part_file = str(part_dir / f"_exports_lazy_part_{suffix}.py")
-            part_module = f"{part_module_prefix}._exports_lazy_part_{suffix}"
-            part_imports.append((part_module, part_name))
-            lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(chunk)
-            part_context = m.Infra.LazyInitRegistryPartRender(
-                autogen_header=c.Infra.AUTOGEN_HEADER,
-                part_name=part_name,
-                lazy_module_groups=lazy_module_groups,
-                lazy_alias_groups=lazy_alias_groups,
-            )
-            generated[part_file] = cls._render_model(
-                c.Infra.TEMPLATE_REGISTRY_PART,
-                part_context,
-            )
         registry_context = m.Infra.LazyInitRegistryRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             registry_name=registry_name,
             current_pkg=current_pkg,
-            part_imports=tuple(part_imports),
+            lazy_module_groups=lazy_module_groups,
+            lazy_alias_groups=lazy_alias_groups,
             child_module_paths=tuple(
                 cls._compact_lazy_module_path(current_pkg, child_package)
                 for child_package in child_packages_for_lazy

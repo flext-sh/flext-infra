@@ -15,7 +15,7 @@ from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
 class TestsFlextInfraLazyInitRegistryWrapper:
-    """Validate generated wrappers backed by split lazy registries."""
+    """Validate generated wrappers backed by lazy registries."""
 
     @staticmethod
     def _lazy_init_plan(tmp_path: Path, current_pkg: str) -> m.Infra.LazyInitPlan:
@@ -53,8 +53,8 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         assert not stub.exists()
         assert stub in {Path(path) for path in writer._modified_files}
 
-    def test_tests_package_uses_split_registry_wrapper(self) -> None:
-        """Test packages import a pre-split registry instead of inline maps."""
+    def test_tests_package_uses_registry_wrapper(self) -> None:
+        """Test packages import a registry sidecar instead of inline maps."""
         registry = m.Infra.LazyInitRegistryWrapper(
             module="tests._exports",
             name="TESTS_FLEXT_CORE_LAZY_IMPORTS",
@@ -275,11 +275,11 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         assert wrapper.name == "FLEXT_DEMO_LAZY_IMPORTS"
         assert wrapper.public_exports_name == "FLEXT_DEMO_PUBLIC_EXPORTS"
 
-    def test_generated_registry_files_use_split_templates(self) -> None:
-        """Generated registries split lazy maps into bounded template parts."""
+    def test_generated_registry_files_use_single_registry_template(self) -> None:
+        """Generated registries emit one registry map without lazy part files."""
         exports = tuple(
             f"TestsFlextInfraGenerated{index}"
-            for index in range(c.Infra.LAZY_REGISTRY_PART_SIZE + 1)
+            for index in range(c.Infra.LOC_CAP_MAX + 1)
         )
         filtered = {
             name: (f"tests.generated_{index}", name)
@@ -295,15 +295,12 @@ class TestsFlextInfraLazyInitRegistryWrapper:
         )
 
         assert c.Infra.ROOT_EXPORTS_FILENAME in files
-        assert "_exports_lazy_part_01.py" in files
-        assert "_exports_lazy_part_02.py" in files
+        assert "_exports_lazy_part_01.py" not in files
+        assert "_exports_lazy_part_02.py" not in files
+        assert "build_lazy_import_map(" in files[c.Infra.ROOT_EXPORTS_FILENAME]
         assert (
-            "from tests._exports_lazy_part_01 import "
-            "TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_01"
-        ) in files[c.Infra.ROOT_EXPORTS_FILENAME]
-        assert "build_lazy_import_map(" in files["_exports_lazy_part_01.py"]
-        assert (
-            len(files["_exports_lazy_part_01.py"].splitlines()) <= c.Infra.LOC_CAP_MAX
+            "TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART"
+            not in files[c.Infra.ROOT_EXPORTS_FILENAME]
         )
 
 

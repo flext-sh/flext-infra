@@ -150,10 +150,7 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def _is_generated_lazy_registry(cls, file_path: Path) -> bool:
         """Return whether the file is generated lazy export registry plumbing."""
-        return file_path.name == c.Infra.ROOT_EXPORTS_FILENAME or (
-            file_path.stem == "_exports_lazy"
-            or file_path.stem.startswith("_exports_lazy_part_")
-        )
+        return file_path.name == c.Infra.ROOT_EXPORTS_FILENAME
 
     @classmethod
     def _is_pytest_test_module(cls, file_path: Path) -> bool:

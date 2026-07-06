@@ -341,7 +341,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             FlextInfraModelsCodegen.LazyInitRegistryWrapper | None,
             m.Field(
                 description=(
-                    "Pre-split lazy registry for generated wrappers that must stay thin."
+                    "Lazy registry for generated wrappers that must stay thin."
                 ),
             ),
         ] = None

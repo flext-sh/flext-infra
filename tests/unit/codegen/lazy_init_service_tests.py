@@ -34,10 +34,6 @@ class TestFlextInfraCodegenLazyInit:
             package_root,
             c.Infra.ROOT_EXPORTS_FILENAME,
         )
-        lazy_part_content = cls._read_generated_file(
-            package_root,
-            "_exports_lazy_part_01.py",
-        )
 
         assert "from flext_core.lazy import install_lazy_exports" in init_content
         assert (
@@ -53,16 +49,16 @@ class TestFlextInfraCodegenLazyInit:
         assert not (package_root / c.Infra.INIT_PYI).exists()
 
         assert "merge_lazy_imports(" in registry_content
-        assert "_exports_lazy_part_01" in registry_content
-        assert "build_lazy_import_map(" in lazy_part_content
+        assert "build_lazy_import_map(" in registry_content
+        assert "_exports_lazy_part" not in registry_content
         for module_name in expected_modules:
-            assert f'"{module_name}"' in lazy_part_content
+            assert f'"{module_name}"' in registry_content
         for export_name in expected_names:
             assert f'"{export_name}"' in init_content
-            assert f'"{export_name}"' in lazy_part_content
+            assert f'"{export_name}"' in registry_content
             assert f"{export_name} as {export_name}" in init_content
 
-        return (init_content, registry_content, lazy_part_content)
+        return (init_content, registry_content, registry_content)
 
     def test_init_accepts_workspace_root(self, tmp_path: Path) -> None:
         """Test generator initialization with workspace root."""

@@ -94,4 +94,4 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     ),
     c.Infra.CLI_GROUP_VALIDATE: VALIDATE_COMMAND_ROUTES,
 }
-__all__: list[str] = ["VALIDATE_ROUTES"]
+__all__: list[str] = []

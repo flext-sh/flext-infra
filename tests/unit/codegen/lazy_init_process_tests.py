@@ -21,15 +21,6 @@ class TestProcessDirectory:
 
     @staticmethod
     def _generated_exports(package_root: Path) -> str:
-        part_exports = sorted(
-            package_root.glob("_exports_lazy_part_*.py"),
-            key=lambda path: path.name,
-        )
-        if part_exports:
-            return "\n".join(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in part_exports
-            )
-
         exports_file = package_root / "_exports.py"
         if exports_file.exists():
             return exports_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
