@@ -117,7 +117,7 @@ class FlextInfraConstantsMake:
         ("PROJECTS", ""),
         ("WHAT", ""),
         ("PYTEST_ARGS", ""),
-        ("VALIDATE_SCOPE", "project"),
+        ("VALIDATE_SCOPE", "all"),
         ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),
         ("JOBS", ""),
