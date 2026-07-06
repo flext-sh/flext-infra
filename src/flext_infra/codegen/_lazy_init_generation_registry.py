@@ -74,8 +74,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 if c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name)
             )
             for path in stale_paths:
-                previous = self._read_generated_file(path)
-                if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
+                if not path.is_file():
                     continue
                 if check_only:
                     self._modified_files.add(str(path))

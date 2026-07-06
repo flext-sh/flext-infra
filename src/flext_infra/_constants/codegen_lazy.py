@@ -22,11 +22,12 @@ class FlextInfraConstantsCodegenLazy:
     ROOT_EXPORTS_DIR: Final[str] = "_constants"
     "Directory under each package where lazy-init registries must live."
     GENERATED_EXPORT_SIDECAR_RE: Final[t.RegexPattern] = re.compile(
-        r"^_exports(?:_lazy(?:_part_[0-9]+)?)?\.py$",
+        r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$",
     )
     "Regex matching every generated lazy-export sidecar filename "
-    "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``); "
-    "excluded from lazy-init discovery and swept by cleanup."
+    "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
+    "``_lazy_exports.py``); these reserved names are superseded by the inline "
+    "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
     INIT_PYI: Final[str] = "__init__.pyi"
