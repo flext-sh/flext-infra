@@ -141,6 +141,10 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+    from flext_infra._utilities.silent_failure_ast import (
+        collect_silent_failure_findings,
+        collect_silent_failure_fixes,
+    )
     from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 _LAZY_IMPORTS = build_lazy_import_map(

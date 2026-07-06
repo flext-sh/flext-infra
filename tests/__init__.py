@@ -275,6 +275,21 @@ if TYPE_CHECKING:
         TestIterMarkdownFiles,
         TestSelectedProjectNames,
     )
+    from tests.unit.fixtures import (
+        deptry_report_payload,
+        models_resource,
+        modernizer_workspace,
+        modernizer_workspace_with_projects,
+        real_docs_project,
+        real_makefile_project,
+        real_python_package,
+        real_toml_project,
+        real_workspace,
+        rope_workspace,
+        services_resource,
+        tool_config_document,
+    )
+    from tests.unit.fixtures_git import real_git_repo
     from tests.unit.io.test_infra_terminal_detection import (
         TestsFlextInfraIoInfraTerminalDetection,
     )

@@ -161,7 +161,9 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         public_names = frozenset(
             name
             for name in export_names
-            if name not in c.Infra.ALIAS_NAMES and name != "main"
+            if name not in c.Infra.ALIAS_NAMES
+            and name != "main"
+            and not name.startswith("_")
         )
         if not public_names:
             return False

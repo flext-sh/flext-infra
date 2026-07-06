@@ -77,7 +77,12 @@ if TYPE_CHECKING:
     from flext_infra.transformers.signature_propagator import (
         FlextInfraRefactorSignaturePropagator,
     )
-    from flext_infra.transformers.smells.base import FlextInfraSmellFixer
+    from flext_infra.transformers.smells.base import (
+        FlextInfraSmellFixer,
+        auto_fixable_smell_tags,
+        register_smell_fixer,
+        smell_fixer_for,
+    )
     from flext_infra.transformers.smells.boolean_logic import (
         FlextInfraBooleanLogicFixer,
     )
