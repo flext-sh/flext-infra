@@ -18,8 +18,8 @@ class TestsFlextInfraExtraPathsUvSources:
         consumer = tmp_path / "ai-hub"
         consumer.mkdir()
         (consumer / ".git").mkdir()
-        (consumer / "aihub").mkdir()
-        (consumer / "aihub" / "__init__.py").write_text("", encoding="utf-8")
+        (consumer / "ai_hub").mkdir()
+        (consumer / "ai_hub" / "__init__.py").write_text("", encoding="utf-8")
         (consumer / "pyproject.toml").write_text(
             (
                 "[project]\n"

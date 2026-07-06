@@ -239,6 +239,43 @@ class TestLazyInitPlannerCollision:
             eq=True,
         )
 
+    def test_private_facade_reexports_are_intentional(self) -> None:
+        """Public facades may own exports implemented by private modules."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                (
+                    "flext_ldif._utilities._transformer_base",
+                    "FlextLdifUtilitiesTransformer",
+                ),
+                ("flext_ldif._utilities.transformers", "FlextLdifUtilitiesTransformer"),
+            ),
+            eq=True,
+        )
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("flext_tests.enforcement", "active_rules"),
+                ("flext_tests._fixtures.enforcement", "active_rules"),
+            ),
+            eq=True,
+        )
+
+    def test_duplicate_test_collection_exports_are_intentional(self) -> None:
+        """Generated test collection names are not package runtime API collisions."""
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("tests.unit.test_tables", "TestsFlextCliTables"),
+                ("tests.unit.test_tables_cov", "TestsFlextCliTables"),
+            ),
+            eq=True,
+        )
+        tm.that(
+            FlextInfraCodegenLazyInitPlanner._is_intentional_reexport(
+                ("tests.constants", "TestsFlextCliConstants"),
+                ("tests.unit.test_constants", "TestsFlextCliConstants"),
+            ),
+            eq=True,
+        )
+
     def test_unrelated_same_name_exports_are_not_intentional_reexports(self) -> None:
         """Unrelated modules exporting the same name still count as collisions."""
         tm.that(

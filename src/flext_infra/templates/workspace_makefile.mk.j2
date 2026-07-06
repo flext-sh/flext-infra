@@ -448,13 +448,13 @@ _mod: ## Modernize pyproject.toml files (standardize configs without lock/instal
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(WORKSPACE_INFRA_DEPS) modernize --apply $(MODERNIZE_SELECTION_FLAGS); \
+	$(WORKSPACE_INFRA_DEPS) modernize --apply $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(MODERNIZE_SELECTION_FLAGS); \
+	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
 	echo ""
 	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
-	taplo format --config "$(CURDIR)/.taplo.toml" $(WORKSPACE_MODERNIZE_PYPROJECTS); \
+	taplo format --config "$(CURDIR)/.taplo.toml" $(WORKSPACE_MODERNIZE_PYPROJECTS) || exit 1; \
 	echo ""
 	$(Q)echo "Formatting Python files (ruff)..."
 	$(Q)ruff format $(WORKSPACE_SELECTED_ROOTS) --quiet

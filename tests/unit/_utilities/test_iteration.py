@@ -173,8 +173,8 @@ class TestsFlextInfraUtilitiesiteration:
             encoding="utf-8",
         )
         external = tmp_path / ".ai-hub"
-        (external / "src" / "aihub").mkdir(parents=True)
-        (external / "src" / "aihub" / "__init__.py").write_text(
+        (external / "src" / "ai_hub").mkdir(parents=True)
+        (external / "src" / "ai_hub" / "__init__.py").write_text(
             "",
             encoding="utf-8",
         )

@@ -201,3 +201,33 @@ class TestsFlextInfraDepsModernizerMainExtra:
             ),
             has='"requests~=2.32.4"',
         )
+
+    def test_run_reports_external_workspace_pyproject_without_relative_error(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        workspace = tmp_path / "flext"
+        workspace.mkdir()
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='flext'\n",
+            encoding="utf-8",
+        )
+        external = tmp_path / "gruponos-data"
+        (external / "src" / "gruponos_data").mkdir(parents=True)
+        external_pyproject = external / c.Infra.PYPROJECT_FILENAME
+        external_pyproject.write_text(
+            "[project]\nname='gruponos-data'\ndependencies=['flext-core']\n",
+            encoding="utf-8",
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=workspace,
+            audit=True,
+            skip_comments=True,
+        )
+
+        tm.that(modernizer.run(), eq=1)
+        output = capsys.readouterr().out
+        tm.that(output, has=str(external_pyproject.resolve()))
+        tm.that(output, lacks="not in the subpath")

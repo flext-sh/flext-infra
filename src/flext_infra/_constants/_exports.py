@@ -71,7 +71,7 @@ _LOCAL_LAZY_IMPORTS = build_lazy_import_map(
         ),
         ".validate": ("validate",),
         ".workspace": ("workspace",),
-        "flext_cli": (
+        "flext_core._root_typing_parts.facades": (
             "d",
             "e",
             "h",

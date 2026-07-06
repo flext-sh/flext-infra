@@ -156,7 +156,13 @@ class FlextInfraPyprojectModernizerRunMixin:
                 )
             if not changes:
                 continue
-            rel = str(file_path.relative_to(self.root))
+            resolved_file_path = file_path.resolve()
+            resolved_root = self.root.resolve()
+            rel = (
+                str(resolved_file_path.relative_to(resolved_root))
+                if resolved_file_path.is_relative_to(resolved_root)
+                else str(resolved_file_path)
+            )
             violations[rel] = changes
             total += len(changes)
         if violations:

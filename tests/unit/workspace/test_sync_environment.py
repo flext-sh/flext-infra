@@ -159,7 +159,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         assert "pyright =" not in mise_text
         assert "pyrefly =" not in mise_text
 
-    def test_sync_replaces_aihub_generated_environment_file(
+    def test_sync_replaces_ai_hub_generated_environment_file(
         self,
         tmp_path: Path,
     ) -> None:

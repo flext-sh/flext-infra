@@ -115,6 +115,10 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return True
         if cls._is_root_typing_reexport(a, b):
             return True
+        if cls._is_private_facade_reexport(a, b):
+            return True
+        if cls._is_test_collection_collision(a, b):
+            return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
             if not u.Infra.matches_root_namespace_file(pub_file):
@@ -197,6 +201,52 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         a_root_typing = "_root_typing_parts" in a_parts
         b_root_typing = "_root_typing_parts" in b_parts
         return a_root_typing != b_root_typing
+
+    @classmethod
+    def _is_private_facade_reexport(
+        cls,
+        a: t.StrPair,
+        b: t.StrPair,
+    ) -> bool:
+        """Return whether a public facade re-exports a private implementation module."""
+        if a[1] != b[1]:
+            return False
+        for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
+            pub_parts = cls._module_parts(pub_mod)
+            priv_parts = cls._module_parts(priv_mod)
+            if not pub_parts or not priv_parts or pub_parts[0] != priv_parts[0]:
+                continue
+            pub_private_segments = cls._private_segments(pub_parts)
+            priv_private_segments = cls._private_segments(priv_parts)
+            if not (priv_private_segments - pub_private_segments):
+                continue
+            if pub_parts[:-1] == priv_parts[:-1]:
+                return True
+            if pub_parts[-1] == priv_parts[-1].removeprefix("_"):
+                return True
+        return False
+
+    @classmethod
+    def _private_segments(cls, parts: t.StrSequence) -> frozenset[tuple[int, str]]:
+        """Return private implementation segments with their path positions."""
+        return frozenset(
+            (index, part)
+            for index, part in enumerate(parts[1:], start=1)
+            if part.startswith("_") and not part.startswith("__")
+        )
+
+    @classmethod
+    def _is_test_collection_collision(
+        cls,
+        a: t.StrPair,
+        b: t.StrPair,
+    ) -> bool:
+        """Return whether duplicate generated test collection names are benign."""
+        if a[1] != b[1] or not a[1].startswith("Tests"):
+            return False
+        a_parts = cls._module_parts(a[0])
+        b_parts = cls._module_parts(b[0])
+        return bool(a_parts and b_parts and a_parts[0] == b_parts[0] == "tests")
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:
