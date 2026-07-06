@@ -289,10 +289,17 @@ help: ## Show commands
 boot: ## Complete setup
 	$(Q)$(PROJECT_INFRA_DEPS) path-sync --mode auto --apply --workspace "$(CURDIR)"
 	$(Q)$(PROJECT_INFRA_DEPS) internal-sync --workspace "$(CURDIR)"
-	$(Q)$(POETRY) lock
-	$(Q)$(POETRY) install --all-extras --all-groups
+	$(Q)uv lock
+	$(Q)uv sync --all-extras --all-groups
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
-		$(POETRY) run pre-commit install; \
+		hooks_path=$$(git config --get core.hooksPath || true); \
+		if [ -n "$$hooks_path" ]; then \
+			echo "INFO: skipping pre-commit install (core.hooksPath=$$hooks_path)"; \
+		elif [ -f .pre-commit-config.yaml ] || [ -f .pre-commit-config.yml ]; then \
+			uv run pre-commit install; \
+		else \
+			echo "INFO: skipping pre-commit install (no pre-commit config)"; \
+		fi; \
 	else \
 		echo "INFO: skipping pre-commit install (no git repository)"; \
 	fi
