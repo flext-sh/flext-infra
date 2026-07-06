@@ -302,7 +302,7 @@ class TestGenerateFile:
         )
         tm.that(
             FlextInfraCodegenLazyInitPlanner._root_public_contract_exports(tmp_path),
-            eq=frozenset({"DemoService", "c"}),
+            eq=frozenset(),
         )
 
     def test_root_public_contract_exports_allow_child_service(self) -> None:

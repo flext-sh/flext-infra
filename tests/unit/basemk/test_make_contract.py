@@ -70,6 +70,12 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
         + str(log_path)
         + '"\nexit 0\n',
     )
+    _write_executable(
+        bin_dir / "uv",
+        '#!/usr/bin/env bash\nprintf \'uv %s\\n\' "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n',
+    )
 
 
 def _write_venv_python_stub(
@@ -410,13 +416,14 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
         tm.that(result.exit_code, eq=0)
+        log_content = log_path.read_text(encoding="utf-8")
         tm.that(
-            log_path.read_text(encoding="utf-8"),
+            log_content,
             has=[
                 "python -m flext_infra workspace sync --workspace",
-                "run python -m flext_infra deps path-sync --mode auto --apply --workspace",
+                "python -m flext_infra deps path-sync --mode auto --apply --workspace",
                 "python -m flext_infra deps internal-sync",
-                "lock",
-                "install --all-extras --all-groups",
+                "uv lock",
+                "uv sync --all-extras --all-groups",
             ],
         )

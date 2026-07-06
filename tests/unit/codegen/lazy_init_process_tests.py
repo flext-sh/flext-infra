@@ -42,7 +42,10 @@ class TestProcessDirectory:
         assert result == 0
         init_content = (package_root / "__init__.py").read_text(encoding="utf-8")
         exports_content = self._generated_exports(package_root)
-        assert "from flext_core.lazy import install_lazy_exports" in init_content
+        assert (
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports"
+            in init_content
+        )
         assert "_LAZY_IMPORTS" in init_content
         assert "install_lazy_exports(" in init_content
         assert '".models": (' in exports_content
@@ -200,7 +203,10 @@ class TestProcessDirectory:
         assert "flext_parent.models" not in exports_content
         assert "flext_parent.typings" not in exports_content
         assert "flext_parent.utilities" not in exports_content
-        assert "from flext_core.lazy import install_lazy_exports" in init_content
+        assert (
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports"
+            in init_content
+        )
 
     def test_leaf_package_uses_direct_lazy_map(self, tmp_path: Path) -> None:
         """Packages without child packages do not emit merge-only arguments."""

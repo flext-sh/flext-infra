@@ -104,13 +104,16 @@ class TestsFlextInfraLazyInitInlineGeneration:
         assert "if TYPE_CHECKING:" in content
         assert "    from flext_core import r" in content
         assert "    from flext_demo.api import FlextDemo" in content
-        assert "    from flext_demo.models import FlextDemoModels, m" in content
+        assert (
+            "    from flext_demo.models import FlextDemoModels as FlextDemoModels, m as m"
+            in content
+        )
         assert "from flext_demo.api import FlextDemo" not in lines
         assert "from flext_demo.models import FlextDemoModels, m" not in lines
         assert "from flext_demo._exports import" not in content
         assert "_LAZY_IMPORTS = build_lazy_import_map(" in content
-        assert "_PUBLIC_EXPORTS: tuple[str, ...] = (" in content
-        assert "public_exports=_PUBLIC_EXPORTS" in content
+        assert "__all__: tuple[str, ...] = (" in content
+        assert "public_exports=__all__" in content
 
     def test_check_only_reports_stale_generated_sidecars_without_removing(
         self,

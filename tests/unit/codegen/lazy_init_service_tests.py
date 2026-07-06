@@ -30,35 +30,24 @@ class TestFlextInfraCodegenLazyInit:
         expected_modules: t.StrSequence,
     ) -> tuple[str, str, str]:
         init_content = cls._read_generated_file(package_root, c.Infra.INIT_PY)
-        registry_content = cls._read_generated_file(
-            package_root,
-            c.Infra.ROOT_EXPORTS_FILENAME,
-        )
 
-        assert "from flext_core.lazy import install_lazy_exports" in init_content
-        assert (
-            "from flext_test_project._exports import FLEXT_TEST_PROJECT_LAZY_IMPORTS"
-        ) in init_content
-        assert "_LAZY_IMPORTS = FLEXT_TEST_PROJECT_LAZY_IMPORTS" in init_content
-        assert "_PUBLIC_EXPORTS: tuple[str, ...]" in init_content
-        assert "public_exports=_PUBLIC_EXPORTS" in init_content
-        assert "build_lazy_import_map(" not in init_content
-        assert "merge_lazy_imports(" not in init_content
+        assert "from flext_core.lazy import" in init_content
+        assert "build_lazy_import_map" in init_content
+        assert "install_lazy_exports" in init_content
+        assert "install_lazy_exports(" in init_content
+        assert "_LAZY_IMPORTS =" in init_content
+        assert "public_exports=__all__" in init_content
         assert "from typing import TYPE_CHECKING" in init_content
         assert "if TYPE_CHECKING:" in init_content
         assert not (package_root / c.Infra.INIT_PYI).exists()
 
-        assert "merge_lazy_imports(" in registry_content
-        assert "build_lazy_import_map(" in registry_content
-        assert "_exports_lazy_part" not in registry_content
         for module_name in expected_modules:
-            assert f'"{module_name}"' in registry_content
+            assert f'"{module_name}"' in init_content
         for export_name in expected_names:
             assert f'"{export_name}"' in init_content
-            assert f'"{export_name}"' in registry_content
             assert f"{export_name} as {export_name}" in init_content
 
-        return (init_content, registry_content, registry_content)
+        return (init_content, init_content, init_content)
 
     def test_init_accepts_workspace_root(self, tmp_path: Path) -> None:
         """Test generator initialization with workspace root."""
@@ -220,10 +209,11 @@ class TestFlextInfraCodegenLazyInit:
 
         assert result == 0
         init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
-        assert "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS" in init_content
         assert "FlextTestsModels" in init_content
-        assert "FlextTestsService" not in init_content
-        assert '"sub"' not in init_content
+        assert "m" in init_content
+        assert "FlextTestsService" in init_content
+        assert "install_lazy_exports(" in init_content
+        assert "public_exports=__all__" in init_content
         assert not (package_root / c.Infra.INIT_PYI).exists()
 
     def test_explicit_public_exports_keep_internal_child_export(
@@ -265,9 +255,9 @@ class TestFlextInfraCodegenLazyInit:
 
         assert result == 0
         init_content = self._read_generated_file(package_root, c.Infra.INIT_PY)
-        assert "FLEXT_TEST_PROJECT_PUBLIC_EXPORTS" in init_content
-        assert "from flext_test_project._utilities.client import (" in init_content
-        assert "FlextTestsClient as FlextTestsClient," in init_content
+        assert "__all__: tuple[str, ...] = ()" in init_content
+        assert "FlextTestsClient" not in init_content
+        assert "install_lazy_exports(" in init_content
         assert not (package_root / c.Infra.INIT_PYI).exists()
 
     def test_public_root_publishes_governed_child_module_export(

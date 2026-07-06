@@ -68,7 +68,10 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        assert "from flext_core.lazy import install_lazy_exports" in init_content
+        assert (
+            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports"
+            in init_content
+        )
         assert "_LAZY_IMPORTS" in init_content
         assert '"FlextDemoModels"' in exports_content
         assert '"m"' in exports_content
