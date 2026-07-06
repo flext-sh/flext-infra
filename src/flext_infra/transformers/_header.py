@@ -98,7 +98,7 @@ def ensure_alias_import(
     """Inject ``from <module> import <alias>`` when the alias is actually used."""
     if not alias or not alias_used(source, alias):
         return source
-    if has_alias_import(source, alias):
+    if has_alias_import(source, alias) or alias_locally_bound(source, alias):
         return source
     info = _parse_header(source)
     offset = info.span.import_insert_offset
@@ -120,6 +120,24 @@ def has_alias_import(source: str, alias: str) -> bool:
     """Return whether ``alias`` is already bound by a ``from`` import."""
     info = _parse_header(source)
     return alias in info.aliases
+
+
+def alias_locally_bound(source: str, alias: str) -> bool:
+    """Return whether ``alias`` is bound by a module-level definition/assignment.
+
+    Facade-root modules (``typings.py``, ``constants.py``, ...) bind their
+    canonical alias directly (``t = <Project>Types``). Injecting
+    ``from <pkg> import <alias>`` into such a module would shadow that binding
+    and raise F811 — a self-package import. Suppress the injection whenever the
+    module already owns the alias through a top-level assignment, ``class`` or
+    ``def``.
+    """
+    escaped = c.Infra.escape(alias)
+    pattern = c.Infra.compile(
+        rf"^(?:{escaped}\s*(?::[^=\n]+)?=(?!=)|(?:class|def)\s+{escaped}\b)",
+        multiline=True,
+    )
+    return pattern.search(source) is not None
 
 
 def _remove_future_annotations_lines(source: str) -> str:
@@ -310,6 +328,7 @@ def _extract_imported_aliases(
 
 
 __all__: list[str] = [
+    "alias_locally_bound",
     "alias_used",
     "ensure_alias_import",
     "ensure_future_annotations",

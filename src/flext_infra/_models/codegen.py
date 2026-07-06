@@ -262,24 +262,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ),
         ] = False
 
-    class LazyInitRegistryWrapper(m.ArbitraryTypesModel):
-        """External lazy import registry consumed by a thin generated ``__init__``."""
-
-        module: t.NonEmptyStr = m.Field(description="Importable registry module.")
-        name: t.NonEmptyStr = m.Field(description="Registry symbol exported by module.")
-        public_exports_name: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description="Optional public export contract symbol exported by module.",
-            ),
-        ] = None
-        generated: Annotated[
-            bool,
-            m.Field(
-                description="Whether codegen owns and refreshes the registry module.",
-            ),
-        ] = False
-
     class LazyInitPlan(m.ArbitraryTypesModel):
         """Fully resolved lazy-init action and render payload.
 
@@ -337,14 +319,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             default_factory=tuple,
             description="Names excluded from runtime child lazy import merges.",
         )
-        registry_wrapper: Annotated[
-            FlextInfraModelsCodegen.LazyInitRegistryWrapper | None,
-            m.Field(
-                description=(
-                    "Lazy registry for generated wrappers that must stay thin."
-                ),
-            ),
-        ] = None
 
     class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""

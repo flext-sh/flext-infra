@@ -19,6 +19,16 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
     """Import grouping and rendering helper methods."""
 
     @staticmethod
+    def _format_import_part(
+        imported_name: str,
+        export_name: str,
+    ) -> str:
+        """Format one imported symbol, preserving aliases only when names differ."""
+        if imported_name == export_name:
+            return imported_name
+        return f"{imported_name} as {export_name}"
+
+    @staticmethod
     def _format_import(
         indent: str,
         mod: str,
@@ -107,9 +117,10 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
             if not sorted_items:
                 return
             parts: t.StrSequence = [
-                export_name
-                if export_name == attr_name
-                else f"{attr_name} as {export_name}"
+                FlextInfraCodegenGenerationImportsMixin._format_import_part(
+                    attr_name,
+                    export_name,
+                )
                 for export_name, attr_name in sorted_items
             ]
             lines.extend(

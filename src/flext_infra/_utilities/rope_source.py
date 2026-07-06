@@ -24,8 +24,8 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
 
-    _DOCSTRING_QUOTES: ClassVar[t.StrPair] = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT: ClassVar[int] = 2
+    "Triple-quote occurrences on a line that opens and closes a docstring."
 
     @staticmethod
     def matches_module_toplevel(file_path: Path) -> bool:
@@ -60,17 +60,40 @@ class FlextInfraUtilitiesRopeSource:
         *,
         past_existing: bool = True,
     ) -> int:
-        """Find line index suitable for inserting new imports."""
+        """Find a line index for inserting imports, never inside a docstring.
+
+        Skips leading comments, the module docstring (single- **or** multi-line),
+        and ``from __future__`` imports. With ``past_existing`` the position also
+        skips over existing top-level imports so new imports append after them;
+        otherwise it lands immediately after ``__future__`` and before the first
+        regular import. A multi-line module docstring is tracked to its closing
+        quote so an import can never be injected into the docstring body.
+        """
         idx = 0
+        in_docstring = False
+        quote = ""
+        docstring_seen = False
         for index, line in enumerate(lines):
             stripped = line.strip()
+            if in_docstring:
+                idx = index + 1
+                if quote in stripped:
+                    in_docstring = False
+                continue
             if not stripped or stripped.startswith("#"):
                 idx = index + 1
                 continue
-            if stripped.startswith(('"""', "'''")):
+            if not docstring_seen and stripped.startswith(('"""', "'''")):
+                docstring_seen = True
+                quote = stripped[:3]
                 idx = index + 1
+                if (
+                    stripped.count(quote)
+                    < FlextInfraUtilitiesRopeSource._SINGLE_LINE_DOCSTRING_QUOTE_COUNT
+                ):
+                    in_docstring = True
                 continue
-            if stripped.startswith("from __future__"):
+            if c.Infra.FUTURE_IMPORT_RE.match(stripped):
                 idx = index + 1
                 continue
             if past_existing and c.Infra.IMPORT_LINE_RE.match(line):
@@ -82,32 +105,10 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def index_after_docstring_and_future_imports(lines: t.StrSequence) -> int:
         """Return insertion index after module docstring and future imports."""
-        insert_idx = 0
-        in_docstring = False
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if in_docstring:
-                insert_idx = index + 1
-                if stripped.endswith(FlextInfraUtilitiesRopeSource._DOCSTRING_QUOTES):
-                    in_docstring = False
-                continue
-            if index == 0 and c.Infra.DOCSTRING_RE.match(stripped):
-                insert_idx = index + 1
-                if not (
-                    stripped.count('"""')
-                    >= FlextInfraUtilitiesRopeSource._SINGLE_LINE_DOCSTRING_QUOTE_COUNT
-                    or stripped.count("'''")
-                    >= FlextInfraUtilitiesRopeSource._SINGLE_LINE_DOCSTRING_QUOTE_COUNT
-                ):
-                    in_docstring = True
-                continue
-            if c.Infra.FUTURE_IMPORT_RE.match(stripped):
-                insert_idx = index + 1
-                continue
-            if stripped and not stripped.startswith("#"):
-                break
-            insert_idx = index + 1
-        return insert_idx
+        return FlextInfraUtilitiesRopeSource.find_import_insert_position(
+            lines,
+            past_existing=False,
+        )
 
     @staticmethod
     def looks_like_facade_file(*, file_path: Path, source: str) -> bool:

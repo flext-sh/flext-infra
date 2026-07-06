@@ -10,7 +10,6 @@ from flext_infra.codegen._codegen_generation_standard import (
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
-    from flext_infra.models import m
     from flext_infra.typings import t
 
 
@@ -28,7 +27,6 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
         wildcard_runtime_modules: t.StrSequence | None = None,
         child_packages_for_lazy: t.StrSequence | None = None,
         excluded_lazy_names: t.StrSequence | None = None,
-        registry_wrapper: m.Infra.LazyInitRegistryWrapper | None = None,
     ) -> str:
         """Generate complete module file with lazy imports and type hints."""
         if current_pkg == "flext_core":
@@ -97,21 +95,7 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
             rendered_child_module_paths,
             tuple(sorted(c.Infra.INFRA_ONLY_EXPORTS | set(excluded_lazy_names or ()))),
         )
-        content = FlextInfraCodegenGenerationFileMixin._render_standard_file(context)
-        if registry_wrapper is None or (
-            not publish_all and len(content.splitlines()) <= c.Infra.LOC_CAP_MAX
-        ):
-            return content
-        return FlextInfraCodegenGenerationFileMixin._generate_registry_wrapper_file(
-            current_pkg,
-            registry_wrapper,
-            context.runtime_import_lines,
-            context.type_checking_lines if publish_all else "",
-            context.inline_constants,
-            context.eager_export_names,
-            context.exports,
-            publish_all=publish_all,
-        )
+        return FlextInfraCodegenGenerationFileMixin._render_standard_file(context)
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationFileMixin"]

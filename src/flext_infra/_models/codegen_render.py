@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from flext_cli import m
 from flext_infra.typings import t
@@ -62,78 +62,6 @@ class FlextInfraModelsCodegenRender:
             description="Published generated exports.",
         )
         publish_all: bool = m.Field(description="Whether __all__ is generated.")
-
-    class LazyInitRegistryWrapperRender(m.ArbitraryTypesModel):
-        """Template context for thin registry-backed wrappers."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            validate_assignment=True,
-        )
-
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        registry_module: t.NonEmptyStr = m.Field(
-            description="Importable lazy registry module.",
-        )
-        registry_name: t.NonEmptyStr = m.Field(description="Lazy registry symbol.")
-        public_exports_name: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional public export contract symbol."),
-        ] = None
-        runtime_import_lines: str = m.Field(
-            description="Rendered eager import block for non-lazy exports.",
-        )
-        type_checking_lines: Annotated[
-            str,
-            m.Field(description="Rendered TYPE_CHECKING block lines."),
-        ] = ""
-        inline_constants: t.StrPairSequence = m.Field(
-            default_factory=tuple,
-            description="Inline constant assignments.",
-        )
-        eager_export_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Eager names appended to public exports for root wrappers.",
-        )
-        exports: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Explicit public exports for root wrappers.",
-        )
-        publish_all: Annotated[
-            bool,
-            m.Field(
-                description="Whether the wrapper owns the package public __all__.",
-            ),
-        ] = False
-
-    class LazyInitRegistryRender(m.ArbitraryTypesModel):
-        """Template context for generated lazy registry modules."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            validate_assignment=True,
-        )
-
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        registry_name: t.NonEmptyStr = m.Field(description="Lazy registry symbol.")
-        current_pkg: t.NonEmptyStr = m.Field(description="Owning package name.")
-        lazy_module_groups: t.StrSequencePairSequence = m.Field(
-            default_factory=tuple,
-            description="Lazy imports grouped by module.",
-        )
-        lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
-            default_factory=tuple,
-            description="Lazy alias imports grouped by module.",
-        )
-        child_module_paths: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Child package lazy registries merged at runtime.",
-        )
-        excluded_lazy_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Names excluded from merged child lazy registries.",
-        )
 
     class LazyInitDirectBootstrapRender(m.ArbitraryTypesModel):
         """Template context for direct bootstrap generated packages."""

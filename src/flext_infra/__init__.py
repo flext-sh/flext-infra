@@ -19,13 +19,7 @@ from flext_infra.__version__ import (
 from flext_infra._constants._exports import FLEXT_INFRA_LAZY_IMPORTS
 
 if TYPE_CHECKING:
-    from flext_core._root_typing_parts.facades import (
-        d as d,
-        e as e,
-        h as h,
-        r as r,
-        x as x,
-    )
+    from flext_cli import d as d, e as e, h as h, r as r, x as x
     from flext_infra import basemk
     from flext_infra._fixtures.enforcement import (
         FlextInfraEnforcementPytestPlugin as FlextInfraEnforcementPytestPlugin,

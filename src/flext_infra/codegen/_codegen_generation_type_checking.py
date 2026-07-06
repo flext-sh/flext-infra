@@ -109,7 +109,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 target = alias_exports if export_name == module_basename else parts
                 target.append(export_name)
                 continue
-            parts.append(f"{attr_name} as {export_name}")
+            parts.append(
+                FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
+                    attr_name,
+                    export_name,
+                ),
+            )
         for export_name in tuple(dict.fromkeys(alias_exports)):
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_type_checking_module_alias_import(

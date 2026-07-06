@@ -122,17 +122,26 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
 
     @staticmethod
     def _canonical_inherited_alias_source(package_name: str, alias_name: str) -> str:
-        """Return the static module that owns an inherited alias."""
-        root_typing_parts_module: str = c.Infra.FLEXT_CORE_ROOT_TYPING_PARTS_MODULE
-        root_typing_facades_module: str = c.Infra.FLEXT_CORE_ROOT_TYPING_FACADES_MODULE
-        root_typing_facade_aliases: frozenset[str] = frozenset(
-            c.Infra.FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES
-        )
+        """Return the static module that owns an inherited alias.
+
+        flext-core's root aliases (``c``/``d``/.../``x``) are re-exported both
+        from the bare ``flext_core`` package and from the lazy
+        ``_root_typing_parts`` aggregator; neither resolves statically for a
+        type checker. When the resolved owner is flext-core in either form,
+        redirect to the static ``_root_typing_parts.facades`` module that
+        declares the aliases with an explicit ``__all__``. Intermediate project
+        facades (``flext_web``, ``flext_cli``, ...) own the aliases in their own
+        right and are returned untouched.
+        """
+        flext_core_owner_forms: frozenset[str] = frozenset({
+            c.Infra.PKG_CORE_UNDERSCORE,
+            c.Infra.FLEXT_CORE_ROOT_TYPING_PARTS_MODULE,
+        })
         if (
-            package_name == root_typing_parts_module
-            and alias_name in root_typing_facade_aliases
+            package_name in flext_core_owner_forms
+            and alias_name in c.Infra.FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES
         ):
-            return root_typing_facades_module
+            return c.Infra.FLEXT_CORE_ROOT_TYPING_FACADES_MODULE
         return package_name
 
     def _resolve_local_aliases(
@@ -180,22 +189,26 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         self,
         package_names: t.StrSequence,
     ) -> t.StrSequence:
-        """Return package_names expanded with their transitive parents (ordered)."""
+        """Return package_names plus transitive parents, ordered nearest-first.
+
+        Breadth-first from the immediate parents outward: a directly declared
+        parent (e.g. ``flext_web`` for ``flext_api``) is always resolved before
+        its own ancestors (``flext_core`` and its submodules). This guarantees
+        an inherited alias is sourced from the nearest owning facade rather than
+        falling through to a distant root package that also re-exports it.
+        """
         ordered: list[str] = []
-        for package_name in package_names:
+        queue: list[str] = list(package_names)
+        while queue:
+            package_name = queue.pop(0)
             if not package_name or package_name in ordered:
                 continue
+            ordered.append(package_name)
             package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
                 package_name,
             )
             if package_dir is not None:
-                ordered.extend(
-                    self._resolve_transitive_parent_packages(
-                        self._parent_packages(package_dir),
-                    ),
-                )
-            if package_name not in ordered:
-                ordered.append(package_name)
+                queue.extend(self._parent_packages(package_dir))
         return tuple(ordered)
 
     def _parent_packages(self, pkg_dir: Path) -> t.StrSequence:

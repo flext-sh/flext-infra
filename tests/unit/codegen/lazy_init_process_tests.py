@@ -21,10 +21,6 @@ class TestProcessDirectory:
 
     @staticmethod
     def _generated_exports(package_root: Path) -> str:
-        exports_file = package_root / "_exports.py"
-        if exports_file.exists():
-            return exports_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-
         return package_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )

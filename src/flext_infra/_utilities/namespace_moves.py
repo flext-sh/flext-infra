@@ -22,6 +22,7 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.transformers import _header
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
@@ -734,13 +735,19 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         )
         target_lines = target_source.splitlines()
         missing_imports = [
-            import_line
+            filtered
             for import_line in [
                 *required_imports,
                 *orphaned_imports,
                 *fallback_runtime_imports,
             ]
             if import_line not in target_lines
+            if (
+                filtered := FlextInfraUtilitiesRefactorNamespaceMoves._strip_self_bound_aliases(
+                    import_line=import_line,
+                    target_source=target_source,
+                )
+            )
         ]
         target_lines = FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
             lines=target_lines,
@@ -822,6 +829,30 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             return ()
         import_line = f"from {module_name} import {', '.join(referenced_aliases)}"
         return [import_line] if import_line not in kept_source.splitlines() else ()
+
+    @staticmethod
+    def _strip_self_bound_aliases(*, import_line: str, target_source: str) -> str:
+        """Drop names already bound locally in the move target from an import.
+
+        A facade-root module (``typings.py``, ``constants.py``, ...) binds its
+        canonical alias directly (``t = <Project>Types``). Injecting
+        ``from <pkg> import t`` there is a self-package import that shadows the
+        binding and raises F811. Keep only the names the target does not already
+        own; return ``""`` when nothing remains so the whole line is dropped.
+        """
+        prefix, separator, names_part = import_line.partition(" import ")
+        if not separator:
+            return import_line
+        kept = [
+            f"{name} as {bound}" if name != bound else name
+            for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+                names_part,
+            )
+            if not _header.alias_locally_bound(target_source, bound)
+        ]
+        if not kept:
+            return ""
+        return f"{prefix} import {', '.join(kept)}"
 
     @staticmethod
     def _collect_missing_runtime_alias_imports(

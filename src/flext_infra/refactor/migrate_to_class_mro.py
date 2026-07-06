@@ -92,20 +92,19 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
                 )
             )
             validation_mode = "post-apply-rescan"
-            if safety_manager is not None and (errors or mro_failures):
-                rollback_outcome = safety_manager.rollback(
-                    self._workspace_root,
-                    checkpoint_ref=checkpoint_ref,
-                )
-                if rollback_outcome.failure:
+            # Never roll back the whole workspace on a partial failure: each
+            # file write is already lint-gated per file (green files committed,
+            # failing files skipped). A global rollback would discard every
+            # converged file whenever a single unrelated file failed lint,
+            # leaving the census unchanged and the run non-idempotent. Keep the
+            # green writes and only surface the failures as warnings/errors.
+            if safety_manager is not None:
+                if errors or mro_failures:
                     warnings.append(
-                        f"Safety rollback failed: {rollback_outcome.error}",
+                        "Partial failures left in place (fix-forward): "
+                        f"{len(errors)} error(s), {mro_failures} mro failure(s); "
+                        "converged files were kept, not rolled back.",
                     )
-                else:
-                    warnings.append(
-                        "Safety rollback applied — verb left workspace at pre-run state.",
-                    )
-            elif safety_manager is not None:
                 clear_outcome = safety_manager.clear_checkpoint()
                 if clear_outcome.failure:
                     warnings.append(

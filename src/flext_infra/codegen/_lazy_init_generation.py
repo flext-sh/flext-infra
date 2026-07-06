@@ -159,12 +159,12 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         try:
             generated = self._render_init(plan)
             previous = self._read_previous_init(plan)
-            registry_exit = self._write_generated_registry(plan, generated)
+            cleanup_exit = self._cleanup_generated_support_files(plan)
             write_exit = self._write_changed_init(plan, generated, previous)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
-        if registry_exit < 0 or write_exit < 0:
+        if cleanup_exit < 0 or write_exit < 0:
             return (-1, dict(plan.lazy_map))
         rel_path = (
             init_path.relative_to(self.workspace_root)
@@ -183,15 +183,14 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         try:
             generated = self._render_init(plan)
             previous = self._read_previous_init(plan)
-            registry_exit = self._write_generated_registry(
+            cleanup_exit = self._cleanup_generated_support_files(
                 plan,
-                generated,
                 check_only=True,
             )
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"checking generated init {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
-        if registry_exit < 0:
+        if cleanup_exit < 0:
             return (-1, dict(plan.lazy_map))
         if previous != generated:
             self._modified_files.add(str(init_path))
@@ -216,7 +215,6 @@ class FlextInfraCodegenLazyInitGenerationMixin(
             wildcard_runtime_modules=plan.wildcard_runtime_modules,
             child_packages_for_lazy=plan.child_packages_for_lazy,
             excluded_lazy_names=plan.excluded_lazy_names,
-            registry_wrapper=plan.registry_wrapper,
         )
 
 

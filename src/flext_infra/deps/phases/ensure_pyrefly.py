@@ -67,6 +67,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)
             .value("python-interpreter-path", interpreter_path)
             .deprecated("disable-search-path-heuristics")
+            .deprecated("fallback-python-interpreter-name")
             .value(
                 c.Infra.IGNORE_ERRORS_IN_GENERATED,
                 pyrefly_rules.ignore_errors_in_generated_code,
@@ -157,4 +158,3 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
 
 __all__: list[str] = ["FlextInfraEnsurePyreflyConfigPhase"]
-# temporary modification

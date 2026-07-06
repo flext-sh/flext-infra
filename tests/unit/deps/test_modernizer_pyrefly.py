@@ -49,6 +49,33 @@ class TestsFlextInfraModernizerPyrefly:
         )
         tm.that(changes, empty=False)
 
+    def test_ensure_pyrefly_config_removes_fallback_interpreter_name(self) -> None:
+        doc = tomlkit.document()
+        doc["tool"] = tomlkit.table()
+        tool = doc["tool"]
+        assert isinstance(tool, MutableMapping)
+        tm.that(tool, is_=MutableMapping)
+        tool["pyrefly"] = tomlkit.table()
+        pyrefly = tool["pyrefly"]
+        assert isinstance(pyrefly, MutableMapping)
+        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly["fallback-python-interpreter-name"] = "python"
+
+        changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+            doc,
+            is_root=True,
+        )
+
+        tm.that("python-interpreter-path" in pyrefly, eq=True)
+        tm.that("fallback-python-interpreter-name" in pyrefly, eq=False)
+        tm.that(
+            any(
+                "tool.pyrefly.fallback-python-interpreter-name removed" in change
+                for change in changes
+            ),
+            eq=True,
+        )
+
     """Behavior contract for test_modernizer_pyrefly."""
 
     def test_ensure_pyrefly_config_phase_apply_python_version(self) -> None:

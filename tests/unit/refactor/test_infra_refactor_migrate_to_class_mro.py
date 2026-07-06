@@ -344,3 +344,40 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         # Consumer import rewritten: VALUE → c.VALUE with facade alias import.
         tm.that(consumer_source, has="from sample_pkg.constants import c")
         tm.that(consumer_source, has="result = c.VALUE")
+
+    def test_migrate_to_mro_is_idempotent_on_second_run(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A second consecutive apply run must be a true no-op (census delta 0).
+
+        Regression for the all-or-nothing SafetyManager rollback: converged
+        files stay committed, so once a constant lives inside the facade class
+        it is no longer a candidate and re-running produces zero migrations.
+        """
+        project_root = tmp_path / "sample"
+        src_pkg = project_root / "src" / "sample_pkg"
+        src_pkg.mkdir(parents=True)
+        _ = (project_root / "pyproject.toml").write_text(
+            "[project]\nname='sample'\n",
+            encoding="utf-8",
+        )
+        _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (src_pkg / "constants.py").write_text(
+            "from __future__ import annotations\nfrom typing import Final\n\nVALUE: Final[int] = 42\n\nclass SampleConstants:\n    pass\n\nc = SampleConstants\n",
+            encoding="utf-8",
+        )
+        _ = (src_pkg / "consumer.py").write_text(
+            "from sample_pkg.constants import VALUE\n\nresult = VALUE\n",
+            encoding="utf-8",
+        )
+        service = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root)
+        first = service.run(target="constants", apply=True)
+        tm.that(first.errors, empty=True)
+        tm.that(len(first.migrations) >= 1, eq=True)
+        second = service.run(target="constants", apply=True)
+        tm.that(second.errors, empty=True)
+        tm.that(len(second.migrations), eq=0)
+        tm.that(len(second.rewrites), eq=0)
+        tm.that(second.remaining_violations, eq=0)
