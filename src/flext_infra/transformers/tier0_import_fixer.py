@@ -8,17 +8,15 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated, ClassVar
+from typing import Annotated, ClassVar
 
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.transformers._tier0_transformer import (
     FlextInfraTier0TransformerMixin,
 )
+from flext_infra.typings import t
 from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from flext_infra.typings import t
 
 
 class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
