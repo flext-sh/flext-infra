@@ -34,12 +34,15 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         policy = convention.module_policy
         if policy.expected_alias == name:
             score += 100
+        elif policy.expected_family and name.endswith(policy.expected_family):
+            # A governed facade legitimately owns its declared family class
+            # (e.g. ``FlextTestsValidator`` in ``validator.py``); it must win
+            # over an MRO ``_part_`` module of the same name.
+            score += 25
         elif policy.expected_alias:
             # Governed root facades should primarily own their canonical alias.
             score -= 40
-        if policy.expected_family and name.endswith(policy.expected_family):
-            score += 25
-        elif policy.expected_family and name != (policy.expected_alias or ""):
+        elif policy.expected_family:
             # Penalize cross-family leakage from governed facade files.
             score -= 20
         if policy.export_symbols:

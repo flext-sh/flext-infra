@@ -85,12 +85,24 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             for name, target in lazy_map.items()
             if (not target[1] and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS)
         }
+        governed_root_export_names = {
+            name
+            for name in lazy_map
+            if self._is_public_root_export(
+                name,
+                lazy_map,
+                root_pkg=context.current_pkg,
+                root_namespace_files=self.lazy_init.root_namespace_files,
+                explicit_public_exports=explicit_exports,
+            )
+        }
         internal_child_export_names = {
             name
             for child_package in child_packages
             if child_package.rsplit(".", maxsplit=1)[-1]
             in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES
             for name in self._merged_child_export_names(child_package, dir_exports)
+            if name not in governed_root_export_names
         }
         lazy_export_names = frozenset(lazy_map)
         public_export_names = {

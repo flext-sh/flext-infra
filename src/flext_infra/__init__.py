@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from flext_infra.cli import FlextInfraCli, main
     from flext_infra.constants import FlextInfraConstants, c
     from flext_infra.models import FlextInfraModels, m
-    from flext_infra.protocols import FlextInfraProtocols, p
+    from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
     from flext_infra.settings import FlextInfraSettings
     from flext_infra.typings import FlextInfraTypes, t
     from flext_infra.utilities import FlextInfraUtilities, u
@@ -74,6 +74,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".protocols": (
                 "FlextInfraProtocols",
+                "FlextInfraProtocolsBase",
                 "p",
             ),
             ".settings": ("FlextInfraSettings",),
@@ -125,6 +126,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
+    "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
     "FlextInfraTypes",
