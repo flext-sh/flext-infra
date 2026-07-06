@@ -81,6 +81,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             if export_name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS:
                 return False
             return export_name == mod.rsplit(".", maxsplit=1)[-1]
+        # Skip redundant aliases for internal modules (export_name == attr_name)
+        if attr_name == export_name and mod.startswith(root_name + "."):
+            return True
         return mod == root_name and attr_name == export_name
 
     @staticmethod
