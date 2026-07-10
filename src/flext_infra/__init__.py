@@ -27,6 +27,10 @@ if TYPE_CHECKING:
     from flext_infra._fixtures.enforcement import (
         FlextInfraEnforcementPytestPlugin as FlextInfraEnforcementPytestPlugin,
     )
+    from flext_infra._settings import (
+        FlextInfraSettings as FlextInfraSettings,
+        settings as settings,
+    )
     from flext_infra.api import FlextInfra as FlextInfra, infra as infra
     from flext_infra.base import FlextInfraServiceBase as FlextInfraServiceBase, s as s
     from flext_infra.base_selection import (
