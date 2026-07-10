@@ -1,0 +1,32 @@
+"""{{ class_stem }} settings models (pure Pydantic; no project/flext imports at runtime).
+
+Typed, frozen shapes for the env-overridable runtime knobs. The ``_settings.py``
+facade validates the env mapping into these classes and exposes the ready objects
+under ``settings.{{ class_stem }}.<domain>``. Add a settings domain = add a nested
+model here (``frozen=True, extra="forbid"``) and a validated field on ``Root``;
+forward refs resolve at ``model_validate`` time (no ``model_rebuild``).
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8. #}
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict
+
+
+class {{ class_stem }}SettingsModels:
+    """Namespace of typed {{ class_stem }} settings models (pure Pydantic).
+
+    Add one ``frozen=True, extra="forbid"`` nested model per settings domain and
+    reference it from ``Root``. Never expose ``dict``/``Any``/``object`` here.
+    """
+
+    class Root(BaseModel):
+        """Root {{ class_stem }} runtime settings validated from the env mapping."""
+
+        model_config = ConfigDict(frozen=True, extra="ignore")
+
+
+__all__: list[str] = ["{{ class_stem }}SettingsModels"]

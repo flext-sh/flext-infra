@@ -23,12 +23,13 @@ src/{{ package_name }}/
   protocols.py    # p.{{ ns }}.*
   typings.py      # t.{{ ns }}.*
   utilities.py    # u.{{ ns }}.*
-  _settings.py    # settings.{{ ns_attr }} (env-override, prefix {{ env_prefix }})
-  _config.py      # config.{{ ns }} (config/*.yaml, ADR-005)
+  _settings.py    # settings.{{ class_stem }} (env-override, prefix {{ env_prefix }})
+  _config.py      # config.{{ class_stem }} (config/*.yaml, ADR-005)
   config/{{ ns_attr }}.yaml
   services/       # domain services composed into the facade
 tests/            # flext_tests shim + smoke tests
 ```
+{# mro-wkii.14 (agent: codegen) — README alinhado ao namespace PascalCase config.<Ns>/settings.<Ns> (AGENTS.md U2-U8). #}
 
 ## Develop
 

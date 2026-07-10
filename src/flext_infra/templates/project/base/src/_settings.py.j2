@@ -1,39 +1,43 @@
-"""{{ class_stem }} runtime settings — Pydantic v2 BaseSettings branch.
+"""{{ class_stem }} runtime settings (env-sourced, typed via models).
 
-Settings access goes through the ``settings`` singleton exported below. Domain
-code reads the namespaced ``settings.{{ ns_attr }}`` branch, never ``os.environ``.
+``{{ class_stem }}Settings`` subclasses the shared ``FlextSettings`` with a
+project env prefix. The env mapping is validated into the pure-Pydantic
+``_models/settings.py`` shapes and exposed as the typed project namespace
+``settings.{{ class_stem }}`` (a ``Root`` model), so
+``settings.{{ class_stem }}.<domain>`` gives fully-validated, attribute-typed
+objects. Domain code reads ``settings.{{ class_stem }}.*``, never ``os.environ``.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (nested tipado, modelado, nunca os.environ). #}
 from __future__ import annotations
 
+from functools import cached_property
 from typing import ClassVar
 
-from pydantic import BaseModel, Field
+from flext_core import FlextSettings
 from pydantic_settings import SettingsConfigDict
 
-from flext_core import FlextSettings
+from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
 
 
 class {{ class_stem }}Settings(FlextSettings):
-    """{{ class_stem }} runtime settings."""
+    """{{ class_stem }} runtime settings (env prefix ``{{ env_prefix }}``)."""
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix="{{ env_prefix }}",
         extra="ignore",
     )
 
-    class {{ ns }}Settings(BaseModel):
-        """Namespaced {{ class_stem }} runtime settings — add fields here."""
-
-    {{ ns_attr }}: {{ ns }}Settings = Field(
-        default_factory={{ ns }}Settings,
-        description="Namespaced {{ class_stem }} settings branch.",
-    )
+    @cached_property
+    def {{ class_stem }}(self) -> {{ class_stem }}SettingsModels.Root:
+        """Typed project settings namespace validated from the env mapping."""
+        return {{ class_stem }}SettingsModels.Root.model_validate(self.model_dump())
 
 
+# Pre-instantiated singleton: ready to use directly on import.
 settings: {{ class_stem }}Settings = {{ class_stem }}Settings.fetch_global()
 """Pre-instantiated project settings singleton — ``from {{ package_name }} import settings``."""
 
