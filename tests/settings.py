@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from flext_tests.settings import FlextTestsSettings
+from flext_tests import FlextTestsSettings
 
-from flext_infra.settings import FlextInfraSettings
+from flext_infra import FlextInfraSettings
 
 
 class TestsFlextInfraSettings(FlextInfraSettings, FlextTestsSettings):

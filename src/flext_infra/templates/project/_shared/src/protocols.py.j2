@@ -1,0 +1,24 @@
+"""{{ class_stem }} protocols — structural-typing ports under ``p.{{ ns }}.*``.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from typing import Protocol, runtime_checkable
+
+from {{ upstream }} import p as _p
+
+
+class {{ class_stem }}Protocols(_p):
+    """{{ class_stem }} protocol definitions extending the upstream ``p`` facade."""
+
+    @runtime_checkable
+    class {{ ns }}(Protocol):
+        """Project-specific port namespace — add ``Protocol`` members here."""
+
+
+p = {{ class_stem }}Protocols
+
+__all__: list[str] = ["{{ class_stem }}Protocols", "p"]

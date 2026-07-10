@@ -15,7 +15,7 @@ from flext_tests import (
 )
 
 import flext_infra as infra_pkg
-from flext_infra.settings import FlextInfraSettings
+from flext_infra import FlextInfraSettings
 from tests.constants import c
 from tests.utilities import u
 

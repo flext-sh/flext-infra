@@ -11,8 +11,8 @@ from flext_infra.typings import t
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated lazy-init files."""
 
-    class LazyInitStandardRender(m.ArbitraryTypesModel):
-        """Template context for standard lazy-init package rendering."""
+    class LazyInitUnitManifestRender(m.ArbitraryTypesModel):
+        """Template context for the per-project-root ``__unit__.py`` manifest."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
@@ -20,51 +20,32 @@ class FlextInfraModelsCodegenRender:
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        type_checking_enabled: bool = m.Field(
-            description="Whether TYPE_CHECKING imports are emitted.",
-        )
-        use_merge_lazy_imports: bool = m.Field(
-            description="Whether child lazy registries are merged.",
-        )
-        runtime_import_lines: str = m.Field(
-            description="Runtime import block rendered before lazy map setup.",
-        )
-        child_module_paths: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Child module paths passed to merge_lazy_imports.",
-        )
-        excluded_lazy_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Names excluded from merged child lazy registries.",
-        )
-        inline_constants: t.StrPairSequence = m.Field(
-            default_factory=tuple,
-            description="Inline constant assignments.",
-        )
-        eager_export_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Eager export names passed to install_lazy_exports.",
+        current_pkg: t.NonEmptyStr = m.Field(
+            description="Importable project-root package name.",
         )
         lazy_module_groups: t.StrSequencePairSequence = m.Field(
             default_factory=tuple,
-            description="Lazy imports grouped by module.",
+            description="Lazy imports grouped by module (module -> names).",
         )
         lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
             default_factory=tuple,
             description="Lazy alias imports grouped by module.",
         )
-        type_checking_lines: str = m.Field(
-            description="Rendered TYPE_CHECKING block lines.",
+        child_module_paths: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Child module paths merged at runtime by the root init.",
+        )
+        excluded_lazy_names: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Names excluded from the merged child lazy registries.",
         )
         exports: t.StrSequence = m.Field(
             default_factory=tuple,
-            description="Published generated exports.",
+            description="Published root ``__all__`` names (frozen ABI).",
         )
-        publish_all: bool = m.Field(description="Whether __all__ is generated.")
 
-    class LazyInitDirectBootstrapRender(m.ArbitraryTypesModel):
-        """Template context for direct bootstrap generated packages."""
+    class LazyInitRootThinRender(m.ArbitraryTypesModel):
+        """Template context for the thin project-root ``__init__.py``."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
@@ -73,21 +54,23 @@ class FlextInfraModelsCodegenRender:
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        runtime_import_lines: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Direct import lines emitted at runtime.",
+        current_pkg: t.NonEmptyStr = m.Field(
+            description="Importable project-root package name.",
         )
-        inline_constants: t.StrPairSequence = m.Field(
-            default_factory=tuple,
-            description="Inline constant assignments.",
+        runtime_import_lines: str = m.Field(
+            default_factory=str,
+            description="Eager runtime imports (``__version__`` dunders).",
         )
-        exports: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Generated __all__ names.",
+        type_checking_lines: str = m.Field(
+            default_factory=str,
+            description="Derived ``if TYPE_CHECKING:`` imports for static resolvers.",
+        )
+        has_child_paths: bool = m.Field(
+            description="Whether the root merges child lazy registries at runtime.",
         )
 
-    class LazyInitFlextCoreRootRender(m.ArbitraryTypesModel):
-        """Template context for the flext-core root generated package."""
+    class LazyInitEagerPackageRender(m.ArbitraryTypesModel):
+        """Template context for eager-import non-root package initializers."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
@@ -95,13 +78,14 @@ class FlextInfraModelsCodegenRender:
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        import_lines: str = m.Field(
+        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
+        runtime_import_lines: str = m.Field(
             default_factory=str,
-            description="Rendered static import declarations.",
+            description="Eager sibling imports (``from <mod> import <Name>``).",
         )
-        all_lines: str = m.Field(
-            default_factory=str,
-            description="Rendered public ``__all__`` entries.",
+        exports: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Generated ``__all__`` names (sibling exports only).",
         )
 
 

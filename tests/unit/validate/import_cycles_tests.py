@@ -136,4 +136,76 @@ class TestImportCyclesValidatorSummary:
         tm.that(report.summary, has="cycle")
 
 
+class TestImportCyclesPerProjectScope:
+    """Cycle detection scopes per project root (no cross-project merge).
+
+    Regression guard for the cross-project false positive: every governed
+    project ships a top-level ``tests`` package, and merging those namespaces
+    across projects used to synthesise cycles that never occur at runtime.
+    """
+
+    @staticmethod
+    def _seed_project(
+        workspace: Path,
+        name: str,
+        files: dict[str, str],
+        *,
+        pkg: str = "tests",
+    ) -> Path:
+        project = workspace / name
+        pkg_dir = project / "src" / pkg
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
+        (project / "pyproject.toml").write_text(
+            f'[project]\nname = "{name}"\nversion = "0.0.1"\n',
+            encoding="utf-8",
+        )
+        for filename, content in files.items():
+            (pkg_dir / filename).write_text(content, encoding="utf-8")
+        return project
+
+    def test_same_named_packages_across_projects_do_not_form_cycle(
+        self,
+        tmp_path: Path,
+        v: FlextInfraValidateImportCycles,
+    ) -> None:
+        """Opposite one-way edges in two projects must not merge into a cycle."""
+        self._seed_project(
+            tmp_path,
+            "alpha",
+            {"a.py": "from tests.b import Y\n", "b.py": "Y = 1\n"},
+        )
+        self._seed_project(
+            tmp_path,
+            "beta",
+            {"b.py": "from tests.a import X\n", "a.py": "X = 1\n"},
+        )
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        tm.that(report.passed, eq=True)
+
+    def test_cycle_is_attributed_to_owning_project_only(
+        self,
+        tmp_path: Path,
+        v: FlextInfraValidateImportCycles,
+    ) -> None:
+        """A real cycle inside one project is reported with that project's label."""
+        self._seed_project(
+            tmp_path,
+            "alpha",
+            {"a.py": "from tests import b\n", "b.py": "from tests import a\n"},
+        )
+        self._seed_project(
+            tmp_path,
+            "beta",
+            {"a.py": "X = 1\n", "b.py": "from tests.a import X\n"},
+        )
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        tm.that(report.passed, eq=False)
+        joined = " | ".join(report.violations)
+        tm.that(joined, has="[alpha]")
+        tm.that(joined, has="tests.a")
+        tm.that(joined, has="tests.b")
+        assert "[beta]" not in joined
+
+
 __all__: t.StrSequence = []

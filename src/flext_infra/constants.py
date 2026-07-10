@@ -13,6 +13,7 @@ from flext_infra._constants.census import FlextInfraConstantsCensus
 from flext_infra._constants.check import FlextInfraConstantsCheck
 from flext_infra._constants.cli import FlextInfraConstantsCli
 from flext_infra._constants.codegen import FlextInfraConstantsCodegen
+from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.deps import FlextInfraConstantsDeps
 from flext_infra._constants.detectors import FlextInfraConstantsDetectors
 from flext_infra._constants.docs import FlextInfraConstantsDocs
@@ -34,6 +35,7 @@ class FlextInfraConstants(FlextCliConstants):
         FlextInfraConstantsCheck,
         FlextInfraConstantsCli,
         FlextInfraConstantsCodegen,
+        FlextInfraConstantsCodegenProject,
         FlextInfraConstantsRope,
         FlextInfraConstantsDeps,
         FlextInfraConstantsDetectors,

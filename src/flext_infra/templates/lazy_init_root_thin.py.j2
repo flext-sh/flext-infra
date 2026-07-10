@@ -1,0 +1,44 @@
+{{ autogen_header }}
+{{ docstring }}
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+{% if runtime_import_lines %}
+{{ runtime_import_lines }}
+{%- endif %}
+from {{ current_pkg }}.__unit__ import CHILD_MODULE_PATHS as _CHILD_MODULE_PATHS
+from {{ current_pkg }}.__unit__ import EXCLUDED_LAZY_NAMES as _EXCLUDED_LAZY_NAMES
+from {{ current_pkg }}.__unit__ import LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS
+from {{ current_pkg }}.__unit__ import LAZY_MODULES as _LAZY_MODULES
+from {{ current_pkg }}.__unit__ import __all__ as __all__
+from flext_core.lazy import (
+    build_lazy_import_map,
+    install_lazy_exports,
+    merge_lazy_imports,
+)
+{% if type_checking_lines %}
+{{ type_checking_lines }}
+{%- endif %}
+{% if has_child_paths %}
+
+_LAZY_IMPORTS = merge_lazy_imports(
+    _CHILD_MODULE_PATHS,
+    build_lazy_import_map(
+        _LAZY_MODULES,
+        alias_groups=_LAZY_ALIAS_GROUPS,
+        sort_keys=False,
+    ),
+    exclude_names=_EXCLUDED_LAZY_NAMES,
+    module_name=__name__,
+)
+{% else %}
+
+_LAZY_IMPORTS = build_lazy_import_map(
+    _LAZY_MODULES,
+    alias_groups=_LAZY_ALIAS_GROUPS,
+    sort_keys=False,
+)
+{% endif %}
+
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra.protocols import p
     from flext_infra.typings import t
 
@@ -58,25 +57,33 @@ class FlextInfraUtilitiesCodegen:
         base_class: str,
         docstring: str,
     ) -> str:
-        """Generate one minimal module skeleton used by codegen scaffolding."""
+        """Render one module skeleton through the cli template engine (ADR-005).
+
+        The body lives in ``templates/module_skeleton.py.j2``; this method only
+        builds the context (base-import block) and renders fail-closed via
+        ``u.Cli.template_render``. A render failure is a real incident and
+        surfaces via ``unwrap`` (no silent fallback).
+        """
         if base_class.startswith("FlextTests"):
-            base_import = f"from flext_tests import {base_class}\n\n"
+            base_import_block = f"from flext_tests import {base_class}\n\n"
         elif base_class.startswith("Flext"):
-            base_import = f"from flext_core import {base_class}\n\n"
+            base_import_block = f"from flext_core import {base_class}\n\n"
         else:
-            base_import = ""
-        return (
-            f'"""{docstring}"""\n\n'
-            "from __future__ import annotations\n\n"
-            f"{base_import}"
-            f"class {class_name}({base_class}):\n"
-            f'    """{docstring}"""\n'
-            "\n"
-            "\n"
-            '__all__: list[str] = ["'
-            f"{class_name}"
-            '"]\n'
+            base_import_block = ""
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_MODULE_SKELETON
         )
+        return u.Cli.template_render(
+            template_path,
+            {
+                "class_name": class_name,
+                "base_class": base_class,
+                "base_import_block": base_import_block,
+                "docstring": docstring,
+            },
+        ).unwrap()
 
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:

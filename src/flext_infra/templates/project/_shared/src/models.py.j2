@@ -1,0 +1,26 @@
+"""{{ class_stem }} models — extends the upstream ``m`` facade (Pydantic v2).
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from {{ upstream }} import m
+
+
+class {{ class_stem }}Models(m):
+    """{{ class_stem }} domain models extending the upstream ``m`` facade.
+
+    Access patterns:
+    - ``m.{{ ns }}.*`` — project-specific models.
+    - ``m.*`` — inherited from the upstream facade (do NOT override).
+    """
+
+    class {{ ns }}:
+        """Project-specific models namespace."""
+
+
+m = {{ class_stem }}Models
+
+__all__: list[str] = ["{{ class_stem }}Models", "m"]

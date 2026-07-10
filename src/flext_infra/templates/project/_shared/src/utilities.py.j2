@@ -1,0 +1,26 @@
+"""{{ class_stem }} utilities — extends the upstream ``u`` facade (pure helpers).
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from {{ upstream }} import u
+
+
+class {{ class_stem }}Utilities(u):
+    """{{ class_stem }} utility facade extending the upstream ``u`` facade.
+
+    Access patterns:
+    - ``u.{{ ns }}.*`` — project-specific pure helpers.
+    - ``u.*`` — inherited from the upstream facade (do NOT override).
+    """
+
+    class {{ ns }}:
+        """Project-specific pure helpers."""
+
+
+u = {{ class_stem }}Utilities
+
+__all__: list[str] = ["{{ class_stem }}Utilities", "u"]

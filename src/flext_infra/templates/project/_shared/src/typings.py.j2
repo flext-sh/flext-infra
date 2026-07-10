@@ -1,0 +1,26 @@
+"""{{ class_stem }} type definitions — extends the upstream ``t`` facade.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from {{ upstream }} import t
+
+
+class {{ class_stem }}Types(t):
+    """{{ class_stem }} type namespace extending the upstream ``t`` facade.
+
+    Access patterns:
+    - ``t.{{ ns }}.*`` — project-specific type aliases.
+    - ``t.*`` — inherited from the upstream facade (do NOT override).
+    """
+
+    class {{ ns }}:
+        """Project-specific type aliases."""
+
+
+t = {{ class_stem }}Types
+
+__all__: list[str] = ["{{ class_stem }}Types", "t"]
