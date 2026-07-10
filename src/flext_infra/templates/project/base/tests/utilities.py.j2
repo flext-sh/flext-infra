@@ -1,0 +1,21 @@
+"""Test utilities namespace for {{ package_name }}.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from flext_tests import u
+
+
+class Tests{{ class_stem }}Utilities(u):
+    """{{ class_stem }} test utilities namespace."""
+
+    class {{ ns }}:
+        """Project-specific test utilities."""
+
+
+u = Tests{{ class_stem }}Utilities
+
+__all__: list[str] = ["Tests{{ class_stem }}Utilities", "u"]

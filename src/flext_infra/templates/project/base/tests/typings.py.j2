@@ -1,0 +1,21 @@
+"""Test type namespace for {{ package_name }}.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from flext_tests import t
+
+
+class Tests{{ class_stem }}Types(t):
+    """{{ class_stem }} test type namespace."""
+
+    class {{ ns }}:
+        """Project-specific test type aliases."""
+
+
+t = Tests{{ class_stem }}Types
+
+__all__: list[str] = ["Tests{{ class_stem }}Types", "t"]

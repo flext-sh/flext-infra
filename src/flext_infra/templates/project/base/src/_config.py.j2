@@ -1,0 +1,43 @@
+"""{{ class_stem }} runtime business-rule config (YAML-sourced, typed via models).
+
+``{{ class_stem }}Config`` subclasses the shared ``FlextConfig``: every
+``config/*.yaml`` file is auto-discovered and deep-merged at first
+``fetch_global`` call (model-less ingestion boundary, ``extra=allow``). The flat
+YAML is then validated into the pure-Pydantic ``_models/config.py`` shapes and
+exposed as the typed project namespace ``config.{{ class_stem }}`` (a ``Root``
+model), so ``config.{{ class_stem }}.<domain>`` gives fully-validated,
+attribute-typed objects. ALL business rules live in ``config/*.yaml``.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (nested tipado, modelado, ingestao model-less so na borda). #}
+from __future__ import annotations
+
+from functools import cached_property
+from typing import ClassVar
+
+from flext_core import FlextConfig
+
+from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
+
+
+class {{ class_stem }}Config(FlextConfig):
+    """Frozen {{ class_stem }} config singleton auto-loaded from ``config/*.yaml``."""
+
+    CONFIG_DIR: ClassVar[str] = "config"
+
+    @cached_property
+    def {{ class_stem }}(self) -> {{ class_stem }}ConfigModels.Root:
+        """Typed project config namespace validated from the model-less YAML."""
+        return {{ class_stem }}ConfigModels.Root.model_validate(
+            dict(self.model_extra or {}),
+        )
+
+
+# Pre-instantiated frozen singleton: ready to use directly on import.
+config: {{ class_stem }}Config = {{ class_stem }}Config.fetch_global()
+"""Pre-instantiated frozen config singleton — ``from {{ package_name }} import config``."""
+
+__all__: list[str] = ["{{ class_stem }}Config", "config"]

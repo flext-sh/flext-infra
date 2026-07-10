@@ -1,0 +1,42 @@
+# {{ dist }}
+
+{{ description }}
+
+Built on the [FLEXT](https://github.com/flext-sh/flext) typed platform: canonical
+facades (`c`/`m`/`p`/`t`/`u`/`r`), `r[T]` result contracts on every fallible path,
+and Pydantic v2 settings/config (ADR-005).
+
+## Install
+
+```bash
+uv pip install -e ".[dev]"
+```
+
+## Layout
+
+```
+src/{{ package_name }}/
+  api.py          # public facade ({{ class_stem }} / {{ alias }})
+  base.py         # service base (s[TResult])
+  constants.py    # c.{{ ns }}.*
+  models.py       # m.{{ ns }}.*
+  protocols.py    # p.{{ ns }}.*
+  typings.py      # t.{{ ns }}.*
+  utilities.py    # u.{{ ns }}.*
+  _settings.py    # settings.{{ ns_attr }} (env-override, prefix {{ env_prefix }})
+  _config.py      # config.{{ ns }} (config/*.yaml, ADR-005)
+  config/{{ ns_attr }}.yaml
+  services/       # domain services composed into the facade
+tests/            # flext_tests shim + smoke tests
+```
+
+## Develop
+
+```bash
+make check   # lint + typecheck
+make test    # pytest
+```
+
+## License
+
+MIT — see [LICENSE](LICENSE).

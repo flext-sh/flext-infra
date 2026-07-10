@@ -1,0 +1,19 @@
+"""Conftests for {{ package_name }} tests.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from flext_tests import (
+    reset_settings as _shared_reset_settings,
+    settings as _shared_settings,
+    settings_factory as _shared_settings_factory,
+)
+
+reset_settings = _shared_reset_settings
+settings = _shared_settings
+settings_factory = _shared_settings_factory
+
+__all__: list[str] = ["reset_settings", "settings", "settings_factory"]

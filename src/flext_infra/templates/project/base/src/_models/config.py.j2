@@ -1,0 +1,34 @@
+"""{{ class_stem }} config models (pure Pydantic; no project/flext imports at runtime).
+
+Typed, frozen shapes for the ``config/*.yaml`` business-rule SSOT. This module
+imports nothing but ``pydantic`` — the ``_config.py`` facade validates the
+model-less YAML slices into these classes and exposes the ready objects under
+``config.{{ class_stem }}.<domain>``. Adding a config domain = add a nested model
+here (``frozen=True, extra="forbid"``) and a validated field on ``Root``; forward
+refs resolve at ``model_validate`` time (called from ``_config.py``), so no
+``model_rebuild`` is needed.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8; base flext-core em estabilizacao por outro agente. #}
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict
+
+
+class {{ class_stem }}ConfigModels:
+    """Namespace of typed {{ class_stem }} config models (pure Pydantic).
+
+    Add one ``frozen=True, extra="forbid"`` nested model per config domain and
+    reference it from ``Root``. Never expose ``dict``/``Any``/``object`` here.
+    """
+
+    class Root(BaseModel):
+        """Root {{ class_stem }} runtime config validated from ``config/*.yaml``."""
+
+        model_config = ConfigDict(frozen=True, extra="ignore")
+
+
+__all__: list[str] = ["{{ class_stem }}ConfigModels"]

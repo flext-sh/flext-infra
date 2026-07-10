@@ -1,0 +1,40 @@
+"""{{ class_stem }} runtime settings — Pydantic v2 BaseSettings branch.
+
+Settings access goes through the ``settings`` singleton exported below. Domain
+code reads the namespaced ``settings.{{ ns_attr }}`` branch, never ``os.environ``.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from typing import ClassVar
+
+from pydantic import BaseModel, Field
+from pydantic_settings import SettingsConfigDict
+
+from flext_core import FlextSettings
+
+
+class {{ class_stem }}Settings(FlextSettings):
+    """{{ class_stem }} runtime settings."""
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_prefix="{{ env_prefix }}",
+        extra="ignore",
+    )
+
+    class {{ ns }}Settings(BaseModel):
+        """Namespaced {{ class_stem }} runtime settings — add fields here."""
+
+    {{ ns_attr }}: {{ ns }}Settings = Field(
+        default_factory={{ ns }}Settings,
+        description="Namespaced {{ class_stem }} settings branch.",
+    )
+
+
+settings: {{ class_stem }}Settings = {{ class_stem }}Settings.fetch_global()
+"""Pre-instantiated project settings singleton — ``from {{ package_name }} import settings``."""
+
+__all__: list[str] = ["{{ class_stem }}Settings", "settings"]

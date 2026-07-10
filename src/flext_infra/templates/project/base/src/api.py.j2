@@ -1,0 +1,23 @@
+"""Public API facade for {{ package_name }}.
+
+The package root freezes this facade as the stable user entrypoint. Consumers
+import ``{{ class_stem }}`` or ``{{ alias }}`` from ``{{ package_name }}`` and
+reach domain concerns through canonical aliases and namespaces.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from {{ package_name }}.base import {{ class_stem }}Service
+
+
+class {{ class_stem }}({{ class_stem }}Service):
+    """Public {{ class_stem }} facade composed through cooperative MRO."""
+
+
+{{ alias }} = {{ class_stem }}.fetch_global()
+
+
+__all__: list[str] = ["{{ class_stem }}", "{{ alias }}"]

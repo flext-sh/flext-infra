@@ -1,0 +1,34 @@
+"""Base service patterns for {{ package_name }} services.
+
+Defines the canonical service root used by the API facade: every service inherits
+from this base through cooperative MRO and resolves settings through the shared
+runtime bootstrap.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from flext_core import s
+
+from {{ package_name }}._settings import {{ class_stem }}Settings
+from {{ package_name }}.models import {{ class_stem }}Models as m
+from {{ package_name }}.typings import {{ class_stem }}Types as t
+
+
+class {{ class_stem }}Service[
+    TResult: t.JsonPayload | t.SequenceOf[t.JsonPayload] = t.JsonPayload
+    | t.SequenceOf[t.JsonPayload],
+](s[TResult]):
+    """Base class for all {{ package_name }} services."""
+
+    @classmethod
+    def _runtime_bootstrap_options(cls) -> m.RuntimeBootstrapOptions:
+        """Return runtime bootstrap options for {{ package_name }} services."""
+        return m.RuntimeBootstrapOptions(settings_type={{ class_stem }}Settings)
+
+
+s = {{ class_stem }}Service
+
+__all__: list[str] = ["{{ class_stem }}Service", "s"]
