@@ -1,0 +1,41 @@
+"""{{ class_stem }} config-domain utilities part (composed into ``u.{{ class_stem }}`` via MRO).
+
+``ConfigProxy`` delivers ``config.{{ class_stem }}`` typed by PROTOCOL (see
+``_protocols/config``), never by class and never ``Any``/``object``/raw ``dict``.
+``p`` enters only under ``TYPE_CHECKING``; resolution of ``{{ package_name }}.config``
+is lazy via ``importlib`` (no load cycle). No loose helpers / no compat aliases.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (ConfigProxy tipado por protocolo, lazy via importlib, p via TYPE_CHECKING). #}
+from __future__ import annotations
+
+import importlib
+from typing import TYPE_CHECKING, ClassVar
+
+if TYPE_CHECKING:
+    from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
+
+
+class ConfigProxy:
+    """Lazy proxy to ``config.{{ class_stem }}`` (protocol-typed; never dict/class)."""
+
+    @property
+    def root(self) -> {{ class_stem }}ProtocolsConfig.Config:
+        """Validated ``config.{{ class_stem }}`` namespace (structural protocol type).
+
+        Add one ``@property`` per validated domain returning its protocol
+        (e.g. ``def secrets(self) -> {{ class_stem }}ProtocolsConfig.Secrets``).
+        """
+        return importlib.import_module("{{ package_name }}").config.{{ class_stem }}
+
+
+class {{ class_stem }}UtilitiesConfig:
+    """Typed config access; composed into ``u.{{ class_stem }}`` via MRO."""
+
+    config: ClassVar[ConfigProxy] = ConfigProxy()
+
+
+__all__: list[str] = ["ConfigProxy", "{{ class_stem }}UtilitiesConfig"]

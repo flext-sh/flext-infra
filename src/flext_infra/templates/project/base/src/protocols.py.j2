@@ -9,9 +9,11 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from {{ upstream }} import p as _p
+from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
 
 
-class {{ class_stem }}Protocols(_p):
+{# mro-wkii.14 (agent: codegen) — compoe _protocols/config em p via MRO (AGENTS.md U2-U8); surface estrutural de config.<Ns> em p.<ClassStem>.Config. #}
+class {{ class_stem }}Protocols(_p, {{ class_stem }}ProtocolsConfig):
     """{{ class_stem }} protocol definitions extending the upstream ``p`` facade."""
 
     @runtime_checkable

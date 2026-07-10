@@ -12,9 +12,11 @@ from __future__ import annotations
 from typing import Final
 
 from {{ upstream }} import c
+from {{ package_name }}._constants.config import {{ class_stem }}ConstantsConfig
 
 
-class {{ class_stem }}Constants(c):
+{# mro-wkii.14 (agent: codegen) — compoe _constants/config em c via MRO (AGENTS.md U2-U8); acesso c.<ClassStem>.CONFIG_DIR (raiz) coexistindo com c.<Ns>.*. #}
+class {{ class_stem }}Constants(c, {{ class_stem }}ConstantsConfig):
     """{{ class_stem }} domain constants extending the upstream ``c`` facade.
 
     Access patterns:
