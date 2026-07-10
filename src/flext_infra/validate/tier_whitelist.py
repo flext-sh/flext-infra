@@ -57,7 +57,7 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
 
         Settings modules (``*/settings.py``) are additionally allowed to
         import ``pydantic_settings`` — the canonical pattern for project
-        configuration is ``class Foo(FlextSettingsBase, BaseSettings)`` per
+        configuration is ``class Foo(FlextSettings, BaseSettings)`` per
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
         """

@@ -144,7 +144,7 @@ class TestGenerateTypeChecking:
         tm.that(content, contains="from flext_core._root_typing_parts.facades import (")
         tm.that(content, contains="FlextConstants as FlextConstants,")
         tm.that(content, contains="c as c,")
-        tm.that(content, contains="FlextSettingsBase as FlextSettingsBase")
+        tm.that(content, contains="FlextSettings as FlextSettings")
         tm.that(content, contains="FlextConstantsCqrs as FlextConstantsCqrs")
         tm.that(content, contains="FlextExceptionsBase as FlextExceptionsBase")
         tm.that(content, contains="FlextExceptionsTemplate as FlextExceptionsTemplate")

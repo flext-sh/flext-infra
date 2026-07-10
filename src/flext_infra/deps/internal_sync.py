@@ -99,8 +99,8 @@ class FlextInfraInternalDependencySyncService(
                 )
             repo_map = parsed_map_result.value
         ref_name = self.resolve_ref(project_root)
-        infra_settings = FlextInfraSettings()
-        force_https = infra_settings.github_actions or infra_settings.use_https
+        infra_settings = FlextInfraSettings.fetch_global()
+        force_https = infra_settings.Infra.github_actions or infra_settings.Infra.use_https
         for dep_path in deps.values():
             repo_name = dep_path.name
             if repo_name not in repo_map:

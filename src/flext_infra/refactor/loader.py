@@ -19,7 +19,6 @@ class FlextInfraRefactorRuleLoader:
     def __init__(self, config_path: Path) -> None:
         """Initialize loader state with one config path."""
         self.config_path = config_path
-        self.settings: t.MappingKV[str, t.Infra.InfraValue] = {}
         self.rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorRuleKind]
         ] = []
@@ -36,7 +35,7 @@ class FlextInfraRefactorRuleLoader:
             allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
         )
         if result.success:
-            self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 dict(result.value),
             )
             u.Cli.info(f"Loaded settings from {self.config_path}")

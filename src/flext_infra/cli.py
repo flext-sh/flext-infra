@@ -140,7 +140,6 @@ class FlextInfraCli(type(cli_facade)):
         app = self.create_app_with_common_params(
             name=f"{self.app_name} {group}",
             help_text=c.Infra.CLI_GROUP_DESCRIPTIONS[group],
-            settings=self._cli_settings(),
         )
         self._register_group_commands(group, app)
         what_result = self._translate_what(group, args)

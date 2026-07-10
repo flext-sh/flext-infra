@@ -17,7 +17,6 @@ class TestsFlextInfraServiceBase(tests_s):
     @override
     def fetch_settings(cls) -> TestsFlextInfraSettings:
         """Return the typed infra+Tests settings singleton for test services."""
-        return TestsFlextInfraSettings.fetch_global()
 
     @classmethod
     @override

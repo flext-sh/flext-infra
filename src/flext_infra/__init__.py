@@ -40,13 +40,13 @@ if TYPE_CHECKING:
         FlextInfraProtocolsBase as FlextInfraProtocolsBase,
         p as p,
     )
-    from flext_infra.settings import FlextInfraSettings as FlextInfraSettings
     from flext_infra.typings import FlextInfraTypes as FlextInfraTypes, t as t
     from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u as u
 _LAZY_IMPORTS = merge_lazy_imports(
     ("._enforcement",),
     build_lazy_import_map(
         {
+            "._settings": ("FlextInfraSettings", "settings"),
             "._enforcement.collection_base": (
                 "FlextInfraEnforcementCollectionBase",
                 "FlextInfraEnforcementEvaluation",
@@ -85,7 +85,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
                 "FlextInfraProtocolsBase",
                 "p",
             ),
-            ".settings": ("FlextInfraSettings",),
             ".typings": (
                 "FlextInfraTypes",
                 "t",
@@ -127,6 +126,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraSettings",
+    "settings",
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
@@ -136,7 +137,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
-    "FlextInfraSettings",
     "FlextInfraTypes",
     "FlextInfraUtilities",
     "__author__",
