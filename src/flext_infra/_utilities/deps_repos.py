@@ -141,7 +141,10 @@ class FlextInfraInternalSyncRepoMixin:
         """Resolve dependency sync git reference for current environment."""
         settings = FlextInfraSettings.fetch_global()
         if settings.Infra.github_actions:
-            for value in (settings.Infra.github_head_ref, settings.Infra.github_ref_name):
+            for value in (
+                settings.Infra.github_head_ref,
+                settings.Infra.github_ref_name,
+            ):
                 if value:
                     return value
         branch = u.Cli.capture(

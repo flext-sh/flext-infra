@@ -93,7 +93,9 @@ class FlextInfraSettings(FlextCliSettings):
     if TYPE_CHECKING:
         Infra: _Infra
     else:
-        Infra: _Infra = Field(default_factory=_Infra, description="Namespaced infra settings.")
+        Infra: _Infra = Field(
+            default_factory=_Infra, description="Namespaced infra settings."
+        )
 
 
 settings: FlextInfraSettings = FlextInfraSettings.fetch_global()
