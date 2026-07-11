@@ -10,6 +10,7 @@ from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_infra.models import m
@@ -48,6 +49,12 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Generate project docs",
                 FlextInfraDocGenerator,
                 "Generate completed successfully",
+            ),
+            (
+                "serve",
+                "Serve one MkDocs site in dev mode (blocking preview)",
+                FlextInfraDocServer,
+                "Serve completed successfully",
             ),
             (
                 "validate",

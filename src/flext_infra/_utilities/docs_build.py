@@ -191,6 +191,55 @@ class FlextInfraUtilitiesDocsBuild:
             raise OSError(msg) from exc
 
     @staticmethod
+    def docs_serve_mkdocs(
+        scope: m.Infra.DocScope,
+        *,
+        dev_addr: str,
+        livereload: bool,
+        strict: bool,
+    ) -> m.Infra.DocsPhaseReport:
+        """Serve one scope through the MkDocs Python serve API (blocking)."""
+        settings = scope.path / "mkdocs.yml"
+        if not settings.exists():
+            return m.Infra.DocsPhaseReport(
+                phase="serve",
+                scope=scope.name,
+                result="SKIP",
+                reason="mkdocs.yml not found",
+                site_dir="",
+                passed=True,
+            )
+        try:
+            serve_module = import_module("mkdocs.commands.serve")
+            serve_fn = FlextInfraUtilitiesDocsBuild._module_callable(
+                serve_module,
+                "serve",
+            )
+            serve_fn(
+                config_file=str(settings),
+                livereload=livereload,
+                dev_addr=dev_addr,
+                strict=strict,
+            )
+        except c.EXC_OS_VALUE as exc:
+            return m.Infra.DocsPhaseReport(
+                phase="serve",
+                scope=scope.name,
+                result=c.Infra.ResultStatus.FAIL,
+                reason=str(exc) or "mkdocs serve failed",
+                site_dir="",
+                passed=False,
+            )
+        return m.Infra.DocsPhaseReport(
+            phase="serve",
+            scope=scope.name,
+            result=c.Infra.ResultStatus.OK,
+            reason="dev server stopped",
+            site_dir="",
+            passed=True,
+        )
+
+    @staticmethod
     def docs_write_build_reports(
         scope: m.Infra.DocScope,
         report: m.Infra.DocsPhaseReport,

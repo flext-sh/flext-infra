@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from flext_infra.docs.generator import (
         FlextInfraDocGenerator as FlextInfraDocGenerator,
     )
+    from flext_infra.docs.server import FlextInfraDocServer as FlextInfraDocServer
     from flext_infra.docs.validator import (
         FlextInfraDocValidator as FlextInfraDocValidator,
     )
@@ -31,6 +32,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".builder": ("FlextInfraDocBuilder",),
         ".fixer": ("FlextInfraDocFixer",),
         ".generator": ("FlextInfraDocGenerator",),
+        ".server": ("FlextInfraDocServer",),
         ".validator": ("FlextInfraDocValidator",),
     },
 )
