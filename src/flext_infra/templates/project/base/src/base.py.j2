@@ -10,8 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import s
-
+from flext_core import r, s
 from {{ package_name }}._settings import {{ class_stem }}Settings
 from {{ package_name }}.models import {{ class_stem }}Models as m
 from {{ package_name }}.typings import {{ class_stem }}Types as t
@@ -27,6 +26,16 @@ class {{ class_stem }}Service[
     def _runtime_bootstrap_options(cls) -> m.RuntimeBootstrapOptions:
         """Return runtime bootstrap options for {{ package_name }} services."""
         return m.RuntimeBootstrapOptions(settings_type={{ class_stem }}Settings)
+
+    # NOTE (multi-agent, mro-wkii.14 / agent: codegen): 1 metodo de dominio minimo
+    # para o cli.py gerado ter 1 rota real (`<dist> ping` -> pong); sem helpers
+    # soltos, retorno via r[...] (U6/U7). params nao usado => `_ = params` (ARG002).
+    def ping(self, params: m.{{ ns }}.PingInput) -> r[m.{{ ns }}.PingResult]:
+        """Health check — return a pong result (consumed by the generated CLI)."""
+        _ = params
+        return r[m.{{ ns }}.PingResult].ok(
+            m.{{ ns }}.PingResult(message="pong"),
+        )
 
 
 s = {{ class_stem }}Service

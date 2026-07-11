@@ -7,22 +7,29 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from {{ upstream }} import u
+
 from {{ package_name }}._utilities.config import {{ class_stem }}UtilitiesConfig
+from {{ package_name }}._utilities.settings import {{ class_stem }}UtilitiesSettings
 
 
-{# mro-wkii.14 (agent: codegen) — compoe _utilities/config (ConfigProxy) em u via MRO (AGENTS.md U2-U8); acesso lazy u.<ClassStem>.config. #}
-class {{ class_stem }}Utilities(u, {{ class_stem }}UtilitiesConfig):
+class {{ class_stem }}Utilities(u):
     """{{ class_stem }} utility facade extending the upstream ``u`` facade.
 
     Access patterns:
-    - ``u.{{ ns }}.*`` — project-specific pure helpers.
+    - ``u.{{ ns }}.*`` — project-specific pure helpers (config/settings via MRO).
     - ``u.*`` — inherited from the upstream facade (do NOT override).
     """
 
-    class {{ ns }}:
-        """Project-specific pure helpers."""
+    class {{ ns }}(
+        {{ class_stem }}UtilitiesConfig,
+        {{ class_stem }}UtilitiesSettings,
+    ):
+        """Project-specific pure helpers, composed from config/settings parts via MRO."""
 
 
+# NOTE (multi-agent, mro-wkii.14 / agent: codegen): facade externo single-base
+# (alias ``u``) + classe interna ``{{ ns }}`` compoe *Config/*Settings via MRO
+# (padrao cosmos-main); satisfaz ENFORCE-047/049 (AGENTS.md U2-U8).
 u = {{ class_stem }}Utilities
 
 __all__: list[str] = ["{{ class_stem }}Utilities", "u"]

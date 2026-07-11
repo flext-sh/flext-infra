@@ -9,28 +9,43 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Final
 
 from {{ upstream }} import c
+
 from {{ package_name }}._constants.config import {{ class_stem }}ConstantsConfig
+from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSettings
 
 
-{# mro-wkii.14 (agent: codegen) — compoe _constants/config em c via MRO (AGENTS.md U2-U8); acesso c.<ClassStem>.CONFIG_DIR (raiz) coexistindo com c.<Ns>.*. #}
-class {{ class_stem }}Constants(c, {{ class_stem }}ConstantsConfig):
+class {{ class_stem }}Constants(c):
     """{{ class_stem }} domain constants extending the upstream ``c`` facade.
 
     Access patterns:
-    - ``c.{{ ns }}.*`` — project-specific constants.
+    - ``c.{{ ns }}.*`` — project-specific constants (config/settings keys via MRO).
     - ``c.*`` — inherited from the upstream facade (do NOT override).
     """
 
-    class {{ ns }}:
-        """Project-specific constants."""
+    class {{ ns }}(
+        {{ class_stem }}ConstantsConfig,
+        {{ class_stem }}ConstantsSettings,
+    ):
+        """Project-specific constants, composed from config/settings parts via MRO."""
 
         NAME: Final[str] = "{{ const_name }}"
         VERSION: Final[str] = "{{ version }}"
 
+        # NOTE (multi-agent, mro-wkii.14 / agent: codegen): CommandType(StrEnum)
+        # e' str-compatible => aceito em m.Cli.ResultCommandRoute.name (NonEmptyStr)
+        # sem .value; mesmo padrao de c.<Ns>.CommandType do algar.
+        class CommandType(StrEnum):
+            """CLI command names for {{ package_name }} (str-compatible)."""
 
+            PING = "ping"
+
+
+# NOTE (multi-agent, mro-wkii.14 / agent: codegen): facade single-base (``c``) +
+# classe interna ``{{ ns }}`` compoe *Config/*Settings via MRO (padrao cosmos-main).
 c = {{ class_stem }}Constants
 
 __all__: list[str] = ["{{ class_stem }}Constants", "c"]
