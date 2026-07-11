@@ -4,8 +4,7 @@ The scaffold is proven FUNCTIONALLY through its generated public CLI:
 
 * ``python -m flext_demo ping`` runs as a real subprocess against the freshly
   generated project with the generated ``src`` on ``PYTHONPATH``;
-* the expected file layout is a golden FIXTURE
-  (``expected_external.txt`` / ``expected_internal.txt``) compared as data.
+* the shared expected file layout is the ``expected_external.txt`` golden.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -106,7 +105,7 @@ class TestCodegenNewExternalLayout:
 
 class TestCodegenNewInternalLayout:
     def test_layout_matches_golden(self, internal_project: Path) -> None:
-        tm.that(_relpaths(internal_project), eq=_golden("expected_internal.txt"))
+        tm.that(_relpaths(internal_project), eq=_golden("expected_external.txt"))
 
 
 class TestCodegenNewCliFunctional:
