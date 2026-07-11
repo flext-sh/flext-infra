@@ -12,8 +12,6 @@ MAKE_PROFILE := {{ make_profile }}
 WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
 WORKSPACE_MEMBERS :={% for member in workspace_members %} {{ member }}{% endfor %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
-PYTHON_VERSION := 3.13.11
-UV_REQUIRED_VERSION := 0.11.28
 
 APPLY ?= N
 ARGS ?=
