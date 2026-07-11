@@ -252,9 +252,7 @@ class FlextInfraModelsCodegenConform:
         profile: Annotated[
             c.Infra.MakeProfile | None,
             m.BeforeValidator(
-                lambda value: (
-                    None if value is None else c.Infra.MakeProfile(value)
-                ),
+                lambda value: None if value is None else c.Infra.MakeProfile(value),
             ),
             m.Field(description="Makefile generation profile"),
         ] = None
@@ -289,6 +287,46 @@ class FlextInfraModelsCodegenConform:
                 raise ValueError(msg)
             return value
 
+    # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
+    class ProjectSpec(m.ContractModel):
+        """Deterministic project metadata required to materialize a new tree."""
+
+        package_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Import package name"),
+        ]
+        class_stem: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical public facade class stem"),
+        ]
+        namespace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Nested c/t/p/m/u namespace"),
+        ]
+        alias: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical public instance alias"),
+        ]
+        description: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project description"),
+        ]
+        version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
+        license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
+        author_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Author display name"),
+        ]
+        author_email: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Author email"),
+        ]
+        upstream: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Upstream FLEXT facade module"),
+        ]
+        year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
+
     class WorkspaceExclusionSpec(m.ContractModel):
         """One explicitly rejected workspace path and its reason."""
 
@@ -308,6 +346,10 @@ class FlextInfraModelsCodegenConform:
             FlextInfraModelsCodegenConform.RepositoryRef,
             m.Field(description="Root repository Git contract"),
         ]
+        project: Annotated[
+            FlextInfraModelsCodegenConform.ProjectSpec | None,
+            m.Field(description="Metadata required only when materializing a new tree"),
+        ] = None
         members: Annotated[
             tuple[FlextInfraModelsCodegenConform.RepositoryRef, ...],
             m.BeforeValidator(lambda value: tuple(value)),
@@ -453,8 +495,10 @@ class FlextInfraModelsCodegenConform:
             Path,
             m.BeforeValidator(
                 lambda value: (
-                    value if isinstance(value, Path) else Path(value)
-                ).expanduser().resolve(),
+                    (value if isinstance(value, Path) else Path(value))
+                    .expanduser()
+                    .resolve()
+                ),
             ),
             m.Field(description="Repository or workspace root"),
         ]

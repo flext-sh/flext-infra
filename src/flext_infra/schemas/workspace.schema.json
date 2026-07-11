@@ -23,6 +23,9 @@
     "repository": {
       "$ref": "#/$defs/repository"
     },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
     "members": {
       "type": "array",
       "uniqueItems": true,
@@ -120,6 +123,71 @@
             "standalone",
             null
           ]
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_name",
+        "class_stem",
+        "namespace",
+        "alias",
+        "description",
+        "version",
+        "license",
+        "author_name",
+        "author_email",
+        "upstream",
+        "year"
+      ],
+      "properties": {
+        "package_name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "class_stem": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$"
+        },
+        "alias": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author_email": {
+          "type": "string",
+          "minLength": 3
+        },
+        "upstream": {
+          "enum": [
+            "flext_core",
+            "flext_cli"
+          ]
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 2025
         }
       }
     },

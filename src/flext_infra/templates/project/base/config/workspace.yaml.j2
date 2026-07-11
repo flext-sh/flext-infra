@@ -14,6 +14,18 @@ repository:
   role: {{ make_profile }}
   state: active
   profile: {{ make_profile }}
+project:
+  package_name: {{ package_name | tojson }}
+  class_stem: {{ class_stem | tojson }}
+  namespace: {{ ns | tojson }}
+  alias: {{ alias | tojson }}
+  description: {{ description | tojson }}
+  version: {{ version | tojson }}
+  license: {{ license | tojson }}
+  author_name: {{ author_name | tojson }}
+  author_email: {{ author_email | tojson }}
+  upstream: {{ upstream | tojson }}
+  year: {{ year }}
 members: []
 content_only: []
 exclusions: []
