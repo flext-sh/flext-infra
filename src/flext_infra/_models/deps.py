@@ -142,24 +142,8 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             ),
         ] = c.Infra.DependencyConstraintPolicy.FLOOR
 
-    class PathSyncCommand(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
-        """Canonical CLI payload for ``flext-infra deps path-sync``."""
-
-        mode: Annotated[
-            c.Infra.PathSyncMode,
-            m.Field(
-                c.Infra.PathSyncMode.AUTO,
-                description="Dependency path rewrite mode",
-            ),
-            m.BeforeValidator(
-                lambda v: (
-                    c.Infra.PathSyncMode(v.strip().lower()) if isinstance(v, str) else v
-                ),
-            ),
-        ] = c.Infra.PathSyncMode.AUTO
+    # NOTE (multi-agent, mro-wkii.17.9): codegen consumes the pure pyproject
+    # renderer directly, so no deps CLI payload remains for path/workspace modes.
 
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.

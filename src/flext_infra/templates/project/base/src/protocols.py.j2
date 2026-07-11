@@ -1,30 +1,26 @@
 """{{ class_stem }} protocols — structural-typing ports under ``p.{{ ns }}.*``.
 
+The ``{{ ns }}`` namespace is composed from the ``_protocols/{{ ns_attr }}.py``
+domain part via MRO.
+
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-from {{ upstream }} import p as _p
+from {{ upstream }} import p
 
-from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
-from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
+from {{ package_name }}._protocols.{{ ns_attr }} import {{ class_stem }}Protocols{{ ns }}
 
 
-class {{ class_stem }}Protocols(_p):
+class {{ class_stem }}Protocols(p):
     """{{ class_stem }} protocol definitions extending the upstream ``p`` facade."""
 
-    class {{ ns }}(
-        {{ class_stem }}ProtocolsConfig,
-        {{ class_stem }}ProtocolsSettings,
-    ):
-        """Project-specific port namespace, composed from config/settings parts via MRO."""
+    class {{ ns }}({{ class_stem }}Protocols{{ ns }}):
+        """Project-specific structural ports namespace (composed via MRO)."""
 
 
-# NOTE (multi-agent, mro-wkii.14 / agent: codegen): external facade single-base
-# (``_p``) + inner class ``{{ ns }}`` composing *Config/*Settings via MRO
-# (cosmos-main pattern).
 p = {{ class_stem }}Protocols
 
 __all__: list[str] = ["{{ class_stem }}Protocols", "p"]

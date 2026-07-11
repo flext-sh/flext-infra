@@ -103,7 +103,8 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
 
         assert process.exit_code == 0
         assert "modernize --apply" in output
-        assert "path-sync --mode auto --apply" in output
+        # NOTE (multi-agent, mro-wkii.17.9): workspace rendering no longer
+        # promises the removed deps path-sync command.
         assert (
             f'taplo format --config "{workspace_root}/.taplo.toml" pyproject.toml demo-a/pyproject.toml demo-b/pyproject.toml'
             in output

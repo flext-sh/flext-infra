@@ -1,5 +1,9 @@
 """{{ class_stem }} utilities — extends the upstream ``u`` facade (pure helpers).
 
+Project-specific helpers live under ``u.{{ ns }}.*``; everything else is inherited
+from the upstream facade. The ``{{ ns }}`` namespace is composed from the
+``_utilities/{{ ns_attr }}.py`` domain part via MRO.
+
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -8,28 +12,16 @@ from __future__ import annotations
 
 from {{ upstream }} import u
 
-from {{ package_name }}._utilities.config import {{ class_stem }}UtilitiesConfig
-from {{ package_name }}._utilities.settings import {{ class_stem }}UtilitiesSettings
+from {{ package_name }}._utilities.{{ ns_attr }} import {{ class_stem }}Utilities{{ ns }}
 
 
 class {{ class_stem }}Utilities(u):
-    """{{ class_stem }} utility facade extending the upstream ``u`` facade.
+    """{{ class_stem }} utility facade extending the upstream ``u`` facade."""
 
-    Access patterns:
-    - ``u.{{ ns }}.*`` — project-specific pure helpers (config/settings via MRO).
-    - ``u.*`` — inherited from the upstream facade (do NOT override).
-    """
-
-    class {{ ns }}(
-        {{ class_stem }}UtilitiesConfig,
-        {{ class_stem }}UtilitiesSettings,
-    ):
-        """Project-specific pure helpers, composed from config/settings parts via MRO."""
+    class {{ ns }}({{ class_stem }}Utilities{{ ns }}):
+        """Project-specific pure helpers namespace (composed via MRO)."""
 
 
-# NOTE (multi-agent, mro-wkii.14 / agent: codegen): external facade single-base
-# (alias ``u``) + inner class ``{{ ns }}`` composing *Config/*Settings via MRO
-# (cosmos-main pattern); satisfies ENFORCE-047/049 (AGENTS.md U2-U8).
 u = {{ class_stem }}Utilities
 
 __all__: list[str] = ["{{ class_stem }}Utilities", "u"]

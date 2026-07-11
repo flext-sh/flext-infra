@@ -1,0 +1,18 @@
+"""{{ ns }} type aliases namespace (pure declaration; composed into ``t.{{ ns }}`` via MRO).
+
+Pure module: only PEP 695 ``type`` aliases (flat members) — no methods, no
+helpers, no ``Any``/``object``. The ``typings.py`` facade composes this class
+into the ``{{ ns }}`` namespace by MRO.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+
+class {{ class_stem }}Types{{ ns }}:
+    """{{ ns }} domain type aliases (add PEP 695 ``type`` aliases here)."""
+
+
+__all__: list[str] = ["{{ class_stem }}Types{{ ns }}"]

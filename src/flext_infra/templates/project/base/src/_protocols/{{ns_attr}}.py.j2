@@ -1,0 +1,18 @@
+"""{{ ns }} protocols namespace (pure declaration; composed into ``p.{{ ns }}`` via MRO).
+
+Structural-typing ports only (``Protocol`` classes) — no methods, no helpers,
+no ``Any``/``object``. The ``protocols.py`` facade composes this class into the
+``{{ ns }}`` namespace by MRO.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+
+class {{ class_stem }}Protocols{{ ns }}:
+    """{{ ns }} domain structural ports (add ``Protocol`` classes here)."""
+
+
+__all__: list[str] = ["{{ class_stem }}Protocols{{ ns }}"]

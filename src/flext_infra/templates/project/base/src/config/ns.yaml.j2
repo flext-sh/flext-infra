@@ -1,7 +1,6 @@
-# {{ class_stem }} execution config (ADR-005). Loaded model-less by _config.py and
-# validated into _models/config.py — exposed typed at config.{{ class_stem }}.{{ ns }}.
-# Add execution-parametrization keys under the `{{ ns }}:` namespace (one typed
-# field per key in _models/config.py); secrets go in _settings.py, never here.
+# NOTE (multi-agent, mro-wkii.19.1): app-owned execution config is loaded from
+# the project-root config directory and validated by m.{{ ns }}.Config.
+# Access is config.{{ ns }}.*; environment-sourced values belong to settings.
 {{ ns }}:
   greeting: "hello"
   ping_reply: "pong"

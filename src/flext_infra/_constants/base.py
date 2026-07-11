@@ -247,14 +247,8 @@ class FlextInfraConstantsBase(
         REMOVE = "remove"
         SKIP = "skip"
 
-    @unique
-    class PathSyncMode(StrEnum):
-        """SSOT dependency path-sync modes."""
-
-        WORKSPACE = "workspace"
-        STANDALONE = "standalone"
-        AUTO = "auto"
-
+    # NOTE (multi-agent, mro-wkii.17.9): topology is modeled by WorkspaceSpec;
+    # the deleted path-sync command no longer owns an alternate mode enum.
     @unique
     class DependencyConstraintPolicy(StrEnum):
         """SSOT dependency constraint rewrite policies."""

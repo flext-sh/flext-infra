@@ -1,30 +1,23 @@
-"""{{ class_stem }} runtime settings (env-sourced, typed via models).
+"""{{ class_stem }}Settings — runtime settings for {{ package_name }} (env-sourced).
 
-``{{ class_stem }}Settings`` subclasses the shared ``FlextSettings`` with a
-project env prefix. The env mapping is validated into the pure-Pydantic
-``_models/settings.py`` shapes and exposed as the typed project namespace
-``settings.{{ class_stem }}`` (a ``Root`` model), so
-``settings.{{ class_stem }}.<domain>`` gives fully-validated, attribute-typed
-objects. Domain code reads ``settings.{{ class_stem }}.*``, never ``os.environ``.
+``{{ class_stem }}Settings`` subclasses ``FlextSettings`` with a project env
+prefix. Project fields live under the ``{{ ns }}`` namespace group as simple
+scalars, each settable via ``.env`` / env vars / params. This is a pure
+declaration module: no methods, no helpers — only the Pydantic settings model
+and the singleton (universal runtime fields come from ``FlextSettings`` by MRO).
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-{# mro-wkii.14 (agent: codegen) — cosmos-main / AGENTS.md U2-U8 pattern (typed nested namespace, modeled, never os.environ). #}
-from functools import cached_property
-from typing import TYPE_CHECKING, ClassVar
 
+from typing import Annotated, ClassVar
+
+from pydantic import BaseModel, Field
 from pydantic_settings import SettingsConfigDict
 
 from flext_core import FlextSettings
-from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
-
-if TYPE_CHECKING:
-    # FLEXT-STRICT: accessor typed by PROTOCOL (p), never by the model class (m);
-    # p is imported only under TYPE_CHECKING (no runtime cycle).
-    from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
 
 
 class {{ class_stem }}Settings(FlextSettings):
@@ -32,16 +25,24 @@ class {{ class_stem }}Settings(FlextSettings):
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix="{{ env_prefix }}",
+        env_nested_delimiter="__",
         extra="ignore",
     )
 
-    @cached_property
-    def {{ class_stem }}(self) -> {{ class_stem }}ProtocolsSettings.Root:
-        """Typed project settings namespace validated from the env mapping."""
-        return {{ class_stem }}SettingsModels.Root.model_validate(self.model_dump())
+    class {{ ns }}Settings(BaseModel):
+        """Namespaced {{ ns }} runtime settings (simple scalars only)."""
+
+        ping_reply: Annotated[
+            str,
+            Field(description="Reply message returned by the ``ping`` command."),
+        ] = "pong"
+
+    {{ ns }}: {{ ns }}Settings = Field(
+        default_factory={{ ns }}Settings,
+        description="Namespaced {{ ns }} settings branch.",
+    )
 
 
-# Pre-instantiated singleton: ready to use directly on import.
 settings: {{ class_stem }}Settings = {{ class_stem }}Settings.fetch_global()
 """Pre-instantiated project settings singleton — ``from {{ package_name }} import settings``."""
 

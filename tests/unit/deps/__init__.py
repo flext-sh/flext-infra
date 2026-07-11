@@ -61,16 +61,8 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".test_modernizer_pytest": ("TestsFlextInfraDepsModernizerPytest",),
         ".test_modernizer_tooling": ("TestsFlextInfraDepsModernizerTooling",),
         ".test_modernizer_workspace": ("TestsFlextInfraDepsModernizerWorkspace",),
-        ".test_path_sync_init": ("TestsFlextInfraDepsPathSyncInit",),
-        ".test_path_sync_main": ("TestsFlextInfraDepsPathSyncMain",),
-        ".test_path_sync_main_edges": ("TestsFlextInfraDepsPathSyncMainEdges",),
-        ".test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
-        ".test_path_sync_main_project_obj": (
-            "TestsFlextInfraDepsPathSyncMainProjectObj",
-        ),
-        ".test_path_sync_rewrite_deps": ("TestsFlextInfraDepsPathSyncRewriteDeps",),
-        ".test_path_sync_rewrite_pep621": ("TestsFlextInfraDepsPathSyncRewritePep621",),
-        ".test_path_sync_rewrite_poetry": ("TestsFlextInfraDepsPathSyncRewritePoetry",),
+        # NOTE (multi-agent, mro-wkii.17.9): no lazy exports remain for the
+        # removed path/workspace/Poetry rewrite surface.
         "flext_tests": (
             "c",
             "d",

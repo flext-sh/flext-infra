@@ -160,6 +160,12 @@ class FlextInfraModelsDocs:
 
         check: Annotated[str, m.Field(description="Comma-separated checks")] = "all"
         strict: Annotated[bool, m.Field(description="Strict mode")] = True
+        docstring_min: Annotated[
+            float | None,
+            m.Field(
+                description="Minimum docstring coverage percent; breach fails the scope",
+            ),
+        ] = None
         budgets: Annotated[
             tuple[int | None, t.IntMapping] | None,
             m.Field(description="Budget tuple (default, by_scope)"),

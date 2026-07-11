@@ -1,0 +1,44 @@
+"""{{ ns }} models namespace (pure Pydantic v2; composed into ``m.{{ ns }}`` via MRO).
+
+Pydantic-2-way models ONLY — no methods, no helpers. Custom validators
+(``@field_validator``/``@model_validator``) are reserved for the extreme cases
+where no declarative Field constraint can express the rule. No ``dict`` /
+``TypedDict`` / ``dataclass`` / JSON-type contracts. The ``models.py`` facade
+composes this class into the ``{{ ns }}`` namespace by MRO.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from typing import Annotated, ClassVar
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class {{ class_stem }}Models{{ ns }}:
+    """{{ ns }} domain models (Pydantic v2, built the 2-way)."""
+
+    class PingInput(BaseModel):
+        """Input model for the ``ping`` health-check command (no fields)."""
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(
+            extra="forbid",
+            frozen=True,
+        )
+
+    class PingResult(BaseModel):
+        """Result model for the ``ping`` health-check command."""
+
+        model_config: ClassVar[ConfigDict] = ConfigDict(
+            extra="forbid",
+            frozen=True,
+        )
+        message: Annotated[
+            str,
+            Field(description="Health-check reply message."),
+        ]
+
+
+__all__: list[str] = ["{{ class_stem }}Models{{ ns }}"]

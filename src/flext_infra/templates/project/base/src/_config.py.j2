@@ -1,55 +1,33 @@
-"""{{ class_stem }} runtime business-rule config (YAML-sourced, typed via models).
+"""{{ class_stem }}Config — frozen config singleton for {{ package_name }} (ADR-005).
 
-``{{ class_stem }}Config`` subclasses the shared ``FlextConfig``: every
-``config/*.yaml`` file is auto-discovered and deep-merged at first
-``fetch_global`` call (model-less ingestion boundary, ``extra=allow``). The flat
-YAML is then validated into the pure-Pydantic ``_models/config.py`` shapes and
-exposed as the typed project namespace ``config.{{ class_stem }}`` (a ``Root``
-model), so ``config.{{ class_stem }}.<domain>`` gives fully-validated,
-attribute-typed objects. ALL business rules live in ``config/*.yaml``.
+Model-less: business rules live in ``config/*.yaml`` under the ``{{ ns }}:`` key
+and are exposed through the open ``config.{{ ns }}`` namespace (``extra="allow"``,
+frozen). Access is ``config.{{ ns }}.<domain>``. This is a pure declaration
+module: no methods, no helpers — only the namespace model and the singleton.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-{# mro-wkii.14 (agent: codegen) — cosmos-main / AGENTS.md U2-U8 pattern (typed nested namespace, modeled, model-less ingestion only at the boundary). #}
-from functools import cached_property
-from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+
+from pydantic import BaseModel, ConfigDict
 
 from flext_core import FlextConfig
-from {{ package_name }}._constants.config import {{ class_stem }}ConstantsConfig
-from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
 
-if TYPE_CHECKING:
-    # FLEXT-STRICT: accessor typed by PROTOCOL (p), never by the model class (m);
-    # p is imported only under TYPE_CHECKING (no runtime cycle).
-    from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
+
+class _{{ ns }}Namespace(BaseModel):
+    """Open, frozen namespace exposing every ``config/*.yaml`` domain model-less."""
+
+    model_config = ConfigDict(extra="allow", frozen=True)
 
 
 class {{ class_stem }}Config(FlextConfig):
-    """Frozen {{ class_stem }} config singleton auto-loaded from ``config/*.yaml``."""
+    """{{ class_stem }} config auto-loaded model-less from ``config/*.yaml``."""
 
-    # NOTE(mro-wkii.14, agent codegen): CONFIG_DIR anchored on the PACKAGE via
-    # __file__ (src/<pkg>/config/ — ADR-005), NEVER relative to the CWD (a
-    # cosmos-main defect: "config" only resolves when CWD == repo root). Direct
-    # import of _constants.config (a pure module, no cycle) instead of the c
-    # facade — U5: the config/settings leaf never imports the project's own
-    # c/t/p/m/u facade at runtime.
-    CONFIG_DIR: ClassVar[str] = str(
-        Path(__file__).resolve().parent / {{ class_stem }}ConstantsConfig.CONFIG_DIR
-    )
-
-    @cached_property
-    def {{ class_stem }}(self) -> {{ class_stem }}ProtocolsConfig.Config:
-        """Typed project config namespace validated from the model-less YAML."""
-        return {{ class_stem }}ConfigModels.Root.model_validate(
-            dict(self.model_extra or {}),
-        )
+    {{ ns }}: _{{ ns }}Namespace = _{{ ns }}Namespace()
 
 
-# Pre-instantiated frozen singleton: ready to use directly on import.
 config: {{ class_stem }}Config = {{ class_stem }}Config.fetch_global()
 """Pre-instantiated frozen config singleton — ``from {{ package_name }} import config``."""
 

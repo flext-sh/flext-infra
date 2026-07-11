@@ -244,23 +244,17 @@ templates:
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
+    # NOTE (multi-agent, mro-wkii.19.1): runtime config is app-owned and loaded
+    # by FlextConfig from the project-root config directory.
     - source: base/src/config/ns.yaml.j2
-      destination: 'src/{package_name}/config/{ns}.yaml'
+      destination: 'config/{ns}.yaml'
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
+    # NOTE (multi-agent, mro-wkii.19.1): config/settings declarations live in
+    # the canonical public models/config/settings facets, never parallel parts.
     - source: base/src/_models/__init__.py.j2
       destination: 'src/{package_name}/_models/__init__.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/src/_models/config.py.j2
-      destination: 'src/{package_name}/_models/config.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/src/_models/settings.py.j2
-      destination: 'src/{package_name}/_models/settings.py'
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
@@ -269,43 +263,13 @@ templates:
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
-    - source: base/src/_constants/config.py.j2
-      destination: 'src/{package_name}/_constants/config.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/src/_constants/settings.py.j2
-      destination: 'src/{package_name}/_constants/settings.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
     - source: base/src/_protocols/__init__.py.j2
       destination: 'src/{package_name}/_protocols/__init__.py'
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
-    - source: base/src/_protocols/config.py.j2
-      destination: 'src/{package_name}/_protocols/config.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/src/_protocols/settings.py.j2
-      destination: 'src/{package_name}/_protocols/settings.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
     - source: base/src/_utilities/__init__.py.j2
       destination: 'src/{package_name}/_utilities/__init__.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/src/_utilities/config.py.j2
-      destination: 'src/{package_name}/_utilities/config.py'
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/src/_utilities/settings.py.j2
-      destination: 'src/{package_name}/_utilities/settings.py'
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false

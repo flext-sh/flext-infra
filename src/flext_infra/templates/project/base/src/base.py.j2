@@ -42,7 +42,7 @@ class {{ class_stem }}Service[
         """Health check — return the configured reply (consumed by the CLI)."""
         _ = params
         return r[m.{{ ns }}.PingResult].ok(
-            m.{{ ns }}.PingResult(message=config.{{ class_stem }}.{{ ns }}.ping_reply),
+            m.{{ ns }}.PingResult(message=config.{{ ns }}.ping_reply),
         )
 
 

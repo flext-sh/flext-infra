@@ -312,30 +312,9 @@ if TYPE_CHECKING:
     from tests.unit.deps.test_modernizer_workspace import (
         TestsFlextInfraDepsModernizerWorkspace as TestsFlextInfraDepsModernizerWorkspace,
     )
-    from tests.unit.deps.test_path_sync_init import (
-        TestsFlextInfraDepsPathSyncInit as TestsFlextInfraDepsPathSyncInit,
-    )
-    from tests.unit.deps.test_path_sync_main import (
-        TestsFlextInfraDepsPathSyncMain as TestsFlextInfraDepsPathSyncMain,
-    )
-    from tests.unit.deps.test_path_sync_main_edges import (
-        TestsFlextInfraDepsPathSyncMainEdges as TestsFlextInfraDepsPathSyncMainEdges,
-    )
-    from tests.unit.deps.test_path_sync_main_more import (
-        TestsFlextInfraDepsPathSyncMainMore as TestsFlextInfraDepsPathSyncMainMore,
-    )
-    from tests.unit.deps.test_path_sync_main_project_obj import (
-        TestsFlextInfraDepsPathSyncMainProjectObj as TestsFlextInfraDepsPathSyncMainProjectObj,
-    )
-    from tests.unit.deps.test_path_sync_rewrite_deps import (
-        TestsFlextInfraDepsPathSyncRewriteDeps as TestsFlextInfraDepsPathSyncRewriteDeps,
-    )
-    from tests.unit.deps.test_path_sync_rewrite_pep621 import (
-        TestsFlextInfraDepsPathSyncRewritePep621 as TestsFlextInfraDepsPathSyncRewritePep621,
-    )
-    from tests.unit.deps.test_path_sync_rewrite_poetry import (
-        TestsFlextInfraDepsPathSyncRewritePoetry as TestsFlextInfraDepsPathSyncRewritePoetry,
-    )
+
+    # NOTE (multi-agent, mro-wkii.17.9): path-sync test exports were deleted
+    # with the superseded mutating dependency rewrite command.
     from tests.unit.detectors.test_internal_import_detector import (
         TestsFlextInfraInternalImportDetector as TestsFlextInfraInternalImportDetector,
     )
@@ -859,26 +838,6 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ),
             ".unit.deps.test_modernizer_workspace": (
                 "TestsFlextInfraDepsModernizerWorkspace",
-            ),
-            ".unit.deps.test_path_sync_init": ("TestsFlextInfraDepsPathSyncInit",),
-            ".unit.deps.test_path_sync_main": ("TestsFlextInfraDepsPathSyncMain",),
-            ".unit.deps.test_path_sync_main_edges": (
-                "TestsFlextInfraDepsPathSyncMainEdges",
-            ),
-            ".unit.deps.test_path_sync_main_more": (
-                "TestsFlextInfraDepsPathSyncMainMore",
-            ),
-            ".unit.deps.test_path_sync_main_project_obj": (
-                "TestsFlextInfraDepsPathSyncMainProjectObj",
-            ),
-            ".unit.deps.test_path_sync_rewrite_deps": (
-                "TestsFlextInfraDepsPathSyncRewriteDeps",
-            ),
-            ".unit.deps.test_path_sync_rewrite_pep621": (
-                "TestsFlextInfraDepsPathSyncRewritePep621",
-            ),
-            ".unit.deps.test_path_sync_rewrite_poetry": (
-                "TestsFlextInfraDepsPathSyncRewritePoetry",
             ),
             ".unit.detectors.test_internal_import_detector": (
                 "TestsFlextInfraInternalImportDetector",

@@ -41,6 +41,15 @@ class FlextInfraDocAuditor(
         m.Field(description="Comma-separated audit checks (default: all)"),
     ] = "all"
 
+    # kimi-docs mro-3o9s: threshold de cobertura de docstrings via CLI
+    # (--docstring-min); None = desativado. Substitui o interrogate paralelo.
+    docstring_min: Annotated[
+        float | None,
+        m.Field(
+            description="Minimum docstring coverage percent; breach fails the audit",
+        ),
+    ] = None
+
     def audit(
         self,
         workspace_root: Path,
@@ -67,16 +76,17 @@ class FlextInfraDocAuditor(
         """Audit one scope and persist the standard reports."""
         checks = sorted(self.resolve_checks(params.check))
         issues = self._collect_issues(scope, checks)
+        docstring_coverage = (
+            u.Infra.docs_public_docstring_coverage(scope)
+            if "docstrings" in checks
+            else None
+        )
         report = self._audit_report(
             scope,
             issues=issues,
             checks=checks,
             params=params,
-        )
-        docstring_coverage = (
-            u.Infra.docs_public_docstring_coverage(scope)
-            if "docstrings" in checks
-            else None
+            docstring_coverage=docstring_coverage,
         )
         self.write_audit_reports(
             scope,
@@ -107,6 +117,7 @@ class FlextInfraDocAuditor(
                 params=m.Infra.AuditScopeParams(
                     check=self.checks,
                     strict=self.strict_mode,
+                    docstring_min=self.docstring_min,
                 ),
             ),
             failure_predicate=lambda report: not report.passed,
@@ -125,11 +136,13 @@ class FlextInfraDocAuditor(
             return m.Infra.AuditScopeParams(
                 check="all",
                 strict=self.strict_mode,
+                docstring_min=self.docstring_min,
                 budgets=budgets,
             )
         return m.Infra.AuditScopeParams(
             check=params.check,
             strict=params.strict,
+            docstring_min=params.docstring_min,
             budgets=budgets,
         )
 

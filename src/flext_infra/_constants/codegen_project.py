@@ -83,6 +83,7 @@ class FlextInfraConstantsCodegenProject:
     CODEGEN_SCHEMA_FILENAME: Final[str] = "codegen.schema.json"
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_SCHEMA_FILENAME: Final[str] = "workspace.schema.json"
+    UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     PUBLIC_MAKE_VERBS: Final[tuple[str, ...]] = (
@@ -246,15 +247,8 @@ class FlextInfraConstantsCodegenProject:
             False,
         ),
         (
-            "base/src/_models/config.py.j2",
-            "src/{package_name}/_models/config.py",
-            _BOTH,
-            "render",
-            False,
-        ),
-        (
-            "base/src/_models/settings.py.j2",
-            "src/{package_name}/_models/settings.py",
+            "base/src/_models/{{ns_attr}}.py.j2",
+            "src/{package_name}/_models/{ns_attr}.py",
             _BOTH,
             "render",
             False,
@@ -268,15 +262,8 @@ class FlextInfraConstantsCodegenProject:
             False,
         ),
         (
-            "base/src/_constants/config.py.j2",
-            "src/{package_name}/_constants/config.py",
-            _BOTH,
-            "render",
-            False,
-        ),
-        (
-            "base/src/_constants/settings.py.j2",
-            "src/{package_name}/_constants/settings.py",
+            "base/src/_constants/{{ns_attr}}.py.j2",
+            "src/{package_name}/_constants/{ns_attr}.py",
             _BOTH,
             "render",
             False,
@@ -290,15 +277,8 @@ class FlextInfraConstantsCodegenProject:
             False,
         ),
         (
-            "base/src/_protocols/config.py.j2",
-            "src/{package_name}/_protocols/config.py",
-            _BOTH,
-            "render",
-            False,
-        ),
-        (
-            "base/src/_protocols/settings.py.j2",
-            "src/{package_name}/_protocols/settings.py",
+            "base/src/_protocols/{{ns_attr}}.py.j2",
+            "src/{package_name}/_protocols/{ns_attr}.py",
             _BOTH,
             "render",
             False,
@@ -312,15 +292,23 @@ class FlextInfraConstantsCodegenProject:
             False,
         ),
         (
-            "base/src/_utilities/config.py.j2",
-            "src/{package_name}/_utilities/config.py",
+            "base/src/_utilities/{{ns_attr}}.py.j2",
+            "src/{package_name}/_utilities/{ns_attr}.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # ---- base (internal + external): src _typings ----
+        (
+            "base/src/_typings/__init__.py.j2",
+            "src/{package_name}/_typings/__init__.py",
             _BOTH,
             "render",
             False,
         ),
         (
-            "base/src/_utilities/settings.py.j2",
-            "src/{package_name}/_utilities/settings.py",
+            "base/src/_typings/{{ns_attr}}.py.j2",
+            "src/{package_name}/_typings/{ns_attr}.py",
             _BOTH,
             "render",
             False,

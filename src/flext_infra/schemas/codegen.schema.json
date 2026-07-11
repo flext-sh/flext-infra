@@ -489,8 +489,9 @@
         },
         "entries": {
           "type": "array",
-          "minItems": 60,
-          "maxItems": 60,
+          "$comment": "NOTE(mro-wkii.19.1): one canonical facet per concern; eight config/settings sublayers are forbidden.",
+          "minItems": 52,
+          "maxItems": 52,
           "uniqueItems": true,
           "contains": {
             "type": "object",

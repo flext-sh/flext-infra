@@ -197,24 +197,8 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".deps.test_modernizer_workspace": (
                 "TestsFlextInfraDepsModernizerWorkspace",
             ),
-            ".deps.test_path_sync_init": ("TestsFlextInfraDepsPathSyncInit",),
-            ".deps.test_path_sync_main": ("TestsFlextInfraDepsPathSyncMain",),
-            ".deps.test_path_sync_main_edges": (
-                "TestsFlextInfraDepsPathSyncMainEdges",
-            ),
-            ".deps.test_path_sync_main_more": ("TestsFlextInfraDepsPathSyncMainMore",),
-            ".deps.test_path_sync_main_project_obj": (
-                "TestsFlextInfraDepsPathSyncMainProjectObj",
-            ),
-            ".deps.test_path_sync_rewrite_deps": (
-                "TestsFlextInfraDepsPathSyncRewriteDeps",
-            ),
-            ".deps.test_path_sync_rewrite_pep621": (
-                "TestsFlextInfraDepsPathSyncRewritePep621",
-            ),
-            ".deps.test_path_sync_rewrite_poetry": (
-                "TestsFlextInfraDepsPathSyncRewritePoetry",
-            ),
+            # NOTE (multi-agent, mro-wkii.17.9): the public pure pyproject
+            # conformance contract replaces every path-sync test export.
             ".detectors": ("detectors",),
             ".detectors.test_internal_import_detector": (
                 "TestsFlextInfraInternalImportDetector",

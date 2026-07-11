@@ -8,10 +8,8 @@ from flext_infra import main as infra_main
 
 
 class TestsFlextInfraDepsMainDispatch:
-    @staticmethod
-    def subcommands() -> list[str]:
-        return ["detect", "extra-paths", "internal-sync", "modernize", "path-sync"]
-
     def test_subcommand_help_is_available(self) -> None:
-        for subcommand in self.subcommands():
+        # NOTE (multi-agent, mro-wkii.17.9): deps exposes no conformance alias;
+        # pyproject normalization is consumed only by the codegen owner.
+        for subcommand in ("detect", "extra-paths", "internal-sync", "modernize"):
             tm.that(infra_main(["deps", subcommand, "--help"]), eq=0)

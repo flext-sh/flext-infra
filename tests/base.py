@@ -13,11 +13,8 @@ from tests.settings import TestsFlextInfraSettings
 class TestsFlextInfraServiceBase(tests_s):
     """Infra test service base with source and test settings namespaces."""
 
-    @classmethod
-    @override
-    def fetch_settings(cls) -> TestsFlextInfraSettings:
-        """Return the typed infra+Tests settings singleton for test services."""
-
+    # NOTE (multi-agent, mro-wkii.17.14): flext-tests owns fetch_settings;
+    # this project declares only its more-specific bootstrap settings type.
     @classmethod
     @override
     def _runtime_bootstrap_options(cls) -> m.RuntimeBootstrapOptions:

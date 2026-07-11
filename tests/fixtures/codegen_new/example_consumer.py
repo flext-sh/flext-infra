@@ -31,19 +31,18 @@ def main() -> int:
     """Import the scaffolded package and assert its facade/namespace contract."""
     facts: dict[str, str | bool] = {
         "c_demo_name": c.Demo.NAME,
-        "config_root": type(config.FlextDemo).__name__,
-        "settings_root": type(settings.FlextDemo).__name__,
-        "u_demo_has_config": hasattr(u.Demo, "config"),
-        "u_demo_has_settings": hasattr(u.Demo, "settings"),
-        "u_config_proxy": type(u.Demo.config).__name__,
-        "u_settings_proxy": type(u.Demo.settings).__name__,
+        "config_namespace": type(config.Demo).__name__,
+        "settings_namespace": type(settings.Demo).__name__,
+        "config_has_demo": hasattr(config, "Demo"),
+        "settings_has_demo": hasattr(settings, "Demo"),
+        "u_has_demo": hasattr(u, "Demo"),
     }
-    assert facts["config_root"] == "Root", facts
-    assert facts["settings_root"] == "Root", facts
-    assert facts["u_demo_has_config"] is True, facts
-    assert facts["u_demo_has_settings"] is True, facts
-    assert facts["u_config_proxy"] == "ConfigProxy", facts
-    assert facts["u_settings_proxy"] == "SettingsProxy", facts
+    assert facts["c_demo_name"] == "flext-demo", facts
+    assert facts["config_namespace"] == "_DemoNamespace", facts
+    assert facts["settings_namespace"] == "DemoSettings", facts
+    assert facts["config_has_demo"] is True, facts
+    assert facts["settings_has_demo"] is True, facts
+    assert facts["u_has_demo"] is True, facts
     sys.stdout.write(json.dumps({"status": "OK", "facts": facts}) + "\n")
     return 0
 

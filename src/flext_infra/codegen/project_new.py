@@ -278,9 +278,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
             "flext_git_branch": settings.Infra.flext_git_branch,
             "make_profile": make_profile.value,
             "workspace_root_rel": (
-                ".."
-                if make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                else "."
+                ".." if make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
             ),
             "workspace_members": [],
             "workspace_repositories": [],

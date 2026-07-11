@@ -53,9 +53,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.dependencies import (
         FlextInfraUtilitiesDependencies as FlextInfraUtilitiesDependencies,
     )
-    from flext_infra._utilities.deps_path_sync import (
-        FlextInfraUtilitiesDependencyPathSync as FlextInfraUtilitiesDependencyPathSync,
-    )
     from flext_infra._utilities.deps_repos import (
         FlextInfraInternalSyncRepoMixin as FlextInfraInternalSyncRepoMixin,
     )
@@ -155,6 +152,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.pyproject import (
         FlextInfraUtilitiesPyproject as FlextInfraUtilitiesPyproject,
     )
+    from flext_infra._utilities.pyproject_conform import (
+        FlextInfraUtilitiesPyprojectConform as FlextInfraUtilitiesPyprojectConform,
+    )
     from flext_infra._utilities.refactor import (
         FlextInfraUtilitiesRefactor as FlextInfraUtilitiesRefactor,
     )
@@ -244,7 +244,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".census": ("FlextInfraUtilitiesRefactorCensus",),
         ".codegen": ("FlextInfraUtilitiesCodegen",),
         ".dependencies": ("FlextInfraUtilitiesDependencies",),
-        ".deps_path_sync": ("FlextInfraUtilitiesDependencyPathSync",),
         ".deps_repos": ("FlextInfraInternalSyncRepoMixin",),
         ".discovery": ("FlextInfraUtilitiesDiscovery",),
         ".docs": ("FlextInfraUtilitiesDocs",),
@@ -278,6 +277,7 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".protected_edit_preview": ("FlextInfraUtilitiesProtectedEditPreview",),
         ".protected_edit_writes": ("FlextInfraUtilitiesProtectedEditWrites",),
         ".pyproject": ("FlextInfraUtilitiesPyproject",),
+        ".pyproject_conform": ("FlextInfraUtilitiesPyprojectConform",),
         ".refactor": ("FlextInfraUtilitiesRefactor",),
         ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
         ".release": ("FlextInfraUtilitiesRelease",),

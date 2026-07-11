@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from tests.models import m
-from tests.utilities import u
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -421,7 +420,8 @@ class TestsFlextInfraBasemkMakeContract:
             log_content,
             has=[
                 "python -m flext_infra workspace sync --workspace",
-                "python -m flext_infra deps path-sync --mode auto --apply --workspace",
+                # NOTE (multi-agent, mro-wkii.17.9): path-sync is not part of
+                # the generated Make contract; conform owns pyproject output.
                 "python -m flext_infra deps internal-sync",
                 "uv lock",
                 "uv sync --all-extras --all-groups",

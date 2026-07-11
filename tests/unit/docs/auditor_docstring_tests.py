@@ -147,3 +147,50 @@ class TestsDocstringCoverage:
             )["summary"]
             assert "docstrings" in summary["checks"]
             assert "links" in summary["checks"]
+
+    class TestDocstringMinThreshold:
+        """--docstring-min replaces the interrogate --fail-under gate."""
+
+        def test_coverage_below_minimum_fails_the_audit(
+            self,
+            tmp_path: Path,
+        ) -> None:
+            project = _write_project(tmp_path)
+
+            result = FlextInfraDocAuditor(
+                workspace_root=project,
+                checks="docstrings",
+                docstring_min=80.0,
+            ).execute()
+
+            assert result.failure
+            summary = json.loads(
+                (project / ".reports/docs/audit-summary.json").read_text(
+                    encoding="utf-8",
+                ),
+            )["summary"]
+            assert summary["docstring_coverage"]["percent"] < 80.0
+
+        def test_coverage_above_minimum_keeps_audit_green(
+            self,
+            tmp_path: Path,
+        ) -> None:
+            project = _write_project(tmp_path)
+
+            result = FlextInfraDocAuditor(
+                workspace_root=project,
+                checks="docstrings",
+                docstring_min=40.0,
+            ).execute()
+
+            assert result.success
+
+        def test_no_threshold_disables_the_gate(self, tmp_path: Path) -> None:
+            project = _write_project(tmp_path)
+
+            result = FlextInfraDocAuditor(
+                workspace_root=project,
+                checks="docstrings",
+            ).execute()
+
+            assert result.success

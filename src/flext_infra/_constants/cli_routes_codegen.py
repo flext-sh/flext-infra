@@ -23,8 +23,9 @@ from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncServi
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.models import m
-from flext_infra.utilities import u
 
+# NOTE (multi-agent, mro-wkii.17.9): deps no longer exposes path-sync;
+# codegen consumes the pure u.Infra pyproject renderer internally.
 CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_BASEMK: (
         m.Cli.ResultCommandRoute(
@@ -165,12 +166,6 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                     FlextInfraPyprojectModernizer,
                 ),
             )
-        ),
-        m.Cli.ResultCommandRoute(
-            name="path-sync",
-            help_text="Rewrite internal FLEXT dependency paths",
-            model_cls=m.Infra.PathSyncCommand,
-            handler=u.Infra.execute_command,
         ),
     ),
 }

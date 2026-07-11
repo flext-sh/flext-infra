@@ -11,7 +11,7 @@ import pytest
 import flext_infra as infra_pkg
 from tests.base import s
 from tests.constants import c
-from tests.models import m
+from tests.settings import TestsFlextInfraSettings
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -103,4 +103,10 @@ class TestsFlextInfraPublicApi:
         assert root.__author__ == constants.PACKAGE_AUTHORS[0]
 
     def test_test_service_settings_expose_tests_namespace(self) -> None:
-        assert isinstance(s.fetch_settings().Tests, m.SettingsValue)
+        resolved = s.fetch_settings()
+        roundtrip = TestsFlextInfraSettings.model_validate(
+            resolved.model_dump(mode="python"),
+        )
+
+        assert roundtrip == resolved
+        assert roundtrip.Tests == resolved.Tests
