@@ -133,7 +133,7 @@ $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
 
 # === SIMPLE VERB SURFACE ===
-.PHONY: help boot build check scan fmt docs test val clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
+.PHONY: help boot build check scan fmt docs docs-serve test val clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
 STANDARD_VERBS := boot build check scan fmt docs test val clean pr
 $(STANDARD_VERBS): _preflight
 
@@ -461,6 +461,10 @@ docs: ## Build docs
 		eval $$cmd || exit $$?; \
 	done
 
+# kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
+docs-serve: ## Serve documentation via the flext-infra docs engine
+	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
+
 test: ## Run pytest only
 	$(Q)_files=""; \
 	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
@@ -573,7 +577,7 @@ val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1
 		$(POETRY) run radon mi $(SRC_DIR) -n C -s --sort; \
 	fi; \
 	if echo "$$gates" | grep -qw docstring; then \
-		$(POETRY) run interrogate $(SRC_DIR) --fail-under=$(DOCSTRING_MIN) --ignore-init-method --ignore-magic -q; \
+		$(PROJECT_INFRA_DOCS) audit --workspace . --checks docstrings --docstring-min $(DOCSTRING_MIN) --output-dir .reports/docs; \
 	fi
 
 daemon-start-mypy: ## Start dmypy daemon for this project
