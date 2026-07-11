@@ -10,6 +10,7 @@ from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityG
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
+from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
@@ -63,6 +64,15 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             success_message=success_message,
         )
         for route_name, help_text, model_cls, success_message in (
+            # NOTE (multi-agent, mro-wkii.14 / agent: codegen): ``new`` is the
+            # project-creation entry point; keep it first so it surfaces at the
+            # top of ``codegen --help``. Template/manifest fixes share this lane.
+            (
+                "new",
+                "Create a new FLEXT project from the canonical templates",
+                FlextInfraCodegenProjectNew,
+                "project created",
+            ),
             (
                 "init",
                 "Generate/refresh PEP 562 lazy-import __init__.py files",

@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
+from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -78,6 +80,37 @@ class FlextInfraSettings(FlextCliSettings):
                 description="GitHub Actions ref-name override for dependency sync.",
             ),
         ]
+        # NOTE(mro-wkii.13, agent codegen): default git branch/tag for flext-*
+        # deps derives from the package version ("0.12.0.dev0" -> "0.12.0-dev",
+        # the real remote branch); settings is the SSOT — NO constant, NO
+        # hardcoded version string (operator directive). Env FLEXT_GIT_BRANCH
+        # overrides when the remote ref differs.
+        flext_git_branch: Annotated[
+            str,
+            Field(
+                default_factory=lambda: re.sub(
+                    r"\.dev\d+$", "-dev", version("flext-infra")
+                ),
+                validation_alias="FLEXT_GIT_BRANCH",
+                description="Default git branch/tag for flext-* deps (PEP440 version normalized to branch).",
+            ),
+        ]
+        # NOTE(mro-wkii.14, agent codegen): default VERSION for generated projects
+        # derives from the flext-infra package metadata ("0.12.0.dev0" ->
+        # "0.12.0-dev"); settings is the SSOT — NO constant, NO hardcoded version
+        # (operator directive: version must come from settings, not constants).
+        # Env FLEXT_VERSION overrides. Consumed by codegen ``project_new`` as the
+        # default ``--version`` for every scaffold.
+        flext_version: Annotated[
+            str,
+            Field(
+                default_factory=lambda: re.sub(
+                    r"\.dev\d+$", "-dev", version("flext-infra")
+                ),
+                validation_alias="FLEXT_VERSION",
+                description="Default version stamped into generated project pyproject (from flext-infra metadata).",
+            ),
+        ]
 
         @field_validator("workspace_root", mode="before")
         @classmethod
@@ -85,7 +118,10 @@ class FlextInfraSettings(FlextCliSettings):
             """Coerce workspace root to a resolved absolute path string."""
             if value is None:
                 return None
-            text = str(value).strip()
+            # NOTE(mro-wkii.14, agent codegen): pyrefly unnecessary-type-conversion —
+            # apos o guard None, value ja e str; str(value) removido (gate exigido
+            # para commitar este arquivo verde; sem mudanca de comportamento).
+            text = value.strip()
             if not text:
                 return None
             return str(Path(text).expanduser().resolve())
