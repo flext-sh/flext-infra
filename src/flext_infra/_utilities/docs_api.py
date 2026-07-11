@@ -662,11 +662,18 @@ class FlextInfraUtilitiesDocsApi:
         return modules
 
     @staticmethod
-    def docstring_issues(
+    def _iter_docstring_checks(
         project_root: Path,
         contract: t.Infra.ContainerDict,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Return audit issues for public modules and exports missing docstrings."""
+    ) -> t.SequenceOf[tuple[str, str, bool]]:
+        """Evaluate every public docstring target once (SSOT).
+
+        Yields ``(rel_file, missing_message, documented)`` for the package
+        module, each public module, and each exported symbol — shared by
+        ``docstring_issues`` (undocumented targets) and
+        ``docstring_coverage`` (aggregate metric) so the target set and the
+        docstring predicates can never drift apart.
+        """
         package_name = str(contract.get("package_name", ""))
         module_list = FlextInfraUtilitiesDocsApi._string_values(
             contract.get("modules", []),
@@ -679,7 +686,7 @@ class FlextInfraUtilitiesDocsApi:
                 contract.get("module_exports", []),
             ),
         )
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        results: t.MutableSequenceOf[tuple[str, str, bool]] = []
         module_docstring_checks = [
             (module_name, f"public module `{module_name}` is missing a docstring")
             for module_name in module_list
@@ -697,16 +704,11 @@ class FlextInfraUtilitiesDocsApi:
             if not module_file.exists():
                 continue
             source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            if FlextInfraUtilitiesDocsApi._has_module_docstring(source):
-                continue
-            issues.append(
-                m.Infra.AuditIssue(
-                    file=module_file.relative_to(project_root).as_posix(),
-                    issue_type="missing_docstring",
-                    severity="medium",
-                    message=message,
-                ),
-            )
+            results.append((
+                module_file.relative_to(project_root).as_posix(),
+                message,
+                FlextInfraUtilitiesDocsApi._has_module_docstring(source),
+            ))
         export_docstring_checks = [
             (export_name, module_name)
             for export_name, module_name in target_map.items()
@@ -721,21 +723,53 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not module_file.exists():
                 continue
-            if FlextInfraUtilitiesDocsApi._has_exported_symbol_docstring(
-                project_root,
-                module_name=module_name,
-                symbol_name=export_name,
-            ):
-                continue
-            issues.append(
-                m.Infra.AuditIssue(
-                    file=module_file.relative_to(project_root).as_posix(),
-                    issue_type="missing_docstring",
-                    severity="medium",
-                    message=f"exported symbol `{export_name}` is missing a docstring",
+            results.append((
+                module_file.relative_to(project_root).as_posix(),
+                f"exported symbol `{export_name}` is missing a docstring",
+                FlextInfraUtilitiesDocsApi._has_exported_symbol_docstring(
+                    project_root,
+                    module_name=module_name,
+                    symbol_name=export_name,
                 ),
+            ))
+        return tuple(results)
+
+    @staticmethod
+    def docstring_issues(
+        project_root: Path,
+        contract: t.Infra.ContainerDict,
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+        """Return audit issues for public modules and exports missing docstrings."""
+        return [
+            m.Infra.AuditIssue(
+                file=rel_file,
+                issue_type="missing_docstring",
+                severity="medium",
+                message=message,
             )
-        return issues
+            for rel_file, message, documented in (
+                FlextInfraUtilitiesDocsApi._iter_docstring_checks(
+                    project_root,
+                    contract,
+                )
+            )
+            if not documented
+        ]
+
+    @staticmethod
+    def docstring_coverage(
+        project_root: Path,
+        contract: t.Infra.ContainerDict,
+    ) -> m.Infra.DocstringCoverage:
+        """Aggregate docstring coverage over every public target (percent derived)."""
+        checks = FlextInfraUtilitiesDocsApi._iter_docstring_checks(
+            project_root,
+            contract,
+        )
+        return m.Infra.DocstringCoverage(
+            checked=len(checks),
+            documented=sum(1 for *_head, documented in checks if documented),
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsApi"]

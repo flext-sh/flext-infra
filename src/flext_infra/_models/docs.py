@@ -83,6 +83,31 @@ class FlextInfraModelsDocs:
             m.Field(description="Primary package name for scope"),
         ] = ""
 
+    class DocstringCoverage(m.ContractModel):
+        """Docstring coverage metric for one docs scope.
+
+        ``checked`` counts every public docstring target (package module,
+        public modules, exported symbols); ``documented`` counts targets
+        that carry a docstring. ``percent`` is derived, never stored.
+        """
+
+        checked: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Public docstring targets evaluated"),
+        ]
+        documented: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Targets carrying a docstring"),
+        ]
+
+        @m.computed_field()
+        @property
+        def percent(self) -> float:
+            """Coverage percentage (100.0 when nothing is checked)."""
+            if self.checked == 0:
+                return 100.0
+            return round(100.0 * self.documented / self.checked, 1)
+
     class AuditIssue(m.ContractModel):
         """Single documentation audit finding."""
 

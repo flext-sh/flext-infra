@@ -216,14 +216,23 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     def docs_audit_markdown(
         scope: m.Infra.DocScope,
         issues: t.SequenceOf[m.Infra.AuditIssue],
+        docstring_coverage: m.Infra.DocstringCoverage | None = None,
     ) -> t.StrSequence:
         """Render the standard markdown audit report."""
+        metric_lines: t.MutableSequenceOf[str] = []
+        if docstring_coverage is not None:
+            metric_lines.append(
+                "Docstring coverage: "
+                f"{docstring_coverage.percent}% "
+                f"({docstring_coverage.documented}/{docstring_coverage.checked})",
+            )
         return [
             "# Docs Audit Report",
             "",
             f"Scope: {scope.name}",
             f"Files scanned: {len(FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope))}",
             f"Issues: {len(issues)}",
+            *metric_lines,
             "",
             "| file | type | severity | message |",
             "|---|---|---|---|",

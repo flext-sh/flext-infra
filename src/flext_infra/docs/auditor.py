@@ -66,11 +66,17 @@ class FlextInfraDocAuditor(
             checks=checks,
             params=params,
         )
+        docstring_coverage = (
+            u.Infra.docs_public_docstring_coverage(scope)
+            if "docstrings" in checks
+            else None
+        )
         self.write_audit_reports(
             scope,
             issues,
             set(checks),
             strict=params.strict,
+            docstring_coverage=docstring_coverage,
             to_markdown_fn=u.Infra.docs_audit_markdown,
         )
         self.logger.info(

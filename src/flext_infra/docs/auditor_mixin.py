@@ -121,8 +121,13 @@ class FlextInfraDocAuditorMixin:
         checks: t.Infra.StrSet,
         *,
         strict: bool,
+        docstring_coverage: m.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
-            [m.Infra.DocScope, t.SequenceOf[m.Infra.AuditIssue]],
+            [
+                m.Infra.DocScope,
+                t.SequenceOf[m.Infra.AuditIssue],
+                m.Infra.DocstringCoverage | None,
+            ],
             t.StrSequence,
         ],
     ) -> None:
@@ -136,6 +141,8 @@ class FlextInfraDocAuditorMixin:
             c.Infra.OperationMode.STRICT: strict,
             "report_dir": scope.report_dir.as_posix(),
         }
+        if docstring_coverage is not None:
+            summary["docstring_coverage"] = docstring_coverage.model_dump()
         issues_payload: t.JsonValue = [
             {
                 c.Infra.RK_FILE: issue.file,
@@ -155,7 +162,7 @@ class FlextInfraDocAuditorMixin:
         )
         _ = u.Infra.write_markdown(
             scope.report_dir / "audit-report.md",
-            to_markdown_fn(scope, issues),
+            to_markdown_fn(scope, issues, docstring_coverage),
         )
 
 

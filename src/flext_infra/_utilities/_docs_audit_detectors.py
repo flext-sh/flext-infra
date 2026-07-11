@@ -133,6 +133,19 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         return FlextInfraUtilitiesDocsApi.docstring_issues(scope.path, contract)
 
     @staticmethod
+    def docs_public_docstring_coverage(
+        scope: m.Infra.DocScope,
+    ) -> m.Infra.DocstringCoverage | None:
+        """Aggregate docstring coverage for a project scope (None at root)."""
+        if scope.name == c.Infra.RK_ROOT or not scope.package_name:
+            return None
+        contract = FlextInfraUtilitiesDocsApi.public_contract(
+            scope.path,
+            scope.package_name,
+        )
+        return FlextInfraUtilitiesDocsApi.docstring_coverage(scope.path, contract)
+
+    @staticmethod
     def docs_python_codeblock_issues(
         scope: m.Infra.DocScope,
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
