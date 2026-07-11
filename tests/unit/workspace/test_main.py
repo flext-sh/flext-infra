@@ -123,7 +123,10 @@ def workspace_main(argv: list[str] | None = None) -> int:
 class TestsFlextInfraWorkspaceMain:
     """Behavior contract for test_main."""
 
-    def test_detect_workspace_returns_workspace_mode(self, tmp_path: Path) -> None:
+    def test_unattached_child_does_not_infer_workspace_from_ancestor(
+        self,
+        tmp_path: Path,
+    ) -> None:
         workspace_root = tmp_path / "workspace"
         _write_workspace(workspace_root)
         member_root = workspace_root / "demo-a"
@@ -134,7 +137,7 @@ class TestsFlextInfraWorkspaceMain:
         ).execute()
 
         assert result.success, result.error
-        assert result.value == c.Infra.WorkspaceMode.WORKSPACE
+        assert result.value == c.Infra.WorkspaceMode.STANDALONE
 
     def test_sync_workspace_returns_sync_result(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"

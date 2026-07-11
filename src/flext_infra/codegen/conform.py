@@ -16,6 +16,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -105,13 +106,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
-        config_result = self._load_codegen_config()
+        config_result = self.load_config()
         if config_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 config_result.error or "codegen configuration load failed",
             )
         config = config_result.value
-        workspace_result = self._load_workspace(request.root)
+        workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+            request.root,
+        )
         if workspace_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 workspace_result.error or "workspace manifest load failed",
@@ -138,7 +141,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             repository_workspace = workspace
             if repository.name != workspace.repository.name:
-                member_manifest = self._load_workspace(root)
+                member_manifest = FlextInfraWorkspaceDetector.load_workspace_spec(root)
                 if member_manifest.failure:
                     return r[m.Infra.CodegenPlan].fail(
                         member_manifest.error
@@ -188,7 +191,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return Path(__file__).resolve().parent.parent
 
     @classmethod
-    def _load_codegen_config(cls) -> p.Result[m.Infra.CodegenConfigSpec]:
+    def load_config(cls) -> p.Result[m.Infra.CodegenConfigSpec]:
         """Load schema-validated codegen data and prove its model roundtrip."""
         package_root = cls._package_root()
         source = package_root / "config" / c.Infra.CODEGEN_CONFIG_FILENAME
@@ -209,28 +212,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 exc,
             )
         return r[m.Infra.CodegenConfigSpec].ok(roundtrip)
-
-    @classmethod
-    def _load_workspace(cls, root: Path) -> p.Result[m.Infra.WorkspaceSpec]:
-        """Load the local manifest, the only owner of repository topology."""
-        source = root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        schema = cls._package_root() / "schemas" / c.Infra.WORKSPACE_SCHEMA_FILENAME
-        loaded = u.Cli.config_load(source, schema_path=schema)
-        if loaded.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                loaded.error or f"invalid workspace manifest: {source}",
-            )
-        try:
-            parsed = m.Infra.WorkspaceSpec.model_validate(loaded.value.data)
-            roundtrip = m.Infra.WorkspaceSpec.model_validate(
-                parsed.model_dump(mode="python"),
-            )
-        except c.ValidationError as exc:
-            return r[m.Infra.WorkspaceSpec].fail_op(
-                "workspace manifest model validation",
-                exc,
-            )
-        return r[m.Infra.WorkspaceSpec].ok(roundtrip)
 
     @staticmethod
     def _validate_workspace_catalog(

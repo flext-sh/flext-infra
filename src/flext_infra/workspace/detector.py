@@ -42,11 +42,11 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         )
 
     @classmethod
-    def _load_workspace_spec(
+    def load_workspace_spec(
         cls,
         repository_root: Path,
     ) -> p.Result[m.Infra.WorkspaceSpec]:
-        """Load and model-validate one repository-local workspace manifest."""
+        """Load the canonical repository-local workspace manifest."""
         manifest_path = cls._manifest_path(repository_root)
         loaded = u.Cli.config_load(
             manifest_path,
@@ -207,7 +207,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].fail(
                 f"Git superproject has no workspace manifest: {parent_manifest}",
             )
-        parent_result = cls._load_workspace_spec(superproject_root)
+        parent_result = cls.load_workspace_spec(superproject_root)
         if parent_result.failure:
             return r[c.Infra.WorkspaceMode].fail(parent_result.error)
         parent_spec = parent_result.value
@@ -241,7 +241,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         local_spec = workspace_spec
         local_manifest = cls._manifest_path(member_root)
         if local_spec is None and local_manifest.is_file():
-            local_result = cls._load_workspace_spec(member_root)
+            local_result = cls.load_workspace_spec(member_root)
             if local_result.failure:
                 return r[c.Infra.WorkspaceMode].fail(local_result.error)
             local_spec = local_result.value
@@ -316,7 +316,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         workspace_spec: m.Infra.WorkspaceSpec | None = None
         local_manifest = self._manifest_path(resolved_project_root)
         if local_manifest.is_file():
-            local_result = self._load_workspace_spec(resolved_project_root)
+            local_result = self.load_workspace_spec(resolved_project_root)
             if local_result.failure:
                 return r[c.Infra.WorkspaceMode].fail(local_result.error)
             workspace_spec = local_result.value
