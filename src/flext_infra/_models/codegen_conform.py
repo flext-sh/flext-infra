@@ -55,6 +55,7 @@ class FlextInfraModelsCodegenConform:
 
         name: Annotated[
             c.Infra.MakeProfile,
+            m.BeforeValidator(lambda value: c.Infra.MakeProfile(value)),
             m.Field(description="Closed Make profile name"),
         ]
         environment_scope: Annotated[
@@ -129,6 +130,7 @@ class FlextInfraModelsCodegenConform:
         ]
         verbs: Annotated[
             tuple[FlextInfraModelsCodegenConform.MakeVerbSpec, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered canonical public verbs"),
         ]
         custom_handler_policy: Annotated[
@@ -159,7 +161,11 @@ class FlextInfraModelsCodegenConform:
     class ManagedFileSpec(m.ContractModel):
         """One versioned file owned by codegen."""
 
-        path: Annotated[Path, m.Field(description="Repository-relative file path")]
+        path: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value)),
+            m.Field(description="Repository-relative file path"),
+        ]
         owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
         overwrite: Annotated[
             bool,
@@ -169,13 +175,20 @@ class FlextInfraModelsCodegenConform:
     class TemplateEntrySpec(m.ContractModel):
         """One template-to-destination mapping shared by new and conform."""
 
-        source: Annotated[Path, m.Field(description="Template-root-relative source")]
+        source: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value)),
+            m.Field(description="Template-root-relative source"),
+        ]
         destination: Annotated[
             t.NonEmptyStr,
             m.Field(description="Tokenized repository-relative destination"),
         ]
         profiles: Annotated[
             tuple[c.Infra.MakeProfile, ...],
+            m.BeforeValidator(
+                lambda value: tuple(c.Infra.MakeProfile(item) for item in value),
+            ),
             m.Field(description="Profiles that consume the template"),
         ]
         delegate: Annotated[
@@ -190,9 +203,14 @@ class FlextInfraModelsCodegenConform:
     class TemplatesSpec(m.ContractModel):
         """Universal template root and its complete ordered manifest."""
 
-        root: Annotated[Path, m.Field(description="Package-relative template root")]
+        root: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value)),
+            m.Field(description="Package-relative template root"),
+        ]
         entries: Annotated[
             tuple[FlextInfraModelsCodegenConform.TemplateEntrySpec, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Complete ordered template manifest"),
         ]
 
@@ -214,14 +232,17 @@ class FlextInfraModelsCodegenConform:
         ]
         path: Annotated[
             Path,
+            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="POSIX path relative to its workspace root"),
         ]
         role: Annotated[
             c.Infra.RepositoryRole,
+            m.BeforeValidator(lambda value: c.Infra.RepositoryRole(value)),
             m.Field(description="Repository role in the declared topology"),
         ]
         state: Annotated[
             c.Infra.RepositoryState,
+            m.BeforeValidator(lambda value: c.Infra.RepositoryState(value)),
             m.Field(description="Repository lifecycle state"),
         ] = c.Infra.RepositoryState.ACTIVE
         provider: Annotated[
@@ -230,6 +251,11 @@ class FlextInfraModelsCodegenConform:
         ]
         profile: Annotated[
             c.Infra.MakeProfile | None,
+            m.BeforeValidator(
+                lambda value: (
+                    None if value is None else c.Infra.MakeProfile(value)
+                ),
+            ),
             m.Field(description="Makefile generation profile"),
         ] = None
 
@@ -266,7 +292,11 @@ class FlextInfraModelsCodegenConform:
     class WorkspaceExclusionSpec(m.ContractModel):
         """One explicitly rejected workspace path and its reason."""
 
-        path: Annotated[Path, m.Field(description="Workspace-relative path")]
+        path: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value)),
+            m.Field(description="Workspace-relative path"),
+        ]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
     class WorkspaceSpec(m.ContractModel):
@@ -280,6 +310,7 @@ class FlextInfraModelsCodegenConform:
         ]
         profile: Annotated[
             c.Infra.MakeProfile,
+            m.BeforeValidator(lambda value: c.Infra.MakeProfile(value)),
             m.Field(description="Generated root or independent profile"),
         ]
         members: Annotated[
@@ -292,6 +323,7 @@ class FlextInfraModelsCodegenConform:
         ] = ()
         exclusions: Annotated[
             tuple[FlextInfraModelsCodegenConform.WorkspaceExclusionSpec, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered paths deliberately excluded from inventory"),
         ] = ()
 
@@ -326,6 +358,7 @@ class FlextInfraModelsCodegenConform:
         ]
         manifest: Annotated[
             Path,
+            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="Repository-relative manifest path"),
         ]
 
@@ -339,10 +372,12 @@ class FlextInfraModelsCodegenConform:
         ]
         providers: Annotated[
             tuple[FlextInfraModelsCodegenConform.ProviderSpec, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered Git providers"),
         ]
         profiles: Annotated[
             tuple[FlextInfraModelsCodegenConform.ProfileSpec, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered Make profiles"),
         ]
         make: Annotated[
@@ -351,6 +386,7 @@ class FlextInfraModelsCodegenConform:
         ]
         managed_files: Annotated[
             tuple[FlextInfraModelsCodegenConform.ManagedFileSpec, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Files owned by conform"),
         ]
         templates: Annotated[
@@ -359,10 +395,12 @@ class FlextInfraModelsCodegenConform:
         ]
         repositories: Annotated[
             tuple[FlextInfraModelsCodegenConform.RepositoryRef, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered repository catalog"),
         ]
         workspaces: Annotated[
             tuple[FlextInfraModelsCodegenConform.WorkspaceCatalogRef, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
@@ -406,10 +444,12 @@ class FlextInfraModelsCodegenConform:
         ]
         scope: Annotated[
             c.Infra.CodegenConformScope,
+            m.BeforeValidator(lambda value: c.Infra.CodegenConformScope(value)),
             m.Field(description="Repository selection scope"),
         ] = c.Infra.CodegenConformScope.SELF
         mode: Annotated[
             c.Infra.CodegenConformMode,
+            m.BeforeValidator(lambda value: c.Infra.CodegenConformMode(value)),
             m.Field(description="Read-only check or atomic apply"),
         ] = c.Infra.CodegenConformMode.CHECK
 
