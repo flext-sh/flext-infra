@@ -84,11 +84,12 @@ class FlextInfraModelsDocs:
         ] = ""
 
     class DocstringCoverage(m.ContractModel):
-        """Docstring coverage metric for one docs scope.
+        """Docstring coverage metric for one docs scope (declaration only).
 
         ``checked`` counts every public docstring target (package module,
         public modules, exported symbols); ``documented`` counts targets
-        that carry a docstring. ``percent`` is derived, never stored.
+        that carry a docstring. ``percent`` is a stored value computed by the
+        ``u.Infra.docstring_coverage`` factory — the model holds no behavior.
         """
 
         checked: Annotated[
@@ -99,14 +100,10 @@ class FlextInfraModelsDocs:
             t.NonNegativeInt,
             m.Field(description="Targets carrying a docstring"),
         ]
-
-        @m.computed_field()
-        @property
-        def percent(self) -> float:
-            """Coverage percentage (100.0 when nothing is checked)."""
-            if self.checked == 0:
-                return 100.0
-            return round(100.0 * self.documented / self.checked, 1)
+        percent: Annotated[
+            float,
+            m.Field(description="Coverage percentage (100.0 when nothing checked)"),
+        ]
 
     class AuditIssue(m.ContractModel):
         """Single documentation audit finding."""
@@ -169,12 +166,7 @@ class FlextInfraModelsDocs:
         ] = None
 
     class DocsPhaseReport(m.ContractModel):
-        """Unified report payload for docs phases."""
-
-        @staticmethod
-        def _items_default() -> list[FlextInfraModelsDocs.DocsPhaseItemModel]:
-            """Items default."""
-            return []
+        """Unified report payload for docs phases (declaration only)."""
 
         phase: Annotated[
             str,
@@ -228,7 +220,7 @@ class FlextInfraModelsDocs:
             m.Field(
                 description="Phase-specific item payloads",
             ),
-        ] = m.Field(default_factory=_items_default)
+        ] = m.Field(default_factory=tuple)
 
 
 __all__: list[str] = ["FlextInfraModelsDocs"]

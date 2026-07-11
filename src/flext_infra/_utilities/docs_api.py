@@ -761,14 +761,22 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         contract: t.Infra.ContainerDict,
     ) -> m.Infra.DocstringCoverage:
-        """Aggregate docstring coverage over every public target (percent derived)."""
+        """Aggregate docstring coverage over every public target.
+
+        ``percent`` is computed here (behavior lives in ``u``); the model is a
+        declaration-only payload.
+        """
         checks = FlextInfraUtilitiesDocsApi._iter_docstring_checks(
             project_root,
             contract,
         )
+        checked = len(checks)
+        documented = sum(1 for *_head, documented in checks if documented)
+        percent = 100.0 if checked == 0 else round(100.0 * documented / checked, 1)
         return m.Infra.DocstringCoverage(
-            checked=len(checks),
-            documented=sum(1 for *_head, documented in checks if documented),
+            checked=checked,
+            documented=documented,
+            percent=percent,
         )
 
 
