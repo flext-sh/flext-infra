@@ -770,11 +770,7 @@ all = true
 in_place = true
 sort_first = [ "build-system", "dependency-groups", "project", "tool" ]
 
-[tool.uv.sources.flext-cli]
-workspace = true
-
-[tool.uv.sources.flext-core]
-workspace = true
+# NOTE(mro-wkii.14, agent codegen): member-level [tool.uv.sources] removed — workspace ROOT pyproject is the SSOT (uv root sources apply to all members); carrying workspace=true here broke git+branch consumption of this package outside the workspace.
 
 # [MANAGED] yamlfix
 [tool.yamlfix]
