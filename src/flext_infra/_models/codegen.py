@@ -127,7 +127,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ]
         delegate: Annotated[
             str,
-            m.Field(default="render", description="render|lazy_init|version_file|basemk"),
+            m.Field(
+                default="render", description="render|lazy_init|version_file|basemk"
+            ),
         ] = "render"
         overwrite: Annotated[
             bool,
@@ -193,9 +195,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         def render_count(self, kind: c.Infra.ProjectKind) -> int:
             """Count render-delegated entries for ``kind`` (planning/dry-run)."""
             return sum(
-                1
-                for e in self.entries
-                if e.delegate == "render" and kind in e.kinds
+                1 for e in self.entries if e.delegate == "render" and kind in e.kinds
             )
 
     class ProjectNewResult(
