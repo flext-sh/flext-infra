@@ -108,14 +108,12 @@ class FlextInfraConstantsCodegenProject:
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
     # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
-    # Layout (operator, mro-wkii.13): base/ = common to both kinds (pyproject with
-    # ``{% if project_kind %}`` branches); internal/ = member + REGISTRATION deltas;
-    # external/ = delta-only (currently empty => external == base).
+    # NOTE (multi-agent, mro-wkii.17): one base catalog serves both profiles;
+    # workspace topology is owned only by config/workspace.yaml.
     _BOTH: Final[tuple[ProjectKind, ProjectKind]] = (
         ProjectKind.INTERNAL,
         ProjectKind.EXTERNAL,
     )
-    _INTERNAL: Final[tuple[ProjectKind]] = (ProjectKind.INTERNAL,)
     _EXTERNAL: Final[tuple[ProjectKind]] = (ProjectKind.EXTERNAL,)
 
     PROJECT_TEMPLATE_ENTRIES: Final[
@@ -433,21 +431,6 @@ class FlextInfraConstantsCodegenProject:
             "base/tests/e2e/py.typed.j2",
             "tests/e2e/py.typed",
             _BOTH,
-            "render",
-            False,
-        ),
-        # ---- internal-only (member registration) ----
-        (
-            "internal/projects_member.md.j2",
-            "projects/{dist}.md",
-            _INTERNAL,
-            "render",
-            False,
-        ),
-        (
-            "internal/REGISTRATION.md.j2",
-            "REGISTRATION.md",
-            _INTERNAL,
             "render",
             False,
         ),

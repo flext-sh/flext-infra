@@ -405,16 +405,6 @@ templates:
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
-    - source: internal/projects_member.md.j2
-      destination: 'projects/{dist}.md'
-      profiles: [workspace-member]
-      delegate: render
-      overwrite: false
-    - source: internal/REGISTRATION.md.j2
-      destination: REGISTRATION.md
-      profiles: [workspace-member]
-      delegate: render
-      overwrite: false
 
 repositories:
   - name: flext
