@@ -128,7 +128,6 @@ project-excludes = [
   "**/typings/**",
   "**/vendor/**",
   "**/venv/**",
-  ".flext-deps/**",
   ".venv/**",
   "typings/**",
   "vendor/**",
@@ -136,8 +135,8 @@ project-excludes = [
 project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
 python-interpreter-path = "{% if project_kind == 'internal' %}../.venv/bin/python{% else %}.venv/bin/python{% endif %}"
 python-version = "{{ python_version }}"
-# NOTE(mro-wkii.14, agent codegen): internal resolve flext-* editável em ../
-# (monorepo); external resolve pelo .venv (git pin) — sem ../flext-* aqui.
+# NOTE(mro-wkii.14, agent codegen): internal resolves flext-* editable under ../
+# (monorepo); external resolves via .venv (git pin) — no ../flext-* here.
 search-path = [
   ".",
 {% if project_kind == 'internal' %}
@@ -448,7 +447,7 @@ split-on-trailing-comma = true
 "**/models.py" = [ "PLC0415", "PLC2801", "S102", "S105" ]
 "**/settings.py" = [ "ANN401", "FBT001", "SLF001" ]
 "**/typings.py" = [ "RUF036" ]
-{# mro-wkii.14 (agent: codegen) — N802 para namespace PascalCase config.<Ns>/settings.<Ns> (padrao cosmos-main / AGENTS.md U2-U8). #}
+{# mro-wkii.14 (agent: codegen) - N802 for PascalCase namespace config.<Ns>/settings.<Ns> (cosmos-main pattern / AGENTS.md U2-U8). #}
 "**/_config.py" = [ "N802" ]
 "**/_settings.py" = [ "N802" ]
 "**/_protocols/*.py" = [ "N802" ]
@@ -539,45 +538,30 @@ split-on-trailing-comma = true
 all = true
 in_place = true
 sort_first = [ "build-system", "project", "tool" ]
-# NOTE(mro-wkii.14, agent codegen): topologia por kind (canônico flext-infra,
-# provado por uv lock — sem invenção). INTERNAL = member do monorepo: sources
-# workspace=true (a RAIZ do monorepo é o workspace root; uv sobe até ela).
-# EXTERNAL (standalone) = padrão canônico: sources apontam para clones LOCAIS em
-# .flext-deps/<pkg> (path editable) — `flext-infra deps internal-sync` clona
-# (URLs em flext-repo-map.toml) e `deps path-sync --mode auto` mantém este mapa;
-# uv resolve tudo pelos sources da RAIZ do projeto, ignorando os workspace=true
-# internos dos clones. NUNCA ../flext (anti-pattern) nem git pin (quebra).
-{% if project_kind == 'internal' %}
-
-[tool.uv.sources.flext-cli]
-workspace = true
-
-[tool.uv.sources.flext-core]
-workspace = true
-
-[tool.uv.sources.flext-infra]
-workspace = true
-
-[tool.uv.sources.flext-tests]
-workspace = true
-{% endif %}
+# NOTE(mro-wkii.14, agent codegen): topology by kind (proven by uv lock).
+# INTERNAL = monorepo member: flext-* deps stay bare; the monorepo ROOT
+# (workspace root) declares the workspace=true sources and covers all members
+# (SSOT) — declaring them here would be redundant AND break git consumption
+# from outside. EXTERNAL (standalone) = external packages via git+branch (uv
+# resolves from pyproject; transitive bare deps resolve through these sources).
+# No .flext-deps, no ../flext (anti-pattern).
 {% if project_kind == 'external' %}
 
 [tool.uv.sources.flext-cli]
-editable = true
-path = ".flext-deps/flext-cli"
+git = "{{ flext_git_base_url }}/flext-cli.git"
+branch = "{{ flext_git_branch }}"
 
 [tool.uv.sources.flext-core]
-editable = true
-path = ".flext-deps/flext-core"
+git = "{{ flext_git_base_url }}/flext-core.git"
+branch = "{{ flext_git_branch }}"
 
 [tool.uv.sources.flext-infra]
-editable = true
-path = ".flext-deps/flext-infra"
+git = "{{ flext_git_base_url }}/flext-infra.git"
+branch = "{{ flext_git_branch }}"
 
 [tool.uv.sources.flext-tests]
-editable = true
-path = ".flext-deps/flext-tests"
+git = "{{ flext_git_base_url }}/flext-tests.git"
+branch = "{{ flext_git_branch }}"
 {% endif %}
 
 [tool.yamlfix]

@@ -63,24 +63,9 @@ class FlextInfraConstantsCodegenProject:
         # ambiente (.envrc) em todo scaffold.
         ("base/.mise.toml.j2", ".mise.toml", _BOTH, "render", False),
         ("base/.envrc.j2", ".envrc", _BOTH, "render", False),
-        # NOTE(mro-wkii.14, agent codegen): flext-repo-map.toml (external only)
-        # alimenta `deps internal-sync` com as URLs de clone de .flext-deps/*.
-        (
-            "base/flext-repo-map.toml.j2",
-            "flext-repo-map.toml",
-            _EXTERNAL,
-            "render",
-            False,
-        ),
-        # NOTE(mro-wkii.14, agent codegen): .flext-deps/pyproject.toml (external
-        # only) = workspace root PAI dos clones; commitado via exceção gitignore.
-        (
-            "base/flext-deps-pyproject.toml.j2",
-            ".flext-deps/pyproject.toml",
-            _EXTERNAL,
-            "render",
-            False,
-        ),
+        # NOTE(mro-wkii.14, agent codegen): external consumes flext-* directly via
+        # git+branch in [tool.uv.sources]; local dev uses editable git submodules
+        # under .flext-src/ (make setup). No flext-repo-map.toml / .flext-deps.
         ("base/Makefile.j2", "Makefile", _BOTH, "render", False),
         ("base/custom.mk.j2", "custom.mk", _BOTH, "render", False),
         ("base/pyproject.toml.j2", "pyproject.toml", _BOTH, "render", False),

@@ -93,11 +93,19 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def _exclude_docs_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
-        """Render native ``exclude_docs`` lines for early MkDocs filtering."""
+        """Render native ``exclude_docs`` lines for early MkDocs filtering.
+
+        ``exclude_docs`` is gitignore-style (``pathspec.GitIgnoreSpec``): a bare
+        ``README.md`` matches at every depth and silently drops legitimate
+        ``docs/<section>/README.md`` pages that generated index pages link to
+        (producing nav 404s). The rooted ``/README.md`` excludes only the
+        docs-dir root README (the project README mirror), preserving nested
+        section READMEs. [mro-3o9s nav404 fix]
+        """
         patterns = list(
             dict.fromkeys([
                 *FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs"),
-                "README.md",
+                "/README.md",
             ]),
         )
         return [

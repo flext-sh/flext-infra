@@ -22,9 +22,10 @@ class {{ class_stem }}Models(m):
     class {{ ns }}:
         """Project-specific models namespace."""
 
-        # NOTE (multi-agent, mro-wkii.14 / agent: codegen): par PingInput/PingResult
-        # minimo para o comando `ping` do cli.py gerado (1 rota declarativa);
-        # m.BaseModel/ConfigDict/Field resolvem ao modulo-facade `m` importado acima.
+        # NOTE (multi-agent, mro-wkii.14 / agent: codegen): minimal PingInput/
+        # PingResult pair for the generated cli.py `ping` command (one declarative
+        # route); m.BaseModel/ConfigDict/Field resolve to the `m` facade module
+        # imported above.
         class PingInput(m.BaseModel):
             """Input model for the ``ping`` health-check command (no fields)."""
 

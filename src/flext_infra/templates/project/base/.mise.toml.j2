@@ -10,3 +10,16 @@ python.default_packages_file = ".default-python-packages"
 python = "{{ python_version }}"
 uv = "0.9.21"
 ruff = "0.15.17"
+
+# NOTE(mro-wkii.14, agent codegen): external projects install the platform
+# flext-* deps as editable git submodules under .flext-src/ (see `make setup`).
+# `uv sync` is exact and would revert those editable overlays to the git-pinned
+# builds, so UV_NO_SYNC makes `uv run` use the overlaid .venv as-is. Dependency
+# changes go through `make sync`, which re-runs uv sync and re-applies the overlay.
+[env]
+UV_NO_SYNC = "1"
+{% if project_kind == 'internal' %}
+# Internal members resolve editable through the monorepo workspace; no overlay
+# and no UV_NO_SYNC guard is needed there, but keeping it is harmless (workspace
+# members stay editable across syncs regardless).
+{% endif %}

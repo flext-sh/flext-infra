@@ -10,14 +10,14 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (Protocol estrutural; m via TYPE_CHECKING quando houver domain; sem Any/object/classes). #}
+{# mro-wkii.14 (agent: codegen) — cosmos-main / AGENTS.md U2-U8 pattern (structural Protocol; m via TYPE_CHECKING when a domain exists; no Any/object/classes). #}
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    # NOTE(mro-wkii.14, agent codegen): protocolo tipa @property com o MODELO
-    # REAL (U6: em protocols, m entra SO sob TYPE_CHECKING — reverse obrigatorio,
-    # sem ciclo de runtime). Import interno direto (_models.config e puro
-    # Pydantic).
+    # NOTE(mro-wkii.14, agent codegen): the protocol types each @property with
+    # the REAL MODEL (U6: in protocols, m is imported ONLY under TYPE_CHECKING —
+    # reverse import mandatory, no runtime cycle). Direct internal import
+    # (_models.config is pure Pydantic).
     from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
 
 

@@ -22,8 +22,9 @@ class {{ class_stem }}Protocols(_p):
         """Project-specific port namespace, composed from config/settings parts via MRO."""
 
 
-# NOTE (multi-agent, mro-wkii.14 / agent: codegen): facade single-base (``_p``) +
-# classe interna ``{{ ns }}`` compoe *Config/*Settings via MRO (padrao cosmos-main).
+# NOTE (multi-agent, mro-wkii.14 / agent: codegen): external facade single-base
+# (``_p``) + inner class ``{{ ns }}`` composing *Config/*Settings via MRO
+# (cosmos-main pattern).
 p = {{ class_stem }}Protocols
 
 __all__: list[str] = ["{{ class_stem }}Protocols", "p"]

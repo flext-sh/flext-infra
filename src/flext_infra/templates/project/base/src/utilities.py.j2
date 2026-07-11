@@ -27,9 +27,9 @@ class {{ class_stem }}Utilities(u):
         """Project-specific pure helpers, composed from config/settings parts via MRO."""
 
 
-# NOTE (multi-agent, mro-wkii.14 / agent: codegen): facade externo single-base
-# (alias ``u``) + classe interna ``{{ ns }}`` compoe *Config/*Settings via MRO
-# (padrao cosmos-main); satisfaz ENFORCE-047/049 (AGENTS.md U2-U8).
+# NOTE (multi-agent, mro-wkii.14 / agent: codegen): external facade single-base
+# (alias ``u``) + inner class ``{{ ns }}`` composing *Config/*Settings via MRO
+# (cosmos-main pattern); satisfies ENFORCE-047/049 (AGENTS.md U2-U8).
 u = {{ class_stem }}Utilities
 
 __all__: list[str] = ["{{ class_stem }}Utilities", "u"]

@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (nested tipado, modelado, nunca os.environ). #}
+{# mro-wkii.14 (agent: codegen) — cosmos-main / AGENTS.md U2-U8 pattern (typed nested namespace, modeled, never os.environ). #}
 from functools import cached_property
 from typing import TYPE_CHECKING, ClassVar
 
@@ -22,8 +22,8 @@ from flext_core import FlextSettings
 from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
 
 if TYPE_CHECKING:
-    # FLEXT-STRICT: acessor tipado por PROTOCOLO (p), nunca pela classe de modelo
-    # (m); p entra so sob TYPE_CHECKING (sem ciclo de runtime).
+    # FLEXT-STRICT: accessor typed by PROTOCOL (p), never by the model class (m);
+    # p is imported only under TYPE_CHECKING (no runtime cycle).
     from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
 
 

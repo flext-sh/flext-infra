@@ -32,49 +32,60 @@ else
 # =============================================================================
 # STANDALONE BOOTSTRAP — external project (no parent workspace)
 # =============================================================================
-# NOTE(mro-wkii.14, agent codegen): SEM auto-rebuild de base.mk — a regra
-# `base.mk: Makefile` chamando sub-make caia em RECURSAO INFINITA (o sub-make
-# re-avalia `-include base.mk` ainda inexistente e dispara o rebuild de novo).
-# Design: sem base.mk so existem `setup`/`help` (erro claro nos demais verbos);
-# `make setup` faz o bootstrap DIRETO (sem sub-make): mise trust+install ->
-# git clone das deps em .flext-deps/* (git PURO — pip install "flext-infra @
-# git+..." quebrava resolvendo flext-cli do PyPI, onde nao existe) -> uv sync
-# (cria .venv e instala TUDO editavel a partir de .flext-deps; sem `uv venv`,
-# sem prompt --clear) -> base.mk via flext-infra (agora instalado editavel).
-# Idempotente: rodar `make setup` de novo re-sincroniza tudo.
+# NOTE(mro-wkii.14, agent codegen): local dev uses editable git SUBMODULES WITHOUT
+# touching pyproject (which declares flext-* ONLY via git+branch = portable origin).
+# Flow (validated by Oracle/uv docs): mise trust+install -> git submodule add of
+# each flext-* under .flext-src/<pkg> -> `uv sync` resolves/installs from GITHUB (git
+# sources in pyproject; uv.lock pins the SHA) -> editable overlay `uv pip install -e
+# .flext-src/<pkg> --no-deps --no-sources` (.pth link in .venv; --no-sources stops
+# the build from lowering the submodule's own [tool.uv.sources] and failing with
+# 'not a workspace member'). `uv sync` is EXACT and reverts the editable back to the
+# git-pinned build; that is why the overlay lives in the `sync` target (every sync
+# re-applies it) and UV_NO_SYNC=1 (set in the env via mise/base.mk) makes `uv run`
+# use the overlaid .venv instead of reverting. Idempotent: `git submodule status` guard.
+# uv LIMITATION (uv#12013): there is no way to install a git dep as editable from a
+# local path without writing that path into pyproject; this overlay lives outside the
+# lockfile model -> CI (no overlay) uses the uv.lock SHA, dev uses the local checkout.
+# uv.lock is the SSOT for reproducibility.
 # =============================================================================
 
 MISE ?= mise
 FLEXT_INFRA_BASEMK_GROUP := basemk
-# Lista fixa de deps internas = plataforma (core/cli/infra/tests).
-FLEXT_INTERNAL_DEPS := flext-core flext-cli flext-infra flext-tests
+# Internal platform deps, registered as editable git submodules for local dev.
+FLEXT_DEPS := flext-core flext-cli flext-infra flext-tests
 
 -include base.mk
 
-setup: ## Full setup: mise + clone .flext-deps + uv sync editable + base.mk
+setup: ## Full setup: mise + git submodules (.flext-src) + uv sync + editable overlay + base.mk
 	@echo "==> Ensuring toolchains via mise (python/uv/ruff)..."
 	@$(MISE) trust .mise.toml >/dev/null 2>&1 || true
 	@$(MISE) install
-	@echo "==> Cloning internal deps into .flext-deps/ (git, branch $(FLEXT_GIT_BRANCH))..."
-	@mkdir -p .flext-deps
-	@for dep in $(FLEXT_INTERNAL_DEPS); do \
-		if [ ! -d ".flext-deps/$$dep/.git" ]; then \
-			git clone --quiet --branch "$(FLEXT_GIT_BRANCH)" "$(FLEXT_GIT_BASE_URL)/$$dep.git" ".flext-deps/$$dep" \
-				|| { echo "ERROR: git clone $$dep failed (check FLEXT_GIT_BRANCH/FLEXT_GIT_BASE_URL)"; exit 1; }; \
-		fi; \
+	@echo "==> Registering internal deps as git submodules in .flext-src/ (branch $(FLEXT_GIT_BRANCH))..."
+	@for dep in $(FLEXT_DEPS); do \
+		git submodule status ".flext-src/$$dep" >/dev/null 2>&1 \
+			|| git submodule add -b "$(FLEXT_GIT_BRANCH)" "$(FLEXT_GIT_BASE_URL)/$$dep.git" ".flext-src/$$dep" \
+			|| { echo "ERROR: git submodule add $$dep failed (check FLEXT_GIT_BRANCH/FLEXT_GIT_BASE_URL)"; exit 1; }; \
 	done
-	@echo "==> Installing all dependencies editable (uv sync)..."
-	@$(MISE) exec -- uv sync --all-extras --all-groups
-	@if git rev-parse --git-dir >/dev/null 2>&1; then \
-		$(MISE) exec -- uv run pre-commit install || true; \
-	fi
+	@git submodule update --init --recursive
+	@$(MAKE) sync
+	@if git rev-parse --git-dir >/dev/null 2>&1; then $(MISE) exec -- uv run pre-commit install || true; fi
 	@echo "==> Generating base.mk via flext-infra..."
 	@$(MISE) exec -- uv run python -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
 		--project-name $(PROJECT_NAME) --output base.mk
 	@test -s base.mk || { echo "ERROR: base.mk generation failed"; exit 1; }
 	@echo "==> Setup complete. All 'make' verbs now available (run 'make help')."
 
-.PHONY: setup
+sync: ## Resolve from committed git sources, then re-apply the editable submodule overlay
+	@echo "==> uv sync (git sources from pyproject; uv.lock pins SHAs)..."
+	@$(MISE) exec -- uv sync --all-extras --all-groups
+	@echo "==> Applying editable overlay for .flext-src/* (uv pip install -e --no-deps --no-sources)..."
+	@for dep in $(FLEXT_DEPS); do \
+		test -d ".flext-src/$$dep" \
+			&& $(MISE) exec -- uv pip install -e ".flext-src/$$dep" --no-deps --no-sources \
+			|| echo "  (skip $$dep: submodule not present; run 'make setup')"; \
+	done
+
+.PHONY: setup sync
 
 ifeq ("$(wildcard base.mk)", "")
 .PHONY: help
@@ -86,7 +97,9 @@ help: ## Show available commands
 	@echo ""
 	@echo "Bootstrap targets (no base.mk required):"
 
-	@printf "  %-14s %s\n" "setup" "Full standalone setup (mise + deps + uv sync)"
+	@printf "  %-14s %s\n" "setup" "First-time bootstrap (mise + submodules + uv sync + overlay)"
+
+	@printf "  %-14s %s\n" "sync" "Re-resolve git sources + re-apply editable overlay"
 
 	@printf "  %-14s %s\n" "help" "Show this help"
 

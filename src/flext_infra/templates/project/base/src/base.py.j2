@@ -10,10 +10,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_core import r, s
 from {{ package_name }}._settings import {{ class_stem }}Settings
 from {{ package_name }}.models import {{ class_stem }}Models as m
 from {{ package_name }}.typings import {{ class_stem }}Types as t
+
+if TYPE_CHECKING:
+    from {{ package_name }}.protocols import {{ class_stem }}Protocols as p
 
 
 class {{ class_stem }}Service[
@@ -27,10 +32,11 @@ class {{ class_stem }}Service[
         """Return runtime bootstrap options for {{ package_name }} services."""
         return m.RuntimeBootstrapOptions(settings_type={{ class_stem }}Settings)
 
-    # NOTE (multi-agent, mro-wkii.14 / agent: codegen): 1 metodo de dominio minimo
-    # para o cli.py gerado ter 1 rota real (`<dist> ping` -> pong); sem helpers
-    # soltos, retorno via r[...] (U6/U7). params nao usado => `_ = params` (ARG002).
-    def ping(self, params: m.{{ ns }}.PingInput) -> r[m.{{ ns }}.PingResult]:
+    # NOTE (multi-agent, mro-wkii.14 / agent: codegen): one minimal domain method
+    # so the generated cli.py exposes one real route (`<dist> ping` -> pong); no
+    # loose helpers, result constructed via r[...] and typed via the p.* protocol
+    # (FL 3.2/3.4, U6/U7). params unused => `_ = params` (ARG002).
+    def ping(self, params: m.{{ ns }}.PingInput) -> p.Result[m.{{ ns }}.PingResult]:
         """Health check — return a pong result (consumed by the generated CLI)."""
         _ = params
         return r[m.{{ ns }}.PingResult].ok(

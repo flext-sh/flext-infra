@@ -36,16 +36,17 @@ class {{ class_stem }}Constants(c):
         VERSION: Final[str] = "{{ version }}"
 
         # NOTE (multi-agent, mro-wkii.14 / agent: codegen): CommandType(StrEnum)
-        # e' str-compatible => aceito em m.Cli.ResultCommandRoute.name (NonEmptyStr)
-        # sem .value; mesmo padrao de c.<Ns>.CommandType do algar.
+        # is str-compatible => accepted by m.Cli.ResultCommandRoute.name
+        # (NonEmptyStr) without .value; same pattern as c.<Ns>.CommandType.
         class CommandType(StrEnum):
             """CLI command names for {{ package_name }} (str-compatible)."""
 
             PING = "ping"
 
 
-# NOTE (multi-agent, mro-wkii.14 / agent: codegen): facade single-base (``c``) +
-# classe interna ``{{ ns }}`` compoe *Config/*Settings via MRO (padrao cosmos-main).
+# NOTE (multi-agent, mro-wkii.14 / agent: codegen): external facade single-base
+# (``c``) + inner class ``{{ ns }}`` composing *Config/*Settings via MRO
+# (cosmos-main pattern).
 c = {{ class_stem }}Constants
 
 __all__: list[str] = ["{{ class_stem }}Constants", "c"]
