@@ -283,6 +283,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
                 else "."
             ),
             "workspace_members": [],
+            "workspace_repositories": [],
             "homepage": repository,
             "documentation": repository,
             "year": str(datetime.now(UTC).year),

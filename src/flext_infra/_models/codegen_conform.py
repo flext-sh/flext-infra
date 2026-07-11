@@ -272,12 +272,16 @@ class FlextInfraModelsCodegenConform:
     class WorkspaceSpec(m.ContractModel):
         """Declared topology for exactly one orchestrated workspace."""
 
+        version: Annotated[int, m.Field(ge=1, description="Manifest version")]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        manifest: Annotated[
-            Path,
-            m.Field(description="Workspace-relative topology manifest"),
+        repository: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Root repository catalog key"),
         ]
-        root: Annotated[Path, m.Field(description="Catalog-relative workspace root")]
+        profile: Annotated[
+            c.Infra.MakeProfile,
+            m.Field(description="Generated root or independent profile"),
+        ]
         members: Annotated[
             t.StrSequence,
             m.Field(description="Ordered active member catalog keys"),
@@ -312,6 +316,19 @@ class FlextInfraModelsCodegenConform:
                 raise ValueError(msg)
             return self
 
+    class WorkspaceCatalogRef(m.ContractModel):
+        """Global pointer to a local workspace topology manifest."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
+        repository: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Root repository catalog key"),
+        ]
+        manifest: Annotated[
+            Path,
+            m.Field(description="Repository-relative manifest path"),
+        ]
+
     class CodegenConfigSpec(m.ContractModel):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -345,8 +362,8 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="Ordered repository catalog"),
         ]
         workspaces: Annotated[
-            tuple[FlextInfraModelsCodegenConform.WorkspaceSpec, ...],
-            m.Field(description="Ordered workspace topology catalog"),
+            tuple[FlextInfraModelsCodegenConform.WorkspaceCatalogRef, ...],
+            m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
     class UvEnvironmentPlan(m.ContractModel):
