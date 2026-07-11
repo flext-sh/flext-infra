@@ -43,6 +43,12 @@ class FlextInfraModelsNamespaceEnforcer:
         kind: Annotated[str, m.Field(description="Object kind")]
         suggestion: Annotated[str, m.Field(description="Fix suggestion")] = ""
 
+    class LooseTestFunctionViolation(FileLineViolation):
+        """A module-level ``test_*`` function outside a ``Tests*`` class."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Test function name")]
+        suggestion: Annotated[str, m.Field(description="Fix suggestion")] = ""
+
     class ImportAliasViolation(ImportViolationBase):
         """Import alias violation."""
 

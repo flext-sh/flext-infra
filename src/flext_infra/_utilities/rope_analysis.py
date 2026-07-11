@@ -1487,6 +1487,52 @@ class FlextInfraUtilitiesRopeAnalysis:
         return collected
 
     @staticmethod
+    def ast_parent_map(root: object) -> dict[int, object]:
+        """Return a child-id -> parent map for the full AST reachable from ``root``.
+
+        Uses only public ``_fields`` access (no ``import ast``); the shared SSOT
+        for parent lookups across every rope detector.
+        """
+        parent_map: dict[int, object] = {}
+        stack: list[object] = [root]
+        while stack:
+            parent = stack.pop()
+            for field_name in getattr(parent, "_fields", ()):
+                value = getattr(parent, field_name, None)
+                if isinstance(value, list):
+                    for child in value:
+                        if hasattr(child, "_fields"):
+                            parent_map[id(child)] = parent
+                            stack.append(child)
+                elif hasattr(value, "_fields"):
+                    parent_map[id(value)] = parent
+                    stack.append(value)
+        return parent_map
+
+    @classmethod
+    def is_module_level_node(
+        cls,
+        node: object,
+        parent_map: dict[int, object],
+    ) -> bool:
+        """Return True when ``node`` is a direct child of the module body.
+
+        Walks the parent chain; a node nested inside any ClassDef/FunctionDef is
+        NOT module-level. Shared SSOT for placement detectors.
+        """
+        current = node
+        while True:
+            parent = parent_map.get(id(current))
+            if parent is None:
+                return False
+            parent_kind = cls.node_kind(parent)
+            if parent_kind in {"ClassDef", "FunctionDef", "AsyncFunctionDef"}:
+                return False
+            if parent_kind == "Module":
+                return True
+            current = parent
+
+    @staticmethod
     def name_of(node: object) -> str:
         """Return ``node.id`` (Name) or ``node.attr`` (Attribute) or ``""``."""
         identifier = getattr(node, "id", None)

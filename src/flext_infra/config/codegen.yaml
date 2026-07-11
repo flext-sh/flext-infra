@@ -1,0 +1,786 @@
+# NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
+version: 1
+
+toolchain:
+  python_version: "3.13.11"
+  uv_version: "0.11.28"
+  uv_required_version: "==0.11.28"
+
+providers:
+  - name: flext-sh
+    organization: flext-sh
+    base_url: https://github.com/flext-sh
+    branch: 0.12.0-dev
+  - name: datacosmos-br
+    organization: datacosmos-br
+    base_url: https://github.com/datacosmos-br
+    branch: main
+
+profiles:
+  - name: workspace-root
+    environment_scope: root
+    setup_scope: root-and-members
+    execution_scope: root
+    discovery_scope: manifest
+  - name: workspace-member
+    environment_scope: root-when-attached
+    setup_scope: delegate-root-when-attached
+    execution_scope: root-when-attached
+    discovery_scope: none
+  - name: standalone
+    environment_scope: self
+    setup_scope: self
+    execution_scope: self
+    discovery_scope: none
+
+make:
+  selector: WHAT
+  apply_variable: APPLY
+  apply_value: Y
+  verbs:
+    - name: help
+      default_what: usage
+      apply_guarded: false
+    - name: setup
+      default_what: environment
+      apply_guarded: false
+    - name: deps
+      default_what: check
+      apply_guarded: false
+    - name: build
+      default_what: artifacts
+      apply_guarded: false
+    - name: check
+      default_what: all
+      apply_guarded: false
+    - name: test
+      default_what: all
+      apply_guarded: false
+    - name: format
+      default_what: check
+      apply_guarded: true
+    - name: run
+      default_what: default
+      apply_guarded: false
+    - name: status
+      default_what: diagnostics
+      apply_guarded: false
+    - name: docs
+      default_what: check
+      apply_guarded: false
+    - name: clean
+      default_what: generated
+      apply_guarded: false
+    - name: release
+      default_what: status
+      apply_guarded: false
+    - name: codegen
+      default_what: check
+      apply_guarded: true
+  custom_handler_policy:
+    filename: custom.mk
+    target_pattern: '^_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*$'
+    allow_public_targets: false
+    allow_generated_target_redefinition: false
+    allow_toolchain_declarations: false
+    allow_setup_declarations: false
+    allow_help_declarations: false
+
+managed_files:
+  - path: .gitmodules
+    owner: codegen
+    overwrite: true
+  - path: .mise.toml
+    owner: codegen
+    overwrite: true
+  - path: .python-version
+    owner: codegen
+    overwrite: true
+  - path: Makefile
+    owner: codegen
+    overwrite: true
+  - path: pyproject.toml
+    owner: codegen
+    overwrite: true
+  - path: config/workspace.yaml
+    owner: codegen
+    overwrite: true
+  - path: custom.mk
+    owner: custom
+    overwrite: false
+  - path: uv.lock
+    owner: uv
+    overwrite: false
+
+templates:
+  root: project
+  entries:
+    - source: base/README.md.j2
+      destination: README.md
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/LICENSE.j2
+      destination: LICENSE
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/gitignore.j2
+      destination: .gitignore
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/python-version.j2
+      destination: .python-version
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/env.example.j2
+      destination: .env.example
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/.mise.toml.j2
+      destination: .mise.toml
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/.envrc.j2
+      destination: .envrc
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/Makefile.j2
+      destination: Makefile
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/custom.mk.j2
+      destination: custom.mk
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/pyproject.toml.j2
+      destination: pyproject.toml
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/config/workspace.yaml.j2
+      destination: config/workspace.yaml
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/.vscode/settings.json.j2
+      destination: .vscode/settings.json
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/__init__.py.j2
+      destination: 'src/{package_name}/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/api.py.j2
+      destination: 'src/{package_name}/api.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/cli.py.j2
+      destination: 'src/{package_name}/cli.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/__main__.py.j2
+      destination: 'src/{package_name}/__main__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/base.py.j2
+      destination: 'src/{package_name}/base.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/models.py.j2
+      destination: 'src/{package_name}/models.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/typings.py.j2
+      destination: 'src/{package_name}/typings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/protocols.py.j2
+      destination: 'src/{package_name}/protocols.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/constants.py.j2
+      destination: 'src/{package_name}/constants.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/utilities.py.j2
+      destination: 'src/{package_name}/utilities.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_config.py.j2
+      destination: 'src/{package_name}/_config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_settings.py.j2
+      destination: 'src/{package_name}/_settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/py.typed.j2
+      destination: 'src/{package_name}/py.typed'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/services/__init__.py.j2
+      destination: 'src/{package_name}/services/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/config/ns.yaml.j2
+      destination: 'src/{package_name}/config/{ns}.yaml'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_models/__init__.py.j2
+      destination: 'src/{package_name}/_models/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_models/config.py.j2
+      destination: 'src/{package_name}/_models/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_models/settings.py.j2
+      destination: 'src/{package_name}/_models/settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_constants/__init__.py.j2
+      destination: 'src/{package_name}/_constants/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_constants/config.py.j2
+      destination: 'src/{package_name}/_constants/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_constants/settings.py.j2
+      destination: 'src/{package_name}/_constants/settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_protocols/__init__.py.j2
+      destination: 'src/{package_name}/_protocols/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_protocols/config.py.j2
+      destination: 'src/{package_name}/_protocols/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_protocols/settings.py.j2
+      destination: 'src/{package_name}/_protocols/settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_utilities/__init__.py.j2
+      destination: 'src/{package_name}/_utilities/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_utilities/config.py.j2
+      destination: 'src/{package_name}/_utilities/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_utilities/settings.py.j2
+      destination: 'src/{package_name}/_utilities/settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/__init__.py.j2
+      destination: tests/__init__.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/conftest.py.j2
+      destination: tests/conftest.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/base.py.j2
+      destination: tests/base.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/constants.py.j2
+      destination: tests/constants.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/typings.py.j2
+      destination: tests/typings.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/protocols.py.j2
+      destination: tests/protocols.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/models.py.j2
+      destination: tests/models.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/utilities.py.j2
+      destination: tests/utilities.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/settings.py.j2
+      destination: tests/settings.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/py.typed.j2
+      destination: tests/py.typed
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/unit/__init__.py.j2
+      destination: tests/unit/__init__.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/unit/test_smoke.py.j2
+      destination: tests/unit/test_smoke.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/unit/py.typed.j2
+      destination: tests/unit/py.typed
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/integration/__init__.py.j2
+      destination: tests/integration/__init__.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/integration/base.py.j2
+      destination: tests/integration/base.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/fixtures/__init__.py.j2
+      destination: tests/fixtures/__init__.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/e2e/__init__.py.j2
+      destination: tests/e2e/__init__.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/e2e/base.py.j2
+      destination: tests/e2e/base.py
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/tests/e2e/py.typed.j2
+      destination: tests/e2e/py.typed
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: internal/projects_member.md.j2
+      destination: 'projects/{dist}.md'
+      profiles: [workspace-member]
+      delegate: render
+      overwrite: false
+    - source: internal/REGISTRATION.md.j2
+      destination: REGISTRATION.md
+      profiles: [workspace-member]
+      delegate: render
+      overwrite: false
+
+repositories:
+  - name: flext
+    distribution: flext
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext.git
+    branch: 0.12.0-dev
+    path: .
+    role: workspace-root
+    state: active
+    profile: workspace-root
+  - name: flext-api
+    distribution: flext-api
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-api.git
+    branch: 0.12.0-dev
+    path: flext-api
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-auth
+    distribution: flext-auth
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-auth.git
+    branch: 0.12.0-dev
+    path: flext-auth
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-cli
+    distribution: flext-cli
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-cli.git
+    branch: 0.12.0-dev
+    path: flext-cli
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-core
+    distribution: flext-core
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-core.git
+    branch: 0.12.0-dev
+    path: flext-core
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-db-oracle
+    distribution: flext-db-oracle
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-db-oracle.git
+    branch: 0.12.0-dev
+    path: flext-db-oracle
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-dbt-ldap
+    distribution: flext-dbt-ldap
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-dbt-ldap.git
+    branch: 0.12.0-dev
+    path: flext-dbt-ldap
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-dbt-ldif
+    distribution: flext-dbt-ldif
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-dbt-ldif.git
+    branch: 0.12.0-dev
+    path: flext-dbt-ldif
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-dbt-oracle
+    distribution: flext-dbt-oracle
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-dbt-oracle.git
+    branch: 0.12.0-dev
+    path: flext-dbt-oracle
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-dbt-oracle-wms
+    distribution: flext-dbt-oracle-wms
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-dbt-oracle-wms.git
+    branch: 0.12.0-dev
+    path: flext-dbt-oracle-wms
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-grpc
+    distribution: flext-grpc
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-grpc.git
+    branch: 0.12.0-dev
+    path: flext-grpc
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-infra
+    distribution: flext-infra
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-infra.git
+    branch: 0.12.0-dev
+    path: flext-infra
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-ldap
+    distribution: flext-ldap
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-ldap.git
+    branch: 0.12.0-dev
+    path: flext-ldap
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-ldif
+    distribution: flext-ldif
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-ldif.git
+    branch: 0.12.0-dev
+    path: flext-ldif
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-meltano
+    distribution: flext-meltano
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-meltano.git
+    branch: 0.12.0-dev
+    path: flext-meltano
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-observability
+    distribution: flext-observability
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-observability.git
+    branch: 0.12.0-dev
+    path: flext-observability
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-oracle-oic
+    distribution: flext-oracle-oic
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-oracle-oic.git
+    branch: 0.12.0-dev
+    path: flext-oracle-oic
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-oracle-wms
+    distribution: flext-oracle-wms
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-oracle-wms.git
+    branch: 0.12.0-dev
+    path: flext-oracle-wms
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-plugin
+    distribution: flext-plugin
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-plugin.git
+    branch: 0.12.0-dev
+    path: flext-plugin
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-quality
+    distribution: flext-quality
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-quality.git
+    branch: 0.12.0-dev
+    path: flext-quality
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-tap-ldap
+    distribution: flext-tap-ldap
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-tap-ldap.git
+    branch: 0.12.0-dev
+    path: flext-tap-ldap
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-tap-ldif
+    distribution: flext-tap-ldif
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-tap-ldif.git
+    branch: 0.12.0-dev
+    path: flext-tap-ldif
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-tap-oracle
+    distribution: flext-tap-oracle
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-tap-oracle.git
+    branch: 0.12.0-dev
+    path: flext-tap-oracle
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-tap-oracle-oic
+    distribution: flext-tap-oracle-oic
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-tap-oracle-oic.git
+    branch: 0.12.0-dev
+    path: flext-tap-oracle-oic
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-tap-oracle-wms
+    distribution: flext-tap-oracle-wms
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-tap-oracle-wms.git
+    branch: 0.12.0-dev
+    path: flext-tap-oracle-wms
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-target-ldap
+    distribution: flext-target-ldap
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-target-ldap.git
+    branch: 0.12.0-dev
+    path: flext-target-ldap
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-target-ldif
+    distribution: flext-target-ldif
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-target-ldif.git
+    branch: 0.12.0-dev
+    path: flext-target-ldif
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-target-oracle
+    distribution: flext-target-oracle
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-target-oracle.git
+    branch: 0.12.0-dev
+    path: flext-target-oracle
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-target-oracle-oic
+    distribution: flext-target-oracle-oic
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-target-oracle-oic.git
+    branch: 0.12.0-dev
+    path: flext-target-oracle-oic
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-target-oracle-wms
+    distribution: flext-target-oracle-wms
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-target-oracle-wms.git
+    branch: 0.12.0-dev
+    path: flext-target-oracle-wms
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-tests
+    distribution: flext-tests
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-tests.git
+    branch: 0.12.0-dev
+    path: flext-tests
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: flext-web
+    distribution: flext-web
+    provider: flext-sh
+    url: https://github.com/flext-sh/flext-web.git
+    branch: 0.12.0-dev
+    path: flext-web
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: cosmos-main
+    distribution: cosmos-main
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/cosmos-main.git
+    branch: main
+    path: .
+    role: workspace-root
+    state: active
+    profile: workspace-root
+  - name: cosmos-charts
+    distribution: cosmos-charts
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/cosmos-charts.git
+    branch: main
+    path: apps/cosmos-charts
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: cosmos-gitops
+    distribution: cosmos-gitops
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/cosmos-gitops.git
+    branch: main
+    path: apps/cosmos-gitops
+    role: workspace-member
+    state: active
+    profile: workspace-member
+  - name: cosmos-old
+    distribution: cosmos-old
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/cosmos-old.git
+    branch: main
+    path: apps/cosmos-old
+    role: content-only
+    state: content-only
+  - name: ai-hub
+    distribution: ai-hub
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/ai-hub.git
+    branch: main
+    path: .
+    role: standalone
+    state: active
+    profile: standalone
+  - name: algar-oud-mig
+    distribution: algar-oud-mig
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/algar-oud-mig.git
+    branch: 0.12.0-dev
+    path: .
+    role: standalone
+    state: active
+    profile: standalone
+  - name: gruponos-meltano-native
+    distribution: gruponos-meltano-native
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/gruponos-meltano-native.git
+    branch: 0.12.0-dev
+    path: .
+    role: standalone
+    state: active
+    profile: standalone
+  - name: cosmos-docgen
+    distribution: cosmos-docgen
+    provider: datacosmos-br
+    url: https://github.com/datacosmos-br/cosmos-docgen.git
+    branch: main
+    path: .
+    role: standalone
+    state: active
+    profile: standalone
+
+workspaces:
+  - name: flext
+    repository: flext
+    manifest: config/workspace.yaml
+  - name: cosmos-main
+    repository: cosmos-main
+    manifest: config/workspace.yaml

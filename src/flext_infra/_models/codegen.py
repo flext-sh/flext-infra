@@ -603,6 +603,26 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             description="Constants class pattern regex",
         )
 
+    class TestTreeRulesConfig(m.ArbitraryTypesModel):
+        """Config-driven parameters for the loose-test-function detector.
+
+        Loaded from ``rules/test-tree-rules.yml`` (business rule = config SSOT);
+        the detector is a pure engine over these values (never hardcoded).
+        """
+
+        model_config = m.ConfigDict(frozen=True, extra="forbid")
+
+        version: str = m.Field(description="Config version")
+        test_dir_globs: tuple[str, ...] = m.Field(
+            description="Globs (relative to project root) whose files are tests",
+        )
+        test_fn_prefix: str = m.Field(
+            description="Prefix marking a module-level function as a test",
+        )
+        required_class_prefix: str = m.Field(
+            description="Class prefix a test function must be nested under",
+        )
+
     class FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations.
 

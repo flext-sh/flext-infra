@@ -1,4 +1,4 @@
-# Project-specific targets for {{ dist }} (never overwritten by workspace sync).
-# Included by the Makefile via `-include custom.mk`. Add custom targets below.
-
-.DEFAULT_GOAL ?= help
+# Private project handlers for {{ dist }}.
+# NOTE (multi-agent, mro-wkii.17.4 / agent: codex): this versioned extension
+# accepts only `_custom_<verb>_<what>` handlers. Public targets, aliases,
+# toolchain setup, generated-target redefinitions, and help entries are invalid.

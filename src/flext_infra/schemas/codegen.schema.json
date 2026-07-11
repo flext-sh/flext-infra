@@ -1,0 +1,738 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/flext-sh/flext-infra/schemas/codegen.schema.json",
+  "$comment": "NOTE(mro-wkii.17.5, agent implement_manifest): strict schema for the deterministic codegen SSOT.",
+  "title": "FLEXT Infra Codegen Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "toolchain",
+    "providers",
+    "profiles",
+    "make",
+    "managed_files",
+    "templates",
+    "repositories",
+    "workspaces"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "toolchain": {
+      "$ref": "#/$defs/toolchain"
+    },
+    "providers": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "prefixItems": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/provider"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "flext-sh"
+                },
+                "organization": {
+                  "const": "flext-sh"
+                },
+                "base_url": {
+                  "const": "https://github.com/flext-sh"
+                },
+                "branch": {
+                  "const": "0.12.0-dev"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/provider"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "datacosmos-br"
+                },
+                "organization": {
+                  "const": "datacosmos-br"
+                },
+                "base_url": {
+                  "const": "https://github.com/datacosmos-br"
+                },
+                "branch": {
+                  "const": "main"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "items": false
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "prefixItems": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profile"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "workspace-root"
+                },
+                "environment_scope": {
+                  "const": "root"
+                },
+                "setup_scope": {
+                  "const": "root-and-members"
+                },
+                "execution_scope": {
+                  "const": "root"
+                },
+                "discovery_scope": {
+                  "const": "manifest"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profile"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "workspace-member"
+                },
+                "environment_scope": {
+                  "const": "root-when-attached"
+                },
+                "setup_scope": {
+                  "const": "delegate-root-when-attached"
+                },
+                "execution_scope": {
+                  "const": "root-when-attached"
+                },
+                "discovery_scope": {
+                  "const": "none"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profile"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "standalone"
+                },
+                "environment_scope": {
+                  "const": "self"
+                },
+                "setup_scope": {
+                  "const": "self"
+                },
+                "execution_scope": {
+                  "const": "self"
+                },
+                "discovery_scope": {
+                  "const": "none"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "items": false
+    },
+    "make": {
+      "$ref": "#/$defs/make"
+    },
+    "managed_files": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/managedFile"
+      }
+    },
+    "templates": {
+      "$ref": "#/$defs/templates"
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 40,
+      "maxItems": 40,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repository"
+      }
+    },
+    "workspaces": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "prefixItems": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/workspacePointer"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "flext"
+                },
+                "repository": {
+                  "const": "flext"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/workspacePointer"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "cosmos-main"
+                },
+                "repository": {
+                  "const": "cosmos-main"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._{}-]+(?:/[A-Za-z0-9._{}-]+)*$",
+      "not": {
+        "pattern": "(^|/)\\.\\.(/|$)"
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "python_version",
+        "uv_version",
+        "uv_required_version"
+      ],
+      "properties": {
+        "python_version": {
+          "const": "3.13.11"
+        },
+        "uv_version": {
+          "const": "0.11.28"
+        },
+        "uv_required_version": {
+          "const": "==0.11.28"
+        }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "organization",
+        "base_url",
+        "branch"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "flext-sh",
+            "datacosmos-br"
+          ]
+        },
+        "organization": {
+          "enum": [
+            "flext-sh",
+            "datacosmos-br"
+          ]
+        },
+        "base_url": {
+          "type": "string",
+          "pattern": "^https://github\\.com/(flext-sh|datacosmos-br)$"
+        },
+        "branch": {
+          "enum": [
+            "0.12.0-dev",
+            "main"
+          ]
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "environment_scope",
+        "setup_scope",
+        "execution_scope",
+        "discovery_scope"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "workspace-root",
+            "workspace-member",
+            "standalone"
+          ]
+        },
+        "environment_scope": {
+          "enum": [
+            "root",
+            "root-when-attached",
+            "self"
+          ]
+        },
+        "setup_scope": {
+          "enum": [
+            "root-and-members",
+            "delegate-root-when-attached",
+            "self"
+          ]
+        },
+        "execution_scope": {
+          "enum": [
+            "root",
+            "root-when-attached",
+            "self"
+          ]
+        },
+        "discovery_scope": {
+          "enum": [
+            "manifest",
+            "none"
+          ]
+        }
+      }
+    },
+    "make": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selector",
+        "apply_variable",
+        "apply_value",
+        "verbs",
+        "custom_handler_policy"
+      ],
+      "properties": {
+        "selector": {
+          "const": "WHAT"
+        },
+        "apply_variable": {
+          "const": "APPLY"
+        },
+        "apply_value": {
+          "const": "Y"
+        },
+        "verbs": {
+          "type": "array",
+          "minItems": 13,
+          "maxItems": 13,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/makeVerb"
+          }
+        },
+        "custom_handler_policy": {
+          "$ref": "#/$defs/customHandlerPolicy"
+        }
+      }
+    },
+    "makeVerb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "default_what",
+        "apply_guarded"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "help",
+            "setup",
+            "deps",
+            "build",
+            "check",
+            "test",
+            "format",
+            "run",
+            "status",
+            "docs",
+            "clean",
+            "release",
+            "codegen"
+          ]
+        },
+        "default_what": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "apply_guarded": {
+          "type": "boolean"
+        }
+      }
+    },
+    "customHandlerPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filename",
+        "target_pattern",
+        "allow_public_targets",
+        "allow_generated_target_redefinition",
+        "allow_toolchain_declarations",
+        "allow_setup_declarations",
+        "allow_help_declarations"
+      ],
+      "properties": {
+        "filename": {
+          "const": "custom.mk"
+        },
+        "target_pattern": {
+          "const": "^_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*$"
+        },
+        "allow_public_targets": {
+          "const": false
+        },
+        "allow_generated_target_redefinition": {
+          "const": false
+        },
+        "allow_toolchain_declarations": {
+          "const": false
+        },
+        "allow_setup_declarations": {
+          "const": false
+        },
+        "allow_help_declarations": {
+          "const": false
+        }
+      }
+    },
+    "managedFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "owner",
+        "overwrite"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "owner": {
+          "enum": [
+            "codegen",
+            "custom",
+            "uv"
+          ]
+        },
+        "overwrite": {
+          "type": "boolean"
+        }
+      }
+    },
+    "templates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root",
+        "entries"
+      ],
+      "properties": {
+        "root": {
+          "const": "project"
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 60,
+          "maxItems": 60,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/templateEntry"
+          }
+        }
+      }
+    },
+    "templateEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "destination",
+        "profiles",
+        "delegate",
+        "overwrite"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "destination": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "workspace-root",
+              "workspace-member",
+              "standalone"
+            ]
+          }
+        },
+        "delegate": {
+          "const": "render"
+        },
+        "overwrite": {
+          "const": false
+        }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "distribution",
+        "provider",
+        "url",
+        "branch",
+        "path",
+        "role",
+        "state"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "distribution": {
+          "$ref": "#/$defs/identifier"
+        },
+        "provider": {
+          "enum": [
+            "flext-sh",
+            "datacosmos-br"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://github\\.com/(flext-sh|datacosmos-br)/[a-z0-9][a-z0-9-]*\\.git$"
+        },
+        "branch": {
+          "enum": [
+            "0.12.0-dev",
+            "main"
+          ]
+        },
+        "path": {
+          "anyOf": [
+            {
+              "const": "."
+            },
+            {
+              "$ref": "#/$defs/relativePath"
+            }
+          ]
+        },
+        "role": {
+          "enum": [
+            "workspace-root",
+            "workspace-member",
+            "standalone",
+            "content-only"
+          ]
+        },
+        "state": {
+          "enum": [
+            "active",
+            "content-only"
+          ]
+        },
+        "profile": {
+          "enum": [
+            "workspace-root",
+            "workspace-member",
+            "standalone"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "active"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "required": [
+              "profile"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "workspace-root"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "active"
+              },
+              "profile": {
+                "const": "workspace-root"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "workspace-member"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "active"
+              },
+              "profile": {
+                "const": "workspace-member"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "standalone"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "active"
+              },
+              "profile": {
+                "const": "standalone"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "content-only"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "content-only"
+              }
+            },
+            "not": {
+              "required": [
+                "profile"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "workspacePointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "repository",
+        "manifest"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "repository": {
+          "$ref": "#/$defs/identifier"
+        },
+        "manifest": {
+          "const": "config/workspace.yaml"
+        }
+      }
+    }
+  }
+}
