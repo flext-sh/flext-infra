@@ -146,12 +146,15 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
         ws_only: frozenset[c.Infra.ProjectKind] = frozenset(
             {c.Infra.ProjectKind.INTERNAL},
         )
+        path_ctx: dict[str, str] = {
+            key: value for key, value in ctx.items() if isinstance(value, str)
+        }
         project_entries: list[m.Cli.TemplateRenderEntry] = []
         workspace_entries: list[m.Cli.TemplateRenderEntry] = []
         for entry in manifest.entries:
             if entry.delegate != "render" or kind not in entry.kinds:
                 continue
-            cli_entry = entry.to_cli(ctx)
+            cli_entry = entry.to_cli(path_ctx)
             if entry.kinds == ws_only:
                 workspace_entries.append(cli_entry)
             else:
@@ -224,7 +227,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
             / c.Infra.TEMPLATES_PROJECT_DIR
         )
 
-    def _context(self) -> t.StrMapping:
+    def _context(self) -> t.JsonMapping:
         """Build the full render context from canonical name helpers (ADR-005 §9).
 
         ``class_stem`` is derived ONLY through ``u.derive_class_stem`` (the SSOT);
@@ -237,7 +240,16 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
         ns = self.project_namespace or self._derive_namespace(class_stem)
         alias = self._derive_alias(package_name)
         repository = self.repository or f"https://github.com/flext/{dist}"
-        ctx: dict[str, str] = {
+        kind = c.Infra.ProjectKind(self.kind)
+        make_profile = (
+            c.Infra.MakeProfile.WORKSPACE_MEMBER
+            if kind is c.Infra.ProjectKind.INTERNAL
+            else c.Infra.MakeProfile.STANDALONE
+        )
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): profile/topology are
+        # mandatory template inputs. New internal projects are dual-mode members
+        # rooted one level above; external projects never discover siblings.
+        ctx: dict[str, t.JsonValue] = {
             "dist": dist,
             "const_name": dist,
             "package_name": package_name,
@@ -264,10 +276,17 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
             # version "0.12.0-dev"); consumed by pyproject.toml.j2/Makefile.j2.
             "flext_git_base_url": "https://github.com/flext-sh",
             "flext_git_branch": settings.Infra.flext_git_branch,
+            "make_profile": make_profile.value,
+            "workspace_root_rel": (
+                ".."
+                if make_profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+                else "."
+            ),
+            "workspace_members": [],
             "homepage": repository,
             "documentation": repository,
             "year": str(datetime.now(UTC).year),
-            "project_kind": self.kind,
+            "project_kind": kind.value,
         }
         return ctx
 
