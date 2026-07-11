@@ -102,9 +102,6 @@ managed_files:
   - path: pyproject.toml
     owner: codegen
     overwrite: true
-  - path: config/workspace.yaml
-    owner: codegen
-    overwrite: true
   - path: custom.mk
     owner: custom
     overwrite: false
@@ -168,7 +165,7 @@ templates:
     - source: base/config/workspace.yaml.j2
       destination: config/workspace.yaml
       profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
+      delegate: manifest
       overwrite: false
     - source: base/.vscode/settings.json.j2
       destination: .vscode/settings.json

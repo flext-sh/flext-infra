@@ -170,8 +170,8 @@
     },
     "managed_files": {
       "type": "array",
-      "minItems": 8,
-      "maxItems": 8,
+      "minItems": 7,
+      "maxItems": 7,
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/managedFile"
@@ -529,7 +529,10 @@
           }
         },
         "delegate": {
-          "const": "render"
+          "enum": [
+            "render",
+            "manifest"
+          ]
         },
         "overwrite": {
           "const": false

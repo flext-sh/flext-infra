@@ -401,6 +401,25 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
+        @model_validator(mode="after")
+        def _validate_manifest_ownership(self) -> Self:
+            """Keep the topology manifest as input, never a conform output."""
+            workspace_path = Path("config/workspace.yaml")
+            managed_paths = {item.path for item in self.managed_files}
+            if workspace_path in managed_paths:
+                msg = "config/workspace.yaml cannot be a managed output"
+                raise ValueError(msg)
+            manifest_entries = tuple(
+                item for item in self.templates.entries if item.delegate == "manifest"
+            )
+            if len(manifest_entries) != 1:
+                msg = "exactly one initial workspace manifest template is required"
+                raise ValueError(msg)
+            if manifest_entries[0].destination != workspace_path.as_posix():
+                msg = "manifest delegate must target config/workspace.yaml"
+                raise ValueError(msg)
+            return self
+
     class UvEnvironmentPlan(m.ContractModel):
         """One deterministic uv environment operation plan."""
 
