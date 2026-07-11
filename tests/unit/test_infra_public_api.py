@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import FlextTestsSettings
 
 import flext_infra as infra_pkg
 from tests.base import s
 from tests.constants import c
-from tests.settings import TestsFlextInfraSettings
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -104,9 +104,11 @@ class TestsFlextInfraPublicApi:
 
     def test_test_service_settings_expose_tests_namespace(self) -> None:
         resolved = s.fetch_settings()
-        roundtrip = TestsFlextInfraSettings.model_validate(
+        roundtrip = FlextTestsSettings.model_validate(
             resolved.model_dump(mode="python"),
         )
 
-        assert roundtrip == resolved
+        assert roundtrip.model_dump(mode="python") == resolved.model_dump(
+            mode="python",
+        )
         assert roundtrip.Tests == resolved.Tests

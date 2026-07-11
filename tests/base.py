@@ -2,23 +2,14 @@
 
 from __future__ import annotations
 
-from typing import override
-
 from flext_tests import s as tests_s
-
-from flext_infra import m
-from tests.settings import TestsFlextInfraSettings
 
 
 class TestsFlextInfraServiceBase(tests_s):
-    """Infra test service base with source and test settings namespaces."""
+    """Infra test service base composed directly from flext-tests."""
 
-    # NOTE (multi-agent, mro-wkii.17.14): flext-tests owns fetch_settings;
-    # this project declares only its more-specific bootstrap settings type.
-    @classmethod
-    @override
-    def _runtime_bootstrap_options(cls) -> m.RuntimeBootstrapOptions:
-        return m.RuntimeBootstrapOptions(settings_type=TestsFlextInfraSettings)
+    # NOTE (multi-agent, mro-wkii.17.14): flext-tests is the sole owner of
+    # settings bootstrap behavior; this project adds no forwarding override.
 
 
 s = TestsFlextInfraServiceBase
