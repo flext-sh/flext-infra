@@ -1,13 +1,9 @@
 """Functional tests for ``flext-infra codegen new`` (project scaffold).
 
-The scaffold is proven FUNCTIONALLY — no inline example code and no fake
-harness:
+The scaffold is proven FUNCTIONALLY through its generated public CLI:
 
-* the example consumer program lives as a FIXTURE
-  (``tests/fixtures/codegen_new/example_consumer.py``) and is executed as a real
-  subprocess against the freshly generated project (isolated interpreter, the
-  generated ``src`` on ``PYTHONPATH``), the way a downstream user would actually
-  import it;
+* ``python -m flext_demo ping`` runs as a real subprocess against the freshly
+  generated project with the generated ``src`` on ``PYTHONPATH``;
 * the expected file layout is a golden FIXTURE
   (``expected_external.txt`` / ``expected_internal.txt``) compared as data.
 
@@ -15,9 +11,8 @@ Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-# NOTE (multi-agent, mro-wkii.14 / agent: codegen): example code + golden layout
-# moved to tests/fixtures/codegen_new (operator live order); test only
-# orchestrates the real service and a real subprocess.
+# NOTE (multi-agent, mro-wkii.17 / agent: codex): generated public CLI replaces
+# the out-of-context Python fixture so the repository remains fully type-checkable.
 from __future__ import annotations
 
 import os
@@ -36,7 +31,6 @@ if TYPE_CHECKING:
     from tests.typings import t
 
 _FIXTURES = Path(__file__).parents[2] / "fixtures" / "codegen_new"
-_CONSUMER = _FIXTURES / "example_consumer.py"
 
 
 def _golden(name: str) -> tuple[str, ...]:
@@ -88,14 +82,14 @@ def internal_project(tmp_path: Path) -> Path:
     return outcome.value.root
 
 
-def _run_consumer(root: Path) -> subprocess.CompletedProcess[str]:
-    """Run the example consumer fixture against ``root/src`` in a subprocess."""
+def _run_cli(root: Path) -> subprocess.CompletedProcess[str]:
+    """Run the generated package CLI through its public module entrypoint."""
     pythonpath = os.pathsep.join(
         part for part in (str(root / "src"), os.environ.get("PYTHONPATH", "")) if part
     )
     env = {**os.environ, "PYTHONPATH": pythonpath}
     return subprocess.run(
-        [sys.executable, str(_CONSUMER)],
+        [sys.executable, "-m", "flext_demo", "ping"],
         capture_output=True,
         text=True,
         cwd=root,
@@ -115,22 +109,24 @@ class TestCodegenNewInternalLayout:
         tm.that(_relpaths(internal_project), eq=_golden("expected_internal.txt"))
 
 
-class TestCodegenNewConsumerFunctional:
-    def test_external_consumer_runs_in_subprocess(
+class TestCodegenNewCliFunctional:
+    def test_external_cli_runs_in_subprocess(
         self,
         external_project: Path,
     ) -> None:
-        proc = _run_consumer(external_project)
+        proc = _run_cli(external_project)
         tm.that(proc.returncode, eq=0)
-        tm.that(proc.stdout.strip(), eq="OK")
+        tm.that(bool(proc.stdout.strip()), eq=True)
+        tm.that(proc.stderr.strip(), eq="")
 
-    def test_internal_consumer_runs_in_subprocess(
+    def test_internal_cli_runs_in_subprocess(
         self,
         internal_project: Path,
     ) -> None:
-        proc = _run_consumer(internal_project)
+        proc = _run_cli(internal_project)
         tm.that(proc.returncode, eq=0)
-        tm.that(proc.stdout.strip(), eq="OK")
+        tm.that(bool(proc.stdout.strip()), eq=True)
+        tm.that(proc.stderr.strip(), eq="")
 
 
 class TestCodegenNewDryRun:
