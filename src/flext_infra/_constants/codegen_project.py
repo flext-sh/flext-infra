@@ -126,11 +126,9 @@ class FlextInfraConstantsCodegenProject:
         ("base/gitignore.j2", ".gitignore", _BOTH, "render", False),
         ("base/python-version.j2", ".python-version", _BOTH, "render", False),
         ("base/env.example.j2", ".env.example", _BOTH, "render", False),
-        # NOTE(mro-wkii.14, agent codegen): mise + direnv para entregar
-        # python/uv/ruff padronizados (.mise.toml) e ativação automática do
-        # ambiente (.envrc) em todo scaffold.
+        # NOTE(mro-wkii.17, agent codex): Mise is the only generated toolchain
+        # owner. The former .envrc duplicated environment state and was removed.
         ("base/.mise.toml.j2", ".mise.toml", _BOTH, "render", False),
-        ("base/.envrc.j2", ".envrc", _BOTH, "render", False),
         # NOTE(mro-wkii.14, agent codegen): external consumes flext-* directly via
         # git+branch in [tool.uv.sources]; local dev uses editable git submodules
         # under .flext-src/ (make setup). No flext-repo-map.toml / .flext-deps.

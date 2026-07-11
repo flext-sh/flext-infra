@@ -1,5 +1,4 @@
 .env.example
-.envrc
 .gitignore
 .mise.toml
 .python-version
