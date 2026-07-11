@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r, s
+from {{ package_name }}._config import config
 from {{ package_name }}._settings import {{ class_stem }}Settings
 from {{ package_name }}.models import {{ class_stem }}Models as m
 from {{ package_name }}.typings import {{ class_stem }}Types as t
@@ -33,14 +34,15 @@ class {{ class_stem }}Service[
         return m.RuntimeBootstrapOptions(settings_type={{ class_stem }}Settings)
 
     # NOTE (multi-agent, mro-wkii.14 / agent: codegen): one minimal domain method
-    # so the generated cli.py exposes one real route (`<dist> ping` -> pong); no
-    # loose helpers, result constructed via r[...] and typed via the p.* protocol
-    # (FL 3.2/3.4, U6/U7). params unused => `_ = params` (ARG002).
+    # so the generated cli.py exposes one real route (`<dist> ping` -> reply). The
+    # reply text is a BUSINESS RULE sourced from config/{{ ns }}.yaml (ADR-005),
+    # never a literal in the engine; this method is a pure engine over config +
+    # models. No loose helpers; result typed via the p.* protocol (FL 3.2/3.4).
     def ping(self, params: m.{{ ns }}.PingInput) -> p.Result[m.{{ ns }}.PingResult]:
-        """Health check — return a pong result (consumed by the generated CLI)."""
+        """Health check — return the configured reply (consumed by the CLI)."""
         _ = params
         return r[m.{{ ns }}.PingResult].ok(
-            m.{{ ns }}.PingResult(message="pong"),
+            m.{{ ns }}.PingResult(message=config.{{ class_stem }}.{{ ns }}.ping_reply),
         )
 
 
