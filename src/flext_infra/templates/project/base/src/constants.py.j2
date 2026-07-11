@@ -1,25 +1,28 @@
-"""{{ class_stem }} constants — extends the upstream ``c`` facade.
-
-Project-specific constants live under ``c.{{ ns }}.*``; everything else is
-inherited from the upstream facade. The ``{{ ns }}`` namespace is composed from
-the ``_constants/{{ ns_attr }}.py`` domain part via MRO.
+"""{{ class_stem }} constants facade.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
+{# NOTE (multi-agent, mro-wkii.19.1): config/settings foundation parts compose the single constants namespace. #}
 from __future__ import annotations
 
 from {{ upstream }} import c
 
-from {{ package_name }}._constants.{{ ns_attr }} import {{ class_stem }}Constants{{ ns }}
+from {{ package_name }}._constants.base import {{ class_stem }}ConstantsBase
+from {{ package_name }}._constants.config import {{ class_stem }}ConstantsConfig
+from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSettings
 
 
-class {{ class_stem }}Constants(c, {{ class_stem }}Constants{{ ns }}):
-    """{{ class_stem }} domain constants extending the upstream ``c`` facade."""
+class {{ class_stem }}Constants(c):
+    """{{ class_stem }} constants extending the upstream facade."""
 
-    class {{ ns }}({{ class_stem }}Constants{{ ns }}):
-        """Project-specific constants namespace (composed via MRO)."""
+    class {{ ns }}(
+        {{ class_stem }}ConstantsBase,
+        {{ class_stem }}ConstantsConfig,
+        {{ class_stem }}ConstantsSettings,
+    ):
+        """Complete {{ ns }} constants namespace."""
 
 
 c = {{ class_stem }}Constants

@@ -1,9 +1,5 @@
-"""{{ class_stem }}Config — frozen config singleton for {{ package_name }} (ADR-005).
-
-Model-less: business rules live in ``config/*.yaml`` under the ``{{ ns }}:`` key
-and are exposed through the open ``config.{{ ns }}`` namespace (``extra="allow"``,
-frozen). Access is ``config.{{ ns }}.<domain>``. This is a pure declaration
-module: no methods, no helpers — only the namespace model and the singleton.
+{# NOTE (multi-agent, mro-wkii.19.1): the private loader composes the pure model and exports only the direct singleton. #}
+"""Direct {{ class_stem }} config singleton export.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,24 +7,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import FlextConfig
+from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
+from {{ package_name }}._utilities.config import {{ class_stem }}UtilitiesConfig
+
+if TYPE_CHECKING:
+    from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
 
 
-class _{{ ns }}Namespace(BaseModel):
-    """Open, frozen namespace exposing every ``config/*.yaml`` domain model-less."""
+class _{{ class_stem }}Config(FlextConfig, {{ class_stem }}ConfigModels.ConfigRoot):
+    """Private source loader composed with the validated config root."""
 
-    model_config = ConfigDict(extra="allow", frozen=True)
-
-
-class {{ class_stem }}Config(FlextConfig):
-    """{{ class_stem }} config auto-loaded model-less from ``config/*.yaml``."""
-
-    {{ ns }}: _{{ ns }}Namespace = _{{ ns }}Namespace()
+    CONFIG_DIR: ClassVar[str] = {{ class_stem }}UtilitiesConfig.source_directory(
+        __file__,
+    )
 
 
-config: {{ class_stem }}Config = {{ class_stem }}Config.fetch_global()
-"""Pre-instantiated frozen config singleton — ``from {{ package_name }} import config``."""
+config: {{ class_stem }}ProtocolsConfig.Config = _{{ class_stem }}Config()
 
-__all__: list[str] = ["{{ class_stem }}Config", "config"]
+__all__: list[str] = ["config"]

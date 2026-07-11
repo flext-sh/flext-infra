@@ -1,40 +1,26 @@
-"""{{ class_stem }} config-domain utilities part (composed into ``u.{{ class_stem }}`` via MRO).
-
-``ConfigProxy`` delivers ``config.{{ class_stem }}`` typed by PROTOCOL (see
-``_protocols/config``), never by class and never ``Any``/``object``/raw ``dict``.
-``p`` enters only under ``TYPE_CHECKING``; resolution of ``{{ package_name }}.config``
-is lazy via ``importlib`` (no load cycle). No loose helpers / no compat aliases.
+"""Internal config-source composition for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-{# mro-wkii.14 (agent: codegen) — cosmos-main / AGENTS.md U2-U8 pattern (ConfigProxy typed by protocol, lazy via importlib, p via TYPE_CHECKING). #}
-import importlib
-from typing import TYPE_CHECKING, ClassVar
+{# NOTE (multi-agent, mro-wkii.19.1): internal source resolution runs once and never accesses the public singleton. #}
+from pathlib import Path
 
-if TYPE_CHECKING:
-    from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
-
-
-class ConfigProxy:
-    """Lazy proxy to ``config.{{ class_stem }}`` (protocol-typed; never dict/class)."""
-
-    @property
-    def root(self) -> {{ class_stem }}ProtocolsConfig.Config:
-        """Validated ``config.{{ class_stem }}`` namespace (structural protocol type).
-
-        Add one ``@property`` per validated domain returning its protocol
-        (e.g. ``def secrets(self) -> {{ class_stem }}ProtocolsConfig.Secrets``).
-        """
-        return importlib.import_module("{{ package_name }}").config.{{ class_stem }}
+from {{ package_name }}._constants.config import {{ class_stem }}ConstantsConfig
 
 
 class {{ class_stem }}UtilitiesConfig:
-    """Typed config access; composed into ``u.{{ class_stem }}`` via MRO."""
+    """Resolve the packaged YAML source used once by the config model."""
 
-    config: ClassVar[ConfigProxy] = ConfigProxy()
+    @staticmethod
+    def source_directory(module_file: str) -> str:
+        """Return the packaged config directory for the root config module."""
+        return str(
+            Path(module_file).resolve().parent
+            / {{ class_stem }}ConstantsConfig.CONFIG_DIR,
+        )
 
 
-__all__: list[str] = ["ConfigProxy", "{{ class_stem }}UtilitiesConfig"]
+__all__: list[str] = ["{{ class_stem }}UtilitiesConfig"]

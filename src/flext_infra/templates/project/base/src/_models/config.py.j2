@@ -1,54 +1,36 @@
-"""{{ class_stem }} config models (pure Pydantic; no project/flext imports at runtime).
-
-Typed, frozen shapes for the ``config/*.yaml`` business-rule SSOT. This module
-imports nothing but ``pydantic`` — the ``_config.py`` facade validates the
-model-less YAML slices into these classes and exposes the ready objects under
-``config.{{ class_stem }}.<domain>``. Adding a config domain = add a nested model
-here (``frozen=True, extra="forbid"``) and a validated field on ``Root``; forward
-refs resolve at ``model_validate`` time (called from ``_config.py``), so no
-``model_rebuild`` is needed.
+{# NOTE (multi-agent, mro-wkii.19.1): config shapes are pure Pydantic declarations; source loading belongs to _config.py. #}
+"""{{ class_stem }} pure Pydantic config models.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-{# mro-wkii.14 (agent: codegen) — cosmos-main / AGENTS.md U2-U8 pattern; flext-core base is being stabilized by another agent. #}
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class {{ class_stem }}ConfigModels:
-    """Namespace of typed {{ class_stem }} config models (pure Pydantic).
+    """Field-only Pydantic declarations for the {{ ns }} config singleton."""
 
-    Add one ``frozen=True, extra="forbid"`` nested model per config domain and
-    reference it from ``Root``. Never expose ``dict``/``Any``/``object`` here.
-    """
-
-    class {{ ns }}(BaseModel):
-        """``{{ ns }}`` config domain — keys of ``config/{{ ns }}.yaml`` validated.
-
-        One typed field per YAML key under the ``{{ ns }}:`` namespace; a typo in
-        the YAML fails fast at ``fetch_global`` (frozen + extra="forbid").
-        """
-
-        model_config = ConfigDict(frozen=True, extra="forbid")
-
-        greeting: str = "hello"
-        ping_reply: str = "pong"
-
-    class Root(BaseModel):
-        """Root {{ class_stem }} runtime config validated from ``config/*.yaml``.
-
-        Domains reference the nested models directly; ``from __future__ import
-        annotations`` keeps them as lazy forward refs that resolve at
-        ``model_validate`` time (called from ``_config.py``), so no
-        ``model_rebuild`` is needed.
-        """
+    class ConfigRoot(BaseModel):
+        """Validated root loaded by the private config composition."""
 
         model_config = ConfigDict(frozen=True, extra="ignore")
 
-        {{ ns }}: {{ class_stem }}ConfigModels.{{ ns }} = Field(
-            default_factory=lambda: {{ class_stem }}ConfigModels.{{ ns }}(),
+        class ConfigNamespace(BaseModel):
+            """Validated values loaded from ``config/{{ ns }}.yaml``."""
+
+            model_config = ConfigDict(frozen=True, extra="forbid")
+
+            name: str
+            version: str
+            greeting: str
+            ping_reply: str
+            disabled_reply: str
+
+        {{ ns }}: ConfigNamespace = Field(
+            description="Validated {{ ns }} project configuration.",
         )
 
 

@@ -4,32 +4,13 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
-
-from typing import override
+from __future__ import annotations{# NOTE (multi-agent, mro-wkii.19.1): tests reuse flext-tests directly and consume project settings only at call sites. #}
 
 from flext_tests import s as tests_s
 
-from {{ package_name }} import m, t
-from tests.settings import Tests{{ class_stem }}Settings
 
-
-class Tests{{ class_stem }}ServiceBase[
-    TResult: t.JsonPayload | t.SequenceOf[t.JsonPayload] = t.JsonPayload
-    | t.SequenceOf[t.JsonPayload],
-](tests_s[TResult]):
-    """{{ class_stem }} test service base with source and test settings namespaces."""
-
-    @classmethod
-    @override
-    def fetch_settings(cls) -> Tests{{ class_stem }}Settings:
-        """Return the typed {{ class_stem }}+Tests settings singleton."""
-        return Tests{{ class_stem }}Settings.fetch_global()
-
-    @classmethod
-    @override
-    def _runtime_bootstrap_options(cls) -> m.RuntimeBootstrapOptions:
-        return m.RuntimeBootstrapOptions(settings_type=Tests{{ class_stem }}Settings)
+class Tests{{ class_stem }}ServiceBase(tests_s):
+    """{{ class_stem }} test service base."""
 
 
 s = Tests{{ class_stem }}ServiceBase

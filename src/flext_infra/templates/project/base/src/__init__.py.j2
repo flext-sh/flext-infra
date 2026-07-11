@@ -8,12 +8,12 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
+from __future__ import annotations{# NOTE (multi-agent, mro-wkii.19.1): root exports only direct config/settings singleton surfaces, never loader classes. #}
 
 from {{ upstream }} import r
 
-from {{ package_name }}._config import {{ class_stem }}Config, config
-from {{ package_name }}._settings import {{ class_stem }}Settings, settings
+from {{ package_name }}._config import config
+from {{ package_name }}._settings import settings
 from {{ package_name }}.api import {{ class_stem }}, {{ alias }}
 from {{ package_name }}.base import {{ class_stem }}Service, s
 from {{ package_name }}.constants import {{ class_stem }}Constants, c
@@ -24,12 +24,10 @@ from {{ package_name }}.utilities import {{ class_stem }}Utilities, u
 
 __all__: list[str] = [
     "{{ class_stem }}",
-    "{{ class_stem }}Config",
     "{{ class_stem }}Constants",
     "{{ class_stem }}Models",
     "{{ class_stem }}Protocols",
     "{{ class_stem }}Service",
-    "{{ class_stem }}Settings",
     "{{ class_stem }}Types",
     "{{ class_stem }}Utilities",
     "c",

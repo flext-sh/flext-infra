@@ -489,9 +489,9 @@
         },
         "entries": {
           "type": "array",
-          "$comment": "NOTE(mro-wkii.19.1): one canonical facet per concern; eight config/settings sublayers are forbidden.",
-          "minItems": 52,
-          "maxItems": 52,
+          "$comment": "NOTE(mro-wkii.19.1): U18 keeps one base/config/settings composition path with no access proxies.",
+          "minItems": 59,
+          "maxItems": 59,
           "uniqueItems": true,
           "contains": {
             "type": "object",

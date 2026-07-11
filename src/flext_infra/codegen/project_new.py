@@ -55,21 +55,19 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
     package_name: Annotated[
         str,
         m.Field(
-            default="",
             description="Python package name (default: name with '-'→'_').",
         ),
-    ]
+    ] = ""
     # NOTE (multi-agent, mro-wkii.14 / agent: codegen): field renamed
     # ``namespace``→``project_namespace`` to avoid colliding with the inherited
     # base field ``target_namespace`` (alias ``namespace``); CLI flag stays ``--ns``.
     project_namespace: Annotated[
         str,
         m.Field(
-            default="",
             alias="ns",
             description="Facade namespace slot (default: class stem minus 'Flext').",
         ),
-    ]
+    ] = ""
     description: Annotated[
         str,
         m.Field(default="", description="Project description (default: derived)."),
@@ -80,10 +78,9 @@ class FlextInfraCodegenProjectNew(s[m.Infra.ProjectNewResult]):
     version: Annotated[
         str,
         m.Field(
-            default_factory=lambda: settings.Infra.flext_version,
             description="Initial project version (default: settings.Infra.flext_version).",
         ),
-    ]
+    ] = settings.Infra.flext_version
     python_version: Annotated[
         str,
         m.Field(

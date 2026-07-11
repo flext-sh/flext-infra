@@ -8,10 +8,8 @@ process), so imports stay at the top of the module and there is no ``sys.path``
 mutation.
 
 It imports the generated ``flext_demo`` package, reaches domain concerns through
-the canonical facades and namespaces (``c.Demo`` / ``u.Demo`` /
-``config.FlextDemo`` / ``settings.FlextDemo``), asserts the scaffold contract,
-emits a single JSON line (``{"status": "OK", ...}``) and exits ``0``. On any
-failure it emits ``{"status": "FAIL", ...}`` and exits ``1``.
+the canonical facades and direct config/settings singletons, asserts public
+behavior, writes ``OK`` and exits ``0``. Failures propagate as a non-zero exit.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,29 +19,24 @@ SPDX-License-Identifier: MIT
 # fixture (operator live order) — not inline Python inside the test body.
 from __future__ import annotations
 
-import json
 import sys
 
-from flext_demo import c, config, settings, u
+from flext_demo import c, config, demo, m, settings
 
 
 def main() -> int:
     """Import the scaffolded package and assert its facade/namespace contract."""
-    facts: dict[str, str | bool] = {
-        "c_demo_name": c.Demo.NAME,
-        "config_namespace": type(config.Demo).__name__,
-        "settings_namespace": type(settings.Demo).__name__,
-        "config_has_demo": hasattr(config, "Demo"),
-        "settings_has_demo": hasattr(settings, "Demo"),
-        "u_has_demo": hasattr(u, "Demo"),
-    }
-    assert facts["c_demo_name"] == "flext-demo", facts
-    assert facts["config_namespace"] == "_DemoNamespace", facts
-    assert facts["settings_namespace"] == "DemoSettings", facts
-    assert facts["config_has_demo"] is True, facts
-    assert facts["settings_has_demo"] is True, facts
-    assert facts["u_has_demo"] is True, facts
-    sys.stdout.write(json.dumps({"status": "OK", "facts": facts}) + "\n")
+    assert config.Demo.name == c.Demo.NAME
+    assert config.Demo.version == c.Demo.VERSION
+    outcome = demo.ping(m.Demo.PingInput())
+    assert outcome.success
+    expected = (
+        config.Demo.ping_reply
+        if settings.Demo.enabled
+        else config.Demo.disabled_reply
+    )
+    assert outcome.value.message == expected
+    sys.stdout.write("OK\n")
     return 0
 
 
@@ -51,10 +44,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except (AssertionError, ImportError, AttributeError) as exc:
-        failure = {
-            "status": "FAIL",
-            "error": type(exc).__name__,
-            "msg": str(exc),
-        }
-        sys.stdout.write(json.dumps(failure) + "\n")
+        sys.stderr.write(f"{type(exc).__name__}: {exc}\n")
         raise SystemExit(1) from exc

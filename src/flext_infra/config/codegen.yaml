@@ -258,8 +258,38 @@ templates:
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
+    - source: base/src/_models/ping.py.j2
+      destination: 'src/{package_name}/_models/ping.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_models/config.py.j2
+      destination: 'src/{package_name}/_models/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_models/settings.py.j2
+      destination: 'src/{package_name}/_models/settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
     - source: base/src/_constants/__init__.py.j2
       destination: 'src/{package_name}/_constants/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_constants/base.py.j2
+      destination: 'src/{package_name}/_constants/base.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_constants/config.py.j2
+      destination: 'src/{package_name}/_constants/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_constants/settings.py.j2
+      destination: 'src/{package_name}/_constants/settings.py'
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
@@ -268,8 +298,43 @@ templates:
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
+    - source: base/src/_protocols/config.py.j2
+      destination: 'src/{package_name}/_protocols/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_protocols/ping.py.j2
+      destination: 'src/{package_name}/_protocols/ping.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_protocols/settings.py.j2
+      destination: 'src/{package_name}/_protocols/settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
     - source: base/src/_utilities/__init__.py.j2
       destination: 'src/{package_name}/_utilities/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_utilities/config.py.j2
+      destination: 'src/{package_name}/_utilities/config.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_utilities/settings.py.j2
+      destination: 'src/{package_name}/_utilities/settings.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_typings/__init__.py.j2
+      destination: 'src/{package_name}/_typings/__init__.py'
+      profiles: [workspace-root, workspace-member, standalone]
+      delegate: render
+      overwrite: false
+    - source: base/src/_typings/base.py.j2
+      destination: 'src/{package_name}/_typings/base.py'
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
@@ -288,36 +353,8 @@ templates:
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
-    - source: base/tests/constants.py.j2
-      destination: tests/constants.py
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/tests/typings.py.j2
-      destination: tests/typings.py
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/tests/protocols.py.j2
-      destination: tests/protocols.py
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/tests/models.py.j2
-      destination: tests/models.py
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/tests/utilities.py.j2
-      destination: tests/utilities.py
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
-    - source: base/tests/settings.py.j2
-      destination: tests/settings.py
-      profiles: [workspace-root, workspace-member, standalone]
-      delegate: render
-      overwrite: false
+    # NOTE (multi-agent, mro-wkii.19.1): tests consume flext-tests and project
+    # public facades directly; no parallel test c/t/p/m/u/settings is generated.
     - source: base/tests/py.typed.j2
       destination: tests/py.typed
       profiles: [workspace-root, workspace-member, standalone]

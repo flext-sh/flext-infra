@@ -1,6 +1,7 @@
-# NOTE (multi-agent, mro-wkii.19.1): app-owned execution config is loaded from
-# the project-root config directory and validated by m.{{ ns }}.Config.
-# Access is config.{{ ns }}.*; environment-sourced values belong to settings.
+# NOTE (multi-agent, mro-wkii.19.1): namespaced U18 input validated by _models/config.py.
 {{ ns }}:
+  name: "{{ const_name }}"
+  version: "{{ version }}"
   greeting: "hello"
   ping_reply: "pong"
+  disabled_reply: "disabled"

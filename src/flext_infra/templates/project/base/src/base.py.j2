@@ -1,49 +1,32 @@
-"""Base service patterns for {{ package_name }} services.
-
-Defines the canonical service root used by the API facade: every service inherits
-from this base through cooperative MRO and resolves settings through the shared
-runtime bootstrap.
+"""Canonical service base for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from __future__ import annotations{# NOTE (multi-agent, mro-wkii.19.1): services consume the direct root singletons; no runtime settings accessor. #}
 
 from flext_core import r, s
-from {{ package_name }}._config import config
-from {{ package_name }}._settings import {{ class_stem }}Settings
+from {{ package_name }} import config, settings
 from {{ package_name }}.models import {{ class_stem }}Models as m
-from {{ package_name }}.typings import {{ class_stem }}Types as t
-
-if TYPE_CHECKING:
-    from {{ package_name }}.protocols import {{ class_stem }}Protocols as p
+from {{ package_name }}.protocols import {{ class_stem }}Protocols as p
 
 
-class {{ class_stem }}Service[
-    TResult: t.JsonPayload | t.SequenceOf[t.JsonPayload] = t.JsonPayload
-    | t.SequenceOf[t.JsonPayload],
-](s[TResult]):
-    """Base class for all {{ package_name }} services."""
+class {{ class_stem }}Service(s):
+    """Base for {{ package_name }} services."""
 
-    @classmethod
-    def _runtime_bootstrap_options(cls) -> m.RuntimeBootstrapOptions:
-        """Return runtime bootstrap options for {{ package_name }} services."""
-        return m.RuntimeBootstrapOptions(settings_type={{ class_stem }}Settings)
-
-    # NOTE (multi-agent, mro-wkii.14 / agent: codegen): one minimal domain method
-    # so the generated cli.py exposes one real route (`<dist> ping` -> reply). The
-    # reply text is a BUSINESS RULE sourced from config/{{ ns }}.yaml (ADR-005),
-    # never a literal in the engine; this method is a pure engine over config +
-    # models. No loose helpers; result typed via the p.* protocol (FL 3.2/3.4).
-    def ping(self, params: m.{{ ns }}.PingInput) -> p.Result[m.{{ ns }}.PingResult]:
-        """Health check — return the configured reply (consumed by the CLI)."""
+    def ping(
+        self,
+        params: p.{{ ns }}.PingInput,
+    ) -> p.Result[p.{{ ns }}.PingResult]:
+        """Return the configured public health response."""
         _ = params
-        return r[m.{{ ns }}.PingResult].ok(
-            m.{{ ns }}.PingResult(message=config.{{ ns }}.ping_reply),
+        message = (
+            config.{{ ns }}.ping_reply
+            if settings.{{ ns }}.enabled
+            else config.{{ ns }}.disabled_reply
         )
+        return r[p.{{ ns }}.PingResult].ok(m.{{ ns }}.PingResult(message=message))
 
 
 s = {{ class_stem }}Service

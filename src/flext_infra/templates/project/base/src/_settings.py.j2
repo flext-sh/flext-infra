@@ -1,10 +1,5 @@
-"""{{ class_stem }}Settings — runtime settings for {{ package_name }} (env-sourced).
-
-``{{ class_stem }}Settings`` subclasses ``FlextSettings`` with a project env
-prefix. Project fields live under the ``{{ ns }}`` namespace group as simple
-scalars, each settable via ``.env`` / env vars / params. This is a pure
-declaration module: no methods, no helpers — only the Pydantic settings model
-and the singleton (universal runtime fields come from ``FlextSettings`` by MRO).
+{# NOTE (multi-agent, mro-wkii.19.1): the private loader composes the pure model and exports only the direct singleton. #}
+"""Direct {{ class_stem }} settings singleton export.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,38 +7,36 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from pydantic import BaseModel, Field
 from pydantic_settings import SettingsConfigDict
 
 from flext_core import FlextSettings
+from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSettings
+from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
+from {{ package_name }}._utilities.settings import {{ class_stem }}UtilitiesSettings
+
+if TYPE_CHECKING:
+    from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
 
 
-class {{ class_stem }}Settings(FlextSettings):
-    """{{ class_stem }} runtime settings (env prefix ``{{ env_prefix }}``)."""
+class _{{ class_stem }}Settings(
+    FlextSettings,
+    {{ class_stem }}SettingsModels.SettingsRoot,
+):
+    """Private environment loader composed with the validated settings root."""
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        env_prefix="{{ env_prefix }}",
+        env_prefix={{ class_stem }}ConstantsSettings.ENV_PREFIX,
         env_nested_delimiter="__",
+        env_file={{ class_stem }}UtilitiesSettings.env_file(__file__),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        frozen=True,
         extra="ignore",
     )
 
-    class {{ ns }}Settings(BaseModel):
-        """Namespaced {{ ns }} runtime settings (simple scalars only)."""
 
-        ping_reply: Annotated[
-            str,
-            Field(description="Reply message returned by the ``ping`` command."),
-        ] = "pong"
+settings: {{ class_stem }}ProtocolsSettings.Settings = _{{ class_stem }}Settings()
 
-    {{ ns }}: {{ ns }}Settings = Field(
-        default_factory={{ ns }}Settings,
-        description="Namespaced {{ ns }} settings branch.",
-    )
-
-
-settings: {{ class_stem }}Settings = {{ class_stem }}Settings.fetch_global()
-"""Pre-instantiated project settings singleton — ``from {{ package_name }} import settings``."""
-
-__all__: list[str] = ["{{ class_stem }}Settings", "settings"]
+__all__: list[str] = ["settings"]

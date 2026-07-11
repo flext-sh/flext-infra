@@ -1,25 +1,28 @@
-"""{{ class_stem }} models — extends the upstream ``m`` facade (Pydantic v2).
-
-Project-specific models live under ``m.{{ ns }}.*``; everything else is inherited
-from the upstream facade. The ``{{ ns }}`` namespace is composed from the
-``_models/{{ ns_attr }}.py`` domain part via MRO.
+"""{{ class_stem }} Pydantic model facade.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
+{# NOTE (multi-agent, mro-wkii.19.1): one MRO namespace composes domain, config, and settings declarations. #}
 from __future__ import annotations
 
 from {{ upstream }} import m
 
-from {{ package_name }}._models.{{ ns_attr }} import {{ class_stem }}Models{{ ns }}
+from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
+from {{ package_name }}._models.ping import {{ class_stem }}ModelsPing
+from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
 
 
 class {{ class_stem }}Models(m):
-    """{{ class_stem }} domain models extending the upstream ``m`` facade."""
+    """{{ class_stem }} models extending the upstream facade."""
 
-    class {{ ns }}({{ class_stem }}Models{{ ns }}):
-        """Project-specific models namespace (composed via MRO)."""
+    class {{ ns }}(
+        {{ class_stem }}ModelsPing,
+        {{ class_stem }}ConfigModels,
+        {{ class_stem }}SettingsModels,
+    ):
+        """Complete {{ ns }} model namespace."""
 
 
 m = {{ class_stem }}Models

@@ -1,39 +1,21 @@
-"""{{ class_stem }} settings-domain utilities part (composed into ``u.{{ class_stem }}`` via MRO).
-
-``SettingsProxy`` delivers ``settings.{{ class_stem }}`` typed by PROTOCOL (see
-``_protocols/settings``), never by class and never ``Any``/``object``/raw ``dict``.
-``p`` enters only under ``TYPE_CHECKING``; resolution of ``{{ package_name }}.settings``
-is lazy via ``importlib`` (no load cycle). No loose helpers / no compat aliases.
+"""Internal settings-source composition for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-{# mro-wkii.14 (agent: codegen) — cosmos-main / AGENTS.md U2-U8 pattern (SettingsProxy typed by protocol, lazy via importlib, p via TYPE_CHECKING; mirrors ConfigProxy). #}
-import importlib
-from typing import TYPE_CHECKING, ClassVar
-
-if TYPE_CHECKING:
-    from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
-
-
-class SettingsProxy:
-    """Lazy proxy to ``settings.{{ class_stem }}`` (protocol-typed; never class)."""
-
-    @property
-    def root(self) -> {{ class_stem }}ProtocolsSettings.Root:
-        """Validated ``settings.{{ class_stem }}`` namespace (structural protocol type).
-
-        Add one ``@property`` per validated settings domain returning its protocol.
-        """
-        return importlib.import_module("{{ package_name }}").settings.{{ class_stem }}
+{# NOTE (multi-agent, mro-wkii.19.1): internal source resolution runs once and never accesses the public singleton. #}
+from pathlib import Path
 
 
 class {{ class_stem }}UtilitiesSettings:
-    """Typed settings access; composed into ``u.{{ class_stem }}`` via MRO."""
+    """Resolve the project env file used once by the settings model."""
 
-    settings: ClassVar[SettingsProxy] = SettingsProxy()
+    @staticmethod
+    def env_file(module_file: str) -> str:
+        """Return the project env path for the root settings module."""
+        return str(Path(module_file).resolve().parents[2] / ".env")
 
 
-__all__: list[str] = ["{{ class_stem }}UtilitiesSettings", "SettingsProxy"]
+__all__: list[str] = ["{{ class_stem }}UtilitiesSettings"]

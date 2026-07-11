@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 # orchestrates the real service and a real subprocess.
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -123,8 +122,7 @@ class TestCodegenNewConsumerFunctional:
     ) -> None:
         proc = _run_consumer(external_project)
         tm.that(proc.returncode, eq=0)
-        payload: dict[str, object] = json.loads(proc.stdout)
-        tm.that(payload["status"], eq="OK")
+        tm.that(proc.stdout.strip(), eq="OK")
 
     def test_internal_consumer_runs_in_subprocess(
         self,
@@ -132,8 +130,7 @@ class TestCodegenNewConsumerFunctional:
     ) -> None:
         proc = _run_consumer(internal_project)
         tm.that(proc.returncode, eq=0)
-        payload: dict[str, object] = json.loads(proc.stdout)
-        tm.that(payload["status"], eq="OK")
+        tm.that(proc.stdout.strip(), eq="OK")
 
 
 class TestCodegenNewDryRun:

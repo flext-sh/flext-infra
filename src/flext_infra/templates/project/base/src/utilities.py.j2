@@ -1,25 +1,26 @@
-"""{{ class_stem }} utilities — extends the upstream ``u`` facade (pure helpers).
-
-Project-specific helpers live under ``u.{{ ns }}.*``; everything else is inherited
-from the upstream facade. The ``{{ ns }}`` namespace is composed from the
-``_utilities/{{ ns_attr }}.py`` domain part via MRO.
+"""{{ class_stem }} utility facade.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
+{# NOTE (multi-agent, mro-wkii.19.1): utilities expose source composition only, never config/settings access proxies. #}
 from __future__ import annotations
 
 from {{ upstream }} import u
 
-from {{ package_name }}._utilities.{{ ns_attr }} import {{ class_stem }}Utilities{{ ns }}
+from {{ package_name }}._utilities.config import {{ class_stem }}UtilitiesConfig
+from {{ package_name }}._utilities.settings import {{ class_stem }}UtilitiesSettings
 
 
 class {{ class_stem }}Utilities(u):
-    """{{ class_stem }} utility facade extending the upstream ``u`` facade."""
+    """{{ class_stem }} utilities extending the upstream facade."""
 
-    class {{ ns }}({{ class_stem }}Utilities{{ ns }}):
-        """Project-specific pure helpers namespace (composed via MRO)."""
+    class {{ ns }}(
+        {{ class_stem }}UtilitiesConfig,
+        {{ class_stem }}UtilitiesSettings,
+    ):
+        """Complete {{ ns }} utility namespace."""
 
 
 u = {{ class_stem }}Utilities

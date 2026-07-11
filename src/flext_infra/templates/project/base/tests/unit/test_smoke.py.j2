@@ -15,7 +15,7 @@ from __future__ import annotations
 import pytest
 from flext_tests import FlextTestsCase, tm
 
-from {{ package_name }} import {{ alias }} as facade, m
+from {{ package_name }} import config, {{ alias }} as facade, m, settings
 
 pytestmark = [pytest.mark.smoke, pytest.mark.unit]
 
@@ -23,11 +23,16 @@ pytestmark = [pytest.mark.smoke, pytest.mark.unit]
 class Tests{{ class_stem }}Smoke(FlextTestsCase):
     """Public-behavior smoke suite for {{ package_name }} (one class per module)."""
 
-    def test_ping_returns_pong(self) -> None:
-        """``ping`` on the public facade returns a successful pong result."""
+    def test_ping_returns_configured_reply(self) -> None:
+        """``ping`` returns the reply selected by the public SSOT singletons."""
         outcome = facade.ping(m.{{ ns }}.PingInput())
         tm.that(outcome.success, eq=True)
-        tm.that(outcome.unwrap().message, eq="pong")
+        expected = (
+            config.{{ ns }}.ping_reply
+            if settings.{{ ns }}.enabled
+            else config.{{ ns }}.disabled_reply
+        )
+        tm.that(outcome.unwrap().message, eq=expected)
 
 
 __all__: list[str] = ["Tests{{ class_stem }}Smoke"]
