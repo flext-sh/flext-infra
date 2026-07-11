@@ -305,21 +305,18 @@ class FlextInfraModelsCodegenConform:
         version: Annotated[int, m.Field(ge=1, description="Manifest version")]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         repository: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Root repository catalog key"),
-        ]
-        profile: Annotated[
-            c.Infra.MakeProfile,
-            m.BeforeValidator(lambda value: c.Infra.MakeProfile(value)),
-            m.Field(description="Generated root or independent profile"),
+            FlextInfraModelsCodegenConform.RepositoryRef,
+            m.Field(description="Root repository Git contract"),
         ]
         members: Annotated[
-            t.StrSequence,
-            m.Field(description="Ordered active member catalog keys"),
+            tuple[FlextInfraModelsCodegenConform.RepositoryRef, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
+            m.Field(description="Ordered active member repository contracts"),
         ] = ()
         content_only: Annotated[
-            t.StrSequence,
-            m.Field(description="Ordered content-only catalog keys"),
+            tuple[FlextInfraModelsCodegenConform.RepositoryRef, ...],
+            m.BeforeValidator(lambda value: tuple(value)),
+            m.Field(description="Ordered content-only repository contracts"),
         ] = ()
         exclusions: Annotated[
             tuple[FlextInfraModelsCodegenConform.WorkspaceExclusionSpec, ...],
@@ -330,8 +327,8 @@ class FlextInfraModelsCodegenConform:
         @model_validator(mode="after")
         def _validate_topology(self) -> Self:
             """Reject duplicate or overlapping member and exclusion paths."""
-            members = tuple(self.members)
-            content_only = tuple(self.content_only)
+            members = tuple(item.name for item in self.members)
+            content_only = tuple(item.name for item in self.content_only)
             exclusions = tuple(item.path.as_posix() for item in self.exclusions)
             if len(set(members)) != len(members):
                 msg = "workspace members must be unique"

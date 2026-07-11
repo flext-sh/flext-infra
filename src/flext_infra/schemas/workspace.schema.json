@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/flext-sh/flext-infra/schemas/workspace.schema.json",
+  "$comment": "NOTE(mro-wkii.17, agent codex): strict local workspace topology SSOT.",
+  "title": "FLEXT Workspace Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "name",
+    "repository",
+    "members",
+    "content_only",
+    "exclusions"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "$ref": "#/$defs/name"
+    },
+    "repository": {
+      "$ref": "#/$defs/repository"
+    },
+    "members": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repository"
+      }
+    },
+    "content_only": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repository"
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/exclusion"
+      }
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?:\\.|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)$",
+      "not": {
+        "pattern": "(^|/)\\.\\.(/|$)"
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "distribution",
+        "provider",
+        "url",
+        "branch",
+        "path",
+        "role",
+        "state",
+        "profile"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "distribution": {
+          "$ref": "#/$defs/name"
+        },
+        "provider": {
+          "$ref": "#/$defs/name"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\.git$"
+        },
+        "branch": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "role": {
+          "enum": [
+            "workspace-root",
+            "workspace-member",
+            "standalone",
+            "content-only",
+            "excluded"
+          ]
+        },
+        "state": {
+          "enum": [
+            "active",
+            "content-only",
+            "excluded"
+          ]
+        },
+        "profile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "workspace-root",
+            "workspace-member",
+            "standalone",
+            null
+          ]
+        }
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Generated initially by `flext-infra codegen new`; this manifest is the
+# handwritten topology SSOT consumed by `flext-infra codegen conform`.
+# NOTE (multi-agent, mro-wkii.17 / agent: codex): conform never overwrites this
+# input. Add members or exclusions here, then run `make codegen`.
+version: 1
+name: {{ dist }}
+repository:
+  name: {{ dist }}
+  distribution: {{ dist }}
+  provider: {{ repository_provider }}
+  url: {{ repository_git_url }}
+  branch: {{ repository_branch }}
+  path: .
+  role: {{ make_profile }}
+  state: active
+  profile: {{ make_profile }}
+members: []
+content_only: []
+exclusions: []
