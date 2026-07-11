@@ -11,16 +11,20 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (nested tipado, modelado, nunca os.environ). #}
 from __future__ import annotations
-
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (nested tipado, modelado, nunca os.environ). #}
 from functools import cached_property
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_settings import SettingsConfigDict
 
 from flext_core import FlextSettings
 from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
+
+if TYPE_CHECKING:
+    # FLEXT-STRICT: acessor tipado por PROTOCOLO (p), nunca pela classe de modelo
+    # (m); p entra so sob TYPE_CHECKING (sem ciclo de runtime).
+    from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
 
 
 class {{ class_stem }}Settings(FlextSettings):
@@ -32,7 +36,7 @@ class {{ class_stem }}Settings(FlextSettings):
     )
 
     @cached_property
-    def {{ class_stem }}(self) -> {{ class_stem }}SettingsModels.Root:
+    def {{ class_stem }}(self) -> {{ class_stem }}ProtocolsSettings.Root:
         """Typed project settings namespace validated from the env mapping."""
         return {{ class_stem }}SettingsModels.Root.model_validate(self.model_dump())
 

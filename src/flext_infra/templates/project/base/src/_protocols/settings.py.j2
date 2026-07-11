@@ -1,0 +1,29 @@
+"""{{ class_stem }} settings-domain protocols part (composed into ``p.{{ class_stem }}`` via MRO).
+
+Structural (field-level) protocols, never model classes and never ``Any``/``object``.
+This module imports nothing from the project at runtime; when a domain needs a model
+type, import ``m`` ONLY under ``TYPE_CHECKING``. No loose helpers / no compat aliases.
+Importable by ``c``/``t``/``p``/``m``/``u`` without creating an import cycle.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (Protocol estrutural; settings espelha config; m via TYPE_CHECKING quando houver domain). #}
+from typing import Protocol, runtime_checkable
+
+
+class {{ class_stem }}ProtocolsSettings:
+    """Settings-domain protocol namespace (structural types; no project imports)."""
+
+    @runtime_checkable
+    class Root(Protocol):
+        """Marker for the validated settings ``{{ class_stem }}`` root (env-sourced).
+
+        Add one ``@property`` per validated settings domain; annotate with the
+        structural protocol (never the model class, never ``Any``/``object``).
+        """
+
+
+__all__: list[str] = ["{{ class_stem }}ProtocolsSettings"]

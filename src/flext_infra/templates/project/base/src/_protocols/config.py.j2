@@ -9,10 +9,16 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (Protocol estrutural; m via TYPE_CHECKING quando houver domain; sem Any/object/classes). #}
 from __future__ import annotations
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (Protocol estrutural; m via TYPE_CHECKING quando houver domain; sem Any/object/classes). #}
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from typing import Protocol, runtime_checkable
+if TYPE_CHECKING:
+    # NOTE(mro-wkii.14, agent codegen): protocolo tipa @property com o MODELO
+    # REAL (U6: em protocols, m entra SO sob TYPE_CHECKING — reverse obrigatorio,
+    # sem ciclo de runtime). Import interno direto (_models.config e puro
+    # Pydantic).
+    from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
 
 
 class {{ class_stem }}ProtocolsConfig:
@@ -22,10 +28,13 @@ class {{ class_stem }}ProtocolsConfig:
     class Config(Protocol):
         """Structural surface of ``config.{{ class_stem }}`` (validated domains).
 
-        Add one ``@property`` per validated domain; when the return type is a
-        model, import the model under ``TYPE_CHECKING`` and annotate with the
-        structural protocol (never with the model class, never ``Any``/``object``).
+        One ``@property`` per validated domain, annotated with the real model
+        imported under ``TYPE_CHECKING`` (never ``Any``/``object``).
         """
+
+        @property
+        def {{ ns }}(self) -> {{ class_stem }}ConfigModels.{{ ns }}:
+            """Validated ``{{ ns }}`` config domain from ``config/{{ ns }}.yaml``."""
 
 
 __all__: list[str] = ["{{ class_stem }}ProtocolsConfig"]

@@ -12,10 +12,9 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8; base flext-core em estabilizacao por outro agente. #}
 from __future__ import annotations
-
-from pydantic import BaseModel, ConfigDict
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8; base flext-core em estabilizacao por outro agente. #}
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class {{ class_stem }}ConfigModels:
@@ -25,10 +24,31 @@ class {{ class_stem }}ConfigModels:
     reference it from ``Root``. Never expose ``dict``/``Any``/``object`` here.
     """
 
+    class {{ ns }}(BaseModel):
+        """``{{ ns }}`` config domain — keys of ``config/{{ ns }}.yaml`` validated.
+
+        One typed field per YAML key under the ``{{ ns }}:`` namespace; a typo in
+        the YAML fails fast at ``fetch_global`` (frozen + extra="forbid").
+        """
+
+        model_config = ConfigDict(frozen=True, extra="forbid")
+
+        greeting: str = "hello"
+
     class Root(BaseModel):
-        """Root {{ class_stem }} runtime config validated from ``config/*.yaml``."""
+        """Root {{ class_stem }} runtime config validated from ``config/*.yaml``.
+
+        Domains reference the nested models directly; ``from __future__ import
+        annotations`` keeps them as lazy forward refs that resolve at
+        ``model_validate`` time (called from ``_config.py``), so no
+        ``model_rebuild`` is needed.
+        """
 
         model_config = ConfigDict(frozen=True, extra="ignore")
+
+        {{ ns }}: {{ class_stem }}ConfigModels.{{ ns }} = Field(
+            default_factory=lambda: {{ class_stem }}ConfigModels.{{ ns }}(),
+        )
 
 
 __all__: list[str] = ["{{ class_stem }}ConfigModels"]

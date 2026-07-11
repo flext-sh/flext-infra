@@ -12,23 +12,37 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (nested tipado, modelado, ingestao model-less so na borda). #}
 from __future__ import annotations
-
+{# mro-wkii.14 (agent: codegen) — padrao cosmos-main / AGENTS.md U2-U8 (nested tipado, modelado, ingestao model-less so na borda). #}
 from functools import cached_property
-from typing import ClassVar
+from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import FlextConfig
+from {{ package_name }}._constants.config import {{ class_stem }}ConstantsConfig
 from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
+
+if TYPE_CHECKING:
+    # FLEXT-STRICT: acessor tipado por PROTOCOLO (p), nunca pela classe de modelo
+    # (m); p entra so sob TYPE_CHECKING (sem ciclo de runtime).
+    from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
 
 
 class {{ class_stem }}Config(FlextConfig):
     """Frozen {{ class_stem }} config singleton auto-loaded from ``config/*.yaml``."""
 
-    CONFIG_DIR: ClassVar[str] = "config"
+    # NOTE(mro-wkii.14, agent codegen): CONFIG_DIR ancorado no PACKAGE via
+    # __file__ (src/<pkg>/config/ — ADR-005), NUNCA relativo ao CWD (defeito do
+    # cosmos-main: "config" so resolve quando CWD == raiz do repo). Import direto
+    # de _constants.config (modulo puro, sem ciclo) em vez da facade c — U5: leaf
+    # config/settings nunca importa a facade c/t/p/m/u do proprio projeto em
+    # runtime.
+    CONFIG_DIR: ClassVar[str] = str(
+        Path(__file__).resolve().parent / {{ class_stem }}ConstantsConfig.CONFIG_DIR
+    )
 
     @cached_property
-    def {{ class_stem }}(self) -> {{ class_stem }}ConfigModels.Root:
+    def {{ class_stem }}(self) -> {{ class_stem }}ProtocolsConfig.Config:
         """Typed project config namespace validated from the model-less YAML."""
         return {{ class_stem }}ConfigModels.Root.model_validate(
             dict(self.model_extra or {}),

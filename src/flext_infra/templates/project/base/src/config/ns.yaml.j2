@@ -1,4 +1,6 @@
-# {{ class_stem }} execution config (ADR-005). Loaded model-less by _config.py.
-# Add execution-parametrization keys under the `{{ ns }}:` namespace; secrets go
-# in _settings.py (env-override), never here.
-{{ ns }}: {}
+# {{ class_stem }} execution config (ADR-005). Loaded model-less by _config.py and
+# validated into _models/config.py — exposed typed at config.{{ class_stem }}.{{ ns }}.
+# Add execution-parametrization keys under the `{{ ns }}:` namespace (one typed
+# field per key in _models/config.py); secrets go in _settings.py, never here.
+{{ ns }}:
+  greeting: "hello"
