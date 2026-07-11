@@ -1,0 +1,4 @@
+{# NOTE (multi-agent, mro-wkii.17.11 / agent: codex): ordered workspace topology is the sole .gitmodules owner. #}{% for repository in workspace_repositories %}[submodule "{{ repository.name }}"]
+	path = {{ repository.path }}
+	url = {{ repository.url }}
+	branch = {{ repository.branch }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}

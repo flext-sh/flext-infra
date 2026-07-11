@@ -142,11 +142,13 @@ templates:
       profiles: [workspace-root, workspace-member, standalone]
       delegate: render
       overwrite: false
-    - source: base/.envrc.j2
-      destination: .envrc
-      profiles: [workspace-root, workspace-member, standalone]
+    # NOTE(mro-wkii.17.11, agent codex): workspace topology owns git submodules;
+    # environment activation is owned by mise + the generated Makefile.
+    - source: base/gitmodules.j2
+      destination: .gitmodules
+      profiles: [workspace-root]
       delegate: render
-      overwrite: false
+      overwrite: true
     - source: base/Makefile.j2
       destination: Makefile
       profiles: [workspace-root, workspace-member, standalone]

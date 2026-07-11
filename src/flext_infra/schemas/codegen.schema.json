@@ -492,6 +492,19 @@
           "minItems": 60,
           "maxItems": 60,
           "uniqueItems": true,
+          "contains": {
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "const": "base/gitmodules.j2"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1,
           "items": {
             "$ref": "#/$defs/templateEntry"
           }
@@ -535,9 +548,92 @@
           ]
         },
         "overwrite": {
-          "const": false
+          "type": "boolean"
         }
-      }
+      },
+      "allOf": [
+        {
+          "$comment": "NOTE(mro-wkii.17.11, agent codex): .gitmodules is the only overwrite-enabled rendered template; legacy .envrc is invalid.",
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "const": "base/.envrc.j2"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "destination"
+                ],
+                "properties": {
+                  "destination": {
+                    "const": ".envrc"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "const": "base/gitmodules.j2"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "destination"
+                ],
+                "properties": {
+                  "destination": {
+                    "const": ".gitmodules"
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "base/gitmodules.j2"
+              },
+              "destination": {
+                "const": ".gitmodules"
+              },
+              "profiles": {
+                "const": [
+                  "workspace-root"
+                ]
+              },
+              "delegate": {
+                "const": "render"
+              },
+              "overwrite": {
+                "const": true
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "overwrite": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
     },
     "repository": {
       "type": "object",
