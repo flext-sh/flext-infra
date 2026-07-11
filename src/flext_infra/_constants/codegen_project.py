@@ -39,6 +39,9 @@ class FlextInfraConstantsCodegenProject:
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
     # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
+    # Layout (operator, mro-wkii.13): base/ = common to both kinds (pyproject with
+    # ``{% if project_kind %}`` branches); internal/ = member + REGISTRATION deltas;
+    # external/ = delta-only (currently empty => external == base).
     _BOTH: Final[tuple[ProjectKind, ProjectKind]] = (
         ProjectKind.INTERNAL,
         ProjectKind.EXTERNAL,
@@ -49,136 +52,295 @@ class FlextInfraConstantsCodegenProject:
     PROJECT_TEMPLATE_ENTRIES: Final[
         tuple[tuple[str, str, tuple[ProjectKind, ...], str, bool], ...]
     ] = (
-        # ---- shared (internal + external) ----
-        ("_shared/conftest.py.j2", "conftest.py", _BOTH, "render", False),
-        ("_shared/README.md.j2", "README.md", _BOTH, "render", False),
-        ("_shared/LICENSE.j2", "LICENSE", _BOTH, "render", False),
-        ("_shared/gitignore.j2", ".gitignore", _BOTH, "render", False),
-        ("_shared/python-version.j2", ".python-version", _BOTH, "render", False),
-        ("_shared/env.example.j2", ".env.example", _BOTH, "render", False),
-        ("_shared/mkdocs.yml.j2", "mkdocs.yml", _BOTH, "render", False),
+        # ---- base (internal + external): root files ----
+        ("base/README.md.j2", "README.md", _BOTH, "render", False),
+        ("base/LICENSE.j2", "LICENSE", _BOTH, "render", False),
+        ("base/gitignore.j2", ".gitignore", _BOTH, "render", False),
+        ("base/python-version.j2", ".python-version", _BOTH, "render", False),
+        ("base/env.example.j2", ".env.example", _BOTH, "render", False),
+        # NOTE(mro-wkii.14, agent codegen): mise + direnv para entregar
+        # python/uv/ruff padronizados (.mise.toml) e ativação automática do
+        # ambiente (.envrc) em todo scaffold.
+        ("base/.mise.toml.j2", ".mise.toml", _BOTH, "render", False),
+        ("base/.envrc.j2", ".envrc", _BOTH, "render", False),
+        # NOTE(mro-wkii.14, agent codegen): flext-repo-map.toml (external only)
+        # alimenta `deps internal-sync` com as URLs de clone de .flext-deps/*.
         (
-            "_shared/src/__init__.py.j2",
+            "base/flext-repo-map.toml.j2",
+            "flext-repo-map.toml",
+            _EXTERNAL,
+            "render",
+            False,
+        ),
+        # NOTE(mro-wkii.14, agent codegen): .flext-deps/pyproject.toml (external
+        # only) = workspace root PAI dos clones; commitado via exceção gitignore.
+        (
+            "base/flext-deps-pyproject.toml.j2",
+            ".flext-deps/pyproject.toml",
+            _EXTERNAL,
+            "render",
+            False,
+        ),
+        ("base/Makefile.j2", "Makefile", _BOTH, "render", False),
+        ("base/custom.mk.j2", "custom.mk", _BOTH, "render", False),
+        ("base/pyproject.toml.j2", "pyproject.toml", _BOTH, "render", False),
+        # NOTE(mro-wkii.13, agent codegen): minimal VS Code settings for the
+        # generated project (interpreter .venv, ruff, pyrefly, pytest->tests).
+        (
+            "base/.vscode/settings.json.j2",
+            ".vscode/settings.json",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # NOTE(mro-wkii.13, agent codegen): root conftest.py.j2 removed — pytest
+        # config lives ONLY in tests/conftest.py (entry below). Generating a root
+        # conftest.py put it outside tests/ and broke FLEXT layout (operator).
+        # ---- base (internal + external): src package ----
+        (
+            "base/src/__init__.py.j2",
             "src/{package_name}/__init__.py",
             _BOTH,
             "render",
             False,
         ),
+        ("base/src/api.py.j2", "src/{package_name}/api.py", _BOTH, "render", False),
+        # NOTE(mro-wkii.14, agent codegen): cli.py + __main__.py — thin declarative
+        # CLI (algar/cosmos pattern) with 1 `ping` route; entry [project.scripts].
+        ("base/src/cli.py.j2", "src/{package_name}/cli.py", _BOTH, "render", False),
         (
-            "_shared/src/__version__.py.j2",
-            "src/{package_name}/__version__.py",
+            "base/src/__main__.py.j2",
+            "src/{package_name}/__main__.py",
             _BOTH,
             "render",
             False,
         ),
+        ("base/src/base.py.j2", "src/{package_name}/base.py", _BOTH, "render", False),
         (
-            "_shared/src/constants.py.j2",
-            "src/{package_name}/constants.py",
-            _BOTH,
-            "render",
-            False,
-        ),
-        (
-            "_shared/src/typings.py.j2",
-            "src/{package_name}/typings.py",
-            _BOTH,
-            "render",
-            False,
-        ),
-        (
-            "_shared/src/protocols.py.j2",
-            "src/{package_name}/protocols.py",
-            _BOTH,
-            "render",
-            False,
-        ),
-        (
-            "_shared/src/models.py.j2",
+            "base/src/models.py.j2",
             "src/{package_name}/models.py",
             _BOTH,
             "render",
             False,
         ),
         (
-            "_shared/src/utilities.py.j2",
+            "base/src/typings.py.j2",
+            "src/{package_name}/typings.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/protocols.py.j2",
+            "src/{package_name}/protocols.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/constants.py.j2",
+            "src/{package_name}/constants.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/utilities.py.j2",
             "src/{package_name}/utilities.py",
             _BOTH,
             "render",
             False,
         ),
-        ("_shared/src/base.py.j2", "src/{package_name}/base.py", _BOTH, "render", False),
-        ("_shared/src/api.py.j2", "src/{package_name}/api.py", _BOTH, "render", False),
         (
-            "_shared/src/_settings.py.j2",
-            "src/{package_name}/_settings.py",
-            _BOTH,
-            "render",
-            False,
-        ),
-        (
-            "_shared/src/_config.py.j2",
+            "base/src/_config.py.j2",
             "src/{package_name}/_config.py",
             _BOTH,
             "render",
             False,
         ),
         (
-            "_shared/src/services/__init__.py.j2",
+            "base/src/_settings.py.j2",
+            "src/{package_name}/_settings.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/py.typed.j2",
+            "src/{package_name}/py.typed",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/services/__init__.py.j2",
             "src/{package_name}/services/__init__.py",
             _BOTH,
             "render",
             False,
         ),
         (
-            "_shared/src/config/ns.yaml.j2",
+            "base/src/config/ns.yaml.j2",
             "src/{package_name}/config/{ns}.yaml",
             _BOTH,
             "render",
             False,
         ),
+        # ---- base (internal + external): src _models ----
         (
-            "_shared/src/py.typed.j2",
-            "src/{package_name}/py.typed",
+            "base/src/_models/__init__.py.j2",
+            "src/{package_name}/_models/__init__.py",
             _BOTH,
             "render",
             False,
         ),
-        ("_shared/tests/__init__.py.j2", "tests/__init__.py", _BOTH, "render", False),
-        ("_shared/tests/conftest.py.j2", "tests/conftest.py", _BOTH, "render", False),
-        ("_shared/tests/base.py.j2", "tests/base.py", _BOTH, "render", False),
         (
-            "_shared/tests/constants.py.j2",
+            "base/src/_models/config.py.j2",
+            "src/{package_name}/_models/config.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/_models/settings.py.j2",
+            "src/{package_name}/_models/settings.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # ---- base (internal + external): src _constants ----
+        (
+            "base/src/_constants/__init__.py.j2",
+            "src/{package_name}/_constants/__init__.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/_constants/config.py.j2",
+            "src/{package_name}/_constants/config.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/_constants/settings.py.j2",
+            "src/{package_name}/_constants/settings.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # ---- base (internal + external): src _protocols ----
+        (
+            "base/src/_protocols/__init__.py.j2",
+            "src/{package_name}/_protocols/__init__.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/_protocols/config.py.j2",
+            "src/{package_name}/_protocols/config.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/_protocols/settings.py.j2",
+            "src/{package_name}/_protocols/settings.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # ---- base (internal + external): src _utilities ----
+        (
+            "base/src/_utilities/__init__.py.j2",
+            "src/{package_name}/_utilities/__init__.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/_utilities/config.py.j2",
+            "src/{package_name}/_utilities/config.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/src/_utilities/settings.py.j2",
+            "src/{package_name}/_utilities/settings.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # ---- base (internal + external): tests ----
+        ("base/tests/__init__.py.j2", "tests/__init__.py", _BOTH, "render", False),
+        ("base/tests/conftest.py.j2", "tests/conftest.py", _BOTH, "render", False),
+        ("base/tests/base.py.j2", "tests/base.py", _BOTH, "render", False),
+        (
+            "base/tests/constants.py.j2",
             "tests/constants.py",
             _BOTH,
             "render",
             False,
         ),
+        ("base/tests/typings.py.j2", "tests/typings.py", _BOTH, "render", False),
         (
-            "_shared/tests/unit/__init__.py.j2",
+            "base/tests/protocols.py.j2",
+            "tests/protocols.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        ("base/tests/models.py.j2", "tests/models.py", _BOTH, "render", False),
+        (
+            "base/tests/utilities.py.j2",
+            "tests/utilities.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        ("base/tests/settings.py.j2", "tests/settings.py", _BOTH, "render", False),
+        ("base/tests/py.typed.j2", "tests/py.typed", _BOTH, "render", False),
+        (
+            "base/tests/unit/__init__.py.j2",
             "tests/unit/__init__.py",
             _BOTH,
             "render",
             False,
         ),
         (
-            "_shared/tests/unit/test_smoke.py.j2",
+            "base/tests/unit/test_smoke.py.j2",
             "tests/unit/test_smoke.py",
             _BOTH,
             "render",
             False,
         ),
         (
-            "_shared/tests/integration/__init__.py.j2",
+            "base/tests/unit/py.typed.j2",
+            "tests/unit/py.typed",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/tests/integration/__init__.py.j2",
             "tests/integration/__init__.py",
             _BOTH,
             "render",
             False,
         ),
-        ("_shared/tests/py.typed.j2", "tests/py.typed", _BOTH, "render", False),
-        # ---- internal-only ----
-        ("internal/pyproject.toml.j2", "pyproject.toml", _INTERNAL, "render", False),
-        ("internal/Makefile.j2", "Makefile", _INTERNAL, "render", False),
-        ("internal/custom.mk.j2", "custom.mk", _INTERNAL, "render", False),
+        # NOTE(mro-wkii.13, agent codegen): every leaf test package owns a
+        # base.py with its first class (mirrors src/; operator directive).
+        (
+            "base/tests/integration/base.py.j2",
+            "tests/integration/base.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # ---- internal-only (member registration) ----
         (
             "internal/projects_member.md.j2",
             "projects/{dist}.md",
@@ -186,11 +348,13 @@ class FlextInfraConstantsCodegenProject:
             "render",
             False,
         ),
-        ("internal/REGISTRATION.md.j2", "REGISTRATION.md", _INTERNAL, "render", False),
-        # ---- external-only ----
-        ("external/pyproject.toml.j2", "pyproject.toml", _EXTERNAL, "render", False),
-        ("external/Makefile.j2", "Makefile", _EXTERNAL, "render", False),
-        ("external/custom.mk.j2", "custom.mk", _EXTERNAL, "render", False),
+        (
+            "internal/REGISTRATION.md.j2",
+            "REGISTRATION.md",
+            _INTERNAL,
+            "render",
+            False,
+        ),
     )
 
 
