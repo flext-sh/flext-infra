@@ -133,13 +133,19 @@
         "package_name",
         "class_stem",
         "namespace",
+        "constant_name",
+        "namespace_attribute",
         "alias",
+        "environment_prefix",
         "description",
         "version",
         "license",
         "author_name",
         "author_email",
         "upstream",
+        "homepage",
+        "documentation",
+        "workspace_root_rel",
         "year"
       ],
       "properties": {
@@ -155,9 +161,20 @@
           "type": "string",
           "pattern": "^[A-Z][A-Za-z0-9]*$"
         },
+        "constant_name": {
+          "$ref": "#/$defs/name"
+        },
+        "namespace_attribute": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
         "alias": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "environment_prefix": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*_$"
         },
         "description": {
           "type": "string",
@@ -184,6 +201,17 @@
             "flext_core",
             "flext_cli"
           ]
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri"
+        },
+        "documentation": {
+          "type": "string",
+          "format": "uri"
+        },
+        "workspace_root_rel": {
+          "$ref": "#/$defs/relativePath"
         },
         "year": {
           "type": "integer",

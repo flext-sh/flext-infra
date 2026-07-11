@@ -252,9 +252,21 @@ class FlextInfraModelsCodegenConform:
             t.NonEmptyStr,
             m.Field(description="Nested c/t/p/m/u namespace"),
         ]
+        constant_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Configured project name exposed through constants"),
+        ]
+        namespace_attribute: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Private module namespace token"),
+        ]
         alias: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical public instance alias"),
+        ]
+        environment_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project settings environment prefix"),
         ]
         description: Annotated[
             t.NonEmptyStr,
@@ -273,6 +285,15 @@ class FlextInfraModelsCodegenConform:
         upstream: Annotated[
             t.NonEmptyStr,
             m.Field(description="Upstream FLEXT facade module"),
+        ]
+        homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
+        documentation: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project documentation URL"),
+        ]
+        workspace_root_rel: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Declared relative path to the workspace root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 

@@ -18,13 +18,19 @@ project:
   package_name: {{ package_name | tojson }}
   class_stem: {{ class_stem | tojson }}
   namespace: {{ ns | tojson }}
+  constant_name: {{ const_name | tojson }}
+  namespace_attribute: {{ ns_attr | tojson }}
   alias: {{ alias | tojson }}
+  environment_prefix: {{ env_prefix | tojson }}
   description: {{ description | tojson }}
   version: {{ version | tojson }}
   license: {{ license | tojson }}
   author_name: {{ author_name | tojson }}
   author_email: {{ author_email | tojson }}
   upstream: {{ upstream | tojson }}
+  homepage: {{ homepage | tojson }}
+  documentation: {{ documentation | tojson }}
+  workspace_root_rel: {{ workspace_root_rel | tojson }}
   year: {{ year }}
 members: []
 content_only: []
