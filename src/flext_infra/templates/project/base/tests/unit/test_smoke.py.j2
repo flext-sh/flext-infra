@@ -1,27 +1,48 @@
 """Smoke tests for {{ package_name }} — import + canonical alias surface.
 
+Pattern: facade-only imports, ``tm.that`` assertions, TYPE_CHECKING-only typing.
+No ``importlib`` loops, no direct facade-class import, no raw asserts.
+
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-import importlib
+from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
-from {{ package_name }} import {{ class_stem }}
+import {{ package_name }} as pkg
+
+if TYPE_CHECKING:
+    from tests import typings as tests_typings  # noqa: F401  # typing-only import
 
 pytestmark = [pytest.mark.smoke, pytest.mark.unit]
 
 
-def test_import_package() -> None:
+def test_package_exposes_canonical_aliases() -> None:
     """The package imports and exposes the canonical FLEXT aliases."""
-    module = importlib.import_module("{{ package_name }}")
-    for alias in ("c", "m", "p", "t", "u", "r", "{{ class_stem }}", "{{ alias }}"):
-        assert hasattr(module, alias), alias
+    exported = dir(pkg)
+    tm.that(exported, has="c")
+    tm.that(exported, has="m")
+    tm.that(exported, has="p")
+    tm.that(exported, has="t")
+    tm.that(exported, has="u")
+    tm.that(exported, has="r")
+
+
+def test_package_exposes_facade() -> None:
+    """The package exposes the public facade and alias."""
+    tm.that(dir(pkg), has="{{ class_stem }}")
+    tm.that(dir(pkg), has="{{ alias }}")
 
 
 def test_facade_fetch_global() -> None:
-    """The public facade resolves a global instance."""
-    assert {{ class_stem }}.fetch_global() is not None
+    """The public facade resolves a global instance via the package surface."""
+    facade = getattr(pkg, "{{ class_stem }}")
+    tm.that(facade.fetch_global() is not None, eq=True)
+
+
+__all__: list[str] = []

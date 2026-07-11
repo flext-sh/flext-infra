@@ -8,6 +8,8 @@
 
 PROJECT_NAME := {{ dist }}
 PYTHON_VERSION ?= 3.13
+FLEXT_GIT_BRANCH ?= {{ flext_git_branch }}
+FLEXT_GIT_BASE_URL ?= {{ flext_git_base_url }}
 SRC_DIR ?= src
 TESTS_DIR ?= tests
 # Detect workspace root by walking up until we find the parent repo's .gitmodules.
@@ -28,82 +30,51 @@ $(error flext-infra/base.mk not found at $(FLEXT_INFRA_BASE_MK); run from a vali
 endif
 else
 # =============================================================================
-# STANDALONE BOOTSTRAP — auto-generates base.mk via flext-infra
+# STANDALONE BOOTSTRAP — external project (no parent workspace)
 # =============================================================================
-# GNU Make auto-rebuild: if base.mk is missing, Make builds this target first,
-# then restarts with base.mk loaded. All standard verbs become available.
+# NOTE(mro-wkii.14, agent codegen): SEM auto-rebuild de base.mk — a regra
+# `base.mk: Makefile` chamando sub-make caia em RECURSAO INFINITA (o sub-make
+# re-avalia `-include base.mk` ainda inexistente e dispara o rebuild de novo).
+# Design: sem base.mk so existem `setup`/`help` (erro claro nos demais verbos);
+# `make setup` faz o bootstrap DIRETO (sem sub-make): mise trust+install ->
+# git clone das deps em .flext-deps/* (git PURO — pip install "flext-infra @
+# git+..." quebrava resolvendo flext-cli do PyPI, onde nao existe) -> uv sync
+# (cria .venv e instala TUDO editavel a partir de .flext-deps; sem `uv venv`,
+# sem prompt --clear) -> base.mk via flext-infra (agora instalado editavel).
+# Idempotente: rodar `make setup` de novo re-sincroniza tudo.
 # =============================================================================
 
-PYTHON_VERSION ?= 3.13
-PYTHON_CMD := $(firstword $(shell command -v python$(PYTHON_VERSION) python3 python 2>/dev/null))
-BOOTSTRAP_VENV := .venv
-BOOTSTRAP_PIP := $(BOOTSTRAP_VENV)/bin/pip
-BOOTSTRAP_PYTHON := $(BOOTSTRAP_VENV)/bin/python
+MISE ?= mise
 FLEXT_INFRA_BASEMK_GROUP := basemk
-FLEXT_INFRA_DEPS_GROUP := deps
+# Lista fixa de deps internas = plataforma (core/cli/infra/tests).
+FLEXT_INTERNAL_DEPS := flext-core flext-cli flext-infra flext-tests
 
 -include base.mk
 
-base.mk: Makefile
-	@echo "==> Resolving base.mk for $(PROJECT_NAME)..."
-	@if [ -d "$(BOOTSTRAP_VENV)" ] && $(BOOTSTRAP_PYTHON) -c 'import flext_infra' 2>/dev/null; then \
-		$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	elif $(PYTHON_CMD) -c 'import flext_infra' 2>/dev/null; then \
-		$(PYTHON_CMD) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	else \
-		echo "==> flext-infra not found. Bootstrapping standalone environment..."; \
-		if [ ! -d "$(BOOTSTRAP_VENV)" ]; then \
-			echo "==> Creating virtual environment with $(PYTHON_CMD)..."; \
-			if [ -z "$(PYTHON_CMD)" ]; then \
-				echo "ERROR: Python $(PYTHON_VERSION) not found. Install it first."; \
-				exit 1; \
-			fi; \
-			$(PYTHON_CMD) -m venv $(BOOTSTRAP_VENV); \
-			$(BOOTSTRAP_PIP) install -q -U pip; \
+setup: ## Full setup: mise + clone .flext-deps + uv sync editable + base.mk
+	@echo "==> Ensuring toolchains via mise (python/uv/ruff)..."
+	@$(MISE) trust .mise.toml >/dev/null 2>&1 || true
+	@$(MISE) install
+	@echo "==> Cloning internal deps into .flext-deps/ (git, branch $(FLEXT_GIT_BRANCH))..."
+	@mkdir -p .flext-deps
+	@for dep in $(FLEXT_INTERNAL_DEPS); do \
+		if [ ! -d ".flext-deps/$$dep/.git" ]; then \
+			git clone --quiet --branch "$(FLEXT_GIT_BRANCH)" "$(FLEXT_GIT_BASE_URL)/$$dep.git" ".flext-deps/$$dep" \
+				|| { echo "ERROR: git clone $$dep failed (check FLEXT_GIT_BRANCH/FLEXT_GIT_BASE_URL)"; exit 1; }; \
 		fi; \
-		$(BOOTSTRAP_PIP) install -q flext-infra; \
-		$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	fi
-	@test -s $@ || { echo "ERROR: base.mk generation failed"; rm -f $@; exit 1; }
-	@echo "==> base.mk generated. Restarting make..."
-
-.PHONY: _bootstrap-venv venv setup
-
-_bootstrap-venv:
-	@if [ ! -d "$(BOOTSTRAP_VENV)" ]; then \
-		echo "==> Creating virtual environment with $(PYTHON_CMD)..."; \
-		if [ -z "$(PYTHON_CMD)" ]; then \
-			echo "ERROR: Python $(PYTHON_VERSION) not found. Install it first."; \
-			exit 1; \
-		fi; \
-		$(PYTHON_CMD) -m venv $(BOOTSTRAP_VENV); \
-		$(BOOTSTRAP_PIP) install -q -U pip; \
-	fi
-
-venv: _bootstrap-venv ## Create standalone virtual environment
-	@$(BOOTSTRAP_PIP) install -q -U pip poetry
-	@echo "Virtual environment ready at $(BOOTSTRAP_VENV)"
-
-setup: venv ## Full standalone setup (venv + dependencies + base.mk)
-	@echo "==> Installing project dependencies..."
-	@$(BOOTSTRAP_PIP) install -q flext-infra
-	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_DEPS_GROUP) path-sync \
-		--mode standalone \
-		--apply \
-		--workspace "$(CURDIR)"
-	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_DEPS_GROUP) internal-sync \
-		--workspace "$(CURDIR)"
-	@$(BOOTSTRAP_VENV)/bin/poetry lock
-	@$(BOOTSTRAP_VENV)/bin/poetry install --all-extras --all-groups
+	done
+	@echo "==> Installing all dependencies editable (uv sync)..."
+	@$(MISE) exec -- uv sync --all-extras --all-groups
 	@if git rev-parse --git-dir >/dev/null 2>&1; then \
-		$(BOOTSTRAP_VENV)/bin/poetry run pre-commit install; \
+		$(MISE) exec -- uv run pre-commit install || true; \
 	fi
-	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
+	@echo "==> Generating base.mk via flext-infra..."
+	@$(MISE) exec -- uv run python -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
 		--project-name $(PROJECT_NAME) --output base.mk
-	@echo "==> Setup complete. All 'make' verbs now available."
+	@test -s base.mk || { echo "ERROR: base.mk generation failed"; exit 1; }
+	@echo "==> Setup complete. All 'make' verbs now available (run 'make help')."
+
+.PHONY: setup
 
 ifeq ("$(wildcard base.mk)", "")
 .PHONY: help
@@ -115,9 +86,7 @@ help: ## Show available commands
 	@echo ""
 	@echo "Bootstrap targets (no base.mk required):"
 
-	@printf "  %-14s %s\n" "venv" "Create virtual environment"
-
-	@printf "  %-14s %s\n" "setup" "Full standalone setup"
+	@printf "  %-14s %s\n" "setup" "Full standalone setup (mise + deps + uv sync)"
 
 	@printf "  %-14s %s\n" "help" "Show this help"
 

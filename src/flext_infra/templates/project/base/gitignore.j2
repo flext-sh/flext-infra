@@ -15,7 +15,11 @@ htmlcov/
 # FLEXT
 .venv/
 .reports/
-.flext-deps/
+# NOTE(mro-wkii.14, agent codegen): .flext-deps/* (clones via internal-sync)
+# são ignorados, MAS .flext-deps/pyproject.toml (workspace root PAI dos clones)
+# é commitado — sem ele uv não resolve os sources workspace=true dos clones.
+.flext-deps/*
+!.flext-deps/pyproject.toml
 *.tpl.rej
 base.mk
 

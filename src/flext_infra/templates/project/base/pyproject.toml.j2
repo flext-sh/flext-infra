@@ -17,18 +17,15 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-{% if project_kind == 'internal' %}
+  "flext-cli",
   "flext-core",
-{% else %}
-  "flext-core>=0.12.0.dev0",
-{% endif %}
   "pydantic-settings>=2.14.0",
   "pydantic>=2.13.3",
   "structlog>=25.5.0",
 ]
 description = "{{ description }}"
 keywords = [ "clean-architecture", "ddd", "flext", "integration", "typed" ]
-license = "MIT"
+license = "{{ license }}"
 name = "{{ dist }}"
 readme = "README.md"
 requires-python = "{{ python_requires }}"
@@ -44,11 +41,8 @@ name = "{{ author_name }}"
 
 [project.optional-dependencies]
 dev = [
-{% if project_kind == 'internal' %}
+  "flext-infra",
   "flext-tests",
-{% else %}
-  "flext-tests>=0.12.0.dev0",
-{% endif %}
   "hypothesis>=6.125",
   "pyrefly>=1.1.1,<1.2.0",
   "pytest>=8.4",
@@ -56,6 +50,9 @@ dev = [
   "pytest-xdist>=3.8",
   "ruff>=0.12.3",
 ]
+
+[project.scripts]
+{{ dist }} = "{{ package_name }}.cli:main"
 {% if repository %}
 
 [project.urls]
@@ -113,8 +110,6 @@ warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
 
-[tool.poetry]
-
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
@@ -141,10 +136,14 @@ project-excludes = [
 project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
 python-interpreter-path = "{% if project_kind == 'internal' %}../.venv/bin/python{% else %}.venv/bin/python{% endif %}"
 python-version = "{{ python_version }}"
+# NOTE(mro-wkii.14, agent codegen): internal resolve flext-* editável em ../
+# (monorepo); external resolve pelo .venv (git pin) — sem ../flext-* aqui.
 search-path = [
   ".",
 {% if project_kind == 'internal' %}
+  "../flext-cli/src",
   "../flext-core/src",
+  "../flext-infra/src",
   "../flext-tests/src",
 {% endif %}
   "src",
@@ -540,13 +539,45 @@ split-on-trailing-comma = true
 all = true
 in_place = true
 sort_first = [ "build-system", "project", "tool" ]
+# NOTE(mro-wkii.14, agent codegen): topologia por kind (canônico flext-infra,
+# provado por uv lock — sem invenção). INTERNAL = member do monorepo: sources
+# workspace=true (a RAIZ do monorepo é o workspace root; uv sobe até ela).
+# EXTERNAL (standalone) = padrão canônico: sources apontam para clones LOCAIS em
+# .flext-deps/<pkg> (path editable) — `flext-infra deps internal-sync` clona
+# (URLs em flext-repo-map.toml) e `deps path-sync --mode auto` mantém este mapa;
+# uv resolve tudo pelos sources da RAIZ do projeto, ignorando os workspace=true
+# internos dos clones. NUNCA ../flext (anti-pattern) nem git pin (quebra).
 {% if project_kind == 'internal' %}
+
+[tool.uv.sources.flext-cli]
+workspace = true
 
 [tool.uv.sources.flext-core]
 workspace = true
 
+[tool.uv.sources.flext-infra]
+workspace = true
+
 [tool.uv.sources.flext-tests]
 workspace = true
+{% endif %}
+{% if project_kind == 'external' %}
+
+[tool.uv.sources.flext-cli]
+editable = true
+path = ".flext-deps/flext-cli"
+
+[tool.uv.sources.flext-core]
+editable = true
+path = ".flext-deps/flext-core"
+
+[tool.uv.sources.flext-infra]
+editable = true
+path = ".flext-deps/flext-infra"
+
+[tool.uv.sources.flext-tests]
+editable = true
+path = ".flext-deps/flext-tests"
 {% endif %}
 
 [tool.yamlfix]
