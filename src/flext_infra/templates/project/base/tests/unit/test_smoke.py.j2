@@ -1,7 +1,10 @@
-"""Smoke tests for {{ package_name }} — import + canonical alias surface.
+"""Unit smoke tests for {{ package_name }} — real public-interface behavior.
 
-Pattern: facade-only imports, ``tm.that`` assertions, TYPE_CHECKING-only typing.
-No ``importlib`` loops, no direct facade-class import, no raw asserts.
+One thin nested class (``FlextTestsCase`` MRO gives ``c/t/p/m/u`` + runtime for
+free). Tests exercise the PUBLIC surface only — the ``{{ alias }}`` facade and
+the ``{{ ns }}`` domain models — and assert observable behavior (the ``ping``
+handler returns a pong result). No ``mock``/``fake``/``patch``, no reflection on
+private structure, no hint-ignores: only what a downstream consumer can call.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,40 +12,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
-from flext_tests import tm
+from flext_tests import FlextTestsCase, tm
 
-import {{ package_name }} as pkg
-
-if TYPE_CHECKING:
-    from tests import typings as tests_typings  # noqa: F401  # typing-only import
+from {{ package_name }} import {{ alias }} as facade, m
 
 pytestmark = [pytest.mark.smoke, pytest.mark.unit]
 
 
-def test_package_exposes_canonical_aliases() -> None:
-    """The package imports and exposes the canonical FLEXT aliases."""
-    exported = dir(pkg)
-    tm.that(exported, has="c")
-    tm.that(exported, has="m")
-    tm.that(exported, has="p")
-    tm.that(exported, has="t")
-    tm.that(exported, has="u")
-    tm.that(exported, has="r")
+class Tests{{ class_stem }}Smoke(FlextTestsCase):
+    """Public-behavior smoke suite for {{ package_name }} (one class per module)."""
+
+    def test_ping_returns_pong(self) -> None:
+        """``ping`` on the public facade returns a successful pong result."""
+        outcome = facade.ping(m.{{ ns }}.PingInput())
+        tm.that(outcome.success, eq=True)
+        tm.that(outcome.unwrap().message, eq="pong")
 
 
-def test_package_exposes_facade() -> None:
-    """The package exposes the public facade and alias."""
-    tm.that(dir(pkg), has="{{ class_stem }}")
-    tm.that(dir(pkg), has="{{ alias }}")
-
-
-def test_facade_fetch_global() -> None:
-    """The public facade resolves a global instance via the package surface."""
-    facade = getattr(pkg, "{{ class_stem }}")
-    tm.that(facade.fetch_global() is not None, eq=True)
-
-
-__all__: list[str] = []
+__all__: list[str] = ["Tests{{ class_stem }}Smoke"]

@@ -325,6 +325,36 @@ class FlextInfraConstantsCodegenProject:
             "render",
             False,
         ),
+        # ---- base (internal + external): shared fixtures (unified conftest SSOT) ----
+        (
+            "base/tests/fixtures/__init__.py.j2",
+            "tests/fixtures/__init__.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        # ---- base (internal + external): e2e (public-entrypoint behavior) ----
+        (
+            "base/tests/e2e/__init__.py.j2",
+            "tests/e2e/__init__.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/tests/e2e/base.py.j2",
+            "tests/e2e/base.py",
+            _BOTH,
+            "render",
+            False,
+        ),
+        (
+            "base/tests/e2e/py.typed.j2",
+            "tests/e2e/py.typed",
+            _BOTH,
+            "render",
+            False,
+        ),
         # ---- internal-only (member registration) ----
         (
             "internal/projects_member.md.j2",
