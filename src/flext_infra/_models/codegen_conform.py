@@ -7,13 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated
 
-from pydantic import model_validator
+from pydantic import ConfigDict
 
 from flext_cli import m
 from flext_infra.constants import c
 from flext_infra.typings import t
+
+
+class _CodegenContract(m.ContractModel):
+    """Private declarative base for schema-loaded codegen records."""
+
+    model_config = ConfigDict(strict=False, frozen=True, extra="forbid")
 
 
 class FlextInfraModelsCodegenConform:
@@ -23,7 +29,7 @@ class FlextInfraModelsCodegenConform:
     # former model-less workspace/make dictionaries. YAML is accepted only at
     # the flext-cli loading boundary and is immediately model-validated here.
 
-    class ToolchainSpec(m.ContractModel):
+    class ToolchainSpec(_CodegenContract):
         """Exact Python and uv versions shared by generated projects."""
 
         python_version: Annotated[
@@ -36,7 +42,7 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="PEP 440 uv required-version expression"),
         ]
 
-    class ProviderSpec(m.ContractModel):
+    class ProviderSpec(_CodegenContract):
         """One GitHub organization and its mandatory branch policy."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Provider key")]
@@ -50,12 +56,11 @@ class FlextInfraModelsCodegenConform:
         ]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
-    class ProfileSpec(m.ContractModel):
+    class ProfileSpec(_CodegenContract):
         """Execution semantics for one generated Make profile."""
 
         name: Annotated[
             c.Infra.MakeProfile,
-            m.BeforeValidator(lambda value: c.Infra.MakeProfile(value)),
             m.Field(description="Closed Make profile name"),
         ]
         environment_scope: Annotated[
@@ -75,7 +80,7 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="repository discovery policy"),
         ]
 
-    class MakeVerbSpec(m.ContractModel):
+    class MakeVerbSpec(_CodegenContract):
         """One public Make verb and its single default selector."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
@@ -88,7 +93,7 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="Whether mutation requires APPLY=Y"),
         ] = False
 
-    class CustomHandlerPolicy(m.ContractModel):
+    class CustomHandlerPolicy(_CodegenContract):
         """Strict schema for the only handwritten Make extension file."""
 
         filename: Annotated[
@@ -113,7 +118,7 @@ class FlextInfraModelsCodegenConform:
             description="Permit help declarations",
         )
 
-    class MakeSpec(m.ContractModel):
+    class MakeSpec(_CodegenContract):
         """Complete generated Makefile public and extension contract."""
 
         selector: Annotated[
@@ -130,7 +135,6 @@ class FlextInfraModelsCodegenConform:
         ]
         verbs: Annotated[
             tuple[FlextInfraModelsCodegenConform.MakeVerbSpec, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered canonical public verbs"),
         ]
         custom_handler_policy: Annotated[
@@ -138,32 +142,11 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="Private custom target policy"),
         ]
 
-        @model_validator(mode="after")
-        def _validate_make_contract(self) -> Self:
-            """Enforce the one canonical public surface without aliases."""
-            names = tuple(verb.name for verb in self.verbs)
-            if names != c.Infra.PUBLIC_MAKE_VERBS:
-                msg = "public Make verbs must match the canonical ordered surface"
-                raise ValueError(msg)
-            if self.selector != "WHAT":
-                msg = "WHAT is the only public Make selector"
-                raise ValueError(msg)
-            if self.apply_variable != "APPLY" or self.apply_value != "Y":
-                msg = "APPLY=Y is the only write opt-in"
-                raise ValueError(msg)
-            return self
-
-        @property
-        def public_verbs(self) -> t.StrSequence:
-            """Return the validated ordered public verb names."""
-            return tuple(verb.name for verb in self.verbs)
-
-    class ManagedFileSpec(m.ContractModel):
+    class ManagedFileSpec(_CodegenContract):
         """One versioned file owned by codegen."""
 
         path: Annotated[
             Path,
-            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="Repository-relative file path"),
         ]
         owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
@@ -172,12 +155,11 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="Whether clean committed content may be replaced"),
         ]
 
-    class TemplateEntrySpec(m.ContractModel):
+    class TemplateEntrySpec(_CodegenContract):
         """One template-to-destination mapping shared by new and conform."""
 
         source: Annotated[
             Path,
-            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="Template-root-relative source"),
         ]
         destination: Annotated[
@@ -186,9 +168,6 @@ class FlextInfraModelsCodegenConform:
         ]
         profiles: Annotated[
             tuple[c.Infra.MakeProfile, ...],
-            m.BeforeValidator(
-                lambda value: tuple(c.Infra.MakeProfile(item) for item in value),
-            ),
             m.Field(description="Profiles that consume the template"),
         ]
         delegate: Annotated[
@@ -200,21 +179,19 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="Whether the template owns existing content"),
         ] = False
 
-    class TemplatesSpec(m.ContractModel):
+    class TemplatesSpec(_CodegenContract):
         """Universal template root and its complete ordered manifest."""
 
         root: Annotated[
             Path,
-            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="Package-relative template root"),
         ]
         entries: Annotated[
             tuple[FlextInfraModelsCodegenConform.TemplateEntrySpec, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Complete ordered template manifest"),
         ]
 
-    class RepositoryRef(m.ContractModel):
+    class RepositoryRef(_CodegenContract):
         """One declared repository and its immutable Git origin contract."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Catalog key")]
@@ -232,17 +209,14 @@ class FlextInfraModelsCodegenConform:
         ]
         path: Annotated[
             Path,
-            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="POSIX path relative to its workspace root"),
         ]
         role: Annotated[
             c.Infra.RepositoryRole,
-            m.BeforeValidator(lambda value: c.Infra.RepositoryRole(value)),
             m.Field(description="Repository role in the declared topology"),
         ]
         state: Annotated[
             c.Infra.RepositoryState,
-            m.BeforeValidator(lambda value: c.Infra.RepositoryState(value)),
             m.Field(description="Repository lifecycle state"),
         ] = c.Infra.RepositoryState.ACTIVE
         provider: Annotated[
@@ -251,44 +225,11 @@ class FlextInfraModelsCodegenConform:
         ]
         profile: Annotated[
             c.Infra.MakeProfile | None,
-            m.BeforeValidator(
-                lambda value: None if value is None else c.Infra.MakeProfile(value),
-            ),
             m.Field(description="Makefile generation profile"),
         ] = None
 
-        @m.field_validator("url")
-        @classmethod
-        def _validate_url(cls, value: str) -> str:
-            """Reject non-GitHub and non-clone URLs at model validation."""
-            if not value.endswith(c.Infra.GIT_DIR):
-                msg = "repository URL must end in .git"
-                raise ValueError(msg)
-            if c.Infra.GITHUB_REPO_URL_RE.fullmatch(value) is None:
-                msg = "repository URL must be a canonical GitHub clone URL"
-                raise ValueError(msg)
-            return value
-
-        @m.field_validator("branch")
-        @classmethod
-        def _validate_branch(cls, value: str) -> str:
-            """Reject empty or unsafe Git ref syntax."""
-            if c.Infra.GIT_REF_RE.fullmatch(value) is None:
-                msg = "repository branch is not a valid Git ref"
-                raise ValueError(msg)
-            return value
-
-        @m.field_validator("path")
-        @classmethod
-        def _validate_relative_path(cls, value: Path) -> Path:
-            """Keep repository paths inside the declarative workspace root."""
-            if value.is_absolute() or ".." in value.parts:
-                msg = "repository path must be relative and may not escape its root"
-                raise ValueError(msg)
-            return value
-
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
-    class ProjectSpec(m.ContractModel):
+    class ProjectSpec(_CodegenContract):
         """Deterministic project metadata required to materialize a new tree."""
 
         package_name: Annotated[
@@ -327,17 +268,16 @@ class FlextInfraModelsCodegenConform:
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
-    class WorkspaceExclusionSpec(m.ContractModel):
+    class WorkspaceExclusionSpec(_CodegenContract):
         """One explicitly rejected workspace path and its reason."""
 
         path: Annotated[
             Path,
-            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="Workspace-relative path"),
         ]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
-    class WorkspaceSpec(m.ContractModel):
+    class WorkspaceSpec(_CodegenContract):
         """Declared topology for exactly one orchestrated workspace."""
 
         version: Annotated[int, m.Field(ge=1, description="Manifest version")]
@@ -352,42 +292,18 @@ class FlextInfraModelsCodegenConform:
         ] = None
         members: Annotated[
             tuple[FlextInfraModelsCodegenConform.RepositoryRef, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered active member repository contracts"),
         ] = ()
         content_only: Annotated[
             tuple[FlextInfraModelsCodegenConform.RepositoryRef, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered content-only repository contracts"),
         ] = ()
         exclusions: Annotated[
             tuple[FlextInfraModelsCodegenConform.WorkspaceExclusionSpec, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered paths deliberately excluded from inventory"),
         ] = ()
 
-        @model_validator(mode="after")
-        def _validate_topology(self) -> Self:
-            """Reject duplicate or overlapping member and exclusion paths."""
-            members = tuple(item.name for item in self.members)
-            content_only = tuple(item.name for item in self.content_only)
-            exclusions = tuple(item.path.as_posix() for item in self.exclusions)
-            if len(set(members)) != len(members):
-                msg = "workspace members must be unique"
-                raise ValueError(msg)
-            if len(set(content_only)) != len(content_only):
-                msg = "workspace content-only entries must be unique"
-                raise ValueError(msg)
-            if len(set(exclusions)) != len(exclusions):
-                msg = "workspace exclusions must be unique"
-                raise ValueError(msg)
-            overlap = sorted(set(members).intersection(content_only))
-            if overlap:
-                msg = f"workspace entries cannot be active and content-only: {overlap}"
-                raise ValueError(msg)
-            return self
-
-    class WorkspaceCatalogRef(m.ContractModel):
+    class WorkspaceCatalogRef(_CodegenContract):
         """Global pointer to a local workspace topology manifest."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
@@ -397,11 +313,10 @@ class FlextInfraModelsCodegenConform:
         ]
         manifest: Annotated[
             Path,
-            m.BeforeValidator(lambda value: Path(value)),
             m.Field(description="Repository-relative manifest path"),
         ]
 
-    class CodegenConfigSpec(m.ContractModel):
+    class CodegenConfigSpec(_CodegenContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
@@ -411,12 +326,10 @@ class FlextInfraModelsCodegenConform:
         ]
         providers: Annotated[
             tuple[FlextInfraModelsCodegenConform.ProviderSpec, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered Git providers"),
         ]
         profiles: Annotated[
             tuple[FlextInfraModelsCodegenConform.ProfileSpec, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered Make profiles"),
         ]
         make: Annotated[
@@ -425,7 +338,6 @@ class FlextInfraModelsCodegenConform:
         ]
         managed_files: Annotated[
             tuple[FlextInfraModelsCodegenConform.ManagedFileSpec, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Files owned by conform"),
         ]
         templates: Annotated[
@@ -434,35 +346,14 @@ class FlextInfraModelsCodegenConform:
         ]
         repositories: Annotated[
             tuple[FlextInfraModelsCodegenConform.RepositoryRef, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Ordered repository catalog"),
         ]
         workspaces: Annotated[
             tuple[FlextInfraModelsCodegenConform.WorkspaceCatalogRef, ...],
-            m.BeforeValidator(lambda value: tuple(value)),
             m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
-        @model_validator(mode="after")
-        def _validate_manifest_ownership(self) -> Self:
-            """Keep the topology manifest as input, never a conform output."""
-            workspace_path = Path("config/workspace.yaml")
-            managed_paths = {item.path for item in self.managed_files}
-            if workspace_path in managed_paths:
-                msg = "config/workspace.yaml cannot be a managed output"
-                raise ValueError(msg)
-            manifest_entries = tuple(
-                item for item in self.templates.entries if item.delegate == "manifest"
-            )
-            if len(manifest_entries) != 1:
-                msg = "exactly one initial workspace manifest template is required"
-                raise ValueError(msg)
-            if manifest_entries[0].destination != workspace_path.as_posix():
-                msg = "manifest delegate must target config/workspace.yaml"
-                raise ValueError(msg)
-            return self
-
-    class UvEnvironmentPlan(m.ContractModel):
+    class UvEnvironmentPlan(_CodegenContract):
         """One deterministic uv environment operation plan."""
 
         project_root: Annotated[Path, m.Field(description="Selected project root")]
@@ -488,32 +379,23 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="Local projects overlaid after locked sync"),
         ] = ()
 
-    class CodegenConformRequest(m.ContractModel):
+    class CodegenConformRequest(_CodegenContract):
         """Validated public request for ``flext-infra codegen conform``."""
 
         root: Annotated[
             Path,
-            m.BeforeValidator(
-                lambda value: (
-                    (value if isinstance(value, Path) else Path(value))
-                    .expanduser()
-                    .resolve()
-                ),
-            ),
             m.Field(description="Repository or workspace root"),
         ]
         scope: Annotated[
             c.Infra.CodegenConformScope,
-            m.BeforeValidator(lambda value: c.Infra.CodegenConformScope(value)),
             m.Field(description="Repository selection scope"),
         ] = c.Infra.CodegenConformScope.SELF
         mode: Annotated[
             c.Infra.CodegenConformMode,
-            m.BeforeValidator(lambda value: c.Infra.CodegenConformMode(value)),
             m.Field(description="Read-only check or atomic apply"),
         ] = c.Infra.CodegenConformMode.CHECK
 
-    class CodegenFilePlan(m.ContractModel):
+    class CodegenFilePlan(_CodegenContract):
         """Expected content and current state for one managed file."""
 
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
@@ -533,7 +415,7 @@ class FlextInfraModelsCodegenConform:
         ] = False
         reason: Annotated[str, m.Field(description="Blocking explanation")] = ""
 
-    class CodegenPlan(m.ContractModel):
+    class CodegenPlan(_CodegenContract):
         """Fully validated plan produced before any managed-file write."""
 
         request: Annotated[
@@ -561,12 +443,7 @@ class FlextInfraModelsCodegenConform:
             m.Field(description="All render results validated before application"),
         ]
 
-        @property
-        def ready(self) -> bool:
-            """Return whether the complete plan can be safely applied."""
-            return not any(file.blocked for file in self.files)
-
-    class CodegenResult(m.ContractModel):
+    class CodegenResult(_CodegenContract):
         """Public conformance outcome for check and apply modes."""
 
         plan: Annotated[
@@ -581,16 +458,6 @@ class FlextInfraModelsCodegenConform:
             t.StrSequence,
             m.Field(description="Fail-closed validation or write errors"),
         ] = ()
-
-        @property
-        def changed(self) -> bool:
-            """Return whether any selected file differs from expected content."""
-            return any(file.changed for file in self.plan.files)
-
-        @property
-        def idempotent(self) -> bool:
-            """Return whether the operation observed the canonical fixed point."""
-            return (not self.changed) and (not self.errors)
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenConform"]
