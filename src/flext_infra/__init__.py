@@ -36,7 +36,11 @@ if TYPE_CHECKING:
     from flext_infra.base_selection import (
         FlextInfraProjectSelectionServiceBase as FlextInfraProjectSelectionServiceBase,
     )
-    from flext_infra.cli import FlextInfraCli as FlextInfraCli, main as main
+    from flext_infra.cli import (
+        FlextInfraCli as FlextInfraCli,
+        docs_main as docs_main,
+        main as main,
+    )
     from flext_infra.constants import FlextInfraConstants as FlextInfraConstants, c as c
     from flext_infra.models import FlextInfraModels as FlextInfraModels, m as m
     from flext_infra.protocols import (
@@ -74,6 +78,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
             ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
             ".cli": (
                 "FlextInfraCli",
+                "docs_main",
                 "main",
             ),
             ".constants": (
@@ -153,6 +158,7 @@ __all__: tuple[str, ...] = (
     "basemk",
     "c",
     "d",
+    "docs_main",
     "e",
     "h",
     "infra",

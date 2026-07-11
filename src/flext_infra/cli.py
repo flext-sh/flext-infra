@@ -179,4 +179,10 @@ def main(args: t.StrSequence | None = None) -> int:
     return FlextInfraCli().main(cli_args)
 
 
-__all__: list[str] = ["FlextInfraCli", "main"]
+def docs_main(args: t.StrSequence | None = None) -> int:
+    """Run the docs group directly (``flext-docs`` == ``flext-infra docs``)."""
+    cli_args = list(args) if args is not None else sys.argv[1:]
+    return FlextInfraCli().main([c.Infra.CLI_GROUP_DOCS, *cli_args])
+
+
+__all__: list[str] = ["FlextInfraCli", "docs_main", "main"]

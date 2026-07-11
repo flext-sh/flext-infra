@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import main as infra_main
+from flext_infra import docs_main, main as infra_main
 from tests.utilities import u
 
 if TYPE_CHECKING:
@@ -34,11 +34,20 @@ def test_docs_cli_requires_subcommand() -> None:
         ["docs", "build", "--help"],
         ["docs", "fix", "--help"],
         ["docs", "generate", "--help"],
+        ["docs", "serve", "--help"],
         ["docs", "validate", "--help"],
     ],
 )
 def test_docs_cli_help_routes(argv: list[str]) -> None:
     assert infra_main(argv) == 0
+
+
+def test_flext_docs_entrypoint_routes_through_docs_group() -> None:
+    # NOTE (multi-agent): S0 motor entrypoint — proves `flext-docs` == `flext-infra docs`
+    # via the package-root lazy export (mro-3o9s).
+    assert docs_main(["--help"]) == 0
+    assert docs_main(["audit", "--help"]) == 0
+    assert docs_main([]) == 1
 
 
 def test_docs_cli_audit_projects_filter_writes_only_selected_reports(
