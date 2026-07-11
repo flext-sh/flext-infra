@@ -63,6 +63,8 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
         toolchain = m.Infra.ToolchainSpec(
             python_version="3.13.11",
+            python_minor_version="3.13",
+            python_required_version=">=3.13.11,<3.14",
             uv_version="0.11.28",
             uv_required_version="==0.11.28",
         )

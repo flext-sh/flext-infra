@@ -36,6 +36,14 @@ class FlextInfraModelsCodegenConform:
             t.NonEmptyStr,
             m.Field(description="Exact Python version"),
         ]
+        python_minor_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Python major.minor tool configuration value"),
+        ]
+        python_required_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="PEP 440 project Python requirement"),
+        ]
         uv_version: Annotated[t.NonEmptyStr, m.Field(description="Exact uv version")]
         uv_required_version: Annotated[
             t.NonEmptyStr,

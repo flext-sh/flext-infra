@@ -251,12 +251,20 @@
       "additionalProperties": false,
       "required": [
         "python_version",
+        "python_minor_version",
+        "python_required_version",
         "uv_version",
         "uv_required_version"
       ],
       "properties": {
         "python_version": {
           "const": "3.13.11"
+        },
+        "python_minor_version": {
+          "const": "3.13"
+        },
+        "python_required_version": {
+          "const": ">=3.13.11,<3.14"
         },
         "uv_version": {
           "const": "0.11.28"
