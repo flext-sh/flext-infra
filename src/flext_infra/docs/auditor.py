@@ -34,6 +34,13 @@ class FlextInfraDocAuditor(
         ),
     ] = False
 
+    # kimi-docs mro-3o9s: seletor de checks via CLI como --checks (flag --check é o
+    # alias bool de check_only na base); default "all" = comportamento anterior.
+    checks: Annotated[
+        str,
+        m.Field(description="Comma-separated audit checks (default: all)"),
+    ] = "all"
+
     def audit(
         self,
         workspace_root: Path,
@@ -98,7 +105,7 @@ class FlextInfraDocAuditor(
                 projects=self.selected_projects,
                 output_dir=self.output_dir,
                 params=m.Infra.AuditScopeParams(
-                    check="all",
+                    check=self.checks,
                     strict=self.strict_mode,
                 ),
             ),

@@ -34,6 +34,7 @@ class FlextInfraConstantsCli:
         "--rewrite-constraints",
     )
     _SHARED_VALUE_FLAG_VALUES: Final[tuple[str, ...]] = (
+        "--checks",
         "--constraint-policy",
         "--workspace",
         "--projects",

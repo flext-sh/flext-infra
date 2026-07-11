@@ -110,3 +110,40 @@ class TestsDocstringCoverage:
             metric = summary["summary"]["docstring_coverage"]
             assert metric["checked"] > 0
             assert 0.0 <= metric["percent"] < 100.0
+
+    class TestExecuteChecksSelector:
+        """execute() honors the CLI --checks selector (no hardcoded "all")."""
+
+        def test_checks_docstrings_runs_only_that_check(
+            self,
+            tmp_path: Path,
+        ) -> None:
+            project = _write_project(tmp_path)
+
+            result = FlextInfraDocAuditor(
+                workspace_root=project,
+                checks="docstrings",
+            ).execute()
+
+            assert result.success
+            summary = json.loads(
+                (project / ".reports/docs/audit-summary.json").read_text(
+                    encoding="utf-8",
+                ),
+            )["summary"]
+            assert summary["checks"] == ["docstrings"]
+            assert summary["docstring_coverage"]["checked"] > 0
+
+        def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
+            project = _write_project(tmp_path)
+
+            result = FlextInfraDocAuditor(workspace_root=project).execute()
+
+            assert result.success
+            summary = json.loads(
+                (project / ".reports/docs/audit-summary.json").read_text(
+                    encoding="utf-8",
+                ),
+            )["summary"]
+            assert "docstrings" in summary["checks"]
+            assert "links" in summary["checks"]
