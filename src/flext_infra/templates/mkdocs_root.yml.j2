@@ -16,13 +16,22 @@ site_dir: .reports/docs/site
 
 nav:
   - Home: index.md
-  - Architecture: architecture/README.md
-  - Code Communities: architecture/communities/index.md
+  - Architecture:
+      - Overview: architecture/README.md
+      - arc42: architecture/arc42/README.md
+      - Code Communities: architecture/communities/index.md
+  - Standards:
+      - Documentation: standards/documentation.md
+      - Docstrings: standards/docstrings/README.md
   - Guides: guides/README.md
   - Projects: projects/README.md
-  - API Reference: api-reference/README.md
-  - API Overview: api-reference/generated/overview.md
+  - API Reference:
+      - Index: api-reference/README.md
+      - Foundation: api-reference/foundation.md
+      - Types: api/types.md
+      - API Overview: api-reference/generated/overview.md
   - Project Catalog: projects/generated/catalog.md
+  - Version Policy: version-policy.md
 
 {{ mk.not_in_nav_block() }}
 {{ mk.validation_block() }}
