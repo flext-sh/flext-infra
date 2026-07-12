@@ -213,10 +213,15 @@ class FlextInfraUtilitiesDocsRender:
             link_prefix,
             "docs/guides/onboarding.md",
         )
+        governance_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix,
+            "docs/GOVERNANCE.md",
+        )
         return [
             "## Governance Pointer",
             "",
             f"- Engineering law: [`/flext/AGENTS.md`]({agents_link})",
+            f"- Governance + ADRs: [`/flext/docs/GOVERNANCE.md`]({governance_link})",
             f"- Skills index: [`/flext/.agents/skills/`]({skills_link})",
             f"- Onboarding: [`/flext/docs/guides/onboarding.md`]({onboarding_link})",
         ]

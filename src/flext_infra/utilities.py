@@ -1,7 +1,7 @@
 """Utilities facade for flext-infra.
 
 Re-exports flext_core utilities and adds infrastructure-specific
-utility namespaces. All methods exposed directly via u.Infra.[method](...)
+utility namespaces. All methods are exposed directly as ``u.Infra.<method>()``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
