@@ -132,6 +132,10 @@ class FlextInfraConstantsCodegenLazy:
         "normalize_lazy_imports",
     })
     "Public-module symbols withheld from generated root-facade __all__."
+    FIXTURE_SINGLETON_COLLISION_EXPORTS: Final[frozenset[str]] = frozenset({
+        "settings",
+    })
+    "Fixture export names owned by canonical singletons (``_settings.settings``); never bubble from ``_fixtures`` into parent lazy maps (F811)."
     PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
         "c",
         "d",

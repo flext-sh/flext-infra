@@ -28,7 +28,8 @@ class TestsFlextInfraLazyInitHelpers:
 
     @staticmethod
     def _generated_exports(package_root: Path) -> str:
-        return package_root.joinpath(c.Infra.INIT_PY).read_text(
+        # mro-i6nq.10: The root ABI is owned by the generated unit manifest.
+        return package_root.joinpath(c.Infra.UNIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
@@ -299,9 +300,12 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
+        assert (
+            "from flext_meltano.__unit__ import __all__ as __all__"
+            in init_content
+        )
         for alias_name in ("d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
-            assert f'    "{alias_name}",' in init_content
-            assert f'            "{alias_name}",' in exports_content
+            assert f'    "{alias_name}",' in exports_content
         assert (
             "from flext_cli import d, e, h, m, p, r, s, t, u, x"
             not in init_content.splitlines()

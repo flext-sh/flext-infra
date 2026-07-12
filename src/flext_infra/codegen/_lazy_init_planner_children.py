@@ -70,6 +70,15 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                     (child_entry.package_name, ""),
                 )
             for name, (module_name, attr) in child_exports.items():
+                # NOTE (multi-agent): fixture modules may define a ``settings``
+                # fixture, but the name is owned by the canonical ``_settings``
+                # singleton; bubbling it into the parent map collides (F811)
+                # with the singleton re-export in generated root __init__ files.
+                if (
+                    is_fixture_child
+                    and name in c.Infra.FIXTURE_SINGLETON_COLLISION_EXPORTS
+                ):
+                    continue
                 if (
                     attr
                     and name not in c.Infra.ALIAS_NAMES
