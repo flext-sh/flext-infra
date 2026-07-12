@@ -18,6 +18,7 @@ from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._models.docs import FlextInfraModelsDocs
+from flext_infra._models.enforcement import FlextInfraModelsEnforcement
 from flext_infra._models.gates import FlextInfraModelsGates
 from flext_infra._models.github import FlextInfraModelsGithub
 from flext_infra._models.mixins import FlextInfraModelsMixins
@@ -25,6 +26,7 @@ from flext_infra._models.refactor import FlextInfraModelsRefactor
 from flext_infra._models.release import FlextInfraModelsRelease
 from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra._models.scan import FlextInfraModelsScan
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._models.validate import FlextInfraModelsCore
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
@@ -43,11 +45,15 @@ class FlextInfraModels(m):
         FlextInfraModelsCodegen,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,
+        # NOTE (multi-agent, cosmos-main-15bi): enforcement/transformers model
+        # facades added for the deep-FLEXT dataclass -> m.Infra migration.
+        FlextInfraModelsEnforcement,
         FlextInfraModelsGates,
         FlextInfraModelsGithub,
         FlextInfraModelsRefactor,
         FlextInfraModelsRelease,
         FlextInfraModelsMixins,
+        FlextInfraModelsTransformers,
         FlextInfraModelsWorkspace,
         FlextInfraModelsRope,
         FlextInfraModelsScan,

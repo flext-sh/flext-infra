@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSet
+from collections import defaultdict
+from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -235,6 +236,87 @@ class FlextInfraModelsRefactor(
         family_chains: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(description="Family letter to MRO chain mapping"),
+        ]
+
+    # NOTE (multi-agent, cosmos-main-15bi): the two models below replace the
+    # dataclass payloads that lived in refactor/_wrapper_rewrite.py and
+    # refactor/classvar_constant_autofix.py (deep-FLEXT: models only in m).
+    class WrapperRewriteAccumulator(m.ArbitraryTypesModel):
+        """Aggregates per-file rewrite stats across the wrapper-root verb run.
+
+        Mutable accumulator (never frozen): every field is appended to or
+        incremented while the run scans candidate files.
+        """
+
+        updates: Annotated[
+            MutableMapping[Path, str],
+            m.Field(description="Pending file content updates keyed by path"),
+        ] = m.Field(default_factory=dict)
+        wrapper_candidates: Annotated[
+            MutableSequence[Path],
+            m.Field(description="Files that carry wrapper import candidates"),
+        ] = m.Field(default_factory=list)
+        changed_files: Annotated[
+            MutableSequence[str],
+            m.Field(description="String paths of files changed by the run"),
+        ] = m.Field(default_factory=list)
+        total_replacements: Annotated[
+            int,
+            m.Field(description="Total replacements applied across the run"),
+        ] = 0
+        total_core_replacements: Annotated[
+            int,
+            m.Field(description="Total Core.Tests chain rewrites applied"),
+        ] = 0
+        import_rewrite_candidates: Annotated[
+            int,
+            m.Field(description="Count of wrapper import rewrite candidates"),
+        ] = 0
+        per_project_changes: Annotated[
+            defaultdict[str, int],
+            m.Field(description="Changed file count keyed by project name"),
+        ] = m.Field(default_factory=lambda: defaultdict(int))
+        per_project_replacements: Annotated[
+            defaultdict[str, int],
+            m.Field(description="Replacement count keyed by project name"),
+        ] = m.Field(default_factory=lambda: defaultdict(int))
+
+    class ClassvarConstantAutofixPlan(m.ArbitraryTypesModel):
+        """Planned edits for one ENFORCE-079 ClassVar-constant autofix."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        class_module: Annotated[
+            str,
+            m.Field(description="Module that declares the owning class"),
+        ]
+        class_name: Annotated[
+            str,
+            m.Field(description="Class that currently declares the constant"),
+        ]
+        constant_name: Annotated[
+            str,
+            m.Field(description="Name of the ClassVar constant being moved"),
+        ]
+        constants_module: Annotated[
+            str,
+            m.Field(description="Canonical _constants module receiving the constant"),
+        ]
+        source_resource: Annotated[
+            t.Infra.RopeResource,
+            m.Field(description="Rope resource for the class module"),
+        ]
+        target_resource: Annotated[
+            t.Infra.RopeResource,
+            m.Field(description="Rope resource for the constants module"),
+        ]
+        declaration_line: Annotated[
+            str,
+            m.Field(description="Exact source line that declares the constant"),
+        ]
+        class_lineno: Annotated[
+            int,
+            m.Field(description="1-based line where the class starts"),
         ]
 
     # -- Namespace Enforcer Models ---------------------------------------------
