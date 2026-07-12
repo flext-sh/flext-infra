@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import cli, p as cli_p, u as cli_u
 from flext_core import s
+from flext_infra import FlextInfraSettings
 from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 from flext_infra.constants import c
@@ -33,7 +34,10 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     @override
     def settings(self) -> cli_p.Cli.Settings:
         """Typed CLI settings via the canonical cli facade."""
-        return cli.settings
+        # NOTE (multi-agent): ``cli.settings`` is the core FlextSettings
+        # singleton; the CLI contract (debug + cli_* scalars) is satisfied by
+        # the infra settings singleton, which extends FlextCliSettings.
+        return FlextInfraSettings.fetch_global()
 
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
