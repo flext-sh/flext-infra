@@ -48,6 +48,8 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
 
         Args:
             workspace_root: Path to the workspace root (contains Makefile).
+            apply: If True, write the Makefile; otherwise only report whether
+                it would change.
 
         Returns:
             r with True if Makefile was written, False if unchanged,

@@ -134,7 +134,7 @@ class FlextInfraRefactorCensusFiltersMixin:
     def _runtime_alias_target_name(
         convention: m.Infra.RopeModuleConvention,
     ) -> str:
-        """Expected runtime alias target name."""
+        """Return the expected runtime alias target name."""
         layout = convention.project_layout
         family = convention.module_policy.expected_family or ""
         if layout is None or not family:

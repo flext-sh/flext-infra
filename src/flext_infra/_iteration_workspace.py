@@ -45,6 +45,7 @@ class FlextInfraUtilitiesIterationWorkspace:
             include_tests: Include tests/ directories (default True).
             include_examples: Include examples/ directories (default True).
             include_scripts: Include scripts/ directories (default True).
+            include_dynamic_dirs: Include dynamic directories (default True).
             src_dirs: Which subdirectories to scan. Defaults to standard locations.
                 src/ is always included regardless of include_* flags.
 

@@ -87,7 +87,7 @@ class FlextInfraDependencyDetectionAnalysis(
         self,
         value: t.Infra.InfraValue | None,
     ) -> t.Infra.ContainerDict:
-        """Mapping from value."""
+        """Build a mapping from a value."""
         if not isinstance(value, Mapping):
             return {}
         return self._to_toml_config(value)

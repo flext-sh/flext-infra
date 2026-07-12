@@ -146,7 +146,7 @@ class FlextInfraRefactorLooseClassScanner:
         return "medium" if parts else c.Infra.SeverityLevel.LOW
 
     def _expected_prefix_for_module(self, rel_path: Path) -> str:
-        """Expected prefix for module."""
+        """Return the expected prefix for a module."""
         parts = rel_path.parts
         if len(parts) < c.Infra.MIN_PATH_DEPTH:
             return ""

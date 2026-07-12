@@ -47,6 +47,8 @@ class FlextInfraProjectMakefileUpdater:
         Args:
             project_root: Root directory of the project.
             canonical_root: Workspace canonical root (reserved for future use).
+            apply: If True, write the Makefile; otherwise only report whether
+                it would change.
 
         Returns:
             r with True if Makefile was written, False if unchanged,

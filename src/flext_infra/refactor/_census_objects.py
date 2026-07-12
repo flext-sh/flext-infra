@@ -49,7 +49,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @staticmethod
     def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
-        """Selected families."""
+        """Return the selected families."""
         if not family_names:
             return frozenset()
         resolved = {
@@ -107,7 +107,7 @@ class FlextInfraRefactorCensusObjectsMixin:
         include_unused: bool,
         include_test_only: bool,
     ) -> m.Infra.Census.RemovalCandidate | None:
-        """Removal candidate."""
+        """Build a removal candidate for an object."""
         if include_unused and cls._is_unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
         elif include_test_only and cls._is_test_only(item):
@@ -188,7 +188,7 @@ class FlextInfraRefactorCensusObjectsMixin:
     def _reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
-        """Reference sites."""
+        """Return all reference sites for a removal candidate."""
         return (
             *candidate.test_reference_sites,
             *candidate.runtime_reference_sites,

@@ -21,7 +21,7 @@ class FlextInfraInjectCommentsPhase:
 
     @staticmethod
     def _managed_marker_lines() -> t.Infra.StrSet:
-        """Managed marker lines."""
+        """Return the managed marker lines."""
         markers = {marker for _section_prefix, marker in c.Infra.COMMENT_MARKERS}
         markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_MARKER)

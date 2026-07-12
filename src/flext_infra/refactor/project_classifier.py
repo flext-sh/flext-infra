@@ -114,7 +114,7 @@ class FlextInfraProjectClassifier(
         self,
         raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> str:
-        """Normalized name from mapping."""
+        """Return the normalized name from a mapping."""
         raw_name = raw_mapping.get(c.Infra.NAME)
         if isinstance(raw_name, str):
             return self._normalize_dependency_name(raw_name)

@@ -935,7 +935,7 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         site: m.Infra.Census.ReferenceSite,
     ) -> t.IntPair | None:
-        """Reference line range."""
+        """Compute the line range for a reference site."""
         return FlextInfraUtilitiesRefactorCensus._reference_line_range_for_line(
             source,
             site.line,

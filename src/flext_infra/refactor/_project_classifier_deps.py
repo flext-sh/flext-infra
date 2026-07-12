@@ -94,7 +94,7 @@ class FlextInfraProjectClassifierDepsMixin:
         self,
         raw_mapping: t.MappingKV[str, t.Infra.InfraValue],
     ) -> bool:
-        """Mapping order is trusted."""
+        """Check whether the mapping order is trusted."""
         return isinstance(raw_mapping, dict)
 
     def _append_unique_dependency(
@@ -114,7 +114,7 @@ class FlextInfraProjectClassifierDepsMixin:
         dependencies: t.StrSequence,
         project_name: str,
     ) -> t.StrSequence:
-        """Internal dependencies."""
+        """Return the internal dependencies."""
         return [
             dependency
             for dependency in dependencies

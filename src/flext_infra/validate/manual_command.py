@@ -36,7 +36,7 @@ class FlextInfraManualCommandValidator(s[bool]):
 
     @classmethod
     def command_blocked(cls, command: str) -> bool:
-        """True if any shell segment runs a managed tool outside make/flext_infra."""
+        """Check whether any shell segment runs a managed tool outside make/flext_infra."""
         stripped = command.strip()
         if not stripped:
             return False
@@ -128,7 +128,7 @@ class FlextInfraManualCommandValidator(s[bool]):
 
     @staticmethod
     def _is_sed_inplace(arg: str) -> bool:
-        """True for any GNU/BSD in-place edit flag (``-i``, ``-i.bak``, ``--in-place``)."""
+        """Check whether the argument is a GNU/BSD in-place edit flag (``-i``, ``-i.bak``, ``--in-place``)."""
         return (
             arg == "--in-place"
             or arg.startswith("--in-place=")

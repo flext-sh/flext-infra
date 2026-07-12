@@ -35,7 +35,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
         self,
         projects: t.SequenceOf[p.Infra.ProjectInfo],
     ) -> t.SequenceOf[p.Infra.ProjectInfo]:
-        """Selected projects."""
+        """Return the selected projects."""
         if self.project_filter is None:
             return projects
         selected = {

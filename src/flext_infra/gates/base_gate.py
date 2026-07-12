@@ -155,7 +155,7 @@ class FlextInfraGate(ABC):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrMapping | None:
-        """Custom environment for the check command. Default: None (inherit)."""
+        """Return a custom environment for the check command. Default: None (inherit)."""
         _ = project_dir, ctx
         return None
 

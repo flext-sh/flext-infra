@@ -114,7 +114,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         workspace_root: Path | None,
         project_dir: Path | None = None,
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        """Expected envs."""
+        """Return the expected execution environments."""
         if not is_root or workspace_root is None:
             return self._expected_envs_for_project(project_dir)
         rules = self._tool_config.tools.pyright.path_rules

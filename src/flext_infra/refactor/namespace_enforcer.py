@@ -52,6 +52,7 @@ class FlextInfraNamespaceEnforcer(
         Args:
             apply: If True, auto-fix detected violations.
             project_names: If provided, only enforce these projects.
+            gates: If provided, only run these enforcement gates.
 
         """
         project_roots = self._resolve_project_roots(project_names=project_names)

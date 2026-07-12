@@ -74,7 +74,7 @@ class FlextInfraModernizeOrchestrator:
         transformer_factory: Callable[[], p.Infra.ChangeTracker],
         description: str,
     ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
-        """Convenience entrypoint for CLI route handlers."""
+        """Execute a modernization as a convenience entrypoint for CLI route handlers."""
         orchestrator = cls(transformer_factory, description=description)
         result = orchestrator.run(params)
         if result.failure:

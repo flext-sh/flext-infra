@@ -92,7 +92,7 @@ class FlextInfraCodegenCensus(s[str]):
         *,
         projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
     ) -> t.SequenceOf[m.Infra.CensusReport]:
-        """Standard path: census all projects in workspace."""
+        """Census all projects in workspace using the standard path."""
         if projects is not None:
             selected_projects = tuple(projects)
         else:

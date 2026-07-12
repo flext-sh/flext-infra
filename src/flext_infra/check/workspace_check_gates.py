@@ -286,7 +286,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         def _handler(
             _pipeline_ctx: m.Cli.PipelineStageContext,
         ) -> p.Result[m.Cli.PipelineStageResult]:
-            """Handler."""
+            """Run the gate and record its execution in the sink."""
             gate_ctx = m.Infra.GateContext(
                 workspace=ctx.workspace_root,
                 reports_dir=ctx.reports_dir,

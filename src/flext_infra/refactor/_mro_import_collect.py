@@ -150,7 +150,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         workspace_root: Path,
         project_names: t.StrSequence | None = None,
     ) -> t.SequenceOf[Path]:
-        """Iter workspace python files."""
+        """Iterate workspace Python files."""
         paths: list[Path] = []
         project_name_set: set[str] = set(project_names or ())
         for project_root in u.Infra.discover_project_roots(

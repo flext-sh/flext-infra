@@ -66,7 +66,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     def _should_collect_object_references(
         rule_names: t.StrSequence | None,
     ) -> bool:
-        """Should collect object references."""
+        """Decide whether to collect object references."""
         if rule_names is None:
             return True
         return bool({"unused", "test_only"} & set(rule_names))
@@ -78,7 +78,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         *,
         selected_rules: frozenset[str] | None = None,
     ) -> bool:
-        """Should collect full object inventory."""
+        """Decide whether to collect the full object inventory."""
         if selected_rules is None:
             selected_rules = frozenset(rule_names) if rule_names else None
         if not selected_rules:

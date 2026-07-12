@@ -38,7 +38,7 @@ class FlextInfraModelsRelease:
 
         @staticmethod
         def _records_default() -> list[FlextInfraModelsRelease.BuildRecord]:
-            """Records default."""
+            """Return the default empty records list."""
             return []
 
         version: Annotated[t.NonEmptyStr, m.Field(description="Release version")]

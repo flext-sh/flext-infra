@@ -220,7 +220,7 @@ class FlextInfraModelsDepsToml:
                         )
 
                     def deprecated(self, key: str, *sub_path: str) -> Self:
-                        """Deprecated."""
+                        """Mark a key as deprecated by scheduling its removal."""
                         return self.operation(
                             FlextInfraModelsDepsToml.Deps.Toml.RemoveOp,
                             key=key,
@@ -260,7 +260,7 @@ class FlextInfraModelsDepsToml:
                         return replaced
 
                     def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
-                        """Handler."""
+                        """Set a custom handler function."""
                         replaced: Self = self._replace(
                             self.state.model_copy(update={"custom_handler": fn}),
                         )

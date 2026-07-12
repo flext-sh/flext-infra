@@ -148,7 +148,7 @@ class FlextInfraCodegenConsolidator(
         self,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-        """Selected projects."""
+        """Return the selected projects."""
         _ = rope_workspace
         discovered = u.Infra.projects(self.workspace_root)
         if discovered.failure:

@@ -105,7 +105,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         def _module_names(
             items: t.SequenceOf[t.MappingKV[str, t.JsonValue | None]],
         ) -> t.MutableSequenceOf[str]:
-            """Module names."""
+            """Extract module names from classified issue items."""
             return [
                 str(val)
                 for item in items

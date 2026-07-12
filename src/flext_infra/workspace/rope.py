@@ -324,7 +324,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     @classmethod
     def _reference_surface_for(cls, file_path: Path) -> str:
-        """Reference surface for."""
+        """Return the reference surface for a file path."""
         for part in file_path.parts:
             if part in cls._SURFACE_DIRS:
                 surface: str = part

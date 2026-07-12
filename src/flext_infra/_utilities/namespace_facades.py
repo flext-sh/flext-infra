@@ -84,7 +84,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         family: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> str:
-        """Base import for family."""
+        """Return the base import for family."""
         if base_chains:
             chain = base_chains.get(family, [])
             if chain:
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         family: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> str:
-        """Base class for family."""
+        """Return the base class for family."""
         if base_chains:
             chain = base_chains.get(family, [])
             if chain:

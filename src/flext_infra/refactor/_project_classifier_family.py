@@ -103,7 +103,7 @@ class FlextInfraProjectClassifierFamilyMixin:
         family_suffix: str,
         internal_dependencies: t.StrSequence,
     ) -> t.StrSequence:
-        """Expected parents for family."""
+        """Return the expected parents for a family."""
         expected: t.MutableSequenceOf[str] = []
         for dependency in internal_dependencies:
             stem = self._dependency_to_class_stem(dependency)

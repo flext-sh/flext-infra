@@ -648,7 +648,7 @@ class FlextInfraUtilitiesRopeImports:
 
     @staticmethod
     def _uses_parenthesized_from_import(*, source: str, module_name: str) -> bool:
-        """Uses parenthesized from import."""
+        """Check whether source uses a parenthesized from import."""
         pattern = c.Infra.compile_from_module_paren_open(module_name)
         return any(pattern.match(line) for line in source.splitlines())
 

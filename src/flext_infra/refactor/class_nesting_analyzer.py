@@ -123,7 +123,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _module_path_for_file(cls, file_path: Path, project_root: Path) -> str | None:
-        """Module path for file."""
+        """Return the module path for a file."""
         src_dir = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
         resolved = file_path.resolve()
         try:

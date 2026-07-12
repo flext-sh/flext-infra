@@ -60,7 +60,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         *,
         project_root: Path,
     ) -> str:
-        """Module name for file."""
+        """Return the module name for a file."""
         if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
             return cls._package_name_for_dir(
                 file_path.parent,

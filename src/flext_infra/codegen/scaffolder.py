@@ -86,6 +86,7 @@ class FlextInfraCodegenScaffolder(s[str]):
 
         Args:
             project: Project descriptor or project root path.
+            dry_run: If True, only report changes without writing.
 
         Returns:
             ScaffoldResult with lists of created and skipped files.

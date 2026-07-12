@@ -427,7 +427,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         settings: t.MappingKV[str, t.Infra.InfraValue],
         key: str,
     ) -> t.StrMapping:
-        """Mapping setting."""
+        """Return a normalized string mapping setting."""
         mapping_value = u.Cli.json_as_mapping(settings.get(key, {}))
         normalized_mapping: dict[str, str] = {
             item_key: str(item_value) for item_key, item_value in mapping_value.items()

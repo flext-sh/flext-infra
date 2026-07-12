@@ -418,7 +418,7 @@ class FlextInfraUtilitiesRopeInventory:
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
     ]:
-        """Reference sites."""
+        """Collect the reference sites for a symbol."""
         lines = source.splitlines(keepends=True)
         offset = FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
             lines,
@@ -719,7 +719,7 @@ class FlextInfraUtilitiesRopeInventory:
     def _reference_site(
         location: t.Infra.RopeLocation,
     ) -> m.Infra.Census.ReferenceSite | None:
-        """Reference site."""
+        """Build a reference site from a rope location."""
         file_path = FlextInfraUtilitiesRopeInventory._location_file_path(location)
         if file_path is None:
             return None
@@ -787,7 +787,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _reference_surface(file_path: Path | None) -> str:
-        """Reference surface."""
+        """Return the reference surface for a file path."""
         default_src: str = c.Infra.DEFAULT_SRC_DIR
         if file_path is None:
             return default_src
@@ -833,7 +833,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _expected_tier(convention: m.Infra.RopeModuleConvention, *, kind: str) -> str:
-        """Expected tier."""
+        """Return the expected tier for a module convention."""
         expected: str = convention.module_policy.expected_family or ""
         if expected:
             return expected

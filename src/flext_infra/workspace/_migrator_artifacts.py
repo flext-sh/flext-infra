@@ -31,7 +31,7 @@ class FlextInfraProjectMigratorArtifactsMixin:
 
     @staticmethod
     def _action_text(action: str, *, dry_run: bool) -> str:
-        """Action text."""
+        """Return the action text, prefixed for dry-run mode."""
         return f"[DRY-RUN] {action}" if dry_run else action
 
     @staticmethod

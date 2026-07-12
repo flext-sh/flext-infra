@@ -54,7 +54,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _selected_lint_tools(
         gates: t.StrSequence | None = None,
     ) -> t.StrSequencePairTuple:
-        """Selected lint tools."""
+        """Return the selected lint tools."""
         env_gates = (
             u.Cli
             .process_env()
@@ -121,7 +121,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         gates: t.StrSequence | None = None,
     ) -> t.Infra.LintSnapshot:
-        """New file lint baseline."""
+        """Compute the lint baseline for a new file."""
         py_file.parent.mkdir(parents=True, exist_ok=True)
         py_file.write_text(
             f"{c.Infra.FUTURE_ANNOTATIONS}\n",
