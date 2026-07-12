@@ -538,7 +538,10 @@ class FlextInfraUtilitiesDocsRender:
         return "\n".join(lines)
 
     @staticmethod
-    def docs_root_mkdocs(contract: t.Infra.ContainerDict) -> str:
+    def docs_root_mkdocs(
+        contract: t.Infra.ContainerDict,
+        src_paths: t.SequenceOf[str] = (),
+    ) -> str:
         """Return the managed mkdocs.yml for the workspace root.
 
         Renders the canonical ``mkdocs_root.yml.j2`` template via
@@ -561,8 +564,10 @@ class FlextInfraUtilitiesDocsRender:
             exclude_plugin_block=FlextInfraUtilitiesDocsRender._render_block(
                 FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data),
             ),
+            # mro-o6h5 (agent: kimi) — root site renders docstrings for every
+            # workspace package: src_paths feeds the mkdocstrings paths block.
             mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block(
-                (),
+                src_paths,
             ),
         )
         return rendered_template
@@ -594,7 +599,34 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "Generated from workspace discovery, `pyproject.toml`, public exports, and docstrings.",
             "",
+            "## Next Pages",
+            "",
+            "- [Workspace Module Pages](projects/index.md)",
+            "- [Project Catalog](../../projects/generated/catalog.md)",
+            "",
         ])
+
+    @staticmethod
+    def docs_root_projects_index(entries: t.SequenceOf[t.StrMapping]) -> str:
+        """Return the generated root index of per-project module pages."""
+        lines: t.MutableSequenceOf[str] = [
+            c.Infra.GENERATED_HEADER,
+            "",
+            "# Workspace Module Pages",
+            "",
+            "Each project renders one page per public module, driven by docstrings.",
+            "",
+        ]
+        if not entries:
+            lines.extend(["_No projects discovered._", ""])
+            return "\n".join(lines)
+        for entry in entries:
+            lines.append(
+                f"- [{entry['name']}]({entry['name']}/modules/index.md)"
+                f" — `{entry['module_count']}` modules",
+            )
+        lines.append("")
+        return "\n".join(lines)
 
     @staticmethod
     def docs_project_catalog_page(

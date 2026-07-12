@@ -229,6 +229,11 @@ class FlextInfraUtilitiesDocsGenerate:
         )
         catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
         class_counts: dict[str, int] = {}
+        # mro-o6h5 (agent: kimi) — root site aggregates per-project module
+        # pages: module names come from the already-loaded public contract
+        # and src paths feed the mkdocstrings resolution block.
+        scope_modules: dict[str, list[str]] = {}
+        src_paths: t.MutableSequenceOf[str] = []
         for scope in scopes:
             class_counts[scope.project_class] = (
                 class_counts.get(scope.project_class, 0) + 1
@@ -237,6 +242,12 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope.path,
                 scope.package_name,
             )
+            scope_modules[scope.name] = (
+                FlextInfraUtilitiesDocsGenerate._module_names(project_contract)
+            )
+            src_dir = scope.path / "src"
+            if src_dir.is_dir():
+                src_paths.append(src_dir.relative_to(workspace_root).as_posix())
             catalog_entries.append({
                 "name": scope.name,
                 "project_class": scope.project_class,
@@ -253,7 +264,10 @@ class FlextInfraUtilitiesDocsGenerate:
         files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 workspace_root / "mkdocs.yml",
-                FlextInfraUtilitiesDocsRender.docs_root_mkdocs(workspace_contract),
+                FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
+                    workspace_contract,
+                    src_paths,
+                ),
                 apply=apply,
             ),
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
@@ -274,6 +288,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 apply=apply,
             ),
         ]
+        projects_index_entries: t.MutableSequenceOf[dict[str, str]] = []
         for scope in scopes:
             expected_api_generated.append(
                 workspace_root / "docs/api-reference/generated" / f"{scope.name}.md",
@@ -290,6 +305,61 @@ class FlextInfraUtilitiesDocsGenerate:
                     apply=apply,
                 ),
             )
+            # mro-o6h5 (agent: kimi) — per-project module pages reuse the
+            # exact project-scope renderers (docs_modules_index +
+            # docs_directive_page); index lives inside modules/ so relative
+            # links resolve identically to the project-scope layout.
+            module_names = scope_modules.get(scope.name, [])
+            modules_root = (
+                workspace_root
+                / "docs/api-reference/generated/projects"
+                / scope.name
+                / "modules"
+            )
+            expected_api_generated.append(modules_root / "index.md")
+            files.append(
+                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                    modules_root / "index.md",
+                    FlextInfraUtilitiesDocsRender.docs_modules_index(
+                        scope,
+                        module_names,
+                    ),
+                    apply=apply,
+                ),
+            )
+            for module_name in module_names:
+                relative = module_name.removeprefix(
+                    f"{scope.package_name}.",
+                ).replace(".", "/")
+                module_path = modules_root / f"{relative}.md"
+                expected_api_generated.append(module_path)
+                files.append(
+                    FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                        module_path,
+                        FlextInfraUtilitiesDocsRender.docs_directive_page(
+                            module_name,
+                            module_name,
+                        ),
+                        apply=apply,
+                    ),
+                )
+            projects_index_entries.append({
+                "name": scope.name,
+                "module_count": str(len(module_names)),
+            })
+        projects_index_path = (
+            workspace_root / "docs/api-reference/generated/projects/index.md"
+        )
+        expected_api_generated.append(projects_index_path)
+        files.append(
+            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+                projects_index_path,
+                FlextInfraUtilitiesDocsRender.docs_root_projects_index(
+                    projects_index_entries,
+                ),
+                apply=apply,
+            ),
+        )
         files.extend(
             FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
                 workspace_root / "docs/api-reference/generated",
