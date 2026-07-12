@@ -14,9 +14,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -212,10 +209,16 @@ class FlextInfraLooseObjectDetector:
                 ),
             )
 
+        class_bases = {
+            u.Infra.header_name(statement): u.Infra.class_base_names(statement)
+            for statement in statements
+            if statement.category == c.Infra.StatementCategory.CLASS_DEF
+        }
         for statement in statements:
             cls._inspect_statement(
                 statement=statement,
                 file_path=file_path,
+                class_bases=class_bases,
                 add=_add,
             )
         return violations
@@ -226,21 +229,29 @@ class FlextInfraLooseObjectDetector:
         *,
         statement: m.Infra.LogicalStatement,
         file_path: Path,
+        class_bases: t.MappingKV[str, t.Infra.StrSet],
         add: Callable[[int, str, str, str], None],
     ) -> None:
-        """Inspect one module-level logical statement for loose objects."""
-        if statement.enclosing_kind is not c.Infra.RopeScopeKind.MODULE:
-            return
+        """Inspect one logical statement for loose objects by enclosing scope."""
         category = statement.category
-        if category is c.Infra.StatementCategory.ANN_ASSIGN:
-            cls._check_loose_final(statement, add)
-        elif category is c.Infra.StatementCategory.ASSIGN:
-            cls._check_loose_collection_or_typevar(statement, add)
-        elif category is c.Infra.StatementCategory.TYPE_ALIAS:
-            cls._check_loose_typealias(statement, add)
-        elif category is c.Infra.StatementCategory.CLASS_DEF:
-            cls._check_loose_enum(statement, file_path, add)
-            cls._check_loose_classvar(statement, file_path, add)
+        if statement.enclosing_kind == c.Infra.RopeScopeKind.MODULE:
+            if category == c.Infra.StatementCategory.ANN_ASSIGN:
+                cls._check_loose_final(statement, add)
+            elif category == c.Infra.StatementCategory.ASSIGN:
+                cls._check_loose_collection_or_typevar(statement, add)
+            elif category == c.Infra.StatementCategory.TYPE_ALIAS:
+                cls._check_loose_typealias(statement, add)
+            return
+        if statement.enclosing_kind == c.Infra.RopeScopeKind.CLASS:
+            if category == c.Infra.StatementCategory.CLASS_DEF:
+                cls._check_loose_enum(statement, file_path, add)
+            elif category == c.Infra.StatementCategory.ANN_ASSIGN:
+                cls._check_loose_classvar(
+                    statement=statement,
+                    file_path=file_path,
+                    class_bases=class_bases,
+                    add=add,
+                )
 
     @classmethod
     def _check_loose_final(
@@ -301,8 +312,57 @@ class FlextInfraLooseObjectDetector:
             return
         inner_bases = u.Infra.class_base_names(statement)
         if any(base in c.Infra.ENUM_BASES for base in inner_bases):
-            name = statement.enclosing_name or u.Infra.class_header_name(statement)
+            name = u.Infra.header_name(statement)
             add(statement.line, name or "unknown", "enum", "Constants")
+
+    @classmethod
+    def _check_loose_classvar(
+        cls,
+        *,
+        statement: m.Infra.LogicalStatement,
+        file_path: Path,
+        class_bases: t.MappingKV[str, t.Infra.StrSet],
+        add: Callable[[int, str, str, str], None],
+    ) -> None:
+        """Flag ``ClassVar[...] = ...`` attributes outside Constants classes."""
+        if file_path.name == c.Infra.CONSTANTS_PY:
+            return
+        if file_path.parent.name == "_constants":
+            return
+        enclosing = statement.enclosing_name
+        if enclosing.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX):
+            return
+        bases = class_bases.get(enclosing, set())
+        if any(base.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX) for base in bases):
+            return
+        if not u.Infra.annotation_contains(statement, "ClassVar"):
+            return
+        target = u.Infra.target_name(statement)
+        if not target or target.startswith("_"):
+            return
+        if target in c.Infra.CLASSVAR_EXEMPT_NAMES:
+            return
+        if not c.Infra.NAMESPACE_CONSTANT_PATTERN.match(target):
+            return
+        if not cls._classvar_value_permitted(statement):
+            return
+        add(statement.line, target, "classvar", "Constants")
+
+    @classmethod
+    def _classvar_value_permitted(
+        cls,
+        statement: m.Infra.LogicalStatement,
+    ) -> bool:
+        """Return True when a ClassVar default is a literal/canonical constant.
+
+        Permits literals, names, attributes, and collection literals (no call),
+        plus calls to canonical constant factories (Path, frozenset, tuple,
+        dict, MappingProxyType). Rejects calls that build runtime objects.
+        """
+        callee = u.Infra.call_callee_name(statement)
+        if not callee:
+            return True
+        return callee in c.Infra.CLASSVAR_ALLOWED_CALLS
 
     @staticmethod
     def _detect_logger_assignments(

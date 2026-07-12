@@ -92,18 +92,23 @@ class FlextInfraUtilitiesRopeStructure:
         text: str,
     ) -> None:
         """Record a ``class``/``def`` header as an enclosing scope for its body."""
-        if category is c.Infra.StatementCategory.CLASS_DEF:
+        if category == c.Infra.StatementCategory.CLASS_DEF:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.CLASS,
                 FlextInfraUtilitiesRopeStructure._header_name(text),
             ))
-        elif category is c.Infra.StatementCategory.FUNC_DEF:
+        elif category == c.Infra.StatementCategory.FUNC_DEF:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.FUNCTION,
                 FlextInfraUtilitiesRopeStructure._header_name(text),
             ))
+
+    @staticmethod
+    def header_name(statement: m.Infra.LogicalStatement) -> str:
+        """Return the declared name from a ``class``/``def`` statement header."""
+        return FlextInfraUtilitiesRopeStructure._header_name(statement.text)
 
     @staticmethod
     def _header_name(text: str) -> str:
