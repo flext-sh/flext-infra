@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Annotated, ClassVar, override
+from typing import Annotated, override
 
 from flext_core import r
 from flext_infra import FlextInfraServiceBase, settings
@@ -24,7 +24,6 @@ class FlextInfraInternalDependencySyncService(
 ):
     """Synchronize internal FLEXT dependencies via git clone or workspace symlinks."""
 
-    log: ClassVar[p.Logger] = u.fetch_logger(__name__)
     toml: Annotated[
         p.Infra.TomlReader | None,
         m.Field(

@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 class FlextInfraInternalSyncRepoMixin:
     """Repository mapping, ref resolution, and workspace detection methods."""
 
-    log: p.Logger
     toml: p.Infra.TomlReader | None
 
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
