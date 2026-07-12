@@ -34,6 +34,35 @@ class FlextInfraConstantsRope:
         UNKNOWN = "Unknown"
         "Fallback for rope comprehension/temporary scopes (get_kind() is None)."
 
+    @unique
+    class StatementCategory(StrEnum):
+        """Lexical category of one logical statement from the rope structure boundary.
+
+        Derived from the leading token of a rope ``LogicalLineFinder`` region;
+        the classification is lexical (rope-owned source slice), never ``ast``.
+        """
+
+        IMPORT = "import"
+        "Plain ``import x`` statement."
+        FROM_IMPORT = "from_import"
+        "``from m import x`` statement."
+        TYPE_ALIAS = "type_alias"
+        "PEP 695 ``type X = ...`` alias declaration."
+        ANN_ASSIGN = "ann_assign"
+        "Annotated assignment ``x: T = v`` or ``x: T``."
+        ASSIGN = "assign"
+        "Plain assignment ``x = v``."
+        IF_GUARD = "if_guard"
+        "``if ...:`` block header (e.g. ``if TYPE_CHECKING:``)."
+        CLASS_DEF = "class_def"
+        "``class X...:`` header."
+        FUNC_DEF = "func_def"
+        "``def``/``async def`` header."
+        CALL = "call"
+        "Expression statement whose head is a call."
+        OTHER = "other"
+        "Any statement not matched by a more specific category."
+
     SYNTAX_ERRORS: Final[tuple[type[BaseException], ...]] = (
         SyntaxError,
         FlextInfraUtilitiesRopeRuntime.module_syntax_error_type(),

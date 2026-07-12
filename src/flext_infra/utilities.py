@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import u
+from flext_cli import u as cli_u
 from flext_core import FlextUtilitiesProjectMetadata
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
@@ -75,12 +75,15 @@ from flext_infra._utilities.rope_pep695_patch import (
 )
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
-class FlextInfraUtilities(u, FlextUtilitiesProjectMetadata):
+# NOTE (multi-agent, mro-wkii.17.16 / agent: codex): keep the upstream facade
+# name distinct so the local public u alias exposes the typed Infra namespace.
+class FlextInfraUtilities(cli_u, FlextUtilitiesProjectMetadata):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
     Usage::
@@ -109,6 +112,7 @@ class FlextInfraUtilities(u, FlextUtilitiesProjectMetadata):
         FlextInfraUtilitiesRopeModulePatch,
         FlextInfraUtilitiesRopeRuntime,
         FlextInfraUtilitiesRopeSource,
+        FlextInfraUtilitiesRopeStructure,
         FlextInfraUtilitiesRopePep695Patch,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,

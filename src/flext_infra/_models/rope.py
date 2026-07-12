@@ -77,6 +77,38 @@ class FlextInfraModelsRope:
             m.Field(description="Whether the scope is a direct child of the module"),
         ]
 
+    class LogicalStatement(
+        mm.PositiveLineMixin,
+        m.ContractModel,
+    ):
+        """One logical statement from the rope structure boundary (no ``ast``).
+
+        Built from a rope ``LogicalLineFinder`` region plus an indent stack over
+        the rope-owned source; carries the lexical category, indentation, the
+        enclosing def/class scope, and the rope source slice for lexical probes.
+        """
+
+        indent: Annotated[
+            int,
+            m.Field(ge=0, description="Leading-whitespace column of the statement"),
+        ]
+        category: Annotated[
+            c.Infra.StatementCategory,
+            m.Field(description="Lexical category of the leading token"),
+        ]
+        enclosing_kind: Annotated[
+            c.Infra.RopeScopeKind,
+            m.Field(description="Kind of the nearest enclosing def/class scope"),
+        ] = c.Infra.RopeScopeKind.MODULE
+        enclosing_name: Annotated[
+            str,
+            m.Field(description="Name of the nearest enclosing def/class, or empty"),
+        ] = ""
+        text: Annotated[
+            str,
+            m.Field(description="Rope-owned source slice for the statement"),
+        ] = ""
+
     class ConstantInfo(
         mm.NonNegativeLineMixin,
         mm.NestedClassPathMixin,
