@@ -12,6 +12,7 @@ from flext_infra._constants.cli_routes import (
     VALIDATE_ROUTES as _ROUTES_VALIDATE,
     WORKSPACE_ROUTES as _ROUTES_WORKSPACE,
 )
+from flext_infra._settings import FlextInfraSettings
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.constants import c
 from flext_infra.utilities import u
@@ -38,7 +39,10 @@ class FlextInfraCli(type(cli_facade)):
     @staticmethod
     def _cli_settings() -> cli_p.Cli.Settings:
         """Cli settings via the canonical cli facade."""
-        return cli_facade.settings
+        # NOTE (multi-agent): ``cli_facade.settings`` is the core FlextSettings
+        # singleton; the CLI protocol requires debug + cli_* scalars, satisfied
+        # by the infra settings singleton (FlextCliSettings subclass).
+        return FlextInfraSettings.fetch_global()
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
