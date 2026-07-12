@@ -436,6 +436,19 @@ class FlextInfraUtilitiesDocsApi:
         ]
 
     @staticmethod
+    def _project_classifiers(
+        project_meta: t.MappingKV[str, t.Infra.InfraValue],
+    ) -> t.StrSequence:
+        """Return normalized trove classifiers from ``pyproject.toml`` metadata."""
+        return [
+            text
+            for entry in FlextInfraUtilitiesDocsApi._string_values(
+                project_meta.get("classifiers", []),
+            )
+            if (text := entry.strip())
+        ]
+
+    @staticmethod
     def _rope_public_symbols(
         project_root: Path,
         target_map: t.StrMapping,
@@ -475,6 +488,10 @@ class FlextInfraUtilitiesDocsApi:
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
                 "package_name": "",
                 "description": meta.description,
+                "doc_summary": "",
+                "classifiers": FlextInfraUtilitiesDocsApi._project_classifiers(
+                    meta.project_meta,
+                ),
                 "version": meta.version,
                 "site_title": meta.site_title,
                 "site_url": meta.site_url,
@@ -539,6 +556,12 @@ class FlextInfraUtilitiesDocsApi:
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "package_name": package_name,
             "description": meta.description,
+            "doc_summary": FlextInfraUtilitiesRopeAnalysis.module_docstring_summary_source(
+                source,
+            ),
+            "classifiers": FlextInfraUtilitiesDocsApi._project_classifiers(
+                meta.project_meta,
+            ),
             "keywords": FlextInfraUtilitiesDocsApi._project_keywords(
                 meta.project_meta,
             ),

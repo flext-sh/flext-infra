@@ -494,6 +494,8 @@ class FlextInfraUtilitiesDocsRender:
             f"- Package: `{scope.package_name}`",
             f"- Version: `{data.get('version', '')}`",
             f"- Description: {data.get('description', '') or '_not declared_'}",
+            f"- Doc summary: {str(data.get('doc_summary', '')).strip() or '_not declared_'}",
+            f"- Classifiers: {FlextInfraUtilitiesDocsRender._preview(FlextInfraUtilitiesDocsRender.as_string_sequence(data, 'classifiers'), limit=6)}",
             f"- Project class: `{scope.project_class}`",
             f"- Keywords: {keywords}",
             f"- Main facades: {facades}",

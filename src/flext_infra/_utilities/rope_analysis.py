@@ -642,6 +642,18 @@ class FlextInfraUtilitiesRopeAnalysis:
             return False
 
     @staticmethod
+    def module_docstring_summary_source(source: str) -> str:
+        """Return the PEP 257 summary line of the module docstring (rope-parsed)."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        if pymodule is None:
+            return ""
+        try:
+            doc = pymodule.get_doc() or ""
+        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+            return ""
+        return next((line.strip() for line in doc.splitlines() if line.strip()), "")
+
+    @staticmethod
     def symbol_has_docstring_source(source: str, symbol_name: str) -> bool:
         """Return whether ``symbol_name`` in ``source`` carries a docstring (rope-parsed)."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
