@@ -899,23 +899,6 @@ class FlextInfraUtilitiesRopeAnalysis:
         return ".".join(part for part in (base, imported_module) if part)
 
     @staticmethod
-    def imported_symbol_module_source(
-        source: str,
-        *,
-        current_module: str,
-        symbol_name: str,
-        package_module: bool,
-    ) -> str:
-        """Return the module that binds one imported symbol."""
-        module_name, _ = FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
-            source,
-            current_module=current_module,
-            symbol_name=symbol_name,
-            package_module=package_module,
-        )
-        return module_name
-
-    @staticmethod
     def imported_symbol_binding_source(
         source: str,
         *,

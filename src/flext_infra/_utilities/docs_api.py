@@ -82,23 +82,6 @@ class FlextInfraUtilitiesDocsApi:
         )
 
     @classmethod
-    def _imported_symbol_module(
-        cls,
-        source: str,
-        *,
-        current_module: str,
-        symbol_name: str,
-        package_module: bool,
-    ) -> str:
-        """Return the module that imported one symbol into ``source``."""
-        return FlextInfraUtilitiesRopeAnalysis.imported_symbol_module_source(
-            source,
-            current_module=current_module,
-            symbol_name=symbol_name,
-            package_module=package_module,
-        )
-
-    @classmethod
     def _imported_symbol_binding(
         cls,
         source: str,
@@ -135,7 +118,11 @@ class FlextInfraUtilitiesDocsApi:
         values = cls._assignment_strings(source, symbol_name)
         if values:
             return values
-        imported_module = cls._imported_symbol_module(
+        # mro-o6h5 (agent: kimi): resolve through import aliases to the
+        # ORIGINAL symbol — lazy __unit__ contracts bind PUBLIC_EXPORTS as
+        # _PUBLIC_EXPORTS; resolving the alias in the target module yielded
+        # an empty contract (root cause of the flext-infra validate FAIL).
+        imported_module, original_name = cls._imported_symbol_binding(
             source,
             current_module=module_name,
             symbol_name=symbol_name,
@@ -146,7 +133,7 @@ class FlextInfraUtilitiesDocsApi:
         return cls._resolve_assignment_strings(
             project_root,
             module_name=imported_module,
-            symbol_name=symbol_name,
+            symbol_name=original_name,
             visited=visited | frozenset({key}),
         )
 
@@ -280,7 +267,9 @@ class FlextInfraUtilitiesDocsApi:
             local_values = cls._assignment_strings(source, export_name)
             if local_values:
                 return local_values
-            imported_module = cls._imported_symbol_module(
+            # mro-o6h5 (agent: kimi): alias-aware binding — see
+            # _resolve_assignment_strings for the root-cause note.
+            imported_module, original_name = cls._imported_symbol_binding(
                 source,
                 current_module=package_name,
                 symbol_name=export_name,
@@ -290,7 +279,7 @@ class FlextInfraUtilitiesDocsApi:
                 return cls._resolve_assignment_strings(
                     project_root,
                     module_name=imported_module,
-                    symbol_name=export_name,
+                    symbol_name=original_name,
                 )
         return cls._assignment_strings(source, "__all__")
 
