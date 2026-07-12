@@ -55,6 +55,27 @@ class FlextInfraModelsRope:
         name: Annotated[str, m.Field(description="Class name")]
         bases: Annotated[t.StrSequence, m.Field(description="Base class names")] = ()
 
+    class ScopeDefinition(
+        mm.PositiveLineMixin,
+        m.ContractModel,
+    ):
+        """One semantic scope (def/class) discovered via rope's scope tree.
+
+        Built from ``PyScope.get_kind()``/``get_scopes()`` and the scope's
+        ``pyobject.get_name()`` — no ``ast`` walking. ``is_module_level`` is True
+        when the scope is a direct child of the module (global) scope.
+        """
+
+        name: Annotated[str, m.Field(description="Definition name")]
+        kind: Annotated[
+            str,
+            m.Field(description="Rope scope kind: Function, Class, Comprehension"),
+        ]
+        is_module_level: Annotated[
+            bool,
+            m.Field(description="Whether the scope is a direct child of the module"),
+        ]
+
     class ConstantInfo(
         mm.NonNegativeLineMixin,
         mm.NestedClassPathMixin,

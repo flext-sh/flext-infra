@@ -418,6 +418,66 @@ class FlextInfraUtilitiesRopeAnalysis:
         )
 
     @staticmethod
+    def scope_definitions(
+        pymodule: t.Infra.RopePyModule,
+    ) -> t.SequenceOf[m.Infra.ScopeDefinition]:
+        """Return every def/class scope in a module via rope's semantic tree.
+
+        Uses ``PyModule.get_scope()`` and recursive ``PyScope.get_scopes()`` —
+        never ``get_ast``/``ast.walk``. Each entry carries the scope kind
+        (Function/Class/Comprehension), its 1-based start line, and whether it
+        is a direct child of the module (global) scope.
+        """
+        root_scope = pymodule.get_scope()
+        if root_scope is None:
+            return ()
+        definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition] = []
+        FlextInfraUtilitiesRopeAnalysis._collect_scope_definitions(
+            scope=root_scope,
+            is_module_level=True,
+            definitions=definitions,
+        )
+        return tuple(definitions)
+
+    @staticmethod
+    def _collect_scope_definitions(
+        *,
+        scope: t.Infra.RopeScope,
+        is_module_level: bool,
+        definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition],
+    ) -> None:
+        """Recurse the rope scope tree, appending one entry per child scope."""
+        for child in scope.get_scopes():
+            kind = child.get_kind()
+            name = FlextInfraUtilitiesRopeAnalysis._scope_name(child)
+            start = child.get_start()
+            line = start if isinstance(start, int) and start > 0 else 1
+            definitions.append(
+                m.Infra.ScopeDefinition(
+                    name=name,
+                    kind=kind,
+                    line=line,
+                    is_module_level=is_module_level,
+                ),
+            )
+            FlextInfraUtilitiesRopeAnalysis._collect_scope_definitions(
+                scope=child,
+                is_module_level=False,
+                definitions=definitions,
+            )
+
+    @staticmethod
+    def _scope_name(scope: t.Infra.RopeScope) -> str:
+        """Return the def/class name backing one rope scope, or empty."""
+        pyobject = scope.pyobject
+        get_name = getattr(pyobject, "get_name", None)
+        if callable(get_name):
+            name = get_name()
+            if isinstance(name, str):
+                return name
+        return ""
+
+    @staticmethod
     def get_module_export_names(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,

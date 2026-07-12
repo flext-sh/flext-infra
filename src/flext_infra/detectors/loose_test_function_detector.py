@@ -75,34 +75,23 @@ class FlextInfraLooseTestFunctionDetector:
             return []
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
-            tree = pymodule.get_ast()
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return []
-        if tree is None:
-            return []
-        parent_map = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
         violations: list[m.Infra.LooseTestFunctionViolation] = []
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "FunctionDef":
+        for definition in FlextInfraUtilitiesRopeAnalysis.scope_definitions(pymodule):
+            if definition.kind != "Function":
                 continue
-            name = getattr(node, "name", "")
-            if not name.startswith(rules.test_fn_prefix):
+            if not definition.is_module_level:
                 continue
-            if not FlextInfraUtilitiesRopeAnalysis.is_module_level_node(
-                node,
-                parent_map,
-            ):
+            if not definition.name.startswith(rules.test_fn_prefix):
                 continue
-            line = getattr(node, "lineno", 1)
-            if not isinstance(line, int) or line <= 0:
-                line = 1
             violations.append(
                 m.Infra.LooseTestFunctionViolation(
                     file=str(ctx.file_path),
-                    line=line,
-                    name=name,
+                    line=definition.line,
+                    name=definition.name,
                     suggestion=(
-                        f"Nest {name} inside a single "
+                        f"Nest {definition.name} inside a single "
                         f"{rules.required_class_prefix}<Module> class "
                         "(one nested class per test module)."
                     ),
