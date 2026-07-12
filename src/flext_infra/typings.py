@@ -13,13 +13,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import t
+from flext_cli import t as cli_t
 from flext_infra._typings.adapters import FlextInfraTypesAdapters
 from flext_infra._typings.base import FlextInfraTypesBase
 from flext_infra._typings.rope import FlextInfraTypesRope
 
+# NOTE (multi-agent): mro-i6nq.10 keeps the upstream base distinct from local t.
 
-class FlextInfraTypes(t):
+
+class FlextInfraTypes(cli_t):
     """Type namespace for flext-infra; extends FlextTypes via MRO.
 
     Infra-specific types are nested under the ``Infra`` inner class to

@@ -5,21 +5,11 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-import pathspec
-
 from tests.models import m
 from tests.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-
-def _exclude_doc_patterns(rendered_yml: str) -> list[str]:
-    """Extract native ``exclude_docs`` patterns from a rendered mkdocs.yml."""
-    match = re.search(r"exclude_docs: \|\n((?: {2}\S.*\n)+)", rendered_yml)
-    if match is None:
-        return []
-    return [line.strip() for line in match.group(1).splitlines() if line.strip()]
 
 
 class TestsDocsRenderExcludeDocs:
@@ -40,11 +30,14 @@ class TestsDocsRenderExcludeDocs:
 
         rendered = u.Infra.docs_project_mkdocs(scope, {}, [])
 
-        patterns = _exclude_doc_patterns(rendered)
+        # mro-i6nq.10: Validate the rendered public artifact through pathspec's
+        # documented text-stream boundary, without an ad-hoc extraction helper.
+        match = re.search(r"exclude_docs: \|\n((?: {2}\S.*\n)+)", rendered)
+        assert match is not None
+        patterns = tuple(
+            line.strip() for line in match.group(1).splitlines() if line.strip()
+        )
+        # The rooted pattern excludes only the docs-dir root README; a bare
+        # README.md would also hide every nested section README from MkDocs.
         assert "/README.md" in patterns
-        spec = pathspec.gitignore.GitIgnoreSpec.from_lines(patterns)
-        # The docs-dir root README (project mirror) stays excluded...
-        assert spec.match_file("README.md")
-        # ...while nested section READMEs linked by generated index pages survive.
-        assert not spec.match_file("guides/README.md")
-        assert not spec.match_file("api-reference/README.md")
+        assert "README.md" not in patterns

@@ -48,7 +48,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     @override
     def execute(self) -> p.Result[bool]:
         """Execute lazy-init directly from the validated CLI service model."""
-        errors = self.generate_inits(check_only=self.check_only)
+        # NOTE (multi-agent, mro-wkii.17.15): one normalized mode controls every write.
+        effective_dry_run = self.effective_dry_run
+        errors = self.generate_inits(check_only=effective_dry_run)
         if self._duplicate_class_names > 0:
             return r[bool].fail(
                 f"init aborted: {self._duplicate_class_names} "
@@ -57,11 +59,16 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             )
         if errors > 0:
             return r[bool].fail(f"init failed in {errors} package directories")
+        if effective_dry_run and self._modified_files:
+            return r[bool].fail(
+                f"init drift detected in {len(self._modified_files)} generated artifacts",
+            )
         return r[bool].ok(True)
 
     def generate_inits(self, *, check_only: bool = False) -> int:
         """Process all package directories bottom-up and generate PEP 562 inits."""
         self._modified_files.clear()
+        self._duplicate_class_names = 0
         if not self.workspace_root.exists():
             u.Cli.info("Lazy-init summary: 0 generated, 0 errors (0 dirs scanned)")
             return 0
@@ -72,7 +79,48 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         )
         lazy_init = u.Infra.load_tool_config().unwrap().lazy_init
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
-            duplicates = self._detect_duplicate_class_names(rope)
+            workspace_index = rope.workspace_index
+            package_dirs = tuple(
+                sorted(
+                    (
+                        package_dir.resolve()
+                        for package_dir in workspace_index.package_dirs
+                        if package_dir.is_relative_to(self.workspace_root.resolve())
+                    ),
+                    key=lambda path: len(path.parts),
+                    reverse=True,
+                ),
+            )
+            if self.target_module:
+                mapped_package_dir = workspace_index.package_dir_by_name.get(
+                    self.target_module,
+                )
+                target_module_dirs = frozenset(
+                    entry.package_dir.resolve()
+                    for entry in workspace_index.modules_by_path.values()
+                    if entry.module_name == self.target_module
+                )
+                if mapped_package_dir is not None:
+                    target_module_dirs = frozenset((
+                        *target_module_dirs,
+                        mapped_package_dir.resolve(),
+                    ))
+                sorted_target_dirs = tuple(sorted(target_module_dirs))
+                if not sorted_target_dirs:
+                    u.Cli.error(
+                        f"lazy-init target module not found: {self.target_module}",
+                    )
+                    return 1
+                if sorted_target_dirs[1:]:
+                    u.Cli.error(
+                        f"lazy-init target module is ambiguous: {self.target_module}",
+                    )
+                    return 1
+                package_dirs = (sorted_target_dirs[0],)
+            duplicates = self._detect_duplicate_class_names(
+                rope,
+                package_dirs=package_dirs,
+            )
             if duplicates:
                 self._duplicate_class_names = len(duplicates)
                 for class_name, locations in duplicates.items():
@@ -90,15 +138,6 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             planner = FlextInfraCodegenLazyInitPlanner(
                 rope_workspace=rope,
                 lazy_init=lazy_init,
-            )
-            package_dirs = sorted(
-                (
-                    package_dir
-                    for package_dir in rope.workspace_index.package_dirs
-                    if package_dir.is_relative_to(self.workspace_root.resolve())
-                ),
-                key=lambda path: len(path.parts),
-                reverse=True,
             )
             u.Cli.info(
                 f"lazy-init: planning {len(package_dirs)} package dirs",
@@ -118,6 +157,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     @staticmethod
     def _detect_duplicate_class_names(
         rope: FlextInfraRopeWorkspace,
+        *,
+        package_dirs: t.SequenceOf[Path],
     ) -> t.MappingKV[str, t.StrSequence]:
         """Return class-name collisions.
 
@@ -127,8 +168,13 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
           forbidden only within the same owning project (they do not escape).
         """
         scoped_modules: defaultdict[t.StrPair, set[str]] = defaultdict(set)
+        selected_package_dirs = frozenset(path.resolve() for path in package_dirs)
         for entry in rope.workspace_index.modules_by_path.values():
-            if entry.is_package_init or not entry.module_name:
+            if (
+                entry.package_dir.resolve() not in selected_package_dirs
+                or entry.is_package_init
+                or not entry.module_name
+            ):
                 continue
             module_segments = frozenset(entry.module_name.split("."))
             is_private_scope = bool(module_segments & c.Infra.NON_PUBLIC_LAZY_ROOTS)

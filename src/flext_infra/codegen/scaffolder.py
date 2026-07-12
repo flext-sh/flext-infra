@@ -198,8 +198,18 @@ class FlextInfraCodegenScaffolder(s[str]):
             if request.dry_run:
                 files_created.append(str(filepath))
                 continue
-            u.write_file(filepath, content, encoding=c.Cli.ENCODING_DEFAULT)
-            _ = u.Infra.run_ruff_fix(filepath)
+            # mro-i6nq.10: Normalize the in-memory artifact before its first write.
+            normalized = u.Infra.normalize_python_source(
+                content,
+                filename=filepath,
+            )
+            if normalized.failure:
+                message = f"normalizing scaffold {filepath}: {normalized.error}"
+                raise OSError(message)
+            written = u.Cli.atomic_write_text_file(filepath, normalized.value)
+            if written.failure:
+                message = f"writing scaffold {filepath}: {written.error}"
+                raise OSError(message)
             files_created.append(str(filepath))
         return files_created, files_skipped
 

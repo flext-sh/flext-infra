@@ -9,9 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Iterator,
-    )
+    from collections.abc import Iterator
     from pathlib import Path
 
     from flext_core import p
@@ -75,6 +73,58 @@ class FlextInfraProtocolsBase(Protocol):
         def package_name(self) -> str:
             """Primary Python package name."""
             ...
+
+    # NOTE (multi-agent, mro-wkii.17.16 / agent: codex): these declaration-only
+    # contracts preserve config-model field types across the public p/u facades.
+    @runtime_checkable
+    class RepositoryRef(Protocol):
+        """Repository fields consumed by codegen path and profile selection."""
+
+        @property
+        def name(self) -> str:
+            """Repository catalog name."""
+            ...
+
+        @property
+        def path(self) -> Path:
+            """Repository path relative to its workspace root."""
+            ...
+
+        @property
+        def profile(self) -> str | None:
+            """Generated Make profile when the repository is active."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceSpec(Protocol):
+        """Workspace topology fields consumed by repository selection."""
+
+        @property
+        def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
+            """Workspace root repository."""
+            ...
+
+        @property
+        def members(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+            """Attached workspace member repositories."""
+            ...
+
+    @classmethod
+    def matches_root_namespace_file(cls, file_name: str) -> bool:
+        """Return whether a file belongs to the governed root namespace."""
+        ...
+
+    @staticmethod
+    def runtime_singleton_export(file_name: str) -> str | None:
+        """Return the public singleton exported by a runtime module."""
+        ...
+
+    @classmethod
+    def matches_project_namespace_package(cls, package_name: str) -> bool:
+        """Return whether a package is a governed project namespace root."""
+        ...
 
     @runtime_checkable
     class Validator(Protocol):

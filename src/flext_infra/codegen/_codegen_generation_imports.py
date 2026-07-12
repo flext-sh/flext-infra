@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from flext_infra.codegen._codegen_generation_paths import (
     FlextInfraCodegenGenerationPathsMixin,
 )
-from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -42,16 +41,8 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         mod: str,
         parts: t.StrSequence,
     ) -> t.StrSequence:
-        """Format one import statement or parenthesized import block."""
-        joined = ", ".join(parts)
-        line = f"{indent}from {mod} import {joined}"
-        if len(line) <= c.Infra.MAX_LINE_LENGTH:
-            return [line]
-        return [
-            f"{indent}from {mod} import (",
-            *(f"{indent}    {part}," for part in parts),
-            f"{indent})",
-        ]
+        """Emit one valid import statement for canonical normalization."""
+        return (f"{indent}from {mod} import {', '.join(parts)}",)
 
     @staticmethod
     def _format_module_alias_import(
@@ -77,9 +68,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         parent_mod, separator, module_name = mod.rpartition(".")
         if separator and module_name == export_name:
             # mro-i6nq.10: Redundant from-alias is Ruff's explicit re-export form.
-            return (
-                f"{indent}from {parent_mod} import {module_name} as {export_name}",
-            )
+            return (f"{indent}from {parent_mod} import {module_name} as {export_name}",)
         return (
             FlextInfraCodegenGenerationImportsMixin._format_module_alias_import(
                 indent,
@@ -145,13 +134,8 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
                 ),
             )
 
-        prev_top: str | None = None
         for mod in sorted(groups, key=str.lower):
-            top = mod.split(".")[0]
-            if prev_top is not None and top != prev_top:
-                lines.append("")
             _emit_module(mod)
-            prev_top = top
         return lines
 
 

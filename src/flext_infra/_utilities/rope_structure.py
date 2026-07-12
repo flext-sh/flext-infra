@@ -48,9 +48,13 @@ class FlextInfraUtilitiesRopeStructure:
             indent = len(text) - len(text.lstrip())
             FlextInfraUtilitiesRopeStructure._pop_exited_enclosers(enclosers, indent)
             kind, name = (
-                enclosers[-1][1],
-                enclosers[-1][2],
-            ) if enclosers else (c.Infra.RopeScopeKind.MODULE, "")
+                (
+                    enclosers[-1][1],
+                    enclosers[-1][2],
+                )
+                if enclosers
+                else (c.Infra.RopeScopeKind.MODULE, "")
+            )
             category = FlextInfraUtilitiesRopeStructure._categorize(text)
             statements.append(
                 m.Infra.LogicalStatement(
@@ -169,6 +173,92 @@ class FlextInfraUtilitiesRopeStructure:
                     return stripped[:index]
             index += 1
         return None
+
+    @staticmethod
+    def target_name(statement: m.Infra.LogicalStatement) -> str:
+        """Return the assignment/annotation target name of a statement, or empty.
+
+        Lexical: the identifier left of the first top-level ``=`` or ``:``. Empty
+        for non-assignment statements or tuple/attribute targets.
+        """
+        head = FlextInfraUtilitiesRopeStructure._assignment_head(statement.text.strip())
+        source = head if head is not None else statement.text.strip()
+        name = source.split(":", maxsplit=1)[0].strip()
+        return name if name.isidentifier() else ""
+
+    @staticmethod
+    def annotation_contains(
+        statement: m.Infra.LogicalStatement,
+        name: str,
+    ) -> bool:
+        """Return whether ``name`` appears in an annotated statement's annotation.
+
+        Lexical: the slice between the top-level ``:`` and the ``=`` (or end).
+        """
+        annotation = FlextInfraUtilitiesRopeStructure._annotation_source(statement.text)
+        return name in FlextInfraUtilitiesRopeStructure._identifiers(annotation)
+
+    @staticmethod
+    def _annotation_source(text: str) -> str:
+        """Return the annotation source slice of an annotated statement."""
+        stripped = text.strip()
+        head = FlextInfraUtilitiesRopeStructure._assignment_head(stripped)
+        left = head if head is not None else stripped
+        _target, separator, annotation = left.partition(":")
+        return annotation.strip() if separator else ""
+
+    @staticmethod
+    def call_callee_name(statement: m.Infra.LogicalStatement) -> str:
+        """Return the trailing identifier of the value's call callable, or empty.
+
+        Lexical: for ``x = Factory(...)`` or ``x: T = mod.Factory(...)`` returns
+        ``Factory``; empty when the value is not a call.
+        """
+        head = FlextInfraUtilitiesRopeStructure._assignment_head(statement.text.strip())
+        if head is None:
+            return ""
+        value = statement.text.strip()[len(head) + 1 :].strip()
+        open_paren = value.find("(")
+        if open_paren <= 0:
+            return ""
+        callee = value[:open_paren].strip()
+        return callee.rsplit(".", maxsplit=1)[-1]
+
+    @staticmethod
+    def class_base_names(statement: m.Infra.LogicalStatement) -> t.Infra.StrSet:
+        """Return terminal base-class names from a ``class X(...):`` header."""
+        stripped = statement.text.strip()
+        open_paren = stripped.find("(")
+        close_paren = stripped.rfind(")")
+        if open_paren < 0 or close_paren <= open_paren:
+            return set()
+        inner = stripped[open_paren + 1 : close_paren]
+        return {
+            terminal
+            for part in inner.split(",")
+            if (stripped_part := part.strip())
+            if (
+                terminal := stripped_part.split("[", maxsplit=1)[0]
+                .strip()
+                .rsplit(".", maxsplit=1)[-1]
+            )
+        }
+
+    @staticmethod
+    def _identifiers(source: str) -> t.Infra.StrSet:
+        """Return the set of identifier tokens in a source slice."""
+        identifiers: t.Infra.StrSet = set()
+        token = ""
+        for char in source:
+            if char.isalnum() or char == "_":
+                token += char
+            else:
+                if token:
+                    identifiers.add(token)
+                token = ""
+        if token:
+            identifiers.add(token)
+        return identifiers
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeStructure"]

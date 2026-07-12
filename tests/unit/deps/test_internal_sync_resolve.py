@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
@@ -13,6 +16,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsInternalSyncResolve:
     """Behavior contract for test_internal_sync_resolve."""
 
+    # mro-wkii.4.15: the shared fixture owns singleton lifecycle for this suite.
+
     @staticmethod
     def create_git_repo(tmp_path: Path, name: str) -> Path:
         repo = tmp_path / name
@@ -22,27 +27,57 @@ class TestsFlextInfraDepsInternalSyncResolve:
         return repo
 
     def test_resolve_ref_prefers_github_head_ref(self, tmp_path: Path) -> None:
-        with u.Tests.env_vars_context({
-            "GITHUB_ACTIONS": "true",
-            "GITHUB_HEAD_REF": "feature/test",
-            "GITHUB_REF_NAME": "main",
-        }):
-            result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().resolve_ref(Path(sys.argv[1])))"
+                ),
+                str(tmp_path),
+            ],
+            env={
+                "GITHUB_ACTIONS": "true",
+                "GITHUB_HEAD_REF": "feature/test",
+                "GITHUB_REF_NAME": "main",
+            },
+        )
 
-        assert result == "feature/test"
+        tm.ok(result)
+        tm.that(result.value, eq="feature/test")
 
     def test_resolve_ref_uses_github_ref_name_when_head_ref_is_empty(
         self,
         tmp_path: Path,
     ) -> None:
-        with u.Tests.env_vars_context({
-            "GITHUB_ACTIONS": "true",
-            "GITHUB_HEAD_REF": "",
-            "GITHUB_REF_NAME": "main",
-        }):
-            result = FlextInfraInternalDependencySyncService().resolve_ref(tmp_path)
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().resolve_ref(Path(sys.argv[1])))"
+                ),
+                str(tmp_path),
+            ],
+            env={
+                "GITHUB_ACTIONS": "true",
+                "GITHUB_HEAD_REF": "",
+                "GITHUB_REF_NAME": "main",
+            },
+        )
 
-        assert result == "main"
+        tm.ok(result)
+        tm.that(result.value, eq="main")
 
     def test_resolve_ref_uses_current_git_branch(self, tmp_path: Path) -> None:
         repo = self.create_git_repo(tmp_path, "repo")
@@ -68,17 +103,29 @@ class TestsFlextInfraDepsInternalSyncResolve:
         project = tmp_path / "project"
         project.mkdir()
 
-        with u.Tests.env_vars_context(
-            {},
-            vars_to_clear=(
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().resolve_ref(Path(sys.argv[1])))"
+                ),
+                str(project),
+            ],
+            remove_env_keys=(
                 "GITHUB_ACTIONS",
                 "GITHUB_HEAD_REF",
                 "GITHUB_REF_NAME",
             ),
-        ):
-            result = FlextInfraInternalDependencySyncService().resolve_ref(project)
+        )
 
-        assert result == "main"
+        tm.ok(result)
+        tm.that(result.value, eq="main")
 
     def test_infer_owner_from_origin_reads_real_remote(self, tmp_path: Path) -> None:
         repo = self.create_git_repo(tmp_path, "repo")

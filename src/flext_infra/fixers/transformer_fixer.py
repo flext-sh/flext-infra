@@ -337,7 +337,8 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 for k, v in u.Cli.json_as_mapping(
                     params.get("symbols_to_replace"),
                 ).items()
-                if isinstance(k, str) and isinstance(v, (str, int, float))
+                # mro-i6nq.10: Mapping keys are already typed as strings.
+                if isinstance(v, (str, int, float))
             }
             runtime_aliases = {
                 name

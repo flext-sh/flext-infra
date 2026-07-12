@@ -47,18 +47,12 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
-        py_files_result = u.Infra.iter_python_files(
-            workspace_root=project_path,
-            project_roots=[project_path],
-        )
-        py_files = tuple(py_files_result.value) if py_files_result.success else ()
-        bak_paths = u.Infra.backup_files(py_files)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         self._run_mro_migration(ctx, project_path)
         self._run_refactor_service(ctx, project_path)
         self._run_namespace_enforcement(ctx, project_path)
         self._run_lazy_init_regeneration(ctx, project_path)
-        self._post_fix_ruff_format(ctx, bak_paths)
+        self._normalize_modified_sources(ctx)
         self._classify_remaining_violations(ctx, project_path, initial_violations)
         return self._build_result(project_path.name, ctx)
 

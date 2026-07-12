@@ -69,10 +69,10 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        assert (
-            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports"
-            in init_content
-        )
+        # mro-i6nq.10: Assert runtime installation through observable exports.
+        assert "from flext_core.lazy import (" in init_content
+        assert "build_lazy_import_map," in init_content
+        assert "install_lazy_exports," in init_content
         assert "_LAZY_IMPORTS" in init_content
         assert '"FlextDemoModels"' in exports_content
         assert '"m"' in exports_content
@@ -86,6 +86,35 @@ class TestsFlextInfraLazyInitHelpers:
 
         assert u.Tests.run_lazy_init(workspace_root) == 0
         assert "FlextDemoInternal" not in self._generated_init(package_root)
+
+    def test_private_child_packages_do_not_widen_root_api(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root, package_root = self._workspace(tmp_path)
+        child_dir = package_root / "_enforcement"
+        child_dir.mkdir()
+        (child_dir / c.Infra.INIT_PY).write_text(
+            "",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (child_dir / "engine.py").write_text(
+            "class FlextDemoEnforcementEngine:\n"
+            '    """Internal engine."""\n\n'
+            '__all__ = ["FlextDemoEnforcementEngine"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        assert u.Tests.run_lazy_init(workspace_root) == 0
+        exports_content = self._generated_exports(package_root)
+        public_exports = exports_content.split(
+            "PUBLIC_EXPORTS: tuple[str, ...] =",
+            maxsplit=1,
+        )[1]
+
+        # mro-i6nq.10: private child classes never become root ABI.
+        assert "FlextDemoEnforcementEngine" not in public_exports
+        assert '"_enforcement"' not in public_exports
 
     def test_explicit_all_exports_keep_public_aliases_only(
         self,
@@ -144,57 +173,9 @@ class TestsFlextInfraLazyInitHelpers:
         assert '"main"' not in exports_content
         assert '"m": ("flext_demo.services.models", "m")' not in exports_content
 
-    def test_tests_root_aliases_follow_export_hierarchy(self, tmp_path: Path) -> None:
-        workspace_root, package_root = self._workspace(tmp_path)
-        package_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: list[str] = ["d"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextDemoConstants:\n"
-            "    pass\n\n"
-            '__all__: list[str] = ["FlextDemoConstants"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        tests_support_root = (
-            tmp_path / "flext-tests" / c.Infra.DEFAULT_SRC_DIR / "flext_tests"
-        )
-        tests_support_root.mkdir(parents=True)
-        tests_support_root.parent.parent.joinpath(
-            c.Infra.PYPROJECT_FILENAME,
-        ).write_text(
-            '[project]\nname = "flext-tests"\nversion = "0.1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        tests_support_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: list[str] = ["d", "td", "tm"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        tests_support_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextTestsConstants:\n"
-            "    pass\n\n"
-            '__all__: list[str] = ["FlextTestsConstants"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
-        core_root.mkdir(parents=True)
-        core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        core_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__: list[str] = ["tm"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        core_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextCoreConstants:\n"
-            "    pass\n\n"
-            '__all__: list[str] = ["FlextCoreConstants"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+    def test_tests_root_uses_private_lazy_manifest(self, tmp_path: Path) -> None:
+        """A tests root keeps imports lazy and local to avoid collection cycles."""
+        workspace_root, _package_root = self._workspace(tmp_path)
         tests_root = workspace_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
         tests_root.joinpath(c.Infra.INIT_PY).write_text(
@@ -203,12 +184,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
-            "from flext_demo import FlextDemoConstants\n"
-            "from flext_core import FlextCoreConstants\n"
-            "from flext_tests import FlextTestsConstants\n\n"
-            "class TestsFlextDemoConstants("
-            "FlextDemoConstants, FlextCoreConstants, FlextTestsConstants"
-            "):\n"
+            "class TestsFlextDemoConstants:\n"
             "    pass\n\n"
             "c = TestsFlextDemoConstants\n\n"
             '__all__: list[str] = ["TestsFlextDemoConstants", "c"]\n',
@@ -229,13 +205,23 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+        unit_content = tests_root.joinpath(c.Infra.UNIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
 
-        assert '"d"' in init_content
-        assert '"td"' in init_content
-        assert '"tm"' in init_content
-        assert '    "tm",' in init_content
-        assert '"flext_core": ("tm",)' not in init_content
+        # NOTE (multi-agent): mro-i6nq.10 prevents eager test-suite fan-out.
+        assert "from tests.__unit__ import (" in init_content
         assert "install_lazy_exports(" in init_content
+        assert '".constants": (' in unit_content
+        assert '".unit.child": ("Child",)' in unit_content
+        assert 'CHILD_MODULE_PATHS: tuple[str, ...] = (".unit",)' in unit_content
+        runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
+        assert "from tests.constants import" not in runtime_content
+        compile(unit_content, "tests/__unit__.py", "exec")
+        compile(init_content, "tests/__init__.py", "exec")
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        assert check_service.generate_inits(check_only=True) == 0
+        assert not check_service.modified_files
 
     def test_root_aliases_follow_transitive_parent_exports_from_source(
         self,
@@ -300,12 +286,26 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        assert (
-            "from flext_meltano.__unit__ import __all__ as __all__"
-            in init_content
-        )
+        # mro-i6nq.10: Assert the grouped manifest import structurally.
+        assert "from flext_meltano.__unit__ import (" in init_content
+        assert "PUBLIC_EXPORTS as _PUBLIC_EXPORTS," in init_content
+        assert "__all__: tuple[str, ...]" in init_content
+        assert "public_exports=_PUBLIC_EXPORTS" in init_content
         for alias_name in ("d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
             assert f'    "{alias_name}",' in exports_content
+        public_exports = exports_content.split(
+            "PUBLIC_EXPORTS: tuple[str, ...] =",
+            maxsplit=1,
+        )[1]
+        present_aliases = tuple(
+            alias
+            for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER
+            if f'"{alias}"' in public_exports
+        )
+        alias_positions = tuple(
+            public_exports.index(f'"{alias}"') for alias in present_aliases
+        )
+        assert alias_positions == tuple(sorted(alias_positions))
         assert (
             "from flext_cli import d, e, h, m, p, r, s, t, u, x"
             not in init_content.splitlines()
@@ -345,10 +345,19 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+        unit_content = tests_unit_root.joinpath(c.Infra.UNIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
 
-        assert "TestsFlextDemoUnitConstants" in init_content
-        assert "TestsFlextDemoUnitModels" in init_content
-        assert "publish_all=False" in init_content
+        # mro-i6nq.10: Nested test packages use the universal lazy contract.
+        assert "from tests.unit.__unit__ import (" in init_content
+        assert "install_lazy_exports(" in init_content
+        assert "__all__: tuple[str, ...]" in init_content
+        runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
+        assert "from tests.unit.constants import" not in runtime_content
+        assert "from tests.unit.models import" not in runtime_content
+        assert "TestsFlextDemoUnitConstants" in unit_content
+        assert "TestsFlextDemoUnitModels" in unit_content
 
     def test_root_exports_symbols_from_deep_descendant_packages(
         self,

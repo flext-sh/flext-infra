@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, override
 
 from flext_core import r
-from flext_infra import FlextInfraServiceBase, FlextInfraSettings
+from flext_infra import FlextInfraServiceBase, settings
 from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
 from flext_infra.constants import c
 from flext_infra.deps._internal_sync_collect import FlextInfraInternalSyncCollectMixin
@@ -99,10 +99,8 @@ class FlextInfraInternalDependencySyncService(
                 )
             repo_map = parsed_map_result.value
         ref_name = self.resolve_ref(project_root)
-        infra_settings = FlextInfraSettings.fetch_global()
-        force_https = (
-            infra_settings.Infra.github_actions or infra_settings.Infra.use_https
-        )
+        # mro-wkii.4.15: dependency sync consumes the singleton without accessors.
+        force_https = settings.Infra.github_actions or settings.Infra.use_https
         for dep_path in deps.values():
             repo_name = dep_path.name
             if repo_name not in repo_map:

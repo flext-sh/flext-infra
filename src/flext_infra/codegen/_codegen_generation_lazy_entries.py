@@ -121,18 +121,5 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
             return (1, index, export_name)
         return (0, index, export_name)
 
-    @staticmethod
-    def _collapse_blank_runs(lines: t.StrSequence) -> t.StrSequence:
-        """Collapse repeated blank lines."""
-        normalized: t.MutableSequenceOf[str] = []
-        previous_blank = False
-        for line in lines:
-            current_blank = not line
-            if current_blank and previous_blank:
-                continue
-            normalized.append(line)
-            previous_blank = current_blank
-        return tuple(normalized)
-
 
 __all__: list[str] = ["FlextInfraCodegenGenerationLazyEntriesMixin"]

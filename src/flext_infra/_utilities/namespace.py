@@ -71,7 +71,22 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether *file_name* is a governed root-namespace facade file."""
-        return file_name in cls._lazy_init_config().root_namespace_files
+        return (
+            file_name in cls._lazy_init_config().root_namespace_files
+            or cls.runtime_singleton_export(file_name) is not None
+        )
+
+    @staticmethod
+    def runtime_singleton_export(file_name: str) -> str | None:
+        """Return the sole public singleton owned by a sanctioned runtime module."""
+        return next(
+            (
+                Path(module_file).stem.removeprefix("_")
+                for module_file, *_ in c.Infra.RUNTIME_MODULES
+                if file_name == module_file
+            ),
+            None,
+        )
 
     @classmethod
     def surface_name(cls, package_name: str) -> str:
@@ -120,7 +135,22 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             if alias in export_set and alias not in local_aliases
         )
-        ordered_aliases = tuple(dict.fromkeys((*local_aliases, *inherited_aliases)))
+        configured_aliases = tuple(
+            dict.fromkeys((*local_aliases, *inherited_aliases)),
+        )
+        preferred_aliases = tuple(
+            alias for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER if alias in export_set
+        )
+        ordered_aliases = tuple(
+            dict.fromkeys((
+                *preferred_aliases,
+                *(
+                    alias
+                    for alias in configured_aliases
+                    if alias not in preferred_aliases
+                ),
+            )),
+        )
         alias_set = set(ordered_aliases)
         other_exports = tuple(name for name in ordered_unique if name not in alias_set)
         return (*other_exports, *ordered_aliases)
@@ -249,7 +279,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         is_services_module = "services" in resolved_rel_path.parts
         is_services_package = "services" in package_parts
-        is_namespace_file = resolved_rel_path.name in settings.root_namespace_files
+        runtime_singleton_export = (
+            cls.runtime_singleton_export(resolved_rel_path.name)
+            if len(resolved_rel_path.parts) == 1 and package_depth <= 1
+            else None
+        )
+        is_namespace_file = (
+            resolved_rel_path.name in settings.root_namespace_files
+            or runtime_singleton_export is not None
+        )
         is_governed_namespace = (
             expected_alias is not None or expected_family is not None
         )
@@ -258,7 +296,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             and len(resolved_rel_path.parts) == 1
             and package_depth <= 1
         )
-        resolved_alias = expected_alias
+        resolved_alias = expected_alias or runtime_singleton_export
         if (
             resolved_alias is None
             and is_root_namespace
@@ -364,7 +402,10 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         is_private_module = file_path.stem.startswith("_")
         include_in_lazy_init = not file_path.stem[:1].isdigit() and (
-            not is_private_module or is_fixture_module or is_family_package
+            not is_private_module
+            or is_fixture_module
+            or is_family_package
+            or is_root_namespace
         )
         type_checking_imports = tuple(
             name

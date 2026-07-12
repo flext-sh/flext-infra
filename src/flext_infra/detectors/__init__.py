@@ -1,11 +1,21 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Detectors package."""
+"""Flext Infra.detectors package."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+from flext_core.lazy import (
+    build_lazy_import_map,
+    install_lazy_exports,
+)
+
+# mro-i6nq.10: The package consumes its manifest's public-export contract.
+from flext_infra.detectors.__unit__ import (
+    LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS,
+    LAZY_MODULES as _LAZY_MODULES,
+    PUBLIC_EXPORTS as _PUBLIC_EXPORTS,
+)
 
 if TYPE_CHECKING:
     from flext_infra.detectors.class_placement_detector import (
@@ -35,6 +45,9 @@ if TYPE_CHECKING:
     from flext_infra.detectors.loose_object_detector import (
         FlextInfraLooseObjectDetector as FlextInfraLooseObjectDetector,
     )
+    from flext_infra.detectors.loose_test_function_detector import (
+        FlextInfraLooseTestFunctionDetector as FlextInfraLooseTestFunctionDetector,
+    )
     from flext_infra.detectors.manual_protocol_detector import (
         FlextInfraManualProtocolDetector as FlextInfraManualProtocolDetector,
     )
@@ -62,33 +75,20 @@ if TYPE_CHECKING:
     from flext_infra.detectors.silent_failure_detector import (
         FlextInfraSilentFailureDetector as FlextInfraSilentFailureDetector,
     )
+
+    # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
+    __all__: tuple[str, ...]
+
 _LAZY_IMPORTS = build_lazy_import_map(
-    {
-        ".class_placement_detector": ("FlextInfraClassPlacementDetector",),
-        ".compatibility_alias_detector": ("FlextInfraCompatibilityAliasDetector",),
-        ".cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
-        ".facade_scanner": ("FlextInfraScanner",),
-        ".future_annotations_detector": ("FlextInfraFutureAnnotationsDetector",),
-        ".import_alias_detector": ("FlextInfraImportAliasDetector",),
-        ".inline_import_detector": ("FlextInfraInlineImportDetector",),
-        ".internal_import_detector": ("FlextInfraInternalImportDetector",),
-        ".loose_object_detector": ("FlextInfraLooseObjectDetector",),
-        ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
-        ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
-        ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
-        ".mro_shape_detector": ("FlextInfraMROShapeDetector",),
-        ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
-        ".pattern_smell_detector": ("FlextInfraPatternSmellDetector",),
-        ".private_import_bypass_detector": ("FlextInfraPrivateImportBypassDetector",),
-        ".runtime_alias_detector": ("FlextInfraRuntimeAliasDetector",),
-        ".silent_failure_detector": ("FlextInfraSilentFailureDetector",),
-    },
+    _LAZY_MODULES,
+    alias_groups=_LAZY_ALIAS_GROUPS,
+    sort_keys=False,
 )
 
-
+# mro-i6nq.10: The installer publishes __all__ from the manifest's literal ABI.
 install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,
-    publish_all=False,
+    public_exports=_PUBLIC_EXPORTS,
 )

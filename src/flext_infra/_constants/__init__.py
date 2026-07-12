@@ -1,11 +1,21 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Constants package."""
+"""Flext Infra. Constants package."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+from flext_core.lazy import (
+    build_lazy_import_map,
+    install_lazy_exports,
+)
+
+# mro-i6nq.10: The package consumes its manifest's public-export contract.
+from flext_infra._constants.__unit__ import (
+    LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS,
+    LAZY_MODULES as _LAZY_MODULES,
+    PUBLIC_EXPORTS as _PUBLIC_EXPORTS,
+)
 
 if TYPE_CHECKING:
     from flext_infra._constants.adapters import (
@@ -42,6 +52,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._constants.codegen_lazy import (
         FlextInfraConstantsCodegenLazy as FlextInfraConstantsCodegenLazy,
+    )
+    from flext_infra._constants.codegen_project import (
+        FlextInfraConstantsCodegenProject as FlextInfraConstantsCodegenProject,
     )
     from flext_infra._constants.codegen_render_names import (
         FlextInfraConstantsCodegenRenderNames as FlextInfraConstantsCodegenRenderNames,
@@ -82,43 +95,20 @@ if TYPE_CHECKING:
     from flext_infra._constants.workspace import (
         FlextInfraConstantsWorkspace as FlextInfraConstantsWorkspace,
     )
+
+    # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
+    __all__: tuple[str, ...]
+
 _LAZY_IMPORTS = build_lazy_import_map(
-    {
-        ".adapters": ("FlextInfraConstantsAdapters",),
-        ".base": ("FlextInfraConstantsBase",),
-        ".basemk": ("FlextInfraConstantsBasemk",),
-        ".census": ("FlextInfraConstantsCensus",),
-        ".check": ("FlextInfraConstantsCheck",),
-        ".cli": ("FlextInfraConstantsCli",),
-        ".cli_routes": (
-            "CODEGEN_ROUTES",
-            "VALIDATE_ROUTES",
-            "WORKSPACE_ROUTES",
-        ),
-        ".cli_routes_validate_commands": ("VALIDATE_COMMAND_ROUTES",),
-        ".codegen": ("FlextInfraConstantsCodegen",),
-        ".codegen_detection": ("FlextInfraConstantsCodegenDetection",),
-        ".codegen_lazy": ("FlextInfraConstantsCodegenLazy",),
-        ".codegen_render_names": ("FlextInfraConstantsCodegenRenderNames",),
-        ".deps": ("FlextInfraConstantsDeps",),
-        ".detectors": ("FlextInfraConstantsDetectors",),
-        ".docs": ("FlextInfraConstantsDocs",),
-        ".github": ("FlextInfraConstantsGithub",),
-        ".make": ("FlextInfraConstantsMake",),
-        ".namespace": ("FlextInfraConstantsNamespace",),
-        ".refactor": ("FlextInfraConstantsRefactor",),
-        ".release": ("FlextInfraConstantsRelease",),
-        ".rope": ("FlextInfraConstantsRope",),
-        ".source_code": ("FlextInfraConstantsSourceCode",),
-        ".validate": ("FlextInfraConstantsSharedInfra",),
-        ".workspace": ("FlextInfraConstantsWorkspace",),
-    },
+    _LAZY_MODULES,
+    alias_groups=_LAZY_ALIAS_GROUPS,
+    sort_keys=False,
 )
 
-
+# mro-i6nq.10: The installer publishes __all__ from the manifest's literal ABI.
 install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,
-    publish_all=False,
+    public_exports=_PUBLIC_EXPORTS,
 )

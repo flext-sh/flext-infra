@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
+from flext_cli.utilities import u
+from flext_core import r
 from flext_infra.constants import c
+from flext_infra.models import m
+
+# mro-i6nq.10: Keep Ruff normalization behind one typed utilities owner.
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_core.protocols import p as core_p
     from flext_infra.typings import t
 
 
@@ -17,38 +22,75 @@ class FlextInfraUtilitiesCodegen:
     """Compose all codegen utility concerns for ``u.Infra``."""
 
     @staticmethod
-    def run_ruff_fix(path: Path, *, quiet: bool = False) -> p.Result[bool]:
-        """Run Ruff post-processing for one generated file path.
-
-        Generated Python modules use ``ruff check --fix`` plus ``ruff format``.
-        ``quiet=True`` suppresses the CLI error log; the failure still surfaces
-        via ``r``.
-        """
-        cwd = path.parent if path.suffix else path
-
-        def _step(args: list[str], default_msg: str) -> p.Result[str]:
-            return (
-                u.Cli
-                .capture(args, cwd=cwd)
-                .map_error(
-                    lambda e: e or default_msg,
-                )
-                .tap_error(lambda e: None if quiet else u.Cli.error(e))
-            )
-
-        return (
-            _step(
-                [c.Infra.RUFF, "check", "--fix", str(path)],
-                f"ruff check --fix failed: {path}",
-            )
-            .flat_map(
-                lambda _: _step(
-                    [c.Infra.RUFF, "format", str(path)],
-                    f"ruff format failed: {path}",
-                ),
-            )
-            .map(lambda _: True)
+    def normalize_python_source(
+        source: str,
+        *,
+        filename: t.Cli.TextPath,
+    ) -> core_p.Result[str]:
+        """Return Ruff-fixed and formatted source without writing ``filename``."""
+        resolved_path = Path(filename).resolve()
+        cwd = resolved_path.parent
+        # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
+        # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
+        checked = u.Cli.run_raw(
+            [
+                sys.executable,
+                "-m",
+                c.Infra.RUFF,
+                "check",
+                "--fix",
+                "--no-cache",
+                "--color",
+                "never",
+                "--stdin-filename",
+                str(resolved_path),
+                "-",
+            ],
+            cwd=cwd,
+            timeout=c.Infra.TIMEOUT_SHORT,
+            input_data=source.encode(c.Infra.ENCODING_DEFAULT),
         )
+        if checked.failure:
+            return r[str].fail(checked.error or f"ruff check failed: {resolved_path}")
+        checked_output = checked.value
+        if checked_output.exit_code != 0:
+            detail = checked_output.stderr.strip() or "no diagnostic output"
+            return r[str].fail(
+                f"ruff check failed ({checked_output.exit_code}) for "
+                f"{resolved_path}: {detail}",
+            )
+        formatted = u.Cli.run_raw(
+            [
+                sys.executable,
+                "-m",
+                c.Infra.RUFF,
+                "format",
+                "--no-cache",
+                "--color",
+                "never",
+                "--stdin-filename",
+                str(resolved_path),
+                "-",
+            ],
+            cwd=cwd,
+            timeout=c.Infra.TIMEOUT_SHORT,
+            input_data=checked_output.stdout.encode(c.Infra.ENCODING_DEFAULT),
+        )
+        if formatted.failure:
+            return r[str].fail(
+                formatted.error or f"ruff format failed: {resolved_path}",
+            )
+        formatted_output = formatted.value
+        if formatted_output.exit_code != 0:
+            detail = formatted_output.stderr.strip() or "no diagnostic output"
+            return r[str].fail(
+                f"ruff format failed ({formatted_output.exit_code}) for "
+                f"{resolved_path}: {detail}",
+            )
+        normalized_source = formatted_output.stdout
+        if normalized_source and not normalized_source.endswith("\n"):
+            normalized_source = f"{normalized_source}\n"
+        return r[str].ok(normalized_source)
 
     @staticmethod
     def generate_module_skeleton(
@@ -75,15 +117,19 @@ class FlextInfraUtilitiesCodegen:
             / "templates"
             / c.Infra.TEMPLATE_MODULE_SKELETON
         )
-        return u.Cli.template_render(
+        # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner): preserve
+        # the exact validated model identity across the template boundary.
+        context = m.Infra.ModuleSkeletonRenderContext(
+            class_name=class_name,
+            base_class=base_class,
+            base_import_block=base_import_block,
+            docstring=docstring,
+        )
+        rendered: core_p.Result[str] = u.Cli.template_render(
             template_path,
-            {
-                "class_name": class_name,
-                "base_class": base_class,
-                "base_import_block": base_import_block,
-                "docstring": docstring,
-            },
-        ).unwrap()
+            context,
+        )
+        return rendered.unwrap()
 
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:

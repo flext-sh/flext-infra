@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from jinja2.environment import Environment
 from jinja2.loaders import FileSystemLoader
@@ -27,12 +27,10 @@ class FlextInfraCodegenGenerationRenderersMixin(
     """Jinja-backed renderer helper methods."""
 
     @classmethod
-    @override
     def _render_model(cls, template_name: str, context: m.ArbitraryTypesModel) -> str:
-        """Render a typed template context with normalized trailing newline."""
+        """Render a typed template context."""
         template = cls.get_template(template_name)
-        rendered: str = template.render(**context.model_dump(mode="python"))
-        return rendered.rstrip() + "\n"
+        return template.render(**context.model_dump(mode="python"))
 
     @staticmethod
     def _build_env() -> t.Infra.JinjaEnvironment:

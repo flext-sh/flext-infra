@@ -12,8 +12,6 @@ class FlextInfraConstantsCodegenRenderNames:
     "Per-project-root ``__unit__.py`` lazy-import manifest (root SSOT)."
     TEMPLATE_ROOT_THIN: Final[str] = "lazy_init_root_thin.py.j2"
     "Thin project-root ``__init__.py`` consuming only ``__unit__.py``."
-    TEMPLATE_EAGER_PACKAGE: Final[str] = "lazy_init_eager_package.py.j2"
-    "Eager-import initializer for non-root packages (subfolders)."
     TEMPLATE_VERSION_FILE: Final[str] = "version_file.py.j2"
     "Per-project ``__version__.py`` template."
     TEMPLATE_MKDOCS_PROJECT: Final[str] = "mkdocs_project.yml.j2"

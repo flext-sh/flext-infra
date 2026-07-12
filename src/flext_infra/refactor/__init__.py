@@ -1,11 +1,21 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Refactor package."""
+"""Flext Infra.refactor package."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+from flext_core.lazy import (
+    build_lazy_import_map,
+    install_lazy_exports,
+)
+
+# mro-i6nq.10: The package consumes its manifest's public-export contract.
+from flext_infra.refactor.__unit__ import (
+    LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS,
+    LAZY_MODULES as _LAZY_MODULES,
+    PUBLIC_EXPORTS as _PUBLIC_EXPORTS,
+)
 
 if TYPE_CHECKING:
     from flext_infra.refactor.accessor_migration import (
@@ -78,41 +88,20 @@ if TYPE_CHECKING:
     from flext_infra.refactor.wrapper_root_namespace import (
         FlextInfraWrapperRootNamespaceRefactor as FlextInfraWrapperRootNamespaceRefactor,
     )
+
+    # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
+    __all__: tuple[str, ...]
+
 _LAZY_IMPORTS = build_lazy_import_map(
-    {
-        ".accessor_migration": ("FlextInfraAccessorMigrationOrchestrator",),
-        ".census": ("FlextInfraRefactorCensus",),
-        ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
-        ".classvar_constant_autofix": ("FlextInfraRefactorClassvarConstantAutofix",),
-        ".declarative_enforcement": ("FlextInfraRefactorDeclarativeEnforcement",),
-        ".file_executor": (
-            "FlextInfraClassNestingPostCheckGate",
-            "FlextInfraRefactorFileExecutor",
-        ),
-        ".legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
-        ".loader": ("FlextInfraRefactorRuleLoader",),
-        ".migrate_to_class_mro": ("FlextInfraRefactorMigrateToClassMRO",),
-        ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
-        ".mro_import_rewriter": ("FlextInfraRefactorMROImportRewriter",),
-        ".mro_migration_validator": ("FlextInfraRefactorMROMigrationValidator",),
-        ".mro_resolver": ("FlextInfraRefactorMROResolver",),
-        ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
-        ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
-        ".orchestrator": ("FlextInfraRefactorOrchestrator",),
-        ".project_classifier": ("FlextInfraProjectClassifier",),
-        ".safety": ("FlextInfraRefactorSafetyManager",),
-        ".scanner": ("FlextInfraRefactorLooseClassScanner",),
-        ".service": ("FlextInfraRefactorService",),
-        ".text_executor": ("FlextInfraRefactorTextExecutor",),
-        ".violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
-        ".wrapper_root_namespace": ("FlextInfraWrapperRootNamespaceRefactor",),
-    },
+    _LAZY_MODULES,
+    alias_groups=_LAZY_ALIAS_GROUPS,
+    sort_keys=False,
 )
 
-
+# mro-i6nq.10: The installer publishes __all__ from the manifest's literal ABI.
 install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,
-    publish_all=False,
+    public_exports=_PUBLIC_EXPORTS,
 )

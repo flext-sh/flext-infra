@@ -12,20 +12,20 @@ from typing import Final
 
 from flext_cli import t
 from flext_core import m
-from flext_infra._typings.base import FlextInfraTypesBase
 
 
 class FlextInfraConstantsAdapters:
     """SSOT TypeAdapter singletons for infrastructure validation."""
 
-    INFRA_MAPPING_ADAPTER: Final[m.TypeAdapter[FlextInfraTypesBase.ContainerDict]] = (
+    # NOTE (multi-agent): mro-i6nq.10 removes the constants-to-typings cycle.
+    INFRA_MAPPING_ADAPTER: Final[m.TypeAdapter[t.JsonMapping]] = (
         t.Cli.JSON_MAPPING_ADAPTER
     )
     "Validates t.MappingKV[str, InfraValue] - the most common infra adapter."
 
     MUTABLE_INFRA_MAPPING_ADAPTER: Final[
-        m.TypeAdapter[MutableMapping[str, FlextInfraTypesBase.InfraValue]]
-    ] = m.TypeAdapter(MutableMapping[str, FlextInfraTypesBase.InfraValue])
+        m.TypeAdapter[MutableMapping[str, t.JsonValue]]
+    ] = m.TypeAdapter(MutableMapping[str, t.JsonValue])
     "Validates MutableMapping[str, InfraValue] for in-place mutation."
 
     STR_MAPPING_ADAPTER: Final[m.TypeAdapter[t.StrMapping]] = m.TypeAdapter(
@@ -38,14 +38,12 @@ class FlextInfraConstantsAdapters:
     ] = m.TypeAdapter(t.MappingKV[str, t.Scalar | Path])
     "Validates flat scalar/path mappings (no nested containers)."
 
-    INFRA_SEQ_ADAPTER: Final[m.TypeAdapter[FlextInfraTypesBase.InfraSequence]] = (
-        t.Cli.JSON_LIST_ADAPTER
-    )
+    INFRA_SEQ_ADAPTER: Final[m.TypeAdapter[t.JsonList]] = t.Cli.JSON_LIST_ADAPTER
     "Validates t.SequenceOf[InfraValue]."
 
-    CONTAINER_DICT_SEQ_ADAPTER: Final[
-        m.TypeAdapter[t.SequenceOf[FlextInfraTypesBase.ContainerDict]]
-    ] = m.TypeAdapter(t.SequenceOf[FlextInfraTypesBase.ContainerDict])
+    CONTAINER_DICT_SEQ_ADAPTER: Final[m.TypeAdapter[t.SequenceOf[t.JsonMapping]]] = (
+        m.TypeAdapter(t.SequenceOf[t.JsonMapping])
+    )
     "Validates t.SequenceOf[ContainerDict]."
 
     STR_SEQ_ADAPTER: Final[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import FlextInfraSettings
+from flext_infra import settings
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -70,7 +70,7 @@ class FlextInfraInternalSyncRepoMixin:
 
     def is_workspace_mode(self, project_root: Path) -> t.Pair[bool, Path | None]:
         """Determine workspace mode and return resolved workspace root."""
-        settings = FlextInfraSettings.fetch_global()
+        # mro-wkii.4.15: consume the exported process-start singleton directly.
         if settings.Infra.standalone:
             u.Cli.info("Standalone mode: skipping workspace dependency sync")
             return (False, None)
@@ -139,7 +139,6 @@ class FlextInfraInternalSyncRepoMixin:
 
     def resolve_ref(self, project_root: Path) -> str:
         """Resolve dependency sync git reference for current environment."""
-        settings = FlextInfraSettings.fetch_global()
         if settings.Infra.github_actions:
             for value in (
                 settings.Infra.github_head_ref,
@@ -184,16 +183,13 @@ class FlextInfraInternalSyncRepoMixin:
 
     def workspace_root_from_env(self, project_root: Path) -> Path | None:
         """Resolve workspace root from environment when valid for project root."""
-        # NOTE (multi-agent): settings carry flat env scalars (§2.6), so the
-        # FLEXT_WORKSPACE_ROOT string is converted to Path at the consumer.
-        candidate = FlextInfraSettings.fetch_global().Infra.workspace_root
+        candidate = settings.Infra.workspace_root
         if candidate is None:
             return None
-        candidate_path = Path(candidate)
-        if not candidate_path.exists() or not candidate_path.is_dir():
+        if not candidate.exists() or not candidate.is_dir():
             return None
-        if project_root.is_relative_to(candidate_path):
-            return candidate_path
+        if project_root.is_relative_to(candidate):
+            return candidate
         return None
 
     @staticmethod

@@ -11,7 +11,7 @@ from flext_infra import c, m, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
-# mro-i6nq.10: Tests assert only the new manifest/root-thin/eager public contract.
+# mro-i6nq.10: Tests assert the single manifest-backed thin-init contract.
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
 
@@ -60,13 +60,14 @@ class TestsFlextInfraCodegenGeneration:
 
         content = FlextInfraCodegenGeneration.render_unit_manifest(plan)
 
-        tm.that(content is not None, eq=True)
-        assert content is not None
         compile(content, "__unit__.py", "exec")
         tm.that(content, contains="LAZY_MODULES")
         tm.that(content, contains="LAZY_ALIAS_GROUPS")
         tm.that(content, contains='".services"')
-        tm.that(content, contains="if TYPE_CHECKING:")
+        tm.that(content, contains='".api": (')
+        tm.that(content, contains='        "Demo",')
+        tm.that(content, contains="PUBLIC_EXPORTS: tuple[str, ...] =")
+        tm.that(content, lacks="TYPE_CHECKING")
         tm.that(content, contains='    "__version__",')
         tm.that(content, lacks="install_lazy_exports")
 
@@ -81,13 +82,18 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from demo_pkg.__unit__ import __all__ as __all__")
+        tm.that(
+            content,
+            contains="from demo_pkg.__unit__ import (",
+        )
+        tm.that(content, contains="PUBLIC_EXPORTS as _PUBLIC_EXPORTS,")
+        tm.that(content, contains="__all__: tuple[str, ...]")
+        tm.that(content, contains="public_exports=_PUBLIC_EXPORTS")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="LAZY_MODULES: dict")
-        tm.that(content, lacks="PUBLIC_EXPORTS")
 
-    def test_non_root_initializer_is_eager_and_sibling_only(self) -> None:
-        """Subpackages import sibling symbols eagerly and publish a literal ABI."""
+    def test_non_root_package_uses_manifest_and_thin_initializer(self) -> None:
+        """Subpackages publish all symbols through a cycle-safe manifest."""
         plan = self._plan(
             "demo_pkg.services",
             ("Demo", "Nested"),
@@ -97,18 +103,22 @@ class TestsFlextInfraCodegenGeneration:
             }),
         )
 
-        content = FlextInfraCodegenGeneration.render_init(plan)
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+        unit_content = FlextInfraCodegenGeneration.render_unit_manifest(plan)
 
-        compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from demo_pkg.services.demo import Demo")
-        tm.that(content, contains='    "Demo",')
-        tm.that(content, lacks="Nested")
-        tm.that(content, lacks="flext_core.lazy")
-        tm.that(content, lacks="TYPE_CHECKING")
-        tm.that(content, lacks="__unit__")
+        compile(init_content, "__init__.py", "exec")
+        compile(unit_content, "__unit__.py", "exec")
+        tm.that(init_content, contains="from demo_pkg.services.__unit__ import (")
+        tm.that(init_content, contains="install_lazy_exports(")
+        runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
+        tm.that(runtime_content, lacks="from demo_pkg.services.demo import Demo")
+        tm.that(unit_content, contains='".demo": (')
+        tm.that(unit_content, contains='        "Demo",')
+        tm.that(unit_content, contains='".nested.item": (')
+        tm.that(unit_content, contains='        "Nested",')
 
-    def test_non_public_surface_root_uses_eager_contract(self) -> None:
-        """Tests/examples/scripts roots never receive public lazy machinery."""
+    def test_non_public_surface_uses_manifest_and_thin_initializer(self) -> None:
+        """Tests, examples, and scripts use the same cycle-safe contract."""
         plan = self._plan(
             "tests",
             ("TestsDemo",),
@@ -119,9 +129,13 @@ class TestsFlextInfraCodegenGeneration:
         unit_content = FlextInfraCodegenGeneration.render_unit_manifest(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from tests.demo import TestsDemo")
-        tm.that(init_content, lacks="install_lazy_exports")
-        tm.that(unit_content is None, eq=True)
+        compile(unit_content, "__unit__.py", "exec")
+        tm.that(init_content, contains="from tests.__unit__ import (")
+        tm.that(init_content, contains="install_lazy_exports(")
+        runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
+        tm.that(runtime_content, lacks="from tests.demo import TestsDemo")
+        tm.that(unit_content, contains='".demo": (')
+        tm.that(unit_content, contains='        "TestsDemo",')
 
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
         """Static imports preserve facade aliases explicitly."""

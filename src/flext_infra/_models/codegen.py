@@ -262,6 +262,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 description="Whether the directory resolves to an importable package.",
             ),
         ] = False
+
     class LazyInitPlan(m.ArbitraryTypesModel):
         """Fully resolved lazy-init action and render payload.
 

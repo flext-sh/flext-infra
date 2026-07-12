@@ -319,12 +319,14 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             local_result = self.load_workspace_spec(resolved_project_root)
             if local_result.failure:
                 return r[c.Infra.WorkspaceMode].fail(local_result.error)
-            workspace_spec = local_result.value
+            # mro-i6nq.10: Unwrap only after the fail-closed result branch.
+            local_spec = local_result.unwrap()
             local_contract = self._validate_local_repository(
-                workspace_spec.repository,
+                local_spec.repository,
             )
             if local_contract.failure:
                 return r[c.Infra.WorkspaceMode].fail(local_contract.error)
+            workspace_spec = local_spec
 
         git_probe = u.Cli.run_raw(
             [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],

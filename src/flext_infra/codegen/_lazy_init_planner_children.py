@@ -162,6 +162,14 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         return frozenset(child_exports)
 
     @staticmethod
+    def _is_internal_root_child_package(child_package: str) -> bool:
+        """Return whether a child package is implementation-only at the root."""
+        child_name = child_package.rsplit(".", maxsplit=1)[-1]
+        return child_name.startswith("_") or (
+            child_name in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES
+        )
+
+    @staticmethod
     def _is_public_root_child_package(
         child_package: str,
         export_names: frozenset[str],
@@ -176,9 +184,11 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         )
         if not public_names:
             return False
-        child_name = child_package.rsplit(".", maxsplit=1)[-1]
-        if child_name in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES:
+        if FlextInfraCodegenLazyInitPlannerChildrenMixin._is_internal_root_child_package(
+            child_package,
+        ):
             return False
+        child_name = child_package.rsplit(".", maxsplit=1)[-1]
         if child_name in c.Infra.LOCAL_INFERRED_SEGMENTS:
             return True
         return all(
@@ -194,9 +204,11 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         """Return whether one child export may bubble into a public root."""
         if name in c.Infra.ALIAS_NAMES or name == "main":
             return False
-        child_name = child_package.rsplit(".", maxsplit=1)[-1]
-        if child_name in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES:
+        if FlextInfraCodegenLazyInitPlannerChildrenMixin._is_internal_root_child_package(
+            child_package,
+        ):
             return False
+        child_name = child_package.rsplit(".", maxsplit=1)[-1]
         if child_name in c.Infra.LOCAL_INFERRED_SEGMENTS:
             return True
         return name[:1].isupper() and not name.isupper()

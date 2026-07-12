@@ -1,36 +1,16 @@
 from __future__ import annotations
 
-import os
-from contextlib import contextmanager
+import sys
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests.utilities import u
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Generator,
-    )
     from pathlib import Path
-
-
-@contextmanager
-def temporary_env(**updates: str | None) -> Generator[None]:
-    previous = {key: os.environ.get(key) for key in updates}
-    try:
-        for key, value in updates.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-        yield
-    finally:
-        for key, value in previous.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
 
 
 def create_git_repo(tmp_path: Path, name: str) -> Path:
@@ -64,27 +44,55 @@ def create_workspace_with_submodule(tmp_path: Path) -> tuple[Path, Path]:
 class TestsFlextInfraDepsInternalSyncWorkspace:
     """Behavior contract for test_internal_sync_workspace."""
 
+    # mro-wkii.4.15: environment setup uses the canonical typed test utility.
+
     def test_workspace_root_from_env_returns_none_when_env_is_missing(
         self,
         tmp_path: Path,
     ) -> None:
-        with temporary_env(FLEXT_WORKSPACE_ROOT=None):
-            result = FlextInfraInternalDependencySyncService().workspace_root_from_env(
-                tmp_path,
-            )
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().workspace_root_from_env(Path(sys.argv[1])))"
+                ),
+                str(tmp_path),
+            ],
+            remove_env_keys=("FLEXT_WORKSPACE_ROOT",),
+        )
 
-        assert result is None
+        tm.ok(result)
+        tm.that(result.value, eq="None")
 
     def test_workspace_root_from_env_returns_valid_parent(self, tmp_path: Path) -> None:
         project = tmp_path / "project"
         project.mkdir()
 
-        with temporary_env(FLEXT_WORKSPACE_ROOT=str(tmp_path)):
-            result = FlextInfraInternalDependencySyncService().workspace_root_from_env(
-                project,
-            )
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().workspace_root_from_env(Path(sys.argv[1])))"
+                ),
+                str(project),
+            ],
+            env={"FLEXT_WORKSPACE_ROOT": str(tmp_path)},
+        )
 
-        assert result == tmp_path
+        tm.ok(result)
+        tm.that(result.value, eq=str(tmp_path))
 
     def test_workspace_root_from_env_rejects_invalid_or_unrelated_paths(
         self,
@@ -95,21 +103,32 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         project = tmp_path / "other" / "project"
         project.mkdir(parents=True)
 
-        with temporary_env(FLEXT_WORKSPACE_ROOT="/nonexistent/path"):
-            missing_result = (
-                FlextInfraInternalDependencySyncService().workspace_root_from_env(
-                    project,
-                )
-            )
-        with temporary_env(FLEXT_WORKSPACE_ROOT=str(workspace)):
-            unrelated_result = (
-                FlextInfraInternalDependencySyncService().workspace_root_from_env(
-                    project,
-                )
-            )
+        command = [
+            sys.executable,
+            "-W",
+            "error",
+            "-c",
+            (
+                "import sys; from pathlib import Path; "
+                "from flext_infra.deps.internal_sync import "
+                "FlextInfraInternalDependencySyncService as Service; "
+                "print(Service().workspace_root_from_env(Path(sys.argv[1])))"
+            ),
+            str(project),
+        ]
+        missing_result = u.Cli.capture(
+            command,
+            env={"FLEXT_WORKSPACE_ROOT": "/nonexistent/path"},
+        )
+        unrelated_result = u.Cli.capture(
+            command,
+            env={"FLEXT_WORKSPACE_ROOT": str(workspace)},
+        )
 
-        assert missing_result is None
-        assert unrelated_result is None
+        tm.ok(missing_result)
+        tm.that(missing_result.value, eq="None")
+        tm.ok(unrelated_result)
+        tm.that(unrelated_result.value, eq="None")
 
     def test_workspace_root_from_parents_finds_gitmodules(self, tmp_path: Path) -> None:
         (tmp_path / ".gitmodules").touch()
@@ -136,29 +155,53 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         assert result is None
 
     def test_is_workspace_mode_respects_standalone_env(self, tmp_path: Path) -> None:
-        with temporary_env(FLEXT_STANDALONE="1", FLEXT_WORKSPACE_ROOT=None):
-            is_workspace, root = (
-                FlextInfraInternalDependencySyncService().is_workspace_mode(
-                    tmp_path,
-                )
-            )
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().is_workspace_mode(Path(sys.argv[1])))"
+                ),
+                str(tmp_path),
+            ],
+            env={"FLEXT_STANDALONE": "1"},
+            remove_env_keys=("FLEXT_WORKSPACE_ROOT",),
+        )
 
-        assert is_workspace is False
-        assert root is None
+        tm.ok(result)
+        tm.that(result.value, ends="(False, None)")
 
     def test_is_workspace_mode_uses_workspace_root_env(self, tmp_path: Path) -> None:
         project = tmp_path / "project"
         project.mkdir()
 
-        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=str(tmp_path)):
-            is_workspace, root = (
-                FlextInfraInternalDependencySyncService().is_workspace_mode(
-                    project,
-                )
-            )
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().is_workspace_mode(Path(sys.argv[1])))"
+                ),
+                str(project),
+            ],
+            env={
+                "FLEXT_STANDALONE": "",
+                "FLEXT_WORKSPACE_ROOT": str(tmp_path),
+            },
+        )
 
-        assert is_workspace is True
-        assert root == tmp_path
+        tm.ok(result)
+        tm.that(result.value, eq=f"(True, {tmp_path!r})")
 
     def test_is_workspace_mode_detects_real_git_superproject(
         self,
@@ -166,15 +209,26 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
     ) -> None:
         workspace, submodule = create_workspace_with_submodule(tmp_path)
 
-        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
-            is_workspace, root = (
-                FlextInfraInternalDependencySyncService().is_workspace_mode(
-                    submodule,
-                )
-            )
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().is_workspace_mode(Path(sys.argv[1])))"
+                ),
+                str(submodule),
+            ],
+            env={"FLEXT_STANDALONE": ""},
+            remove_env_keys=("FLEXT_WORKSPACE_ROOT",),
+        )
 
-        assert is_workspace is True
-        assert root == workspace
+        tm.ok(result)
+        tm.that(result.value, eq=f"(True, {workspace!r})")
 
     def test_is_workspace_mode_falls_back_to_gitmodules_heuristic(
         self,
@@ -184,15 +238,26 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         project = tmp_path / "sub"
         project.mkdir()
 
-        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
-            is_workspace, root = (
-                FlextInfraInternalDependencySyncService().is_workspace_mode(
-                    project,
-                )
-            )
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().is_workspace_mode(Path(sys.argv[1])))"
+                ),
+                str(project),
+            ],
+            env={"FLEXT_STANDALONE": ""},
+            remove_env_keys=("FLEXT_WORKSPACE_ROOT",),
+        )
 
-        assert is_workspace is True
-        assert root == tmp_path
+        tm.ok(result)
+        tm.that(result.value, eq=f"(True, {tmp_path!r})")
 
     def test_is_workspace_mode_returns_false_for_isolated_project(
         self,
@@ -201,12 +266,23 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         project = tmp_path / "isolated"
         project.mkdir()
 
-        with temporary_env(FLEXT_STANDALONE="", FLEXT_WORKSPACE_ROOT=None):
-            is_workspace, root = (
-                FlextInfraInternalDependencySyncService().is_workspace_mode(
-                    project,
-                )
-            )
+        result = u.Cli.capture(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-c",
+                (
+                    "import sys; from pathlib import Path; "
+                    "from flext_infra.deps.internal_sync import "
+                    "FlextInfraInternalDependencySyncService as Service; "
+                    "print(Service().is_workspace_mode(Path(sys.argv[1])))"
+                ),
+                str(project),
+            ],
+            env={"FLEXT_STANDALONE": ""},
+            remove_env_keys=("FLEXT_WORKSPACE_ROOT",),
+        )
 
-        assert is_workspace is False
-        assert root is None
+        tm.ok(result)
+        tm.that(result.value, eq="(False, None)")

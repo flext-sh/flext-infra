@@ -64,6 +64,25 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         return ("0", mod.lower())
 
     @staticmethod
+    def _type_checking_sort_owner(
+        mod: str,
+        items: t.StrPairSequence,
+    ) -> str:
+        """Return the module that owns the emitted import for sorting."""
+        module_basename = mod.rsplit(".", maxsplit=1)[-1]
+        if (
+            "." in mod
+            and items
+            and all(
+                not attr_name and export_name == module_basename
+                for export_name, attr_name in items
+            )
+        ):
+            # mro-i6nq.10: Module aliases emit from their parent package.
+            return mod.rsplit(".", maxsplit=1)[0]
+        return mod
+
+    @staticmethod
     def _should_skip_type_checking_module_export(
         mod: str,
         export_name: str,
@@ -109,8 +128,15 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             ):
                 continue
             if not attr_name:
-                target = alias_exports if export_name == module_basename else parts
-                target.append(export_name)
+                if export_name == module_basename:
+                    alias_exports.append(export_name)
+                else:
+                    parts.append(
+                        FlextInfraCodegenGenerationTypeCheckingMixin._format_reexport_import_part(
+                            export_name,
+                            export_name,
+                        ),
+                    )
                 continue
             parts.append(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_reexport_import_part(
@@ -160,7 +186,10 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 local_package_root,
                 items,
             )
-            normalized_groups[resolved] = items
+            normalized_groups[resolved] = (
+                *normalized_groups.get(resolved, ()),
+                *items,
+            )
         collapsed = FlextInfraCodegenGenerationTypeCheckingMixin._collapse_to_children(
             normalized_groups,
             child_packages,
@@ -175,27 +204,21 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             collapsed,
             key=lambda mod: (
                 FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
-                    mod,
-                    local_package_root,
+                    FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
+                        mod,
+                        collapsed[mod],
+                    ),
+                    root_name,
                 )
             ),
         )
-        prev_top: str | None = None
         for mod in sorted_mods:
-            top = mod.split(".")[0]
-            if (
-                local_package_root == "tests"
-                and prev_top == "flext_tests"
-                and top != prev_top
-            ):
-                lines.append("")
             FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
                 mod,
                 collapsed[mod],
                 root_name,
                 lines,
             )
-            prev_top = top
         return () if len(lines) == 1 else lines
 
 

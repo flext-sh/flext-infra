@@ -259,8 +259,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _repository_root(
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        repository: m.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        repository: p.Infra.RepositoryRef,
     ) -> Path:
         """Resolve one selected checkout without sibling discovery."""
         if repository.name == workspace.repository.name:
@@ -343,9 +343,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if entry.delegate == "manifest":
                 if not initial:
                     continue
+                # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner):
+                # template rendering retains the canonical context instance.
                 rendered_manifest = u.Cli.template_render(
                     templates_root / entry.source,
-                    context.model_dump(mode="json"),
+                    context,
                 )
                 if rendered_manifest.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -387,7 +389,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             rendered = u.Cli.template_render(
                 templates_root / entry.source,
-                context.model_dump(mode="json"),
+                context,
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -430,7 +432,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         else:
             pyproject_render = u.Cli.template_render(
                 templates_root / pyproject_entry.source,
-                context.model_dump(mode="json"),
+                context,
             )
             if pyproject_render.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -605,7 +607,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         rendered = u.Cli.template_render(
             template,
-            context.model_dump(mode="json"),
+            context,
         )
         if rendered.failure:
             return r[m.Infra.CodegenFilePlan].fail(
@@ -687,7 +689,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 reason=(
                     "existing content conflicts with initial generation"
                     if existing_conflict
-                    else "uncommitted WIP in managed file" if dirty else ""
+                    else "uncommitted WIP in managed file"
+                    if dirty
+                    else ""
                 ),
             ),
         )
@@ -728,9 +732,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
         profile = c.Infra.MakeProfile(repository.profile)
-        attached_member = (
-            profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-            and bool(workspace.members)
+        attached_member = profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and bool(
+            workspace.members
         )
         workspace_environment = (
             profile is c.Infra.MakeProfile.WORKSPACE_ROOT or attached_member

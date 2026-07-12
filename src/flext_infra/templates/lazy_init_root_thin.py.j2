@@ -4,19 +4,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-{% if runtime_import_lines %}
-{{ runtime_import_lines }}
-{%- endif %}
-{# mro-i6nq.10: Emit child-merge dependencies only when the plan consumes them. #}
-{% if has_child_paths %}
-from {{ current_pkg }}.__unit__ import CHILD_MODULE_PATHS as _CHILD_MODULE_PATHS
-from {{ current_pkg }}.__unit__ import EXCLUDED_LAZY_NAMES as _EXCLUDED_LAZY_NAMES
-{% endif %}
-from {{ current_pkg }}.__unit__ import LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS
-from {{ current_pkg }}.__unit__ import LAZY_MODULES as _LAZY_MODULES
 
-# mro-i6nq.10: The root consumes the manifest's single public-export contract.
-from {{ current_pkg }}.__unit__ import __all__ as __all__
 from flext_core.lazy import (
     build_lazy_import_map,
     install_lazy_exports,
@@ -24,10 +12,30 @@ from flext_core.lazy import (
     merge_lazy_imports,
 {% endif %}
 )
+{# mro-i6nq.10: Emit child-merge dependencies only when the plan consumes them. #}
+
+# mro-i6nq.10: The package consumes its manifest's public-export contract.
+from {{ current_pkg }}.__unit__ import (
+{% if has_child_paths %}
+    CHILD_MODULE_PATHS as _CHILD_MODULE_PATHS,
+    EXCLUDED_LAZY_NAMES as _EXCLUDED_LAZY_NAMES,
+{% endif %}
+    LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS,
+    LAZY_MODULES as _LAZY_MODULES,
+    PUBLIC_EXPORTS as _PUBLIC_EXPORTS,
+)
+{% if runtime_import_lines %}
+{{ runtime_import_lines }}
+{% endif %}
 
 {% if type_checking_lines %}
 {{ type_checking_lines }}
-{%- endif %}
+{% else %}
+if TYPE_CHECKING:
+{% endif %}
+
+    # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
+    __all__: tuple[str, ...]
 {% if has_child_paths %}
 
 _LAZY_IMPORTS = merge_lazy_imports(
@@ -49,4 +57,10 @@ _LAZY_IMPORTS = build_lazy_import_map(
 )
 {% endif %}
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)
+# mro-i6nq.10: The installer publishes __all__ from the manifest's literal ABI.
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    public_exports=_PUBLIC_EXPORTS,
+)

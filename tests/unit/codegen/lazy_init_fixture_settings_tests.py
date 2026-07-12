@@ -1,9 +1,8 @@
-"""Tests for fixture/singleton ``settings`` collision in lazy-init generation.
+"""Tests for private-fixture isolation in public lazy-init generation.
 
-A ``_fixtures`` module may expose a pytest fixture named ``settings``, but the
-name is owned by the canonical ``_settings`` singleton. The generated root
-``__init__.py`` must never re-export the fixture under that name: it collides
-(F811) with the singleton re-export and shadows it in the lazy import map.
+The generated public root must never re-export private ``_fixtures`` symbols.
+Configuration and settings remain direct singleton exports from their canonical
+foundation modules.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,67 +20,66 @@ from tests.utilities import u
 if TYPE_CHECKING:
     from pathlib import Path
 
-_FIXTURE_SETTINGS_MODULE = (
-    '"""Test fixtures."""\n\n'
-    "from __future__ import annotations\n\n"
-    "def settings() -> str:\n"
-    '    """Fixture colliding with the canonical settings singleton."""\n'
-    '    return "fixture"\n\n'
-    "def reset_settings() -> None:\n"
-    '    """Sibling fixture that must keep bubbling into the root."""\n'
-)
-
-
-def _write_fixture_settings_package(package_root: Path) -> None:
-    fixtures_dir = package_root / "_fixtures"
-    fixtures_dir.mkdir()
-    (fixtures_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
-    (fixtures_dir / "settings.py").write_text(
-        _FIXTURE_SETTINGS_MODULE,
-        encoding=c.Cli.ENCODING_DEFAULT,
-    )
-
 
 class TestsFlextInfraLazyInitFixtureSettingsCollision:
-    """The ``settings`` fixture never bubbles into the root lazy map."""
+    """Private fixtures never widen the generated public root."""
 
-    def test_fixture_settings_export_is_excluded_from_root_manifest(
+    def test_root_excludes_private_fixtures_and_keeps_runtime_singletons(
         self,
         tmp_path: Path,
     ) -> None:
-        """The fixture name stays out while sibling fixtures keep flowing."""
+        """The public root keeps direct singletons without private fixture exports."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        _write_fixture_settings_package(package_root)
+        fixtures_dir = package_root / "_fixtures"
+        fixtures_dir.mkdir()
+        (fixtures_dir / c.Infra.INIT_PY).write_text(
+            "",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (fixtures_dir / "settings.py").write_text(
+            '"""Test fixtures."""\n\n'
+            "def settings() -> str:\n"
+            '    return "fixture"\n\n'
+            "def reset_settings() -> None:\n"
+            '    """Keep the non-colliding fixture public."""\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (package_root / "_config.py").write_text(
+            "class FlextSampleConfig:\n"
+            '    """Private loader class."""\n\n'
+            "config = FlextSampleConfig()\n"
+            '__all__ = ["FlextSampleConfig", "config"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        (package_root / "_settings.py").write_text(
+            "class FlextSampleSettings:\n"
+            '    """Private loader class."""\n\n'
+            "settings = FlextSampleSettings()\n"
+            '__all__ = ["FlextSampleSettings", "settings"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
 
         result = u.Tests.run_lazy_init(workspace_root)
 
         unit_content = (package_root / c.Infra.UNIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        tm.that(result, eq=0)
-        tm.that(unit_content, contains='"._fixtures.settings": (')
-        tm.that(unit_content, contains='"reset_settings"')
-        # NOTE (multi-agent): F811 guard — the fixture `settings` must not
-        # appear anywhere in the root manifest (lazy map, TYPE_CHECKING, __all__);
-        # the name is reserved for the canonical _settings singleton.
-        tm.that(unit_content, lacks='"settings"')
-        tm.that(unit_content, lacks="settings as settings")
-        compile(unit_content, "__unit__.py", "exec")
-
-    def test_fixture_settings_export_is_excluded_from_root_init(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """The thin root initializer never static-imports the fixture name."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        _write_fixture_settings_package(package_root)
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
         init_content = (package_root / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tm.that(result, eq=0)
-        tm.that(init_content, contains="reset_settings as reset_settings")
-        tm.that(init_content, lacks="settings as settings")
+        tm.that(unit_content, contains='"._config": ("config",)')
+        tm.that(unit_content, contains='"._settings": ("settings",)')
+        # NOTE (multi-agent): mro-i6nq.10 blocks private pytest edges at root.
+        tm.that(unit_content, lacks='"._fixtures.settings": (')
+        tm.that(unit_content, lacks='"reset_settings"')
+        tm.that(unit_content, lacks="FlextSampleConfig")
+        tm.that(unit_content, lacks="FlextSampleSettings")
+        tm.that(init_content, contains="config as config")
+        tm.that(init_content, contains="settings as settings")
+        tm.that(init_content, lacks="_fixtures.settings")
+        tm.that(init_content, lacks="reset_settings as reset_settings")
+        tm.that(init_content, lacks="FlextSampleConfig")
+        tm.that(init_content, lacks="FlextSampleSettings")
+        compile(unit_content, "__unit__.py", "exec")
         compile(init_content, "__init__.py", "exec")

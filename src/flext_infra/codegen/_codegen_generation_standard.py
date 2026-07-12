@@ -1,4 +1,4 @@
-"""Canonical manifest, root-init, and eager-package rendering."""
+"""Canonical manifest and thin-initializer rendering."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenGenerationStandardMixin(
     FlextInfraCodegenGenerationRenderersMixin,
 ):
-    """Render the three canonical generated package artifacts."""
+    """Render the two canonical generated package artifacts."""
 
     @staticmethod
     def _type_checking_filtered(
@@ -44,7 +44,20 @@ class FlextInfraCodegenGenerationStandardMixin(
             f"from {module} import *"
             for module in sorted(set(plan.wildcard_runtime_modules))
         ]
-        eager_lines = cls._generate_import_lines(cls._group_imports(plan.eager_dunders))
+        eager_lines: t.MutableSequenceOf[str] = []
+        eager_groups = cls._group_imports(plan.eager_dunders)
+        previous_top: str | None = None
+        for module in sorted(eager_groups, key=str.lower):
+            top = module.split(".", maxsplit=1)[0]
+            if previous_top is not None and top != previous_top:
+                eager_lines.append("")
+            parts = tuple(
+                cls._format_reexport_import_part(imported_name, export_name)
+                for export_name, imported_name in sorted(eager_groups[module])
+                if imported_name
+            )
+            eager_lines.extend(cls._format_import("", module, parts))
+            previous_top = top
         if lines and eager_lines:
             lines.append("")
         lines.extend(eager_lines)
@@ -55,29 +68,8 @@ class FlextInfraCodegenGenerationStandardMixin(
         cls,
         plan: m.Infra.LazyInitPlan,
     ) -> m.Infra.LazyInitUnitManifestRender:
-        """Build the project-root lazy manifest context."""
+        """Build a package lazy-manifest context."""
         current_pkg = plan.context.current_pkg
-        public_exports = frozenset(plan.exports)
-        static_imports: t.MutableLazyAliasMap = dict(
-            cls._type_checking_filtered(plan),
-        )
-        static_imports.update({
-            name: target
-            for name, target in plan.eager_dunders.items()
-            if name in public_exports
-        })
-        # mro-i6nq.10: Bind public child modules declared by manifest __all__.
-        static_imports.update({
-            child.rsplit(".", maxsplit=1)[-1]: (child, "")
-            for child in plan.child_packages_for_lazy
-            if child.rsplit(".", maxsplit=1)[-1] in public_exports
-        })
-        type_checking_lines = cls.generate_type_checking(
-            cls._group_imports(static_imports),
-            include_flext_types=False,
-            child_packages=(),
-            local_package_root=current_pkg,
-        )
         lazy_entries = cls._build_lazy_entries(
             plan.exports,
             dict(plan.lazy_map),
@@ -91,7 +83,6 @@ class FlextInfraCodegenGenerationStandardMixin(
         return m.Infra.LazyInitUnitManifestRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             current_pkg=current_pkg,
-            type_checking_lines="\n".join(type_checking_lines),
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
             child_module_paths=tuple(
@@ -99,7 +90,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                 for child in plan.child_packages_for_lazy
             ),
             excluded_lazy_names=tuple(sorted(plan.excluded_lazy_names)),
-            exports=plan.exports,
+            exports=tuple(sorted(plan.exports)),
         )
 
     @classmethod
@@ -129,41 +120,6 @@ class FlextInfraCodegenGenerationStandardMixin(
             has_child_paths=bool(plan.child_packages_for_lazy),
         )
 
-    @staticmethod
-    def _eager_sibling_imports(
-        plan: m.Infra.LazyInitPlan,
-    ) -> t.LazyAliasMap:
-        """Return only symbols owned by direct sibling modules."""
-        current_pkg = plan.context.current_pkg
-        prefix = f"{current_pkg}."
-        combined = dict(plan.lazy_map)
-        combined.update(plan.eager_dunders)
-        return {
-            name: target
-            for name, target in combined.items()
-            if target[0].startswith(prefix)
-            and "." not in target[0].removeprefix(prefix)
-        }
-
-    @classmethod
-    def _eager_package_context(
-        cls,
-        plan: m.Infra.LazyInitPlan,
-    ) -> m.Infra.LazyInitEagerPackageRender:
-        """Build a non-root eager sibling-import initializer context."""
-        current_pkg = plan.context.current_pkg
-        sibling_imports = cls._eager_sibling_imports(plan)
-        return m.Infra.LazyInitEagerPackageRender(
-            autogen_header=c.Infra.AUTOGEN_HEADER,
-            docstring=cls._format_root_package_docstring(
-                current_pkg.rsplit(".", maxsplit=1)[-1],
-            ),
-            runtime_import_lines="\n".join(
-                cls._generate_import_lines(cls._group_imports(sibling_imports)),
-            ),
-            exports=tuple(name for name in plan.exports if name in sibling_imports),
-        )
-
     @classmethod
     def _render_unit_manifest(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render the root lazy manifest."""
@@ -178,14 +134,6 @@ class FlextInfraCodegenGenerationStandardMixin(
         return cls._render_model(
             c.Infra.TEMPLATE_ROOT_THIN,
             cls._root_thin_context(plan),
-        )
-
-    @classmethod
-    def _render_eager_package(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render a non-root eager initializer."""
-        return cls._render_model(
-            c.Infra.TEMPLATE_EAGER_PACKAGE,
-            cls._eager_package_context(plan),
         )
 
 

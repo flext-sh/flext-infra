@@ -13,7 +13,7 @@ from flext_cli import FlextCliConfig
 from flext_infra._models.config import FlextInfraConfigModels
 
 
-class FlextInfraConfig(FlextCliConfig):
+class _FlextInfraConfig(FlextCliConfig):
     """Declarative flext-infra config loaded and validated once."""
 
     # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct
@@ -22,7 +22,7 @@ class FlextInfraConfig(FlextCliConfig):
     Infra: FlextInfraConfigModels.Infra
 
 
-config: FlextInfraConfig = FlextInfraConfig.fetch_global()
+config: _FlextInfraConfig = _FlextInfraConfig()
 """Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
 
-__all__: list[str] = ["FlextInfraConfig", "config"]
+__all__: list[str] = ["config"]

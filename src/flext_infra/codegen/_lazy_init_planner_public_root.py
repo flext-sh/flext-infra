@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
+from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,6 +55,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             dir_exports: t.MappingKV[str, t.LazyAliasMap],
         ) -> frozenset[str]: ...
 
+        @staticmethod
+        def _is_internal_root_child_package(child_package: str) -> bool: ...
+
     def _filter_public_root_exports(
         self,
         *,
@@ -96,11 +100,17 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
                 explicit_public_exports=explicit_exports,
             )
         }
-        internal_child_export_names = {
-            name
+        internal_children = tuple(
+            child_package
             for child_package in child_packages
-            if child_package.rsplit(".", maxsplit=1)[-1]
-            in c.Infra.PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES
+            if self._is_internal_root_child_package(child_package)
+        )
+        internal_child_export_names = {
+            child_package.rsplit(".", maxsplit=1)[-1]
+            for child_package in internal_children
+        } | {
+            name
+            for child_package in internal_children
             for name in self._merged_child_export_names(child_package, dir_exports)
             if name not in governed_root_export_names
         }
@@ -156,8 +166,15 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         present_files: frozenset[str],
     ) -> bool:
         """Return whether a root package uses the governed public facade contract."""
-        return bool(explicit_public_exports) or bool(
-            set(root_namespace_files) & present_files,
+        return (
+            bool(explicit_public_exports)
+            or bool(
+                set(root_namespace_files) & present_files,
+            )
+            or any(
+                u.Infra.runtime_singleton_export(file_name) is not None
+                for file_name in present_files
+            )
         )
 
     @staticmethod
@@ -177,12 +194,17 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         module_path = lazy_map[name][0]
         if name in c.Infra.ALIAS_NAMES:
             return True
-        if "_fixtures" in module_path.split("."):
-            return True
+        # NOTE (multi-agent): mro-i6nq.10 keeps private descendants out of root ABI.
         prefix = f"{root_pkg}."
         if not module_path.startswith(prefix):
             return False
         local_module = module_path.removeprefix(prefix)
+        runtime_singleton_export = u.Infra.runtime_singleton_export(
+            f"{local_module}.py",
+        )
+        if runtime_singleton_export is not None:
+            # mro-i6nq.10: publish the singleton, never its loader class.
+            return name == runtime_singleton_export
         if "." in local_module or local_module.startswith("_"):
             return False
         return f"{local_module}.py" in root_namespace_files

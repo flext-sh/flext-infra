@@ -11,6 +11,15 @@ from flext_core.lazy import (
     merge_lazy_imports,
 )
 
+# mro-i6nq.10: The package consumes its manifest's public-export contract.
+from tests.__unit__ import (
+    CHILD_MODULE_PATHS as _CHILD_MODULE_PATHS,
+    EXCLUDED_LAZY_NAMES as _EXCLUDED_LAZY_NAMES,
+    LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS,
+    LAZY_MODULES as _LAZY_MODULES,
+    PUBLIC_EXPORTS as _PUBLIC_EXPORTS,
+)
+
 if TYPE_CHECKING:
     from flext_tests import (
         d as d,
@@ -25,6 +34,13 @@ if TYPE_CHECKING:
         x as x,
     )
 
+    from tests import (
+        _constants as _constants,
+        conftest as conftest,
+        integration as integration,
+        refactor as refactor,
+        unit as unit,
+    )
     from tests.base import (
         TestsFlextInfraServiceBase as TestsFlextInfraServiceBase,
         s as s,
@@ -32,6 +48,9 @@ if TYPE_CHECKING:
     from tests.constants import (
         TestsFlextInfraConstants as TestsFlextInfraConstants,
         c as c,
+    )
+    from tests.integration.docs_serve_e2e_tests import (
+        TestsFlextInfraIntegrationDocsServeE2e as TestsFlextInfraIntegrationDocsServeE2e,
     )
     from tests.integration.test_infra_integration import (
         TestsFlextInfraIntegrationInfraIntegration as TestsFlextInfraIntegrationInfraIntegration,
@@ -65,7 +84,6 @@ if TYPE_CHECKING:
     from tests.refactor.test_rope_stubs import (
         TestsFlextInfraRefactorRopeStubs as TestsFlextInfraRefactorRopeStubs,
     )
-    from tests.settings import TestsFlextInfraSettings as TestsFlextInfraSettings
     from tests.typings import TestsFlextInfraTypes as TestsFlextInfraTypes, t as t
     from tests.unit._utilities.test_discovery_consolidated import (
         TestsFlextInfraUtilitiesdiscoveryconsolidated as TestsFlextInfraUtilitiesdiscoveryconsolidated,
@@ -158,11 +176,23 @@ if TYPE_CHECKING:
     from tests.unit.cli_what_selector_tests import (
         TestsFlextInfraCliWhatSelector as TestsFlextInfraCliWhatSelector,
     )
+    from tests.unit.codegen.lazy_init_fixture_settings_tests import (
+        TestsFlextInfraLazyInitFixtureSettingsCollision as TestsFlextInfraLazyInitFixtureSettingsCollision,
+    )
     from tests.unit.codegen.lazy_init_generation_tests import (
         TestsFlextInfraCodegenGeneration as TestsFlextInfraCodegenGeneration,
     )
     from tests.unit.codegen.lazy_init_helpers_tests import (
         TestsFlextInfraLazyInitHelpers as TestsFlextInfraLazyInitHelpers,
+    )
+    from tests.unit.codegen.lazy_init_process_tests import (
+        TestsFlextInfraLazyInitProcessing as TestsFlextInfraLazyInitProcessing,
+    )
+    from tests.unit.codegen.lazy_init_registry_wrapper_tests import (
+        TestsFlextInfraLazyInitCleanup as TestsFlextInfraLazyInitCleanup,
+    )
+    from tests.unit.codegen.lazy_init_service_tests import (
+        TestsFlextInfraCodegenLazyInitService as TestsFlextInfraCodegenLazyInitService,
     )
     from tests.unit.codegen.lazy_init_tests import (
         TestAllDirectoriesScanned as TestAllDirectoriesScanned,
@@ -176,6 +206,9 @@ if TYPE_CHECKING:
     from tests.unit.codegen.scaffolder_naming_tests import (
         TestGeneratedClassNamingConvention as TestGeneratedClassNamingConvention,
         TestGeneratedFilesAreValidPython as TestGeneratedFilesAreValidPython,
+    )
+    from tests.unit.codegen.test_codegen_pyproject_conform import (
+        TestsFlextInfraCodegenPyprojectConform as TestsFlextInfraCodegenPyprojectConform,
     )
     from tests.unit.container.test_infra_container import (
         TestsFlextInfraContainerInfraContainer as TestsFlextInfraContainerInfraContainer,
@@ -309,14 +342,14 @@ if TYPE_CHECKING:
     from tests.unit.deps.test_modernizer_workspace import (
         TestsFlextInfraDepsModernizerWorkspace as TestsFlextInfraDepsModernizerWorkspace,
     )
-
-    # NOTE (multi-agent, mro-wkii.17.9): path-sync test exports were deleted
-    # with the superseded mutating dependency rewrite command.
     from tests.unit.detectors.test_internal_import_detector import (
         TestsFlextInfraInternalImportDetector as TestsFlextInfraInternalImportDetector,
     )
     from tests.unit.detectors.test_loose_object_detector import (
         TestsFlextInfraLooseObjectDetector as TestsFlextInfraLooseObjectDetector,
+    )
+    from tests.unit.detectors.test_loose_test_function_detector import (
+        TestsFlextInfraLooseTestFunctionDetector as TestsFlextInfraLooseTestFunctionDetector,
     )
     from tests.unit.detectors.test_pattern_smell_detector import (
         TestsFlextInfraPatternSmellDetector as TestsFlextInfraPatternSmellDetector,
@@ -326,6 +359,9 @@ if TYPE_CHECKING:
     )
     from tests.unit.docs.auditor_budgets_tests import (
         TestLoadAuditBudgets as TestLoadAuditBudgets,
+    )
+    from tests.unit.docs.auditor_docstring_tests import (
+        TestsDocstringCoverage as TestsDocstringCoverage,
     )
     from tests.unit.docs.auditor_links_tests import (
         TestAuditorBrokenLinks as TestAuditorBrokenLinks,
@@ -340,6 +376,12 @@ if TYPE_CHECKING:
         TestAuditorNormalize as TestAuditorNormalize,
     )
     from tests.unit.docs.builder_tests import TestBuilderCore as TestBuilderCore
+    from tests.unit.docs.render_tests import (
+        TestsDocsRenderExcludeDocs as TestsDocsRenderExcludeDocs,
+    )
+    from tests.unit.docs.server_tests import (
+        TestsFlextInfraDocServer as TestsFlextInfraDocServer,
+    )
     from tests.unit.docs.shared_iter_tests import (
         TestIterMarkdownFiles as TestIterMarkdownFiles,
         TestSelectedProjectNames as TestSelectedProjectNames,
@@ -593,518 +635,25 @@ if TYPE_CHECKING:
         TestsFlextInfraUtilities as TestsFlextInfraUtilities,
         u as u,
     )
+
+    # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
+    __all__: tuple[str, ...]
+
 _LAZY_IMPORTS = merge_lazy_imports(
-    (
-        "._constants",
-        ".integration",
-        ".refactor",
-        ".unit",
-    ),
+    _CHILD_MODULE_PATHS,
     build_lazy_import_map(
-        {
-            "._constants": ("_constants",),
-            ".base": (
-                "TestsFlextInfraServiceBase",
-                "s",
-            ),
-            ".conftest": ("conftest",),
-            ".constants": (
-                "TestsFlextInfraConstants",
-                "c",
-            ),
-            ".integration": ("integration",),
-            ".integration.test_infra_integration": (
-                "TestsFlextInfraIntegrationInfraIntegration",
-            ),
-            ".integration.test_refactor_nesting_file": (
-                "TestsFlextInfraIntegrationRefactorNestingFile",
-            ),
-            ".integration.test_refactor_nesting_idempotency": (
-                "TestsFlextInfraIntegrationRefactorNestingIdempotency",
-            ),
-            ".integration.test_refactor_nesting_performance": (
-                "TestsFlextInfraIntegrationRefactorNestingPerformance",
-            ),
-            ".integration.test_refactor_nesting_project": (
-                "TestsFlextInfraIntegrationRefactorNestingProject",
-            ),
-            ".integration.test_refactor_nesting_workspace": (
-                "TestsFlextInfraIntegrationRefactorNestingWorkspace",
-            ),
-            ".integration.test_refactor_policy_mro": (
-                "TestsFlextInfraIntegrationRefactorPolicyMro",
-            ),
-            ".models": (
-                "TestsFlextInfraModels",
-                "m",
-            ),
-            ".protocols": (
-                "TestsFlextInfraProtocols",
-                "p",
-            ),
-            ".refactor": ("refactor",),
-            ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
-            ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
-            ".settings": ("TestsFlextInfraSettings",),
-            ".typings": (
-                "TestsFlextInfraTypes",
-                "t",
-            ),
-            ".unit": ("unit",),
-            ".unit._utilities.test_discovery_consolidated": (
-                "TestsFlextInfraUtilitiesdiscoveryconsolidated",
-            ),
-            ".unit._utilities.test_formatting": ("TestsFlextInfraUtilitiesformatting",),
-            ".unit._utilities.test_protected_edit": (
-                "TestsFlextInfraUtilitiesProtectedEdit",
-            ),
-            ".unit._utilities.test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
-            ".unit._utilities.test_rope_hooks": ("TestsFlextInfraUtilitiesRopeHooks",),
-            ".unit._utilities.test_safety": ("TestsFlextInfraUtilitiessafety",),
-            ".unit._utilities.test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-            ".unit.basemk.test_generator": ("TestsFlextInfraBasemkGenerator",),
-            ".unit.basemk.test_generator_edge_cases": (
-                "TestsFlextInfraBasemkGeneratorEdgeCases",
-            ),
-            ".unit.basemk.test_init": ("TestsFlextInfraBasemkInit",),
-            ".unit.basemk.test_main": ("TestsFlextInfraBasemkMain",),
-            ".unit.basemk.test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
-            ".unit.basemk.test_renderer": ("TestsFlextInfraBasemkRenderer",),
-            ".unit.check.enforcement_fixer_orchestrator_tests": (
-                "TestsEnforcementFixerOrchestrator",
-            ),
-            ".unit.check.extended_cli_entry_tests": ("TestWorkspaceCheckCLI",),
-            ".unit.check.extended_config_fixer_errors_tests": (
-                "TestConfigFixerPublicBehavior",
-            ),
-            ".unit.check.extended_config_fixer_tests": (
-                "TestConfigFixerExecute",
-                "TestConfigFixerProcessFile",
-                "TestConfigFixerRun",
-                "TestConfigFixerToArray",
-            ),
-            ".unit.check.extended_error_reporting_tests": (
-                "TestGateErrorReportingPublicBehavior",
-            ),
-            ".unit.check.extended_models_tests": (
-                "TestCheckIssueFormatted",
-                "TestProjectResultProperties",
-                "TestRunCommandGateParsing",
-                "TestWorkspaceCheckerErrorSummary",
-            ),
-            ".unit.check.extended_project_runners_tests": (
-                "TestsExtendedProjectRunners",
-            ),
-            ".unit.check.extended_resolve_gates_tests": (
-                "TestWorkspaceCheckerResolveGates",
-            ),
-            ".unit.check.extended_run_projects_tests": (
-                "TestRunProjectsPublicBehavior",
-            ),
-            ".unit.check.extended_runners_extra_tests": ("TestExtendedRunnerExtras",),
-            ".unit.check.extended_runners_tests": ("TestRunnerPublicBehavior",),
-            ".unit.check.init_tests": ("TestFlextInfraCheck",),
-            ".unit.check.pyrefly_tests": ("TestFlextInfraConfigFixer",),
-            ".unit.check.tests_cli": ("TestWorkspaceCheckCli",),
-            ".unit.check.workspace_tests": ("TestFlextInfraWorkspaceChecker",),
-            ".unit.cli_what_selector_tests": ("TestsFlextInfraCliWhatSelector",),
-            ".unit.codegen.lazy_init_generation_tests": (
-                "TestGenerateFile",
-                "TestGenerateTypeChecking",
-                "TestLazyInitPlannerCollision",
-                "TestRunRuffFix",
-            ),
-            ".unit.codegen.lazy_init_helpers_tests": (
-                "TestsFlextInfraLazyInitHelpers",
-            ),
-            ".unit.codegen.lazy_init_tests": (
-                "TestAllDirectoriesScanned",
-                "TestCheckOnlyMode",
-                "TestEdgeCases",
-                "TestExcludedDirectories",
-            ),
-            ".unit.codegen.lazy_init_transforms_tests": (
-                "TestsFlextInfraLazyInitTransforms",
-            ),
-            ".unit.codegen.scaffolder_naming_tests": (
-                "TestGeneratedClassNamingConvention",
-                "TestGeneratedFilesAreValidPython",
-            ),
-            ".unit.container.test_infra_container": (
-                "TestsFlextInfraContainerInfraContainer",
-            ),
-            ".unit.deps.test_detection_classify": (
-                "TestsFlextInfraDepsDetectionClassify",
-            ),
-            ".unit.deps.test_detection_deptry": ("TestsFlextInfraDepsDetectionDeptry",),
-            ".unit.deps.test_detection_discover": (
-                "TestsFlextInfraDepsDetectionDiscover",
-            ),
-            ".unit.deps.test_detection_models": ("TestsFlextInfraDepsDetectionModels",),
-            ".unit.deps.test_detection_typings": (
-                "TestsFlextInfraDepsDetectionTypings",
-            ),
-            ".unit.deps.test_detection_typings_flow": (
-                "TestsFlextInfraDepsDetectionTypingsFlow",
-            ),
-            ".unit.deps.test_detection_uncovered": (
-                "TestsFlextInfraDepsDetectionUncovered",
-            ),
-            ".unit.deps.test_detector_detect": ("TestsFlextInfraDepsDetectorDetect",),
-            ".unit.deps.test_detector_detect_failures": (
-                "TestsFlextInfraDepsDetectorDetectFailures",
-            ),
-            ".unit.deps.test_detector_init": ("TestsFlextInfraDepsDetectorInit",),
-            ".unit.deps.test_detector_main": ("TestsFlextInfraDepsDetectorMain",),
-            ".unit.deps.test_detector_models": ("TestsFlextInfraDepsDetectorModels",),
-            ".unit.deps.test_detector_report": ("TestsFlextInfraDepsDetectorReport",),
-            ".unit.deps.test_detector_report_flags": (
-                "TestsFlextInfraDepsDetectorReportFlags",
-            ),
-            ".unit.deps.test_extra_paths_manager": (
-                "TestsFlextInfraExtraPathsManager",
-            ),
-            ".unit.deps.test_extra_paths_search_paths": (
-                "TestsFlextInfraExtraPathsSearchPaths",
-            ),
-            ".unit.deps.test_extra_paths_sync": ("TestsFlextInfraDepsExtraPathsSync",),
-            ".unit.deps.test_extra_paths_uv_sources": (
-                "TestsFlextInfraExtraPathsUvSources",
-            ),
-            ".unit.deps.test_init": ("TestsFlextInfraDepsInit",),
-            ".unit.deps.test_internal_sync_discovery": (
-                "TestsFlextInfraDepsInternalSyncDiscovery",
-            ),
-            ".unit.deps.test_internal_sync_discovery_edge": (
-                "TestsFlextInfraDepsInternalSyncDiscoveryEdge",
-            ),
-            ".unit.deps.test_internal_sync_main": (
-                "TestsFlextInfraDepsInternalSyncMain",
-            ),
-            ".unit.deps.test_internal_sync_resolve": (
-                "TestsFlextInfraDepsInternalSyncResolve",
-            ),
-            ".unit.deps.test_internal_sync_sync": (
-                "TestsFlextInfraDepsInternalSyncSync",
-            ),
-            ".unit.deps.test_internal_sync_sync_edge": (
-                "TestsFlextInfraDepsInternalSyncSyncEdge",
-            ),
-            ".unit.deps.test_internal_sync_sync_edge_more": (
-                "TestsFlextInfraDepsInternalSyncSyncEdgeMore",
-            ),
-            ".unit.deps.test_internal_sync_update": (
-                "TestsFlextInfraDepsInternalSyncUpdate",
-            ),
-            ".unit.deps.test_internal_sync_update_checkout_edge": (
-                "TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge",
-            ),
-            ".unit.deps.test_internal_sync_validation": (
-                "TestsFlextInfraDepsInternalSyncValidation",
-            ),
-            ".unit.deps.test_internal_sync_workspace": (
-                "TestsFlextInfraDepsInternalSyncWorkspace",
-            ),
-            ".unit.deps.test_main_dispatch": ("TestsFlextInfraDepsMainDispatch",),
-            ".unit.deps.test_modernizer_comments": (
-                "TestsFlextInfraDepsModernizerComments",
-            ),
-            ".unit.deps.test_modernizer_consolidate": (
-                "TestsFlextInfraDepsModernizerConsolidate",
-            ),
-            ".unit.deps.test_modernizer_coverage": (
-                "TestsFlextInfraDepsModernizerCoverage",
-            ),
-            ".unit.deps.test_modernizer_helpers": (
-                "TestsFlextInfraDepsModernizerHelpers",
-            ),
-            ".unit.deps.test_modernizer_main": ("TestsFlextInfraDepsModernizerMain",),
-            ".unit.deps.test_modernizer_main_extra": (
-                "TestsFlextInfraDepsModernizerMainExtra",
-            ),
-            ".unit.deps.test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
-            ".unit.deps.test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
-            ".unit.deps.test_modernizer_pyright": (
-                "TestsFlextInfraDepsModernizerPyright",
-            ),
-            ".unit.deps.test_modernizer_pytest": (
-                "TestsFlextInfraDepsModernizerPytest",
-            ),
-            ".unit.deps.test_modernizer_tooling": (
-                "TestsFlextInfraDepsModernizerTooling",
-            ),
-            ".unit.deps.test_modernizer_workspace": (
-                "TestsFlextInfraDepsModernizerWorkspace",
-            ),
-            ".unit.detectors.test_internal_import_detector": (
-                "TestsFlextInfraInternalImportDetector",
-            ),
-            ".unit.detectors.test_loose_object_detector": (
-                "TestsFlextInfraLooseObjectDetector",
-            ),
-            ".unit.detectors.test_pattern_smell_detector": (
-                "TestsFlextInfraPatternSmellDetector",
-            ),
-            ".unit.discovery.test_infra_discovery_edge_cases": (
-                "TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases",
-            ),
-            ".unit.docs.auditor_budgets_tests": ("TestLoadAuditBudgets",),
-            ".unit.docs.auditor_links_tests": (
-                "TestAuditorBrokenLinks",
-                "TestAuditorToMarkdown",
-            ),
-            ".unit.docs.auditor_scope_tests": (
-                "TestAuditorForbiddenTerms",
-                "TestAuditorScope",
-            ),
-            ".unit.docs.auditor_tests": (
-                "TestAuditorCore",
-                "TestAuditorNormalize",
-            ),
-            ".unit.docs.builder_tests": ("TestBuilderCore",),
-            ".unit.docs.shared_iter_tests": (
-                "TestIterMarkdownFiles",
-                "TestSelectedProjectNames",
-            ),
-            ".unit.fixtures": (
-                "deptry_report_payload",
-                "models_resource",
-                "modernizer_workspace",
-                "modernizer_workspace_with_projects",
-                "real_docs_project",
-                "real_makefile_project",
-                "real_python_package",
-                "real_toml_project",
-                "real_workspace",
-                "rope_workspace",
-                "services_resource",
-                "tool_config_document",
-            ),
-            ".unit.fixtures_git": ("real_git_repo",),
-            ".unit.io.test_infra_terminal_detection": (
-                "TestsFlextInfraIoInfraTerminalDetection",
-            ),
-            ".unit.refactor.test_declarative_enforcement": (
-                "TestsFlextInfraRefactorDeclarativeEnforcement",
-                "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
-            ),
-            ".unit.refactor.test_infra_refactor_census_preview_cache": (
-                "TestsFlextInfraRefactorCensusPreviewCache",
-            ),
-            ".unit.refactor.test_infra_refactor_class_and_propagation": (
-                "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
-            ),
-            ".unit.refactor.test_infra_refactor_class_placement": (
-                "TestsFlextInfraRefactorInfraRefactorClassPlacement",
-            ),
-            ".unit.refactor.test_infra_refactor_cli_models_workflow": (
-                "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
-            ),
-            ".unit.refactor.test_infra_refactor_import_modernizer": (
-                "TestsFlextInfraRefactorInfraRefactorImportModernizer",
-            ),
-            ".unit.refactor.test_infra_refactor_legacy_and_annotations": (
-                "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
-            ),
-            ".unit.refactor.test_infra_refactor_migrate_to_class_mro": (
-                "TestsFlextInfraRefactorInfraRefactorMigrateToClassMro",
-            ),
-            ".unit.refactor.test_infra_refactor_mro_completeness": (
-                "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
-            ),
-            ".unit.refactor.test_infra_refactor_mro_shape": (
-                "TestsFlextInfraRefactorInfraRefactorMroShape",
-            ),
-            ".unit.refactor.test_infra_refactor_namespace_aliases": (
-                "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
-            ),
-            ".unit.refactor.test_infra_refactor_namespace_enforcer": (
-                "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
-            ),
-            ".unit.refactor.test_infra_refactor_namespace_moves": (
-                "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
-            ),
-            ".unit.refactor.test_infra_refactor_pattern_corrections": (
-                "TestsFlextInfraRefactorInfraRefactorPatternCorrections",
-            ),
-            ".unit.refactor.test_infra_refactor_policy_family_rules": (
-                "TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules",
-            ),
-            ".unit.refactor.test_infra_refactor_project_classifier": (
-                "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
-            ),
-            ".unit.refactor.test_infra_refactor_safety": (
-                "RefactorSafetyStub",
-                "TestsFlextInfraRefactorInfraRefactorSafety",
-            ),
-            ".unit.refactor.test_infra_refactor_service": (
-                "TestsFlextInfraRefactorInfraRefactorService",
-            ),
-            ".unit.refactor.test_infra_refactor_typing_unifier": (
-                "FlextInfraRefactorTypingUnificationRule",
-                "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
-            ),
-            ".unit.refactor.test_main_cli": ("TestsFlextInfraRefactorMainCli",),
-            ".unit.release.test_release_dag": ("TestsFlextInfraReleaseDag",),
-            ".unit.runner_service": ("RealSubprocessRunner",),
-            ".unit.test_enforcement_plugin": ("TestsFlextInfraEnforcementPlugin",),
-            ".unit.test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
-            ".unit.test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
-            ".unit.test_infra_main": ("TestsFlextInfraInfraMain",),
-            ".unit.test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
-            ".unit.test_infra_maintenance_init": (
-                "TestsFlextInfraInfraMaintenanceInit",
-            ),
-            ".unit.test_infra_maintenance_main": (
-                "TestsFlextInfraInfraMaintenanceMain",
-            ),
-            ".unit.test_infra_maintenance_python_version": (
-                "TestsFlextInfraInfraMaintenancePythonVersion",
-            ),
-            ".unit.test_infra_paths": ("TestsFlextInfraInfraPaths",),
-            ".unit.test_infra_patterns_core": ("TestsFlextInfraInfraPatternsCore",),
-            ".unit.test_infra_patterns_extra": ("TestsFlextInfraInfraPatternsExtra",),
-            ".unit.test_infra_protocols": ("TestsFlextInfraInfraProtocols",),
-            ".unit.test_infra_public_api": ("TestsFlextInfraPublicApi",),
-            ".unit.test_infra_refactor_rope_migrations": (
-                "TestsFlextInfraInfraRefactorRopeMigrations",
-            ),
-            ".unit.test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
-            ".unit.test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
-            ".unit.test_infra_root_export_contract": (
-                "TestsFlextInfraRootExportContract",
-            ),
-            ".unit.test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
-            ".unit.test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
-            ".unit.test_infra_selection": ("TestsFlextInfraInfraSelection",),
-            ".unit.test_infra_typings": ("TestsFlextInfraInfraTypings",),
-            ".unit.test_infra_utilities": ("TestsFlextInfraInfraUtilities",),
-            ".unit.test_infra_version_core": ("TestsFlextInfraInfraVersionCore",),
-            ".unit.test_infra_version_extra": ("TestsFlextInfraInfraVersionExtra",),
-            ".unit.test_infra_versioning": ("TestsFlextInfraInfraVersioning",),
-            ".unit.test_infra_workspace_detector": (
-                "TestsFlextInfraInfraWorkspaceDetector",
-            ),
-            ".unit.test_infra_workspace_migrator": (
-                "TestsFlextInfraInfraWorkspaceMigrator",
-            ),
-            ".unit.test_infra_workspace_migrator_deps": (
-                "TestsFlextInfraInfraWorkspaceMigratorDeps",
-            ),
-            ".unit.test_infra_workspace_migrator_dryrun": (
-                "TestsFlextInfraInfraWorkspaceMigratorDryrun",
-            ),
-            ".unit.test_infra_workspace_migrator_internal": (
-                "TestsFlextInfraInfraWorkspaceMigratorInternal",
-            ),
-            ".unit.test_infra_workspace_orchestrator": (
-                "TestsFlextInfraInfraWorkspaceOrchestrator",
-            ),
-            ".unit.transformers.test_infra_transformer_cast_remover": (
-                "TestsFlextInfraTransformersCastRemover",
-            ),
-            ".unit.transformers.test_infra_transformer_class_nesting": (
-                "TestsFlextInfraTransformersInfraTransformerClassNesting",
-            ),
-            ".unit.transformers.test_infra_transformer_cli_modernizer": (
-                "TestsFlextInfraTransformersCliModernizer",
-            ),
-            ".unit.transformers.test_infra_transformer_enforcement_fixers": (
-                "TestsFlextInfraTransformersCompatibilityAlias",
-                "TestsFlextInfraTransformersFutureImport",
-                "TestsFlextInfraTransformersHardcodedVersion",
-                "TestsFlextInfraTransformersOpenEncoding",
-                "TestsFlextInfraTransformersPattern",
-                "TestsFlextInfraTransformersPatternList",
-                "TestsFlextInfraTransformersPatternStructlog",
-                "TestsFlextInfraTransformersTypingDictAttr",
-                "TestsFlextInfraTransformersTypingDictImport",
-                "TestsFlextInfraTransformersTypingUnifier",
-            ),
-            ".unit.transformers.test_infra_transformer_helper_consolidation": (
-                "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
-            ),
-            ".unit.transformers.test_infra_transformer_logging_modernizer": (
-                "TestsFlextInfraTransformersLoggingModernizer",
-            ),
-            ".unit.transformers.test_infra_transformer_nested_class_propagation": (
-                "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
-            ),
-            ".unit.transformers.test_infra_transformer_pattern_modernizer": (
-                "TestsFlextInfraTransformersPatternModernizer",
-            ),
-            ".unit.transformers.test_infra_transformer_pydantic_modernizer": (
-                "TestsFlextInfraTransformersPydanticModernizer",
-            ),
-            ".unit.transformers.test_infra_transformer_result_di_modernizer": (
-                "TestsFlextInfraTransformersResultDiModernizer",
-            ),
-            ".unit.transformers.test_infra_transformer_tests_modernizer": (
-                "TestsFlextInfraTransformersTestsModernizer",
-            ),
-            ".unit.transformers.test_project_alias_migrator": (
-                "TestsFlextInfraRefactorProjectAliasMigrator",
-            ),
-            ".unit.validate.main_cli_tests": ("TestValidateCli",),
-            ".unit.validate.namespace_validator_tests": (
-                "TestFlextInfraNamespaceValidator",
-            ),
-            ".unit.workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
-            ".unit.workspace.test_makefile_dry_run": (
-                "TestsFlextInfraWorkspaceMakefileDryRun",
-            ),
-            ".unit.workspace.test_makefile_generator": (
-                "TestsFlextInfraWorkspaceMakefileGenerator",
-            ),
-            ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
-            ".unit.workspace.test_sync_environment": (
-                "TestsFlextInfraWorkspaceSyncEnvironment",
-            ),
-            ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
-            ".utilities": (
-                "TestsFlextInfraUtilities",
-                "u",
-            ),
-            "flext_tests": (
-                "d",
-                "e",
-                "h",
-                "r",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "x",
-            ),
-        },
+        _LAZY_MODULES,
+        alias_groups=_LAZY_ALIAS_GROUPS,
+        sort_keys=False,
     ),
-    exclude_names=(
-        "cleanup_submodule_namespace",
-        "install_lazy_exports",
-        "lazy_getattr",
-        "logger",
-        "merge_lazy_imports",
-        "output",
-        "output_reporting",
-        "pytest_addoption",
-        "pytest_collect_file",
-        "pytest_collection_modifyitems",
-        "pytest_configure",
-        "pytest_runtest_setup",
-        "pytest_runtest_teardown",
-        "pytest_sessionfinish",
-        "pytest_sessionstart",
-        "pytest_terminal_summary",
-        "pytest_warning_recorded",
-    ),
+    exclude_names=_EXCLUDED_LAZY_NAMES,
     module_name=__name__,
 )
 
-
+# mro-i6nq.10: The installer publishes __all__ from the manifest's literal ABI.
 install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,
-    publish_all=False,
+    public_exports=_PUBLIC_EXPORTS,
 )

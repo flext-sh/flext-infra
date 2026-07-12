@@ -8,33 +8,30 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import (
     build_lazy_import_map,
     install_lazy_exports,
-    merge_lazy_imports,
+)
+
+# mro-i6nq.10: The package consumes its manifest's public-export contract.
+from flext_infra.__unit__ import (
+    LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS,
+    LAZY_MODULES as _LAZY_MODULES,
+    PUBLIC_EXPORTS as _PUBLIC_EXPORTS,
 )
 from flext_infra.__version__ import (
-    __author__,
-    __author_email__,
-    __description__,
-    __license__,
-    __title__,
-    __url__,
-    __version__,
-    __version_info__,
+    __author__ as __author__,
+    __author_email__ as __author_email__,
+    __description__ as __description__,
+    __license__ as __license__,
+    __title__ as __title__,
+    __url__ as __url__,
+    __version__ as __version__,
+    __version_info__ as __version_info__,
 )
 
 if TYPE_CHECKING:
     from flext_cli import d as d, e as e, h as h, r as r, x as x
-    from flext_infra import basemk
-    from flext_infra._config import (
-        FlextInfraConfig as FlextInfraConfig,
-        config as config,
-    )
-    from flext_infra._fixtures.enforcement import (
-        FlextInfraEnforcementPytestPlugin as FlextInfraEnforcementPytestPlugin,
-    )
-    from flext_infra._settings import (
-        FlextInfraSettings as FlextInfraSettings,
-        settings as settings,
-    )
+    from flext_infra import basemk as basemk
+    from flext_infra._config import config as config
+    from flext_infra._settings import settings as settings
     from flext_infra.api import FlextInfra as FlextInfra, infra as infra
     from flext_infra.base import FlextInfraServiceBase as FlextInfraServiceBase, s as s
     from flext_infra.base_selection import (
@@ -54,136 +51,20 @@ if TYPE_CHECKING:
     )
     from flext_infra.typings import FlextInfraTypes as FlextInfraTypes, t as t
     from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u as u
-_LAZY_IMPORTS = merge_lazy_imports(
-    ("._enforcement",),
-    build_lazy_import_map(
-        {
-            "._config": ("FlextInfraConfig", "config"),
-            "._settings": ("FlextInfraSettings", "settings"),
-            "._enforcement.collection_base": (
-                "FlextInfraEnforcementCollectionBase",
-                "FlextInfraEnforcementEvaluation",
-            ),
-            "._enforcement.collection_sources": (
-                "FlextInfraEnforcementSourceCollectors",
-            ),
-            "._enforcement.collection_tests": ("FlextInfraEnforcementTestsCollector",),
-            "._enforcement.engine": ("FlextInfraEnforcementEngine",),
-            "._enforcement.metadata": ("FlextInfraEnforcementMetadata",),
-            "._enforcement.selection": ("FlextInfraEnforcementSelection",),
-            "._fixtures.enforcement": ("FlextInfraEnforcementPytestPlugin",),
-            ".api": (
-                "FlextInfra",
-                "infra",
-            ),
-            ".base": (
-                "FlextInfraServiceBase",
-                "s",
-            ),
-            ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-            ".cli": (
-                "FlextInfraCli",
-                "docs_main",
-                "main",
-            ),
-            ".constants": (
-                "FlextInfraConstants",
-                "c",
-            ),
-            ".models": (
-                "FlextInfraModels",
-                "m",
-            ),
-            ".protocols": (
-                "FlextInfraProtocols",
-                "FlextInfraProtocolsBase",
-                "p",
-            ),
-            ".typings": (
-                "FlextInfraTypes",
-                "t",
-            ),
-            ".utilities": (
-                "FlextInfraUtilities",
-                "u",
-            ),
-            "flext_cli": (
-                "d",
-                "e",
-                "h",
-                "r",
-                "x",
-            ),
-        },
-    ),
-    exclude_names=(
-        "cleanup_submodule_namespace",
-        "install_lazy_exports",
-        "lazy_getattr",
-        "logger",
-        "merge_lazy_imports",
-        "output",
-        "output_reporting",
-        "pytest_addoption",
-        "pytest_collect_file",
-        "pytest_collection_modifyitems",
-        "pytest_configure",
-        "pytest_runtest_setup",
-        "pytest_runtest_teardown",
-        "pytest_sessionfinish",
-        "pytest_sessionstart",
-        "pytest_terminal_summary",
-        "pytest_warning_recorded",
-    ),
-    module_name=__name__,
+
+    # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
+    __all__: tuple[str, ...]
+
+_LAZY_IMPORTS = build_lazy_import_map(
+    _LAZY_MODULES,
+    alias_groups=_LAZY_ALIAS_GROUPS,
+    sort_keys=False,
 )
 
-
-__all__: tuple[str, ...] = (
-    "FlextInfra",
-    "FlextInfraCli",
-    "FlextInfraConfig",
-    "FlextInfraConstants",
-    "FlextInfraEnforcementPytestPlugin",
-    "FlextInfraModels",
-    "FlextInfraProjectSelectionServiceBase",
-    "FlextInfraProtocols",
-    "FlextInfraProtocolsBase",
-    "FlextInfraServiceBase",
-    "FlextInfraSettings",
-    "FlextInfraTypes",
-    "FlextInfraUtilities",
-    "__author__",
-    "__author_email__",
-    "__description__",
-    "__license__",
-    "__title__",
-    "__url__",
-    "__version__",
-    "__version_info__",
-    "basemk",
-    "c",
-    "config",
-    "d",
-    "docs_main",
-    "e",
-    "h",
-    "infra",
-    "m",
-    "main",
-    "p",
-    "r",
-    "s",
-    "settings",
-    "t",
-    "u",
-    "x",
-)
-
-
+# mro-i6nq.10: The installer publishes __all__ from the manifest's literal ABI.
 install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,
-    public_exports=__all__,
+    public_exports=_PUBLIC_EXPORTS,
 )

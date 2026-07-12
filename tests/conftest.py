@@ -15,7 +15,6 @@ from flext_tests import (
 )
 
 import flext_infra as infra_pkg
-from flext_infra import FlextInfraSettings
 from tests.constants import c
 from tests.utilities import u
 
@@ -33,15 +32,6 @@ pytest_plugins = [
     "tests.unit.fixtures",
     "tests.unit.fixtures_git",
 ]
-
-
-@pytest.fixture
-def reset_infra_settings(reset_settings: None) -> Iterator[None]:
-    """Reset project-specific infra settings around each test."""
-    del reset_settings
-    FlextInfraSettings.reset_for_testing()
-    yield
-    FlextInfraSettings.reset_for_testing()
 
 
 @pytest.fixture
@@ -87,7 +77,7 @@ def pytest_collection_modifyitems(
 
     for item in items:
         if _is_collectable_test_module(Path(item.path)):
-            item.add_marker(pytest.mark.usefixtures("reset_infra_settings"))
+            # mro-wkii.4.15: settings identity is fixed at process startup.
             kept_items.append(item)
             continue
         deselected_items.append(item)

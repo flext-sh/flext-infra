@@ -9,11 +9,11 @@
 - Classifiers: `Development Status :: 4 - Beta`, `Framework :: Pydantic :: 2`, `Framework :: Pydantic`, `Intended Audience :: Developers`, `Operating System :: OS Independent`, `Programming Language :: Python :: 3 :: Only` (+4 more)
 - Project class: `infra`
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
-- Main facades: `FlextInfra`, `FlextInfraProtocolsBase`, `FlextInfraConfig`, `FlextInfraEnforcementPytestPlugin`, `FlextInfraUtilities`, `FlextInfraSettings`, `FlextInfraCli`, `FlextInfraServiceBase` (+5 more)
-- Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `FlextInfra`, `FlextInfraProtocolsBase`, `FlextInfraConfig`, `FlextInfraEnforcementPytestPlugin`, `FlextInfraUtilities`, `FlextInfraSettings`, `FlextInfraCli`, `FlextInfraServiceBase`, `FlextInfraTypes`, `basemk` (+9 more)
+- Main facades: _none_
+- Alias exports: _none_
+- Public symbol exports: _none_
 - Exported module shortcuts: _none_
-- Generated module pages: `10`
+- Generated module pages: `0`
 
 ## Next Pages
 

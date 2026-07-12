@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import flext_infra
 
+# mro-wkii.4.15: pin the generated direct config/settings singleton surface.
 _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
@@ -14,7 +15,6 @@ _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
-    "FlextInfraSettings",
     "FlextInfraTypes",
     "FlextInfraUtilities",
     "__author__",
@@ -27,7 +27,9 @@ _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (
     "__version_info__",
     "basemk",
     "c",
+    "config",
     "d",
+    "docs_main",
     "e",
     "h",
     "infra",
@@ -36,6 +38,7 @@ _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (
     "p",
     "r",
     "s",
+    "settings",
     "t",
     "u",
     "x",
@@ -52,9 +55,11 @@ class TestsFlextInfraRootExportContract:
     def test_root_does_not_resolve_internal_symbols(self) -> None:
         """Implementation classes remain available only from owning modules."""
         internal_names = (
+            "FlextInfraConfig",
             "FlextInfraCodegenLazyInit",
             "FlextInfraConstantsBase",
             "FlextInfraGate",
+            "FlextInfraSettings",
             "FlextInfraTypesAdapters",
             "FlextInfraWorkspaceChecker",
         )

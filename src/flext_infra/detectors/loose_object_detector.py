@@ -190,24 +190,14 @@ class FlextInfraLooseObjectDetector:
         file_path: Path,
         class_stem: str,
     ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
-        """Detect loose Final/collection/Enum/TypeVar objects via rope AST."""
-        try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
-            return []
-        tree = pymodule.get_ast()
-        if tree is None:
-            return []
+        """Detect loose Final/collection/Enum/TypeVar objects via rope structure."""
+        _ = rope_project
+        statements = u.Infra.logical_statements(resource.read())
         file_str = str(file_path)
         seen: set[tuple[int, str]] = set()
         violations: list[m.Infra.LooseObjectViolation] = []
 
-        def _add_violation(
-            line: int,
-            name: str,
-            kind: str,
-            suffix: str,
-        ) -> None:
+        def _add(line: int, name: str, kind: str, suffix: str) -> None:
             key = (line, name)
             if key in seen:
                 return
@@ -222,152 +212,85 @@ class FlextInfraLooseObjectDetector:
                 ),
             )
 
-        body = getattr(tree, "body", []) or []
-        for node in body:
-            cls._inspect_module_level_node(
-                node=node,
+        for statement in statements:
+            cls._inspect_statement(
+                statement=statement,
                 file_path=file_path,
-                add=_add_violation,
+                add=_add,
             )
-
         return violations
 
     @classmethod
-    def _inspect_module_level_node(
+    def _inspect_statement(
         cls,
         *,
-        node: object,
+        statement: m.Infra.LogicalStatement,
         file_path: Path,
         add: Callable[[int, str, str, str], None],
     ) -> None:
-        """Inspect one module-level AST node for loose objects."""
-        kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
-        if kind == "AnnAssign":
-            cls._check_loose_final(node, add)
+        """Inspect one module-level logical statement for loose objects."""
+        if statement.enclosing_kind is not c.Infra.RopeScopeKind.MODULE:
             return
-        if kind == "Assign":
-            cls._check_loose_collection_or_typevar(node, add)
-            return
-        if kind == "TypeAlias":
-            cls._check_loose_typealias(node, add)
-            return
-        if kind == "ClassDef":
-            cls._check_loose_enum(node, file_path, add)
-            cls._check_loose_classvar(node, file_path, add)
-            return
-
-    @classmethod
-    def _annotation_contains(cls, annotation: object | None, name: str) -> bool:
-        """Return True when ``name`` appears in any sub-node identifier."""
-        if annotation is None:
-            return False
-        for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(annotation):
-            if FlextInfraUtilitiesRopeAnalysis.name_of(sub) == name:
-                return True
-        return False
-
-    @classmethod
-    def _target_name(cls, target: object | None) -> str:
-        """Return ``target.id`` when ``target`` is a ``Name`` node."""
-        if target is None:
-            return ""
-        if FlextInfraUtilitiesRopeAnalysis.node_kind(target) != "Name":
-            return ""
-        identifier = getattr(target, "id", "")
-        return identifier if isinstance(identifier, str) else ""
-
-    @classmethod
-    def _call_name(cls, func: object | None) -> str:
-        """Return the trailing identifier of a call's callable."""
-        if func is None:
-            return ""
-        kind = FlextInfraUtilitiesRopeAnalysis.node_kind(func)
-        if kind == "Name":
-            value: str = getattr(func, "id", "")
-            return value
-        if kind == "Attribute":
-            return getattr(func, "attr", "")
-        if kind == "Call":
-            return cls._call_name(getattr(func, "func", None))
-        return ""
-
-    @classmethod
-    def _base_text_set(cls, cls_node: object) -> set[str]:
-        """Render every base of a class as the trailing identifier text."""
-        bases = getattr(cls_node, "bases", []) or []
-        return {cls._call_name(base) for base in bases if cls._call_name(base)}
+        category = statement.category
+        if category is c.Infra.StatementCategory.ANN_ASSIGN:
+            cls._check_loose_final(statement, add)
+        elif category is c.Infra.StatementCategory.ASSIGN:
+            cls._check_loose_collection_or_typevar(statement, add)
+        elif category is c.Infra.StatementCategory.TYPE_ALIAS:
+            cls._check_loose_typealias(statement, add)
+        elif category is c.Infra.StatementCategory.CLASS_DEF:
+            cls._check_loose_enum(statement, file_path, add)
+            cls._check_loose_classvar(statement, file_path, add)
 
     @classmethod
     def _check_loose_final(
         cls,
-        node: object,
+        statement: m.Infra.LogicalStatement,
         add: Callable[[int, str, str, str], None],
     ) -> None:
         """Flag bare ``X: Final = ...`` outside canonical constants files."""
-        if cls._annotation_contains(getattr(node, "annotation", None), "Final"):
+        if u.Infra.annotation_contains(statement, "Final"):
             return
-        target = cls._target_name(getattr(node, "target", None))
+        target = u.Infra.target_name(statement)
         if target and not target.startswith("_") and target not in c.Infra.ALIAS_NAMES:
-            add(
-                getattr(node, "lineno", 1),
-                target,
-                "final",
-                "Constants",
-            )
+            add(statement.line, target, "final", "Constants")
 
     @classmethod
     def _check_loose_collection_or_typevar(
         cls,
-        node: object,
+        statement: m.Infra.LogicalStatement,
         add: Callable[[int, str, str, str], None],
     ) -> None:
         """Flag collection/TypeVar assignments outside canonical files."""
-        value = getattr(node, "value", None)
-        if FlextInfraUtilitiesRopeAnalysis.node_kind(value) != "Call":
+        callee = u.Infra.call_callee_name(statement)
+        if not callee:
             return
-        func_name = cls._call_name(getattr(value, "func", None))
-        targets = getattr(node, "targets", []) or []
-        target_name = cls._target_name(targets[0]) if targets else ""
+        target_name = u.Infra.target_name(statement)
         if not target_name:
             return
         if target_name in c.Infra.DUNDER_ALLOWED or target_name in c.Infra.ALIAS_NAMES:
             return
-        if func_name in c.Infra.COLLECTION_CALLS:
-            add(
-                getattr(node, "lineno", 1),
-                target_name,
-                "collection",
-                "Constants",
-            )
+        if callee in c.Infra.COLLECTION_CALLS:
+            add(statement.line, target_name, "collection", "Constants")
             return
-        if func_name in c.Infra.TYPEVAR_CALLABLES:
-            add(
-                getattr(node, "lineno", 1),
-                target_name,
-                "typevar",
-                "Types",
-            )
+        if callee in c.Infra.TYPEVAR_CALLABLES:
+            add(statement.line, target_name, "typevar", "Types")
 
     @classmethod
     def _check_loose_typealias(
         cls,
-        node: object,
+        statement: m.Infra.LogicalStatement,
         add: Callable[[int, str, str, str], None],
     ) -> None:
         """Flag bare PEP 695 ``type X = ...`` outside typings.py."""
-        name_node = getattr(node, "name", None)
-        name_str = getattr(name_node, "id", str(name_node)) if name_node else "unknown"
-        add(
-            getattr(node, "lineno", 1),
-            name_str,
-            "typealias",
-            "Types",
-        )
+        body = statement.text.strip().removeprefix("type").strip()
+        name_str = body.split("=", maxsplit=1)[0].split("[", maxsplit=1)[0].strip()
+        add(statement.line, name_str or "unknown", "typealias", "Types")
 
     @classmethod
     def _check_loose_enum(
         cls,
-        node: object,
+        statement: m.Infra.LogicalStatement,
         file_path: Path,
         add: Callable[[int, str, str, str], None],
     ) -> None:
@@ -376,86 +299,10 @@ class FlextInfraLooseObjectDetector:
             return
         if file_path.parent.name == "_constants":
             return
-        body = getattr(node, "body", []) or []
-        for inner in body:
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(inner) != "ClassDef":
-                continue
-            inner_bases = cls._base_text_set(inner)
-            if any(base in c.Infra.ENUM_BASES for base in inner_bases):
-                add(
-                    getattr(inner, "lineno", 1),
-                    getattr(inner, "name", "unknown"),
-                    "enum",
-                    "Constants",
-                )
-
-    @classmethod
-    def _check_loose_classvar(
-        cls,
-        node: object,
-        file_path: Path,
-        add: Callable[[int, str, str, str], None],
-    ) -> None:
-        """Flag ``ClassVar[...] = ...`` attributes outside Constants classes."""
-        if file_path.name == c.Infra.CONSTANTS_PY:
-            return
-        if file_path.parent.name == "_constants":
-            return
-        class_name = getattr(node, "name", "")
-        if isinstance(class_name, str) and class_name.endswith(
-            c.Infra.CONSTANTS_CLASS_SUFFIX,
-        ):
-            return
-        base_names = cls._base_text_set(node)
-        if any(base.endswith(c.Infra.CONSTANTS_CLASS_SUFFIX) for base in base_names):
-            return
-        body = getattr(node, "body", []) or []
-        for inner in body:
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(inner) != "AnnAssign":
-                continue
-            annotation = getattr(inner, "annotation", None)
-            if not cls._annotation_contains(annotation, "ClassVar"):
-                continue
-            target = cls._target_name(getattr(inner, "target", None))
-            if not target or target.startswith("_"):
-                continue
-            if target in c.Infra.CLASSVAR_EXEMPT_NAMES:
-                continue
-            if not c.Infra.NAMESPACE_CONSTANT_PATTERN.match(target):
-                continue
-            if not cls._classvar_value_permitted(getattr(inner, "value", None)):
-                continue
-            add(
-                getattr(inner, "lineno", 1),
-                target,
-                "classvar",
-                "Constants",
-            )
-
-    @classmethod
-    def _classvar_value_permitted(cls, value: object | None) -> bool:
-        """Return True when a ClassVar default is a literal/canonical constant.
-
-        Permits literals, attributes/imports from constants, and calls to
-        canonical constant factories (Path, frozenset, tuple, dict,
-        MappingProxyType). Rejects calls that build runtime/infrastructure
-        objects (context vars, config objects, adapters, etc.).
-        """
-        if value is None:
-            return True
-        kind = FlextInfraUtilitiesRopeAnalysis.node_kind(value)
-        if kind in {"Constant", "Name", "Attribute", "Tuple", "List", "Set", "Dict"}:
-            return True
-        if kind == "Call":
-            func = getattr(value, "func", None)
-            func_name = cls._call_name(func)
-            if func_name in c.Infra.CLASSVAR_ALLOWED_CALLS:
-                return True
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(func) == "Attribute":
-                base = getattr(func, "value", None)
-                base_name = getattr(base, "id", "")
-                return base_name in c.Infra.CLASSVAR_ALLOWED_CALLS
-        return False
+        inner_bases = u.Infra.class_base_names(statement)
+        if any(base in c.Infra.ENUM_BASES for base in inner_bases):
+            name = statement.enclosing_name or u.Infra.class_header_name(statement)
+            add(statement.line, name or "unknown", "enum", "Constants")
 
     @staticmethod
     def _detect_logger_assignments(
