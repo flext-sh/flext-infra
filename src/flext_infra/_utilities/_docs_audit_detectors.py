@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 from flext_cli import u
@@ -166,8 +167,12 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             for index, match in enumerate(
                 c.Infra.PYTHON_FENCE_RE.finditer(content),
             ):
+                # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
+                # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
                 outcome = u.Cli.run_raw(
                     [
+                        sys.executable,
+                        "-m",
                         c.Infra.RUFF,
                         c.Infra.VERB_CHECK,
                         "--no-fix",
