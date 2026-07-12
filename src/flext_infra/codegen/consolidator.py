@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
+
 from flext_infra.base import s
 from flext_infra.codegen._consolidator_steps import (
     FlextInfraCodegenConsolidatorStepsMixin,
@@ -123,13 +124,7 @@ class FlextInfraCodegenConsolidator(
     def _project_python_files(self, project_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Return governed Python files for one project consolidation pass."""
         files_result = u.Infra.iter_python_files(
-            workspace_root=self.workspace_root,
-            project_roots=(project_root,),
-            include_tests=True,
-            include_examples=True,
-            include_scripts=True,
-            include_dynamic_dirs=False,
-            src_dirs=frozenset(c.Infra.DEFAULT_CHECK_DIRS),
+            m.Infra.SourceScanRequest(project_roots=(project_root,)),
         )
         if files_result.failure:
             return r[t.SequenceOf[Path]].fail(

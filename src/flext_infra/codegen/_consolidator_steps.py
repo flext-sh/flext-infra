@@ -98,7 +98,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
     @staticmethod
     def _match_assignments(
         symbols: t.SequenceOf[m.Infra.SymbolInfo],
-        source_lines: t.StrSequence,
+        source_lines: t.SequenceOf[str],
         value_to_ref: t.StrMapping,
     ) -> t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]:
         """Match assignments."""

@@ -5,13 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import m, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraRefactorMROImportRewriterFileOpsMixin:
@@ -159,9 +158,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
             if project_name_set and project_root.name not in project_name_set:
                 continue
             iter_result = u.Infra.iter_python_files(
-                workspace_root=workspace_root,
-                project_roots=[project_root],
-                src_dirs=u.Infra.namespace_scan_dirs(project_root),
+                m.Infra.SourceScanRequest(project_roots=(project_root,)),
             )
             if iter_result.failure:
                 continue

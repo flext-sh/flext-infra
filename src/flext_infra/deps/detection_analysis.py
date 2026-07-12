@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
+
 from flext_infra.constants import c
 from flext_infra.deps._detection_runners import (
     FlextInfraDependencyDetectionRunnersMixin,

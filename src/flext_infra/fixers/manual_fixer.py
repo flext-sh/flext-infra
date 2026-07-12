@@ -14,9 +14,8 @@ from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra.models import m
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
+
+    from flext_infra import m, p, t
 
 
 class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):

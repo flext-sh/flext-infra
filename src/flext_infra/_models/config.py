@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
+
+from flext_infra import t
 from flext_infra._constants.codegen_project import (
     FlextInfraConstantsCodegenProject,
 )
-from flext_infra.typings import t
 
 
 class _ConfigContract(m.ContractModel):
@@ -508,6 +509,23 @@ class FlextInfraConfigModels:
             m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
+    # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source
+    # selection is modeled once so iteration, Rope, and census share one SSOT.
+    class SourceScanSpec(_ConfigContract):
+        """Canonical production roots and recursively ignored directories."""
+
+        roots: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Ordered production source directory names"),
+        ]
+        ignored_directories: Annotated[
+            frozenset[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Directory names excluded from every source scan",
+            ),
+        ]
+
     # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): this
     # field-only namespace is the sole validated owner exposed as config.Infra.
     class Infra(_ConfigContract):
@@ -524,6 +542,10 @@ class FlextInfraConfigModels:
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,
             m.Field(description="Unified project and workspace codegen contract"),
+        ]
+        source_scan: Annotated[
+            FlextInfraConfigModels.SourceScanSpec,
+            m.Field(description="Production-only source discovery contract"),
         ]
 
     class Root(_ConfigContract):

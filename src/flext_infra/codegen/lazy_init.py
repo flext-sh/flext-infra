@@ -15,6 +15,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
+
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,

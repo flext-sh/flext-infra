@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
+
+from flext_infra import c, m, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.constants import c
 from flext_infra.deps._modernizer_constraints import (
     FlextInfraPyprojectModernizerConstraintsMixin,
 )
@@ -20,11 +21,9 @@ from flext_infra.deps._modernizer_run import (
     FlextInfraPyprojectModernizerRunMixin,
 )
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizer(

@@ -3,6 +3,7 @@ tools:
     check-filenames: true
     ignore-words-list: crate,nd
   ruff:
+    # NOTE (multi-agent, mro-wkii.17.25): legacy trees are not production roots.
     exclude:
       - .git
       - .mypy_cache
@@ -17,8 +18,9 @@ tools:
       - dist
       - htmlcov
       - temp-backup
-      - tests/fixtures
-      - tests/fixtures/**
+      - examples
+      - legado
+      - tests
       - typings
       - vendor
       - venv
@@ -106,24 +108,6 @@ tools:
           - S404
           - S603
           - T201
-        "**/*examples*":
-          - ANN401
-          - C901
-          - D103
-          - EXE001
-          - FBT001
-          - FBT002
-          - FIX002
-          - INP001
-          - N999
-          - PLR2004
-          - S105
-          - S106
-          - S112
-          - S404
-          - S603
-          - T201
-          - TID252
         "**/*exceptions*":
           - A001
           - S105
@@ -178,80 +162,6 @@ tools:
         "**/*subprocess_utils*":
           - S404
           - S603
-        "**/*tests*":
-          - ANN001
-          - ANN002
-          - ANN003
-          - ANN401
-          - ARG001
-          - ARG002
-          - ARG003
-          - ARG004
-          - ARG005
-          - B009
-          - B010
-          - B018
-          - B903
-          - C901
-          - D100
-          - D101
-          - D102
-          - D103
-          - D104
-          - D106
-          - D107
-          - EM102
-          - F822
-          - FBT001
-          - FBT002
-          - FBT003
-          - FURB118
-          - INP001
-          - N818
-          - N999
-          - PLC0206
-          - PLC1901
-          - PLC2701
-          - PLC2801
-          - PLR0904
-          - PLR0912
-          - PLR0913
-          - PLR0914
-          - PLR0915
-          - PLR0917
-          - PLR1704
-          - PLR2004
-          - PLR6301
-          - PLW1641
-          - PLW2901
-          - PT011
-          - PT018
-          - PT019
-          - PYI063
-          - RUF012
-          - RUF029
-          - S101
-          - S103
-          - S104
-          - S105
-          - S106
-          - S107
-          - S108
-          - S110
-          - S112
-          - S311
-          - S404
-          - S603
-          - S607
-          - S608
-          - SIM105
-          - SIM117
-          - SLF001
-          - TD002
-          - TD003
-          - TID252
-          - TRY003
-          - TRY004
         "**/*typings*":
           - ANN401
         "**/*utilities*":
@@ -353,7 +263,7 @@ tools:
     plugins:
       - pydantic.mypy
       - returns.contrib.mypy.returns_plugin
-    exclude: ^tests/fixtures(?:/|$)
+    exclude: ^(?:tests|examples|legado)(?:/|$)
     # The seven codes below are disabled globally based on empirical validation
     # against FLEXT's MRO composition + PEP 562 lazy __getattr__ in
     # flext_core/lazy.py + PEP 695 type aliases referencing namespace facades
@@ -449,16 +359,13 @@ tools:
       reportArgumentType: "none"
       reportReturnType: "none"
     path-rules:
+      # NOTE (multi-agent, mro-wkii.17.25): only productive Python roots become environments.
       source-dir: src
       project-root: .
       env-dirs:
         - src
-        - tests
-        - examples
         - scripts
       test-like-dirs:
-        - tests
-        - examples
         - scripts
       default-excludes:
         - "**/node_modules"
@@ -468,8 +375,12 @@ tools:
         - "**/.ruff_cache"
         - "**/.pytest_cache"
         - "**/.*"
-        - "**/tests/fixtures"
-        - "**/tests/fixtures/**"
+        - "**/examples"
+        - "**/examples/**"
+        - "**/legado"
+        - "**/legado/**"
+        - "**/tests"
+        - "**/tests/**"
         - .venv
         - "**/.venv"
         - "**/.venv/**"
@@ -611,6 +522,9 @@ tools:
       - "**/typings/**"
       - "**/venv/**"
       - "**/vendor/**"
+      - "**/examples/**"
+      - "**/legado/**"
+      - "**/tests/**"
       - ".flext-deps/**"
       - ".venv/**"
       - "typings/**"
@@ -618,8 +532,6 @@ tools:
     path-rules:
       env-dirs:
         - src
-        - tests
-        - examples
         - scripts
       source-dir: src
       project-root: .

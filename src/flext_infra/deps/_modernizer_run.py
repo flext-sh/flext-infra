@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -80,9 +81,17 @@ class FlextInfraPyprojectModernizerRunMixin:
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
-        project_paths: t.SequenceOf[Path] | None = None
-        if project_names:
-            selected_projects = u.Infra.resolve_projects(self.root, project_names)
+        # NOTE (multi-agent, mro-wkii.17): modernization writes only the
+        # requested workspace root and its configured members, never siblings.
+        include_root = not project_names or "." in project_names
+        selected_names = (
+            [name for name in project_names if name != "."]
+            if project_names
+            else list(u.Infra.workspace_member_names(self.root))
+        )
+        project_paths: t.SequenceOf[Path] = []
+        if selected_names:
+            selected_projects = u.Infra.resolve_projects(self.root, selected_names)
             if selected_projects.failure:
                 u.Cli.error(
                     selected_projects.error or "failed to resolve selected projects",
@@ -97,8 +106,15 @@ class FlextInfraPyprojectModernizerRunMixin:
         files: t.SequenceOf[Path] = (
             [] if files_result.failure else sorted(files_result.unwrap())
         )
+        root_pyproject_path = self.root / c.Infra.PYPROJECT_FILENAME
+        if (
+            include_root
+            and root_pyproject_path.is_file()
+            and root_pyproject_path not in files
+        ):
+            files = sorted([root_pyproject_path, *files])
         root_state_result = self._read_document_state(
-            self.root / c.Infra.PYPROJECT_FILENAME,
+            root_pyproject_path,
         )
         if root_state_result.failure:
             return 2

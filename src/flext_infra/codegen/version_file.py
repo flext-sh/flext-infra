@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_core.__version__ import FlextVersion
+
 from flext_infra.base import s
 from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
@@ -58,14 +58,20 @@ class FlextInfraCodegenVersionFile(s[bool]):
         skipped = 0
 
         for project_info in discovered.value:
-            meta = u.read_project_metadata(project_info.path)
+            metadata_result = u.read_project_metadata(project_info.path)
+            if metadata_result.failure:
+                return r[bool].fail(
+                    metadata_result.error
+                    or f"version-file: cannot load {project_info.path}",
+                )
+            meta = metadata_result.value
             class_name = f"{meta.class_stem}Version"
 
             if class_name == FlextVersion.__name__:
                 skipped += 1
                 continue
 
-            if self.project_filter and meta.name != self.project_filter:
+            if self.project_filter and meta.project.name != self.project_filter:
                 continue
 
             src_pkg = project_info.path / "src" / meta.package_name
@@ -73,11 +79,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 continue
 
             target = src_pkg / "__version__.py"
-            context = m.Infra.VersionFileRenderContext(
-                metadata=meta,
-                class_name=class_name,
-            )
-            rendered = u.Cli.template_render(template_path, context)
+            rendered = u.Cli.template_render(template_path, meta)
             if rendered.failure:
                 return r[bool].fail(
                     rendered.error or f"version-file: cannot render {target}",

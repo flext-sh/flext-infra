@@ -5,12 +5,9 @@ from __future__ import annotations
 import operator
 from typing import override
 
+from flext_infra import c, m, t, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
@@ -155,9 +152,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             )
             method_scope = method_obj.get_scope()
             end_line = (
-                method_scope.get_end()
-                if method_scope is not None and method_scope.get_end() is not None
-                else location[1]
+                method_scope.get_end() if method_scope is not None else location[1]
             )
             method_info = m.Infra.MethodInfo(
                 name=method_name,

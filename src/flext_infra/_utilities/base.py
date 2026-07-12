@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+
 from flext_infra._models.deps_tool_config import (
     FlextInfraModelsDepsToolSettings as mdts,
 )

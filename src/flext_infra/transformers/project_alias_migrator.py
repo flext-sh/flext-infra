@@ -12,13 +12,13 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
+from flext_infra import c
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra.constants import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 # Map canonical alias -> local facade module suffix inside a FLEXT project.
 _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {

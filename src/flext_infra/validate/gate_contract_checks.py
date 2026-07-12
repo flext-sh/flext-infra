@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.utilities import u
+from flext_infra import c, u
 from flext_infra.validate.gate_contract_content import (
     FlextInfraGateContractContentMixin,
 )
@@ -14,7 +13,7 @@ from flext_infra.validate.gate_contract_models import FlextInfraGateContractMode
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraGateContractChecksMixin(FlextInfraGateContractContentMixin):

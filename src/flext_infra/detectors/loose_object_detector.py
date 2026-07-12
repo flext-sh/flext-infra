@@ -52,7 +52,7 @@ class FlextInfraLooseObjectDetector:
         rope_project = ctx.rope_project
         project_name = ctx.project_name
         lines = res.read().splitlines()
-        class_stem = m.derive_class_stem(project_name)
+        class_stem = u.derive_class_stem(project_name)
         file_str = str(file_path)
         violations = list(
             cls._detect_logger_assignments(

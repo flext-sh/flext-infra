@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_cli import cli
+
 from flext_infra import (
     c,
     m,
@@ -68,8 +69,9 @@ class FlextInfraAccessorMigrationOrchestrator(
                 resolved.error or "project resolution failed",
             )
         iter_result = u.Infra.iter_python_files(
-            self.workspace_root,
-            project_roots=[project.path for project in resolved.value],
+            m.Infra.SourceScanRequest(
+                project_roots=tuple(project.path for project in resolved.value),
+            ),
         )
         if iter_result.failure:
             return r[m.Infra.AccessorMigrationReport].fail(

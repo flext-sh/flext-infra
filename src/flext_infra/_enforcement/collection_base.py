@@ -7,12 +7,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
+from flext_infra import c
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra.protocols import p
+
+    from flext_infra import p
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra.models import m
+from flext_infra import m
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles

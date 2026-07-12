@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import c, m, u
 from flext_infra._enforcement.collection_base import (
     FlextInfraEnforcementCollectionBase,
     FlextInfraEnforcementEvaluation,
@@ -14,15 +15,12 @@ from flext_infra._enforcement.collection_tests import (
 )
 from flext_infra._enforcement.metadata import FlextInfraEnforcementMetadata
 from flext_infra._enforcement.selection import FlextInfraEnforcementSelection
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
+
+    from flext_infra import p, t
     from flext_infra.fixers.result import FlextInfraFixersResult as fr
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
 
 
 class FlextInfraEnforcementSourceCollectors(
@@ -85,12 +83,7 @@ class FlextInfraEnforcementSourceCollectors(
     ]:
         """Return one structural probe per Python file for file-wide transformers."""
         files_result = u.Infra.iter_python_files(
-            workspace_root=self._workspace_root,
-            project_roots=[project_dir],
-            include_tests=True,
-            include_examples=False,
-            include_scripts=False,
-            include_dynamic_dirs=False,
+            m.Infra.SourceScanRequest(project_roots=(project_dir,)),
         )
         if files_result.failure:
             return self._empty_failure(

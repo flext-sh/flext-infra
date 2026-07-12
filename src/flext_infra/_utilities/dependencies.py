@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+
 from flext_infra._utilities.pyproject import (
     FlextInfraUtilitiesPyproject,
     _validate_infra_payload,

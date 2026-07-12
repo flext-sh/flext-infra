@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from flext_cli import u as cli_u
 from flext_core import FlextUtilitiesProjectMetadata
+
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen

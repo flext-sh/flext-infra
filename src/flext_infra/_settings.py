@@ -9,10 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from flext_cli import FlextCliSettings
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 
-from flext_cli import FlextCliSettings
 from flext_infra._models.settings import FlextInfraSettingsModels
 
 

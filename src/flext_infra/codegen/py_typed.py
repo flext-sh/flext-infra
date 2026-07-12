@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
+
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.utilities import u

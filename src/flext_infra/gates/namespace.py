@@ -5,15 +5,14 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraNamespaceGate(FlextInfraGate):
@@ -35,7 +34,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraNamespaceValidator()
-        report_result = validator.validate_project(project_dir, scan_tests=False)
+        report_result = validator.validate_project(project_dir)
         passed = report_result.success and report_result.value.passed
         errors: list[str] = []
         if report_result.failure:

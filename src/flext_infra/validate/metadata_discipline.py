@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c
 from flext_infra.validate._rope_import_boundary import _RopeImportBoundaryBase
 
 if TYPE_CHECKING:

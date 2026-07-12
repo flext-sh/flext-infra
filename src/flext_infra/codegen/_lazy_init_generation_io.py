@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_core.protocols import p as core_p
+
     from flext_infra.models import m
     from flext_infra.typings import t
 

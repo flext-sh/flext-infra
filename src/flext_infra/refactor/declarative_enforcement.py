@@ -10,10 +10,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_infra import c
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra.constants import c
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -29,9 +29,8 @@ from flext_infra.detectors.mro_shape_detector import (
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import p
-    from flext_infra.models import m
-    from flext_infra.typings import t
+
+    from flext_infra import m, p, t
 
 
 class FlextInfraRefactorDeclarativeEnforcement:
@@ -149,12 +148,6 @@ class FlextInfraRefactorDeclarativeEnforcement:
                 f"unable to parse rope AST: {type(exc).__name__}: {exc}"
             )
             raise RuntimeError(msg) from exc
-        if tree is None:
-            msg = (
-                f"declarative enforcement {ctx.file_path} failed: "
-                "rope returned an empty AST"
-            )
-            raise RuntimeError(msg)
         probes: list[p.AttributeProbe] = []
         parent_map = cls._rope_parent_map(tree)
         for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):

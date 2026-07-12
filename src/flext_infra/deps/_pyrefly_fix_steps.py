@@ -13,6 +13,7 @@ from collections.abc import (
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
 from flext_infra.constants import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.typings import t

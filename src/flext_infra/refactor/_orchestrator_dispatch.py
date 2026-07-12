@@ -5,17 +5,14 @@ from __future__ import annotations
 import difflib
 from typing import TYPE_CHECKING
 
-from flext_infra.models import m
+from flext_infra import m, u
 from flext_infra.refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.constants import c
-    from flext_infra.protocols import p
+    from flext_infra import c, p, t
     from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
-    from flext_infra.typings import t
 
 
 class FlextInfraRefactorOrchestratorDispatchMixin:

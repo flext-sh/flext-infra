@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
+
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -108,10 +109,7 @@ class FlextInfraCodegenCensus(s[str]):
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         violations_result = u.Infra.parse_namespace_validation(
-            FlextInfraNamespaceValidator().validate_project(
-                project.path,
-                scan_tests=True,
-            ),
+            FlextInfraNamespaceValidator().validate_project(project.path),
         )
         violations = (
             list(violations_result.unwrap()) if violations_result.success else []

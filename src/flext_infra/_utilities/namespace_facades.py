@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
+
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_common import (
@@ -73,7 +74,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
                 c.Infra.PKG_PREFIX_HYPHEN,
             ):
                 continue
-            stem = m.derive_class_stem(dep_name)
+            stem = u.derive_class_stem(dep_name)
             for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
                 chains[family].append(f"{stem}{suffix}")
         return chains

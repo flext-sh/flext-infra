@@ -10,21 +10,19 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraCanonicalAliasGate(FlextInfraGate):
@@ -61,9 +59,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._skip_result(project_dir, started)
         files_result = u.Infra.iter_python_files(
-            project_dir,
-            project_roots=[project_dir],
-            include_tests=False,
+            m.Infra.SourceScanRequest(project_roots=(project_dir,)),
         )
         if files_result.failure:
             issue = m.Infra.Issue(
@@ -147,9 +143,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._skip_result(project_dir, started)
         files_result = u.Infra.iter_python_files(
-            project_dir,
-            project_roots=[project_dir],
-            include_tests=False,
+            m.Infra.SourceScanRequest(project_roots=(project_dir,)),
         )
         if files_result.failure:
             return self._build_gate_result(

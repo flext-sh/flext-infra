@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli.utilities import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
+
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
@@ -148,10 +149,13 @@ class FlextInfraUtilitiesDocsScope:
         # Pre-validate [project].name BEFORE triggering the strict cached state builder.
         payload_preview = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject)
         project_section = payload_preview.get("project")
+        project_name = (
+            project_section.get("name") if isinstance(project_section, dict) else None
+        )
         if (
             not isinstance(project_section, dict)
-            or not isinstance(project_section.get("name"), str)
-            or not project_section["name"].strip()
+            or not isinstance(project_name, str)
+            or not project_name.strip()
         ):
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)

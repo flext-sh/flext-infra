@@ -14,13 +14,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
+from flext_infra import c, u
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
-from flext_infra.constants import c
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.models import m
-    from flext_infra.protocols import p
+    from flext_infra import m, p
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -61,11 +60,13 @@ class FlextInfraProjectMakefileUpdater:
         if not pyproject.exists():
             result = r[bool].ok(False)
         else:
-            try:
-                meta = u.read_project_metadata(project_root)
-            except (FileNotFoundError, ValueError) as exc:
-                result = r[bool].fail_op("pyproject.toml parse", exc)
+            metadata_result = u.read_project_metadata(project_root)
+            if metadata_result.failure:
+                result = r[bool].fail(
+                    metadata_result.error or "pyproject.toml metadata load failed",
+                )
             else:
+                meta = metadata_result.value
                 bootstrap_result = (
                     FlextInfraBaseMkTemplateRenderer.render_bootstrap_include()
                 )
@@ -125,9 +126,9 @@ class FlextInfraProjectMakefileUpdater:
         tests_dir: str,
     ) -> str:
         """Build the fully-generated Makefile content."""
-        title = f"# {meta.name}"
-        if meta.description:
-            title += f" - {meta.description}"
+        title = f"# {meta.project.name}"
+        if meta.project.description:
+            title += f" - {meta.project.description}"
         sep = "# " + "=" * 77
         lines = [
             sep,
@@ -138,8 +139,8 @@ class FlextInfraProjectMakefileUpdater:
             "# DO NOT EDIT — put custom targets in custom.mk instead.",
             sep,
             "",
-            f"PROJECT_NAME := {meta.name}",
-            f"PYTHON_VERSION ?= {meta.requires_python}",
+            f"PROJECT_NAME := {meta.project.name}",
+            f"PYTHON_VERSION ?= {meta.project.requires_python}",
             f"SRC_DIR ?= {c.Infra.DEFAULT_SRC_DIR}",
             f"TESTS_DIR ?= {tests_dir}",
             bootstrap,

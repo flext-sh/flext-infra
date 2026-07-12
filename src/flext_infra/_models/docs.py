@@ -6,11 +6,48 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra.constants import c
-from flext_infra.typings import t
+
+from flext_infra import c, t
+from flext_infra._models.config import FlextInfraConfigModels
 
 
-class FlextInfraModelsDocs:
+class _FlextInfraDocsContracts:
+    """Field-only source and rendering contracts for documentation."""
+
+    class DocsExportBinding(m.ContractModel):
+        """One public export bound to its defining module."""
+
+        export_name: Annotated[str, m.Field(description="Public export name")]
+        module_name: Annotated[str, m.Field(description="Defining module name")]
+
+    class DocsCatalogEntry(m.ContractModel):
+        """One project row in the generated workspace catalog."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        project_class: Annotated[str, m.Field(description="Project class")]
+        package_name: Annotated[str, m.Field(description="Import package name")]
+        description: Annotated[str, m.Field(description="Project description")]
+        api_page: Annotated[str, m.Field(description="Generated API page")]
+
+    class DocsProjectIndexEntry(m.ContractModel):
+        """One project row in the workspace module index."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        module_count: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Generated module page count"),
+        ]
+
+    class DocsClassCount(m.ContractModel):
+        """Count of discovered projects in one documentation class."""
+
+        project_class: Annotated[str, m.Field(description="Project class")]
+        count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
+
+
+# NOTE (multi-agent, mro-wkii.17.23 / agent: uv_overlay_owner): docs transport
+# retains the exact metadata/config models and declares only analysis deltas.
+class FlextInfraModelsDocs(_FlextInfraDocsContracts):
     """Models for documentation services."""
 
     class DocsGenerateRequest(m.ContractModel):
@@ -113,39 +150,61 @@ class FlextInfraModelsDocs:
         severity: Annotated[str, m.Field(description="Issue severity")]
         message: Annotated[str, m.Field(description="Issue description")]
 
-    class DocsProjectMeta(m.ContractModel):
-        """Typed view over pyproject + docs metadata used to build public contracts.
-
-        Single source of truth for the metadata bundle ``public_contract``
-        passes between its own helpers; replaces the prior dict-of-Any
-        approach so callers get strict typing for free. All payload fields
-        are required — callers always populate them — so no mutable
-        ``default_factory`` is needed.
-        """
+    class DocsPublicContract(m.ArbitraryTypesModel):
+        """Exact project/config objects plus derived public API analysis."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True,
             extra="forbid",
             frozen=True,
-            arbitrary_types_allowed=True,
         )
 
-        project_meta: Annotated[
-            t.Infra.ContainerDict,
-            m.Field(description="Pyproject ``[project]`` table"),
+        metadata: Annotated[
+            m.ProjectMetadata,
+            m.Field(description="Exact canonical project metadata model"),
         ]
-        docs_meta: Annotated[
-            t.Infra.ContainerDict,
-            m.Field(description="Pyproject ``[tool.flext.docs]`` table"),
-        ]
-        exclude_docs: Annotated[
-            t.StrSequence,
-            m.Field(description="Docs paths excluded from generation"),
-        ]
-        site_title: Annotated[str, m.Field(description="Resolved site title")] = ""
-        site_url: Annotated[str, m.Field(description="Resolved site URL")] = ""
-        repo_url: Annotated[str, m.Field(description="Resolved repository URL")] = ""
-        description: Annotated[str, m.Field(description="Project description")] = ""
-        version: Annotated[str, m.Field(description="Project version")] = ""
+        repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef | None,
+            m.Field(description="Exact repository catalog model"),
+        ] = None
+        provider: Annotated[
+            FlextInfraConfigModels.ProviderSpec | None,
+            m.Field(description="Exact Git provider model"),
+        ] = None
+        package_name: Annotated[str, m.Field(description="Documented package name")]
+        doc_summary: Annotated[str, m.Field(description="Package docstring summary")]
+        site_title: Annotated[str, m.Field(description="Resolved site title")]
+        site_url: Annotated[str, m.Field(description="Resolved site URL")]
+        repo_url: Annotated[str, m.Field(description="Resolved repository URL")]
+        exports: Annotated[t.StrTuple, m.Field(default=(), description="Exports")] = ()
+        aliases: Annotated[
+            t.StrTuple,
+            m.Field(default=(), description="One-letter alias exports"),
+        ] = ()
+        facades: Annotated[
+            t.StrTuple,
+            m.Field(default=(), description="Public facade exports"),
+        ] = ()
+        module_exports: Annotated[
+            t.StrTuple,
+            m.Field(default=(), description="Exported module shortcuts"),
+        ] = ()
+        public_symbols: Annotated[
+            t.StrTuple,
+            m.Field(default=(), description="Rope-resolved public symbols"),
+        ] = ()
+        export_bindings: Annotated[
+            tuple[_FlextInfraDocsContracts.DocsExportBinding, ...],
+            m.Field(default=(), description="Export-to-module bindings"),
+        ] = ()
+        modules: Annotated[
+            t.StrTuple,
+            m.Field(default=(), description="Generated public module pages"),
+        ] = ()
+        source_paths: Annotated[
+            t.StrTuple,
+            m.Field(default=(), description="Mkdocstrings source roots"),
+        ] = ()
 
     class GeneratedFile(m.ContractModel):
         """Record of a generated file operation."""

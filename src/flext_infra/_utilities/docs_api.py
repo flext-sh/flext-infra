@@ -8,6 +8,8 @@ from collections.abc import (
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+
+from flext_infra import config
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -536,11 +538,10 @@ class FlextInfraUtilitiesDocsApi:
         public_symbols = [
             name for name in rope_symbols if name in symbol_exports
         ] or symbol_exports
-        metadata = u.read_project_constants("flext-infra")
         facades = [
             name
             for name in public_symbols
-            if name.startswith(metadata.TIER_FACADE_PREFIX["src"])
+            if name.startswith(u.derive_class_stem(config.Infra.name))
         ]
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "package_name": package_name,

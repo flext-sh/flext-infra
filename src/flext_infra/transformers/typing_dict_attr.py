@@ -17,7 +17,7 @@ from flext_infra.transformers.base import FlextInfraRopeTransformer
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraRefactorTypingDictAttr(

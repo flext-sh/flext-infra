@@ -10,13 +10,10 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m, t, u
 from flext_infra.transformers._tier0_transformer import (
     FlextInfraTier0TransformerMixin,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
@@ -106,9 +103,9 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
             self._scan_runtime_usage(source)
             alias_map: dict[str, str] = {
                 alias_name: alias_name
-                for alias_name in u.read_project_constants(
-                    "flext-infra",
-                ).RUNTIME_ALIAS_NAMES
+                for alias_name in u.runtime_alias_names(
+                    c.Infra.PKG_INFRA_UNDERSCORE,
+                )
             }
             if u.Infra.matches_module_toplevel(self._file_path):
                 return FlextInfraTransformerTier0ImportFixer.Analysis(

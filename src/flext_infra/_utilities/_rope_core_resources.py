@@ -9,7 +9,6 @@ from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -103,20 +102,16 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
     def python_resources(
         rope_project: t.Infra.RopeProject,
     ) -> t.SequenceOf[t.Infra.RopeResource]:
-        """Return stable Python file resources for one Rope project."""
+        """Return Rope's already-filtered Python resources without a path roundtrip."""
         return tuple(
-            resource
-            for file_path in FlextInfraUtilitiesRopeCoreResourcesMixin.python_file_paths(
-                rope_project,
-            )
-            if (
-                resource
-                := FlextInfraUtilitiesRopeCoreResourcesMixin.get_resource_from_path(
-                    rope_project,
-                    file_path,
-                )
-            )
-            is not None
+            sorted(
+                (
+                    resource
+                    for resource in rope_project.get_python_files()
+                    if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
+                ),
+                key=lambda resource: resource.path,
+            ),
         )
 
     @staticmethod
@@ -124,17 +119,23 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         rope_project: t.Infra.RopeProject,
     ) -> t.SequenceOf[Path]:
         """Return stable Python file paths for one Rope project."""
-        root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
-        if not isinstance(root_real_path, str):
-            return ()
-        file_paths = FlextInfraUtilitiesIteration.iter_python_files(
-            Path(root_real_path),
+        resources = FlextInfraUtilitiesRopeCoreResourcesMixin.python_resources(
+            rope_project,
         )
-        if file_paths.failure:
-            return ()
         return tuple(
             sorted(
-                file_paths.unwrap(),
+                (
+                    file_path
+                    for resource in resources
+                    if (
+                        file_path
+                        := FlextInfraUtilitiesRopeCoreResourcesMixin.resource_file_path(
+                            rope_project,
+                            resource,
+                        )
+                    )
+                    is not None
+                ),
                 key=lambda file_path: file_path.as_posix(),
             ),
         )

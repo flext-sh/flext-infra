@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_cli import m
-from flext_infra.typings import t
+
+from flext_infra import t
 
 
 class FlextInfraModelsCodegenRender:
@@ -26,21 +27,6 @@ class FlextInfraModelsCodegenRender:
         base_class: t.NonEmptyStr = m.Field(description="Generated base class name.")
         base_import_block: str = m.Field(description="Rendered base import block.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-
-    # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): retain the exact
-    # upstream metadata object and declare only the derived version-class delta.
-    class VersionFileRenderContext(m.ContractModel):
-        """Validated context for one generated version module."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            frozen=True,
-        )
-
-        metadata: m.ProjectMetadata = m.Field(
-            description="Canonical source project metadata.",
-        )
-        class_name: t.NonEmptyStr = m.Field(description="Generated version class name.")
 
     # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the docs
     # renderer sends one immutable model directly to the flext-cli boundary.

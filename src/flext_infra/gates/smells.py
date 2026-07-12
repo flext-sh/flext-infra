@@ -16,14 +16,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import FlextSmellViolation
-from flext_infra.constants import c, c as core_c
+
+from flext_infra import c, c as core_c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
 from flext_infra.transformers.smells import smell_fixer_for
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraSmellsGate(FlextInfraGate):

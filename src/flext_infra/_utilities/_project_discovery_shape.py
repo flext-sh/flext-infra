@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
@@ -66,11 +67,11 @@ class FlextInfraUtilitiesProjectDiscoveryShapeMixin:
                 continue
             if not (entry / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
-            try:
-                if u.read_tool_flext_config(entry).workspace.attached:
-                    attached.append(entry.name)
-            except (FileNotFoundError, ValueError):
+            metadata_result = u.read_project_metadata(entry)
+            if metadata_result.failure:
                 continue
+            if metadata_result.value.flext.workspace.attached:
+                attached.append(entry.name)
         return frozenset(attached)
 
 

@@ -12,7 +12,7 @@ from flext_infra.transformers._header import ensure_future_annotations
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraRefactorFutureImport(FlextInfraRopeTransformer):

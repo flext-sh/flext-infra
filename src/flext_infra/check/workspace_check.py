@@ -6,6 +6,7 @@ import shlex
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
+
 from flext_infra.base import s
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,

@@ -8,15 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import c, m, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraClassPlacementDetector:
@@ -237,7 +235,7 @@ class FlextInfraClassPlacementDetector:
         family: str,
     ) -> str:
         """Return the canonical facade class name for a family and project."""
-        stem = m.derive_class_stem(ctx.project_name) if ctx.project_name else ""
+        stem = u.derive_class_stem(ctx.project_name) if ctx.project_name else ""
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
         return f"{stem}{suffix}" if stem and suffix else ""
 
@@ -373,8 +371,6 @@ class FlextInfraClassPlacementDetector:
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
         tree = pymodule.get_ast()
-        if tree is None:
-            return ()
         aliases: list[tuple[str, int]] = []
         for node in getattr(tree, "body", []) or []:
             kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)

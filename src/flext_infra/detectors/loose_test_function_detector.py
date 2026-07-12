@@ -15,14 +15,13 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_infra import m, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraLooseTestFunctionDetector:

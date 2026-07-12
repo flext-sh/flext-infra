@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraNamespaceSourceDetector:
@@ -32,7 +30,13 @@ class FlextInfraNamespaceSourceDetector:
             if project_layout is not None:
                 local_aliases = frozenset(project_layout.runtime_aliases)
                 if local_aliases:
-                    metadata = u.read_project_constants("flext-infra")
+                    universal_aliases = frozenset(
+                        alias_name
+                        for alias_name, module_name, _ in u.lazy_alias_suffixes(
+                            c.Infra.PKG_INFRA_UNDERSCORE,
+                        )
+                        if module_name.split(".", 1)[0] != c.Infra.PKG_INFRA_UNDERSCORE
+                    )
                     contextual_sources = u.Infra.contextual_runtime_alias_sources(
                         project_root=project_root,
                         file_path=file_path,
@@ -75,8 +79,7 @@ class FlextInfraNamespaceSourceDetector:
                                     if (
                                         alias is None
                                         and name in local_aliases
-                                        and name
-                                        not in metadata.UNIVERSAL_ALIAS_PARENT_SOURCES
+                                        and name not in universal_aliases
                                         and current_source
                                         not in contextual_sources.get(name, frozenset())
                                     )

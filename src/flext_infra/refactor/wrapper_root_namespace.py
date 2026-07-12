@@ -51,8 +51,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
         accumulator = _WrapperRewriteAccumulator()
-        metadata = u.read_project_constants("flext-infra")
-        metadata_aliases = frozenset(metadata.RUNTIME_ALIAS_NAMES)
+        metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         for file_path in py_files:
             self._process_wrapper_file(
                 file_path,
@@ -93,8 +92,9 @@ class FlextInfraWrapperRootNamespaceRefactor(
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
             ].fail(resolved.error or "project resolution failed")
         iter_result = u.Infra.iter_python_files(
-            self.workspace_root,
-            project_roots=[project.path for project in resolved.value],
+            m.Infra.SourceScanRequest(
+                project_roots=tuple(project.path for project in resolved.value),
+            ),
         )
         if iter_result.failure:
             return r[
@@ -105,14 +105,13 @@ class FlextInfraWrapperRootNamespaceRefactor(
             for project in resolved.value
             if (layout := u.Infra.layout(project.path)) is not None
         }
-        metadata = u.read_project_constants("flext-infra")
         return r[
             tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
         ].ok(
             (
                 iter_result.value,
                 project_runtime_aliases,
-                frozenset(metadata.FACADE_MODULE_NAMES),
+                u.facade_module_names(c.Infra.PKG_INFRA_UNDERSCORE),
             ),
         )
 

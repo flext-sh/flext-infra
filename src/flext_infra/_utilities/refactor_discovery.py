@@ -13,6 +13,7 @@ import fnmatch
 from typing import TYPE_CHECKING
 
 from flext_cli.utilities import u
+
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.constants import c
 from flext_infra.iteration import FlextInfraUtilitiesIteration
@@ -79,14 +80,8 @@ class FlextInfraUtilitiesRefactorDiscovery:
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
             settings,
         )
-        scan_dirs = frozenset(refactor_config.project_scan_dirs)
         ir = FlextInfraUtilitiesIteration.iter_python_files(
-            workspace_root=project,
-            project_roots=[project],
-            include_tests=c.Infra.DIR_TESTS in scan_dirs,
-            include_examples=c.Infra.DIR_EXAMPLES in scan_dirs,
-            include_scripts=c.Infra.DIR_SCRIPTS in scan_dirs,
-            src_dirs=scan_dirs or None,
+            m.Infra.SourceScanRequest(project_roots=(project,)),
         )
         if ir.failure:
             u.Cli.error(ir.error or f"File iteration failed for {project}")
@@ -127,12 +122,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
         all_files: t.MutableSequenceOf[Path] = []
         for proj in projects:
             ir = FlextInfraUtilitiesIteration.iter_python_files(
-                workspace_root=root,
-                project_roots=[proj],
-                include_tests=c.Infra.DIR_TESTS in scan_dirs,
-                include_examples=c.Infra.DIR_EXAMPLES in scan_dirs,
-                include_scripts=c.Infra.DIR_SCRIPTS in scan_dirs,
-                src_dirs=scan_dirs or None,
+                m.Infra.SourceScanRequest(project_roots=(proj,)),
             )
             if ir.failure:
                 u.Cli.error(ir.error or f"File iteration failed for {proj}")

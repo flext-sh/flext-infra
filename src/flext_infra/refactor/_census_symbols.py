@@ -5,16 +5,14 @@ from __future__ import annotations
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
+from flext_infra import m, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
+    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusSymbolsMixin:
@@ -79,8 +77,6 @@ class FlextInfraRefactorCensusSymbolsMixin:
     ) -> int | None:
         """Return the local definition line for one top-level Rope symbol."""
         location = pyname.get_definition_location()
-        if location is None:
-            return None
         module, line = location
         origin = module.get_resource() if module is not None else None
         if not isinstance(line, int) or line < 1 or origin is None:

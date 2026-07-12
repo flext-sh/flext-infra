@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Final
 
 from flext_cli import u
 from flext_core import r
+
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
@@ -210,7 +211,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             project_name=project_name,
             package_name=package_name,
             package_alias=cls.package_alias(package_name=package_name),
-            class_stem=m.derive_class_stem(class_name_source),
+            class_stem=u.derive_class_stem(class_name_source),
             src_dir=src_dir,
             package_dir=package_dir,
             init_path=package_dir / c.Infra.INIT_PY,

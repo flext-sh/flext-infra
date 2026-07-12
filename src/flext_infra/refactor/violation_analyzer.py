@@ -9,8 +9,7 @@ from collections import Counter
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m, u
 from flext_infra.refactor._violation_helper_classifier import (
     FlextInfraRefactorViolationHelperClassifierMixin,
 )
@@ -20,7 +19,6 @@ from flext_infra.refactor.class_nesting_analyzer import (
 from flext_infra.transformers.violation_census_visitor import (
     FlextInfraViolationCensusVisitor,
 )
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from collections.abc import (
@@ -28,7 +26,7 @@ if TYPE_CHECKING:
     )
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraRefactorViolationAnalyzer(

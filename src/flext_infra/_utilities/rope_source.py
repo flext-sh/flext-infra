@@ -7,6 +7,7 @@ from operator import itemgetter
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
+
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes

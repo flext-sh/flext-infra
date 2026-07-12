@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import m
 from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra.models import m
 from flext_infra.refactor._census_rules_dispatch import (
     FlextInfraRefactorCensusRulesDispatchMixin,
 )
@@ -16,8 +16,7 @@ from flext_infra.refactor._census_validate import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
+    from flext_infra import p, t
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     *FlextInfraConstantsRope.RUNTIME_ERRORS,

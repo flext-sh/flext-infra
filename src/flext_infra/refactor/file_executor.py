@@ -6,8 +6,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m, t, u
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
@@ -17,8 +16,6 @@ from flext_infra.transformers.helper_consolidation import (
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from collections.abc import (

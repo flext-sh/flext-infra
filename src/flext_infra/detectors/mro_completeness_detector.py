@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import c, config, m, u
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraMROCompletenessDetector:
@@ -54,12 +52,11 @@ class FlextInfraMROCompletenessDetector:
                 None,
             )
         if facade is None:
-            metadata = u.read_project_constants("flext-infra")
             facade = next(
                 (
                     name
                     for name in module_classes
-                    if name.startswith(metadata.TIER_FACADE_PREFIX["src"])
+                    if name.startswith(u.derive_class_stem(config.Infra.name))
                 ),
                 None,
             )

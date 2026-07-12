@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
 from flext_infra.constants import c
 from flext_infra.typings import t
 from flext_infra.utilities import u

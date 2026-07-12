@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )

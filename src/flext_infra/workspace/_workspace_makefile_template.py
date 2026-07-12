@@ -4,17 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_core import r
 from jinja2.environment import Environment
 from jinja2.exceptions import TemplateError
 from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_core import r
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, p, t, u
 
 
 class FlextInfraWorkspaceMakefileTemplateMixin:

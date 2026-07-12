@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_cli.models import FlextCliModels as m
-from flext_infra.typings import t
+from flext_cli import FlextCliModels as m
+
+from flext_infra import t
 
 
 class FlextInfraFixersResult:

@@ -19,7 +19,6 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".pipeline": ("FlextInfraCodegenPipeline",),
     ".project_new": ("FlextInfraCodegenProjectNew",),
     ".py_typed": ("FlextInfraCodegenPyTyped",),
-    ".pyproject_keys": ("FlextInfraCodegenPyprojectKeys",),
     ".scaffolder": ("FlextInfraCodegenScaffolder",),
     ".version_file": ("FlextInfraCodegenVersionFile",),
 }
@@ -39,7 +38,6 @@ PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenPyTyped",
-    "FlextInfraCodegenPyprojectKeys",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",

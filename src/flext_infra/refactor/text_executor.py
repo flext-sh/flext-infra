@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m, t, u
 from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
@@ -26,13 +25,11 @@ from flext_infra.transformers.tier0_import_fixer import (
     FlextInfraTransformerTier0ImportFixer,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
@@ -142,8 +139,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 FlextInfraRefactorLazyImportFixer(),
                 source,
             )
-        metadata = u.read_project_constants("flext-infra")
-        runtime_aliases = set(metadata.RUNTIME_ALIAS_NAMES)
+        runtime_aliases = set(
+            u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE),
+        )
         blocked = set(u.Infra.collect_blocked_aliases(source, runtime_aliases))
         blocked.update(u.Infra.collect_shadowed_aliases(source, runtime_aliases))
         forbidden = settings.get(c.Infra.RK_FORBIDDEN_IMPORTS)
@@ -322,9 +320,11 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 settings,
                 c.Infra.RK_CORE_ALIASES,
                 tuple(
-                    u.read_project_constants(
-                        "flext-infra",
-                    ).UNIVERSAL_ALIAS_PARENT_SOURCES,
+                    alias_name
+                    for alias_name, module_name, _ in u.lazy_alias_suffixes(
+                        c.Infra.PKG_INFRA_UNDERSCORE,
+                    )
+                    if module_name.split(".", 1)[0] != c.Infra.PKG_INFRA_UNDERSCORE
                 ),
             ),
         )

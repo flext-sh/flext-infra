@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
+
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
@@ -275,11 +276,17 @@ class FlextInfraUtilitiesDiscovery:
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        scan_roots = [workspace_root.resolve()]
-        scan_roots.extend(
-            FlextInfraUtilitiesProjectDiscovery.discover_external_workspace_roots(
-                workspace_root,
-            ),
+        # NOTE (multi-agent, mro-wkii.17): explicit project paths are a hard
+        # write-scope boundary; sibling workspaces remain discovery-only otherwise.
+        scan_roots = (
+            sorted({project_path.resolve() for project_path in project_paths})
+            if project_paths is not None
+            else [
+                workspace_root.resolve(),
+                *FlextInfraUtilitiesProjectDiscovery.discover_external_workspace_roots(
+                    workspace_root,
+                ),
+            ]
         )
         try:
             all_files: list[Path] = []

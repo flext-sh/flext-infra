@@ -13,13 +13,12 @@ from typing import TYPE_CHECKING, ClassVar
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra.constants import c
-from flext_infra.protocols import p
+from flext_infra import c, p
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class _DiagResult:

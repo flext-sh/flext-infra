@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
@@ -307,8 +308,7 @@ class FlextInfraUtilitiesRopeImports:
         file_paths: t.SequenceOf[Path],
     ) -> dict[Path, list[tuple[str, tuple[str, ...]]]]:
         """Collect canonical runtime-alias imports eligible for semantic restore."""
-        metadata = u.read_project_constants("flext-infra")
-        runtime_aliases = metadata.RUNTIME_ALIAS_NAMES
+        runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         canonical_modules = frozenset({
             c.Infra.PKG_CORE_UNDERSCORE,
             c.Infra.PKG_INFRA_UNDERSCORE,
@@ -687,7 +687,7 @@ class FlextInfraUtilitiesRopeImports:
     ) -> str | None:
         """Hoist ``from package.sub import alias`` into ``from package import alias``."""
         effective_aliases = aliases or tuple(
-            u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES,
+            u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE),
         )
         requested_aliases = frozenset(
             alias for alias in effective_aliases if len(alias) == 1 and alias.islower()

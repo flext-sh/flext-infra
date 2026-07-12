@@ -7,6 +7,7 @@ import sys
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
+
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.constants import c

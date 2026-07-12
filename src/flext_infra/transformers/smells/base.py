@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, ClassVar, Final
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.models import m
-    from flext_infra.typings import t
+    from flext_infra import m, t
 
 
 class FlextInfraSmellFixer:

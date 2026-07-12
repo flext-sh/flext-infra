@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from flext_infra import c, m, u
 from flext_infra._constants.cli_routes_validate_commands import (
     VALIDATE_COMMAND_ROUTES,
 )
-from flext_infra.constants import c
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
@@ -13,8 +13,6 @@ from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_DOCS: tuple(

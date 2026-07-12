@@ -1,6 +1,6 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
 {# NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): render the retained source model directly. #}
-"""Package version and metadata for {{ metadata.name }}.
+"""Package version and metadata for {{ project.name }}.
 
 Subclass of ``FlextVersion`` — overrides only ``_metadata``.
 All derived attributes (``__version__``, ``__title__``, etc.) are
@@ -17,22 +17,22 @@ from importlib.metadata import PackageMetadata, metadata
 from flext_core.__version__ import FlextVersion
 
 
-class {{ class_name }}(FlextVersion):
-    """{{ metadata.name }} version — MRO-derived from FlextVersion."""
+class {{ class_stem }}Version(FlextVersion):
+    """{{ project.name }} version — MRO-derived from FlextVersion."""
 
-    _metadata: PackageMetadata = metadata("{{ metadata.name }}")
+    _metadata: PackageMetadata = metadata("{{ project.name }}")
 
 
-__version__ = {{ class_name }}.__version__
-__version_info__ = {{ class_name }}.__version_info__
-__title__ = {{ class_name }}.__title__
-__description__ = {{ class_name }}.__description__
-__author__ = {{ class_name }}.__author__
-__author_email__ = {{ class_name }}.__author_email__
-__license__ = {{ class_name }}.__license__
-__url__ = {{ class_name }}.__url__
+__version__ = {{ class_stem }}Version.__version__
+__version_info__ = {{ class_stem }}Version.__version_info__
+__title__ = {{ class_stem }}Version.__title__
+__description__ = {{ class_stem }}Version.__description__
+__author__ = {{ class_stem }}Version.__author__
+__author_email__ = {{ class_stem }}Version.__author_email__
+__license__ = {{ class_stem }}Version.__license__
+__url__ = {{ class_stem }}Version.__url__
 __all__: list[str] = [
-    "{{ class_name }}",
+    "{{ class_stem }}Version",
     "__author__",
     "__author_email__",
     "__description__",

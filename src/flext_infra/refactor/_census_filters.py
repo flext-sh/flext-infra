@@ -5,11 +5,10 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import m, u
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraRefactorCensusFiltersMixin:

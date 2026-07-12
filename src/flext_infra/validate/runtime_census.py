@@ -16,14 +16,12 @@ import pkgutil
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import FlextUtilitiesEnforcement, r
+
+from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
+    from flext_infra import p, t
 
 
 class FlextInfraRuntimeCensusValidator(s[bool]):
@@ -33,16 +31,6 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         str | None,
         m.Field(description="Project filter (comma-separated)"),
     ] = None
-
-    include_tests: Annotated[
-        bool,
-        m.Field(description="Include test packages in the census"),
-    ] = False
-
-    include_examples: Annotated[
-        bool,
-        m.Field(description="Include example packages in the census"),
-    ] = False
 
     def _selected_projects(
         self,
@@ -169,18 +157,13 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 if name == self.target_module
                 or name.startswith(self.target_module + ".")
             ]
-        if not self.include_tests:
-            real_modules = [
-                name
-                for name in real_modules
-                if c.Infra.DIR_TESTS not in name.split(".")
-            ]
-        if not self.include_examples:
-            real_modules = [
-                name
-                for name in real_modules
-                if c.Infra.DIR_EXAMPLES not in name.split(".")
-            ]
+        real_modules = [
+            name
+            for name in real_modules
+            if not config.Infra.source_scan.ignored_directories.intersection(
+                name.split("."),
+            )
+        ]
         all_reports: list[m.Infra.ValidationReport] = [
             m.Infra.ValidationReport(
                 passed=False,

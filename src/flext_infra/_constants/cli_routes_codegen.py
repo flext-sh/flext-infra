@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from flext_infra import c, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
@@ -12,17 +13,14 @@ from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.pyproject_keys import FlextInfraCodegenPyprojectKeys
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from flext_infra.constants import c
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
-from flext_infra.models import m
 
 # NOTE (multi-agent, mro-wkii.17.9): deps no longer exposes path-sync;
 # codegen consumes the pure u.Infra pyproject renderer internally.
@@ -121,12 +119,6 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Consolidate inline constants into c.Infra.* references",
                 FlextInfraCodegenConsolidator,
                 None,
-            ),
-            (
-                "pyproject-keys",
-                "Generate [tool.flext.*] tables in pyproject.toml",
-                FlextInfraCodegenPyprojectKeys,
-                "pyproject-keys generation complete",
             ),
             (
                 "version-file",

@@ -5,13 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import FlextUtilitiesEnforcement
+
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra.typings import t
+
+    from flext_infra import t
 
 
 class FlextInfraEnforcementSelection:

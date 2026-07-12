@@ -11,18 +11,16 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraSilentFailureGate(FlextInfraGate):
@@ -44,8 +42,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         files_result = u.Infra.iter_python_files(
-            project_dir,
-            project_roots=[project_dir],
+            m.Infra.SourceScanRequest(project_roots=(project_dir,)),
         )
         if files_result.failure:
             issue = m.Infra.Issue(

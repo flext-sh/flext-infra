@@ -19,7 +19,7 @@ from flext_infra.transformers.smells.base import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.models import m
+    from flext_infra import m
 
 
 class _BooleanSimplifier(ast.NodeTransformer):

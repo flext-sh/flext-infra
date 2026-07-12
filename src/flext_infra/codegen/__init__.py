@@ -51,9 +51,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen.py_typed import (
         FlextInfraCodegenPyTyped as FlextInfraCodegenPyTyped,
     )
-    from flext_infra.codegen.pyproject_keys import (
-        FlextInfraCodegenPyprojectKeys as FlextInfraCodegenPyprojectKeys,
-    )
     from flext_infra.codegen.scaffolder import (
         FlextInfraCodegenScaffolder as FlextInfraCodegenScaffolder,
     )

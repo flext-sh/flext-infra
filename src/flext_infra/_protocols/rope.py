@@ -23,6 +23,17 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
+    # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): source discovery is a
+    # Rope boundary and consumes the exact field-only runtime request model.
+    @runtime_checkable
+    class SourceScanRequest(Protocol):
+        """Fields required by production-source discovery."""
+
+        @property
+        def project_roots(self) -> tuple[Path, ...]:
+            """Non-empty ordered project roots selected at the boundary."""
+            ...
+
     @runtime_checkable
     class ChangeTracker(Protocol):
         """Transformer contract for in-memory source rewrites with change tracking."""

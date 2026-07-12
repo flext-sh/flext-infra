@@ -10,6 +10,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 from flext_cli.utilities import u
+
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra.constants import c
 from flext_infra.models import m

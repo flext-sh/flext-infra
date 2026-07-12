@@ -5,14 +5,12 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from flext_infra.protocols import p
-from flext_infra.utilities import u
+from flext_infra import p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.models import m
-    from flext_infra.typings import t
+    from flext_infra import m, t
 
 
 class FlextInfraRefactorCensusInventoryMixin:
@@ -65,7 +63,10 @@ class FlextInfraRefactorCensusInventoryMixin:
                 module = __import__(pkg_name)
             except ImportError:
                 continue
-            for alias_name in u.read_project_constants(pkg_name).FACADE_ALIAS_NAMES:
+            import_name = pkg_name.replace("-", "_")
+            for alias_name, module_name, _ in u.lazy_alias_suffixes(import_name):
+                if module_name.split(".", 1)[0] != import_name:
+                    continue
                 alias = getattr(module, alias_name, None)
                 if alias is None:
                     continue

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 from flext_core import r
+
 from flext_infra.constants import c
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate

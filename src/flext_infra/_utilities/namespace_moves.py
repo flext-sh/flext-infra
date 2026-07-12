@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.namespace_common import (
@@ -81,9 +82,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         package_name=project_package,
                         aliases=tuple(
                             sorted(
-                                u.read_project_constants(
-                                    "flext-infra",
-                                ).RUNTIME_ALIAS_NAMES,
+                                u.runtime_alias_names(
+                                    c.Infra.PKG_INFRA_UNDERSCORE,
+                                ),
                             ),
                         ),
                         apply=True,
@@ -866,7 +867,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         moved_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             moved_source,
         )
-        runtime_aliases = u.read_project_constants("flext-infra").RUNTIME_ALIAS_NAMES
+        runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         moved_aliases: set[str] = set()
         if moved_pymodule is not None:
             for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(

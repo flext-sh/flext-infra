@@ -6,15 +6,13 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra.models import m
+from flext_infra import m, t, u
 from flext_infra.refactor._mro_import_collect import (
     FlextInfraRefactorMROImportRewriterFileOpsMixin,
 )
 from flext_infra.transformers.mro_symbol_propagator import (
     FlextInfraRefactorMROSymbolPropagator,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraRefactorMROImportRewriter(

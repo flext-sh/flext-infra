@@ -7,6 +7,7 @@ import hashlib
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
+
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra.constants import c
 from flext_infra.models import m

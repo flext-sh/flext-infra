@@ -18,16 +18,15 @@ import ast
 import re
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, u
 from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewrite,
     FlextInfraSourceRewriter,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
