@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import config, settings
+from flext_infra import config
 from flext_infra.base import s
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.constants import c
@@ -64,15 +64,14 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         str,
         m.Field(default="", description="Project description (default: derived)."),
     ] = ""
-    # NOTE(mro-wkii.14, agent codegen): default version vem de settings.Infra
-    # .flext_version (metadados do flext-infra = "0.12.0-dev") — operator directive:
-    # version NUNCA constante/hardcoded, sempre settings. --version sobrescreve.
+    # NOTE (multi-agent, mro-wkii.4.15 / agent: codex): project config owns the
+    # already-validated version value consumed directly by project generation.
     version: Annotated[
         str,
         m.Field(
-            description="Initial project version (default: settings.Infra.flext_version).",
+            description="Initial project version (default: config.Infra.version).",
         ),
-    ] = settings.Infra.flext_version
+    ] = config.Infra.version
     provider: Annotated[
         str,
         m.Field(min_length=1, description="Configured Git provider key."),
@@ -141,14 +140,10 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         package_name = self.package_name or self.name.replace("-", "_")
         class_stem = u.derive_class_stem(self.name)
         derived_namespace = class_stem.removeprefix("Flext")
-        project_namespace = (
-            self.project_namespace or derived_namespace or class_stem
-        )
+        project_namespace = self.project_namespace or derived_namespace or class_stem
         alias = u.Infra.package_alias(package_name=package_name)
         repository_url = (
-            known.url
-            if known is not None
-            else f"{provider.base_url}/{self.name}.git"
+            known.url if known is not None else f"{provider.base_url}/{self.name}.git"
         )
         repository_branch = known.branch if known is not None else provider.branch
         repository_page = repository_url.removesuffix(".git")
@@ -187,9 +182,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 homepage=repository_page,
                 documentation=repository_page,
                 workspace_root_rel=(
-                    ".."
-                    if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                    else "."
+                    ".." if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
                 ),
                 year=self.year,
             ),
