@@ -288,7 +288,11 @@ build/
 *.old
 *_backup*
 *_old*
-*_temp*
+# mro-o6h5 (agent: kimi) — narrowed from `*_temp*`: the substring matched
+# "template" and silently gitignored src modules (e.g.
+# workspace/_workspace_makefile_template.py), breaking CI imports.
+*_temp
+*_temp.*
 *backup*
 
 # Validation and test scripts outside proper directories
