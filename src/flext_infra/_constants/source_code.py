@@ -41,6 +41,9 @@ class FlextInfraConstantsSourceCode:
         "context_test",
         "rope_ws",
         "tmp_flow_test",
+        "tests",
+        "examples",
+        "legado",
     }
     "Directories to skip when scanning pyproject.toml files."
     CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
