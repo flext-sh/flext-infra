@@ -72,16 +72,14 @@ class FlextInfraEnforcementFixerOrchestrator(
         params: m.Infra.FixEnforcementCommand,
     ) -> p.Result[str]:
         """Execute enforcement fixes from the canonical CLI payload."""
-        instance = cls.model_validate(
-            {
-                "workspace_root": params.workspace_path,
-                "selected_projects": params.projects,
-                "apply": params.apply,
-                "rules": params.rules,
-                "safe_only": params.safe_only,
-                "check_after": params.check_after,
-                "fail_fast": params.fail_fast,
-            },
+        instance = cls(
+            workspace_root=params.workspace_path,
+            selected_projects=params.projects,
+            apply=params.apply,
+            rules=tuple(params.rules),
+            safe_only=params.safe_only,
+            check_after=params.check_after,
+            fail_fast=params.fail_fast,
         )
         return instance.execute()
 

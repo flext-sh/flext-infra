@@ -99,12 +99,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 exc,
             )
         return r[m.Infra.PyprojectDocumentState].ok(
-            m.Infra.PyprojectDocumentState.model_validate(
-                {
-                    "pyproject_path": path,
-                    "original_rendered": original_rendered,
-                    "payload": payload,
-                },
+            m.Infra.PyprojectDocumentState(
+                pyproject_path=path,
+                original_rendered=original_rendered,
+                payload=payload,
             ),
         )
 

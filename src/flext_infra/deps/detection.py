@@ -63,12 +63,12 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         issues: t.SequenceOf[t.Infra.ContainerDict],
     ) -> m.Infra.DeptryIssueGroups:
         """Classify deptry issues by error code (DEP001-DEP004)."""
-        groups = m.Infra.DeptryIssueGroups.model_validate({
-            "dep001": [],
-            "dep002": [],
-            "dep003": [],
-            "dep004": [],
-        })
+        groups = m.Infra.DeptryIssueGroups(
+            dep001=[],
+            dep002=[],
+            dep003=[],
+            dep004=[],
+        )
         for item in issues:
             normalized_item: dict[str, t.Primitives | None] = {}
             for key, raw_value in item.items():
