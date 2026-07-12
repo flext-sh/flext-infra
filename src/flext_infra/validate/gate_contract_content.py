@@ -38,15 +38,13 @@ class FlextInfraGateContractContentMixin:
                 continue
             if pattern.search(line):
                 violations.append(
-                    FlextInfraGateContractModels.Violation.create(
-                        {
-                            "check": "interactive",
-                            "message": (
-                                f"line {i}: interactive prompt without --interactive gate"
-                            ),
-                            "script": script,
-                            "severity": c.Infra.GateSeverity.WARNING.value,
-                        },
+                    FlextInfraGateContractModels.Violation(
+                        check="interactive",
+                        message=(
+                            f"line {i}: interactive prompt without --interactive gate"
+                        ),
+                        script=script,
+                        severity=c.Infra.GateSeverity.WARNING.value,
                     ),
                 )
         return tuple(violations)
@@ -67,16 +65,14 @@ class FlextInfraGateContractContentMixin:
                 if c.Infra.SKILL_REPORT_ARTIFACT_NAME_RE.fullmatch(filename):
                     continue
                 violations.append(
-                    FlextInfraGateContractModels.Violation.create(
-                        {
-                            "check": "artifact_naming",
-                            "message": (
-                                f"line {i}: artifact '{filename}' does not match "
-                                "<skill>--<kind>--<slug>.<ext>"
-                            ),
-                            "script": script,
-                            "severity": c.Infra.GateSeverity.WARNING.value,
-                        },
+                    FlextInfraGateContractModels.Violation(
+                        check="artifact_naming",
+                        message=(
+                            f"line {i}: artifact '{filename}' does not match "
+                            "<skill>--<kind>--<slug>.<ext>"
+                        ),
+                        script=script,
+                        severity=c.Infra.GateSeverity.WARNING.value,
                     ),
                 )
         return tuple(violations)
