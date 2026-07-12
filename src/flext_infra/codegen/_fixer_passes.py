@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -14,9 +13,6 @@ from flext_infra.refactor.migrate_to_class_mro import (
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from flext_infra.typings import t
 
 _log = u.fetch_logger(__name__)
 
@@ -114,9 +110,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
         project_path: Path,
     ) -> None:
         """Regenerate lazy ``__init__.py`` files and record skip on errors."""
-        lazy_generator = FlextInfraCodegenLazyInit.model_validate(
-            {"workspace_root": project_path},
-        )
+        lazy_generator = FlextInfraCodegenLazyInit(workspace_root=project_path)
         lazy_errors = lazy_generator.generate_inits(check_only=False)
         ctx.files_modified |= set(lazy_generator.modified_files)
         if lazy_errors > 0:
@@ -128,19 +122,30 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
             )
 
     @staticmethod
-    def _post_fix_ruff_format(
-        ctx: m.Infra.FixContext,
-        bak_paths: t.SequenceOf[Path],
-    ) -> None:
-        """Run ruff fix+format on every touched file; restore backup on decode error."""
-        try:
-            for modified_file in sorted(ctx.files_modified):
-                path = Path(modified_file)
-                if path.is_file():
-                    _ = u.Infra.run_ruff_fix(path, quiet=True)
-        except c.EXC_OS_DECODING:
-            u.Infra.restore_files(bak_paths)
-            raise
+    def _normalize_modified_sources(ctx: m.Infra.FixContext) -> None:
+        """Normalize every touched Python file and propagate any failure."""
+        for modified_file in sorted(ctx.files_modified):
+            path = Path(modified_file)
+            if not path.is_file():
+                continue
+            read = u.Cli.files_read_text(path)
+            if read.failure:
+                message = f"reading fixer output {path}: {read.error}"
+                raise OSError(message)
+            normalized = u.Infra.normalize_python_source(
+                read.value,
+                # mro-i6nq.10: Preserve per-file Ruff config without mutating first.
+                filename=path,
+            )
+            if normalized.failure:
+                message = f"normalizing fixer output {path}: {normalized.error}"
+                raise OSError(message)
+            if normalized.value == read.value:
+                continue
+            written = u.Cli.atomic_write_text_file(path, normalized.value)
+            if written.failure:
+                message = f"writing fixer output {path}: {written.error}"
+                raise OSError(message)
 
 
 __all__: list[str] = ["FlextInfraCodegenFixerPassesMixin"]

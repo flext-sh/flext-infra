@@ -49,9 +49,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
             r with ValidationReport listing each stale ``__init__.py`` as a violation.
 
         """
-        generator = FlextInfraCodegenLazyInit.model_validate(
-            {"workspace_root": workspace_root},
-        )
+        generator = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
         try:
             errors = generator.generate_inits(check_only=True)
         except OSError as exc:

@@ -62,24 +62,24 @@ class FlextInfraUtilitiesRopeInventory:
             raise TypeError(msg)
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
-            record_options = m.Infra.RopeInventoryRecordInput.model_validate({
-                "rope_project": rope_project,
-                "resource": resource,
-                "source": source,
-                "name": name,
-                "pyname": pyname,
-                "module_name": module_entry.module_name
+            record_options = m.Infra.RopeInventoryRecordInput(
+                rope_project=rope_project,
+                resource=resource,
+                source=source,
+                name=name,
+                pyname=pyname,
+                module_name=module_entry.module_name
                 if module_entry is not None
                 else "",
-                "project_name": convention.project_layout.project_name
+                project_name=convention.project_layout.project_name
                 if convention.project_layout is not None
                 else convention.file_path.parent.name,
-                "convention": convention,
-                "scope_chain": (),
-                "class_chain": (),
-                "child_scope": cls._child_scope_for(child_scopes, pyname),
-                "rope_workspace": rope_workspace,
-            })
+                convention=convention,
+                scope_chain=(),
+                class_chain=(),
+                child_scope=cls._child_scope_for(child_scopes, pyname),
+                rope_workspace=rope_workspace,
+            )
             record = cls._record(
                 record_options,
                 include_references=include_references,

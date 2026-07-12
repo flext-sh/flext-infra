@@ -104,24 +104,20 @@ class FlextInfraUtilitiesGithubSyncMixin:
                         encoding=c.Cli.ENCODING_DEFAULT,
                     )
                 operations.append(
-                    m.Infra.GithubWorkflowSyncOperation.model_validate(
-                        {
-                            "project": ctx.project_name,
-                            "path": rel_path,
-                            "action": "update",
-                            "reason": "force overwrite ci.yml",
-                        },
+                    m.Infra.GithubWorkflowSyncOperation(
+                        project=ctx.project_name,
+                        path=rel_path,
+                        action="update",
+                        reason="force overwrite ci.yml",
                     ),
                 )
             else:
                 operations.append(
-                    m.Infra.GithubWorkflowSyncOperation.model_validate(
-                        {
-                            "project": ctx.project_name,
-                            "path": rel_path,
-                            "action": "noop",
-                            "reason": "already synced",
-                        },
+                    m.Infra.GithubWorkflowSyncOperation(
+                        project=ctx.project_name,
+                        path=rel_path,
+                        action="noop",
+                        reason="already synced",
                     ),
                 )
         else:
@@ -132,13 +128,11 @@ class FlextInfraUtilitiesGithubSyncMixin:
                     encoding=c.Cli.ENCODING_DEFAULT,
                 )
             operations.append(
-                m.Infra.GithubWorkflowSyncOperation.model_validate(
-                    {
-                        "project": ctx.project_name,
-                        "path": rel_path,
-                        "action": "create",
-                        "reason": "missing ci.yml",
-                    },
+                m.Infra.GithubWorkflowSyncOperation(
+                    project=ctx.project_name,
+                    path=rel_path,
+                    action="create",
+                    reason="missing ci.yml",
                 ),
             )
 
@@ -157,14 +151,12 @@ class FlextInfraUtilitiesGithubSyncMixin:
             if ctx.apply:
                 path.unlink()
             operations.append(
-                m.Infra.GithubWorkflowSyncOperation.model_validate(
-                    {
-                        "project": ctx.project_name,
-                        "path": str(path.relative_to(ctx.project_root)),
-                        "action": "prune",
-                        "reason": "remove non-canonical workflow",
-                    },
-                ),
+                m.Infra.GithubWorkflowSyncOperation(
+                    project=ctx.project_name,
+                    path=str(path.relative_to(ctx.project_root)),
+                    action="prune",
+                    reason="remove non-canonical workflow",
+                )
             )
 
 

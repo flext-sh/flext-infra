@@ -70,11 +70,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         """Run PEP 561 py.typed marker generation."""
 
         def _action() -> int:
-            py_typed: FlextInfraCodegenPyTyped = (
-                FlextInfraCodegenPyTyped.model_validate({
-                    "workspace_root": ctx.workspace_root,
-                })
-            )
+            py_typed = FlextInfraCodegenPyTyped(workspace_root=ctx.workspace_root)
             return py_typed.run()
 
         return self._run_stage(
@@ -93,9 +89,7 @@ class FlextInfraCodegenPipelineStagesMixin:
             FlextInfraCodegenCensus,
             t.SequenceOf[m.Infra.CensusReport],
         ]:
-            census = FlextInfraCodegenCensus.model_validate({
-                "workspace_root": ctx.workspace_root,
-            })
+            census = FlextInfraCodegenCensus(workspace_root=ctx.workspace_root)
             projects = self._state.discovered_projects or None
             return census, census.run(projects=projects)
 
@@ -121,9 +115,9 @@ class FlextInfraCodegenPipelineStagesMixin:
         def _action() -> t.SequenceOf[m.Infra.ScaffoldResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
-            return FlextInfraCodegenScaffolder.model_validate({
-                "workspace_root": ctx.workspace_root,
-            }).run(dry_run=dry_run, projects=projects)
+            return FlextInfraCodegenScaffolder(
+                workspace_root=ctx.workspace_root,
+            ).run(dry_run=dry_run, projects=projects)
 
         def _emit(results: t.SequenceOf[m.Infra.ScaffoldResult]) -> t.JsonMapping:
             self._state.scaffold_results = results
@@ -143,10 +137,10 @@ class FlextInfraCodegenPipelineStagesMixin:
         def _action() -> t.SequenceOf[m.Infra.AutoFixResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
-            return FlextInfraCodegenFixer.model_validate({
-                "workspace_root": ctx.workspace_root,
-                "dry_run": dry_run,
-            }).fix_workspace(projects=projects)
+            return FlextInfraCodegenFixer(
+                workspace_root=ctx.workspace_root,
+                dry_run=dry_run,
+            ).fix_workspace(projects=projects)
 
         def _emit(results: t.SequenceOf[m.Infra.AutoFixResult]) -> t.JsonMapping:
             self._state.fix_results = results
@@ -165,10 +159,8 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         def _action() -> int:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            lazy_init: FlextInfraCodegenLazyInit = (
-                FlextInfraCodegenLazyInit.model_validate({
-                    "workspace_root": ctx.workspace_root,
-                })
+            lazy_init = FlextInfraCodegenLazyInit(
+                workspace_root=ctx.workspace_root,
             )
             return lazy_init.generate_inits(check_only=dry_run)
 
@@ -185,11 +177,8 @@ class FlextInfraCodegenPipelineStagesMixin:
         """Run census (after fixes) and cache reports."""
 
         def _action() -> t.SequenceOf[m.Infra.CensusReport]:
-            census = (
-                self._state.census_service
-                or FlextInfraCodegenCensus.model_validate({
-                    "workspace_root": ctx.workspace_root,
-                })
+            census = self._state.census_service or FlextInfraCodegenCensus(
+                workspace_root=ctx.workspace_root
             )
             projects = self._state.discovered_projects or None
             return census.run(projects=projects)
