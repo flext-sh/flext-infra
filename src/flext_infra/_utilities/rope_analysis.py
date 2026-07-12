@@ -6,6 +6,7 @@ import importlib.util as _importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_infra import settings
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
@@ -448,15 +449,12 @@ class FlextInfraUtilitiesRopeAnalysis:
     ) -> None:
         """Recurse the rope scope tree, appending one entry per child scope."""
         for child in scope.get_scopes():
-            kind = child.get_kind()
-            name = FlextInfraUtilitiesRopeAnalysis._scope_name(child)
             start = child.get_start()
-            line = start if isinstance(start, int) and start > 0 else 1
             definitions.append(
                 m.Infra.ScopeDefinition(
-                    name=name,
-                    kind=kind,
-                    line=line,
+                    name=FlextInfraUtilitiesRopeAnalysis._scope_name(child),
+                    kind=FlextInfraUtilitiesRopeAnalysis._scope_kind(child),
+                    line=start if isinstance(start, int) and start > 0 else 1,
                     is_module_level=is_module_level,
                 ),
             )
@@ -467,15 +465,18 @@ class FlextInfraUtilitiesRopeAnalysis:
             )
 
     @staticmethod
+    def _scope_kind(scope: t.Infra.RopeScope) -> c.Infra.RopeScopeKind:
+        """Map rope's ``get_kind()`` to the typed enum (None -> UNKNOWN)."""
+        raw_kind = scope.get_kind()
+        try:
+            return c.Infra.RopeScopeKind(raw_kind)
+        except ValueError:
+            return c.Infra.RopeScopeKind.UNKNOWN
+
+    @staticmethod
     def _scope_name(scope: t.Infra.RopeScope) -> str:
-        """Return the def/class name backing one rope scope, or empty."""
-        pyobject = scope.pyobject
-        get_name = getattr(pyobject, "get_name", None)
-        if callable(get_name):
-            name = get_name()
-            if isinstance(name, str):
-                return name
-        return ""
+        """Return the def/class name backing one rope scope."""
+        return scope.pyobject.get_name()
 
     @staticmethod
     def get_module_export_names(
@@ -1499,9 +1500,12 @@ class FlextInfraUtilitiesRopeAnalysis:
         """Return a process-wide rope project usable for string parsing."""
         cached = FlextInfraUtilitiesRopeAnalysis._parse_project
         if cached is None:
-            cached = FlextInfraUtilitiesRopeCore.init_rope_project(
-                Path("/home/marlonsc/flext"),
-            )
+            # mro-o6h5 (agent: kimi) — root-cause fix: the anchor was a hardcoded
+            # operator path that crashed CI (FileNotFoundError) and silently bound
+            # the parse project to the wrong tree locally. Anchor on the validated
+            # settings SSOT, with cwd as last resort — both exist where CLI runs.
+            anchor = settings.Infra.workspace_root or Path.cwd()
+            cached = FlextInfraUtilitiesRopeCore.init_rope_project(anchor)
             FlextInfraUtilitiesRopeAnalysis._parse_project = cached
         return cached
 
