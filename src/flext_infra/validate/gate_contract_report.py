@@ -140,17 +140,12 @@ class FlextInfraGateContractReportMixin:
             for script in gate_scripts
             if self._severity_count(script, c.Infra.GateSeverity.ERROR.value) == 0
         )
-        summary: FlextInfraGateContractModels.Summary = (
-            FlextInfraGateContractModels.Summary.model_validate(
-                {
-                    "errors": errors,
-                    "gate_scripts": len(gate_scripts),
-                    "ok": ok,
-                    "warnings": warnings,
-                },
-            )
+        return FlextInfraGateContractModels.Summary(
+            errors=errors,
+            gate_scripts=len(gate_scripts),
+            ok=ok,
+            warnings=warnings,
         )
-        return summary
 
     def _write_report(
         self,

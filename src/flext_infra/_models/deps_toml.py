@@ -140,23 +140,23 @@ class FlextInfraModelsDepsToml:
                         return tuple(
                             chain(
                                 (
-                                    FlextInfraModelsDepsToml.Deps.Toml.SetOp.model_validate({
-                                        "key": key,
-                                        "value": value,
-                                    })
+                                    FlextInfraModelsDepsToml.Deps.Toml.SetOp(
+                                        key=key,
+                                        value=value,
+                                    )
                                     for key, value in values
                                 ),
                                 (
-                                    FlextInfraModelsDepsToml.Deps.Toml.ListOp.model_validate({
-                                        "key": key,
-                                        "values": tuple(entries),
-                                    })
+                                    FlextInfraModelsDepsToml.Deps.Toml.ListOp(
+                                        key=key,
+                                        values=tuple(entries),
+                                    )
                                     for key, entries in lists
                                 ),
                                 (
-                                    FlextInfraModelsDepsToml.Deps.Toml.RemoveOp.model_validate({
-                                        "key": key,
-                                    })
+                                    FlextInfraModelsDepsToml.Deps.Toml.RemoveOp(
+                                        key=key,
+                                    )
                                     for key in deprecated_keys
                                 ),
                             ),
