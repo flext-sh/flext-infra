@@ -79,7 +79,7 @@ class FlextInfraLooseTestFunctionDetector:
             return []
         violations: list[m.Infra.LooseTestFunctionViolation] = []
         for definition in FlextInfraUtilitiesRopeAnalysis.scope_definitions(pymodule):
-            if definition.kind != "Function":
+            if definition.kind != FlextInfraConstantsRope.RopeScopeKind.FUNCTION:
                 continue
             if not definition.is_module_level:
                 continue

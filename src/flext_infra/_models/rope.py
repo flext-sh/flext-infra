@@ -13,6 +13,7 @@ from typing import Annotated
 from flext_cli import m
 from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra.constants import c
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
@@ -68,8 +69,8 @@ class FlextInfraModelsRope:
 
         name: Annotated[str, m.Field(description="Definition name")]
         kind: Annotated[
-            str,
-            m.Field(description="Rope scope kind: Function, Class, Comprehension"),
+            c.Infra.RopeScopeKind,
+            m.Field(description="Rope scope kind (Module/Function/Class/Unknown)"),
         ]
         is_module_level: Annotated[
             bool,

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from enum import StrEnum, unique
 from typing import Final
 
 from flext_cli import p
@@ -14,6 +15,24 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 class FlextInfraConstantsRope:
     """Rope Project configuration constants — accessed via c.Infra.*."""
+
+    @unique
+    class RopeScopeKind(StrEnum):
+        """Semantic scope kinds returned by rope's ``PyScope.get_kind()``.
+
+        Rope emits ``"Module"``/``"Function"``/``"Class"`` for those scopes and
+        ``None`` for comprehension (temporary) scopes; ``UNKNOWN`` is the
+        canonical fallback for that ``None`` so the contract stays typed.
+        """
+
+        MODULE = "Module"
+        "Module (global) scope."
+        FUNCTION = "Function"
+        "Function or method scope."
+        CLASS = "Class"
+        "Class scope."
+        UNKNOWN = "Unknown"
+        "Fallback for rope comprehension/temporary scopes (get_kind() is None)."
 
     SYNTAX_ERRORS: Final[tuple[type[BaseException], ...]] = (
         SyntaxError,
