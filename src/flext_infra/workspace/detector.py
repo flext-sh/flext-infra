@@ -57,15 +57,15 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[m.Infra.WorkspaceSpec].fail(
                 loaded.error or f"invalid workspace manifest: {manifest_path}",
             )
-        validated = r.from_validation(
-            loaded.value.data,
-            m.Infra.WorkspaceSpec,
-        )
-        if validated.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                f"invalid workspace manifest {manifest_path}: {validated.error}",
+        try:
+            # mro-i6nq.10: Validate the pure config model at its loading boundary.
+            validated = m.Infra.WorkspaceSpec.model_validate(loaded.value.data)
+        except c.ValidationError as exc:
+            return r[m.Infra.WorkspaceSpec].fail_op(
+                f"workspace manifest model validation ({manifest_path})",
+                exc,
             )
-        return r[m.Infra.WorkspaceSpec].ok(validated.value)
+        return r[m.Infra.WorkspaceSpec].ok(validated)
 
     @staticmethod
     def _validate_local_repository(

@@ -498,8 +498,8 @@
         "entries": {
           "type": "array",
           "$comment": "NOTE(mro-wkii.19.1): U18 keeps one base/config/settings composition path with no access proxies.",
-          "minItems": 57,
-          "maxItems": 57,
+          "minItems": 53,
+          "maxItems": 53,
           "uniqueItems": true,
           "contains": {
             "type": "object",
@@ -705,10 +705,15 @@
           ]
         },
         "profile": {
+          "type": [
+            "string",
+            "null"
+          ],
           "enum": [
             "workspace-root",
             "workspace-member",
-            "standalone"
+            "standalone",
+            null
           ]
         }
       },
@@ -811,12 +816,10 @@
             "properties": {
               "state": {
                 "const": "content-only"
+              },
+              "profile": {
+                "const": null
               }
-            },
-            "not": {
-              "required": [
-                "profile"
-              ]
             }
           }
         }

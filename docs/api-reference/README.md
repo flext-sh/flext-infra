@@ -19,7 +19,7 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfraServiceBase`, `FlextInfraEnforcementPytestPlugin`, `FlextInfraTypes`, `FlextInfra`, `FlextInfraProjectSelectionServiceBase`, `FlextInfraCli` (+6 more)
+- Primary facades: `FlextInfraSettings`, `FlextInfraProjectSelectionServiceBase`, `FlextInfraServiceBase`, `FlextInfraModels`, `FlextInfraConstants`, `FlextInfraConfig` (+7 more)
 - Generated module pages: `10`
 
 - [Back to project docs](../index.md)

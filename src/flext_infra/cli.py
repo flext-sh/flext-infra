@@ -5,20 +5,20 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_cli import cli as cli_facade, p as cli_p
+from flext_cli import cli as cli_facade
 from flext_core import r
 from flext_infra._constants.cli_routes import (
     CODEGEN_ROUTES as _ROUTES_CODEGEN,
     VALIDATE_ROUTES as _ROUTES_VALIDATE,
     WORKSPACE_ROUTES as _ROUTES_WORKSPACE,
 )
-from flext_infra._settings import FlextInfraSettings
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.models import m
     from flext_infra.protocols import p
     from flext_infra.typings import t
 
@@ -34,15 +34,19 @@ class FlextInfraCli(type(cli_facade)):
         **_ROUTES_CODEGEN,
         **_ROUTES_VALIDATE,
         **_ROUTES_WORKSPACE,
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): operational route
+        # composition belongs to cli; constants remain declaration-only.
+        c.Infra.CLI_GROUP_CODEGEN: (
+            m.Cli.ResultCommandRoute(
+                name="conform",
+                help_text="Conform generated project and workspace files",
+                model_cls=m.Infra.CodegenConformRequest,
+                handler=FlextInfraCodegenConform.execute_request,
+                success_message="project conformance complete",
+            ),
+            *_ROUTES_CODEGEN[c.Infra.CLI_GROUP_CODEGEN],
+        ),
     }
-
-    @staticmethod
-    def _cli_settings() -> cli_p.Cli.Settings:
-        """Cli settings via the canonical cli facade."""
-        # NOTE (multi-agent): ``cli_facade.settings`` is the core FlextSettings
-        # singleton; the CLI protocol requires debug + cli_* scalars, satisfied
-        # by the infra settings singleton (FlextCliSettings subclass).
-        return FlextInfraSettings.fetch_global()
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""

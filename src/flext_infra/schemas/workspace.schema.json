@@ -211,7 +211,8 @@
           "format": "uri"
         },
         "workspace_root_rel": {
-          "$ref": "#/$defs/relativePath"
+          "type": "string",
+          "pattern": "^(?:\\.|\\.\\.(?:/\\.\\.)*)$"
         },
         "year": {
           "type": "integer",

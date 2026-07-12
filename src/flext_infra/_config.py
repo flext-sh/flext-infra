@@ -1,8 +1,4 @@
-"""FlextInfraConfig — frozen config singleton for flext-infra (ADR-005 §7).
-
-Model-less: business rules live in ``config/*.yaml`` under the ``Infra:`` key and
-are exposed through the open ``config.Infra`` namespace (``extra="allow"``), with
-no per-domain model. Access is ``config.Infra.<domain>[<key>...]``.
+"""Typed, frozen config singleton for flext-infra (ADR-005/U18).
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,21 +6,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import FlextCliConfig
-
-
-class _InfraNamespace(BaseModel):
-    """Open, frozen namespace exposing every ``config/*.yaml`` domain model-less."""
-
-    model_config = ConfigDict(extra="allow", frozen=True)
+from flext_infra._models.config import FlextInfraConfigModels
 
 
 class FlextInfraConfig(FlextCliConfig):
-    """Infra config auto-loaded model-less from ``config/*.yaml``."""
+    """Declarative flext-infra config loaded and validated once."""
 
-    Infra: _InfraNamespace = _InfraNamespace()
+    # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct
+    # config.Infra is the only codegen information surface; no accessor method.
+    CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parent / "config")
+    Infra: FlextInfraConfigModels.Infra
 
 
 config: FlextInfraConfig = FlextInfraConfig.fetch_global()

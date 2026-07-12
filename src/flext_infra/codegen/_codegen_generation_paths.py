@@ -13,16 +13,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenGenerationPathsMixin:
     """Path and root-publication helper methods."""
 
-    @staticmethod
-    def _uses_direct_bootstrap(current_pkg: str) -> bool:
-        """Return whether a package bootstraps the lazy runtime itself."""
-        return current_pkg in {"flext_core._lazy_parts", "flext_core._typings"}
-
-    @staticmethod
-    def _uses_static_child_map(current_pkg: str) -> bool:
-        """Return whether child exports are already fully enumerated statically."""
-        return current_pkg == "flext_core" or current_pkg.startswith("flext_core.")
-
+    # mro-i6nq.10: Only canonical path/publication decisions remain here.
     @staticmethod
     def _is_module_or_package_export(attr_name: str) -> bool:
         """Return whether an entry exports a module or package name."""

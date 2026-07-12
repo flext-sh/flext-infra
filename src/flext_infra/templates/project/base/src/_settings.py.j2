@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_settings import SettingsConfigDict
@@ -14,7 +15,6 @@ from pydantic_settings import SettingsConfigDict
 from flext_core import FlextSettings
 from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSettings
 from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
-from {{ package_name }}._utilities.settings import {{ class_stem }}UtilitiesSettings
 
 if TYPE_CHECKING:
     from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
@@ -29,7 +29,7 @@ class _{{ class_stem }}Settings(
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix={{ class_stem }}ConstantsSettings.ENV_PREFIX,
         env_nested_delimiter="__",
-        env_file={{ class_stem }}UtilitiesSettings.env_file(__file__),
+        env_file=str(Path(__file__).resolve().parents[2] / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         frozen=True,

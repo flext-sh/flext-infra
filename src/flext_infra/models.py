@@ -15,7 +15,7 @@ from flext_infra._models.basemk import FlextInfraModelsBasemk
 from flext_infra._models.census import FlextInfraModelsCensus
 from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.codegen import FlextInfraModelsCodegen
-from flext_infra._models.codegen_conform import FlextInfraModelsCodegenConform
+from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._models.docs import FlextInfraModelsDocs
 from flext_infra._models.gates import FlextInfraModelsGates
@@ -39,7 +39,7 @@ class FlextInfraModels(m):
         # NOTE (multi-agent, mro-wkii.17 / agent: codex): conform contracts are
         # isolated from the active detector work in _models/codegen.py while
         # remaining exposed through the single public m.Infra facade.
-        FlextInfraModelsCodegenConform,
+        FlextInfraConfigModels,
         FlextInfraModelsCodegen,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,

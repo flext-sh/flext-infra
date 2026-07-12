@@ -32,6 +32,40 @@ project:
   documentation: {{ documentation | tojson }}
   workspace_root_rel: {{ workspace_root_rel | tojson }}
   year: {{ year }}
-members: []
-content_only: []
-exclusions: []
+# NOTE (multi-agent, mro-wkii.17 / agent: codex): the typed manifest context is
+# the sole topology owner; every declared member/exclusion round-trips here.
+members:
+{% for repository in workspace_repositories %}
+  - name: {{ repository.name | tojson }}
+    distribution: {{ repository.distribution | tojson }}
+    provider: {{ repository.provider | tojson }}
+    url: {{ repository.url | tojson }}
+    branch: {{ repository.branch | tojson }}
+    path: {{ repository.path | tojson }}
+    role: {{ repository.role | tojson }}
+    state: {{ repository.state | tojson }}
+    profile: {{ repository.profile | tojson }}
+{% else %}
+  []
+{%- endfor %}
+content_only:
+{% for repository in workspace_content_only %}
+  - name: {{ repository.name | tojson }}
+    distribution: {{ repository.distribution | tojson }}
+    provider: {{ repository.provider | tojson }}
+    url: {{ repository.url | tojson }}
+    branch: {{ repository.branch | tojson }}
+    path: {{ repository.path | tojson }}
+    role: {{ repository.role | tojson }}
+    state: {{ repository.state | tojson }}
+    profile: {{ repository.profile | tojson }}
+{% else %}
+  []
+{%- endfor %}
+exclusions:
+{% for exclusion in workspace_exclusions %}
+  - path: {{ exclusion.path | tojson }}
+    reason: {{ exclusion.reason | tojson }}
+{% else %}
+  []
+{%- endfor %}

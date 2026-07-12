@@ -29,7 +29,7 @@ keywords = [ "clean-architecture", "ddd", "flext", "integration", "typed" ]
 license = "{{ license }}"
 name = "{{ dist }}"
 readme = "README.md"
-requires-python = ">=3.13.11,<3.14"
+requires-python = "{{ python_required_version }}"
 version = "{{ version }}"
 
 [[project.authors]]
@@ -540,7 +540,7 @@ all = true
 in_place = true
 sort_first = [ "build-system", "project", "tool" ]
 [tool.uv]
-required-version = "==0.11.28"
+required-version = "{{ uv_required_version }}"
 
 {% if make_profile == "workspace-root" %}
 {% for repository in workspace_repositories %}

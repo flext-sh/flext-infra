@@ -4,23 +4,14 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# NOTE (multi-agent, mro-wkii.19.1): utilities expose source composition only, never config/settings access proxies. #}
+{# NOTE (multi-agent, mro-wkii.17): no config/settings intermediary is generated. #}
 from __future__ import annotations
 
 from {{ upstream }} import u
 
-from {{ package_name }}._utilities.config import {{ class_stem }}UtilitiesConfig
-from {{ package_name }}._utilities.settings import {{ class_stem }}UtilitiesSettings
-
 
 class {{ class_stem }}Utilities(u):
     """{{ class_stem }} utilities extending the upstream facade."""
-
-    class {{ ns }}(
-        {{ class_stem }}UtilitiesConfig,
-        {{ class_stem }}UtilitiesSettings,
-    ):
-        """Complete {{ ns }} utility namespace."""
 
 
 u = {{ class_stem }}Utilities

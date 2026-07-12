@@ -4,18 +4,19 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# NOTE (multi-agent, mro-wkii.19.1): one MRO namespace composes domain, config, and settings declarations. #}
+{# NOTE (multi-agent, mro-wkii.19.1 + mro-wkii.17): one MRO namespace composes
+   project declarations over the CLI model facade required by the generated router. #}
 from __future__ import annotations
 
-from {{ upstream }} import m
+from flext_cli import FlextCliModels
 
 from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
 from {{ package_name }}._models.ping import {{ class_stem }}ModelsPing
 from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
 
 
-class {{ class_stem }}Models(m):
-    """{{ class_stem }} models extending the upstream facade."""
+class {{ class_stem }}Models(FlextCliModels):
+    """{{ class_stem }} models extending the CLI model facade."""
 
     class {{ ns }}(
         {{ class_stem }}ModelsPing,

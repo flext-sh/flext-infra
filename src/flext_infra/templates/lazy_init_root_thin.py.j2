@@ -7,16 +7,24 @@ from typing import TYPE_CHECKING
 {% if runtime_import_lines %}
 {{ runtime_import_lines }}
 {%- endif %}
+{# mro-i6nq.10: Emit child-merge dependencies only when the plan consumes them. #}
+{% if has_child_paths %}
 from {{ current_pkg }}.__unit__ import CHILD_MODULE_PATHS as _CHILD_MODULE_PATHS
 from {{ current_pkg }}.__unit__ import EXCLUDED_LAZY_NAMES as _EXCLUDED_LAZY_NAMES
+{% endif %}
 from {{ current_pkg }}.__unit__ import LAZY_ALIAS_GROUPS as _LAZY_ALIAS_GROUPS
 from {{ current_pkg }}.__unit__ import LAZY_MODULES as _LAZY_MODULES
+
+# mro-i6nq.10: The root consumes the manifest's single public-export contract.
 from {{ current_pkg }}.__unit__ import __all__ as __all__
 from flext_core.lazy import (
     build_lazy_import_map,
     install_lazy_exports,
+{% if has_child_paths %}
     merge_lazy_imports,
+{% endif %}
 )
+
 {% if type_checking_lines %}
 {{ type_checking_lines }}
 {%- endif %}

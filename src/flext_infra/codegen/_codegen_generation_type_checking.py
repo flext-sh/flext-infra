@@ -70,7 +70,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         attr_name: str,
         root_name: str,
     ) -> bool:
-        """Return whether a module-style export is redundant in TYPE_CHECKING."""
+        """Return whether a symbol import is a redundant root self-import."""
         if export_name in c.Infra.ALIAS_NAMES or not export_name:
             return False
         if export_name in {"cli", "main", "infra"}:
@@ -78,9 +78,8 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         if export_name != export_name.lower():
             return False
         if not attr_name:
-            if export_name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS:
-                return False
-            return export_name == mod.rsplit(".", maxsplit=1)[-1]
+            # mro-i6nq.10: Literal __all__ requires every module alias binding.
+            return False
         # A lowercase ``from mod import name`` (package-name alias like ``grpc``
         # or a module-level function like ``smell_fixer_for``) is a real symbol
         # that must stay statically visible; only skip a redundant self-import

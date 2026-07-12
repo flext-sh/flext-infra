@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import FlextConfig
 from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
-from {{ package_name }}._utilities.config import {{ class_stem }}UtilitiesConfig
 
 if TYPE_CHECKING:
     from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 class _{{ class_stem }}Config(FlextConfig, {{ class_stem }}ConfigModels.ConfigRoot):
     """Private source loader composed with the validated config root."""
 
-    CONFIG_DIR: ClassVar[str] = {{ class_stem }}UtilitiesConfig.source_directory(
-        __file__,
+    CONFIG_DIR: ClassVar[str] = str(
+        Path(__file__).resolve().parents[2] / "config",
     )
 
 

@@ -24,6 +24,10 @@ from flext_infra.__version__ import (
 if TYPE_CHECKING:
     from flext_cli import d as d, e as e, h as h, r as r, x as x
     from flext_infra import basemk
+    from flext_infra._config import (
+        FlextInfraConfig as FlextInfraConfig,
+        config as config,
+    )
     from flext_infra._fixtures.enforcement import (
         FlextInfraEnforcementPytestPlugin as FlextInfraEnforcementPytestPlugin,
     )
@@ -54,6 +58,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
     ("._enforcement",),
     build_lazy_import_map(
         {
+            "._config": ("FlextInfraConfig", "config"),
             "._settings": ("FlextInfraSettings", "settings"),
             "._enforcement.collection_base": (
                 "FlextInfraEnforcementCollectionBase",
@@ -137,6 +142,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
 __all__: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
+    "FlextInfraConfig",
     "FlextInfraConstants",
     "FlextInfraEnforcementPytestPlugin",
     "FlextInfraModels",
@@ -157,6 +163,7 @@ __all__: tuple[str, ...] = (
     "__version_info__",
     "basemk",
     "c",
+    "config",
     "d",
     "docs_main",
     "e",

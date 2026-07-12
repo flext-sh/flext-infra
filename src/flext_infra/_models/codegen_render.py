@@ -23,6 +23,11 @@ class FlextInfraModelsCodegenRender:
         current_pkg: t.NonEmptyStr = m.Field(
             description="Importable project-root package name.",
         )
+        # mro-i6nq.10: Static bindings make the manifest's literal __all__ valid.
+        type_checking_lines: str = m.Field(
+            default_factory=str,
+            description="Derived TYPE_CHECKING imports for manifest exports.",
+        )
         lazy_module_groups: t.StrSequencePairSequence = m.Field(
             default_factory=tuple,
             description="Lazy imports grouped by module (module -> names).",

@@ -106,122 +106,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Skipped file accumulator"),
         ]
 
-    class ProjectTemplateEntry(m.ArbitraryTypesModel):
-        """One manifest row: template → tokenized output path, by kind."""
-
-        relpath_template: Annotated[
-            str,
-            m.Field(description="Template path relative to templates project dir"),
-        ]
-        output_relpath: Annotated[
-            str,
-            m.Field(
-                description=(
-                    "Output relpath with {token} placeholders resolved from rope"
-                ),
-            ),
-        ]
-        kinds: Annotated[
-            frozenset[c.Infra.ProjectKind],
-            m.Field(description="Project kinds this entry applies to"),
-        ]
-        delegate: Annotated[
-            str,
-            m.Field(
-                default="render", description="render|lazy_init|version_file|basemk"
-            ),
-        ] = "render"
-        overwrite: Annotated[
-            bool,
-            m.Field(default=False, description="Overwrite existing destination"),
-        ] = False
-
-        def to_cli(self, ctx: t.StrMapping) -> m.Cli.TemplateRenderEntry:
-            """Resolve output-path tokens and build the cli engine entry.
-
-            Raises:
-                KeyError: if a path placeholder is missing from ``ctx`` (caller
-                    records it as a failed entry).
-
-            """
-            return m.Cli.TemplateRenderEntry(
-                relpath_template=Path(self.relpath_template),
-                output_relpath=Path(self.output_relpath.format(**ctx)),
-                overwrite=self.overwrite,
-            )
-
-    class ProjectTemplateManifest(m.ArbitraryTypesModel):
-        """Project-template manifest (data) → cli-engine entries (policy)."""
-
-        entries: Annotated[
-            tuple[FlextInfraModelsCodegen.ProjectTemplateEntry, ...],
-            m.Field(description="Manifest rows"),
-        ]
-
-        @classmethod
-        def from_raw(
-            cls,
-            raw: t.SequenceOf[
-                tuple[str, str, tuple[c.Infra.ProjectKind, ...], str, bool]
-            ],
-        ) -> FlextInfraModelsCodegen.ProjectTemplateManifest:
-            """Build a manifest from the ``c.Infra.PROJECT_TEMPLATE_ENTRIES`` rows."""
-            return cls(
-                entries=tuple(
-                    FlextInfraModelsCodegen.ProjectTemplateEntry(
-                        relpath_template=rel,
-                        output_relpath=out,
-                        kinds=frozenset(kinds),
-                        delegate=delegate,
-                        overwrite=overwrite,
-                    )
-                    for rel, out, kinds, delegate, overwrite in raw
-                ),
-            )
-
-        def entries_for(
-            self,
-            kind: c.Infra.ProjectKind,
-            ctx: t.StrMapping,
-        ) -> tuple[m.Cli.TemplateRenderEntry, ...]:
-            """Cli-engine entries applicable to ``kind`` with resolved paths."""
-            resolved: list[m.Cli.TemplateRenderEntry] = []
-            for entry in self.entries:
-                if entry.delegate != "render" or kind not in entry.kinds:
-                    continue
-                resolved.append(entry.to_cli(ctx))
-            return tuple(resolved)
-
-        def render_count(self, kind: c.Infra.ProjectKind) -> int:
-            """Count render-delegated entries for ``kind`` (planning/dry-run)."""
-            return sum(
-                1 for e in self.entries if e.delegate == "render" and kind in e.kinds
-            )
-
-    class ProjectNewResult(
-        mm.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
-        """Result of ``codegen new`` for one project."""
-
-        kind: Annotated[c.Infra.ProjectKind, m.Field(description="Project kind")]
-        root: Annotated[Path, m.Field(description="Generated project root")]
-        files_created: Annotated[
-            t.StrSequence,
-            m.Field(default_factory=tuple, description="Created file paths"),
-        ]
-        files_skipped: Annotated[
-            t.StrSequence,
-            m.Field(default_factory=tuple, description="Skipped file paths"),
-        ]
-        failed: Annotated[
-            tuple[tuple[str, str], ...],
-            m.Field(
-                default_factory=tuple,
-                description="(path, error) failures during render",
-            ),
-        ]
-
     class AutoFixResult(
         mm.ProjectNameMixin,
         m.ArbitraryTypesModel,
@@ -361,6 +245,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class LazyInitPackageContext(m.ArbitraryTypesModel):
         """Declarative package context for one lazy-init directory."""
 
+        # mro-i6nq.10: Render strategy is derived by the generator, not stored.
         pkg_dir: Path = m.Field(description="Directory being processed.")
         init_path: Path = m.Field(description="Target __init__.py path.")
         current_pkg: str = m.Field(description="Importable package name.")
@@ -377,17 +262,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 description="Whether the directory resolves to an importable package.",
             ),
         ] = False
-        is_project_root: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether this package is a project src root "
-                    "(no dot in name and not a non-public surface root); "
-                    "roots emit ``__unit__.py`` + a thin lazy ``__init__.py``."
-                ),
-            ),
-        ] = False
-
     class LazyInitPlan(m.ArbitraryTypesModel):
         """Fully resolved lazy-init action and render payload.
 
