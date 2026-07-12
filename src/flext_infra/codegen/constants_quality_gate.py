@@ -37,8 +37,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     def build_report(self) -> p.Result[t.Infra.ContainerDict]:
         """Execute quality gate and return structured report payload."""
-        FlextInfraCodegenLazyInit.model_validate(
-            {"workspace_root": self.workspace_root},
+        FlextInfraCodegenLazyInit(
+            workspace_root=self.workspace_root,
         ).generate_inits()
         census_report = FlextInfraRefactorCensus(
             workspace_root=self.workspace_root,

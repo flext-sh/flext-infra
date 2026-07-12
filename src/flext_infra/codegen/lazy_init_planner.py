@@ -105,9 +105,9 @@ class FlextInfraCodegenLazyInitPlanner(
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,
             f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
-            export_options=m.Infra.ExportOptions.model_validate({
-                "include_dunder": True,
-            }),
+            export_options=m.Infra.ExportOptions(
+                include_dunder=True,
+            ),
         )
         child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
         # Version-submodule dunders are emitted as eager imports rather than

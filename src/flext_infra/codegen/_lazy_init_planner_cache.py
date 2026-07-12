@@ -55,9 +55,9 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         return frozenset(
             self.rope_workspace.exports(
                 init_path,
-                export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_assignments": True,
-                }),
+                export_options=m.Infra.ExportOptions(
+                    allow_assignments=True,
+                ),
             ),
         )
 

@@ -84,11 +84,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         ))
         runtime_alias_names: list[str] = []
         if is_test_runtime_alias_surface:
-            for alias_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
-                if not isinstance(alias_name, str):
-                    msg = f"Invalid runtime alias name: {alias_name!r}"
-                    raise TypeError(msg)
-                runtime_alias_names.append(alias_name)
+            runtime_alias_names = list(c.Infra.TEST_RUNTIME_ALIAS_TARGETS)
         alias_names = tuple(
             dict.fromkeys((
                 *self.lazy_init.inherited_exports.get(inherited_key, ()),
@@ -167,9 +163,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 if module_file.is_file() and alias_name in self._module_exports(
                     module_file,
                     module_name,
-                    export_options=m.Infra.ExportOptions.model_validate({
-                        "allow_assignments": True,
-                    }),
+                    export_options=m.Infra.ExportOptions(
+                        allow_assignments=True,
+                    ),
                 ):
                     lazy_map[alias_name] = (module_name, alias_name)
                     break
@@ -177,9 +173,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                     package_exports = self._module_exports(
                         package_dir / c.Infra.INIT_PY,
                         module_name,
-                        export_options=m.Infra.ExportOptions.model_validate({
-                            "allow_assignments": True,
-                        }),
+                        export_options=m.Infra.ExportOptions(
+                            allow_assignments=True,
+                        ),
                     )
                     if alias_name in package_exports:
                         lazy_map[alias_name] = (module_name, alias_name)

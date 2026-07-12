@@ -61,7 +61,13 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if package_entry is None:
             return {}
         index: t.MutableLazyAliasMap = {}
-        skip_names = {c.Infra.INIT_PY, "__main__.py", self._version_module_name}
+        # mro-i6nq.10: Generated support modules are output, never public input.
+        skip_names = {
+            c.Infra.INIT_PY,
+            c.Infra.UNIT_PY,
+            "__main__.py",
+            self._version_module_name,
+        }
         for module_entry in package_entry.modules:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
@@ -88,14 +94,14 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             targets = self._module_exports(
                 py_file,
                 convention.module_name,
-                export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_main": policy.allow_main_export,
-                    "allow_assignments": (
+                export_options=m.Infra.ExportOptions(
+                    allow_main=policy.allow_main_export,
+                    allow_assignments=(
                         policy.allow_type_alias or policy.expected_alias is not None
                     ),
-                    "allow_functions": policy.is_fixture_module,
-                    "require_explicit_all": require_explicit_all,
-                }),
+                    allow_functions=policy.is_fixture_module,
+                    require_explicit_all=require_explicit_all,
+                ),
             )
             if require_explicit_all and not targets:
                 msg = (
@@ -120,8 +126,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 self._add(index, py_file.stem, (module_entry.module_name, ""))
                 continue
             for name, target in targets.items():
-                if isinstance(target, tuple):
-                    self._add(index, name, target)
+                self._add(index, name, target)
         return index
 
     def _module_exports(
