@@ -159,10 +159,7 @@ if TYPE_CHECKING:
         TestsFlextInfraCliWhatSelector as TestsFlextInfraCliWhatSelector,
     )
     from tests.unit.codegen.lazy_init_generation_tests import (
-        TestGenerateFile as TestGenerateFile,
-        TestGenerateTypeChecking as TestGenerateTypeChecking,
-        TestLazyInitPlannerCollision as TestLazyInitPlannerCollision,
-        TestRunRuffFix as TestRunRuffFix,
+        TestsFlextInfraCodegenGeneration as TestsFlextInfraCodegenGeneration,
     )
     from tests.unit.codegen.lazy_init_helpers_tests import (
         TestsFlextInfraLazyInitHelpers as TestsFlextInfraLazyInitHelpers,
