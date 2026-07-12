@@ -184,13 +184,16 @@ class FlextInfraInternalSyncRepoMixin:
 
     def workspace_root_from_env(self, project_root: Path) -> Path | None:
         """Resolve workspace root from environment when valid for project root."""
+        # NOTE (multi-agent): settings carry flat env scalars (§2.6), so the
+        # FLEXT_WORKSPACE_ROOT string is converted to Path at the consumer.
         candidate = FlextInfraSettings.fetch_global().Infra.workspace_root
         if candidate is None:
             return None
-        if not candidate.exists() or not candidate.is_dir():
+        candidate_path = Path(candidate)
+        if not candidate_path.exists() or not candidate_path.is_dir():
             return None
-        if project_root.is_relative_to(candidate):
-            return candidate
+        if project_root.is_relative_to(candidate_path):
+            return candidate_path
         return None
 
     @staticmethod
