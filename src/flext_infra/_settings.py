@@ -11,11 +11,10 @@ from __future__ import annotations
 
 import re
 from importlib.metadata import version
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from pydantic import BaseModel, Field, field_validator
-from pydantic_settings import SettingsConfigDict
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from flext_cli import FlextCliSettings
 
@@ -29,8 +28,11 @@ class FlextInfraSettings(FlextCliSettings):
         extra="ignore",
     )
 
-    class _Infra(BaseModel):
+    class _Infra(BaseSettings):
         """Namespaced infra workspace + dependency settings."""
+
+        # mro-wkii.4.15: Nested settings resolve external aliases once.
+        model_config = SettingsConfigDict(extra="ignore")
 
         standalone: Annotated[
             bool,
@@ -111,20 +113,6 @@ class FlextInfraSettings(FlextCliSettings):
                 description="Default version stamped into generated project pyproject (from flext-infra metadata).",
             ),
         ]
-
-        @field_validator("workspace_root", mode="before")
-        @classmethod
-        def _coerce_workspace_root(cls, value: str | None) -> str | None:
-            """Coerce workspace root to a resolved absolute path string."""
-            if value is None:
-                return None
-            # NOTE(mro-wkii.14, agent codegen): pyrefly unnecessary-type-conversion —
-            # apos o guard None, value ja e str; str(value) removido (gate exigido
-            # para commitar este arquivo verde; sem mudanca de comportamento).
-            text = value.strip()
-            if not text:
-                return None
-            return str(Path(text).expanduser().resolve())
 
     if TYPE_CHECKING:
         Infra: _Infra
