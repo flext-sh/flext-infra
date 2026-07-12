@@ -19,6 +19,11 @@ class FlextInfraRefactorRuleLoader:
     def __init__(self, config_path: Path) -> None:
         """Initialize loader state with one config path."""
         self.config_path = config_path
+        # NOTE (multi-agent): orchestrator dispatch/scope mixins pass this
+        # mapping to u.Infra.collect_refactor_*_files; it is populated by
+        # load_config() and must stay on the loader (commit 0d1e1b7d dropped
+        # it and broke those call sites).
+        self.settings: t.MappingKV[str, t.Infra.InfraValue] = {}
         self.rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorRuleKind]
         ] = []
@@ -35,7 +40,7 @@ class FlextInfraRefactorRuleLoader:
             allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
         )
         if result.success:
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 dict(result.value),
             )
             u.Cli.info(f"Loaded settings from {self.config_path}")
