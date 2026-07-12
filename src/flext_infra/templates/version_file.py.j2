@@ -1,5 +1,6 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Package version and metadata for {{ project_name }}.
+{# NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): render the retained source model directly. #}
+"""Package version and metadata for {{ metadata.name }}.
 
 Subclass of ``FlextVersion`` — overrides only ``_metadata``.
 All derived attributes (``__version__``, ``__title__``, etc.) are
@@ -17,9 +18,9 @@ from flext_core.__version__ import FlextVersion
 
 
 class {{ class_name }}(FlextVersion):
-    """{{ project_name }} version — MRO-derived from FlextVersion."""
+    """{{ metadata.name }} version — MRO-derived from FlextVersion."""
 
-    _metadata: PackageMetadata = metadata("{{ project_name }}")
+    _metadata: PackageMetadata = metadata("{{ metadata.name }}")
 
 
 __version__ = {{ class_name }}.__version__

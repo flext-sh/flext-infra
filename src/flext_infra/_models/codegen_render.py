@@ -9,7 +9,7 @@ from flext_infra.typings import t
 
 
 class FlextInfraModelsCodegenRender:
-    """Typed render contexts for generated lazy-init files."""
+    """Typed render contexts for generated codegen artifacts."""
 
     # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner): keep the
     # module-skeleton template boundary model-backed and immutable.
@@ -27,12 +27,54 @@ class FlextInfraModelsCodegenRender:
         base_import_block: str = m.Field(description="Rendered base import block.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
 
+    # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): retain the exact
+    # upstream metadata object and declare only the derived version-class delta.
+    class VersionFileRenderContext(m.ContractModel):
+        """Validated context for one generated version module."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            frozen=True,
+        )
+
+        metadata: m.ProjectMetadata = m.Field(
+            description="Canonical source project metadata.",
+        )
+        class_name: t.NonEmptyStr = m.Field(description="Generated version class name.")
+
+    # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the docs
+    # renderer sends one immutable model directly to the flext-cli boundary.
+    class MkdocsRenderContext(m.ContractModel):
+        """Validated common context for a generated MkDocs configuration."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            frozen=True,
+            strict=True,
+            str_strip_whitespace=False,
+        )
+
+        site_title: t.NonEmptyStr = m.Field(description="Rendered site title.")
+        site_url: t.NonEmptyStr = m.Field(description="Published site URL.")
+        repo_url: t.NonEmptyStr = m.Field(description="Source repository URL.")
+        repo_name: t.NonEmptyStr = m.Field(description="Source repository name.")
+        exclude_docs_block: str = m.Field(description="Rendered docs exclusions.")
+        exclude_plugin_block: str = m.Field(description="Rendered plugin exclusions.")
+        mkdocstrings_paths_block: str = m.Field(
+            description="Rendered mkdocstrings source paths.",
+        )
+
+    class MkdocsProjectRenderContext(MkdocsRenderContext):
+        """Validated MkDocs context with a project edit scope."""
+
+        scope_name: t.NonEmptyStr = m.Field(description="Workspace project scope.")
+
     class LazyInitUnitManifestRender(m.ArbitraryTypesModel):
         """Template context for a package ``__unit__.py`` manifest."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
-            validate_assignment=True,
+            frozen=True,
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
@@ -65,7 +107,7 @@ class FlextInfraModelsCodegenRender:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
-            validate_assignment=True,
+            frozen=True,
         )
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")

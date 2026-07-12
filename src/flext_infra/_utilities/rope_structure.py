@@ -243,7 +243,8 @@ class FlextInfraUtilitiesRopeStructure:
             for part in inner.split(",")
             if (stripped_part := part.strip())
             if (
-                terminal := stripped_part.split("[", maxsplit=1)[0]
+                terminal := stripped_part
+                .split("[", maxsplit=1)[0]
                 .strip()
                 .rsplit(".", maxsplit=1)[-1]
             )

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import fnmatch
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_cli import u
 from flext_infra.constants import c
+from flext_infra.models import m
 
 if TYPE_CHECKING:
-    from flext_infra.models import m
     from flext_infra.typings import t
 
 
@@ -429,18 +430,16 @@ class FlextInfraUtilitiesDocsRender:
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
 
-        Renders the canonical ``mkdocs_project.yml.j2`` template via
-        ``FlextInfraCodegenGeneration.get_template`` — single SSOT j2 path
-        shared with the workspace-root variant; theme + plugins + validation
-        macros live in the template, not Python.
+        Renders the canonical ``mkdocs_project.yml.j2`` template through the
+        flext-cli facade shared with the workspace-root variant; theme, plugins,
+        and validation macros live in the template, not Python.
         """
         _ = modules
         data = contract
 
-        template = FlextInfraCodegenGeneration.get_template(
-            c.Infra.TEMPLATE_MKDOCS_PROJECT,
-        )
-        rendered_template: str = template.render(
+        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): preserve one
+        # typed context across the sole public template-rendering boundary.
+        context = m.Infra.MkdocsProjectRenderContext(
             site_title=str(data.get("site_title", "")).strip() or scope.name,
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
@@ -456,7 +455,12 @@ class FlextInfraUtilitiesDocsRender:
                 ("src",),
             ),
         )
-        return rendered_template
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_MKDOCS_PROJECT
+        )
+        return u.Cli.template_render(template_path, context).unwrap()
 
     @staticmethod
     def docs_overview_page(
@@ -544,17 +548,15 @@ class FlextInfraUtilitiesDocsRender:
     ) -> str:
         """Return the managed mkdocs.yml for the workspace root.
 
-        Renders the canonical ``mkdocs_root.yml.j2`` template via
-        ``FlextInfraCodegenGeneration.get_template`` — single SSOT j2 path
-        shared with the per-project variant.
+        Renders the canonical ``mkdocs_root.yml.j2`` template through the
+        flext-cli facade shared with the per-project variant.
         """
         data = contract
 
-        template = FlextInfraCodegenGeneration.get_template(
-            c.Infra.TEMPLATE_MKDOCS_ROOT,
-        )
-        rendered_template: str = template.render(
-            site_title=(str(data.get("site_title", "")).strip() or "FLEXT Workspace"),
+        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): preserve one
+        # typed context across the sole public template-rendering boundary.
+        context = m.Infra.MkdocsRenderContext(
+            site_title=str(data.get("site_title", "")).strip() or "FLEXT Workspace",
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_name=c.Infra.GITHUB_REPO_NAME,
@@ -564,13 +566,16 @@ class FlextInfraUtilitiesDocsRender:
             exclude_plugin_block=FlextInfraUtilitiesDocsRender._render_block(
                 FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data),
             ),
-            # mro-o6h5 (agent: kimi) — root site renders docstrings for every
-            # workspace package: src_paths feeds the mkdocstrings paths block.
             mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block(
                 src_paths,
             ),
         )
-        return rendered_template
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_MKDOCS_ROOT
+        )
+        return u.Cli.template_render(template_path, context).unwrap()
 
     @staticmethod
     def docs_root_overview_page(

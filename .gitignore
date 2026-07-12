@@ -6,6 +6,11 @@
 # Block everything at root level
 /*
 /*/
+
+# Legacy holding pen: migrated tests/examples kept OUT of git and OUT of all
+# lint/typecheck so closed-world dead-code analysis sees only real src usage.
+legado/
+!*.jmx
 !*.jmx
 
 # ============================================================================

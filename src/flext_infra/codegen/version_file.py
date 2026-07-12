@@ -14,13 +14,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_core.__version__ import FlextVersion
 from flext_infra.base import s
-from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.utilities import u
 
 if TYPE_CHECKING:
@@ -42,8 +43,12 @@ class FlextInfraCodegenVersionFile(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Generate __version__.py for each discovered project."""
-        template = FlextInfraCodegenGeneration.get_template(
-            c.Infra.TEMPLATE_VERSION_FILE,
+        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the exact
+        # source metadata model crosses the sole CLI rendering boundary.
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_VERSION_FILE
         )
         discovered = u.Infra.discover_projects(self.workspace_root)
         if not discovered.success:
@@ -68,16 +73,25 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 continue
 
             target = src_pkg / "__version__.py"
-            content = (
-                template.render(
-                    project_name=meta.name,
-                    class_name=class_name,
-                ).rstrip()
-                + "\n"
+            context = m.Infra.VersionFileRenderContext(
+                metadata=meta,
+                class_name=class_name,
             )
+            rendered = u.Cli.template_render(template_path, context)
+            if rendered.failure:
+                return r[bool].fail(
+                    rendered.error or f"version-file: cannot render {target}",
+                )
+            content = rendered.value
 
-            if u.Cli.files_read_text(target).unwrap_or("") == content:
-                continue
+            if target.is_file():
+                current = u.Cli.files_read_text(target)
+                if current.failure:
+                    return r[bool].fail(
+                        current.error or f"version-file: cannot read {target}",
+                    )
+                if current.value == content:
+                    continue
 
             if self.check_only or self.dry_run:
                 u.Cli.info(f"  stale: {target.relative_to(self.workspace_root)}")

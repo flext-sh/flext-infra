@@ -245,7 +245,7 @@ project-excludes = [
   "typings/**",
   "vendor/**",
 ]
-project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
+project-includes = [ "src/**/*.py*" ]
 python-interpreter-path = "../.venv/bin/python"
 python-version = "3.13"
 search-path = [
@@ -374,7 +374,7 @@ exclude = [
   ".venv",
 ]
 extraPaths = [ ".", "src" ]
-include = [ "src", "tests" ]
+include = [ "src" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportArgumentType = "none"
@@ -492,7 +492,7 @@ line-length = 88
 preview = true
 respect-gitignore = true
 show-fixes = true
-src = [ "src", "tests" ]
+src = [ "src" ]
 target-version = "py313"
 
 [tool.ruff.format]
