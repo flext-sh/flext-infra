@@ -209,7 +209,14 @@ class FlextInfraUtilitiesDocsGenerate:
         apply: bool,
         projects: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Generate root workspace docs artifacts from discovered FLEXT projects."""
+        """Generate root workspace docs artifacts from discovered FLEXT projects.
+
+        The root site is an AGGREGATE of every workspace project, so scope
+        discovery always enumerates all projects: honoring a ``projects``
+        filter here would produce a partial aggregate whose prune step
+        deletes the pages of every filtered-out project (mro-o6h5 incident).
+        """
+        _ = projects
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             workspace_root,
         )
@@ -219,7 +226,7 @@ class FlextInfraUtilitiesDocsGenerate:
         )
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root,
-            projects,
+            None,
             c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         scopes = (
@@ -242,8 +249,8 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope.path,
                 scope.package_name,
             )
-            scope_modules[scope.name] = (
-                FlextInfraUtilitiesDocsGenerate._module_names(project_contract)
+            scope_modules[scope.name] = FlextInfraUtilitiesDocsGenerate._module_names(
+                project_contract
             )
             src_dir = scope.path / "src"
             if src_dir.is_dir():
