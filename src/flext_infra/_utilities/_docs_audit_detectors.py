@@ -189,7 +189,16 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                 elif outcome.value.exit_code == 0:
                     continue
                 else:
-                    detail = outcome.value.stdout.strip().splitlines()[-1]
+                    # mro-o6h5 (agent: kimi) — ruff reports parse errors on stderr
+                    # only; indexing an empty stdout crashes with IndexError.
+                    stdout_lines = outcome.value.stdout.strip().splitlines()
+                    stderr_lines = outcome.value.stderr.strip().splitlines()
+                    detail_lines = stdout_lines or stderr_lines
+                    detail = (
+                        detail_lines[-1]
+                        if detail_lines
+                        else f"ruff exit {outcome.value.exit_code}"
+                    )
                 issues.append(
                     m.Infra.AuditIssue(
                         file=rel,
