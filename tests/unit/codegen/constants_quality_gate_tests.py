@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     import pytest
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestConstantsQualityGateCLIDispatch:
@@ -68,10 +68,7 @@ class TestConstantsQualityGateVerdict:
 
     def test_success_verdict_accepts_pass(self) -> None:
         """successful_verdict returns True for PASS."""
-        tm.that(
-            FlextInfraCodegenQualityGate.successful_verdict("PASS"),
-            eq=True,
-        )
+        tm.that(FlextInfraCodegenQualityGate.successful_verdict("PASS"), eq=True)
 
     def test_success_verdict_rejects_conditional_pass(self) -> None:
         """successful_verdict returns False for removed conditional verdicts."""
@@ -82,22 +79,17 @@ class TestConstantsQualityGateVerdict:
 
     def test_success_verdict_rejects_fail(self) -> None:
         """successful_verdict returns False for FAIL."""
-        tm.that(
-            not FlextInfraCodegenQualityGate.successful_verdict("FAIL"),
-            eq=True,
-        )
+        tm.that(not FlextInfraCodegenQualityGate.successful_verdict("FAIL"), eq=True)
 
     def test_real_workspace_run_returns_report(self, tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
         gate = FlextInfraCodegenQualityGate(workspace_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
-        assert "verdict" in report_result.value
+        tm.that(report_result.value, has="verdict")
 
     def test_build_report_uses_canonical_census_duplicates(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Duplicate groups are sourced from the canonical refactor census."""
         census_report = m.Infra.Census.WorkspaceReport.model_validate({
@@ -112,7 +104,7 @@ class TestConstantsQualityGateVerdict:
                             "file_path": str(
                                 (
                                     tmp_path / "flext-core" / "src" / "sample.py"
-                                ).resolve(),
+                                ).resolve()
                             ),
                             "line": 1,
                             "project": "flext-core",
@@ -121,9 +113,7 @@ class TestConstantsQualityGateVerdict:
                             "name": "SHARED_TIMEOUT",
                             "kind": "constant",
                             "file_path": str(
-                                (
-                                    tmp_path / "flext-cli" / "src" / "sample.py"
-                                ).resolve(),
+                                (tmp_path / "flext-cli" / "src" / "sample.py").resolve()
                             ),
                             "line": 1,
                             "project": "flext-cli",
@@ -132,13 +122,11 @@ class TestConstantsQualityGateVerdict:
                     "canonical": "flext-core",
                     "value_identical": True,
                 },
-            ),
+            )
         })
 
         monkeypatch.setattr(
-            FlextInfraRefactorCensus,
-            "build_report",
-            lambda self: census_report,
+            FlextInfraRefactorCensus, "build_report", lambda self: census_report
         )
 
         gate = FlextInfraCodegenQualityGate(workspace_root=tmp_path)
@@ -147,13 +135,12 @@ class TestConstantsQualityGateVerdict:
         report = report_result.value
         after = u.Cli.json_deep_mapping(report, "after")
         duplicate_groups = u.Cli.json_deep_mapping_list(
-            report,
-            "duplicate_constant_groups",
+            report, "duplicate_constant_groups"
         )
 
-        assert u.Cli.json_pick_int(after, "duplicate_groups") == 1
-        assert u.Cli.json_pick_str(duplicate_groups[0], "name") == "SHARED_TIMEOUT"
-        assert u.Cli.json_pick_str(duplicate_groups[0], "canonical") == "flext-core"
+        tm.that(u.Cli.json_pick_int(after, "duplicate_groups"), eq=1)
+        tm.that(u.Cli.json_pick_str(duplicate_groups[0], "name"), eq="SHARED_TIMEOUT")
+        tm.that(u.Cli.json_pick_str(duplicate_groups[0], "canonical"), eq="flext-core")
 
 
 __all__: t.StrSequence = []

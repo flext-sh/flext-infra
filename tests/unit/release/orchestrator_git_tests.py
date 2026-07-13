@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import c
+from tests import m
+from tests import TestsFlextInfraUtilities as u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,9 +38,7 @@ def make_config(
 
 
 def publish_ctx(
-    workspace_root: Path,
-    *,
-    push: bool = False,
+    workspace_root: Path, *, push: bool = False
 ) -> m.Infra.ReleasePhaseDispatchConfig:
     return m.Infra.ReleasePhaseDispatchConfig(
         phase=c.Infra.VERB_PUBLISH,
@@ -54,10 +53,7 @@ def publish_ctx(
 
 
 def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
-    result = u.Cli.capture(
-        ["git", "show-ref", "--verify", ref_name],
-        cwd=repo_root,
-    )
+    result = u.Cli.capture(["git", "show-ref", "--verify", ref_name], cwd=repo_root)
     return not result.failure
 
 
@@ -69,8 +65,7 @@ def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
         cwd=repo_root,
     )
     cli.run_checked(
-        [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
-        cwd=repo_root,
+        [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"], cwd=repo_root
     )
     return bare_remote
 
@@ -86,73 +81,61 @@ def test_run_release_creates_branches_for_root_and_selected_project(
     )
 
     result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(
-            workspace,
-            project_names=["flext-a"],
-        ),
+        make_config(workspace, project_names=["flext-a"])
     )
 
-    assert result.success
+    tm.ok(result)
     assert git_ref_exists(
-        workspace,
-        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
+        workspace, f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}"
     )
     assert git_ref_exists(
-        workspace / "flext-a",
-        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
+        workspace / "flext-a", f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}"
     )
     assert not git_ref_exists(
-        workspace / "flext-b",
-        f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}",
+        workspace / "flext-b", f"refs/heads/release/{c.Tests.RELEASE_VERSION_TARGET}"
     )
 
 
 def test_phase_publish_succeeds_when_tag_already_exists(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
+    workspace = u.Tests.create_release_workspace(tmp_path, initialize_root_git=True)
+    tm.ok(
+        u.Cli.run_checked(
+            [
+                "git",
+                "tag",
+                "-a",
+                c.Tests.RELEASE_TAG_TARGET,
+                "-m",
+                f"release: {c.Tests.RELEASE_TAG_TARGET}",
+            ],
+            cwd=workspace,
+        )
     )
-    assert u.Cli.run_checked(
-        [
-            "git",
-            "tag",
-            "-a",
-            c.Tests.RELEASE_TAG_TARGET,
-            "-m",
-            f"release: {c.Tests.RELEASE_TAG_TARGET}",
-        ],
-        cwd=workspace,
-    ).success
 
     result = FlextInfraReleaseOrchestrator().phase_publish(publish_ctx(workspace))
 
-    assert result.success
+    tm.ok(result)
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
-            cwd=workspace,
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )
 
 
 def test_phase_publish_push_succeeds_with_local_origin(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
-    )
+    workspace = u.Tests.create_release_workspace(tmp_path, initialize_root_git=True)
     configure_local_origin(workspace, tmp_path / "remote")
 
     result = FlextInfraReleaseOrchestrator().phase_publish(
-        publish_ctx(workspace, push=True),
+        publish_ctx(workspace, push=True)
     )
 
-    assert result.success
+    tm.ok(result)
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
-            cwd=workspace,
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )

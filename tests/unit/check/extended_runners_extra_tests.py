@@ -10,7 +10,7 @@ from flext_infra import c, r
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,8 +20,7 @@ class TestExtendedRunnerExtras:
     """Declarative public-gate tests."""
 
     def test_pyright_skips_when_project_has_no_python_files(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
 
@@ -39,18 +38,14 @@ class TestExtendedRunnerExtras:
         )
 
         result = u.Tests.run_gate_check(
-            FlextInfraPyrightGate,
-            tmp_path,
-            project_dir,
-            runner=runner,
+            FlextInfraPyrightGate, tmp_path, project_dir, runner=runner
         )
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_pyright_uses_project_config_target_when_configured(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_dir = u.Tests.mk_project(
             tmp_path,
@@ -60,14 +55,11 @@ class TestExtendedRunnerExtras:
         )
         _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.stub_run(stdout='{"generalDiagnostics": []}')),
+            r.ok(u.Tests.stub_run(stdout='{"generalDiagnostics": []}'))
         ])
 
         result = u.Tests.run_gate_check(
-            FlextInfraPyrightGate,
-            tmp_path,
-            project_dir,
-            runner=runner,
+            FlextInfraPyrightGate, tmp_path, project_dir, runner=runner
         )
 
         tm.that(result.result.passed, eq=True)
@@ -89,10 +81,7 @@ class TestExtendedRunnerExtras:
         runner = u.Tests.command_runner(stdout="invalid json", returncode=1)
 
         result = u.Tests.run_gate_check(
-            FlextInfraPyrightGate,
-            tmp_path,
-            project_dir,
-            runner=runner,
+            FlextInfraPyrightGate, tmp_path, project_dir, runner=runner
         )
 
         tm.that(not result.result.passed, eq=True)
@@ -113,10 +102,7 @@ class TestExtendedRunnerExtras:
         )
 
         result = u.Tests.run_gate_check(
-            FlextInfraBanditGate,
-            tmp_path,
-            project_dir,
-            runner=runner,
+            FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
 
         tm.that(not result.result.passed, eq=True)
@@ -127,10 +113,7 @@ class TestExtendedRunnerExtras:
         runner = u.Tests.command_runner(stdout="invalid json", returncode=1)
 
         result = u.Tests.run_gate_check(
-            FlextInfraBanditGate,
-            tmp_path,
-            project_dir,
-            runner=runner,
+            FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
 
         tm.that(not result.result.passed, eq=True)
@@ -139,16 +122,10 @@ class TestExtendedRunnerExtras:
 
     def test_bandit_reports_tool_failure_without_json(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
-        runner = u.Tests.command_runner(
-            stderr="Failed to spawn: bandit",
-            returncode=1,
-        )
+        runner = u.Tests.command_runner(stderr="Failed to spawn: bandit", returncode=1)
 
         result = u.Tests.run_gate_check(
-            FlextInfraBanditGate,
-            tmp_path,
-            project_dir,
-            runner=runner,
+            FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
 
         tm.that(not result.result.passed, eq=True)
@@ -168,15 +145,11 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
         _ = (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         runner = u.Tests.command_runner(
-            stdout="README.md:1:1 error MD001 Heading level",
-            returncode=1,
+            stdout="README.md:1:1 error MD001 Heading level", returncode=1
         )
 
         result = u.Tests.run_gate_check(
-            FlextInfraMarkdownGate,
-            tmp_path,
-            project_dir,
-            runner=runner,
+            FlextInfraMarkdownGate, tmp_path, project_dir, runner=runner
         )
 
         tm.that(not result.result.passed, eq=True)

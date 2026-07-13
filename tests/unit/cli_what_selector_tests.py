@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from flext_infra.cli import main
+from flext_tests import tm
 
 
 class TestsFlextInfraCliWhatSelector:
@@ -10,26 +11,26 @@ class TestsFlextInfraCliWhatSelector:
 
     def test_check_what_loc_cap_runs_gate(self) -> None:
         """``check --what loc-cap`` runs the gate (0/1), never a usage error."""
-        assert main(["check", "--what", "loc-cap", "--projects", "flext-infra"]) in {
-            0,
-            1,
-        }
+        tm.that(
+            {0, 1},
+            has=main(["check", "--what", "loc-cap", "--projects", "flext-infra"]),
+        )
 
     def test_check_what_boundary_runs_gate(self) -> None:
         """``check --what boundary`` maps to the boundary gate selection."""
-        assert main(["check", "--what", "boundary", "--projects", "flext-infra"]) in {
-            0,
-            1,
-        }
+        tm.that(
+            {0, 1},
+            has=main(["check", "--what", "boundary", "--projects", "flext-infra"]),
+        )
 
     def test_check_what_unknown_is_usage_error(self) -> None:
         """An unrecognized gate phase returns ``ScriptExitCode.USAGE`` (2)."""
-        assert main(["check", "--what", "bogus"]) == 2
+        tm.that(main(["check", "--what", "bogus"]), eq=2)
 
     def test_validate_what_manual_cmd_runs_validator(self) -> None:
         """``validate --what manual-cmd`` selects the manual-command validator."""
-        assert main(["validate", "--what", "manual-cmd"]) in {0, 1}
+        tm.that({0, 1}, has=main(["validate", "--what", "manual-cmd"]))
 
     def test_validate_what_unknown_is_usage_error(self) -> None:
         """An unrecognized validator phase returns ``ScriptExitCode.USAGE`` (2)."""
-        assert main(["validate", "--what", "no-such-validator"]) == 2
+        tm.that(main(["validate", "--what", "no-such-validator"]), eq=2)

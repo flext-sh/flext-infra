@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from flext_infra.transformers.logging_modernizer import (
     FlextInfraRefactorLoggingModernizer,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -25,55 +26,55 @@ class TestsFlextInfraTransformersLoggingModernizer:
     def test_import_logging_removed(self) -> None:
         source = "import logging\n\nlogger = logging.getLogger(__name__)\n"
         code = _transform(source)
-        assert "import logging" not in code
-        assert "logger = u.fetch_logger(__name__)" in code
+        tm.that(code, lacks="import logging")
+        tm.that(code, has="logger = u.fetch_logger(__name__)")
 
     def test_logging_getlogger_call_replaced(self) -> None:
         source = "logging.getLogger(__name__)\n"
         code = _transform(source)
-        assert "u.fetch_logger(__name__)" in code
-        assert "logging.getLogger" not in code
+        tm.that(code, has="u.fetch_logger(__name__)")
+        tm.that(code, lacks="logging.getLogger")
 
     def test_logger_assignment_replaced(self) -> None:
         source = "logger = logging.getLogger(__name__)\n"
         code = _transform(source)
-        assert "logger = u.fetch_logger(__name__)" in code
-        assert "logging.getLogger" not in code
+        tm.that(code, has="logger = u.fetch_logger(__name__)")
+        tm.that(code, lacks="logging.getLogger")
 
     def test_logging_getlogger_with_string_replaced(self) -> None:
         source = 'logger = logging.getLogger("foo")\n'
         code = _transform(source)
-        assert 'logger = u.fetch_logger("foo")' in code
-        assert "logging.getLogger" not in code
+        tm.that(code, has='logger = u.fetch_logger("foo")')
+        tm.that(code, lacks="logging.getLogger")
 
     def test_from_logging_import_getlogger_removed(self) -> None:
         source = "from logging import getLogger\n\nlogger = getLogger(__name__)\n"
         code = _transform(source)
-        assert "from logging import getLogger" not in code
-        assert "logger = u.fetch_logger(__name__)" in code
+        tm.that(code, lacks="from logging import getLogger")
+        tm.that(code, has="logger = u.fetch_logger(__name__)")
 
     def test_u_import_added_when_needed(self) -> None:
         source = "logger = logging.getLogger(__name__)\n"
         code = _transform(source)
-        assert "from flext_core import u" in code
+        tm.that(code, has="from flext_core import u")
 
     def test_no_duplicate_u_import(self) -> None:
         source = "from flext_core import c, u\n\nlogger = logging.getLogger(__name__)\n"
         code = _transform(source)
-        assert code.count("from flext_core import") == 1
-        assert "from flext_core import c, u" in code
+        tm.that(code.count("from flext_core import"), eq=1)
+        tm.that(code, has="from flext_core import c, u")
 
     def test_existing_logger_binding_prevents_injection(self) -> None:
         source = (
             'logger = u.fetch_logger(__name__)\n\nother = logging.getLogger("other")\n'
         )
         code = _transform(source)
-        assert code.count("logger = u.fetch_logger(__name__)") == 1
-        assert 'u.fetch_logger("other")' in code
+        tm.that(code.count("logger = u.fetch_logger(__name__)"), eq=1)
+        tm.that(code, has='u.fetch_logger("other")')
 
     def test_unchanged_source_returns_empty_changes(self) -> None:
         source = "from flext_core import u\n\nlogger = u.fetch_logger(__name__)\n"
         transformer = FlextInfraRefactorLoggingModernizer()
         result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
-        assert result[0] == source
-        assert result[1] == []
+        tm.that(result[0], eq=source)
+        tm.that(result[1], eq=[])

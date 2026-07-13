@@ -59,7 +59,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             u.Cli.yaml_dump(
                 repository_root / "config" / "workspace.yaml",
                 spec.model_dump(mode="json", exclude_none=True),
-            ),
+            )
         )
 
     @staticmethod
@@ -67,33 +67,25 @@ class TestsFlextInfraInfraWorkspaceDetector:
         """Create a real main-branch Git repository with one commit."""
         repository_root.mkdir(parents=True)
         tm.ok(
-            u.Cli.run_checked(
-                ["git", "init", "-q", "-b", "main"],
-                cwd=repository_root,
-            ),
+            u.Cli.run_checked(["git", "init", "-q", "-b", "main"], cwd=repository_root)
         )
         tm.ok(
             u.Cli.run_checked(
                 ["git", "config", "user.email", "infra@example.com"],
                 cwd=repository_root,
-            ),
+            )
         )
         tm.ok(
             u.Cli.run_checked(
-                ["git", "config", "user.name", "Infra Tests"],
-                cwd=repository_root,
-            ),
+                ["git", "config", "user.name", "Infra Tests"], cwd=repository_root
+            )
         )
-        (repository_root / "README.md").write_text(
-            "# Repository\n",
-            encoding="utf-8",
-        )
+        (repository_root / "README.md").write_text("# Repository\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked(["git", "add", "README.md"], cwd=repository_root))
         tm.ok(
             u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Initial commit"],
-                cwd=repository_root,
-            ),
+                ["git", "commit", "-q", "-m", "Initial commit"], cwd=repository_root
+            )
         )
 
     @classmethod
@@ -125,16 +117,15 @@ class TestsFlextInfraInfraWorkspaceDetector:
                     member_path,
                 ],
                 cwd=workspace_root,
-            ),
+            )
         )
         member_root = workspace_root / member_path
         canonical_url = "https://github.com/flext-sh/flext-member.git"
         section = "submodule.members/flext-member"
         tm.ok(
             u.Cli.run_checked(
-                ["git", "remote", "set-url", "origin", canonical_url],
-                cwd=member_root,
-            ),
+                ["git", "remote", "set-url", "origin", canonical_url], cwd=member_root
+            )
         )
         tm.ok(
             u.Cli.run_checked(
@@ -147,7 +138,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
                     canonical_url,
                 ],
                 cwd=workspace_root,
-            ),
+            )
         )
         root_repository = cls._repository(
             name="workspace-root",
@@ -235,8 +226,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
     def test_member_profile_mismatch_fails_closed(self, tmp_path: Path) -> None:
         member_root = self._attached_member(
-            tmp_path,
-            member_profile=c.Infra.MakeProfile.STANDALONE,
+            tmp_path, member_profile=c.Infra.MakeProfile.STANDALONE
         )
 
         tm.fail(
@@ -258,13 +248,10 @@ class TestsFlextInfraInfraWorkspaceDetector:
                     "https://github.com/other-org/flext-member.git",
                 ],
                 cwd=workspace_root,
-            ),
+            )
         )
 
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="URL mismatch",
-        )
+        tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="URL mismatch")
 
     def test_gitmodule_branch_mismatch_fails_closed(self, tmp_path: Path) -> None:
         member_root = self._attached_member(tmp_path)
@@ -280,12 +267,11 @@ class TestsFlextInfraInfraWorkspaceDetector:
                     "release",
                 ],
                 cwd=workspace_root,
-            ),
+            )
         )
 
         tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="branch mismatch",
+            FlextInfraWorkspaceDetector().detect(member_root), has="branch mismatch"
         )
 
     def test_malformed_parent_manifest_fails(self, tmp_path: Path) -> None:
@@ -293,20 +279,14 @@ class TestsFlextInfraInfraWorkspaceDetector:
         parent_manifest = member_root.parents[1] / "config" / "workspace.yaml"
         parent_manifest.write_text("version: malformed\n", encoding="utf-8")
 
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="workspace",
-        )
+        tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="workspace")
 
     def test_malformed_local_manifest_fails(self, tmp_path: Path) -> None:
         manifest = tmp_path / "config" / "workspace.yaml"
         manifest.parent.mkdir()
         manifest.write_text("version: malformed\n", encoding="utf-8")
 
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(tmp_path),
-            has="workspace",
-        )
+        tm.fail(FlextInfraWorkspaceDetector().detect(tmp_path), has="workspace")
 
     def test_execute_uses_workspace_root(self, tmp_path: Path) -> None:
         tm.ok(

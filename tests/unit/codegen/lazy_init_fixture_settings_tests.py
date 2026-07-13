@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,17 +25,13 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
     """Private fixtures never widen the generated public root."""
 
     def test_root_excludes_private_fixtures_and_keeps_runtime_singletons(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """The public root keeps direct singletons without private fixture exports."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         fixtures_dir = package_root / "_fixtures"
         fixtures_dir.mkdir()
-        (fixtures_dir / c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        (fixtures_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         (fixtures_dir / "settings.py").write_text(
             '"""Test fixtures."""\n\n'
             "def settings() -> str:\n"
@@ -62,10 +58,10 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
         result = u.Tests.run_lazy_init(workspace_root)
 
         unit_content = (package_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         init_content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
         tm.that(unit_content, contains='"._config": ("config",)')

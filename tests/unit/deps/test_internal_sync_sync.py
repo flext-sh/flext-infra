@@ -8,16 +8,13 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.typings import t
+from tests import t
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Callable,
-        Generator,
-    )
+    from collections.abc import Callable, Generator
     from pathlib import Path
 
-    from tests.protocols import p
+    from tests import p
 
 
 def _set_toml_stub(
@@ -33,8 +30,7 @@ def _set_toml_stub(
 
     class _TomlReaderStub:
         def __init__(
-            self,
-            fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
+            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
         ) -> None:
             self._fn = fn
 
@@ -63,8 +59,7 @@ class TestsFlextInfraDepsInternalSyncSync:
     def test_sync_no_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
-            service,
-            [r[t.Infra.ContainerDict].ok({"tool": {}, "project": {}})],
+            service, [r[t.Infra.ContainerDict].ok({"tool": {}, "project": {}})]
         )
         (tmp_path / "pyproject.toml").write_text("")
         tm.ok(service.sync(tmp_path), eq=0)
@@ -75,14 +70,11 @@ class TestsFlextInfraDepsInternalSyncSync:
         (tmp_path / "pyproject.toml").write_text("")
         tm.fail(service.sync(tmp_path))
 
-    def test_sync_workspace_mode_symlink(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_sync_workspace_mode_symlink(self, tmp_path: Path) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
         (workspace / ".gitmodules").write_text(
-            '[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n',
+            '[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n'
         )
         (workspace / "flext-api").mkdir()
         project = workspace / "project"
@@ -96,21 +88,18 @@ class TestsFlextInfraDepsInternalSyncSync:
                     "tool": {
                         "poetry": {
                             "dependencies": {
-                                "flext-api": {"path": ".flext-deps/flext-api"},
-                            },
-                        },
+                                "flext-api": {"path": ".flext-deps/flext-api"}
+                            }
+                        }
                     },
                     "project": {},
-                }),
+                })
             ],
         )
         with _temporary_env({"FLEXT_STANDALONE": "", "FLEXT_WORKSPACE_ROOT": ""}):
             tm.ok(service.sync(project))
 
-    def test_sync_missing_repo_mapping(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_sync_missing_repo_mapping(self, tmp_path: Path) -> None:
         project = tmp_path / "project"
         project.mkdir()
         (project / "pyproject.toml").write_text("")
@@ -123,9 +112,9 @@ class TestsFlextInfraDepsInternalSyncSync:
                     "tool": {
                         "poetry": {
                             "dependencies": {
-                                "flext-api": {"path": ".flext-deps/flext-api"},
-                            },
-                        },
+                                "flext-api": {"path": ".flext-deps/flext-api"}
+                            }
+                        }
                     },
                     "project": {},
                 }),

@@ -10,14 +10,14 @@ from flext_tests import tm
 from flext_infra import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.models import m
-    from tests.typings import t
+    from tests import m
+    from tests import t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
@@ -53,10 +53,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
 
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any(expected_error in err for err in migration[0].errors),
-            eq=True,
-        )
+        tm.that(any(expected_error in err for err in migration[0].errors), eq=True)
 
     def test_makefile_write_failure(self, tmp_path: Path) -> None:
         root = tmp_path / "project-a"
@@ -73,26 +70,19 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("Makefile update failed" in err for err in migration[0].errors),
-            eq=True,
+            any("Makefile update failed" in err for err in migration[0].errors), eq=True
         )
 
     def test_makefile_bootstrap_render_failure(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            makefile=c.Infra.MAKEFILE_INCLUDE_OLD,
+            tmp_path, base_mk="base", makefile=c.Infra.MAKEFILE_INCLUDE_OLD
         )
         monkeypatch.setattr(
             FlextInfraBaseMkTemplateRenderer,
             "render_bootstrap_include",
-            staticmethod(
-                lambda: r[str].fail("bootstrap include render failed"),
-            ),
+            staticmethod(lambda: r[str].fail("bootstrap include render failed")),
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -112,9 +102,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
 
     def test_gitignore_read_failure(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            gitignore=None,
+            tmp_path, base_mk="base", gitignore=None
         )
         (root / ".gitignore").mkdir()
         migrator = u.Tests.build_project_migrator(
@@ -127,8 +115,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any(".gitignore read failed" in err for err in migration[0].errors),
-            eq=True,
+            any(".gitignore read failed" in err for err in migration[0].errors), eq=True
         )
 
     def test_basemk_generation_failure(self, tmp_path: Path) -> None:
@@ -141,18 +128,13 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         (root / ".gitignore").write_text("", encoding="utf-8")
         proj = u.Tests.create_migrator_project(root, "workspace-root")
         migrator = FlextInfraProjectMigrator(
-            workspace_root=tmp_path,
-            dry_run=False,
-            apply_changes=True,
+            workspace_root=tmp_path, dry_run=False, apply_changes=True
         )
         migrator.discovery = u.Tests.create_migrator_discovery([proj])
         migrator.generator = u.Tests.create_migrator_generator(fail="Generation failed")
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any("Generation failed" in err for err in migration[0].errors),
-            eq=True,
-        )
+        tm.that(any("Generation failed" in err for err in migration[0].errors), eq=True)
 
     def test_pyproject_parse_failure(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(tmp_path, pyproject="invalid toml {")
@@ -164,10 +146,7 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         )
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any("parse failed" in err for err in migration[0].errors),
-            eq=True,
-        )
+        tm.that(any("parse failed" in err for err in migration[0].errors), eq=True)
 
 
 __all__: t.StrSequence = []

@@ -6,8 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 
 # NOTE (multi-agent, mro-wkii.17.15): prove scoped writes and read-only drift publicly.
@@ -15,8 +15,7 @@ class TestsFlextInfraCodegenLazyInitService:
     """Validate real service execution without mocks or internal branching asserts."""
 
     def test_execute_applies_only_selected_root_artifact_set(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Apply writes the generated pair for exactly the selected package root."""
         _, selected_root = u.Tests.create_lazy_init_workspace(
@@ -58,7 +57,7 @@ class TestsFlextInfraCodegenLazyInitService:
                 sorted((
                     str(selected_root / c.Infra.INIT_PY),
                     str(selected_root / c.Infra.UNIT_PY),
-                )),
+                ))
             ),
         )
 
@@ -66,9 +65,7 @@ class TestsFlextInfraCodegenLazyInitService:
         """Check reports missing generated artifacts as a failure without writing."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
         original_init = init_path.read_bytes()
@@ -84,15 +81,12 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(len(service.modified_files), eq=2)
 
     def test_dry_run_is_read_only_even_when_apply_is_requested(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Explicit dry-run wins over apply and reports drift without writing."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
         original_init = init_path.read_bytes()
@@ -112,9 +106,7 @@ class TestsFlextInfraCodegenLazyInitService:
         """A check after apply succeeds and preserves both generated artifacts."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
         unit_path = package_root / c.Infra.UNIT_PY
@@ -137,15 +129,12 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(unit_path.read_bytes(), eq=generated_unit)
 
     def test_unknown_target_fails_without_workspace_fallback(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """An unknown target fails loudly instead of planning the full workspace."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
         original_init = init_path.read_bytes()
@@ -161,29 +150,20 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(service.modified_files, eq=())
 
     def test_ambiguous_target_fails_without_writing_either_project(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Duplicate package roots fail instead of selecting a collapsed map entry."""
         _, first_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-test-first",
-            package_name="flext_shared",
+            tmp_path, project_name="flext-test-first", package_name="flext_shared"
         )
         _, second_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-test-second",
-            package_name="flext_shared",
+            tmp_path, project_name="flext-test-second", package_name="flext_shared"
         )
         u.Tests.write_lazy_init_namespace_module(
-            first_root / "models.py",
-            class_name="FlextTestsFirstModels",
-            alias="m",
+            first_root / "models.py", class_name="FlextTestsFirstModels", alias="m"
         )
         u.Tests.write_lazy_init_namespace_module(
-            second_root / "models.py",
-            class_name="FlextTestsSecondModels",
-            alias="m",
+            second_root / "models.py", class_name="FlextTestsSecondModels", alias="m"
         )
         first_init = first_root / c.Infra.INIT_PY
         second_init = second_root / c.Infra.INIT_PY

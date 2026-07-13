@@ -5,15 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
+from tests import c
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def make_command(
-    workspace_root: Path,
-    **overrides: object,
+    workspace_root: Path, **overrides: object
 ) -> FlextInfraReleaseOrchestrator:
     command: FlextInfraReleaseOrchestrator = (
         FlextInfraReleaseOrchestrator.model_validate({
@@ -32,16 +32,12 @@ def test_execute_with_explicit_version_updates_workspace_file(tmp_path: Path) ->
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
-        encoding="utf-8",
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
     )
 
-    result = make_command(
-        workspace,
-        version=c.Tests.RELEASE_VERSION_TARGET,
-    ).execute()
+    result = make_command(workspace, version=c.Tests.RELEASE_VERSION_TARGET).execute()
 
-    assert result.success
+    tm.ok(result)
     assert (
         f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
         in (workspace / "pyproject.toml").read_text()
@@ -52,17 +48,14 @@ def test_execute_with_dev_suffix_appends_dev_version(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
-        encoding="utf-8",
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
     )
 
     result = make_command(
-        workspace,
-        version=c.Tests.RELEASE_VERSION_TARGET,
-        dev_suffix=True,
+        workspace, version=c.Tests.RELEASE_VERSION_TARGET, dev_suffix=True
     ).execute()
 
-    assert result.success
+    tm.ok(result)
     assert (
         f'version = "{c.Tests.RELEASE_VERSION_TARGET}-dev"'
         in (workspace / "pyproject.toml").read_text()
@@ -84,12 +77,10 @@ def test_execute_with_bump_uses_current_workspace_version(tmp_path: Path) -> Non
     )
 
     result = make_command(
-        workspace,
-        phase=c.Tests.RELEASE_PHASE_BUILD,
-        bump=c.Tests.RELEASE_BUMP_MINOR,
+        workspace, phase=c.Tests.RELEASE_PHASE_BUILD, bump=c.Tests.RELEASE_BUMP_MINOR
     ).execute()
 
-    assert result.success
+    tm.ok(result)
     assert (
         workspace / ".reports" / "release" / "v0.2.0" / "build-report.json"
     ).is_file()
@@ -99,24 +90,19 @@ def test_execute_with_invalid_explicit_version_fails(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
-        encoding="utf-8",
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
     )
 
-    result = make_command(
-        workspace,
-        version="invalid",
-    ).execute()
+    result = make_command(workspace, version="invalid").execute()
 
-    assert result.failure
+    tm.fail(result)
 
 
 def test_execute_with_invalid_tag_prefix_fails(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n',
-        encoding="utf-8",
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
     )
 
     result = make_command(
@@ -125,4 +111,4 @@ def test_execute_with_invalid_tag_prefix_fails(tmp_path: Path) -> None:
         tag=c.Tests.RELEASE_VERSION_TARGET,
     ).execute()
 
-    assert result.failure
+    tm.fail(result)

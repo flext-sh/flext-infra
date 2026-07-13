@@ -25,7 +25,7 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
         "tv",
         "u",
         "x",
-    ),
+    )
 }
 
 LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}

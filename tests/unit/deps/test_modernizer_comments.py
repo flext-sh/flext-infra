@@ -70,8 +70,7 @@ class TestsFlextInfraDepsModernizerComments:
         rendered = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Sections with [AUTO] are derived from workspace layout and dependencies.\n# [AUTO] merged from dev/docs/security/test/typings\n[project.optional-dependencies]\ndev = ['pytest']"
         result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
         tm.that(
-            result,
-            has="# Run `make mod` to regenerate all managed pyproject sections.",
+            result, has="# Run `make mod` to regenerate all managed pyproject sections."
         )
         tm.that("[AUTO]" in result, eq=False)
 
@@ -92,7 +91,7 @@ class TestsFlextInfraDepsModernizerComments:
         )
         first_result, first_changes = FlextInfraInjectCommentsPhase().apply(rendered)
         second_result, second_changes = FlextInfraInjectCommentsPhase().apply(
-            first_result,
+            first_result
         )
         tm.that(first_changes, len=(1, 20))
         tm.that(second_result, eq=first_result)

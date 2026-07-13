@@ -10,88 +10,94 @@ from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
-    from tests.models import m
+    from tests import m
 
 
 class TestsFlextInfraDepsModernizerMypy:
     """Declarative tests for generated mypy and pydantic-mypy settings."""
 
     def test_mypy_phase_sets_expected_state(
-        self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
         mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
-        assert mypy_mapping["python_version"] == "3.13"
-        assert mypy_mapping["exclude"] == tool_config_document.tools.mypy.exclude
-        assert set(u.Tests.toml_strings(mypy_mapping["plugins"])) == set(
-            tool_config_document.tools.mypy.plugins,
+        tm.that(mypy_mapping["python_version"], eq="3.13")
+        tm.that(mypy_mapping["exclude"], eq=tool_config_document.tools.mypy.exclude)
+        tm.that(
+            set(u.Tests.toml_strings(mypy_mapping["plugins"])),
+            eq=set(tool_config_document.tools.mypy.plugins),
         )
-        assert set(u.Tests.toml_strings(mypy_mapping["disable_error_code"])) == set(
-            tool_config_document.tools.mypy.disabled_error_codes,
+        tm.that(
+            set(u.Tests.toml_strings(mypy_mapping["disable_error_code"])),
+            eq=set(tool_config_document.tools.mypy.disabled_error_codes),
         )
-        assert list(u.Tests.toml_list(mypy_mapping["overrides"])) == [
-            {
-                "module": list(entry.modules),
-                "disable_error_code": list(entry.disable_error_codes),
-            }
-            for entry in tool_config_document.tools.mypy.overrides
-        ]
+        tm.that(
+            list(u.Tests.toml_list(mypy_mapping["overrides"])),
+            eq=[
+                {
+                    "module": list(entry.modules),
+                    "disable_error_code": list(entry.disable_error_codes),
+                }
+                for entry in tool_config_document.tools.mypy.overrides
+            ],
+        )
         for key, value in tool_config_document.tools.mypy.boolean_settings.items():
-            assert mypy_mapping[key] == value
+            tm.that(mypy_mapping[key], eq=value)
 
     def test_mypy_phase_keeps_misc_globally_disabled(
-        self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
         mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
-        assert "misc" in u.Tests.toml_strings(mypy_mapping["disable_error_code"])
+        tm.that(u.Tests.toml_strings(mypy_mapping["disable_error_code"]), has="misc")
 
     def test_mypy_phase_removes_legacy_test_overrides(
-        self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
         mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
         override_modules = {
             tuple(u.Tests.toml_strings(u.Tests.toml_mapping(entry)["module"]))
             for entry in u.Tests.toml_list(mypy_mapping["overrides"])
         }
-        assert (
-            "*.constants",
-            "*.models",
-            "*.protocols",
-            "*.typings",
-            "*.utilities",
-        ) not in override_modules
-        assert ("tests", "tests.*", "tests.integration.*", "tests.unit.*") not in (
-            override_modules
+        tm.that(
+            override_modules,
+            lacks=(
+                "*.constants",
+                "*.models",
+                "*.protocols",
+                "*.typings",
+                "*.utilities",
+            ),
         )
-        assert ("tests.helpers.*",) not in override_modules
-        assert ("tests.integration.patterns.*",) not in override_modules
+        tm.that(
+            (override_modules),
+            lacks=("tests", "tests.*", "tests.integration.*", "tests.unit.*"),
+        )
+        tm.that(override_modules, lacks=("tests.helpers.*",))
+        tm.that(override_modules, lacks=("tests.integration.patterns.*",))
 
     def test_mypy_phase_replaces_managed_lists_and_overrides(
-        self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.parse(
             """
@@ -100,28 +106,33 @@ plugins = ["custom.plugin"]
 exclude = "^legacy/fixtures(?:/|$)"
 disable_error_code = ["misc"]
 overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
-""",
+"""
         )
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
         mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
-        assert mypy_mapping["exclude"] == tool_config_document.tools.mypy.exclude
-        assert list(u.Tests.toml_strings(mypy_mapping["plugins"])) == list(
-            tool_config_document.tools.mypy.plugins,
+        tm.that(mypy_mapping["exclude"], eq=tool_config_document.tools.mypy.exclude)
+        tm.that(
+            list(u.Tests.toml_strings(mypy_mapping["plugins"])),
+            eq=list(tool_config_document.tools.mypy.plugins),
         )
-        assert list(u.Tests.toml_strings(mypy_mapping["disable_error_code"])) == list(
-            tool_config_document.tools.mypy.disabled_error_codes,
+        tm.that(
+            list(u.Tests.toml_strings(mypy_mapping["disable_error_code"])),
+            eq=list(tool_config_document.tools.mypy.disabled_error_codes),
         )
-        assert list(u.Tests.toml_list(mypy_mapping["overrides"])) == [
-            {
-                "module": list(entry.modules),
-                "disable_error_code": list(entry.disable_error_codes),
-            }
-            for entry in tool_config_document.tools.mypy.overrides
-        ]
+        tm.that(
+            list(u.Tests.toml_list(mypy_mapping["overrides"])),
+            eq=[
+                {
+                    "module": list(entry.modules),
+                    "disable_error_code": list(entry.disable_error_codes),
+                }
+                for entry in tool_config_document.tools.mypy.overrides
+            ],
+        )
 
     def test_mypy_phase_removes_deprecated_strict_concatenate(self) -> None:
         tool_config_document = u.Tests.tool_config_document()
@@ -130,23 +141,22 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
 [tool.mypy]
 strict_concatenate = true
 warn_return_any = false
-""",
+"""
         )
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
         mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"],
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
-        assert "strict_concatenate" not in mypy_mapping
+        tm.that(mypy_mapping, lacks="strict_concatenate")
         assert (
             mypy_mapping["warn_return_any"]
             == tool_config_document.tools.mypy.boolean_settings["warn_return_any"]
         )
 
     def test_mypy_phase_is_idempotent(
-        self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         phase = FlextInfraEnsureMypyConfigPhase(tool_config_document)
         doc = tomlkit.document()
@@ -154,20 +164,17 @@ warn_return_any = false
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
 
-        assert second_changes == []
+        tm.that(second_changes, eq=[])
 
     def test_pydantic_mypy_phase_sets_expected_state(
-        self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
         pydantic_mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])[
-                "pydantic-mypy"
-            ],
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
         )
         assert (
             pydantic_mypy_mapping["init_forbid_extra"]
@@ -183,8 +190,7 @@ warn_return_any = false
         )
 
     def test_pydantic_mypy_phase_is_idempotent(
-        self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         phase = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document)
         doc = tomlkit.document()
@@ -192,4 +198,4 @@ warn_return_any = false
         _ = phase.apply(doc)
         second_changes = phase.apply(doc)
 
-        assert second_changes == []
+        tm.that(second_changes, eq=[])

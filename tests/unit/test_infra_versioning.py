@@ -51,15 +51,12 @@ class TestsFlextInfraInfraVersioning:
         ids=["invalid-format", "non-numeric", "unsupported-suffix"],
     )
     def test_parse_semver_invalid(
-        self,
-        service: FlextInfraUtilitiesVersioning,
-        version: str,
+        self, service: FlextInfraUtilitiesVersioning, version: str
     ) -> None:
         tm.fail(service.parse_semver(version), has="invalid semver")
 
     def test_parse_semver_result_type(
-        self,
-        service: FlextInfraUtilitiesVersioning,
+        self, service: FlextInfraUtilitiesVersioning
     ) -> None:
         tm.ok(service.parse_semver("1.2.3"), is_=tuple)
 
@@ -100,8 +97,7 @@ class TestsFlextInfraInfraVersioning:
         tm.fail(service.bump_version(version, bump_type), has=error)
 
     def test_bump_version_result_type(
-        self,
-        service: FlextInfraUtilitiesVersioning,
+        self, service: FlextInfraUtilitiesVersioning
     ) -> None:
         tm.ok(service.bump_version("1.2.3", "major"), is_=str)
 

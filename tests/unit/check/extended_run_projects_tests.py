@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -34,69 +35,56 @@ class TestRunProjectsPublicBehavior:
 
     def test_invalid_gates_fail(self, tmp_path: Path) -> None:
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
-            ["p1"],
-            ["invalid_gate"],
-            reports_dir=tmp_path / "reports",
+            ["p1"], ["invalid_gate"], reports_dir=tmp_path / "reports"
         )
 
-        assert result.failure
+        tm.fail(result)
 
     def test_missing_projects_are_skipped(self, tmp_path: Path) -> None:
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
-            ["nonexistent"],
-            ["lint"],
-            reports_dir=tmp_path / "reports",
+            ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
         )
 
-        assert result.success
-        assert result.value == ()
+        tm.ok(result)
+        tm.that(result.value, eq=())
 
     @pytest.mark.parametrize("report_name", ["check-report.md", "check-report.sarif"])
     def test_run_projects_creates_reports(
-        self,
-        tmp_path: Path,
-        report_name: str,
+        self, tmp_path: Path, report_name: str
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_path = self._install_fake_ruff(
-            tmp_path,
-            "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n",
+            tmp_path, "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n"
         )
         try:
             result = checker.run_projects(
-                ["p1"],
-                ["lint"],
-                reports_dir=tmp_path / "reports",
+                ["p1"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
+        tm.ok(result)
         assert (tmp_path / "reports" / report_name).exists()
 
     def test_run_projects_creates_project_scoped_reports_dir(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_path = self._install_fake_ruff(
-            tmp_path,
-            "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n",
+            tmp_path, "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n"
         )
         try:
             result = checker.run_projects(
-                ["p1"],
-                ["lint"],
-                reports_dir=tmp_path / "reports",
+                ["p1"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
+        tm.ok(result)
         assert (tmp_path / "reports" / "p1").is_dir()
 
     def test_fail_fast_stops_after_first_failed_project(self, tmp_path: Path) -> None:
@@ -104,8 +92,7 @@ class TestRunProjectsPublicBehavior:
         for name in ("p1", "p2", "p3"):
             project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
-                "value = 1\n",
-                encoding="utf-8",
+                "value = 1\n", encoding="utf-8"
             )
         original_path = self._install_fake_ruff(
             tmp_path,
@@ -125,16 +112,15 @@ class TestRunProjectsPublicBehavior:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
-        assert len(result.value) == 1
+        tm.ok(result)
+        tm.that(len(result.value), eq=1)
 
     def test_run_projects_reports_mixed_project_errors(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         for name in ("p1", "p2"):
             project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
-                "value = 1\n",
-                encoding="utf-8",
+                "value = 1\n", encoding="utf-8"
             )
         original_path = self._install_fake_ruff(
             tmp_path,
@@ -150,30 +136,27 @@ class TestRunProjectsPublicBehavior:
         )
         try:
             result = checker.run_projects(
-                ["p1", "p2"],
-                ["lint"],
-                reports_dir=tmp_path / "reports",
+                ["p1", "p2"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
-        assert len(result.value) == 2
-        assert result.value[0].total_errors == 1
-        assert result.value[1].total_errors == 0
+        tm.ok(result)
+        tm.that(len(result.value), eq=2)
+        tm.that(result.value[0].total_errors, eq=1)
+        tm.that(result.value[1].total_errors, eq=0)
 
     def test_run_project_returns_single_project_result(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_path = self._install_fake_ruff(
-            tmp_path,
-            "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n",
+            tmp_path, "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n"
         )
         try:
             result = checker.run_project("p1", ["lint"])
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
-        assert len(result.value) == 1
+        tm.ok(result)
+        tm.that(len(result.value), eq=1)

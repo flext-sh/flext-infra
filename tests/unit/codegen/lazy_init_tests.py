@@ -59,17 +59,13 @@ class TestAllDirectoriesScanned:
     def test_tests_init_files_are_processed(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
         tests_init = _create_init_file(
-            tmp_path / "tests" / "helpers",
-            _VALID_TESTS_INIT,
+            tmp_path / "tests" / "helpers", _VALID_TESTS_INIT
         )
         original_content = tests_init.read_text(encoding="utf-8")
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         generator.generate_inits(check_only=False)
         new_content = tests_init.read_text(encoding="utf-8")
-        tm.that(
-            new_content != original_content or "__all__" in new_content,
-            eq=True,
-        )
+        tm.that(new_content != original_content or "__all__" in new_content, eq=True)
 
     def test_nested_tests_packages_are_found(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
@@ -89,16 +85,12 @@ class TestCheckOnlyMode:
 
     def test_check_only_does_not_modify_files(self, tmp_path: Path) -> None:
         tests_init = _create_init_file(
-            tmp_path / "tests" / "helpers",
-            _VALID_TESTS_INIT,
+            tmp_path / "tests" / "helpers", _VALID_TESTS_INIT
         )
         original_content = tests_init.read_text(encoding="utf-8")
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         generator.generate_inits(check_only=True)
-        tm.that(
-            tests_init.read_text(encoding="utf-8"),
-            eq=original_content,
-        )
+        tm.that(tests_init.read_text(encoding="utf-8"), eq=original_content)
 
 
 class TestExcludedDirectories:
@@ -106,10 +98,7 @@ class TestExcludedDirectories:
 
     def test_vendor_dir_excluded(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        _create_init_file(
-            tmp_path / "tests" / "vendor" / "pkg",
-            _VALID_TESTS_INIT,
-        )
+        _create_init_file(tmp_path / "tests" / "vendor" / "pkg", _VALID_TESTS_INIT)
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
@@ -117,10 +106,7 @@ class TestExcludedDirectories:
 
     def test_venv_dir_excluded(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        _create_init_file(
-            tmp_path / "tests" / ".venv" / "pkg",
-            _VALID_TESTS_INIT,
-        )
+        _create_init_file(tmp_path / "tests" / ".venv" / "pkg", _VALID_TESTS_INIT)
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.generate_inits(check_only=True)
         tm.that(type(result).__name__, eq="int")
@@ -146,10 +132,7 @@ class TestEdgeCases:
         tm.that(generator.generate_inits(check_only=True), eq=0)
         tm.that(generator.generate_inits(check_only=False), eq=0)
 
-    def test_tests_dir_without_init_py_is_skipped(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_tests_dir_without_init_py_is_skipped(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
         tests_dir = tmp_path / "tests" / "helpers"
         tests_dir.mkdir(parents=True)
@@ -166,20 +149,14 @@ class TestEdgeCases:
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
-    def test_execute_method_returns_flext_result(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_execute_method_returns_flext_result(self, tmp_path: Path) -> None:
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.execute()
         tm.that(result.success, eq=True)
         tm.that(type(result.value).__name__, eq="bool")
 
-    def test_src_content_consistent_across_runs(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_src_content_consistent_across_runs(self, tmp_path: Path) -> None:
         src_content = '"""Package."""\nfrom pkg.models import MyModel\n__all__: list[str] = ["MyModel"]\n'
         src_dir_a = tmp_path / "a" / "src" / "pkg"
         _create_init_file(src_dir_a, src_content)

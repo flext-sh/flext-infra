@@ -8,7 +8,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import main
-from tests.utilities import u
+from tests import u
 
 
 class TestWorkspaceCheckCLI:
@@ -30,52 +30,39 @@ class TestWorkspaceCheckCLI:
     def test_run_accepts_explicit_scope(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            main(
-                [
-                    "check",
-                    "run",
-                    "--workspace",
-                    str(workspace),
-                    "--projects",
-                    "p1",
-                    "--gates",
-                    "lint",
-                ],
-            ),
+            main([
+                "check",
+                "run",
+                "--workspace",
+                str(workspace),
+                "--projects",
+                "p1",
+                "--gates",
+                "lint",
+            ]),
             eq=0,
         )
 
     def test_run_auto_discovers_workspace_projects(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            main(
-                [
-                    "check",
-                    "run",
-                    "--workspace",
-                    str(workspace),
-                    "--gates",
-                    "lint",
-                ],
-            ),
+            main(["check", "run", "--workspace", str(workspace), "--gates", "lint"]),
             eq=0,
         )
 
     def test_with_projects_success(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            main(
-                [
-                    "check",
-                    "run",
-                    "--workspace",
-                    str(workspace),
-                    "--projects",
-                    "p1",
-                    "--gates",
-                    "lint",
-                ],
-            ),
+            main([
+                "check",
+                "run",
+                "--workspace",
+                str(workspace),
+                "--projects",
+                "p1",
+                "--gates",
+                "lint",
+            ]),
             eq=0,
         )
 
@@ -84,18 +71,16 @@ class TestWorkspaceCheckCLI:
         broken_file = workspace / "p1" / "src" / "broken.py"
         broken_file.write_text("def broken(:\n", encoding="utf-8")
         tm.that(
-            main(
-                [
-                    "check",
-                    "run",
-                    "--workspace",
-                    str(workspace),
-                    "--projects",
-                    "p1",
-                    "--gates",
-                    "lint",
-                ],
-            ),
+            main([
+                "check",
+                "run",
+                "--workspace",
+                str(workspace),
+                "--projects",
+                "p1",
+                "--gates",
+                "lint",
+            ]),
             eq=1,
         )
 
@@ -112,20 +97,18 @@ class TestWorkspaceCheckCLI:
         runner_root.mkdir(parents=True, exist_ok=True)
         try:
             os.chdir(runner_root)
-            exit_code = main(
-                [
-                    "check",
-                    "run",
-                    "--workspace",
-                    str(workspace),
-                    "--gates",
-                    "lint",
-                    "--projects",
-                    "p1",
-                    "--reports-dir",
-                    "reports/check",
-                ],
-            )
+            exit_code = main([
+                "check",
+                "run",
+                "--workspace",
+                str(workspace),
+                "--gates",
+                "lint",
+                "--projects",
+                "p1",
+                "--reports-dir",
+                "reports/check",
+            ])
         finally:
             os.chdir(current)
         tm.that(exit_code, eq=0)

@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests.models import m
-from tests.utilities import u
+from tests import m
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -14,37 +15,29 @@ if TYPE_CHECKING:
 
 def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
+        tmp_path, project_names=("flext-a", "flext-b")
     )
 
     result = FlextInfraDocGenerator().generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace,
-            projects=["flext-a"],
-            apply=False,
-        ),
+            workspace_root=workspace, projects=["flext-a"], apply=False
+        )
     )
 
-    assert result.success
-    assert [report.scope for report in result.value] == ["root", "flext-a"]
+    tm.ok(result)
+    tm.that([report.scope for report in result.value], eq=["root", "flext-a"])
 
 
 def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     result = FlextInfraDocGenerator().generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace,
-            projects=["flext-a"],
-            apply=True,
-        ),
+            workspace_root=workspace, projects=["flext-a"], apply=True
+        )
     )
 
-    assert result.success
+    tm.ok(result)
     assert (workspace / ".reports/docs/generate-summary.json").exists()
     assert (workspace / ".reports/docs/generate-report.md").exists()
     assert (workspace / "flext-a/.reports/docs/generate-report.md").exists()
@@ -54,18 +47,15 @@ def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(
-            workspace_root=workspace,
-            apply=False,
-        ),
+        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=False)
     )
 
-    assert result.success
-    assert result.value[0].result == "WARN"
+    tm.ok(result)
+    tm.that(result.value[0].result, eq="WARN")
 
 
 def test_generated_file_model_is_frozen() -> None:
-    assert m.Infra.GeneratedFile.model_config.get("frozen") is True
+    tm.that(m.Infra.GeneratedFile.model_config.get("frozen"), eq=True)
 
 
 def test_generate_report_tracks_written_files() -> None:
@@ -77,17 +67,13 @@ def test_generate_report_tracks_written_files() -> None:
         source="code-docstring-ssot",
         items=[
             m.Infra.DocsPhaseItemModel(
-                phase="generate",
-                path="docs/a.md",
-                written=True,
+                phase="generate", path="docs/a.md", written=True
             ),
             m.Infra.DocsPhaseItemModel(
-                phase="generate",
-                path="docs/b.md",
-                written=False,
+                phase="generate", path="docs/b.md", written=False
             ),
         ],
     )
 
-    assert report.generated == 2
-    assert len(report.items) == 2
+    tm.that(report.generated, eq=2)
+    tm.that(len(report.items), eq=2)

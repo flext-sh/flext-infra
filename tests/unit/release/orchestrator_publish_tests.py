@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import c
+from tests import m
+from tests import TestsFlextInfraUtilities as u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,16 +34,13 @@ def publish_ctx(
 
 
 def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
-    )
+    workspace = u.Tests.create_release_workspace(tmp_path, initialize_root_git=True)
 
     result = FlextInfraReleaseOrchestrator().phase_publish(
-        publish_ctx(workspace, dry_run=True),
+        publish_ctx(workspace, dry_run=True)
     )
 
-    assert result.success
+    tm.ok(result)
     assert (
         workspace
         / ".reports"
@@ -53,22 +51,18 @@ def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
     assert not (workspace / "docs" / "CHANGELOG.md").exists()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
-            cwd=workspace,
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
         ).unwrap()
         == ""
     )
 
 
 def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
-    )
+    workspace = u.Tests.create_release_workspace(tmp_path, initialize_root_git=True)
 
     result = FlextInfraReleaseOrchestrator().phase_publish(publish_ctx(workspace))
 
-    assert result.success
+    tm.ok(result)
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (workspace / "docs" / "releases" / "latest.md").is_file()
     assert (
@@ -76,8 +70,7 @@ def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> Non
     ).is_file()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
-            cwd=workspace,
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )
@@ -86,21 +79,17 @@ def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> Non
 def test_phase_publish_push_without_origin_fails_after_local_tagging(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
-    )
+    workspace = u.Tests.create_release_workspace(tmp_path, initialize_root_git=True)
 
     result = FlextInfraReleaseOrchestrator().phase_publish(
-        publish_ctx(workspace, push=True),
+        publish_ctx(workspace, push=True)
     )
 
-    assert result.failure
+    tm.fail(result)
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (
         u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
-            cwd=workspace,
+            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
         ).unwrap()
         == c.Tests.RELEASE_TAG_TARGET
     )
@@ -108,17 +97,11 @@ def test_phase_publish_push_without_origin_fails_after_local_tagging(
 
 def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> None:
     workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
-        initialize_root_git=True,
+        tmp_path, project_names=("flext-a", "flext-b"), initialize_root_git=True
     )
 
     result = FlextInfraReleaseOrchestrator().phase_publish(
-        publish_ctx(
-            workspace,
-            project_names=["flext-a"],
-            dry_run=True,
-        ),
+        publish_ctx(workspace, project_names=["flext-a"], dry_run=True)
     )
 
     notes_path = (
@@ -130,7 +113,7 @@ def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> N
     )
     notes = notes_path.read_text(encoding="utf-8")
 
-    assert result.success
-    assert "- root" in notes
-    assert "- flext-a" in notes
-    assert "- flext-b" not in notes
+    tm.ok(result)
+    tm.that(notes, has="- root")
+    tm.that(notes, has="- flext-a")
+    tm.that(notes, lacks="- flext-b")

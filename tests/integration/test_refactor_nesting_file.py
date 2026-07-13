@@ -9,11 +9,12 @@ import pytest
 
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
-    from tests.models import m
-    from tests.typings import t
+    from tests import m
+    from tests import t
 
 pytestmark = [pytest.mark.integration]
 
@@ -31,11 +32,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
 
 
 def _apply_rule(
-    workspace_root: Path,
-    file_path: Path,
-    config_path: Path,
-    *,
-    dry_run: bool,
+    workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
 ) -> m.Infra.Result:
     rule = _FileRuleHarness(config_path)
     rope_project = u.Infra.init_rope_project(workspace_root)
@@ -58,8 +55,7 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
     """Behavior contract for test_refactor_nesting_file."""
 
     def test_class_nesting_refactor_single_file_end_to_end(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Verify class nesting refactor handles unknown module families gracefully."""
         fixture_file = (
@@ -92,8 +88,8 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
         # to enforce against), so the refactor proceeds gracefully and the loose
         # ``ResultHelpers`` class is nested under ``FlextUtilities`` per the
         # mapping config.
-        assert result.success, result.error
+        tm.ok(result)
         assert result.modified
-        assert result.refactored_code is not None
-        assert "class FlextUtilities:" in result.refactored_code
-        assert "class ResultHelpers:" in result.refactored_code
+        tm.that(result.refactored_code, none=False)
+        tm.that(result.refactored_code, has="class FlextUtilities:")
+        tm.that(result.refactored_code, has="class ResultHelpers:")

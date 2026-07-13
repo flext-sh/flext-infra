@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import shutil
-from collections.abc import (
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_tests import FlextTestsUtilities, r
+from flext_tests import FlextTestsUtilities, r, tm
 
 from flext_cli import cli as cli_facade
 from flext_infra import u
@@ -24,10 +19,10 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.constants import c
-from tests.models import m
-from tests.protocols import p
-from tests.typings import t
+from tests import c
+from tests import m
+from tests import p
+from tests import t
 
 if TYPE_CHECKING:
     from tomlkit import TOMLDocument
@@ -46,10 +41,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             _result: ClassVar[p.Result[Sequence[m.Infra.ProjectInfo]] | None] = None
 
-            def __init__(
-                self,
-                result: p.Result[Sequence[m.Infra.ProjectInfo]],
-            ) -> None:
+            def __init__(self, result: p.Result[Sequence[m.Infra.ProjectInfo]]) -> None:
                 type(self)._result = result
 
             @staticmethod
@@ -64,17 +56,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 result = TestsFlextInfraUtilities.Tests.DeptrySelector._result
                 if result is None:
                     return r[Sequence[m.Infra.ProjectInfo]].fail(
-                        "selector result not configured",
+                        "selector result not configured"
                     )
                 return result
 
         class DeptryRunner(p.Cli.CommandRunner):
             """Protocol-compatible runner backed by a real Result."""
 
-            def __init__(
-                self,
-                result: p.Result[m.Cli.CommandOutput],
-            ) -> None:
+            def __init__(self, result: p.Result[m.Cli.CommandOutput]) -> None:
                 self._result = result
 
             @override
@@ -105,7 +94,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 output = self._result.value
                 if output.exit_code != 0:
                     return r[m.Cli.CommandOutput].fail(
-                        output.stderr or output.stdout or "Command failed",
+                        output.stderr or output.stdout or "Command failed"
                     )
                 return self._result
 
@@ -172,8 +161,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     output_file if isinstance(output_file, Path) else Path(output_file)
                 )
                 output_path.write_text(
-                    f"{result.value.stdout}{result.value.stderr}",
-                    encoding="utf-8",
+                    f"{result.value.stdout}{result.value.stderr}", encoding="utf-8"
                 )
                 return r[int].ok(result.value.exit_code)
 
@@ -181,8 +169,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Protocol-compatible TOML reader that replays typed results."""
 
             def __init__(
-                self,
-                values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
+                self, values: t.SequenceOf[p.Result[t.Infra.ContainerDict]]
             ) -> None:
                 self._values = list(values)
                 self._index = 0
@@ -194,7 +181,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._index = current + 1
                 if not self._values:
                     return r[t.Infra.ContainerDict].fail(
-                        "toml reader sequence is empty",
+                        "toml reader sequence is empty"
                     )
                 return (
                     self._values[current]
@@ -206,8 +193,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Protocol-compatible runner that replays command results in order."""
 
             def __init__(
-                self,
-                results: t.SequenceOf[p.Result[m.Cli.CommandOutput]],
+                self, results: t.SequenceOf[p.Result[m.Cli.CommandOutput]]
             ) -> None:
                 self._results = list(results)
                 self._index = 0
@@ -218,7 +204,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._index = current + 1
                 if not self._results:
                     return r[m.Cli.CommandOutput].fail(
-                        "runner result sequence is empty",
+                        "runner result sequence is empty"
                     )
                 return (
                     self._results[current]
@@ -257,14 +243,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 output = result.value
                 if output.exit_code != 0:
                     return r[m.Cli.CommandOutput].fail(
-                        output.stderr or output.stdout or "Command failed",
+                        output.stderr or output.stdout or "Command failed"
                     )
                 return result
 
         @staticmethod
-        def infra_mapping(
-            value: t.Infra.InfraMapping,
-        ) -> t.Infra.ContainerDict:
+        def infra_mapping(value: t.Infra.InfraMapping) -> t.Infra.ContainerDict:
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
 
         @staticmethod
@@ -272,33 +256,33 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             value: t.Infra.InfraMapping,
         ) -> p.Result[t.Infra.ContainerDict]:
             return r[t.Infra.ContainerDict].ok(
-                TestsFlextInfraUtilities.Tests.infra_mapping(value),
+                TestsFlextInfraUtilities.Tests.infra_mapping(value)
             )
 
         @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
             result = u.Infra.load_tool_config()
-            assert result.success
+            tm.ok(result)
             return result.value
 
         @staticmethod
         def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
             normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
-            assert isinstance(normalized, Mapping)
+            tm.that(normalized, is_=Mapping)
             result: dict[str, t.JsonValue] = dict(normalized)
             return result
 
         @staticmethod
         def toml_mapping(value: t.JsonPayload | None) -> t.JsonMapping:
             normalized: t.JsonValue = u.normalize_to_json_value(value)
-            assert isinstance(normalized, Mapping)
+            tm.that(normalized, is_=Mapping)
             result: dict[str, t.JsonValue] = dict(normalized)
             return result
 
         @staticmethod
         def toml_list(value: t.JsonPayload | None) -> t.JsonList:
             normalized: t.JsonValue = u.normalize_to_json_value(value)
-            assert isinstance(normalized, list)
+            tm.that(normalized, is_=list)
             result: list[t.JsonValue] = []
             result.extend(normalized)
             return tuple(result)
@@ -306,24 +290,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def toml_strings(value: t.JsonPayload | None) -> t.StrSequence:
             normalized: t.JsonValue = u.normalize_to_json_value(value)
-            assert isinstance(normalized, list)
+            tm.that(normalized, is_=list)
             return tuple(str(item) for item in normalized)
 
         @staticmethod
         def command_runner(
-            *,
-            stdout: str = "",
-            stderr: str = "",
-            returncode: int = 0,
+            *, stdout: str = "", stderr: str = "", returncode: int = 0
         ) -> p.Cli.CommandRunner:
             return TestsFlextInfraUtilities.Tests.DeptryRunner(
                 r.ok(
                     TestsFlextInfraUtilities.Tests.stub_run(
-                        stdout=stdout,
-                        stderr=stderr,
-                        returncode=returncode,
-                    ),
-                ),
+                        stdout=stdout, stderr=stderr, returncode=returncode
+                    )
+                )
             )
 
         class MigratorDiscovery:
@@ -339,8 +318,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._error = error
 
             def discover_projects(
-                self,
-                workspace_root: Path,
+                self, workspace_root: Path
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 _ = workspace_root
                 if self._error:
@@ -356,8 +334,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             @override
             def generate_basemk(
-                self,
-                settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+                self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
             ) -> p.Result[str]:
                 del settings
                 if self._fail:
@@ -372,26 +349,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def is_project_valid(project_name: str) -> bool:
             return (
                 bool(project_name)
-                and project_name
-                .replace("-", "")
-                .replace(
-                    "_",
-                    "",
-                )
-                .isalnum()
+                and project_name.replace("-", "").replace("_", "").isalnum()
             )
 
         @staticmethod
         def stub_run(
-            *,
-            stdout: str = "",
-            stderr: str = "",
-            returncode: int = 0,
+            *, stdout: str = "", stderr: str = "", returncode: int = 0
         ) -> m.Cli.CommandOutput:
             return m.Cli.CommandOutput(
-                stdout=stdout,
-                stderr=stderr,
-                exit_code=returncode,
+                stdout=stdout, stderr=stderr, exit_code=returncode
             )
 
         @staticmethod
@@ -473,10 +439,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace.mkdir(parents=True, exist_ok=True)
             workflow_dir = workspace / ".github/workflows"
             workflow_dir.mkdir(parents=True, exist_ok=True)
-            (workflow_dir / "ci.yml").write_text(
-                source_workflow,
-                encoding="utf-8",
-            )
+            (workflow_dir / "ci.yml").write_text(source_workflow, encoding="utf-8")
             exit_codes = dict(pr_exit_codes or {})
             for name in project_names:
                 project = workspace / name
@@ -495,8 +458,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
                 exit_code = exit_codes.get(name, "0")
                 (project / "Makefile").write_text(
-                    f"pr:\n\t@exit {exit_code}\n",
-                    encoding="utf-8",
+                    f"pr:\n\t@exit {exit_code}\n", encoding="utf-8"
                 )
             return workspace
 
@@ -566,9 +528,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (workspace / ".git").mkdir(exist_ok=True)
             if initialize_project_git:
                 for name in project_names:
-                    TestsFlextInfraUtilities.Tests.initialize_git_repo(
-                        workspace / name,
-                    )
+                    TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace / name)
             return workspace
 
         @staticmethod
@@ -582,10 +542,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> Path:
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
-            (workspace / "pyproject.toml").write_text(
-                root_pyproject,
-                encoding="utf-8",
-            )
+            (workspace / "pyproject.toml").write_text(root_pyproject, encoding="utf-8")
             if gitmodules_members:
                 gitmodules_lines: list[str] = []
                 for name in gitmodules_members:
@@ -596,18 +553,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         "",
                     ))
                 (workspace / ".gitmodules").write_text(
-                    "\n".join(gitmodules_lines).rstrip() + "\n",
-                    encoding="utf-8",
+                    "\n".join(gitmodules_lines).rstrip() + "\n", encoding="utf-8"
                 )
             for directory in extra_dirs:
                 (workspace / directory).mkdir(parents=True, exist_ok=True)
             for name, pyproject in dict(projects or {}).items():
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)
-                (project / "pyproject.toml").write_text(
-                    pyproject,
-                    encoding="utf-8",
-                )
+                (project / "pyproject.toml").write_text(pyproject, encoding="utf-8")
                 package = project / "src" / name.replace("-", "_")
                 package.mkdir(parents=True, exist_ok=True)
                 (package / "__init__.py").write_text("", encoding="utf-8")
@@ -623,7 +576,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             lines = ["[project]", f'name = "{name}"']
             if dependency_path:
                 lines.append(
-                    f'dependencies = ["flext-core @ file://{dependency_path}"]',
+                    f'dependencies = ["flext-core @ file://{dependency_path}"]'
                 )
                 lines.extend((
                     "",
@@ -632,11 +585,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 ))
             if workspace_members:
                 members = ", ".join(f'"{member}"' for member in workspace_members)
-                lines.extend((
-                    "",
-                    "[tool.uv.workspace]",
-                    f"members = [{members}]",
-                ))
+                lines.extend(("", "[tool.uv.workspace]", f"members = [{members}]"))
             return "\n".join(lines) + "\n"
 
         @staticmethod
@@ -667,11 +616,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_codegen_project(
-            *,
-            tmp_path: Path,
-            name: str,
-            pkg_name: str,
-            files: t.StrMapping,
+            *, tmp_path: Path, name: str, pkg_name: str, files: t.StrMapping
         ) -> Path:
             project = tmp_path / name
             project.mkdir()
@@ -707,9 +652,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_scaffolder_test_project(
-            *,
-            tmp_path: Path,
-            with_all_modules: bool,
+            *, tmp_path: Path, with_all_modules: bool
         ) -> Path:
             project = tmp_path / "test-project"
             project.mkdir()
@@ -735,8 +678,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_migrator_project(
-            project_root: Path,
-            name: str = "project-a",
+            project_root: Path, name: str = "project-a"
         ) -> m.Infra.ProjectInfo:
             return m.Infra.ProjectInfo.model_validate(
                 obj={
@@ -745,7 +687,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "stack": "python/external",
                     "has_tests": False,
                     "has_src": True,
-                },
+                }
             )
 
         @staticmethod
@@ -812,10 +754,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             duration: float = 0.0,
         ) -> m.Cli.CommandOutput:
             return m.Cli.CommandOutput(
-                stdout=stdout,
-                stderr=stderr,
-                exit_code=exit_code,
-                duration=duration,
+                stdout=stdout, stderr=stderr, exit_code=exit_code, duration=duration
             )
 
         @staticmethod
@@ -832,7 +771,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     r[Sequence[m.Infra.ProjectInfo]].fail(selection_error)
                     if selection_error is not None
                     else r[Sequence[m.Infra.ProjectInfo]].ok(list(projects or []))
-                ),
+                )
             )
             service.runner = TestsFlextInfraUtilities.Tests.DeptryRunner(
                 (
@@ -840,9 +779,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     if run_error is not None
                     else r[m.Cli.CommandOutput].ok(
                         command_output
-                        or TestsFlextInfraUtilities.Tests.create_command_output(),
+                        or TestsFlextInfraUtilities.Tests.create_command_output()
                     )
-                ),
+                )
             )
             return service
 
@@ -857,16 +796,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             package_root = workspace_root / c.Infra.DEFAULT_SRC_DIR / package_name
             package_root.mkdir(parents=True)
             (workspace_root / "Makefile").write_text(
-                "check:\n\t@true\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                "check:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
             )
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 (f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
             (package_root / c.Infra.INIT_PY).write_text(
-                "",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                "", encoding=c.Infra.ENCODING_DEFAULT
             )
             return (workspace_root, package_root)
 
@@ -899,19 +836,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def run_lazy_init(
-            workspace_root: Path,
-            *,
-            check_only: bool = False,
-        ) -> int:
+        def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
             return FlextInfraCodegenLazyInit(
-                workspace_root=workspace_root,
+                workspace_root=workspace_root
             ).generate_inits(check_only=check_only)
 
         @staticmethod
-        def create_lazy_init_service(
-            workspace_root: Path,
-        ) -> FlextInfraCodegenLazyInit:
+        def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:
             return FlextInfraCodegenLazyInit(workspace_root=workspace_root)
 
         @staticmethod
@@ -926,39 +857,30 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def consolidate_codegen(
-            *,
-            workspace_root: Path,
-            project: str | None = None,
-            dry_run: bool = True,
+            *, workspace_root: Path, project: str | None = None, dry_run: bool = True
         ) -> p.Result[str]:
             service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
-                workspace_root=workspace_root,
-                dry_run=dry_run,
-                project_name=project,
+                workspace_root=workspace_root, dry_run=dry_run, project_name=project
             )
             result: p.Result[str] = service.execute()
             return result
 
         @staticmethod
-        def build_mro_import_workspace(
-            tmp_path: Path,
-        ) -> tuple[Path, Path, Path]:
+        def build_mro_import_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
             workspace_root = tmp_path
             project_root = workspace_root / "flext-demo"
             package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "demo_pkg"
             package_root.mkdir(parents=True)
             (project_root / ".git").mkdir()
             (project_root / "Makefile").write_text(
-                "test:\n\t@true\n",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                "test:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
             )
             (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 "[project]\nname = 'flext-demo'\nversion = '0.1.0'\n",
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
             (package_root / c.Infra.INIT_PY).write_text(
-                "",
-                encoding=c.Infra.ENCODING_DEFAULT,
+                "", encoding=c.Infra.ENCODING_DEFAULT
             )
             constants_path = package_root / "constants.py"
             constants_path.write_text(
@@ -998,10 +920,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def migrate_workspace_mro_imports(
-            *,
-            workspace_root: Path,
-            constants_path: Path,
-            apply: bool,
+            *, workspace_root: Path, constants_path: Path, apply: bool
         ) -> tuple[
             t.SequenceOf[m.Infra.MROFileMigration],
             t.SequenceOf[m.Infra.MRORewriteResult],
@@ -1015,8 +934,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 workspace_root=workspace_root,
                 scan_results=[
                     TestsFlextInfraUtilities.Tests.create_mro_scan_report(
-                        constants_path,
-                    ),
+                        constants_path
+                    )
                 ],
                 apply=apply,
             )
@@ -1029,20 +948,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             error: str = "",
         ) -> p.Infra.Discovery:
             return TestsFlextInfraUtilities.Tests.MigratorDiscovery(
-                projects,
-                error=error,
+                projects, error=error
             )
 
         @staticmethod
         def create_migrator_generator(
-            content: str = "",
-            *,
-            fail: str = "",
+            content: str = "", *, fail: str = ""
         ) -> FlextInfraBaseMkGenerator:
-            return TestsFlextInfraUtilities.Tests.MigratorGenerator(
-                content,
-                fail=fail,
-            )
+            return TestsFlextInfraUtilities.Tests.MigratorGenerator(content, fail=fail)
 
         @staticmethod
         def build_project_migrator(
@@ -1067,8 +980,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def detect_command(
-            workspace_root: Path,
-            **overrides: t.Infra.InfraValue,
+            workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
             return m.Infra.DetectCommand.model_validate({
                 "workspace": str(workspace_root),
@@ -1095,13 +1007,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 deptry_path.write_text("", encoding="utf-8")
             if runner is not None:
                 return FlextInfraRuntimeDevDependencyDetector(
-                    workspace_root=tmp_path,
-                    deps=deps,
-                    runner=runner,
+                    workspace_root=tmp_path, deps=deps, runner=runner
                 )
             return FlextInfraRuntimeDevDependencyDetector(
-                workspace_root=tmp_path,
-                deps=deps,
+                workspace_root=tmp_path, deps=deps
             )
 
         @staticmethod
@@ -1114,8 +1023,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 encoding="utf-8",
             )
             (project_root / "pyproject.toml").write_text(
-                "[project]\n",
-                encoding="utf-8",
+                "[project]\n", encoding="utf-8"
             )
             (project_root / ".gitignore").write_text("", encoding="utf-8")
 
@@ -1129,11 +1037,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> m.Infra.GateExecution:
             return m.Infra.GateExecution(
                 result=m.Infra.GateResult(
-                    gate=gate,
-                    project=project,
-                    passed=passed,
-                    errors=(),
-                    duration=0.0,
+                    gate=gate, project=project, passed=passed, errors=(), duration=0.0
                 ),
                 issues=tuple(issues or ()),
                 raw_output="",
@@ -1174,15 +1078,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_checker_project(
-            tmp_path: Path,
-            *,
-            project_name: str = "p1",
-            with_src: bool = False,
+            tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
         ) -> tuple[FlextInfraWorkspaceChecker, Path]:
             checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
             project_dir = TestsFlextInfraUtilities.Tests.mk_project(
-                tmp_path,
-                project_name,
+                tmp_path, project_name
             )
             if with_src:
                 (project_dir / "src").mkdir(parents=True, exist_ok=True)
@@ -1190,13 +1090,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_gate_context(
-            workspace_root: Path,
-            *,
-            reports_dir: Path | None = None,
+            workspace_root: Path, *, reports_dir: Path | None = None
         ) -> m.Infra.GateContext:
             return m.Infra.GateContext(
-                workspace=workspace_root,
-                reports_dir=reports_dir or workspace_root,
+                workspace=workspace_root, reports_dir=reports_dir or workspace_root
             )
 
         @staticmethod
@@ -1214,8 +1111,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 project_dir,
                 ctx
                 or TestsFlextInfraUtilities.Tests.create_gate_context(
-                    workspace_root,
-                    reports_dir=reports_dir,
+                    workspace_root, reports_dir=reports_dir
                 ),
             )
 
@@ -1228,10 +1124,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def model_dump(self) -> MutableMapping[str, t.IntMapping]:
                 return {"deptry": {"raw_count": self._raw_count}}
 
-        class DetectorDepsStub(
-            p.Infra.DepsService,
-            p.Infra.TypingsDepsService,
-        ):
+        class DetectorDepsStub(p.Infra.DepsService, p.Infra.TypingsDepsService):
             """Typed dependency service stub for detector tests."""
 
             def __init__(self, project_paths: t.SequenceOf[Path]) -> None:
@@ -1254,18 +1147,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             @override
             def run_deptry(
-                self,
-                project_path: Path,
-                venv_bin: Path,
+                self, project_path: Path, venv_bin: Path
             ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
                 del project_path, venv_bin
                 if self.deptry_failure is not None:
                     return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
-                        self.deptry_failure,
+                        self.deptry_failure
                     )
-                return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(
-                    ([], 0),
-                )
+                return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
 
             @override
             def build_project_report(
@@ -1288,14 +1177,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 del include_mypy
                 if self.typings_failure is not None:
                     return r[m.Infra.TypingsReport].fail(self.typings_failure)
-                return r[m.Infra.TypingsReport].ok(
-                    m.Infra.TypingsReport(to_add=[]),
-                )
+                return r[m.Infra.TypingsReport].ok(m.Infra.TypingsReport(to_add=[]))
 
             @override
             def load_dependency_limits(
-                self,
-                limits_path: Path | None = None,
+                self, limits_path: Path | None = None
             ) -> t.StrMapping:
                 del limits_path
                 limits: dict[str, str] = {}

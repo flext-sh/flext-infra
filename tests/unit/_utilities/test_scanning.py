@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.constants import c
-from tests.models import m
+from tests import c
+from tests import m
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -12,35 +13,27 @@ if TYPE_CHECKING:
 class TestsFlextInfraUtilitiesscanning:
     def test_scan_violation_model_fields(self) -> None:
         violation = m.Infra.ScanViolation(
-            line=42,
-            message="forbidden import",
-            severity="high",
-            rule_id="FLEXT001",
+            line=42, message="forbidden import", severity="high", rule_id="FLEXT001"
         )
 
-        assert violation.line == 42
-        assert violation.message == "forbidden import"
-        assert violation.severity == "high"
-        assert violation.rule_id == "FLEXT001"
+        tm.that(violation.line, eq=42)
+        tm.that(violation.message, eq="forbidden import")
+        tm.that(violation.severity, eq="high")
+        tm.that(violation.rule_id, eq="FLEXT001")
 
     def test_scan_result_model_fields_and_defaults(self, tmp_path: Path) -> None:
         result = m.Infra.ScanResult(
-            file_path=tmp_path / "sample.py",
-            detector_name="scanner-x",
-            violations=[],
+            file_path=tmp_path / "sample.py", detector_name="scanner-x", violations=[]
         )
         payload = result.model_dump()
 
-        assert result.file_path == tmp_path / "sample.py"
-        assert result.detector_name == "scanner-x"
-        assert payload["violations"] == []
+        tm.that(result.file_path, eq=tmp_path / "sample.py")
+        tm.that(result.detector_name, eq="scanner-x")
+        tm.that(payload["violations"], eq=[])
 
     def test_scan_result_with_violations(self, tmp_path: Path) -> None:
         violation = m.Infra.ScanViolation(
-            line=7,
-            message="rule hit",
-            severity="medium",
-            rule_id=None,
+            line=7, message="rule hit", severity="medium", rule_id=None
         )
         result = m.Infra.ScanResult(
             file_path=tmp_path / "violating.py",
@@ -50,7 +43,7 @@ class TestsFlextInfraUtilitiesscanning:
         payload = result.model_dump()
 
         violations = payload["violations"]
-        assert len(violations) == 1
-        assert violations[0]["message"] == "rule hit"
-        assert violations[0]["rule_id"] is None
-        assert c.Infra.GIT == "git"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0]["message"], eq="rule hit")
+        tm.that(violations[0]["rule_id"], none=True)
+        tm.that(c.Infra.GIT, eq="git")

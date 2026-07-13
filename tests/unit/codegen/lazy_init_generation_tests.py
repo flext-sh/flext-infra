@@ -53,7 +53,7 @@ class TestsFlextInfraCodegenGeneration:
                 "r": ("flext_core", "r"),
             }),
             eager_dunders=MappingProxyType({
-                "__version__": ("demo_pkg.__version__", "__version__"),
+                "__version__": ("demo_pkg.__version__", "__version__")
             }),
             child_packages=("demo_pkg.services",),
         )
@@ -74,18 +74,13 @@ class TestsFlextInfraCodegenGeneration:
     def test_root_initializer_consumes_only_manifest_data(self) -> None:
         """Public root initializer imports manifest data and installs lazy access."""
         plan = self._plan(
-            "demo_pkg",
-            ("Demo",),
-            MappingProxyType({"Demo": ("demo_pkg.api", "Demo")}),
+            "demo_pkg", ("Demo",), MappingProxyType({"Demo": ("demo_pkg.api", "Demo")})
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(
-            content,
-            contains="from demo_pkg.__unit__ import (",
-        )
+        tm.that(content, contains="from demo_pkg.__unit__ import (")
         tm.that(content, contains="PUBLIC_EXPORTS as _PUBLIC_EXPORTS,")
         tm.that(content, contains="__all__: tuple[str, ...]")
         tm.that(content, contains="public_exports=_PUBLIC_EXPORTS")
@@ -140,7 +135,7 @@ class TestsFlextInfraCodegenGeneration:
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
         """Static imports preserve facade aliases explicitly."""
         lines = FlextInfraCodegenGeneration.generate_type_checking({
-            "module": [("c", "FlextConstants"), ("m", "FlextModels")],
+            "module": [("c", "FlextConstants"), ("m", "FlextModels")]
         })
 
         tm.that(

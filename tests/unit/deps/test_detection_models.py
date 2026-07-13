@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import (
-    Mapping,
-)
+from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
@@ -16,18 +14,14 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 class TestsFlextInfraDepsDetectionModels:
     def test_deptry_issue_groups_creation(self) -> None:
         groups = m.Infra.DeptryIssueGroups()
-        assert groups.dep001 == []
-        assert groups.dep002 == []
-        assert groups.dep003 == []
-        assert groups.dep004 == []
+        tm.that(groups.dep001, eq=[])
+        tm.that(groups.dep002, eq=[])
+        tm.that(groups.dep003, eq=[])
+        tm.that(groups.dep004, eq=[])
 
     def test_deptry_report_creation(self) -> None:
         report = m.Infra.DeptryReport(
-            missing=[],
-            unused=[],
-            transitive=[],
-            dev_in_runtime=[],
-            raw_count=0,
+            missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0
         )
         tm.that(report.missing, empty=True)
         tm.that(report.unused, empty=True)
@@ -37,11 +31,7 @@ class TestsFlextInfraDepsDetectionModels:
 
     def test_project_dependency_report_creation(self) -> None:
         deptry = m.Infra.DeptryReport(
-            missing=[],
-            unused=[],
-            transitive=[],
-            dev_in_runtime=[],
-            raw_count=0,
+            missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0
         )
         report = m.Infra.ProjectDependencyReport(project="test-project", deptry=deptry)
         tm.that(report.project, eq="test-project")
@@ -74,31 +64,34 @@ class TestsFlextInfraDepsDetectionModels:
         tm.that(service.module_to_types_package("yaml", limits), eq="types-pyyaml")
 
     def test_none_value(self) -> None:
-        assert FlextInfraDependencyDetectionService.to_infra_value(None) is None
+        tm.that(FlextInfraDependencyDetectionService.to_infra_value(None), none=True)
 
     def test_string_value(self) -> None:
-        assert FlextInfraDependencyDetectionService.to_infra_value("hello") == "hello"
+        tm.that(
+            FlextInfraDependencyDetectionService.to_infra_value("hello"), eq="hello"
+        )
 
     def test_int_value(self) -> None:
-        assert FlextInfraDependencyDetectionService.to_infra_value(42) == 42
+        tm.that(FlextInfraDependencyDetectionService.to_infra_value(42), eq=42)
 
     def test_float_value(self) -> None:
-        assert FlextInfraDependencyDetectionService.to_infra_value(math.pi) == math.pi
+        tm.that(
+            FlextInfraDependencyDetectionService.to_infra_value(math.pi), eq=math.pi
+        )
 
     def test_bool_value(self) -> None:
-        assert FlextInfraDependencyDetectionService.to_infra_value(True) is True
+        tm.that(FlextInfraDependencyDetectionService.to_infra_value(True), eq=True)
 
     def test_list_of_valid_values(self) -> None:
-        assert FlextInfraDependencyDetectionService.to_infra_value(["a", 1, True]) == [
-            "a",
-            1,
-            True,
-        ]
+        tm.that(
+            FlextInfraDependencyDetectionService.to_infra_value(["a", 1, True]),
+            eq=["a", 1, True],
+        )
 
     def test_list_with_unconvertible(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", [Path("/tmp")]),
+                cast("t.Infra.InfraValue", [Path("/tmp")])
             )
             is None
         )
@@ -108,13 +101,13 @@ class TestsFlextInfraDepsDetectionModels:
             "key": "value",
             "num": 42,
         })
-        assert isinstance(result, Mapping)
-        assert result == {"key": "value", "num": 42}
+        tm.that(result, is_=Mapping)
+        tm.that(result, eq={"key": "value", "num": 42})
 
     def test_mapping_with_unconvertible(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", {"key": Path("/tmp")}),
+                cast("t.Infra.InfraValue", {"key": Path("/tmp")})
             )
             is None
         )
@@ -122,18 +115,18 @@ class TestsFlextInfraDepsDetectionModels:
     def test_unsupported_type(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", Path("/tmp")),
+                cast("t.Infra.InfraValue", Path("/tmp"))
             )
             is None
         )
 
     def test_list_with_none_item(self) -> None:
-        assert FlextInfraDependencyDetectionService.to_infra_value([None, "a"]) == [
-            None,
-            "a",
-        ]
+        tm.that(
+            FlextInfraDependencyDetectionService.to_infra_value([None, "a"]),
+            eq=[None, "a"],
+        )
 
     def test_mapping_with_none_value(self) -> None:
         result = FlextInfraDependencyDetectionService.to_infra_value({"key": None})
-        assert isinstance(result, Mapping)
-        assert result == {"key": None}
+        tm.that(result, is_=Mapping)
+        tm.that(result, eq={"key": None})

@@ -18,12 +18,12 @@ import pytest
 from flext_tests import tf, tm
 
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
-from tests.models import m
+from tests import m
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 @pytest.fixture
@@ -43,23 +43,18 @@ class TestTierWhitelistAbstractionBoundary:
     """Abstraction-boundary rule: no bare pydantic/structlog/... outside flext-core."""
 
     def test_empty_workspace_passes(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
+        self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
-        assert isinstance(report, m.Infra.ValidationReport)
+        tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
     def test_clean_imports_pass(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
+        self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create(
-            "from flext_core import m, c\nX = m.BaseModel\n",
-            "good.py",
+            "from flext_core import m, c\nX = m.BaseModel\n", "good.py"
         )
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
@@ -87,17 +82,14 @@ class TestTierWhitelistAbstractionBoundary:
         tm.that(" | ".join(report.violations), has=expected_substring)
 
     def test_flext_core_src_is_allowlisted(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
+        self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
         # Emulate a flext-core layout — bare pydantic is legal here.
         src = tmp_path / "flext-core" / "src" / "flext_core"
         src.mkdir(parents=True, exist_ok=True)
         (src / "__init__.py").write_text("", encoding="utf-8")
         tf(base_dir=src).create(
-            "from pydantic import BaseModel\nX = BaseModel\n",
-            "abstractions.py",
+            "from pydantic import BaseModel\nX = BaseModel\n", "abstractions.py"
         )
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
@@ -107,9 +99,7 @@ class TestTierWhitelistSummary:
     """Summary content."""
 
     def test_failing_summary_reports_count(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
+        self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("from pydantic import BaseModel\n", "a.py")
@@ -118,9 +108,7 @@ class TestTierWhitelistSummary:
         tm.that(report.summary, has="2")
 
     def test_passing_summary_mentions_boundary(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateTierWhitelist,
+        self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
         _seed_pkg(tmp_path)
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))

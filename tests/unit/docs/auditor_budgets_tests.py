@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestLoadAuditBudgets:
@@ -33,8 +33,8 @@ class TestLoadAuditBudgets:
                 "audit_gate": {
                     "max_issues_default": 5,
                     "max_issues_by_scope": {"test-project": 3},
-                },
-            },
+                }
+            }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
@@ -57,8 +57,8 @@ class TestLoadAuditBudgets:
                 "audit_gate": {
                     "max_issues_default": 5.5,
                     "max_issues_by_scope": {"test-project": 3.7},
-                },
-            },
+                }
+            }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
@@ -70,8 +70,8 @@ class TestLoadAuditBudgets:
         arch_dir.mkdir(parents=True, exist_ok=True)
         config_data: t.JsonMapping = {
             "docs_validation": {
-                "audit_gate": {"max_issues_by_scope": {"test-project": 3}},
-            },
+                "audit_gate": {"max_issues_by_scope": {"test-project": 3}}
+            }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)

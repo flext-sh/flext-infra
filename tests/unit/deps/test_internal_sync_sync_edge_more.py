@@ -6,12 +6,12 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.typings import t
+from tests import t
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.protocols import p
+    from tests import p
 
 
 class _TomlStub:
@@ -41,7 +41,6 @@ class TestsFlextInfraDepsInternalSyncSyncEdgeMore:
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n')
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
-            service,
-            [r[t.Infra.ContainerDict].ok({"project": {"name": "test"}})],
+            service, [r[t.Infra.ContainerDict].ok({"project": {"name": "test"}})]
         )
         tm.ok(service.sync(tmp_path), eq=0)

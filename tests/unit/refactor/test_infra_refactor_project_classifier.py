@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,8 +18,7 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
     """Behavior contract for test_infra_refactor_project_classifier."""
 
     def test_read_project_metadata_preserves_pep621_dependency_order(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _write_pyproject(
             tmp_path,
@@ -36,12 +36,11 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
         classifier = FlextInfraProjectClassifier(tmp_path)
         project_name, dependencies = classifier._read_project_metadata()
 
-        assert project_name == "flext-example"
-        assert dependencies == ["flext-core", "flext-cli", "requests"]
+        tm.that(project_name, eq="flext-example")
+        tm.that(dependencies, eq=["flext-core", "flext-cli", "requests"])
 
     def test_read_project_metadata_preserves_poetry_dependency_order(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _write_pyproject(
             tmp_path,
@@ -65,11 +64,8 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
         classifier = FlextInfraProjectClassifier(tmp_path)
         project_name, dependencies = classifier._read_project_metadata()
 
-        assert project_name == "flext-example"
-        assert dependencies == [
-            "flext-core",
-            "flext-cli",
-            "requests",
-            "flext-ldap",
-            "pytest",
-        ]
+        tm.that(project_name, eq="flext-example")
+        tm.that(
+            dependencies,
+            eq=["flext-core", "flext-cli", "requests", "flext-ldap", "pytest"],
+        )

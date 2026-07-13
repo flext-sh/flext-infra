@@ -11,7 +11,8 @@ from pathlib import Path
 
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 
 class TestRunnerPublicBehavior:
@@ -97,16 +98,11 @@ class TestRunnerPublicBehavior:
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         original_path = self._install_fake_pyrefly(
-            tmp_path,
-            payload='{"errors": []}',
-            exit_code=0,
+            tmp_path, payload='{"errors": []}', exit_code=0
         )
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraPyreflyGate,
-                tmp_path,
-                proj_dir,
-                reports_dir=reports_dir,
+                FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
             os.environ["PATH"] = original_path
@@ -128,16 +124,13 @@ class TestRunnerPublicBehavior:
         )
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraPyreflyGate,
-                tmp_path,
-                proj_dir,
-                reports_dir=reports_dir,
+                FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
             os.environ["PATH"] = original_path
 
         assert not result.result.passed
-        assert len(result.issues) == 1
+        tm.that(len(result.issues), eq=1)
 
     def test_run_pyrefly_with_invalid_json(self, tmp_path: Path) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
@@ -145,16 +138,11 @@ class TestRunnerPublicBehavior:
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         original_path = self._install_fake_pyrefly(
-            tmp_path,
-            payload="invalid json",
-            exit_code=1,
+            tmp_path, payload="invalid json", exit_code=1
         )
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraPyreflyGate,
-                tmp_path,
-                proj_dir,
-                reports_dir=reports_dir,
+                FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
             os.environ["PATH"] = original_path
@@ -176,19 +164,15 @@ class TestRunnerPublicBehavior:
         )
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraPyreflyGate,
-                tmp_path,
-                proj_dir,
-                reports_dir=reports_dir,
+                FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
             os.environ["PATH"] = original_path
 
-        assert len(result.issues) == 1
+        tm.that(len(result.issues), eq=1)
 
     def test_run_pyrefly_limits_check_to_local_python_dirs(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
@@ -198,33 +182,22 @@ class TestRunnerPublicBehavior:
         (proj_dir / "tests" / "test_main.py").write_text("# code\n", encoding="utf-8")
         log_file = tmp_path / "pyrefly-command.txt"
         original_path = self._install_fake_pyrefly(
-            tmp_path,
-            payload='{"errors": []}',
-            exit_code=0,
-            log_file=log_file,
+            tmp_path, payload='{"errors": []}', exit_code=0, log_file=log_file
         )
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraPyreflyGate,
-                tmp_path,
-                proj_dir,
-                reports_dir=reports_dir,
+                FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
             os.environ["PATH"] = original_path
 
         assert result.result.passed
-        assert log_file.read_text(encoding="utf-8").splitlines()[0:4] == [
-            "check",
-            "src",
-            "tests",
-            "--config",
-        ]
+        tm.that(
+            log_file.read_text(encoding="utf-8").splitlines()[0:4],
+            eq=["check", "src", "tests", "--config"],
+        )
 
-    def test_run_pyrefly_uses_project_includes_config(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_run_pyrefly_uses_project_includes_config(self, tmp_path: Path) -> None:
         proj_dir = u.Tests.mk_project(
             tmp_path,
             "pyrefly-project",
@@ -236,55 +209,42 @@ class TestRunnerPublicBehavior:
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         log_file = tmp_path / "pyrefly-config-command.txt"
         original_path = self._install_fake_pyrefly(
-            tmp_path,
-            payload='{"errors": []}',
-            exit_code=0,
-            log_file=log_file,
+            tmp_path, payload='{"errors": []}', exit_code=0, log_file=log_file
         )
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraPyreflyGate,
-                tmp_path,
-                proj_dir,
-                reports_dir=reports_dir,
+                FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
             os.environ["PATH"] = original_path
 
         assert result.result.passed
-        assert log_file.read_text(encoding="utf-8").splitlines()[0:2] == [
-            "check",
-            "--config",
-        ]
+        tm.that(
+            log_file.read_text(encoding="utf-8").splitlines()[0:2],
+            eq=["check", "--config"],
+        )
 
     def test_run_pyrefly_reports_command_failures_without_json(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         original_path = self._install_fake_pyrefly(
-            tmp_path,
-            payload=None,
-            exit_code=1,
-            stderr="pyrefly crashed",
+            tmp_path, payload=None, exit_code=1, stderr="pyrefly crashed"
         )
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraPyreflyGate,
-                tmp_path,
-                proj_dir,
-                reports_dir=reports_dir,
+                FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
             os.environ["PATH"] = original_path
 
         assert not result.result.passed
-        assert len(result.issues) == 1
-        assert result.issues[0].code == "pyrefly-exec"
-        assert "pyrefly crashed" in result.issues[0].message
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="pyrefly-exec")
+        tm.that(result.issues[0].message, has="pyrefly crashed")
 
     def test_run_mypy_no_python_dirs(self, tmp_path: Path) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path)
@@ -292,7 +252,7 @@ class TestRunnerPublicBehavior:
         result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
 
         assert result.result.passed
-        assert len(result.issues) == 0
+        tm.that(len(result.issues), eq=0)
 
     def test_run_mypy_with_json_output(self, tmp_path: Path) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
@@ -314,7 +274,7 @@ class TestRunnerPublicBehavior:
                 os.environ.pop("PYTHONPATH", None)
 
         assert not result.result.passed
-        assert len(result.issues) == 1
+        tm.that(len(result.issues), eq=1)
 
     def test_run_mypy_skips_empty_lines(self, tmp_path: Path) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
@@ -338,11 +298,10 @@ class TestRunnerPublicBehavior:
                 os.environ.pop("PYTHONPATH", None)
 
         assert not result.result.passed
-        assert len(result.issues) == 2
+        tm.that(len(result.issues), eq=2)
 
     def test_run_mypy_limits_check_to_local_python_dirs_and_root_files(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         (proj_dir / "scripts").mkdir()
@@ -353,10 +312,7 @@ class TestRunnerPublicBehavior:
         (proj_dir / "conftest.py").write_text("# code\n", encoding="utf-8")
         log_file = tmp_path / "mypy-command.txt"
         original_pythonpath = self._install_fake_mypy(
-            tmp_path,
-            stdout="",
-            exit_code=0,
-            log_file=log_file,
+            tmp_path, stdout="", exit_code=0, log_file=log_file
         )
         try:
             result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
@@ -368,9 +324,9 @@ class TestRunnerPublicBehavior:
 
         assert result.result.passed
         command_args = log_file.read_text(encoding="utf-8").splitlines()
-        assert command_args[0:4] == ["src", "tests", "conftest.py", "--config-file"]
-        assert "scripts" not in command_args
-        assert Path(command_args[4]).name == "pyproject.toml"
+        tm.that(command_args[0:4], eq=["src", "tests", "conftest.py", "--config-file"])
+        tm.that(command_args, lacks="scripts")
+        tm.that(Path(command_args[4]).name, eq="pyproject.toml")
 
     def test_run_mypy_skips_tmp_flow_test_fixture_roots(self, tmp_path: Path) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
@@ -388,10 +344,7 @@ class TestRunnerPublicBehavior:
         (fixture_pkg / "__init__.py").write_text("", encoding="utf-8")
         log_file = tmp_path / "mypy-command.txt"
         original_pythonpath = self._install_fake_mypy(
-            tmp_path,
-            stdout="",
-            exit_code=0,
-            log_file=log_file,
+            tmp_path, stdout="", exit_code=0, log_file=log_file
         )
         try:
             result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
@@ -403,12 +356,11 @@ class TestRunnerPublicBehavior:
 
         assert result.result.passed
         command_args = log_file.read_text(encoding="utf-8").splitlines()
-        assert "src" in command_args
-        assert "tmp_flow_test" not in command_args
+        tm.that(command_args, has="src")
+        tm.that(command_args, lacks="tmp_flow_test")
 
     def test_run_mypy_reports_command_failures_without_json(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -427,6 +379,6 @@ class TestRunnerPublicBehavior:
                 os.environ.pop("PYTHONPATH", None)
 
         assert not result.result.passed
-        assert len(result.issues) == 1
-        assert result.issues[0].code == "mypy-exec"
-        assert "mypy timed out" in result.issues[0].message
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="mypy-exec")
+        tm.that(result.issues[0].message, has="mypy timed out")

@@ -8,20 +8,19 @@ import pytest
 
 from flext_cli import u as cli_u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import u
+from tests import c
+from tests import m
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def make_config(
-    workspace_root: Path,
-    *,
-    project_names: list[str] | None = None,
+    workspace_root: Path, *, project_names: list[str] | None = None
 ) -> m.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
@@ -42,25 +41,16 @@ def make_config(
     ("phase", "expected"),
     [
         (c.Infra.RELEASE_PHASE_ALL, c.Tests.ALL_PHASES),
-        (
-            c.Tests.RELEASE_PHASE_VALIDATE,
-            (c.Tests.RELEASE_PHASE_VALIDATE,),
-        ),
+        (c.Tests.RELEASE_PHASE_VALIDATE, (c.Tests.RELEASE_PHASE_VALIDATE,)),
     ],
 )
-def test_resolve_phase_names(
-    phase: str,
-    expected: t.StrSequence,
-) -> None:
-    assert tuple(u.Infra.resolve_phase_names(phase)) == expected
+def test_resolve_phase_names(phase: str, expected: t.StrSequence) -> None:
+    tm.that(tuple(u.Infra.resolve_phase_names(phase)), eq=expected)
 
 
 def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
     notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
-    project = u.Tests.create_project_info(
-        tmp_path / "flext-a",
-        name="flext-a",
-    )
+    project = u.Tests.create_project_info(tmp_path / "flext-a", name="flext-a")
 
     result = u.Infra.generate_notes(
         c.Tests.RELEASE_VERSION_TARGET,
@@ -71,13 +61,13 @@ def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
     )
 
     notes = notes_path.read_text(encoding="utf-8")
-    assert result.success
-    assert c.Tests.RELEASE_NOTES_HEADING in notes
-    assert "- root" in notes
-    assert "- flext-a" in notes
-    assert c.Tests.RELEASE_NOTES_CHANGE_LINE in notes
+    tm.ok(result)
+    tm.that(notes, has=c.Tests.RELEASE_NOTES_HEADING)
+    tm.that(notes, has="- root")
+    tm.that(notes, has="- flext-a")
+    tm.that(notes, has=c.Tests.RELEASE_NOTES_CHANGE_LINE)
     for verification_line in c.Tests.RELEASE_VERIFICATION_LINES[:2]:
-        assert verification_line in notes
+        tm.that(notes, has=verification_line)
 
 
 def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
@@ -85,15 +75,11 @@ def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
     notes_path.mkdir(parents=True, exist_ok=True)
 
     result = u.Infra.generate_notes(
-        c.Tests.RELEASE_VERSION_TARGET,
-        c.Tests.RELEASE_TAG_TARGET,
-        [],
-        "",
-        notes_path,
+        c.Tests.RELEASE_VERSION_TARGET, c.Tests.RELEASE_TAG_TARGET, [], "", notes_path
     )
 
-    assert result.failure
-    assert "failed to write release notes" in (result.error or "")
+    tm.fail(result)
+    tm.that((result.error or ""), has="failed to write release notes")
 
 
 def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None:
@@ -109,7 +95,7 @@ def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None
         notes_path,
     )
 
-    assert result.success
+    tm.ok(result)
     assert (workspace / "docs" / "CHANGELOG.md").is_file()
     assert (workspace / "docs" / "releases" / "latest.md").is_file()
     assert (
@@ -139,9 +125,9 @@ def test_update_changelog_is_idempotent_for_existing_release_heading(
     )
 
     changelog = (workspace / "docs" / "CHANGELOG.md").read_text(encoding="utf-8")
-    assert first_result.success
-    assert second_result.success
-    assert changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - ") == 1
+    tm.ok(first_result)
+    tm.ok(second_result)
+    tm.that(changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - "), eq=1)
 
 
 def test_update_changelog_adds_default_header_when_marker_is_missing(
@@ -162,7 +148,7 @@ def test_update_changelog_adds_default_header_when_marker_is_missing(
     )
 
     changelog = (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
-    assert result.success
+    tm.ok(result)
     assert changelog.startswith(c.Tests.RELEASE_CHANGELOG_HEADER)
 
 
@@ -176,23 +162,17 @@ def test_update_changelog_missing_notes_file_returns_failure(tmp_path: Path) -> 
         workspace / "missing-notes.md",
     )
 
-    assert result.failure
-    assert "changelog update failed" in (result.error or "")
+    tm.fail(result)
+    tm.that((result.error or ""), has="changelog update failed")
 
 
 def test_run_release_build_deduplicates_duplicate_project_selectors(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
+    workspace = u.Tests.create_release_workspace(tmp_path, project_names=("flext-a",))
 
     result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(
-            workspace,
-            project_names=["flext-a", "flext-a"],
-        ),
+        make_config(workspace, project_names=["flext-a", "flext-a"])
     )
 
     report_path = (
@@ -204,12 +184,12 @@ def test_run_release_build_deduplicates_duplicate_project_selectors(
     )
     report = cli_u.Cli.json_loads(report_path.read_text(encoding="utf-8")).unwrap()
 
-    assert result.success
-    assert isinstance(report, dict)
-    assert report["total"] == 2
+    tm.ok(result)
+    tm.that(report, is_=dict)
+    tm.that(report["total"], eq=2)
     records = report["records"]
-    assert isinstance(records, list)
-    assert [record["project"] for record in records if isinstance(record, dict)] == [
-        "root",
-        "flext-a",
-    ]
+    tm.that(records, is_=list)
+    tm.that(
+        [record["project"] for record in records if isinstance(record, dict)],
+        eq=["root", "flext-a"],
+    )

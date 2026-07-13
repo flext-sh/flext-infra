@@ -12,12 +12,10 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from tests.typings import t
+    from tests import t
 
 
-def _manager(
-    workspace_root: Path | None = None,
-) -> FlextInfraExtraPathsManager:
+def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
     return ExtraPathsTestSupport.manager(workspace_root)
 
 
@@ -30,10 +28,7 @@ class TestsFlextInfraExtraPathsManager:
         _manager()
 
     def test_sync_one_missing_file(self, tmp_path: Path) -> None:
-        tm.that(
-            not _manager().sync_one(tmp_path / "nonexistent.toml").success,
-            eq=True,
-        )
+        tm.that(not _manager().sync_one(tmp_path / "nonexistent.toml").success, eq=True)
 
     def test_sync_one_no_tool_section(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -64,9 +59,7 @@ class TestsFlextInfraExtraPathsManager:
         ],
     )
     def test_sync_one_success_cases(
-        self,
-        tmp_path: Path,
-        tool_doc: t.MappingKV[str, t.Infra.InfraValue],
+        self, tmp_path: Path, tool_doc: t.MappingKV[str, t.Infra.InfraValue]
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         doc = tomlkit.document()

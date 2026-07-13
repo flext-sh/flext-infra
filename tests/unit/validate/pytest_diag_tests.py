@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-from tests.models import m
+from tests import m
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def _extractor(
@@ -41,13 +41,13 @@ class TestPytestDiagExtractorBehavior:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
-            ' failures="0" errors="0" skipped="0"></testsuite></testsuites>',
+            ' failures="0" errors="0" skipped="0"></testsuite></testsuites>'
         )
         log = tmp_path / "log.txt"
         log.write_text("")
 
         report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(junit, log).extract(junit, log),
+            _extractor(junit, log).extract(junit, log)
         )
 
         tm.that(report, is_=m.Infra.PytestDiagnostics)
@@ -55,22 +55,21 @@ class TestPytestDiagExtractorBehavior:
         tm.that(report.error_count, eq=0)
 
     def test_extract_falls_back_to_log_when_xml_missing_or_invalid(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         log = tmp_path / "log.txt"
         log.write_text("FAILED test_case.py::test_foo")
         missing_xml = tmp_path / "missing.xml"
 
         missing_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(missing_xml, log).extract(missing_xml, log),
+            _extractor(missing_xml, log).extract(missing_xml, log)
         )
         tm.that(missing_report.failed_cases, length_gt=0)
 
         bad_xml = tmp_path / "bad.xml"
         bad_xml.write_text("invalid xml content")
         invalid_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(bad_xml, log).extract(bad_xml, log),
+            _extractor(bad_xml, log).extract(bad_xml, log)
         )
         tm.that(invalid_report.failed_cases, length_gt=0)
 
@@ -82,11 +81,11 @@ class TestPytestDiagExtractorBehavior:
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="1" errors="0" skipped="0"><testcase name="test_fail"'
             ' classname="TC"><failure message="fail">Traceback</failure>'
-            "</testcase></testsuite></testsuites>",
+            "</testcase></testsuite></testsuites>"
         )
 
         fail_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(fail_xml, log).extract(fail_xml, log),
+            _extractor(fail_xml, log).extract(fail_xml, log)
         )
         tm.that(fail_report.failed_count, eq=1)
         tm.that(fail_report.error_traces, length_gt=0)
@@ -96,11 +95,11 @@ class TestPytestDiagExtractorBehavior:
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="0" errors="1" skipped="0"><testcase name="test_err"'
             ' classname="TC"><error message="err">Trace</error>'
-            "</testcase></testsuite></testsuites>",
+            "</testcase></testsuite></testsuites>"
         )
 
         err_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(err_xml, log).extract(err_xml, log),
+            _extractor(err_xml, log).extract(err_xml, log)
         )
         tm.that(err_report.error_count, eq=1)
 
@@ -112,11 +111,11 @@ class TestPytestDiagExtractorBehavior:
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="0" errors="0" skipped="1"><testcase name="test_skip"'
             ' classname="TC"><skipped message="skip"/>'
-            "</testcase></testsuite></testsuites>",
+            "</testcase></testsuite></testsuites>"
         )
 
         skip_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(skip_xml, log).extract(skip_xml, log),
+            _extractor(skip_xml, log).extract(skip_xml, log)
         )
         tm.that(skip_report.skipped_count, eq=1)
 
@@ -124,11 +123,11 @@ class TestPytestDiagExtractorBehavior:
         slow_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="2">'
             '<testcase name="fast" time="0.1"/><testcase name="slow" time="5.5"/>'
-            "</testsuite></testsuites>",
+            "</testsuite></testsuites>"
         )
 
         slow_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(slow_xml, log).extract(slow_xml, log),
+            _extractor(slow_xml, log).extract(slow_xml, log)
         )
         tm.that(slow_report.slow_entries, length_gt=0)
 
@@ -136,14 +135,13 @@ class TestPytestDiagExtractorBehavior:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests="0"/></testsuites>'
         )
 
         report: m.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, tmp_path / "missing.txt").extract(
-                junit,
-                tmp_path / "missing.txt",
-            ),
+                junit, tmp_path / "missing.txt"
+            )
         )
 
         tm.that(report.warning_count, eq=0)
@@ -152,7 +150,7 @@ class TestPytestDiagExtractorBehavior:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests="0"/></testsuites>'
         )
         log_is_dir = tmp_path / "log_is_dir"
         log_is_dir.mkdir()
@@ -169,11 +167,11 @@ class TestPytestDiagExtractorBehavior:
             "=== short test summary info ===\n"
             "=== warnings summary ===\n"
             "DeprecationWarning: test warning\n"
-            "-- Docs: https://docs.pytest.org/\n",
+            "-- Docs: https://docs.pytest.org/\n"
         )
 
         report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(junit, log).extract(junit, log),
+            _extractor(junit, log).extract(junit, log)
         )
 
         tm.that(report.error_traces, length_gt=0)
@@ -185,14 +183,13 @@ class TestPytestDiagExtractorBehavior:
         log.write_text("test_case.py:10: DeprecationWarning: test warning")
 
         report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(junit, log).extract(junit, log),
+            _extractor(junit, log).extract(junit, log)
         )
 
         tm.that(report.warning_lines, length_gt=0)
 
     def test_extract_slow_entries_from_log_when_xml_missing(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         junit = tmp_path / "missing.xml"
         log = tmp_path / "log.txt"
@@ -200,11 +197,11 @@ class TestPytestDiagExtractorBehavior:
             "=== slowest durations ===\n"
             "5.50s call     test_case.py::test_slow\n"
             "0.50s call     test_case.py::test_fast\n"
-            "=== 2 passed in 6.00s ===\n",
+            "=== 2 passed in 6.00s ===\n"
         )
 
         report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(junit, log).extract(junit, log),
+            _extractor(junit, log).extract(junit, log)
         )
 
         tm.that(report.slow_entries, length_gt=0)
@@ -216,13 +213,13 @@ class TestPytestDiagExtractorBehavior:
             '<testcase name="test_fail" classname="TC" time="2.5">'
             '<failure message="fail">Traceback</failure></testcase>'
             '<testcase name="test_skip" classname="TC" time="0.1">'
-            '<skipped message="skip"/></testcase></testsuite></testsuites>',
+            '<skipped message="skip"/></testcase></testsuite></testsuites>'
         )
         log = tmp_path / "log.txt"
         log.write_text(
             "=== warnings summary ===\n"
             "DeprecationWarning: test warning\n"
-            "-- Docs: https://docs.pytest.org/\n",
+            "-- Docs: https://docs.pytest.org/\n"
         )
         extractor = _extractor(
             junit,

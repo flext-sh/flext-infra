@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import flext_infra
+from flext_tests import tm
 
 # mro-wkii.4.15: pin the generated direct config/settings singleton surface.
 _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (
@@ -50,7 +51,7 @@ class TestsFlextInfraRootExportContract:
 
     def test_root_all_is_external_api_allowlist(self) -> None:
         """Root __all__ stays pinned to the external API."""
-        assert tuple(flext_infra.__all__) == _EXPECTED_ROOT_EXPORTS
+        tm.that(tuple(flext_infra.__all__), eq=_EXPECTED_ROOT_EXPORTS)
 
     def test_root_does_not_resolve_internal_symbols(self) -> None:
         """Implementation classes remain available only from owning modules."""
@@ -64,5 +65,5 @@ class TestsFlextInfraRootExportContract:
             "FlextInfraWorkspaceChecker",
         )
         for name in internal_names:
-            assert name not in flext_infra.__all__
+            tm.that(flext_infra.__all__, lacks=name)
             assert not hasattr(flext_infra, name)

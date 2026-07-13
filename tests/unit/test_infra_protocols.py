@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from tests.protocols import p
+from tests import p
+from flext_tests import tm
 
 
 class TestsFlextInfraInfraProtocols:
@@ -14,4 +15,4 @@ class TestsFlextInfraInfraProtocols:
 
     def test_flext_infra_protocols_is_importable(self) -> None:
         """Test that p can be imported."""
-        assert p is not None
+        tm.that(p, none=False)

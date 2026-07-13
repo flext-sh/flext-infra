@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from flext_infra import m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
@@ -22,14 +23,14 @@ class TestsFlextInfraBasemkRenderer:
     def test_render_all_generates_large_makefile(self) -> None:
         result = FlextInfraBaseMkTemplateRenderer().render_all()
 
-        assert result.success, result.error
+        tm.ok(result)
         assert len(result.value.splitlines()) > 400
 
     def test_render_all_has_no_scripts_path_references(self) -> None:
         result = FlextInfraBaseMkTemplateRenderer().render_all()
 
-        assert result.success, result.error
-        assert "scripts/" not in result.value
+        tm.ok(result)
+        tm.that(result.value, lacks="scripts/")
 
     def test_render_all_with_config_override(self) -> None:
         settings = m.Infra.BaseMkConfig(
@@ -44,35 +45,35 @@ class TestsFlextInfraBasemkRenderer:
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings)
 
-        assert result.success, result.error
-        assert "PROJECT_NAME ?= sample-project" in result.value
+        tm.ok(result)
+        tm.that(result.value, has="PROJECT_NAME ?= sample-project")
 
     def test_render_single_missing_template_fails(self) -> None:
         result = FlextInfraBaseMkTemplateRenderer().render_single(
-            "missing-template.mk.j2",
+            "missing-template.mk.j2"
         )
 
-        assert result.failure
-        assert "template render failed" in (result.error or "")
+        tm.fail(result)
+        tm.that((result.error or ""), has="template render failed")
 
     def test_basemk_cli_generate_to_stdout(self, capsys: CaptureFixture[str]) -> None:
         exit_code = basemk_main(["generate", "--project-name", "cli-project"])
         captured = capsys.readouterr()
 
-        assert exit_code == 0
-        assert "PROJECT_NAME ?= cli-project" in captured.out
+        tm.that(exit_code, eq=0)
+        tm.that(captured.out, has="PROJECT_NAME ?= cli-project")
 
     def test_renderer_execute_returns_string(self) -> None:
         result = FlextInfraBaseMkTemplateRenderer().execute()
 
-        assert result.success, result.error
-        assert isinstance(result.value, str)
+        tm.ok(result)
+        tm.that(result.value, is_=str)
         assert result.value
 
     def test_render_all_exposes_canonical_public_targets(self) -> None:
         result = FlextInfraBaseMkTemplateRenderer().render_all()
 
-        assert result.success, result.error
+        tm.ok(result)
         text = result.value
         for part in (
             ".PHONY: help boot build check scan fmt docs docs-serve test val clean pr",
@@ -82,15 +83,15 @@ class TestsFlextInfraBasemkRenderer:
             "fmt: ## Run code formatting",
             "val: ## Run validate gates",
         ):
-            assert part in text
-        assert "setup build check security format docs" not in text
-        assert "docs-base" not in text
-        assert "docs-sync-scripts" not in text
+            tm.that(text, has=part)
+        tm.that(text, lacks="setup build check security format docs")
+        tm.that(text, lacks="docs-base")
+        tm.that(text, lacks="docs-sync-scripts")
 
     def test_render_all_declares_and_documents_runtime_options(self) -> None:
         result = FlextInfraBaseMkTemplateRenderer().render_all()
 
-        assert result.success, result.error
+        tm.ok(result)
         text = result.value
         for part in (
             "FIX ?=",
@@ -100,5 +101,5 @@ class TestsFlextInfraBasemkRenderer:
             'echo "  DIAG=1                      Emit extended pytest diagnostics"',
             'echo "  FIX=1                       Auto-fix supported gates"',
         ):
-            assert part in text
-        assert "check-fast" not in text
+            tm.that(text, has=part)
+        tm.that(text, lacks="check-fast")

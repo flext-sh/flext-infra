@@ -6,24 +6,20 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, t
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def _apply_rule(
-    tmp_path: Path,
-    source: str,
-    settings: t.Infra.InfraMapping,
+    tmp_path: Path, source: str, settings: t.Infra.InfraMapping
 ) -> tuple[str, list[str]]:
     file_path = tmp_path / "src" / "demo.py"
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
     updated, changes = FlextInfraRefactorTextExecutor()._apply_text_rule_selection(
-        c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS,
-        settings,
-        source,
-        file_path,
+        c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS, settings, source, file_path
     )
     return updated, list(changes)
 
@@ -32,8 +28,7 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
     """Behavior contract for test_infra_refactor_pattern_corrections."""
 
     def test_pattern_rule_converts_dict_annotations_to_mapping(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = "def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    return data\n"
         updated, _ = _apply_rule(
@@ -44,11 +39,10 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "fix_action": "convert_dict_to_mapping_annotations",
             },
         )
-        assert "data: t.JsonMapping" in updated
+        tm.that(updated, has="data: t.JsonMapping")
 
     def test_pattern_rule_optionally_converts_return_annotations_to_mapping(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = "def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    return data\n"
         updated, _ = _apply_rule(
@@ -60,12 +54,11 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "include_return_annotations": True,
             },
         )
-        assert "data: t.JsonMapping" in updated
-        assert "-> t.JsonMapping" in updated
+        tm.that(updated, has="data: t.JsonMapping")
+        tm.that(updated, has="-> t.JsonMapping")
 
     def test_pattern_rule_keeps_dict_param_when_subscript_mutated(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = 'def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    data["k"] = "v"\n    return data\n'
         updated, _ = _apply_rule(
@@ -76,7 +69,7 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "fix_action": "convert_dict_to_mapping_annotations",
             },
         )
-        assert "data: t.JsonMapping" in updated
+        tm.that(updated, has="data: t.JsonMapping")
 
     def test_pattern_rule_keeps_dict_param_when_copy_used(self, tmp_path: Path) -> None:
         source = "def f(data: dict[str, t.JsonValue]) -> dict[str, t.JsonValue]:\n    clone = data.copy()\n    return clone\n"
@@ -88,7 +81,7 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "fix_action": "convert_dict_to_mapping_annotations",
             },
         )
-        assert "data: t.JsonMapping" in updated
+        tm.that(updated, has="data: t.JsonMapping")
 
     def test_pattern_rule_skips_overload_signatures(self, tmp_path: Path) -> None:
         source = "from typing import overload\n\n@overload\ndef f(data: dict[str, t.JsonValue]) -> str: ...\n\ndef f(data: dict[str, t.JsonValue]) -> str:\n    return str(data)\n"
@@ -100,13 +93,12 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "fix_action": "convert_dict_to_mapping_annotations",
             },
         )
-        assert "@overload" in updated
-        assert "def f(data: t.JsonMapping) -> str: ..." in updated
-        assert "def f(data: t.JsonMapping) -> str:" in updated
+        tm.that(updated, has="@overload")
+        tm.that(updated, has="def f(data: t.JsonMapping) -> str: ...")
+        tm.that(updated, has="def f(data: t.JsonMapping) -> str:")
 
     def test_pattern_rule_removes_configured_redundant_casts(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = 'value = cast("m.ConfigMap", result.unwrap_or(m.ConfigMap(root={})))\n'
         updated, _ = _apply_rule(
@@ -118,11 +110,10 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "redundant_type_targets": ["m.ConfigMap"],
             },
         )
-        assert "value = result.unwrap_or(m.ConfigMap(root={}))" in updated
+        tm.that(updated, has="value = result.unwrap_or(m.ConfigMap(root={}))")
 
     def test_pattern_rule_removes_nested_type_object_cast_chain(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = 'value = cast("type", cast("t.JsonValue", FlextSettings))\n'
         updated, _ = _apply_rule(
@@ -134,11 +125,10 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "redundant_type_targets": ["type"],
             },
         )
-        assert 'value = cast("t.JsonValue", FlextSettings)' in updated
+        tm.that(updated, has='value = cast("t.JsonValue", FlextSettings)')
 
     def test_pattern_rule_keeps_type_cast_when_not_nested_object_cast(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = 'metadata_cls = cast("type", u.Metadata)\n'
         updated, _ = _apply_rule(
@@ -150,4 +140,4 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
                 "redundant_type_targets": ["type"],
             },
         )
-        assert "metadata_cls = u.Metadata" in updated
+        tm.that(updated, has="metadata_cls = u.Metadata")

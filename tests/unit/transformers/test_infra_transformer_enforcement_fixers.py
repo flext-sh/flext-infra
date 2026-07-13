@@ -28,6 +28,7 @@ from flext_infra.transformers.typing_dict_import import (
 from flext_infra.transformers.typing_unifier import (
     FlextInfraRefactorTypingUnifier,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -56,13 +57,13 @@ class TestsFlextInfraTransformersFutureImport:
     def test_future_import_already_present_is_unchanged(self) -> None:
         source = "from __future__ import annotations\n\nx = 1\n"
         code, changes = _transform(source, FlextInfraRefactorFutureImport())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_future_import_inserted_at_top_when_absent(self) -> None:
         source = "x = 1\n"
         code, changes = _transform(source, FlextInfraRefactorFutureImport())
-        assert code == "from __future__ import annotations\nx = 1\n"
+        tm.that(code, eq="from __future__ import annotations\nx = 1\n")
         assert changes
 
     def test_future_import_inserted_after_shebang_and_comments(self) -> None:
@@ -82,7 +83,7 @@ class TestsFlextInfraTransformersFutureImport:
             "from __future__ import annotations\n"
             "x = 1\n"
         )
-        assert code == expected
+        tm.that(code, eq=expected)
         assert changes
 
     def test_future_import_normalizes_duplicate_before_docstring(self) -> None:
@@ -102,7 +103,7 @@ class TestsFlextInfraTransformersFutureImport:
             "\n"
             "import os\n"
         )
-        assert code == expected
+        tm.that(code, eq=expected)
         assert changes
 
 
@@ -112,68 +113,68 @@ class TestsFlextInfraTransformersOpenEncoding:
     def test_open_without_encoding_gets_utf8(self) -> None:
         source = 'with open("x.txt") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert 'open("x.txt", encoding="utf-8")' in code
+        tm.that(code, has='open("x.txt", encoding="utf-8")')
         assert changes
 
     def test_open_with_mode_gets_utf8(self) -> None:
         source = 'with open("x.txt", "w") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert 'open("x.txt", "w", encoding="utf-8")' in code
+        tm.that(code, has='open("x.txt", "w", encoding="utf-8")')
         assert changes
 
     def test_open_with_multiple_args_gets_utf8(self) -> None:
         source = 'with open("x.txt", "w", buffering=1) as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert 'open("x.txt", "w", buffering=1, encoding="utf-8")' in code
+        tm.that(code, has='open("x.txt", "w", buffering=1, encoding="utf-8")')
         assert changes
 
     def test_open_binary_mode_unchanged(self) -> None:
         source = 'with open("x.bin", "rb") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_open_keyword_binary_mode_unchanged(self) -> None:
         source = 'with open("x.bin", mode="rb") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_open_dynamic_mode_unchanged(self) -> None:
         source = 'with open("x.txt", mode) as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_path_open_text_mode_gets_utf8(self) -> None:
         source = 'Path("x.txt").open("w")\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert 'Path("x.txt").open("w", encoding="utf-8")' in code
+        tm.that(code, has='Path("x.txt").open("w", encoding="utf-8")')
         assert changes
 
     def test_path_open_binary_mode_unchanged(self) -> None:
         source = 'Path("x.bin").open("rb")\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_open_with_encoding_unchanged(self) -> None:
         source = 'with open("x.txt", encoding="latin-1") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_open_dynamic_mode_return_unchanged(self) -> None:
         source = 'def read(mode):\n    return open("x.txt", mode)\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_path_open_write_binary_mode_unchanged(self) -> None:
         source = 'with Path("x.bin").open("wb") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
 
 class TestsFlextInfraTransformersTypingDictImport:
@@ -188,10 +189,10 @@ class TestsFlextInfraTransformersTypingDictImport:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "from typing import Dict" not in code
-        assert "from typing import List" in code
-        assert "t.MappingKV[str, int]" in code
-        assert "from flext_core import t" in code
+        tm.that(code, lacks="from typing import Dict")
+        tm.that(code, has="from typing import List")
+        tm.that(code, has="t.MappingKV[str, int]")
+        tm.that(code, has="from flext_core import t")
         assert changes
 
     def test_typing_dict_import_only_removed_when_empty(
@@ -205,8 +206,8 @@ class TestsFlextInfraTransformersTypingDictImport:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "from typing import" not in code
-        assert "t.MappingKV[str, int]" in code
+        tm.that(code, lacks="from typing import")
+        tm.that(code, has="t.MappingKV[str, int]")
         assert changes
 
     def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
@@ -219,8 +220,8 @@ class TestsFlextInfraTransformersTypingDictImport:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert code.count("from flext_core import t") == 1
-        assert "t.MappingKV[str, int]" in code
+        tm.that(code.count("from flext_core import t"), eq=1)
+        tm.that(code, has="t.MappingKV[str, int]")
         assert changes
 
     def test_no_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
@@ -233,8 +234,8 @@ class TestsFlextInfraTransformersTypingDictImport:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
 
 class TestsFlextInfraTransformersTypingDictAttr:
@@ -248,9 +249,9 @@ class TestsFlextInfraTransformersTypingDictAttr:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "typing.Dict" not in code
-        assert "t.MappingKV[str, int]" in code
-        assert "from flext_core import t" in code
+        tm.that(code, lacks="typing.Dict")
+        tm.that(code, has="t.MappingKV[str, int]")
+        tm.that(code, has="from flext_core import t")
         assert changes
 
     def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
@@ -263,8 +264,8 @@ class TestsFlextInfraTransformersTypingDictAttr:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert code.count("from flext_core import t") == 1
-        assert "t.MappingKV[str, int]" in code
+        tm.that(code.count("from flext_core import t"), eq=1)
+        tm.that(code, has="t.MappingKV[str, int]")
         assert changes
 
     def test_no_typing_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
@@ -277,8 +278,8 @@ class TestsFlextInfraTransformersTypingDictAttr:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
 
 class TestsFlextInfraTransformersTypingUnifier:
@@ -294,9 +295,9 @@ class TestsFlextInfraTransformersTypingUnifier:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "t.MutableMappingKV[str, int]" in code
-        assert "t.MutableSequenceOf[str]" in code
-        assert "from flext_core import t" in code
+        tm.that(code, has="t.MutableMappingKV[str, int]")
+        tm.that(code, has="t.MutableSequenceOf[str]")
+        tm.that(code, has="from flext_core import t")
         assert changes
 
     def test_no_builtin_annotation_does_not_add_t_import(
@@ -313,8 +314,8 @@ class TestsFlextInfraTransformersTypingUnifier:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
 
 class TestsFlextInfraTransformersPattern:
@@ -333,8 +334,8 @@ class TestsFlextInfraTransformersPattern:
             ],
         )
         code, changes = transformer.apply_to_source(source)
-        assert "except Exception:" in code
-        assert "except:" not in code
+        tm.that(code, has="except Exception:")
+        tm.that(code, lacks="except:")
         assert changes
 
     def test_specific_except_pattern_unchanged(self) -> None:
@@ -352,8 +353,8 @@ class TestsFlextInfraTransformersPattern:
             ],
         )
         code, changes = transformer.apply_to_source(source)
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_breakpoint_patterns_remove_debuggers(self) -> None:
         source = "x = 1\n\nbreakpoint()\n\nimport pdb; pdb.set_trace()\n\ny = 2\n"
@@ -374,10 +375,10 @@ class TestsFlextInfraTransformersPattern:
             ],
         )
         code, changes = transformer.apply_to_source(source)
-        assert "breakpoint()" not in code
-        assert "pdb.set_trace()" not in code
-        assert "x = 1\n" in code
-        assert "y = 2\n" in code
+        tm.that(code, lacks="breakpoint()")
+        tm.that(code, lacks="pdb.set_trace()")
+        tm.that(code, has="x = 1\n")
+        tm.that(code, has="y = 2\n")
         assert changes
 
     def test_open_encoding_pattern(self) -> None:
@@ -392,7 +393,7 @@ class TestsFlextInfraTransformersPattern:
             ],
         )
         code, changes = transformer.apply_to_source(source)
-        assert 'open("x.txt", encoding="utf-8")' in code
+        tm.that(code, has='open("x.txt", encoding="utf-8")')
         assert changes
 
     def test_pattern_with_required_alias(self, tmp_path: Path) -> None:
@@ -409,8 +410,8 @@ class TestsFlextInfraTransformersPattern:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "u.fetch_logger(__name__).info" in code
-        assert "from flext_core import u" in code
+        tm.that(code, has="u.fetch_logger(__name__).info")
+        tm.that(code, has="from flext_core import u")
         assert changes
 
     def test_pattern_required_alias_not_duplicated(self, tmp_path: Path) -> None:
@@ -427,9 +428,9 @@ class TestsFlextInfraTransformersPattern:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert code.count("from flext_core import") == 1
-        assert "from flext_core import c, u" in code
-        assert 'u.fetch_logger(__name__).info("hello")' in code
+        tm.that(code.count("from flext_core import"), eq=1)
+        tm.that(code, has="from flext_core import c, u")
+        tm.that(code, has='u.fetch_logger(__name__).info("hello")')
         assert changes
 
     def test_pattern_no_match_leaves_source_unchanged(self) -> None:
@@ -445,8 +446,8 @@ class TestsFlextInfraTransformersPattern:
             required_alias="u",
         )
         code, changes = transformer.apply_to_source(source)
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
 
 class TestsFlextInfraTransformersHardcodedVersion:
@@ -455,15 +456,15 @@ class TestsFlextInfraTransformersHardcodedVersion:
     def test_hardcoded_version_reported(self) -> None:
         source = '__version__ = "1.2.3"\n'
         code, changes = _transform(source, FlextInfraRefactorHardcodedVersion())
-        assert code == source
+        tm.that(code, eq=source)
         assert changes
-        assert "importlib.metadata" in changes[0]
+        tm.that(changes[0], has="importlib.metadata")
 
     def test_no_version_unchanged(self) -> None:
         source = "x = 1\n"
         code, changes = _transform(source, FlextInfraRefactorHardcodedVersion())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
 
 class TestsFlextInfraTransformersCompatibilityAlias:
@@ -477,8 +478,8 @@ class TestsFlextInfraTransformersCompatibilityAlias:
             "    return FC.SOME_VALUE\n"
         )
         code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
-        assert "FC = FlextConstants\n" not in code
-        assert "FlextConstants.SOME_VALUE" in code
+        tm.that(code, lacks="FC = FlextConstants\n")
+        tm.that(code, has="FlextConstants.SOME_VALUE")
         assert changes
 
     def test_compat_import_rewritten_to_canonical_alias(self) -> None:
@@ -488,22 +489,22 @@ class TestsFlextInfraTransformersCompatibilityAlias:
             "    return FlextConstants.SOME_VALUE\n"
         )
         code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
-        assert "from flext_core import c\n" in code
-        assert "FlextConstants.SOME_VALUE" not in code
-        assert "c.SOME_VALUE" in code
+        tm.that(code, has="from flext_core import c\n")
+        tm.that(code, lacks="FlextConstants.SOME_VALUE")
+        tm.that(code, has="c.SOME_VALUE")
         assert changes
 
     def test_skip_names_preserved(self) -> None:
         source = "__version__ = __version_info__\n"
         code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_same_name_assignment_preserved(self) -> None:
         source = "Foo = Foo\n"
         code, changes = _transform(source, FlextInfraRefactorCompatibilityAlias())
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
 
 class TestsFlextInfraTransformersPatternList:
@@ -527,9 +528,9 @@ class TestsFlextInfraTransformersPatternList:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "t.SequenceOf[int]" in code
-        assert "from flext_core import t" in code
-        assert "List[int]" not in code
+        tm.that(code, has="t.SequenceOf[int]")
+        tm.that(code, has="from flext_core import t")
+        tm.that(code, lacks="List[int]")
         assert changes
 
     def test_typing_list_attr_rewritten(self, tmp_path: Path) -> None:
@@ -550,9 +551,9 @@ class TestsFlextInfraTransformersPatternList:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "t.SequenceOf[int]" in code
-        assert "from flext_core import t" in code
-        assert "typing.List" not in code
+        tm.that(code, has="t.SequenceOf[int]")
+        tm.that(code, has="from flext_core import t")
+        tm.that(code, lacks="typing.List")
         assert changes
 
 
@@ -577,7 +578,7 @@ class TestsFlextInfraTransformersPatternStructlog:
             file_path=tmp_path / "module.py",
         )
         code, changes = transformer.apply_to_source(source)
-        assert "u.fetch_logger(__name__)" in code
-        assert "from flext_core import u" in code
-        assert "structlog.get_logger()" not in code
+        tm.that(code, has="u.fetch_logger(__name__)")
+        tm.that(code, has="from flext_core import u")
+        tm.that(code, lacks="structlog.get_logger()")
         assert changes

@@ -15,12 +15,12 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra import main as infra_main
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestHandleLazyInit:
@@ -70,12 +70,12 @@ class TestMainCommandDispatch:
     def test_unknown_command(self) -> None:
         """main() with unknown command returns non-zero exit code."""
         result = infra_main(["codegen", "unknown-command"])
-        assert result != 0
+        tm.that(result, ne=0)
 
     def test_no_command(self) -> None:
         """main() with no command returns non-zero exit code."""
         result = infra_main(["codegen"])
-        assert result != 0
+        tm.that(result, ne=0)
 
     def test_init_with_custom_root(self, tmp_path: Path) -> None:
         """main() init with custom root directory."""
@@ -94,18 +94,27 @@ class TestMainEntryPoint:
 
     def test_entry_point_via_sys_exit(self) -> None:
         """The root process entrypoint works via subprocess."""
-        result = u.Cli.run_raw(
-            [sys.executable, "-m", "flext_infra", "codegen", "init", "--help"],
-        )
+        result = u.Cli.run_raw([
+            sys.executable,
+            "-m",
+            "flext_infra",
+            "codegen",
+            "init",
+            "--help",
+        ])
         tm.ok(result)
         tm.that(result.value.exit_code, eq=0)
         tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""
-        result = u.Cli.run_raw(
-            [sys.executable, "-m", "flext_infra", "codegen", "unknown-command"],
-        )
+        result = u.Cli.run_raw([
+            sys.executable,
+            "-m",
+            "flext_infra",
+            "codegen",
+            "unknown-command",
+        ])
 
         tm.ok(result)
         tm.that(result.value.exit_code, eq=2)

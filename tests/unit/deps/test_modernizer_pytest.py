@@ -9,11 +9,11 @@ from flext_tests import tm
 from tomlkit import TOMLDocument
 
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-from tests.typings import t
-from tests.utilities import u
+from tests import t
+from tests import u
 
 if TYPE_CHECKING:
-    from tests.models import m
+    from tests import m
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
@@ -27,7 +27,7 @@ def _test_tool_config() -> m.Infra.ToolConfigDocument:
 
 def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
     return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-        u.normalize_to_json_value(doc.unwrap()),
+        u.normalize_to_json_value(doc.unwrap())
     )
 
 
@@ -49,20 +49,21 @@ class TestsFlextInfraDepsModernizerPytest:
         _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
         ini = _mapping(
-            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"],
+            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
         )
-        assert ini["minversion"] == "8.0"
-        assert list(_strings(ini["python_classes"])) == ["Test*"]
-        assert set(_strings(ini["python_files"])) == {
-            "*_test.py",
-            "*_tests.py",
-            "test_*.py",
-        }
-        assert set(_strings(ini["addopts"])) == set(
-            tool_config.tools.pytest.standard_addopts,
+        tm.that(ini["minversion"], eq="8.0")
+        tm.that(list(_strings(ini["python_classes"])), eq=["Test*"])
+        tm.that(
+            set(_strings(ini["python_files"])),
+            eq={"*_test.py", "*_tests.py", "test_*.py"},
         )
-        assert set(_strings(ini["markers"])) == set(
-            tool_config.tools.pytest.standard_markers,
+        tm.that(
+            set(_strings(ini["addopts"])),
+            eq=set(tool_config.tools.pytest.standard_addopts),
+        )
+        tm.that(
+            set(_strings(ini["markers"])),
+            eq=set(tool_config.tools.pytest.standard_markers),
         )
 
     def test_apply_merges_existing_project_specific_entries(self) -> None:
@@ -75,30 +76,28 @@ python_classes = ["Spec*"]
 python_files = ["spec_*.py"]
 addopts = ["--maxfail=1"]
 markers = ["custom: custom marker"]
-""",
+"""
         )
 
         _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
         ini = _mapping(
-            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"],
+            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
         )
-        assert ini["minversion"] == "8.0"
-        assert set(_strings(ini["python_classes"])) == {"Spec*", "Test*"}
-        assert set(_strings(ini["python_files"])) == {
-            "spec_*.py",
-            "*_test.py",
-            "*_tests.py",
-            "test_*.py",
-        }
-        assert set(_strings(ini["addopts"])) == {
-            "--maxfail=1",
-            *tool_config.tools.pytest.standard_addopts,
-        }
-        assert set(_strings(ini["markers"])) == {
-            "custom: custom marker",
-            *tool_config.tools.pytest.standard_markers,
-        }
+        tm.that(ini["minversion"], eq="8.0")
+        tm.that(set(_strings(ini["python_classes"])), eq={"Spec*", "Test*"})
+        tm.that(
+            set(_strings(ini["python_files"])),
+            eq={"spec_*.py", "*_test.py", "*_tests.py", "test_*.py"},
+        )
+        tm.that(
+            set(_strings(ini["addopts"])),
+            eq={"--maxfail=1", *tool_config.tools.pytest.standard_addopts},
+        )
+        tm.that(
+            set(_strings(ini["markers"])),
+            eq={"custom: custom marker", *tool_config.tools.pytest.standard_markers},
+        )
 
     def test_apply_is_idempotent(self) -> None:
         tool_config = _test_tool_config()

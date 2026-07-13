@@ -22,8 +22,7 @@ class TestsFlextInfraLooseObjectDetector:
         package_dir = project / "src" / "demo_project"
         package_dir.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='demo-project'\n",
-            encoding="utf-8",
+            "[project]\nname='demo-project'\n", encoding="utf-8"
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
@@ -31,9 +30,7 @@ class TestsFlextInfraLooseObjectDetector:
 
     @staticmethod
     def _violations(
-        *,
-        project: Path,
-        file_path: Path,
+        *, project: Path, file_path: Path
     ) -> tuple[m.Infra.LooseObjectViolation, ...]:
         parse_failures: list[m.Infra.ParseFailureViolation] = []
         with u.Infra.open_project(project) as rope_project:
@@ -44,7 +41,7 @@ class TestsFlextInfraLooseObjectDetector:
                     parse_failures=parse_failures,
                     project_root=project,
                     project_name="demo-project",
-                ),
+                )
             )
         tm.that(parse_failures, eq=[])
         return tuple(violations)

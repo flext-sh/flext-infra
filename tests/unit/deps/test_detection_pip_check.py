@@ -7,7 +7,7 @@ from flext_tests import tm
 
 from flext_infra import m, p, r, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import TestsFlextInfraUtilities as u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,29 +25,14 @@ class TestsFlextInfraDepsDetectionPipCheck:
             (
                 True,
                 u.Tests.command_runner(
-                    stdout="pkg1 has requirement\npkg2 conflict\n",
-                    returncode=1,
+                    stdout="pkg1 has requirement\npkg2 conflict\n", returncode=1
                 ),
                 ["pkg1 has requirement", "pkg2 conflict"],
                 1,
                 False,
             ),
-            (
-                True,
-                u.Tests.DeptryRunner(
-                    r.fail("pip failed"),
-                ),
-                [],
-                0,
-                True,
-            ),
-            (
-                True,
-                u.Tests.command_runner(),
-                [],
-                0,
-                False,
-            ),
+            (True, u.Tests.DeptryRunner(r.fail("pip failed")), [], 0, True),
+            (True, u.Tests.command_runner(), [], 0, False),
         ],
     )
     def test_run_pip_check(

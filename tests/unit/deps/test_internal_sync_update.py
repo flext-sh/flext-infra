@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING, Final
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Generator,
-    )
+    from collections.abc import Generator
     from pathlib import Path
 
 _REPO_URL: Final[str] = "https://github.com/flext-sh/flext.git"
@@ -46,17 +45,12 @@ def create_git_repo(tmp_path: Path, name: str) -> Path:
 def create_bare_remote(source_repo: Path, remote_root: Path, name: str) -> Path:
     remote_root.mkdir(parents=True, exist_ok=True)
     remote_repo = remote_root / name
-    cli.run_checked(
-        ["git", "clone", "--bare", str(source_repo), str(remote_repo)],
-    )
+    cli.run_checked(["git", "clone", "--bare", str(source_repo), str(remote_repo)])
     return remote_repo
 
 
 def add_origin(repo_root: Path, remote_repo: Path) -> None:
-    cli.run_checked(
-        ["git", "remote", "add", "origin", str(remote_repo)],
-        cwd=repo_root,
-    )
+    cli.run_checked(["git", "remote", "add", "origin", str(remote_repo)], cwd=repo_root)
 
 
 def configure_github_rewrite(home_root: Path, remote_parent: Path) -> None:
@@ -82,34 +76,24 @@ class TestsFlextInfraDepsInternalSyncUpdate:
 
         new_target = tmp_path / "new-target"
         service = FlextInfraInternalDependencySyncService()
-        assert service.ensure_symlink(
-            new_target,
-            source,
-        ).success
+        tm.ok(service.ensure_symlink(new_target, source))
         assert new_target.is_symlink()
 
         existing_dir = tmp_path / "existing-dir"
         existing_dir.mkdir()
         (existing_dir / "file.txt").write_text("old", encoding="utf-8")
-        assert service.ensure_symlink(
-            existing_dir,
-            source,
-        ).success
+        tm.ok(service.ensure_symlink(existing_dir, source))
         assert existing_dir.is_symlink()
 
         other = tmp_path / "other"
         other.mkdir()
         wrong_link = tmp_path / "wrong-link"
         wrong_link.symlink_to(other.resolve(), target_is_directory=True)
-        assert service.ensure_symlink(
-            wrong_link,
-            source,
-        ).success
-        assert wrong_link.resolve() == source.resolve()
+        tm.ok(service.ensure_symlink(wrong_link, source))
+        tm.that(wrong_link.resolve(), eq=source.resolve())
 
     def test_ensure_symlink_fails_when_parent_path_is_a_file(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = tmp_path / "source"
         source.mkdir()
@@ -117,15 +101,13 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         parent_file.write_text("not a directory", encoding="utf-8")
 
         result = FlextInfraInternalDependencySyncService().ensure_symlink(
-            parent_file / "target",
-            source,
+            parent_file / "target", source
         )
 
-        assert result.failure
+        tm.fail(result)
 
     def test_ensure_checkout_clones_with_local_github_rewrite(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = create_git_repo(tmp_path, "source")
         remotes = tmp_path / "remotes"
@@ -136,17 +118,14 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         dep_path = tmp_path / "dep"
         with temporary_env(HOME=str(home)):
             result = FlextInfraInternalDependencySyncService().ensure_checkout(
-                dep_path,
-                _REPO_URL,
-                "main",
+                dep_path, _REPO_URL, "main"
             )
 
-        assert result.success
+        tm.ok(result)
         assert (dep_path / ".git").exists()
 
     def test_ensure_checkout_existing_repo_fetches_and_checks_out(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = create_git_repo(tmp_path, "source")
         remote_repo = create_bare_remote(source, tmp_path / "remotes", "origin.git")
@@ -154,46 +133,37 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         add_origin(dep_path, remote_repo)
 
         result = FlextInfraInternalDependencySyncService().ensure_checkout(
-            dep_path,
-            _REPO_URL,
-            "main",
+            dep_path, _REPO_URL, "main"
         )
 
-        assert result.success
+        tm.ok(result)
 
     def test_ensure_checkout_rejects_invalid_repo_url_and_ref(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         service = FlextInfraInternalDependencySyncService()
 
         invalid_repo = service.ensure_checkout(tmp_path / "dep-a", "not-a-url", "main")
         invalid_ref = service.ensure_checkout(
-            tmp_path / "dep-b",
-            _REPO_URL,
-            "invalid@ref!",
+            tmp_path / "dep-b", _REPO_URL, "invalid@ref!"
         )
 
-        assert invalid_repo.failure
-        assert invalid_ref.failure
+        tm.fail(invalid_repo)
+        tm.fail(invalid_ref)
 
     def test_ensure_checkout_fails_when_fetch_cannot_reach_origin(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         dep_path = create_git_repo(tmp_path, "dep")
 
         result = FlextInfraInternalDependencySyncService().ensure_checkout(
-            dep_path,
-            _REPO_URL,
-            "main",
+            dep_path, _REPO_URL, "main"
         )
 
-        assert result.failure
+        tm.fail(result)
 
     def test_ensure_checkout_fails_when_requested_ref_is_missing(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = create_git_repo(tmp_path, "source")
         remote_repo = create_bare_remote(source, tmp_path / "remotes", "origin.git")
@@ -201,16 +171,13 @@ class TestsFlextInfraDepsInternalSyncUpdate:
         add_origin(dep_path, remote_repo)
 
         result = FlextInfraInternalDependencySyncService().ensure_checkout(
-            dep_path,
-            _REPO_URL,
-            "release/does-not-exist",
+            dep_path, _REPO_URL, "release/does-not-exist"
         )
 
-        assert result.failure
+        tm.fail(result)
 
     def test_ensure_checkout_replaces_existing_symlink_and_directory(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = create_git_repo(tmp_path, "source")
         remotes = tmp_path / "remotes"
@@ -228,17 +195,13 @@ class TestsFlextInfraDepsInternalSyncUpdate:
 
         with temporary_env(HOME=str(home)):
             symlink_result = FlextInfraInternalDependencySyncService().ensure_checkout(
-                dep_symlink,
-                _REPO_URL,
-                "main",
+                dep_symlink, _REPO_URL, "main"
             )
             dir_result = FlextInfraInternalDependencySyncService().ensure_checkout(
-                dep_dir,
-                _REPO_URL,
-                "main",
+                dep_dir, _REPO_URL, "main"
             )
 
-        assert symlink_result.success
-        assert dir_result.success
+        tm.ok(symlink_result)
+        tm.ok(dir_result)
         assert (dep_symlink / ".git").exists()
         assert (dep_dir / ".git").exists()

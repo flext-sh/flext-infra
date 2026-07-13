@@ -15,7 +15,7 @@ import flext_infra.validate as core_module
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 
 if TYPE_CHECKING:
-    from tests.typings import t
+    from tests import t
 
 
 class TestCoreModuleInit:

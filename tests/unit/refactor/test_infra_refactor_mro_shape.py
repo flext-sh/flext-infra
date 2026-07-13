@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
-from tests.models import m
+from tests import m
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def _write_file(tmp_path: Path, rel_path: str, source: str) -> Path:
@@ -22,15 +23,11 @@ def _write_file(tmp_path: Path, rel_path: str, source: str) -> Path:
 
 
 def _detect(
-    file_path: Path,
-    rope_project: t.Infra.RopeProject,
+    file_path: Path, rope_project: t.Infra.RopeProject
 ) -> t.SequenceOf[m.Infra.MROShapeViolation]:
     """Run the detector against ``file_path``."""
     return FlextInfraMROShapeDetector.detect_file(
-        m.Infra.DetectorContext(
-            file_path=file_path,
-            rope_project=rope_project,
-        ),
+        m.Infra.DetectorContext(file_path=file_path, rope_project=rope_project)
     )
 
 
@@ -38,9 +35,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
     """Behavior contract for the rope MRO-shape detector."""
 
     def test_enforce_047_flags_facade_with_peer_first_base(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -56,15 +51,13 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = _detect(target, rope_project)
 
-        assert len(violations) == 1
-        assert violations[0].rule_id == "047"
-        assert violations[0].class_name == "FlextExampleModels"
-        assert violations[0].first_base == "FlextExamplePeer"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].rule_id, eq="047")
+        tm.that(violations[0].class_name, eq="FlextExampleModels")
+        tm.that(violations[0].first_base, eq="FlextExamplePeer")
 
     def test_enforce_047_allows_alias_first_base(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -83,9 +76,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
         assert not violations
 
     def test_enforce_049_allows_peer_first_when_shared_alias_base(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -106,9 +97,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
         assert not violations
 
     def test_enforce_046_flags_redundant_nested_namespace(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -121,14 +110,12 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = _detect(target, rope_project)
 
-        assert len(violations) == 1
-        assert violations[0].rule_id == "046"
-        assert violations[0].class_name == "FlextExampleService.Config"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].rule_id, eq="046")
+        tm.that(violations[0].class_name, eq="FlextExampleService.Config")
 
     def test_enforce_046_skips_nested_class_with_methods(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -144,9 +131,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
         assert not violations
 
     def test_enforce_051_flags_utilities_self_root(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -161,14 +146,12 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
 
         violations = _detect(target, rope_project)
 
-        assert len(violations) == 1
-        assert violations[0].rule_id == "051"
-        assert violations[0].class_name == "FlextExampleUtilities"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].rule_id, eq="051")
+        tm.that(violations[0].class_name, eq="FlextExampleUtilities")
 
     def test_enforce_051_skips_utilities_without_u_reference(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -186,9 +169,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
         assert not violations
 
     def test_parse_failure_is_reported(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         target = _write_file(
             tmp_path,
@@ -196,17 +177,15 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
             "from __future__ import annotations\nclass FlextExampleModels(\n",
         )
         ctx = m.Infra.DetectorContext(
-            file_path=target,
-            rope_project=rope_project,
-            parse_failures=[],
+            file_path=target, rope_project=rope_project, parse_failures=[]
         )
 
         violations = FlextInfraMROShapeDetector.detect_file(ctx)
 
         assert not violations
-        assert ctx.parse_failures is not None
-        assert len(ctx.parse_failures) == 1
-        assert ctx.parse_failures[0].stage == "mro_shape"
+        tm.that(ctx.parse_failures, none=False)
+        tm.that(len(ctx.parse_failures), eq=1)
+        tm.that(ctx.parse_failures[0].stage, eq="mro_shape")
 
 
 if __name__ == "__main__":

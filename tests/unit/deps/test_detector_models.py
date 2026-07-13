@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests.models import m
+from tests import m
 
 
 class TestsFlextInfraDepsDetectorModels:
@@ -18,8 +18,7 @@ class TestsFlextInfraDepsDetectorModels:
 
     def test_workspace_dependency_report_creation(self) -> None:
         report = m.Infra.WorkspaceDependencyReport(
-            workspace="test-workspace",
-            projects={},
+            workspace="test-workspace", projects={}
         )
         tm.that(report.workspace, eq="test-workspace")
         tm.that(report.projects, empty=True)

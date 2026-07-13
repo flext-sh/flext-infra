@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 
 class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
@@ -15,8 +16,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextUtilities",
         })
         assert not ok
-        assert violation is not None
-        assert violation["violation_type"] == "forbidden_target"
+        tm.that(violation, none=False)
+        tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_utilities_family_allows_utilities_target(self) -> None:
         ok, violation = u.Infra.validate_class_nesting_entry({
@@ -25,7 +26,7 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextUtilities",
         })
         assert ok
-        assert violation is None
+        tm.that(violation, none=True)
 
     def test_dispatcher_family_blocks_models_target(self) -> None:
         ok, violation = u.Infra.validate_class_nesting_entry({
@@ -34,8 +35,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextModels",
         })
         assert not ok
-        assert violation is not None
-        assert violation["violation_type"] == "forbidden_target"
+        tm.that(violation, none=False)
+        tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_runtime_family_blocks_non_runtime_target(self) -> None:
         ok, violation = u.Infra.validate_class_nesting_entry({
@@ -44,8 +45,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextDispatcher",
         })
         assert not ok
-        assert violation is not None
-        assert violation["violation_type"] == "forbidden_target"
+        tm.that(violation, none=False)
+        tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_decorators_family_blocks_dispatcher_target(self) -> None:
         ok, violation = u.Infra.validate_class_nesting_entry({
@@ -54,8 +55,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextDispatcher",
         })
         assert not ok
-        assert violation is not None
-        assert violation["violation_type"] == "forbidden_target"
+        tm.that(violation, none=False)
+        tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_helper_consolidation_is_prechecked(self) -> None:
         ok, violation = u.Infra.validate_class_nesting_entry({
@@ -64,5 +65,5 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextModels",
         })
         assert not ok
-        assert violation is not None
-        assert violation["violation_type"] == "forbidden_target"
+        tm.that(violation, none=False)
+        tm.that(violation["violation_type"], eq="forbidden_target")

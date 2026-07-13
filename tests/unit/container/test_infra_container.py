@@ -15,8 +15,9 @@ from io import StringIO
 import pytest
 
 from flext_core import FlextContainer
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
+from flext_tests import tm
 
 
 class TestsFlextInfraContainerInfraContainer:
@@ -73,9 +74,9 @@ class TestsFlextInfraContainerInfraContainer:
 
     def test_template_methods_available(self) -> None:
         """Verify template constants are accessible via c.Infra MRO."""
-        assert isinstance(c.Infra.TOC_START, str)
-        assert isinstance(c.Infra.TOC_END, str)
-        assert isinstance(c.Infra.GENERATED_HEADER, str)
+        tm.that(c.Infra.TOC_START, is_=str)
+        tm.that(c.Infra.TOC_END, is_=str)
+        tm.that(c.Infra.GENERATED_HEADER, is_=str)
 
     def test_versioning_methods_available(self) -> None:
         """Verify versioning methods are accessible via u.Infra MRO."""
@@ -107,4 +108,4 @@ class TestsFlextInfraContainerInfraContainer:
             u.Cli.info("hello")
             u.Cli.warning("careful")
 
-        assert stream.getvalue() == "INFO: hello\nWARN: careful\n"
+        tm.that(stream.getvalue(), eq="INFO: hello\nWARN: careful\n")

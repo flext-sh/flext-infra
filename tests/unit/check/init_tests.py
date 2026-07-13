@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 import flext_infra.check as check_module
+from flext_tests import tm
 
 
 class TestFlextInfraCheck:
@@ -21,5 +22,5 @@ class TestFlextInfraCheck:
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(check_module)
-        assert isinstance(exports, list)
+        tm.that(exports, is_=list)
         assert exports

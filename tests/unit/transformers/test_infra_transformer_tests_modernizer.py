@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from flext_infra.transformers.tests_modernizer import FlextInfraRefactorTestsModernizer
+from flext_tests import tm
 
 
 def _modernized(source: str) -> tuple[str, list[str]]:
@@ -43,7 +44,7 @@ class TestsFlextInfraTransformersTestsModernizer:
     def test_import_unittest_removed(self) -> None:
         source = "import unittest\n\nclass TestFoo(unittest.TestCase):\n    pass\n"
         code = _transform(source)
-        assert "import unittest" not in code
+        tm.that(code, lacks="import unittest")
 
     def test_class_inheriting_unittest_testcase_rewritten(self) -> None:
         source = (
@@ -53,9 +54,9 @@ class TestsFlextInfraTransformersTestsModernizer:
             "        pass\n"
         )
         code = _transform(source)
-        assert "class TestsFlextFoo(FlextTestsCase):" in code
-        assert "class TestFoo(unittest.TestCase):" not in code
-        assert "from flext_tests.base import FlextTestsCase" in code
+        tm.that(code, has="class TestsFlextFoo(FlextTestsCase):")
+        tm.that(code, lacks="class TestFoo(unittest.TestCase):")
+        tm.that(code, has="from flext_tests.base import FlextTestsCase")
 
     def test_assert_equal_rewritten_with_tm_import(self) -> None:
         source = (
@@ -65,9 +66,9 @@ class TestsFlextInfraTransformersTestsModernizer:
             "        self.assertEqual(1, 2)\n"
         )
         code = _transform(source)
-        assert "tm.that(1, eq=2)" in code
-        assert "self.assertEqual(1, 2)" not in code
-        assert "from tests import tm" in code
+        tm.that(code, has="tm.that(1, eq=2)")
+        tm.that(code, lacks="self.assertEqual(1, 2)")
+        tm.that(code, has="from tests import tm")
 
     def test_assert_true_rewritten(self) -> None:
         source = (
@@ -77,11 +78,11 @@ class TestsFlextInfraTransformersTestsModernizer:
             "        self.assertTrue(x)\n"
         )
         code = _transform(source)
-        assert "tm.that(x, eq=True)" in code
-        assert "self.assertTrue(x)" not in code
+        tm.that(code, has="tm.that(x, eq=True)")
+        tm.that(code, lacks="self.assertTrue(x)")
 
     def test_unchanged_source_returns_empty_changes(self) -> None:
         source = "from tests import tm\n\ndef foo():\n    pass\n"
         code, changes = _transform_with_changes(source)
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])

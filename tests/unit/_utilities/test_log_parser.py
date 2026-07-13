@@ -11,21 +11,22 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-from tests.constants import c
+from tests import c
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestsFlextInfraUtilitiesLogParser:
     def test_missing_file_returns_zero_empty(self, tmp_path: Path) -> None:
         result = FlextInfraUtilitiesLogParser.extract_errors(
-            tmp_path / "nonexistent.log",
+            tmp_path / "nonexistent.log"
         )
 
-        assert result == (0, [])
+        tm.that(result, eq=(0, []))
 
     def test_empty_file_returns_zero_empty(self, tmp_path: Path) -> None:
         log_file = tmp_path / "empty.log"
@@ -33,8 +34,8 @@ class TestsFlextInfraUtilitiesLogParser:
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 0
-        assert list(lines) == []
+        tm.that(count, eq=0)
+        tm.that(list(lines), eq=[])
 
     def test_file_with_only_whitespace_returns_zero_empty(self, tmp_path: Path) -> None:
         log_file = tmp_path / "whitespace.log"
@@ -42,8 +43,8 @@ class TestsFlextInfraUtilitiesLogParser:
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 0
-        assert list(lines) == []
+        tm.that(count, eq=0)
+        tm.that(list(lines), eq=[])
 
     def test_error_line_is_detected(self, tmp_path: Path) -> None:
         log_file = tmp_path / "errors.log"
@@ -51,8 +52,8 @@ class TestsFlextInfraUtilitiesLogParser:
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 1
-        assert c.Tests.LOG_ERROR_LINES[0] in lines[0]
+        tm.that(count, eq=1)
+        tm.that(lines[0], has=c.Tests.LOG_ERROR_LINES[0])
 
     def test_fail_line_is_detected(self, tmp_path: Path) -> None:
         log_file = tmp_path / "fail.log"
@@ -60,20 +61,19 @@ class TestsFlextInfraUtilitiesLogParser:
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 1
-        assert c.Tests.LOG_ERROR_LINES[1] in lines[0]
+        tm.that(count, eq=1)
+        tm.that(lines[0], has=c.Tests.LOG_ERROR_LINES[1])
 
     def test_noise_patterns_are_skipped(self, tmp_path: Path) -> None:
         log_file = tmp_path / "noise.log"
         log_file.write_text(
-            "\n".join(c.Tests.LOG_NOISE_LINES[:2]) + "\n",
-            encoding="utf-8",
+            "\n".join(c.Tests.LOG_NOISE_LINES[:2]) + "\n", encoding="utf-8"
         )
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 0
-        assert list(lines) == []
+        tm.that(count, eq=0)
+        tm.that(list(lines), eq=[])
 
     def test_max_lines_truncates_results(self, tmp_path: Path) -> None:
         error_lines = "\n".join(f"ERROR: error line {i}" for i in range(10))
@@ -81,12 +81,11 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file.write_text(error_lines + "\n", encoding="utf-8")
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(
-            log_file,
-            max_lines=3,
+            log_file, max_lines=3
         )
 
-        assert count == 10
-        assert len(list(lines)) == 3
+        tm.that(count, eq=10)
+        tm.that(len(list(lines)), eq=3)
 
     def test_default_max_lines_is_five(self, tmp_path: Path) -> None:
         error_lines = "\n".join(f"ERROR: error line {i}" for i in range(10))
@@ -95,8 +94,8 @@ class TestsFlextInfraUtilitiesLogParser:
 
         count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 10
-        assert len(list(lines)) == 5
+        tm.that(count, eq=10)
+        tm.that(len(list(lines)), eq=5)
 
     def test_python_file_error_lines_detected(self, tmp_path: Path) -> None:
         log_file = tmp_path / "pyerr.log"
@@ -104,7 +103,7 @@ class TestsFlextInfraUtilitiesLogParser:
 
         count, _lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 1
+        tm.that(count, eq=1)
 
     def test_mixed_errors_and_noise(self, tmp_path: Path) -> None:
         content = "\n".join(c.Tests.LOG_MIXED_SCENARIO_LINES) + "\n"
@@ -113,24 +112,18 @@ class TestsFlextInfraUtilitiesLogParser:
 
         count, _lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == 2
+        tm.that(count, eq=2)
 
-    @pytest.mark.parametrize(
-        ("line", "expected_count"),
-        c.Tests.LOG_PATTERN_CASES,
-    )
+    @pytest.mark.parametrize(("line", "expected_count"), c.Tests.LOG_PATTERN_CASES)
     def test_pattern_matching(
-        self,
-        tmp_path: Path,
-        line: str,
-        expected_count: int,
+        self, tmp_path: Path, line: str, expected_count: int
     ) -> None:
         log_file = tmp_path / "pattern.log"
         log_file.write_text(line + "\n", encoding="utf-8")
 
         count, _ = FlextInfraUtilitiesLogParser.extract_errors(log_file)
 
-        assert count == expected_count
+        tm.that(count, eq=expected_count)
 
     @pytest.mark.parametrize("line", c.Tests.LOG_ERROR_LINES)
     def test_error_lines_follow_prefix_rule(self, line: str) -> None:

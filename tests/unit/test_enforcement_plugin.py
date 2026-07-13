@@ -12,12 +12,10 @@ from collections.abc import Iterator
 from importlib.metadata import entry_points
 
 import pytest
-from flext_tests.enforcement import (
-    clear,
-    get,
-)
+from flext_tests.enforcement import clear, get
 
 from flext_infra._fixtures import enforcement as flext_infra_enforcement_plugin
+from flext_tests import tm
 
 
 class TestsFlextInfraEnforcementPlugin:
@@ -35,17 +33,16 @@ class TestsFlextInfraEnforcementPlugin:
         eps = entry_points(group="pytest11")
         names = {ep.name for ep in eps}
 
-        assert "flext_infra_enforcement" in names
+        tm.that(names, has="flext_infra_enforcement")
 
     def test_plugin_registers_infra_detector_contribution(
-        self,
-        _clear_registry: None,
+        self, _clear_registry: None
     ) -> None:
         """Loading the module registers the flext-infra detector contribution."""
         flext_infra_enforcement_plugin.FlextInfraEnforcementPytestPlugin.register()
 
         contribution = get("flext_infra_detector")
-        assert contribution is not None
-        assert contribution.source_kind == "flext_infra_detector"
-        assert contribution.builder is not None
-        assert contribution.warning_categories == ()
+        tm.that(contribution, none=False)
+        tm.that(contribution.source_kind, eq="flext_infra_detector")
+        tm.that(contribution.builder, none=False)
+        tm.that(contribution.warning_categories, eq=())

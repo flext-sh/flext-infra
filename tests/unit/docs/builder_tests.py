@@ -12,12 +12,12 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests.models import m
+from tests import m
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 @pytest.fixture
@@ -29,9 +29,7 @@ class TestBuilderCore:
     """Core build invocation tests."""
 
     def test_build_with_valid_scope_returns_success(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
+        self, builder: FlextInfraDocBuilder, tmp_path: Path
     ) -> None:
         """Test build with valid scope returns success."""
         reports: t.SequenceOf[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
@@ -58,11 +56,11 @@ class TestBuilderCore:
         """Build runs with each option variant and returns a railway result."""
         if "output_dir" in kwargs:
             output_dir = kwargs["output_dir"]
-            assert isinstance(output_dir, str)
+            tm.that(output_dir, is_=str)
             tm.ok(builder.build(tmp_path, output_dir=str(tmp_path / output_dir)))
         else:
             projects = kwargs.get("projects")
-            assert isinstance(projects, list)
+            tm.that(projects, is_=list)
             tm.ok(builder.build(tmp_path, projects=projects))
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
@@ -89,9 +87,7 @@ class TestBuilderCore:
         tm.that(report.site_dir, eq="/path/to/site")
 
     def test_build_with_multiple_projects_returns_list(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
+        self, builder: FlextInfraDocBuilder, tmp_path: Path
     ) -> None:
         """Test build with multiple projects returns list of reports."""
         result = builder.build(tmp_path, projects=["proj1", "proj2"])

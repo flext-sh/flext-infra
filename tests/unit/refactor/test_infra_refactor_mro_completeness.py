@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
-from tests.models import m
-from tests.utilities import u
+from tests import m
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:
@@ -20,10 +21,7 @@ def _make_rope(workspace: Path) -> t.Infra.RopeProject:
 
 
 def _write_models_project(
-    *,
-    tmp_path: Path,
-    facade_bases: str,
-    candidate_class: str,
+    *, tmp_path: Path, facade_bases: str, candidate_class: str
 ) -> tuple[Path, t.Infra.RopeProject]:
     project_root = tmp_path / "flext-example"
     package_dir = project_root / "src" / "flext_example"
@@ -72,20 +70,16 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
         )
 
         violations = FlextInfraMROCompletenessDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=facade_file,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=facade_file, rope_project=rope_project)
         )
 
-        assert len(violations) == 1
-        assert violations[0].facade_class == "FlextExampleModels"
-        assert violations[0].missing_base == "FlextExampleModelsDomain"
-        assert violations[0].family == "m"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].facade_class, eq="FlextExampleModels")
+        tm.that(violations[0].missing_base, eq="FlextExampleModelsDomain")
+        tm.that(violations[0].family, eq="m")
 
     def test_skips_when_candidate_is_already_in_facade_bases(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         facade_file, rope_project = _write_models_project(
             tmp_path=tmp_path,
@@ -94,17 +88,13 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
         )
 
         violations = FlextInfraMROCompletenessDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=facade_file,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=facade_file, rope_project=rope_project)
         )
 
-        assert violations == []
+        tm.that(violations, eq=[])
 
     def test_skips_when_candidate_is_in_local_aggregate_base(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_root = tmp_path / "flext-example"
         package_dir = project_root / "src" / "flext_example"
@@ -138,12 +128,11 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
 
         violations = FlextInfraMROCompletenessDetector.detect_file(
             m.Infra.DetectorContext(
-                file_path=package_dir / "models.py",
-                rope_project=_make_rope(tmp_path),
-            ),
+                file_path=package_dir / "models.py", rope_project=_make_rope(tmp_path)
+            )
         )
 
-        assert violations == []
+        tm.that(violations, eq=[])
 
     def test_skips_non_facade_files(self, tmp_path: Path) -> None:
         target = tmp_path / "consumer.py"
@@ -153,17 +142,13 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
         # Provide a minimal one anyway to satisfy the signature.
         rope_project = _make_rope(tmp_path)
         violations = FlextInfraMROCompletenessDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=target, rope_project=rope_project)
         )
 
-        assert violations == []
+        tm.that(violations, eq=[])
 
     def test_skips_tests_facade_like_files_without_parse_failure(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_root = tmp_path / "flext-example"
         tests_dir = project_root / "tests"
@@ -183,11 +168,11 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
                 rope_project=_make_rope(project_root),
                 parse_failures=parse_failures,
                 project_root=project_root,
-            ),
+            )
         )
 
-        assert violations == []
-        assert parse_failures == []
+        tm.that(violations, eq=[])
+        tm.that(parse_failures, eq=[])
 
     def test_skips_private_candidate_classes(self, tmp_path: Path) -> None:
         facade_file, rope_project = _write_models_project(
@@ -197,13 +182,10 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
         )
 
         violations = FlextInfraMROCompletenessDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=facade_file,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=facade_file, rope_project=rope_project)
         )
 
-        assert violations == []
+        tm.that(violations, eq=[])
 
     def test_rewriter_adds_missing_base_and_formats(self, tmp_path: Path) -> None:
         facade_file, rope_project = _write_models_project(
@@ -213,16 +195,12 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
         )
 
         violations = FlextInfraMROCompletenessDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=facade_file,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=facade_file, rope_project=rope_project)
         )
         u.Infra.rewrite_mro_completeness_violations(
-            violations=violations,
-            parse_failures=[],
+            violations=violations, parse_failures=[]
         )
 
         rewritten = facade_file.read_text(encoding="utf-8")
-        assert "FlextExampleModelsDomain" in rewritten
-        assert "class FlextExampleModels(" in rewritten
+        tm.that(rewritten, has="FlextExampleModelsDomain")
+        tm.that(rewritten, has="class FlextExampleModels(")

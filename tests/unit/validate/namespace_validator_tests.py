@@ -8,9 +8,9 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import u
+from tests import c
+from tests import m
+from tests import u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -21,10 +21,7 @@ def _read_fixture(name: str) -> str:
 
 
 def _make_project_with_module(
-    tmp_path: Path,
-    *,
-    module_source: str,
-    module_name: str,
+    tmp_path: Path, *, module_source: str, module_name: str
 ) -> Path:
     project_root = tmp_path / "project"
     package_dir = project_root / "src" / "flext_test"
@@ -35,10 +32,7 @@ def _make_project_with_module(
 
 
 def _make_project_with_module_path(
-    tmp_path: Path,
-    *,
-    module_source: str,
-    module_path: str,
+    tmp_path: Path, *, module_source: str, module_path: str
 ) -> Path:
     project_root = tmp_path / "project"
     package_dir = project_root / "src" / "flext_test"
@@ -54,15 +48,14 @@ class TestFlextInfraNamespaceValidator:
     """Test suite for namespace validator rules 0-3."""
 
     def test_public_project_layout_uses_flext_for_core_exception(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_root = tmp_path / "flext-core"
         package_dir = project_root / "src" / "flext_core"
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
         layout = u.Infra.layout(project_root)
-        assert layout is not None
+        tm.that(layout, none=False)
         tm.that(layout.class_stem, eq="Flext")
 
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:
@@ -87,26 +80,24 @@ class TestFlextInfraNamespaceValidator:
         tracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
 
         init_result = u.Cli.run_raw(["git", "init"], cwd=project_root)
-        assert init_result.success
-        assert init_result.value.exit_code == 0
+        tm.ok(init_result)
+        tm.that(init_result.value.exit_code, eq=0)
         email_result = u.Cli.run_raw(
-            ["git", "config", "user.email", "test@example.com"],
-            cwd=project_root,
+            ["git", "config", "user.email", "test@example.com"], cwd=project_root
         )
-        assert email_result.success
-        assert email_result.value.exit_code == 0
+        tm.ok(email_result)
+        tm.that(email_result.value.exit_code, eq=0)
         name_result = u.Cli.run_raw(
-            ["git", "config", "user.name", "Test User"],
-            cwd=project_root,
+            ["git", "config", "user.name", "Test User"], cwd=project_root
         )
-        assert name_result.success
-        assert name_result.value.exit_code == 0
+        tm.ok(name_result)
+        tm.that(name_result.value.exit_code, eq=0)
         add_result = u.Cli.run_raw(
             ["git", "add", "src/flext_test/models.py", "src/flext_test/__init__.py"],
             cwd=project_root,
         )
-        assert add_result.success
-        assert add_result.value.exit_code == 0
+        tm.ok(add_result)
+        tm.that(add_result.value.exit_code, eq=0)
 
         result = validator.validate_project(project_root, scan_tests=False)
 
@@ -140,8 +131,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
-            any("No outer class found" in v for v in result.value.violations),
-            eq=True,
+            any("No outer class found" in v for v in result.value.violations), eq=True
         )
 
     def test_rule0_wrong_prefix_detected(self, tmp_path: Path) -> None:
@@ -184,9 +174,7 @@ class TestFlextInfraNamespaceValidator:
         validator = FlextInfraNamespaceValidator()
         module_source = "from __future__ import annotations\n\nclass FlextTestConstants(Constants):\n    class Limits:\n        MAX_RETRIES = 3\n"
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="constants.py",
+            tmp_path, module_source=module_source, module_name="constants.py"
         )
         result = validator.validate_project(root, scan_tests=False)
         tm.that(result.success, eq=True)
@@ -203,8 +191,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
-            any("Loose Final constant" in v for v in result.value.violations),
-            eq=True,
+            any("Loose Final constant" in v for v in result.value.violations), eq=True
         )
 
     def test_rule1_loose_enum_detected(self, tmp_path: Path) -> None:
@@ -259,9 +246,7 @@ class TestFlextInfraNamespaceValidator:
         validator = FlextInfraNamespaceValidator()
         module_source = 'from __future__ import annotations\nfrom typing import TypeVar\n\nT = TypeVar("T")\n\nclass FlextTestTypes(Types):\n    pass\n'
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="typings.py",
+            tmp_path, module_source=module_source, module_name="typings.py"
         )
         result = validator.validate_project(root, scan_tests=False)
         tm.that(result.success, eq=True)
@@ -301,9 +286,7 @@ class TestFlextInfraNamespaceValidator:
     ) -> None:
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name=module_name,
+            tmp_path, module_source=module_source, module_name=module_name
         )
         result = validator.validate_project(root, scan_tests=False)
         tm.ok(result)
@@ -317,8 +300,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule3_utilities_facade_import_remains_allowed(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         validator = FlextInfraNamespaceValidator()
         module_source = (
@@ -330,9 +312,7 @@ class TestFlextInfraNamespaceValidator:
             "        pass\n"
         )
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="utilities.py",
+            tmp_path, module_source=module_source, module_name="utilities.py"
         )
 
         result = validator.validate_project(root, scan_tests=False)
@@ -340,10 +320,7 @@ class TestFlextInfraNamespaceValidator:
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
 
-    def test_rule3_models_facade_import_remains_allowed(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_rule3_models_facade_import_remains_allowed(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n"
@@ -354,9 +331,7 @@ class TestFlextInfraNamespaceValidator:
             "        pass\n"
         )
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="models.py",
+            tmp_path, module_source=module_source, module_name="models.py"
         )
 
         result = validator.validate_project(root, scan_tests=False)
@@ -365,8 +340,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.value.passed, eq=True)
 
     def test_rule0_does_not_flag_non_namespace_runtime_module(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         validator = FlextInfraNamespaceValidator()
         module_source = (
@@ -376,9 +350,7 @@ class TestFlextInfraNamespaceValidator:
             "    return VALUE\n"
         )
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="api.py",
+            tmp_path, module_source=module_source, module_name="api.py"
         )
 
         result = validator.validate_project(root, scan_tests=False)
@@ -466,16 +438,13 @@ class TestFlextInfraNamespaceValidator:
         package_dir = project_root / "src" / "flext_test"
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text(
-            _read_fixture("rule0_no_class.py"),
-            encoding="utf-8",
+            _read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         _ = (package_dir / "test_rule.py").write_text(
-            _read_fixture("rule0_no_class.py"),
-            encoding="utf-8",
+            _read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         _ = (package_dir / "_private.py").write_text(
-            _read_fixture("rule0_no_class.py"),
-            encoding="utf-8",
+            _read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         result = validator.validate_project(project_root, scan_tests=False)
         tm.that(result.success, eq=True)
@@ -506,10 +475,7 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(len(result.value.violations), gt=0)
         first = result.value.violations[0]
-        tm.that(
-            c.Infra.VIOLATION_PATTERN.search(first),
-            none=False,
-        )
+        tm.that(c.Infra.VIOLATION_PATTERN.search(first), none=False)
 
     def test_rule0_allows_type_checking_block(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
@@ -522,9 +488,7 @@ class TestFlextInfraNamespaceValidator:
             "    pass\n"
         )
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="models.py",
+            tmp_path, module_source=module_source, module_name="models.py"
         )
 
         result = validator.validate_project(root, scan_tests=False)
@@ -547,9 +511,7 @@ class TestFlextInfraNamespaceValidator:
             '__all__: list[str] = ["FlextTestModels"]\n'
         )
         root = _make_project_with_module(
-            tmp_path,
-            module_source=module_source,
-            module_name="models.py",
+            tmp_path, module_source=module_source, module_name="models.py"
         )
 
         result = validator.validate_project(root, scan_tests=False)
@@ -564,8 +526,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule1_skips_enum_detection_inside_private_constants_dir(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         validator = FlextInfraNamespaceValidator()
         module_source = (
@@ -576,9 +537,7 @@ class TestFlextInfraNamespaceValidator:
             '        OK = "ok"\n'
         )
         root = _make_project_with_module_path(
-            tmp_path,
-            module_source=module_source,
-            module_path="_constants/sample.py",
+            tmp_path, module_source=module_source, module_path="_constants/sample.py"
         )
 
         result = validator.validate_project(root, scan_tests=False)
@@ -593,8 +552,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule2_skips_typealias_detection_inside_private_typings_dir(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         validator = FlextInfraNamespaceValidator()
         module_source = (
@@ -618,8 +576,7 @@ class TestFlextInfraNamespaceValidator:
         )
 
     def test_rule3_skips_direct_imports_inside_private_dirs(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         validator = FlextInfraNamespaceValidator()
         module_source = (

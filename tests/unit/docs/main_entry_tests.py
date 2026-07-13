@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import docs_main, main as infra_main
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,15 +16,13 @@ if TYPE_CHECKING:
 
 def _workspace(tmp_path: Path, *, fixable: bool = False) -> Path:
     workspace: Path = u.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
-        include_fixable_link=fixable,
+        tmp_path, project_names=("flext-a", "flext-b"), include_fixable_link=fixable
     )
     return workspace
 
 
 def test_docs_cli_requires_subcommand() -> None:
-    assert infra_main(["docs"]) == 1
+    tm.that(infra_main(["docs"]), eq=1)
 
 
 @pytest.mark.parametrize(
@@ -39,15 +38,15 @@ def test_docs_cli_requires_subcommand() -> None:
     ],
 )
 def test_docs_cli_help_routes(argv: list[str]) -> None:
-    assert infra_main(argv) == 0
+    tm.that(infra_main(argv), eq=0)
 
 
 def test_flext_docs_entrypoint_routes_through_docs_group() -> None:
     # NOTE (multi-agent): S0 motor entrypoint — proves `flext-docs` == `flext-infra docs`
     # via the package-root lazy export (mro-3o9s).
-    assert docs_main(["--help"]) == 0
-    assert docs_main(["audit", "--help"]) == 0
-    assert docs_main([]) == 1
+    tm.that(docs_main(["--help"]), eq=0)
+    tm.that(docs_main(["audit", "--help"]), eq=0)
+    tm.that(docs_main([]), eq=1)
 
 
 def test_docs_cli_audit_projects_filter_writes_only_selected_reports(
@@ -74,17 +73,8 @@ def test_docs_cli_audit_projects_filter_writes_only_selected_reports(
 def test_docs_cli_fix_generate_and_build_use_public_routes(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path, fixable=True)
 
-    assert (
-        infra_main([
-            "docs",
-            "fix",
-            "--workspace",
-            str(workspace),
-            "--apply",
-        ])
-        == 0
-    )
-    assert "guides/setup.md" in (workspace / "docs/README.md").read_text()
+    assert infra_main(["docs", "fix", "--workspace", str(workspace), "--apply"]) == 0
+    tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
     assert (
         infra_main([
             "docs",
@@ -102,5 +92,5 @@ def test_docs_cli_fix_generate_and_build_use_public_routes(tmp_path: Path) -> No
     assert not (workspace / "flext-b/.reports/docs/generate-report.md").exists()
 
     build_workspace = u.Tests.create_docs_workspace(tmp_path / "build-root")
-    assert infra_main(["docs", "build", "--workspace", str(build_workspace)]) == 0
+    tm.that(infra_main(["docs", "build", "--workspace", str(build_workspace)]), eq=0)
     assert (build_workspace / ".reports/docs/build-report.md").exists()

@@ -6,7 +6,7 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests.utilities import u
+from tests import u
 
 
 class TestsFlextInfraDepsDetectionTypingsFlow:
@@ -19,8 +19,8 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
                 "yaml",
                 {
                     "typing_libraries": {
-                        "module_to_package": {"yaml": "custom-types-yaml"},
-                    },
+                        "module_to_package": {"yaml": "custom-types-yaml"}
+                    }
                 },
             ),
             eq="custom-types-yaml",
@@ -30,26 +30,22 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
 
     def test_get_current_typings_from_pyproject(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = u.Tests.TomlReaderSequence(
-            [
-                u.Tests.infra_mapping_result(
-                    {
-                        "tool": {
-                            "poetry": {
-                                "group": {
-                                    "typings": {
-                                        "dependencies": {
-                                            "types-pyyaml": "^6.0",
-                                            "types-requests": "^2.28",
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                ),
-            ],
-        )
+        service.toml = u.Tests.TomlReaderSequence([
+            u.Tests.infra_mapping_result({
+                "tool": {
+                    "poetry": {
+                        "group": {
+                            "typings": {
+                                "dependencies": {
+                                    "types-pyyaml": "^6.0",
+                                    "types-requests": "^2.28",
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+        ])
 
         got = service.get_current_typings_from_pyproject(Path("/dummy"))
 
@@ -57,33 +53,22 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
 
     def test_get_current_typings_from_pyproject_variants(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = u.Tests.TomlReaderSequence(
-            [
-                u.Tests.infra_mapping_result(
-                    {
-                        "project": {
-                            "optional-dependencies": {
-                                "typings": [
-                                    "types-pyyaml>=6.0",
-                                    "types-requests[extra]==2.28",
-                                ],
-                            },
-                        },
-                    },
-                ),
-                u.Tests.infra_mapping_result(
-                    {
-                        "project": {
-                            "optional-dependencies": {
-                                "typings": {"types-pyyaml": ">=6.0"},
-                            },
-                        },
-                    },
-                ),
-                r.fail("not found"),
-                u.Tests.infra_mapping_result({}),
-            ],
-        )
+        service.toml = u.Tests.TomlReaderSequence([
+            u.Tests.infra_mapping_result({
+                "project": {
+                    "optional-dependencies": {
+                        "typings": ["types-pyyaml>=6.0", "types-requests[extra]==2.28"]
+                    }
+                }
+            }),
+            u.Tests.infra_mapping_result({
+                "project": {
+                    "optional-dependencies": {"typings": {"types-pyyaml": ">=6.0"}}
+                }
+            }),
+            r.fail("not found"),
+            u.Tests.infra_mapping_result({}),
+        ])
         path = Path("/dummy")
 
         tm.that(service.get_current_typings_from_pyproject(path), empty=True)
@@ -94,28 +79,22 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
     def test_get_required_typings_paths(self, tmp_path: Path) -> None:
         command_output = u.Tests.create_command_output()
         service = u.Tests.create_deptry_service(command_output=command_output)
-        service.toml = u.Tests.TomlReaderSequence(
-            [
-                u.Tests.infra_mapping_result({}),
-                u.Tests.infra_mapping_result(
-                    {
-                        "project": {"optional-dependencies": {"typings": []}},
-                    },
-                ),
-            ],
-        )
+        service.toml = u.Tests.TomlReaderSequence([
+            u.Tests.infra_mapping_result({}),
+            u.Tests.infra_mapping_result({
+                "project": {"optional-dependencies": {"typings": []}}
+            }),
+        ])
         tm.ok(service.get_required_typings(tmp_path))
 
-        service.toml = u.Tests.TomlReaderSequence(
-            [
-                u.Tests.infra_mapping_result({}),
-                u.Tests.infra_mapping_result({}),
-            ],
-        )
+        service.toml = u.Tests.TomlReaderSequence([
+            u.Tests.infra_mapping_result({}),
+            u.Tests.infra_mapping_result({}),
+        ])
         tm.ok(service.get_required_typings(tmp_path, include_mypy=False))
 
         failing_service = u.Tests.create_deptry_service(run_error="mypy crash")
-        failing_service.toml = u.Tests.TomlReaderSequence(
-            [u.Tests.infra_mapping_result({})],
-        )
+        failing_service.toml = u.Tests.TomlReaderSequence([
+            u.Tests.infra_mapping_result({})
+        ])
         tm.fail(failing_service.get_required_typings(tmp_path))

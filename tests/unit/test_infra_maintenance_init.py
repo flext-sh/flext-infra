@@ -9,6 +9,7 @@ import pytest
 
 import flext_infra.maintenance
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_tests import tm
 
 
 class TestsFlextInfraInfraMaintenanceInit:
@@ -21,9 +22,9 @@ class TestsFlextInfraInfraMaintenanceInit:
 
     def test_lazy_import_python_version_enforcer(self) -> None:
         """Test lazy import of FlextInfraPythonVersionEnforcer."""
-        assert FlextInfraPythonVersionEnforcer is not None
+        tm.that(FlextInfraPythonVersionEnforcer, none=False)
 
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(flext_infra.maintenance)
-        assert "FlextInfraPythonVersionEnforcer" in exports
+        tm.that(exports, has="FlextInfraPythonVersionEnforcer")

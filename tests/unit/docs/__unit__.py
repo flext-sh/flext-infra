@@ -10,25 +10,13 @@ from __future__ import annotations
 LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".auditor_budgets_tests": ("TestLoadAuditBudgets",),
     ".auditor_docstring_tests": ("TestsDocstringCoverage",),
-    ".auditor_links_tests": (
-        "TestAuditorBrokenLinks",
-        "TestAuditorToMarkdown",
-    ),
-    ".auditor_scope_tests": (
-        "TestAuditorForbiddenTerms",
-        "TestAuditorScope",
-    ),
-    ".auditor_tests": (
-        "TestAuditorCore",
-        "TestAuditorNormalize",
-    ),
+    ".auditor_links_tests": ("TestAuditorBrokenLinks", "TestAuditorToMarkdown"),
+    ".auditor_scope_tests": ("TestAuditorForbiddenTerms", "TestAuditorScope"),
+    ".auditor_tests": ("TestAuditorCore", "TestAuditorNormalize"),
     ".builder_tests": ("TestBuilderCore",),
     ".render_tests": ("TestsDocsRenderExcludeDocs",),
     ".server_tests": ("TestsFlextInfraDocServer",),
-    ".shared_iter_tests": (
-        "TestIterMarkdownFiles",
-        "TestSelectedProjectNames",
-    ),
+    ".shared_iter_tests": ("TestIterMarkdownFiles", "TestSelectedProjectNames"),
     "flext_tests": (
         "c",
         "d",

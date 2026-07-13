@@ -8,6 +8,7 @@ from flext_infra import u
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,12 +41,12 @@ class TestsFlextInfraTransformersInfraTransformerNestedClassPropagation:
     ) -> None:
         source = "from pkg import TimeoutEnforcer\n\nclass Child(TimeoutEnforcer):\n    pass\n\ndef validate(x: TimeoutEnforcer) -> bool:\n    if isinstance(x, TimeoutEnforcer):\n        y = TimeoutEnforcer()\n        return isinstance(y, pkg.TimeoutEnforcer)\n    return False\n"
         code = _transform_source(tmp_path, source)
-        assert "from pkg import FlextDispatcher" in code
-        assert "class Child(FlextDispatcher.TimeoutEnforcer):" in code
-        assert "def validate(x: FlextDispatcher.TimeoutEnforcer) -> bool:" in code
-        assert "if isinstance(x, FlextDispatcher.TimeoutEnforcer):" in code
-        assert "y = FlextDispatcher.TimeoutEnforcer()" in code
-        assert "isinstance(y, pkg.FlextDispatcher.TimeoutEnforcer)" in code
+        tm.that(code, has="from pkg import FlextDispatcher")
+        tm.that(code, has="class Child(FlextDispatcher.TimeoutEnforcer):")
+        tm.that(code, has="def validate(x: FlextDispatcher.TimeoutEnforcer) -> bool:")
+        tm.that(code, has="if isinstance(x, FlextDispatcher.TimeoutEnforcer):")
+        tm.that(code, has="y = FlextDispatcher.TimeoutEnforcer()")
+        tm.that(code, has="isinstance(y, pkg.FlextDispatcher.TimeoutEnforcer)")
 
     def test_nested_class_propagation_preserves_asname_and_rewrites_alias_usage(
         self,
@@ -53,5 +54,5 @@ class TestsFlextInfraTransformersInfraTransformerNestedClassPropagation:
     ) -> None:
         source = "from pkg import TimeoutEnforcer as TE\n\nvalue = TE()\n"
         code = _transform_source(tmp_path, source)
-        assert "from pkg import FlextDispatcher as TE" in code
-        assert "value = TE.TimeoutEnforcer()" in code
+        tm.that(code, has="from pkg import FlextDispatcher as TE")
+        tm.that(code, has="value = TE.TimeoutEnforcer()")

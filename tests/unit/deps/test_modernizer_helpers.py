@@ -7,15 +7,15 @@ import tomlkit
 import tomlkit.items
 from flext_tests import tm
 
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from tomlkit.toml_document import TOMLDocument
 
-    from tests.typings import t
+    from tests import t
 
 
 @pytest.fixture
@@ -28,9 +28,7 @@ def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
         return tomlkit.items.String.from_raw(value)
     if isinstance(value, int):
         return tomlkit.items.Integer(
-            value,
-            trivia=tomlkit.items.Trivia(),
-            raw=str(value),
+            value, trivia=tomlkit.items.Trivia(), raw=str(value)
         )
     str_items: list[tomlkit.items.Item] = [
         tomlkit.items.String.from_raw(v) for v in value
@@ -69,7 +67,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         ],
     )
     def test_dep_name(self, raw: str, expected: str | None) -> None:
-        assert u.Infra.dep_name(raw) == expected
+        tm.that(u.Infra.dep_name(raw), eq=expected)
 
     @pytest.mark.parametrize(
         ("specs", "expected_length", "expected_names", "check_sorted"),
@@ -96,29 +94,23 @@ class TestsFlextInfraDepsModernizerHelpers:
         if check_sorted and len(deduped) > 1:
             left = u.Infra.dep_name(deduped[0])
             right = u.Infra.dep_name(deduped[1])
-            assert left is not None
-            assert right is not None
+            tm.that(left, none=False)
+            tm.that(right, none=False)
             assert left < right
 
     @pytest.mark.parametrize(
         ("value", "expected"),
-        [
-            ("test", "test"),
-            (None, None),
-            ({"key": "value"}, {"key": "value"}),
-        ],
+        [("test", "test"), (None, None), ({"key": "value"}, {"key": "value"})],
     )
     def test_unwrap_item(
-        self,
-        value: t.Cli.TomlMappingSource | None,
-        expected: t.Infra.InfraValue,
+        self, value: t.Cli.TomlMappingSource | None, expected: t.Infra.InfraValue
     ) -> None:
         actual = None if value is None else u.Cli.toml_unwrap_item(value)
-        assert actual == expected
+        tm.that(actual, eq=expected)
 
     def test_unwrap_item_toml_item(self, doc: TOMLDocument) -> None:
         doc["key"] = "value"
-        assert u.Cli.toml_unwrap_item(doc["key"]) == "value"
+        tm.that(u.Cli.toml_unwrap_item(doc["key"]), eq="value")
 
     @pytest.mark.parametrize(
         ("value", "expected"),
@@ -131,34 +123,28 @@ class TestsFlextInfraDepsModernizerHelpers:
         ],
     )
     def test_as_string_list(
-        self,
-        value: tomlkit.items.Item | None,
-        expected: t.StrSequence,
+        self, value: tomlkit.items.Item | None, expected: t.StrSequence
     ) -> None:
         actual: t.StrSequence = (
             [] if value is None else u.Cli.toml_as_string_list(value)
         )
-        assert list(actual) == list(expected)
+        tm.that(list(actual), eq=list(expected))
 
     def test_as_string_list_toml_item(self, doc: TOMLDocument) -> None:
         doc["items"] = ["a", "b"]
         items_array: tomlkit.items.Item = _toml_item(["a", "b"])
-        assert u.Cli.toml_as_string_list(items_array) == ["a", "b"]
+        tm.that(u.Cli.toml_as_string_list(items_array), eq=["a", "b"])
         doc["value"] = 42
         int_val: tomlkit.items.Item = _toml_item(42)
-        assert u.Cli.toml_as_string_list(int_val) == []
+        tm.that(u.Cli.toml_as_string_list(int_val), eq=[])
 
     @pytest.mark.parametrize(
-        ("items", "expected"),
-        [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
+        ("items", "expected"), [(["a", "b", "c"], 3), ([], 0), (["single"], 1)]
     )
     def test_array(self, items: t.StrSequence, expected: int) -> None:
         tm.that(len(u.Cli.toml_array(items)), eq=expected)
 
-    @pytest.mark.parametrize(
-        "mode",
-        ["new", "existing", "replace-non-table"],
-    )
+    @pytest.mark.parametrize("mode", ["new", "existing", "replace-non-table"])
     def test_ensure_table(self, mode: str) -> None:
         parent = tomlkit.table()
         if mode == "existing":
@@ -200,13 +186,13 @@ class TestsFlextInfraDepsModernizerHelpers:
         expected_docs: t.StrSequence,
     ) -> None:
         groups = u.Infra.project_dev_groups(_doc_with_optional_deps(optional_deps))
-        assert list(groups.get("dev", [])) == list(expected_dev)
-        assert list(groups.get("docs", [])) == list(expected_docs)
+        tm.that(list(groups.get("dev", [])), eq=list(expected_dev))
+        tm.that(list(groups.get("docs", [])), eq=list(expected_docs))
 
     def test_project_dev_groups_missing_sections(self, doc: TOMLDocument) -> None:
-        assert u.Infra.project_dev_groups(doc) == {}
+        tm.that(u.Infra.project_dev_groups(doc), eq={})
         doc["project"] = {"name": "test"}
-        assert u.Infra.project_dev_groups(doc) == {}
+        tm.that(u.Infra.project_dev_groups(doc), eq={})
 
     @pytest.mark.parametrize(
         ("optional_deps", "expected_length", "expect_pytest"),
@@ -233,7 +219,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         expect_pytest: bool,
     ) -> None:
         result = u.Infra.canonical_dev_dependencies(
-            _doc_with_optional_deps(optional_deps),
+            _doc_with_optional_deps(optional_deps)
         )
         tm.that(result, length=expected_length)
         if expect_pytest:
@@ -248,16 +234,11 @@ class TestsFlextInfraDepsModernizerHelpers:
                 "docs": ["mkdocs>=1.6"],
             },
         }
-        doc["dependency-groups"] = {
-            "test": ["flext-tests", "coverage>=7.0"],
-        }
+        doc["dependency-groups"] = {"test": ["flext-tests", "coverage>=7.0"]}
         doc["tool"] = {
             "poetry": {
-                "dependencies": {
-                    "python": ">=3.13,<3.14",
-                    "flext-api": "^0.1.0",
-                },
-            },
+                "dependencies": {"python": ">=3.13,<3.14", "flext-api": "^0.1.0"}
+            }
         }
 
         result = u.Infra.declared_dependency_names(doc)
@@ -267,8 +248,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(result, has="flext-tests")
 
     def test_locked_dependency_versions_skips_non_registry_sources(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         lock_path = tmp_path / "uv.lock"
         lock_path.write_text(
@@ -289,8 +269,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         )
 
         tm.that(
-            u.Infra.locked_dependency_versions(lock_path),
-            eq={"requests": "2.32.4"},
+            u.Infra.locked_dependency_versions(lock_path), eq={"requests": "2.32.4"}
         )
 
     def test_rewrite_requirement_constraint_preserves_extras_and_markers(self) -> None:

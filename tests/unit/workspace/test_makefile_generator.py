@@ -8,6 +8,7 @@ from flext_cli import cli
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,7 +28,7 @@ def _write_workspace_root(tmp_path: Path) -> Path:
 
 def _assert_contains_all(text: str, parts: list[str]) -> None:
     for part in parts:
-        assert part in text
+        tm.that(text, has=part)
 
 
 class TestsFlextInfraWorkspaceMakefileGenerator:
@@ -40,7 +41,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
         _assert_contains_all(
@@ -62,7 +63,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
         _assert_contains_all(
@@ -87,10 +88,10 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        assert makefile_text.count("$(MAKE) _mod") == 1
+        tm.that(makefile_text.count("$(MAKE) _mod"), eq=1)
         _assert_contains_all(
             makefile_text,
             [
@@ -107,7 +108,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
         _assert_contains_all(
@@ -130,11 +131,11 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        assert "sample-external-alpha" not in makefile_text
-        assert "sample-external-beta" not in makefile_text
+        tm.that(makefile_text, lacks="sample-external-alpha")
+        tm.that(makefile_text, lacks="sample-external-beta")
 
     def test_workspace_makefile_generator_emits_parseable_discovery_commands(
         self,
@@ -143,7 +144,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         outcome = cli.run_raw(
             ["make", "-C", str(workspace_root), "--dry-run", "help"],
         )
@@ -197,17 +198,17 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             )
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         outcome = cli.run_raw(
             ["make", "-C", str(workspace_root), "-pn"],
         )
 
         assert outcome.success and outcome.value.exit_code == 0
         stdout = outcome.value.stdout
-        assert "sample-external-alpha" not in stdout
-        assert "sample-external-beta" not in stdout
-        assert "INDEPENDENT_PROJECTS :=" not in stdout
-        assert "ATTACHABLE_PROJECTS :=" not in stdout
+        tm.that(stdout, lacks="sample-external-alpha")
+        tm.that(stdout, lacks="sample-external-beta")
+        tm.that(stdout, lacks="INDEPENDENT_PROJECTS :=")
+        tm.that(stdout, lacks="ATTACHABLE_PROJECTS :=")
 
     def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation(
         self,
@@ -216,7 +217,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
         _assert_contains_all(
@@ -231,7 +232,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
-        assert result.success, result.error
+        tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
         _assert_contains_all(

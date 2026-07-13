@@ -10,28 +10,22 @@ from flext_infra.transformers.nested_class_propagation import (
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def _apply_transformer(
-    tmp_path: Path,
-    file_name: str,
-    source: str,
-    transform: t.Infra.RopeTransformFn,
+    tmp_path: Path, file_name: str, source: str, transform: t.Infra.RopeTransformFn
 ) -> t.Infra.TransformResult:
     file_path = tmp_path / "src" / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
-    updated, changes = u.Infra.apply_transformer_to_source(
-        source,
-        file_path,
-        transform,
-    )
+    updated, changes = u.Infra.apply_transformer_to_source(source, file_path, transform)
     return updated, list(changes)
 
 
@@ -49,7 +43,7 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
     def test_no_qualified_name_provider(self) -> None:
         """FlextInfraRefactorSymbolPropagator does not depend on CST providers."""
         deps = _metadata_dependency_names(FlextInfraRefactorSymbolPropagator)
-        assert "QualifiedNameProvider" not in deps
+        tm.that(deps, lacks="QualifiedNameProvider")
 
     def test_module_rename(self, tmp_path: Path) -> None:
         """Transformer renames import module path."""
@@ -60,14 +54,11 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
             import_symbol_renames={},
         )
         result, changes = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
+            tmp_path, "demo.py", source, transformer.transform
         )
-        assert "new_module" in result
-        assert "old_module" not in result
-        assert len(changes) == 1
+        tm.that(result, has="new_module")
+        tm.that(result, lacks="old_module")
+        tm.that(len(changes), eq=1)
 
     def test_symbol_rename_in_import(self, tmp_path: Path) -> None:
         """Transformer renames symbols within target module imports."""
@@ -78,13 +69,10 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
             import_symbol_renames={"OldName": "NewName"},
         )
         result, _ = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
+            tmp_path, "demo.py", source, transformer.transform
         )
-        assert "NewName" in result
-        assert "OldName" not in result
+        tm.that(result, has="NewName")
+        tm.that(result, lacks="OldName")
 
     def test_symbol_rename_propagates_to_usage(self, tmp_path: Path) -> None:
         """Transformer propagates symbol rename from import to usage sites."""
@@ -95,13 +83,10 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
             import_symbol_renames={"Alpha": "Beta"},
         )
         result, _ = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
+            tmp_path, "demo.py", source, transformer.transform
         )
-        assert "Beta" in result
-        assert "Alpha" not in result
+        tm.that(result, has="Beta")
+        tm.that(result, lacks="Alpha")
 
     def test_no_change_when_no_match(self, tmp_path: Path) -> None:
         """Transformer returns unchanged source when no renames apply."""
@@ -112,13 +97,10 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
             import_symbol_renames={"OldName": "NewName"},
         )
         result, changes = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
+            tmp_path, "demo.py", source, transformer.transform
         )
-        assert result == source
-        assert changes == []
+        tm.that(result, eq=source)
+        tm.that(changes, eq=[])
 
     def test_on_change_callback_invoked(self, tmp_path: Path) -> None:
         """on_change callback is invoked for each change made."""
@@ -130,14 +112,9 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
             import_symbol_renames={"OldName": "NewName"},
             on_change=recorded.append,
         )
-        _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
-        )
-        assert len(recorded) == 1
-        assert "OldName" in recorded[0]
+        _apply_transformer(tmp_path, "demo.py", source, transformer.transform)
+        tm.that(len(recorded), eq=1)
+        tm.that(recorded[0], has="OldName")
 
     def test_apply_to_source_matches_rope_transform(self, tmp_path: Path) -> None:
         """Text and rope entrypoints keep the same symbol propagation behavior."""
@@ -148,18 +125,14 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
             import_symbol_renames={"OldName": "NewName"},
         )
         rope_result, rope_changes = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
+            tmp_path, "demo.py", source, transformer.transform
         )
         text_result, text_changes = transformer.apply_to_source(source)
-        assert text_result == rope_result
-        assert text_changes == rope_changes
+        tm.that(text_result, eq=rope_result)
+        tm.that(text_changes, eq=rope_changes)
 
     def test_apply_transformer_to_source_restores_disk_state(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Temporary rope sync must not leak source updates to the real file."""
         file_path = tmp_path / "src" / "demo.py"
@@ -174,44 +147,36 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
         )
 
         updated, changes = u.Infra.apply_transformer_to_source(
-            staged_source,
-            file_path,
-            transformer.transform,
+            staged_source, file_path, transformer.transform
         )
 
-        assert "NewName" in updated
+        tm.that(updated, has="NewName")
         assert changes
-        assert file_path.read_text(encoding="utf-8") == original_source
+        tm.that(file_path.read_text(encoding="utf-8"), eq=original_source)
 
     def test_no_parent_node_provider(self) -> None:
         """FlextInfraNestedClassPropagationTransformer has no CST parent dependency."""
         deps = _metadata_dependency_names(FlextInfraNestedClassPropagationTransformer)
-        assert "ParentNodeProvider" not in deps
+        tm.that(deps, lacks="ParentNodeProvider")
 
     def test_class_name_not_renamed(self, tmp_path: Path) -> None:
         """Class definition names are NOT renamed (definition sites are skipped)."""
         source = "class OldName:\n    pass\n"
         transformer = FlextInfraNestedClassPropagationTransformer(
-            class_renames={"OldName": "Namespace.OldName"},
+            class_renames={"OldName": "Namespace.OldName"}
         )
         result, _ = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
+            tmp_path, "demo.py", source, transformer.transform
         )
-        assert "class OldName" in result
+        tm.that(result, has="class OldName")
 
     def test_usage_site_renamed(self, tmp_path: Path) -> None:
         """Usage sites of renamed class ARE updated."""
         source = "x = OldName()\n"
         transformer = FlextInfraNestedClassPropagationTransformer(
-            class_renames={"OldName": "Namespace.OldName"},
+            class_renames={"OldName": "Namespace.OldName"}
         )
         result, _ = _apply_transformer(
-            tmp_path,
-            "demo.py",
-            source,
-            transformer.transform,
+            tmp_path, "demo.py", source, transformer.transform
         )
-        assert "Namespace.OldName" in result
+        tm.that(result, has="Namespace.OldName")

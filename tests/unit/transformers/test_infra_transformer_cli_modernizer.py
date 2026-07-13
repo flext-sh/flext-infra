@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -23,57 +24,57 @@ class TestsFlextInfraTransformersCliModernizer:
     def test_import_typer_removed(self) -> None:
         source = "import typer\n"
         code, changes = _transform(source)
-        assert "import typer" not in code
+        tm.that(code, lacks="import typer")
         assert changes
 
     def test_from_click_import_command_removed(self) -> None:
         source = "from click import command\n"
         code, changes = _transform(source)
-        assert "from click import command" not in code
+        tm.that(code, lacks="from click import command")
         assert changes
 
     def test_print_replaced_when_cli_imported(self) -> None:
         source = 'from flext_cli import cli\n\nprint("hi")\n'
         code, changes = _transform(source)
-        assert 'cli.display_text("hi")' in code
-        assert "print(" not in code
+        tm.that(code, has='cli.display_text("hi")')
+        tm.that(code, lacks="print(")
         assert changes
 
     def test_fstring_print_replaced_when_cli_imported(self) -> None:
         source = 'from flext_cli import cli\n\nprint(f"hi {name}")\n'
         code, changes = _transform(source)
-        assert 'cli.display_text(f"hi {name}")' in code
-        assert "print(" not in code
+        tm.that(code, has='cli.display_text(f"hi {name}")')
+        tm.that(code, lacks="print(")
         assert changes
 
     def test_print_unchanged_without_cli_import(self) -> None:
         source = 'print("hi")\n'
         code, changes = _transform(source)
-        assert code == source
+        tm.that(code, eq=source)
         assert not changes
 
     def test_import_argparse_removed(self) -> None:
         source = "import argparse\n"
         code, changes = _transform(source)
-        assert "import argparse" not in code
+        tm.that(code, lacks="import argparse")
         assert changes
 
     def test_unchanged_source_returns_empty_changes(self) -> None:
         source = "x = 1\n"
         code, changes = _transform(source)
-        assert code == source
-        assert changes == []
+        tm.that(code, eq=source)
+        tm.that(changes, eq=[])
 
     def test_manual_conversion_noted_for_typer_typer(self) -> None:
         source = "import typer\n\napp = typer.Typer()\n"
         code, changes = _transform(source)
-        assert "import typer" not in code
-        assert "typer.Typer()" in code
+        tm.that(code, lacks="import typer")
+        tm.that(code, has="typer.Typer()")
         assert any("Manual conversion required" in change for change in changes)
 
     def test_cli_alias_honored_for_print_rewrite(self) -> None:
         source = 'from flext_cli import cli as c\n\nprint("hi")\n'
         code, changes = _transform(source)
-        assert 'c.display_text("hi")' in code
-        assert "print(" not in code
+        tm.that(code, has='c.display_text("hi")')
+        tm.that(code, lacks="print(")
         assert changes

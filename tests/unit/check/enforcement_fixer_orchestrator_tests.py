@@ -16,11 +16,10 @@ from flext_infra import m, p, t, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
-from flext_infra.fixers.orchestrator import (
-    FlextInfraEnforcementFixerOrchestrator,
-)
+from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
-from tests.constants import c
+from tests import c
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from flext_infra.fixers.result import FlextInfraFixersResult as fr
@@ -37,14 +36,11 @@ class TestsEnforcementFixerOrchestrator:
     @staticmethod
     def _orchestrator(workspace: Path) -> FlextInfraEnforcementFixerOrchestrator:
         return FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=workspace,
-            selected_projects=("demo",),
+            workspace_root=workspace, selected_projects=("demo",)
         )
 
     def test_validator_import_failure_is_failed_fix(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Validator import failure is not reported as an empty violation set."""
         original_import = importlib.import_module
@@ -60,18 +56,15 @@ class TestsEnforcementFixerOrchestrator:
         orchestrator = self._orchestrator(tmp_path)
 
         violations, failures = orchestrator._collect_tests_validator_violations(
-            project_dir,
-            self._rule("ENFORCE-016"),
+            project_dir, self._rule("ENFORCE-016")
         )
 
-        assert violations == []
-        assert len(failures) == 1
-        assert "unable to import flext_tests.validator" in failures[0].error
+        tm.that(violations, eq=[])
+        tm.that(len(failures), eq=1)
+        tm.that(failures[0].error, has="unable to import flext_tests.validator")
 
     def test_python_file_enumeration_failure_is_failed_fix(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Project file enumeration failure is not hidden as zero work."""
 
@@ -95,24 +88,20 @@ class TestsEnforcementFixerOrchestrator:
             return r[t.SequenceOf[Path]].fail("enumeration failed")
 
         monkeypatch.setattr(
-            u.Infra,
-            "iter_python_files",
-            staticmethod(fake_iter_python_files),
+            u.Infra, "iter_python_files", staticmethod(fake_iter_python_files)
         )
         orchestrator = self._orchestrator(tmp_path)
 
         violations, failures = orchestrator._collect_python_file_violations(
-            tmp_path / "demo",
-            self._rule("ENFORCE-045"),
+            tmp_path / "demo", self._rule("ENFORCE-045")
         )
 
-        assert violations == []
-        assert len(failures) == 1
-        assert failures[0].error == "enumeration failed"
+        tm.that(violations, eq=[])
+        tm.that(len(failures), eq=1)
+        tm.that(failures[0].error, eq="enumeration failed")
 
     def test_beartype_rules_collect_real_python_file_probes(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Beartype-backed deterministic fixers receive concrete file probes."""
         project_dir = tmp_path / "demo"
@@ -122,20 +111,16 @@ class TestsEnforcementFixerOrchestrator:
         orchestrator = self._orchestrator(tmp_path)
 
         violations, failures = orchestrator._collect_violations(
-            project_dir,
-            (self._rule("ENFORCE-045"),),
+            project_dir, (self._rule("ENFORCE-045"),)
         )
 
-        assert failures == []
+        tm.that(failures, eq=[])
         assert any(
             getattr(probe, "file_path", "") == str(source_file)
             for _rule, probe in violations
         )
 
-    def test_stub_file_rule_collects_pyi_probes(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_stub_file_rule_collects_pyi_probes(self, tmp_path: Path) -> None:
         """Stub-file enforcement receives concrete ``.pyi`` probes."""
         project_dir = tmp_path / "demo"
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
@@ -147,19 +132,16 @@ class TestsEnforcementFixerOrchestrator:
         orchestrator = self._orchestrator(tmp_path)
 
         violations, failures = orchestrator._collect_violations(
-            project_dir,
-            (self._rule("ENFORCE-090"),),
+            project_dir, (self._rule("ENFORCE-090"),)
         )
 
-        assert failures == []
-        assert [
-            Path(str(getattr(probe, "file_path", ""))) for _rule, probe in violations
-        ] == [stub_file.resolve()]
+        tm.that(failures, eq=[])
+        tm.that(
+            [Path(str(getattr(probe, "file_path", ""))) for _rule, probe in violations],
+            eq=[stub_file.resolve()],
+        )
 
-    def test_remove_stub_file_dry_run_does_not_unlink(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_remove_stub_file_dry_run_does_not_unlink(self, tmp_path: Path) -> None:
         """The remove-stub adapter previews deletion in dry-run."""
         project_dir = tmp_path / "demo"
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
@@ -167,9 +149,7 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path),
-            projects=("demo",),
-            apply=False,
+            workspace=str(tmp_path), projects=("demo",), apply=False
         )
 
         result = adapter.fix_project(
@@ -179,14 +159,11 @@ class TestsEnforcementFixerOrchestrator:
         )
 
         assert stub_file.exists()
-        assert len(result.previewed) == 1
+        tm.that(len(result.previewed), eq=1)
         assert not result.fixed
         assert not result.failed
 
-    def test_remove_stub_file_apply_unlinks_only_stub(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_remove_stub_file_apply_unlinks_only_stub(self, tmp_path: Path) -> None:
         """The remove-stub adapter deletes the reported ``.pyi`` in apply mode."""
         project_dir = tmp_path / "demo"
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
@@ -194,9 +171,7 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path),
-            projects=("demo",),
-            apply=True,
+            workspace=str(tmp_path), projects=("demo",), apply=True
         )
 
         result = adapter.fix_project(
@@ -206,17 +181,14 @@ class TestsEnforcementFixerOrchestrator:
         )
 
         assert not stub_file.exists()
-        assert len(result.fixed) == 1
-        assert result.files_modified == (str(stub_file),)
+        tm.that(len(result.fixed), eq=1)
+        tm.that(result.files_modified, eq=(str(stub_file),))
         assert not result.failed
 
-    def test_manual_fix_dry_run_previews_without_mutation(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_manual_fix_dry_run_previews_without_mutation(self, tmp_path: Path) -> None:
         """Manual fix actions produce explicit previews in dry-run."""
         rule = self._rule("ENFORCE-097")
-        assert rule.fix_action is not None
+        tm.that(rule.fix_action, none=False)
         adapter = FlextInfraManualFixerAdapter(tmp_path)
         assert adapter.can_fix(rule.fix_action)
         source_file = tmp_path / "demo" / "src" / "demo" / "sample.py"
@@ -228,30 +200,21 @@ class TestsEnforcementFixerOrchestrator:
             (
                 (
                     rule,
-                    SimpleNamespace(
-                        file_path=str(source_file),
-                        line=1,
-                        literal="42",
-                    ),
+                    SimpleNamespace(file_path=str(source_file), line=1, literal="42"),
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path),
-                projects=("demo",),
-                apply=False,
+                workspace=str(tmp_path), projects=("demo",), apply=False
             ),
         )
 
-        assert source_file.read_text(encoding="utf-8") == "VALUE = 42\n"
-        assert len(result.previewed) == 1
-        assert "magic literal 42" in result.previewed[0].message
-        assert result.fixed == ()
-        assert result.failed == ()
+        tm.that(source_file.read_text(encoding="utf-8"), eq="VALUE = 42\n")
+        tm.that(len(result.previewed), eq=1)
+        tm.that(result.previewed[0].message, has="magic literal 42")
+        tm.that(result.fixed, eq=())
+        tm.that(result.failed, eq=())
 
-    def test_manual_fix_apply_fails_loudly(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_manual_fix_apply_fails_loudly(self, tmp_path: Path) -> None:
         """Manual fix actions cannot be reported as applied automatically."""
         rule = self._rule("ENFORCE-097")
         adapter = FlextInfraManualFixerAdapter(tmp_path)
@@ -269,15 +232,13 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path),
-                projects=("demo",),
-                apply=True,
+                workspace=str(tmp_path), projects=("demo",), apply=True
             ),
         )
 
-        assert result.previewed == ()
-        assert len(result.failed) == 1
-        assert "manual fix required for ENFORCE-097" in result.failed[0].error
+        tm.that(result.previewed, eq=())
+        tm.that(len(result.failed), eq=1)
+        tm.that(result.failed[0].error, has="manual fix required for ENFORCE-097")
 
     def test_code_smell_gate_collects_project_probe(self, tmp_path: Path) -> None:
         """Gate-backed smell fixes get an explicit project-level probe."""
@@ -285,18 +246,15 @@ class TestsEnforcementFixerOrchestrator:
         orchestrator = self._orchestrator(tmp_path)
 
         violations, failures = orchestrator._collect_violations(
-            project_dir,
-            (self._rule("ENFORCE-074"),),
+            project_dir, (self._rule("ENFORCE-074"),)
         )
 
-        assert failures == []
-        assert len(violations) == 1
-        assert getattr(violations[0][1], "file_path", "") == str(project_dir)
+        tm.that(failures, eq=[])
+        tm.that(len(violations), eq=1)
+        tm.that(getattr(violations[0][1], "file_path", ""), eq=str(project_dir))
 
     def test_missing_selected_project_fails_resolution(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A typoed project filter is a hard failure, not a zero-project success."""
         demo = m.Infra.ProjectInfo(name="demo", path=tmp_path / "demo", stack="python")
@@ -309,14 +267,13 @@ class TestsEnforcementFixerOrchestrator:
 
         monkeypatch.setattr(u.Infra, "projects", staticmethod(fake_projects))
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
-            selected_projects=("missing",),
+            workspace_root=tmp_path, selected_projects=("missing",)
         )
 
         result = orchestrator._resolve_projects()
 
-        assert result.failure
-        assert "missing" in (result.error or "")
+        tm.fail(result)
+        tm.that((result.error or ""), has="missing")
 
     def test_explicit_unsafe_rule_fails_under_safe_only(self) -> None:
         """Explicit unsafe fix requests must fail instead of becoming no-op success."""
@@ -336,9 +293,7 @@ class TestsEnforcementFixerOrchestrator:
         project_dir = tmp_path / "demo"
         project = m.Infra.ProjectInfo(name="demo", path=project_dir, stack="python")
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
-            selected_projects=("demo",),
-            safe_only=False,
+            workspace_root=tmp_path, selected_projects=("demo",), safe_only=False
         )
         unsupported_rule = me.EnforcementRuleSpec(
             id="ENFORCE-999",
@@ -346,21 +301,18 @@ class TestsEnforcementFixerOrchestrator:
             severity=me.EnforcementRuleSeverity.HIGH,
             source=me.EnforcementRuntimeWarningSource(category="UserWarning"),
             fix_action=me.EnforcementFixAction(
-                kind="transformer",
-                target="unregistered",
+                kind="transformer", target="unregistered"
             ),
         )
 
         results = orchestrator._fix_project(project, (unsupported_rule,))
 
-        assert len(results) == 1
-        assert len(results[0].failed) == 1
-        assert "no registered fixer adapter" in results[0].failed[0].error
+        tm.that(len(results), eq=1)
+        tm.that(len(results[0].failed), eq=1)
+        tm.that(results[0].failed[0].error, has="no registered fixer adapter")
 
     def test_adapter_exception_is_failed_fix(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Adapter exceptions are structured failures, never orchestrator crashes."""
 
@@ -406,14 +358,12 @@ class TestsEnforcementFixerOrchestrator:
 
         results = orchestrator._fix_project(project, (self._rule("ENFORCE-008"),))
 
-        assert len(results) == 1
-        assert len(results[0].failed) == 1
-        assert "adapter exploded" in results[0].failed[0].error
+        tm.that(len(results), eq=1)
+        tm.that(len(results[0].failed), eq=1)
+        tm.that(results[0].failed[0].error, has="adapter exploded")
 
     def test_gate_dry_run_uses_non_mutating_check_preview(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Gate dry-run uses the non-mutating check path."""
 
@@ -426,19 +376,15 @@ class TestsEnforcementFixerOrchestrator:
                 self.workspace_root = workspace_root
 
             def check(
-                self,
-                project_dir: Path,
-                ctx: m.Infra.GateContext,
+                self, project_dir: Path, ctx: m.Infra.GateContext
             ) -> m.Infra.GateExecution:
                 _ = self.workspace_root
-                assert ctx.check_only is True
-                assert ctx.apply_fixes is False
+                tm.that(ctx.check_only, eq=True)
+                tm.that(ctx.apply_fixes, eq=False)
                 FakeGate.checked = True
                 return m.Infra.GateExecution(
                     result=m.Infra.GateResult(
-                        gate="smells",
-                        project=project_dir.name,
-                        passed=True,
+                        gate="smells", project=project_dir.name, passed=True
                     ),
                     issues=(
                         m.Infra.Issue(
@@ -454,9 +400,7 @@ class TestsEnforcementFixerOrchestrator:
                 )
 
             def fix(
-                self,
-                project_dir: Path,
-                ctx: m.Infra.GateContext,
+                self, project_dir: Path, ctx: m.Infra.GateContext
             ) -> m.Infra.GateExecution:
                 _ = project_dir, ctx
                 FakeGate.fixed = True
@@ -479,16 +423,14 @@ class TestsEnforcementFixerOrchestrator:
             project_dir,
             ((self._rule("ENFORCE-074"), SimpleNamespace(file_path=str(project_dir))),),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path),
-                projects=("demo",),
-                apply=False,
+                workspace=str(tmp_path), projects=("demo",), apply=False
             ),
         )
 
-        assert FakeGate.checked is True
-        assert FakeGate.fixed is False
-        assert len(result.previewed) == 1
-        assert result.failed == ()
+        tm.that(FakeGate.checked, eq=True)
+        tm.that(FakeGate.fixed, eq=False)
+        tm.that(len(result.previewed), eq=1)
+        tm.that(result.failed, eq=())
 
     def test_command_ctx_forces_check_after_false_in_dry_run(self) -> None:
         """Dry-run must not request post-fix checks that could rewrite files."""
@@ -501,8 +443,8 @@ class TestsEnforcementFixerOrchestrator:
 
         ctx = orchestrator._command_ctx()
 
-        assert ctx.apply is False
-        assert ctx.check_after is False
+        tm.that(ctx.apply, eq=False)
+        tm.that(ctx.check_after, eq=False)
 
     def test_command_ctx_preserves_check_after_when_applying(self) -> None:
         """Apply mode may still request post-fix checks."""
@@ -515,8 +457,8 @@ class TestsEnforcementFixerOrchestrator:
 
         ctx = orchestrator._command_ctx()
 
-        assert ctx.apply is True
-        assert ctx.check_after is True
+        tm.that(ctx.apply, eq=True)
+        tm.that(ctx.check_after, eq=True)
 
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(self) -> None:
         """Running fix-enforcement in dry-run must not modify the worktree.
@@ -557,12 +499,5 @@ class TestsEnforcementFixerOrchestrator:
             cwd=workspace_root,
         ).value
         post_status = git_status()
-        assert result.exit_code == 0, (
-            f"dry-run failed\nstdout: {result.stdout}\nstderr: {result.stderr}"
-        )
-        assert pre_status == post_status, (
-            f"dry-run mutated the worktree\n"
-            f"stdout: {result.stdout}\n"
-            f"stderr: {result.stderr}\n"
-            f"exit: {result.exit_code}"
-        )
+        tm.that(result.exit_code, eq=0)
+        tm.that(pre_status, eq=post_status)

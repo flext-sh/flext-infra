@@ -8,14 +8,14 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-from tests.constants import c
-from tests.models import m
-from tests.utilities import u
+from tests import c
+from tests import m
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestStubChain:
@@ -33,9 +33,7 @@ class TestStubChain:
             workspace_root=workspace_root,
             selected_projects=projects,
             all_projects=all_projects,
-            runner=u.Tests.DeptryRunner(
-                r.ok(u.Tests.stub_run(stdout=stdout)),
-            ),
+            runner=u.Tests.DeptryRunner(r.ok(u.Tests.stub_run(stdout=stdout))),
         )
 
     @staticmethod
@@ -50,8 +48,7 @@ class TestStubChain:
 
     def test_project_names_and_dirs_are_normalized(self, tmp_path: Path) -> None:
         chain = FlextInfraStubSupplyChain(
-            workspace_root=tmp_path,
-            selected_projects=[" alpha, beta ", "gamma delta"],
+            workspace_root=tmp_path, selected_projects=[" alpha, beta ", "gamma delta"]
         )
         tm.that(chain.project_names, eq=["alpha", "beta", "gamma", "delta"])
         tm.that(
@@ -66,16 +63,11 @@ class TestStubChain:
 
     def test_project_dirs_are_disabled_for_all_projects(self, tmp_path: Path) -> None:
         chain = FlextInfraStubSupplyChain(
-            workspace_root=tmp_path,
-            selected_projects=["alpha"],
-            all_projects=True,
+            workspace_root=tmp_path, selected_projects=["alpha"], all_projects=True
         )
         tm.that(chain.project_dirs is None, eq=True)
 
-    def test_analyze_classifies_public_results(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_analyze_classifies_public_results(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(
             tmp_path,
             "project",
@@ -109,10 +101,7 @@ class TestStubChain:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         hidden_dir = tmp_path / ".hidden"
         hidden_dir.mkdir()
-        (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text(
-            "",
-            encoding="utf-8",
-        )
+        (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text("", encoding="utf-8")
         (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         u.Tests.mk_project(tmp_path, "project-b", with_src=False)
         valid_project = u.Tests.mk_project(tmp_path, "project-c", with_src=True)
@@ -129,8 +118,7 @@ class TestStubChain:
         _project_b = u.Tests.mk_project(tmp_path, "project-b", with_src=True)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(
-            tmp_path,
-            project_dirs=[project_a],
+            tmp_path, project_dirs=[project_a]
         )
 
         tm.ok(result)
@@ -138,32 +126,23 @@ class TestStubChain:
 
     def test_build_report_includes_untracked_git_projects(self, tmp_path: Path) -> None:
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
-        assert init_result.success
-        assert init_result.value.exit_code == 0
+        tm.ok(init_result)
+        tm.that(init_result.value.exit_code, eq=0)
         email_result = u.Cli.run_raw(
-            ["git", "config", "user.email", "test@example.com"],
-            cwd=tmp_path,
+            ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
         )
-        assert email_result.success
-        assert email_result.value.exit_code == 0
+        tm.ok(email_result)
+        tm.that(email_result.value.exit_code, eq=0)
         name_result = u.Cli.run_raw(
-            ["git", "config", "user.name", "Test User"],
-            cwd=tmp_path,
+            ["git", "config", "user.name", "Test User"], cwd=tmp_path
         )
-        assert name_result.success
-        assert name_result.value.exit_code == 0
+        tm.ok(name_result)
+        tm.that(name_result.value.exit_code, eq=0)
         tracked_project = u.Tests.mk_project(tmp_path, "project-a", with_src=True)
-        _untracked_project = u.Tests.mk_project(
-            tmp_path,
-            "project-b",
-            with_src=True,
-        )
-        add_result = u.Cli.run_raw(
-            ["git", "add", "project-a"],
-            cwd=tmp_path,
-        )
-        assert add_result.success
-        assert add_result.value.exit_code == 0
+        _untracked_project = u.Tests.mk_project(tmp_path, "project-b", with_src=True)
+        add_result = u.Cli.run_raw(["git", "add", "project-a"], cwd=tmp_path)
+        tm.ok(add_result)
+        tm.that(add_result.value.exit_code, eq=0)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
@@ -172,9 +151,9 @@ class TestStubChain:
         tm.that(tracked_project.exists(), eq=True)
 
     def test_build_report_fails_for_missing_workspace(self, tmp_path: Path) -> None:
-        result = self.make_chain(
-            workspace_root=tmp_path,
-        ).build_report(tmp_path / "missing")
+        result = self.make_chain(workspace_root=tmp_path).build_report(
+            tmp_path / "missing"
+        )
         tm.fail(result)
 
     def test_execute_fails_when_report_has_violations(self, tmp_path: Path) -> None:
@@ -182,7 +161,7 @@ class TestStubChain:
         chain = self.make_chain(
             workspace_root=tmp_path,
             stdout=self._stub_output(
-                "note: hint: install stub package `types-definitely-missing-external`",
+                "note: hint: install stub package `types-definitely-missing-external`"
             ),
             all_projects=True,
         )
@@ -195,10 +174,7 @@ class TestStubChain:
     def test_execute_passes_for_selected_projects(self, tmp_path: Path) -> None:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         u.Tests.mk_project(tmp_path, "project-b", with_src=True)
-        chain = self.make_chain(
-            workspace_root=tmp_path,
-            projects=["project-a"],
-        )
+        chain = self.make_chain(workspace_root=tmp_path, projects=["project-a"])
 
         result = chain.execute()
 

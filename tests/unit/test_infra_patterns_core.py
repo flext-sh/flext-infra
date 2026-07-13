@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from tests.constants import c
+from tests import c
+from flext_tests import tm
 
 
 class TestsFlextInfraInfraPatternsCore:
@@ -11,154 +12,154 @@ class TestsFlextInfraInfraPatternsCore:
     def test_mypy_hint_pattern_matches_valid_hint(self) -> None:
         text = 'note: Hint: "python3 -m pip install types-requests"'
         match = c.Infra.MYPY_HINT_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "types-requests"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="types-requests")
 
     def test_mypy_hint_pattern_captures_package_name(self) -> None:
         text = 'note: Hint: "python3 -m pip install mypy-extensions"'
         match = c.Infra.MYPY_HINT_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "mypy-extensions"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="mypy-extensions")
 
     def test_mypy_hint_pattern_matches_stub_package_wording(self) -> None:
         text = "note: hint: install stub package `types-requests`"
         match = c.Infra.MYPY_HINT_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "types-requests"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="types-requests")
 
     def test_mypy_hint_pattern_no_match_without_hint(self) -> None:
         text = "some other mypy output"
         match = c.Infra.MYPY_HINT_RE.search(text)
-        assert match is None
+        tm.that(match, none=True)
 
     def test_mypy_stub_pattern_matches_missing_stubs(self) -> None:
         text = 'Library stubs not installed for "requests"'
         match = c.Infra.MYPY_STUB_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "requests"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="requests")
 
     def test_mypy_stub_pattern_captures_library_name(self) -> None:
         text = 'Library stubs not installed for "django"'
         match = c.Infra.MYPY_STUB_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "django"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="django")
 
     def test_mypy_stub_pattern_no_match_without_message(self) -> None:
         text = "stubs are installed"
         match = c.Infra.MYPY_STUB_RE.search(text)
-        assert match is None
+        tm.that(match, none=True)
 
     def test_internal_prefixes_contains_flext(self) -> None:
-        assert "flext_" in c.Infra.INTERNAL_PREFIXES
+        tm.that(c.Infra.INTERNAL_PREFIXES, has="flext_")
 
     def test_internal_prefixes_is_tuple(self) -> None:
-        assert isinstance(c.Infra.INTERNAL_PREFIXES, tuple)
+        tm.that(c.Infra.INTERNAL_PREFIXES, is_=tuple)
 
     def test_markdown_link_pattern_matches_link(self) -> None:
         text = "[Click here](https://example.com)"
         match = c.Infra.MARKDOWN_LINK_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "Click here"
-        assert match.group(2) == "https://example.com"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="Click here")
+        tm.that(match.group(2), eq="https://example.com")
 
     def test_markdown_link_pattern_captures_text_and_url(self) -> None:
         text = "[Documentation](./docs/README.md)"
         match = c.Infra.MARKDOWN_LINK_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "Documentation"
-        assert match.group(2) == "./docs/README.md"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="Documentation")
+        tm.that(match.group(2), eq="./docs/README.md")
 
     def test_markdown_link_pattern_multiple_matches(self) -> None:
         text = "[Link1](url1) and [Link2](url2)"
         matches = c.Infra.MARKDOWN_LINK_RE.findall(text)
-        assert len(matches) == 2
-        assert matches[0] == ("Link1", "url1")
-        assert matches[1] == ("Link2", "url2")
+        tm.that(len(matches), eq=2)
+        tm.that(matches[0], eq=("Link1", "url1"))
+        tm.that(matches[1], eq=("Link2", "url2"))
 
     def test_markdown_link_url_pattern_captures_url_only(self) -> None:
         text = "[Click here](https://example.com)"
         match = c.Infra.MARKDOWN_LINK_URL_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "https://example.com"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="https://example.com")
 
     def test_markdown_link_url_pattern_ignores_text(self) -> None:
         text = "[Some text](path/to/file.md)"
         match = c.Infra.MARKDOWN_LINK_URL_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "path/to/file.md"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="path/to/file.md")
 
     def test_heading_pattern_matches_h1(self) -> None:
         text = "# Main Title"
         match = c.Infra.HEADING_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "Main Title"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="Main Title")
 
     def test_heading_pattern_matches_h6(self) -> None:
         text = "###### Small Heading"
         match = c.Infra.HEADING_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "Small Heading"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="Small Heading")
 
     def test_heading_pattern_multiline(self) -> None:
         text = "# Title 1\nSome content\n## Title 2"
         matches = c.Infra.HEADING_RE.findall(text)
-        assert len(matches) == 2
-        assert "Title 1" in matches
-        assert "Title 2" in matches
+        tm.that(len(matches), eq=2)
+        tm.that(matches, has="Title 1")
+        tm.that(matches, has="Title 2")
 
     def test_heading_h2_h3_pattern_matches_h2(self) -> None:
         text = "## Section Title"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "##"
-        assert match.group(2) == "Section Title"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="##")
+        tm.that(match.group(2), eq="Section Title")
 
     def test_heading_h2_h3_pattern_matches_h3(self) -> None:
         text = "### Subsection"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "###"
-        assert match.group(2) == "Subsection"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="###")
+        tm.that(match.group(2), eq="Subsection")
 
     def test_heading_h2_h3_pattern_ignores_h1(self) -> None:
         text = "# Title"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
-        assert match is None
+        tm.that(match, none=True)
 
     def test_heading_h2_h3_pattern_ignores_h4(self) -> None:
         text = "#### Deep Heading"
         match = c.Infra.HEADING_H2_H3_RE.search(text)
-        assert match is None
+        tm.that(match, none=True)
 
     def test_anchor_link_pattern_matches_anchor(self) -> None:
         text = "[Go to section](#section-name)"
         match = c.Infra.ANCHOR_LINK_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "Go to section"
-        assert match.group(2) == "section-name"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="Go to section")
+        tm.that(match.group(2), eq="section-name")
 
     def test_anchor_link_pattern_captures_text_and_anchor(self) -> None:
         text = "[Back to top](#top)"
         match = c.Infra.ANCHOR_LINK_RE.search(text)
-        assert match is not None
-        assert match.group(1) == "Back to top"
-        assert match.group(2) == "top"
+        tm.that(match, none=False)
+        tm.that(match.group(1), eq="Back to top")
+        tm.that(match.group(2), eq="top")
 
     def test_inline_code_pattern_matches_backticks(self) -> None:
         text = "Use `function_name()` in your code"
         match = c.Infra.INLINE_CODE_RE.search(text)
-        assert match is not None
-        assert match.group(0) == "`function_name()`"
+        tm.that(match, none=False)
+        tm.that(match.group(0), eq="`function_name()`")
 
     def test_inline_code_pattern_multiple_matches(self) -> None:
         text = "Use `foo()` and `bar()` together"
         matches = c.Infra.INLINE_CODE_RE.findall(text)
-        assert len(matches) == 2
-        assert "`foo()`" in matches
-        assert "`bar()`" in matches
+        tm.that(len(matches), eq=2)
+        tm.that(matches, has="`foo()`")
+        tm.that(matches, has="`bar()`")
 
     def test_inline_code_pattern_empty_code(self) -> None:
         text = "Empty code: ``"
         match = c.Infra.INLINE_CODE_RE.search(text)
-        assert match is not None
-        assert match.group(0) == "``"
+        tm.that(match, none=False)
+        tm.that(match.group(0), eq="``")

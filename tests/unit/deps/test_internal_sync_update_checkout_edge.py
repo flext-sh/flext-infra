@@ -11,10 +11,7 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge:
-    def test_ensure_checkout_cleanup_failure(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_ensure_checkout_cleanup_failure(self, tmp_path: Path) -> None:
         dep_path = tmp_path / "dep"
         dep_path.mkdir()
         (dep_path / "file.txt").write_text("content")
@@ -22,10 +19,8 @@ class TestsFlextInfraDepsInternalSyncUpdateCheckoutEdge:
         try:
             error = tm.fail(
                 FlextInfraInternalDependencySyncService().ensure_checkout(
-                    dep_path,
-                    "https://github.com/test/repo.git",
-                    "main",
-                ),
+                    dep_path, "https://github.com/test/repo.git", "main"
+                )
             )
             tm.that(error, contains="cleanup failed")
         finally:

@@ -11,12 +11,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from tests.constants import c
+from tests import c
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestsFlextInfraCodegenPyTyped:
@@ -28,7 +29,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 1
+        tm.that(count, eq=1)
         assert (pkg / c.Infra.PY_TYPED).exists()
 
     def test_removes_stale_marker_when_no_py_files(self, tmp_path: Path) -> None:
@@ -39,7 +40,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 1
+        tm.that(count, eq=1)
         assert not (pkg / c.Infra.PY_TYPED).exists()
 
     def test_check_only_does_not_write_marker(self, tmp_path: Path) -> None:
@@ -50,7 +51,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run(check_only=True)
 
-        assert count == 1
+        tm.that(count, eq=1)
         assert not (pkg / c.Infra.PY_TYPED).exists()
 
     def test_check_only_does_not_remove_marker(self, tmp_path: Path) -> None:
@@ -61,14 +62,12 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run(check_only=True)
 
-        assert count == 1
+        tm.that(count, eq=1)
         assert (pkg / c.Infra.PY_TYPED).exists()
 
     @pytest.mark.parametrize("skip_dir", tuple(c.Tests.CODEGEN_SKIPPED_DIRS))
     def test_skips_known_excluded_directories(
-        self,
-        tmp_path: Path,
-        skip_dir: str,
+        self, tmp_path: Path, skip_dir: str
     ) -> None:
         skipped_pkg = tmp_path / "src" / skip_dir / "mypkg"
         skipped_pkg.mkdir(parents=True)
@@ -77,7 +76,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 0
+        tm.that(count, eq=0)
         assert not (skipped_pkg / c.Infra.PY_TYPED).exists()
 
     def test_no_change_when_marker_already_exists(self, tmp_path: Path) -> None:
@@ -89,7 +88,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 0
+        tm.that(count, eq=0)
 
     def test_execute_returns_success(self, tmp_path: Path) -> None:
         pkg = tmp_path / "src" / "mypkg"
@@ -99,7 +98,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         result = svc.execute()
 
-        assert result.success
+        tm.ok(result)
 
     def test_tests_dir_packages_also_scanned(self, tmp_path: Path) -> None:
         test_pkg = tmp_path / "tests" / "unit"
@@ -109,7 +108,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 1
+        tm.that(count, eq=1)
         assert (test_pkg / c.Infra.PY_TYPED).exists()
 
     def test_skips_nested_hidden_virtualenv_directories(self, tmp_path: Path) -> None:
@@ -120,7 +119,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 0
+        tm.that(count, eq=0)
 
     def test_only_expected_namespace_marker_is_created(self, tmp_path: Path) -> None:
         pkg = tmp_path / "src" / "mypkg"
@@ -130,7 +129,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 1
+        tm.that(count, eq=1)
         assert (pkg / c.Infra.PY_TYPED).exists()
         for namespace_file in c.Tests.CODEGEN_NAMESPACE_FILES - {
             c.Infra.PY_TYPED,
@@ -147,7 +146,7 @@ class TestsFlextInfraCodegenPyTyped:
 
         count = svc.run()
 
-        assert count == 3
+        tm.that(count, eq=3)
         for name in ("pkga", "pkgb", "pkgc"):
             assert (tmp_path / "src" / name / c.Infra.PY_TYPED).exists()
 

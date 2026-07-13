@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import c
+from tests import m
+from tests import TestsFlextInfraUtilities as u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,66 +47,55 @@ def test_execute_validate_dry_run_succeeds(tmp_path: Path) -> None:
         "interactive": 0,
     }).execute()
 
-    assert result.success
+    tm.ok(result)
 
 
 def test_run_release_invalid_phase_fails(tmp_path: Path) -> None:
     workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(workspace, phases=["invalid"]),
+        make_config(workspace, phases=["invalid"])
     )
 
-    assert result.failure
-    assert "invalid phase" in (result.error or "")
+    tm.fail(result)
+    tm.that((result.error or ""), has="invalid phase")
 
 
 def test_run_release_empty_phase_list_is_a_noop_success(tmp_path: Path) -> None:
     workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(workspace, phases=[]),
+        make_config(workspace, phases=[])
     )
 
-    assert result.success
+    tm.ok(result)
 
 
 def test_run_release_stops_on_validate_failure_before_version_update(
     tmp_path: Path,
 ) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        root_validate_exit_code="1",
-    )
+    workspace = u.Tests.create_release_workspace(tmp_path, root_validate_exit_code="1")
 
     result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(
-            workspace,
-            phases=[c.Infra.VERB_VALIDATE, c.Infra.VERSION],
-        ),
+        make_config(workspace, phases=[c.Infra.VERB_VALIDATE, c.Infra.VERSION])
     )
 
-    assert result.failure
-    assert 'version = "0.1.0"' in (workspace / "pyproject.toml").read_text()
+    tm.fail(result)
+    tm.that((workspace / "pyproject.toml").read_text(), has='version = "0.1.0"')
 
 
 def test_run_release_project_filter_updates_only_selected_project(
     tmp_path: Path,
 ) -> None:
     workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
+        tmp_path, project_names=("flext-a", "flext-b")
     )
 
     result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(
-            workspace,
-            phases=[c.Infra.VERSION],
-            project_names=["flext-a"],
-        ),
+        make_config(workspace, phases=[c.Infra.VERSION], project_names=["flext-a"])
     )
 
-    assert result.success
+    tm.ok(result)
     assert (
         f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
         in (workspace / "pyproject.toml").read_text()
@@ -126,14 +116,10 @@ def test_run_release_next_dev_updates_workspace_to_next_dev_version(
     workspace = u.Tests.create_release_workspace(tmp_path)
 
     result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(
-            workspace,
-            phases=[c.Infra.VERSION],
-            next_dev=True,
-        ),
+        make_config(workspace, phases=[c.Infra.VERSION], next_dev=True)
     )
 
-    assert result.success
+    tm.ok(result)
     assert (
         f'version = "{c.Tests.RELEASE_VERSION_NEXT_DEV}"'
         in (workspace / "pyproject.toml").read_text()

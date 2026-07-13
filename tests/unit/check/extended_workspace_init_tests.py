@@ -8,13 +8,13 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestWorkspaceChecker:
@@ -22,17 +22,9 @@ class TestWorkspaceChecker:
 
     @pytest.mark.parametrize(
         ("raw", "expected"),
-        [
-            ("--fix --unsafe-fixes", ["--fix", "--unsafe-fixes"]),
-            (None, []),
-            ("", []),
-        ],
+        [("--fix --unsafe-fixes", ["--fix", "--unsafe-fixes"]), (None, []), ("", [])],
     )
-    def test_parse_tool_args(
-        self,
-        raw: str | None,
-        expected: t.StrSequence,
-    ) -> None:
+    def test_parse_tool_args(self, raw: str | None, expected: t.StrSequence) -> None:
         tm.that(FlextInfraWorkspaceChecker.parse_tool_args(raw), eq=list(expected))
 
     def test_init_creates_default_reports_dir(self, tmp_path: Path) -> None:
@@ -44,9 +36,12 @@ class TestWorkspaceChecker:
         tm.fail(result, has="Use execute_command() directly")
 
     def test_resolve_gates_maps_type_alias_and_deduplicates(self) -> None:
-        result = FlextInfraWorkspaceChecker.resolve_gates(
-            [c.Infra.TYPE_ALIAS, c.Infra.PYREFLY, c.Infra.LINT, c.Infra.LINT],
-        )
+        result = FlextInfraWorkspaceChecker.resolve_gates([
+            c.Infra.TYPE_ALIAS,
+            c.Infra.PYREFLY,
+            c.Infra.LINT,
+            c.Infra.LINT,
+        ])
         tm.ok(result)
         tm.that(result.value, eq=[c.Infra.PYREFLY, c.Infra.LINT])
 
@@ -58,16 +53,13 @@ class TestWorkspaceChecker:
         tm.that(u.Infra.resolve_workspace_root_or_cwd(None).is_absolute(), eq=True)
 
     def test_run_projects_fails_when_reports_dir_is_not_a_directory(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         reports_file = tmp_path / "reports.txt"
         reports_file.write_text("", encoding="utf-8")
 
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
-            ["project-a"],
-            [c.Infra.LINT],
-            reports_dir=reports_file,
+            ["project-a"], [c.Infra.LINT], reports_dir=reports_file
         )
 
         tm.fail(result)

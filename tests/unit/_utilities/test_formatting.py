@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,11 +20,10 @@ class TestsFlextInfraUtilitiesformatting:
         )
 
         compile(source, "models.py", "exec")
-        assert "class FlextDemoModels(FlextModels):" in source
+        tm.that(source, has="class FlextDemoModels(FlextModels):")
 
     def test_normalize_python_source_is_read_only_and_idempotent(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         target = tmp_path / c.Infra.INIT_PY
         source = "x=(\n    1,\n)\n"
@@ -32,39 +32,33 @@ class TestsFlextInfraUtilitiesformatting:
         first = u.Infra.normalize_python_source(source, filename=target).unwrap()
         second = u.Infra.normalize_python_source(first, filename=target).unwrap()
 
-        assert first == "x = (1,)\n"
-        assert second == first
+        tm.that(first, eq="x = (1,)\n")
+        tm.that(second, eq=first)
         assert not target.exists()
 
     def test_normalize_python_source_discovers_config_by_filename(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         config_path = tmp_path / "pyproject.toml"
         u.Cli.atomic_write_text_file(
-            config_path,
-            '[tool.ruff.lint.per-file-ignores]\n"ignored.py" = ["F401"]\n',
+            config_path, '[tool.ruff.lint.per-file-ignores]\n"ignored.py" = ["F401"]\n'
         ).unwrap()
 
         ignored = u.Infra.normalize_python_source(
-            "import os\n",
-            filename=tmp_path / "ignored.py",
+            "import os\n", filename=tmp_path / "ignored.py"
         ).unwrap()
         regular = u.Infra.normalize_python_source(
-            "import os\n",
-            filename=tmp_path / "regular.py",
+            "import os\n", filename=tmp_path / "regular.py"
         ).unwrap()
 
-        assert ignored == "import os\n"
-        assert regular == ""
+        tm.that(ignored, eq="import os\n")
+        tm.that(regular, eq="")
 
     def test_normalize_python_source_propagates_invalid_syntax(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         result = u.Infra.normalize_python_source(
-            "def broken(:\n",
-            filename=tmp_path / "broken.py",
+            "def broken(:\n", filename=tmp_path / "broken.py"
         )
 
-        assert result.failure
+        tm.fail(result)

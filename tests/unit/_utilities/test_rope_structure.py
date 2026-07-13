@@ -39,10 +39,7 @@ class TestsFlextInfraRopeStructure:
     def test_categorizes_pep695_type_alias(self) -> None:
         by_line = self._by_line()
 
-        tm.that(
-            by_line[5].category,
-            eq=c.Infra.StatementCategory.TYPE_ALIAS,
-        )
+        tm.that(by_line[5].category, eq=c.Infra.StatementCategory.TYPE_ALIAS)
 
     def test_categorizes_type_checking_guard(self) -> None:
         by_line = self._by_line()
@@ -63,19 +60,13 @@ class TestsFlextInfraRopeStructure:
 
         inline_import = by_line[10]
 
-        tm.that(
-            inline_import.enclosing_kind,
-            eq=c.Infra.RopeScopeKind.FUNCTION,
-        )
+        tm.that(inline_import.enclosing_kind, eq=c.Infra.RopeScopeKind.FUNCTION)
         tm.that(inline_import.enclosing_name, eq="method")
 
     def test_module_level_statement_has_module_encloser(self) -> None:
         by_line = self._by_line()
 
-        tm.that(
-            by_line[2].enclosing_kind,
-            eq=c.Infra.RopeScopeKind.MODULE,
-        )
+        tm.that(by_line[2].enclosing_kind, eq=c.Infra.RopeScopeKind.MODULE)
 
     def test_empty_source_returns_no_statements(self) -> None:
         tm.that(u.Infra.logical_statements(""), eq=())

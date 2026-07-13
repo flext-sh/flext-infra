@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     import pytest
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestGateRegistry:
@@ -36,14 +36,11 @@ class TestGateRegistry:
 
     def test_registry_resolves_canonical_alias(self) -> None:
         tm.that(
-            FlextInfraGateRegistry.default().get("canonical-alias") is not None,
-            eq=True,
+            FlextInfraGateRegistry.default().get("canonical-alias") is not None, eq=True
         )
 
     def test_canonical_alias_fix_fails_on_read_error(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         project_dir = tmp_path / "demo"
         package_dir = project_dir / "src" / "demo"
@@ -64,9 +61,7 @@ class TestGateRegistry:
         result = gate.fix(
             project_dir,
             m.Infra.GateContext(
-                workspace=tmp_path,
-                reports_dir=tmp_path / "reports",
-                apply_fixes=True,
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
             ),
         )
 

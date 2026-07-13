@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 _SMELL_CODES: t.StrSequence = tuple(sorted(c.Infra.SMELLS_RULE_TAGS))
 
@@ -40,8 +40,8 @@ def _sarif_fixture(project: str) -> str:
                     "physicalLocation": {
                         "artifactLocation": {"uri": f"{project}/src/sample.py"},
                         "region": {"startLine": index + 1, "startColumn": 2},
-                    },
-                },
+                    }
+                }
             ],
         }
         for index, code in enumerate(_SMELL_CODES)
@@ -54,27 +54,21 @@ def _sarif_fixture(project: str) -> str:
                 "physicalLocation": {
                     "artifactLocation": {"uri": "other-project/src/y.py"},
                     "region": {"startLine": 3},
-                },
-            },
+                }
+            }
         ],
     })
     payload = u.Cli.json_dumps({"runs": [{"results": results}]}).unwrap()
-    assert isinstance(payload, str)
+    tm.that(payload, is_=str)
     return payload
 
 
 def _seeded_gate(
-    tmp_path: Path,
-    *,
-    stdout: str,
-    stderr: str = "",
-    exit_code: int = 0,
+    tmp_path: Path, *, stdout: str, stderr: str = "", exit_code: int = 0
 ) -> FlextInfraSmellsGate:
     """Gate whose workspace scan is pre-seeded (no qlty subprocess)."""
     FlextInfraSmellsGate._scan_cache[str(tmp_path)] = m.Cli.CommandOutput(
-        stdout=stdout,
-        stderr=stderr,
-        exit_code=exit_code,
+        stdout=stdout, stderr=stderr, exit_code=exit_code
     )
     return FlextInfraSmellsGate(tmp_path)
 
@@ -123,8 +117,7 @@ class TestSmellsGate:
         """BooleanLogicFixer rewrites a long or-chain into any()."""
         source_file = tmp_path / "sample.py"
         source_file.write_text(
-            "def f(p):\n    return p.a or p.b or p.c or p.d or p.e\n",
-            encoding="utf-8",
+            "def f(p):\n    return p.a or p.b or p.c or p.d or p.e\n", encoding="utf-8"
         )
         issue = m.Infra.Issue(
             file="sample.py",
@@ -165,8 +158,7 @@ class TestSmellsGate:
 
     def test_issues_from_sarif_filters_project(self) -> None:
         issues = FlextInfraSmellsGate._issues_from_sarif(
-            _sarif_fixture("demo-project"),
-            "demo-project",
+            _sarif_fixture("demo-project"), "demo-project"
         )
 
         tm.that(len(issues), eq=len(_SMELL_CODES))
@@ -174,8 +166,7 @@ class TestSmellsGate:
         tm.that(all(issue.file == "src/sample.py" for issue in issues), eq=True)
         tm.that(issues[0].line >= 1, eq=True)
         tm.that(
-            all("foreign finding" not in issue.message for issue in issues),
-            eq=True,
+            all("foreign finding" not in issue.message for issue in issues), eq=True
         )
 
     def test_warn_mode_passes_with_issues_and_warns(self, tmp_path: Path) -> None:
@@ -203,10 +194,7 @@ class TestSmellsGate:
         tm.that("qlty exploded" in execution.issues[0].message, eq=True)
 
     def test_severity_is_warning_while_report_only(self) -> None:
-        tm.that(
-            FlextInfraSmellsGate._severity(),
-            eq=c.Infra.GateSeverity.WARNING.value,
-        )
+        tm.that(FlextInfraSmellsGate._severity(), eq=c.Infra.GateSeverity.WARNING.value)
 
     def test_smell_tags_have_core_rule_text(self) -> None:
         """Every qlty smell tag mapped by the gate has a FLEXT problem/fix text."""

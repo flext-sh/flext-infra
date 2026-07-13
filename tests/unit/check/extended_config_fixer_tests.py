@@ -13,7 +13,7 @@ from flext_tests import tm
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,8 +54,7 @@ class TestConfigFixerProcessFile:
         tm.that(pyproject.read_text(), eq=original)
 
     def test_process_file_syncs_search_path_from_public_manager(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         (tmp_path / "typings" / "generated").mkdir(parents=True)
         pyproject = tmp_path / "pyproject.toml"
@@ -69,14 +68,12 @@ class TestConfigFixerProcessFile:
         tm.that(
             payload["tool"]["pyrefly"]["search-path"],
             eq=_extra_paths_manager(tmp_path).pyrefly_search_paths(
-                project_dir=tmp_path,
-                is_root=True,
+                project_dir=tmp_path, is_root=True
             ),
         )
 
     def test_process_file_syncs_project_includes_from_pyright_include(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
@@ -97,14 +94,10 @@ class TestConfigFixerProcessFile:
         tm.ok(result)
         tm.that(result.value, has="synchronized project-includes from YAML rules")
         payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-        tm.that(
-            payload["tool"]["pyrefly"]["project-includes"],
-            eq=["src/**/*.py*"],
-        )
+        tm.that(payload["tool"]["pyrefly"]["project-includes"], eq=["src/**/*.py*"])
 
     def test_process_file_preserves_unrelated_toml_comments_and_formatting(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
@@ -135,8 +128,7 @@ class TestConfigFixerProcessFile:
         tm.that(result.value, has="synchronized search-path from YAML rules")
 
     def test_process_file_removes_ignored_sub_configs_via_public_api(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
@@ -162,8 +154,7 @@ class TestConfigFixerProcessFile:
         )
 
     def test_process_file_syncs_root_project_excludes_via_public_api(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
@@ -222,4 +213,4 @@ class TestConfigFixerToArray:
         items = ["a", "b", "c"]
         arr = u.Cli.toml_array(items)
         tm.that(len(arr), eq=3)
-        assert "a" in list(arr)
+        tm.that(list(arr), has="a")

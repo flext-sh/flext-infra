@@ -15,30 +15,25 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
-    from tests.models import m
-    from tests.typings import t
+    from tests import m
+    from tests import t
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:
     project: Path = u.Tests.create_scaffolder_test_project(
-        tmp_path=tmp_path,
-        with_all_modules=with_all_modules,
+        tmp_path=tmp_path, with_all_modules=with_all_modules
     )
     return project
 
 
 def _project_info(
-    project: Path,
-    *,
-    package_name: str = "test_project",
+    project: Path, *, package_name: str = "test_project"
 ) -> m.Infra.ProjectInfo:
     project_info: m.Infra.ProjectInfo = u.Tests.create_project_info(
-        project,
-        name=project.name,
-        package_name=package_name,
+        project, name=project.name, package_name=package_name
     )
     return project_info
 
@@ -66,9 +61,7 @@ class TestScaffoldProjectCreatesSrcModules:
     def test_creates_only_missing_modules(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=False)
         pkg = project / "src" / "test_project"
-        (pkg / "constants.py").write_text(
-            "class TestProjectConstants:\n    pass\n",
-        )
+        (pkg / "constants.py").write_text("class TestProjectConstants:\n    pass\n")
         (pkg / "models.py").write_text("class TestProjectModels:\n    pass\n")
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
@@ -79,10 +72,7 @@ class TestScaffoldProjectCreatesSrcModules:
 
 
 class TestScaffoldProjectCreatesTestsModules:
-    def test_creates_tests_modules_when_tests_dir_exists(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_creates_tests_modules_when_tests_dir_exists(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=True)
         tests_dir = project / "tests"
         tests_dir.mkdir()
@@ -93,10 +83,7 @@ class TestScaffoldProjectCreatesTestsModules:
         for mod in u.Tests.src_module_files():
             tm.that((tests_dir / mod).exists(), eq=True)
 
-    def test_skips_tests_modules_when_no_tests_dir(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_skips_tests_modules_when_no_tests_dir(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=True)
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])

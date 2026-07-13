@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING, override
 
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.models import m
-    from tests.typings import t
+    from tests import m
+    from tests import t
 
 
 class _FileRuleHarness(FlextInfraRefactorFileExecutor):
@@ -28,11 +29,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
 
 
 def _apply_rule(
-    workspace_root: Path,
-    file_path: Path,
-    config_path: Path,
-    *,
-    dry_run: bool,
+    workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
 ) -> m.Infra.Result:
     rule = _FileRuleHarness(config_path)
     rope_project = u.Infra.init_rope_project(workspace_root)
@@ -60,12 +57,12 @@ class TestsFlextInfraIntegrationRefactorNestingIdempotency:
         test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
         config_file = tmp_path / "mappings.yml"
         config_file.write_text(
-            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n",
+            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n"
         )
         result = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-        assert result.modified is True
-        assert result.refactored_code is not None
-        assert "class FlextDispatcher:" in result.refactored_code
+        tm.that(result.modified, eq=True)
+        tm.that(result.refactored_code, none=False)
+        tm.that(result.refactored_code, has="class FlextDispatcher:")
 
     def test_second_run_produces_no_changes(self, tmp_path: Path) -> None:
         """Second run on already-refactored code should produce no changes."""
@@ -73,13 +70,13 @@ class TestsFlextInfraIntegrationRefactorNestingIdempotency:
         test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
         config_file = tmp_path / "mappings.yml"
         config_file.write_text(
-            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n",
+            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n"
         )
         result1 = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-        assert result1.refactored_code is not None
+        tm.that(result1.refactored_code, none=False)
         test_file.write_text(result1.refactored_code)
         result2 = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
-        assert result2.success
+        tm.ok(result2)
 
     def test_third_run_produces_no_changes(self, tmp_path: Path) -> None:
         """Third run should also produce no changes."""
@@ -87,11 +84,11 @@ class TestsFlextInfraIntegrationRefactorNestingIdempotency:
         test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
         config_file = tmp_path / "mappings.yml"
         config_file.write_text(
-            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n",
+            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n"
         )
         for _ in range(3):
             result = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
             if result.modified and result.refactored_code is not None:
                 test_file.write_text(result.refactored_code)
         final_result = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
-        assert final_result.success
+        tm.ok(final_result)

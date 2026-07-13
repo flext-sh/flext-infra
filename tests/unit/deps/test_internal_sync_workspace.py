@@ -7,7 +7,7 @@ from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -47,8 +47,7 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
     # mro-wkii.4.15: environment setup uses the canonical typed test utility.
 
     def test_workspace_root_from_env_returns_none_when_env_is_missing(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         result = u.Cli.capture(
             [
@@ -95,8 +94,7 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         tm.that(result.value, eq=str(tmp_path))
 
     def test_workspace_root_from_env_rejects_invalid_or_unrelated_paths(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -117,12 +115,10 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
             str(project),
         ]
         missing_result = u.Cli.capture(
-            command,
-            env={"FLEXT_WORKSPACE_ROOT": "/nonexistent/path"},
+            command, env={"FLEXT_WORKSPACE_ROOT": "/nonexistent/path"}
         )
         unrelated_result = u.Cli.capture(
-            command,
-            env={"FLEXT_WORKSPACE_ROOT": str(workspace)},
+            command, env={"FLEXT_WORKSPACE_ROOT": str(workspace)}
         )
 
         tm.ok(missing_result)
@@ -136,23 +132,22 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         project.mkdir(parents=True)
 
         result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
-            project,
+            project
         )
 
-        assert result == tmp_path
+        tm.that(result, eq=tmp_path)
 
     def test_workspace_root_from_parents_returns_none_when_missing(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project = tmp_path / "isolated"
         project.mkdir()
 
         result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
-            project,
+            project
         )
 
-        assert result is None
+        tm.that(result, none=True)
 
     def test_is_workspace_mode_respects_standalone_env(self, tmp_path: Path) -> None:
         result = u.Cli.capture(
@@ -194,18 +189,14 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
                 ),
                 str(project),
             ],
-            env={
-                "FLEXT_STANDALONE": "",
-                "FLEXT_WORKSPACE_ROOT": str(tmp_path),
-            },
+            env={"FLEXT_STANDALONE": "", "FLEXT_WORKSPACE_ROOT": str(tmp_path)},
         )
 
         tm.ok(result)
         tm.that(result.value, eq=f"(True, {tmp_path!r})")
 
     def test_is_workspace_mode_detects_real_git_superproject(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace, submodule = create_workspace_with_submodule(tmp_path)
 
@@ -231,8 +222,7 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         tm.that(result.value, eq=f"(True, {workspace!r})")
 
     def test_is_workspace_mode_falls_back_to_gitmodules_heuristic(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         (tmp_path / ".gitmodules").touch()
         project = tmp_path / "sub"
@@ -260,8 +250,7 @@ class TestsFlextInfraDepsInternalSyncWorkspace:
         tm.that(result.value, eq=f"(True, {tmp_path!r})")
 
     def test_is_workspace_mode_returns_false_for_isolated_project(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project = tmp_path / "isolated"
         project.mkdir()

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -90,26 +90,19 @@ class TestSelectedProjectNames:
 
     def test_with_project(self, tmp_path: Path) -> None:
         """Test _selected_project_names with single project."""
-        names = u.Infra._selected_project_names(
-            tmp_path,
-            ["test-proj"],
-        )
+        names = u.Infra._selected_project_names(tmp_path, ["test-proj"])
         tm.that(names, eq=["test-proj"])
 
     def test_with_multiple_projects(self, tmp_path: Path) -> None:
         """Test _selected_project_names with multiple projects."""
-        names = u.Infra._selected_project_names(
-            tmp_path,
-            ["proj1", "proj2", "proj3"],
-        )
+        names = u.Infra._selected_project_names(tmp_path, ["proj1", "proj2", "proj3"])
         tm.that(names, has="proj1")
         tm.that(names, has="proj2")
 
     def test_with_blank_project_names(self, tmp_path: Path) -> None:
         """Test _selected_project_names strips blank project names."""
         names = u.Infra._selected_project_names(
-            tmp_path,
-            ["proj1", "", "proj2", "   ", "proj3"],
+            tmp_path, ["proj1", "", "proj2", "   ", "proj3"]
         )
         tm.that(names, has="proj1")
         tm.that(names, has="proj2")
@@ -131,9 +124,6 @@ class TestSelectedProjectNames:
 
     def test_mixed_entries(self, tmp_path: Path) -> None:
         """Test _selected_project_names keeps valid entries only."""
-        names = u.Infra._selected_project_names(
-            tmp_path,
-            ["proj1", " proj2 ", "proj3"],
-        )
+        names = u.Infra._selected_project_names(tmp_path, ["proj1", " proj2 ", "proj3"])
         tm.that(names, has="proj1")
         tm.that(names, has="proj2")

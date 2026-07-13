@@ -78,10 +78,7 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
 
 
 def _write_venv_python_stub(
-    project_root: Path,
-    log_path: Path,
-    *,
-    include_env: bool = False,
+    project_root: Path, log_path: Path, *, include_env: bool = False
 ) -> None:
     venv_bin = project_root / ".venv" / "bin"
     venv_bin.mkdir(parents=True, exist_ok=True)
@@ -102,8 +99,7 @@ def _write_venv_python_stub(
 def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
     if include_parent:
         (project_root.parent / "base.mk").write_text(
-            _render_base_mk(),
-            encoding="utf-8",
+            _render_base_mk(), encoding="utf-8"
         )
         makefile_content = "PROJECT_NAME := demo-project\ninclude ../base.mk\n"
     else:
@@ -113,9 +109,7 @@ def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
 
 
 def _run_make(
-    project_root: Path,
-    *args: str,
-    env: dict[str, str] | None = None,
+    project_root: Path, *args: str, env: dict[str, str] | None = None
 ) -> m.Cli.CommandOutput:
     active_env = os.environ.copy()
     for key in _MAKE_TEST_ENV_KEYS:
@@ -131,9 +125,7 @@ def _run_make(
     if result.success:
         return result.value
     return m.Cli.CommandOutput(
-        stdout="",
-        stderr=result.error or "make execution failed",
-        exit_code=1,
+        stdout="", stderr=result.error or "make execution failed", exit_code=1
     )
 
 
@@ -157,7 +149,7 @@ class TestsFlextInfraBasemkMakeContract:
                 "FIX=1                       Auto-fix supported gates",
             ],
         )
-        assert "check-fast" not in result.stdout
+        tm.that(result.stdout, lacks="check-fast")
 
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:
         rendered = _render_base_mk()
@@ -201,9 +193,7 @@ class TestsFlextInfraBasemkMakeContract:
             has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi;',
         )
 
-    def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(
-        self,
-    ) -> None:
+    def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -315,8 +305,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_full_run_forwards_fix_and_tool_args(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
@@ -349,8 +338,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_fast_path_check_only_suppresses_fix_writes(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
@@ -375,8 +363,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that("--fix" not in log_path.read_text(encoding="utf-8"), eq=True)
 
     def test_make_check_file_scope_rejects_unsupported_gates(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         _write_project(tmp_path)
         _write_venv_python_stub(tmp_path, tmp_path / "tool.log")
@@ -384,10 +371,7 @@ class TestsFlextInfraBasemkMakeContract:
         (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
         result = _run_make(
-            tmp_path,
-            "check",
-            "FILE=src/demo.py",
-            "CHECK_GATES=security",
+            tmp_path, "check", "FILE=src/demo.py", "CHECK_GATES=security"
         )
 
         tm.that(result.exit_code, eq=2)
@@ -397,8 +381,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_boot_works_without_existing_venv_in_workspace_mode(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace_root = tmp_path / "workspace"
         project_root = workspace_root / "demo-project"
@@ -409,9 +392,7 @@ class TestsFlextInfraBasemkMakeContract:
         _write_project(project_root, include_parent=True)
 
         result = _run_make(
-            project_root,
-            "boot",
-            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+            project_root, "boot", env={"PATH": f"{bin_dir}:{os.environ['PATH']}"}
         )
 
         tm.that(result.exit_code, eq=0)

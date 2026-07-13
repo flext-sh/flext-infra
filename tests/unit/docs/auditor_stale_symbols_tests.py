@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from tests.models import m
-from tests.utilities import u
+from tests import m
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -58,9 +59,7 @@ def _stale_symbol_scope(tmp_path: Path) -> m.Infra.DocScope:
     )
 
 
-def test_generated_api_reference_accepts_live_public_symbol(
-    tmp_path: Path,
-) -> None:
+def test_generated_api_reference_accepts_live_public_symbol(tmp_path: Path) -> None:
     scope = _stale_symbol_scope(tmp_path)
     _write(
         scope.path / "docs" / "api-reference" / "generated" / "overview.md",
@@ -69,12 +68,10 @@ def test_generated_api_reference_accepts_live_public_symbol(
 
     issues = u.Infra.docs_stale_symbol_issues(scope)
 
-    assert issues == []
+    tm.that(issues, eq=[])
 
 
-def test_generated_api_reference_reports_missing_public_symbol(
-    tmp_path: Path,
-) -> None:
+def test_generated_api_reference_reports_missing_public_symbol(tmp_path: Path) -> None:
     scope = _stale_symbol_scope(tmp_path)
     _write(
         scope.path / "docs" / "api-reference" / "generated" / "overview.md",
@@ -83,14 +80,12 @@ def test_generated_api_reference_reports_missing_public_symbol(
 
     issues = u.Infra.docs_stale_symbol_issues(scope)
 
-    assert len(issues) == 1
-    assert issues[0].issue_type == "stale_symbol"
-    assert issues[0].message == "contains `DeadSymbol`"
+    tm.that(len(issues), eq=1)
+    tm.that(issues[0].issue_type, eq="stale_symbol")
+    tm.that(issues[0].message, eq="contains `DeadSymbol`")
 
 
-def test_manual_docs_report_live_symbol_mentions(
-    tmp_path: Path,
-) -> None:
+def test_manual_docs_report_live_symbol_mentions(tmp_path: Path) -> None:
     scope = _stale_symbol_scope(tmp_path)
     _write(
         scope.path / "docs" / "guides" / "manual.md",
@@ -99,14 +94,12 @@ def test_manual_docs_report_live_symbol_mentions(
 
     issues = u.Infra.docs_stale_symbol_issues(scope)
 
-    assert len(issues) == 1
-    assert issues[0].file == "docs/guides/manual.md"
-    assert issues[0].message == "contains `LiveSymbol`"
+    tm.that(len(issues), eq=1)
+    tm.that(issues[0].file, eq="docs/guides/manual.md")
+    tm.that(issues[0].message, eq="contains `LiveSymbol`")
 
 
-def test_public_contract_resolves_imported_lazy_public_exports(
-    tmp_path: Path,
-) -> None:
+def test_public_contract_resolves_imported_lazy_public_exports(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
     _write(
         tmp_path / "pyproject.toml",
@@ -169,19 +162,17 @@ def test_public_contract_resolves_imported_lazy_public_exports(
     exports = contract["exports"]
     public_symbols = contract["public_symbols"]
 
-    assert isinstance(exports, list)
-    assert isinstance(public_symbols, list)
-    assert "LiveSymbol" in exports
-    assert "LiveSymbol" in public_symbols
+    tm.that(exports, is_=list)
+    tm.that(public_symbols, is_=list)
+    tm.that(exports, has="LiveSymbol")
+    tm.that(public_symbols, has="LiveSymbol")
 
     issues = FlextInfraUtilitiesDocsApi.docstring_issues(tmp_path, contract)
 
-    assert issues == []
+    tm.that(issues, eq=[])
 
 
-def test_public_contract_resolves_imported_lazy_import_map(
-    tmp_path: Path,
-) -> None:
+def test_public_contract_resolves_imported_lazy_import_map(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
     _write(
         tmp_path / "pyproject.toml",
@@ -244,13 +235,11 @@ def test_public_contract_resolves_imported_lazy_import_map(
 
     contract = FlextInfraUtilitiesDocsApi.public_contract(tmp_path, "demo_pkg")
 
-    assert contract["target_map"] == {"LiveSymbol": "demo_pkg.facade"}
-    assert FlextInfraUtilitiesDocsApi.docstring_issues(tmp_path, contract) == []
+    tm.that(contract["target_map"], eq={"LiveSymbol": "demo_pkg.facade"})
+    tm.that(FlextInfraUtilitiesDocsApi.docstring_issues(tmp_path, contract), eq=[])
 
 
-def test_docstring_issues_accepts_direct_part_mro_docstring(
-    tmp_path: Path,
-) -> None:
+def test_docstring_issues_accepts_direct_part_mro_docstring(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
     _write(
         tmp_path / "pyproject.toml",
@@ -290,4 +279,4 @@ def test_docstring_issues_accepts_direct_part_mro_docstring(
     contract = FlextInfraUtilitiesDocsApi.public_contract(tmp_path, "demo_pkg")
     issues = FlextInfraUtilitiesDocsApi.docstring_issues(tmp_path, contract)
 
-    assert issues == []
+    tm.that(issues, eq=[])

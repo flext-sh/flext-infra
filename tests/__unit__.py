@@ -8,14 +8,8 @@ lazy (PEP 562) import access; sibling ``__all__`` discovery is the upstream sour
 from __future__ import annotations
 
 LAZY_MODULES: dict[str, tuple[str, ...]] = {
-    ".base": (
-        "TestsFlextInfraServiceBase",
-        "s",
-    ),
-    ".constants": (
-        "TestsFlextInfraConstants",
-        "c",
-    ),
+    ".base": ("TestsFlextInfraServiceBase", "s"),
+    ".constants": ("TestsFlextInfraConstants", "c"),
     ".integration.docs_serve_e2e_tests": ("TestsFlextInfraIntegrationDocsServeE2e",),
     ".integration.test_infra_integration": (
         "TestsFlextInfraIntegrationInfraIntegration",
@@ -38,20 +32,11 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".integration.test_refactor_policy_mro": (
         "TestsFlextInfraIntegrationRefactorPolicyMro",
     ),
-    ".models": (
-        "TestsFlextInfraModels",
-        "m",
-    ),
-    ".protocols": (
-        "TestsFlextInfraProtocols",
-        "p",
-    ),
+    ".models": ("TestsFlextInfraModels", "m"),
+    ".protocols": ("TestsFlextInfraProtocols", "p"),
     ".refactor.test_rope_semantic": ("TestsFlextInfraRefactorRopeSemantic",),
     ".refactor.test_rope_stubs": ("TestsFlextInfraRefactorRopeStubs",),
-    ".typings": (
-        "TestsFlextInfraTypes",
-        "t",
-    ),
+    ".typings": ("TestsFlextInfraTypes", "t"),
     ".unit._utilities.test_discovery_consolidated": (
         "TestsFlextInfraUtilitiesdiscoveryconsolidated",
     ),
@@ -218,14 +203,8 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
         "TestAuditorBrokenLinks",
         "TestAuditorToMarkdown",
     ),
-    ".unit.docs.auditor_scope_tests": (
-        "TestAuditorForbiddenTerms",
-        "TestAuditorScope",
-    ),
-    ".unit.docs.auditor_tests": (
-        "TestAuditorCore",
-        "TestAuditorNormalize",
-    ),
+    ".unit.docs.auditor_scope_tests": ("TestAuditorForbiddenTerms", "TestAuditorScope"),
+    ".unit.docs.auditor_tests": ("TestAuditorCore", "TestAuditorNormalize"),
     ".unit.docs.builder_tests": ("TestBuilderCore",),
     ".unit.docs.render_tests": ("TestsDocsRenderExcludeDocs",),
     ".unit.docs.server_tests": ("TestsFlextInfraDocServer",),
@@ -416,22 +395,8 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
         "TestsFlextInfraWorkspaceSyncEnvironment",
     ),
     ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
-    ".utilities": (
-        "TestsFlextInfraUtilities",
-        "u",
-    ),
-    "flext_tests": (
-        "d",
-        "e",
-        "h",
-        "r",
-        "td",
-        "tf",
-        "tk",
-        "tm",
-        "tv",
-        "x",
-    ),
+    ".utilities": ("TestsFlextInfraUtilities", "u"),
+    "flext_tests": ("d", "e", "h", "r", "td", "tf", "tk", "tm", "tv", "x"),
 }
 
 LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}

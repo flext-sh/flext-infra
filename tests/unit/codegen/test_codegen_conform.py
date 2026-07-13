@@ -60,9 +60,9 @@ class TestCodegenConform:
             apply_changes=True,
         )
         first = service.execute()
-        assert first.success, first.error
+        tm.ok(first)
         second = service.execute()
-        assert second.success, second.error
+        tm.ok(second)
         tm.that(bool(first.value.written_files), eq=True)
         tm.that(second.value.written_files, eq=())
         tm.that(first.value.plan.workspace.repository.profile, eq=expected_profile)
@@ -88,8 +88,7 @@ class TestCodegenConform:
         tm.that(process.stderr.strip(), eq="")
 
     def test_existing_manifest_converges_to_identical_tree(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         new_root = tmp_path / "new" / "flext-demo"
         existing_root = tmp_path / "existing" / "flext-demo"
@@ -105,41 +104,39 @@ class TestCodegenConform:
             year=2026,
             apply_changes=True,
         ).execute()
-        assert created.success, created.error
+        tm.ok(created)
         manifest = u.Cli.files_read_text(new_root / "config" / "workspace.yaml")
-        assert manifest.success, manifest.error
+        tm.ok(manifest)
         written = u.Cli.atomic_write_text_file(
-            existing_root / "config" / "workspace.yaml",
-            manifest.value,
+            existing_root / "config" / "workspace.yaml", manifest.value
         )
-        assert written.success, written.error
+        tm.ok(written)
         migrated = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=existing_root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
-            ),
+            )
         )
-        assert migrated.success, migrated.error
+        tm.ok(migrated)
         new_tree = tuple(
             sorted(
                 (path.relative_to(new_root).as_posix(), path.read_bytes())
                 for path in new_root.rglob("*")
                 if path.is_file()
-            ),
+            )
         )
         existing_tree = tuple(
             sorted(
                 (path.relative_to(existing_root).as_posix(), path.read_bytes())
                 for path in existing_root.rglob("*")
                 if path.is_file()
-            ),
+            )
         )
         tm.that(existing_tree, eq=new_tree)
 
     def test_workspace_uv_plan_owns_root_lock_and_editable_repositories(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Keep workspace setup data complete without Make-side re-derivation."""
         root_repository = next(
@@ -182,11 +179,9 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         planned = FlextInfraCodegenConform(
-            workspace_root=root,
-            request=request,
-            initial_workspace=workspace,
+            workspace_root=root, request=request, initial_workspace=workspace
         ).plan(request)
-        assert planned.success, planned.error
+        tm.ok(planned)
         environment = planned.value.uv_environments[0]
         tm.that(environment.environment_root, eq=root.resolve())
         tm.that(environment.lock_path, eq=root.resolve() / "uv.lock")
@@ -197,8 +192,7 @@ class TestCodegenConform:
         )
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Execute both public modes without changing an already conform tree."""
         root = tmp_path / "flext-demo"
@@ -214,13 +208,13 @@ class TestCodegenConform:
             year=2026,
             apply_changes=True,
         ).execute()
-        assert created.success, created.error
+        tm.ok(created)
         before = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
                 for path in root.rglob("*")
                 if path.is_file()
-            ),
+            )
         )
         for mode in ("check", "apply"):
             # NOTE (multi-agent, mro-wkii.17 / agent: codex): invoke the real
@@ -251,7 +245,7 @@ class TestCodegenConform:
                 (path.relative_to(root).as_posix(), path.read_bytes())
                 for path in root.rglob("*")
                 if path.is_file()
-            ),
+            )
         )
         tm.that(after, eq=before)
 

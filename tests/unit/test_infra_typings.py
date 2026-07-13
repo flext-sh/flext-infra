@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests.constants import c
-from tests.typings import t
+from tests import c
+from tests import t
 
 
 class TestsFlextInfraInfraTypings:
@@ -40,9 +40,7 @@ class TestsFlextInfraInfraTypings:
         tm.that(payload["enabled"], eq=True)
 
     def test_str_seq_adapter_validates_project_name_sequences(self) -> None:
-        values = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            ("flext-core", "flext-infra"),
-        )
+        values = t.Infra.STR_SEQ_ADAPTER.validate_python(("flext-core", "flext-infra"))
 
         tm.that(list(values), eq=["flext-core", "flext-infra"])
 

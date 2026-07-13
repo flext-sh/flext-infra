@@ -12,8 +12,7 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraExtraPathsUvSources:
     def test_pyrefly_search_paths_include_uv_source_path_dependencies_at_root(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         consumer = tmp_path / "ai-hub"
         consumer.mkdir()
@@ -43,8 +42,7 @@ class TestsFlextInfraExtraPathsUvSources:
             (dep_root / ".git").mkdir()
             (dep_root / "Makefile").write_text("", encoding="utf-8")
             (dep_root / "pyproject.toml").write_text(
-                f"[project]\nname = '{dep_name}'\n",
-                encoding="utf-8",
+                f"[project]\nname = '{dep_name}'\n", encoding="utf-8"
             )
             dep_src = dep_root / "src" / package_name
             dep_src.mkdir(parents=True)

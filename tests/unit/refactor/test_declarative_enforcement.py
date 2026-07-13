@@ -16,6 +16,7 @@ from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,9 +53,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-090"),
                 self._ctx(rope_project, stub),
             )
-        assert len(probes) == 1
-        assert getattr(probes[0], "file_path", "") == str(stub)
-        assert getattr(probes[0], "rule_id", "") == "090"
+        tm.that(len(probes), eq=1)
+        tm.that(getattr(probes[0], "file_path", ""), eq=str(stub))
+        tm.that(getattr(probes[0], "rule_id", ""), eq="090")
 
     def test_supported_rules_are_selected_by_source_metadata(
         self,
@@ -77,8 +78,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 rule,
                 self._ctx(rope_project, stub),
             )
-        assert len(probes) == 1
-        assert getattr(probes[0], "file_path", "") == str(stub)
+        tm.that(len(probes), eq=1)
+        tm.that(getattr(probes[0], "file_path", ""), eq=str(stub))
 
     def test_magic_literal_in_function_body(self, tmp_path: Path) -> None:
         """ENFORCE-097 detects a bare integer inside a function body."""
@@ -92,9 +93,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
             )
-        assert len(probes) == 1
-        assert getattr(probes[0], "line", 0) == 4
-        assert getattr(probes[0], "rule_id", "") == "097"
+        tm.that(len(probes), eq=1)
+        tm.that(getattr(probes[0], "line", 0), eq=4)
+        tm.that(getattr(probes[0], "rule_id", ""), eq="097")
 
     def test_magic_literal_skips_default_arg(self, tmp_path: Path) -> None:
         """Default argument values are exempt from magic-literal detection."""
@@ -108,7 +109,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
             )
-        assert len(probes) == 0
+        tm.that(len(probes), eq=0)
 
     def test_magic_literal_skips_type_annotation(self, tmp_path: Path) -> None:
         """Type annotations are exempt from magic-literal detection."""
@@ -122,7 +123,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
             )
-        assert len(probes) == 0
+        tm.that(len(probes), eq=0)
 
     def test_magic_literal_skips_module_level_assignment(self, tmp_path: Path) -> None:
         """Module-level assignments are the canonical constant location."""
@@ -136,7 +137,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
             )
-        assert len(probes) == 0
+        tm.that(len(probes), eq=0)
 
     def test_classvar_constant_detection(self, tmp_path: Path) -> None:
         """ENFORCE-079 delegates to the class-placement detector."""
@@ -152,9 +153,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-079"),
                 self._ctx(rope_project, source),
             )
-        assert len(probes) == 1
-        assert getattr(probes[0], "object_name", "") == "GROUPS"
-        assert getattr(probes[0], "rule_id", "") == "079"
+        tm.that(len(probes), eq=1)
+        tm.that(getattr(probes[0], "object_name", ""), eq="GROUPS")
+        tm.that(getattr(probes[0], "rule_id", ""), eq="079")
 
     def test_missing_rope_resource_fails_loud(self, tmp_path: Path) -> None:
         """Missing source resources are detector failures, not clean scans."""
@@ -217,9 +218,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-080"),
                 ctx,
             )
-        assert len(probes) == 1
-        assert getattr(probes[0], "object_name", "") == "c"
-        assert getattr(probes[0], "rule_id", "") == "080"
+        tm.that(len(probes), eq=1)
+        tm.that(getattr(probes[0], "object_name", ""), eq="c")
+        tm.that(getattr(probes[0], "rule_id", ""), eq="080")
 
     def test_unsupported_source_fails_loud(self, tmp_path: Path) -> None:
         rule = FlextModelsEnforcement.EnforcementRuleSpec(
@@ -280,15 +281,15 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             rules=("ENFORCE-079",),
         ).execute()
 
-        assert report_result.success, report_result.error
+        tm.ok(report_result)
         report = report_result.unwrap()
         violations = [
             violation for project in report.projects for violation in project.violations
         ]
-        assert len(violations) == 1
-        assert violations[0].kind == "classvar_constant"
-        assert violations[0].object_name == "GROUPS"
-        assert violations[0].fix_action == "classvar_relocation"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].kind, eq="classvar_constant")
+        tm.that(violations[0].object_name, eq="GROUPS")
+        tm.that(violations[0].fix_action, eq="classvar_relocation")
         assert violations[0].fixable
 
     def test_census_reports_enforce_090_stub_file(
@@ -306,14 +307,14 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             rules=("ENFORCE-090",),
         ).execute()
 
-        assert report_result.success, report_result.error
+        tm.ok(report_result)
         report = report_result.unwrap()
         violations = [
             violation for project in report.projects for violation in project.violations
         ]
-        assert len(violations) == 1
-        assert violations[0].kind == "stub_file"
-        assert violations[0].fix_action == "remove_stub_file"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].kind, eq="stub_file")
+        tm.that(violations[0].fix_action, eq="remove_stub_file")
         assert violations[0].fixable
 
     def test_census_apply_enforce_090_removes_stub_file(
@@ -333,7 +334,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             rules=("ENFORCE-090",),
         ).execute()
 
-        assert dry_run_result.success, dry_run_result.error
+        tm.ok(dry_run_result)
         assert stub.exists()
 
         apply_result = FlextInfraRefactorCensus(
@@ -343,7 +344,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             rules=("ENFORCE-090",),
         ).execute()
 
-        assert apply_result.success, apply_result.error
+        tm.ok(apply_result)
         assert not stub.exists()
 
     def test_census_reports_enforce_097_magic_literal(
@@ -366,14 +367,14 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             rules=("ENFORCE-097",),
         ).execute()
 
-        assert report_result.success, report_result.error
+        tm.ok(report_result)
         report = report_result.unwrap()
         violations = [
             violation for project in report.projects for violation in project.violations
         ]
-        assert len(violations) == 1
-        assert violations[0].kind == "magic_literal"
-        assert violations[0].fix_action == "extract_magic_literal"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].kind, eq="magic_literal")
+        tm.that(violations[0].fix_action, eq="extract_magic_literal")
         assert not violations[0].fixable
 
     def test_census_reports_enforce_080_foreign_canonical_alias(
@@ -399,13 +400,13 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             rules=("ENFORCE-080",),
         ).execute()
 
-        assert report_result.success, report_result.error
+        tm.ok(report_result)
         report = report_result.unwrap()
         violations = [
             violation for project in report.projects for violation in project.violations
         ]
-        assert len(violations) == 1
-        assert violations[0].kind == "foreign_canonical_alias"
-        assert violations[0].object_name == "c"
-        assert violations[0].fix_action == "rewrite_foreign_canonical_alias"
+        tm.that(len(violations), eq=1)
+        tm.that(violations[0].kind, eq="foreign_canonical_alias")
+        tm.that(violations[0].object_name, eq="c")
+        tm.that(violations[0].fix_action, eq="rewrite_foreign_canonical_alias")
         assert violations[0].fixable

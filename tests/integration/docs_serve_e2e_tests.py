@@ -15,6 +15,7 @@ import time
 from typing import TYPE_CHECKING
 
 from flext_infra.docs.server import FlextInfraDocServer
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,12 +54,10 @@ class TestsFlextInfraIntegrationDocsServeE2e:
     def test_serve_scope_serves_site_over_http(self, tmp_path: Path) -> None:
         (tmp_path / "docs").mkdir()
         (tmp_path / "docs/index.md").write_text(
-            "# Demo\n\nHello from the real dev server.\n",
-            encoding="utf-8",
+            "# Demo\n\nHello from the real dev server.\n", encoding="utf-8"
         )
         (tmp_path / "mkdocs.yml").write_text(
-            "site_name: Flext Demo Docs\n",
-            encoding="utf-8",
+            "site_name: Flext Demo Docs\n", encoding="utf-8"
         )
         port = _free_local_port()
         dev_addr = f"127.0.0.1:{port}"
@@ -66,9 +65,7 @@ class TestsFlextInfraIntegrationDocsServeE2e:
 
         def _run_server() -> None:
             outcome["result"] = FlextInfraDocServer(
-                dev_addr=dev_addr,
-                livereload=False,
-                strict=False,
+                dev_addr=dev_addr, livereload=False, strict=False
             ).serve(tmp_path)
 
         thread = threading.Thread(target=_run_server, daemon=True)
@@ -80,9 +77,6 @@ class TestsFlextInfraIntegrationDocsServeE2e:
             if body is None:
                 time.sleep(_POLL_INTERVAL_SECONDS)
 
-        assert body is not None, (
-            f"dev server at {dev_addr} did not answer HTTP 200 within "
-            f"{_DEADLINE_SECONDS:.0f}s"
-        )
-        assert "Flext Demo Docs" in body
-        assert "Hello from the real dev server." in body
+        tm.that(body, none=False)
+        tm.that(body, has="Flext Demo Docs")
+        tm.that(body, has="Hello from the real dev server.")

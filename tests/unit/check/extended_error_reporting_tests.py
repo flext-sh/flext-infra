@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -44,11 +45,7 @@ class TestGateErrorReportingPublicBehavior:
             else fake_pythonpath
         )
         try:
-            result = u.Tests.run_gate_check(
-                FlextInfraMypyGate,
-                tmp_path,
-                proj_dir,
-            )
+            result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
         finally:
             if original_pythonpath is None:
                 os.environ.pop("PYTHONPATH", None)
@@ -56,7 +53,7 @@ class TestGateErrorReportingPublicBehavior:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
         assert not result.result.passed
-        assert len(result.issues) == 2
+        tm.that(len(result.issues), eq=2)
 
     def test_ruff_format_deduplicates_reported_files(self, tmp_path: Path) -> None:
         proj_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
@@ -80,12 +77,10 @@ class TestGateErrorReportingPublicBehavior:
         os.environ["PATH"] = f"{fake_bin}:{original_path}"
         try:
             result = u.Tests.run_gate_check(
-                FlextInfraRuffFormatGate,
-                tmp_path,
-                proj_dir,
+                FlextInfraRuffFormatGate, tmp_path, proj_dir
             )
         finally:
             os.environ["PATH"] = original_path
 
         assert not result.result.passed
-        assert len(result.issues) == 2
+        tm.that(len(result.issues), eq=2)

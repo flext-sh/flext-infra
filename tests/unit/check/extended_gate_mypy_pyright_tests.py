@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import m, p, r
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import TestsFlextInfraUtilities as u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,9 +26,7 @@ class TestTypeGates:
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
-    def make_runner(
-        *results: p.Result[m.Cli.CommandOutput],
-    ) -> p.Cli.CommandRunner:
+    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
         return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
@@ -42,7 +40,7 @@ class TestTypeGates:
                     u.Tests.stub_run(
                         stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}',
                         returncode=1,
-                    ),
+                    )
                 ),
                 False,
                 1,
@@ -55,7 +53,7 @@ class TestTypeGates:
                     u.Tests.stub_run(
                         stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
                         returncode=1,
-                    ),
+                    )
                 ),
                 False,
                 1,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests.models import m
+from tests import m
 
 
 class TestCheckIssueFormatted:
@@ -42,24 +42,14 @@ class TestRunCommandGateParsing:
     """Test run-command gate parsing for check workflows."""
 
     def test_run_command_splits_csv_gate_in_sequence_payload(self) -> None:
-        command = m.Infra.RunCommand.model_validate(
-            {
-                "projects": ["flext-core"],
-                "gates": ["lint,format,pyrefly,mypy,pyright,security,markdown"],
-            },
-        )
+        command = m.Infra.RunCommand.model_validate({
+            "projects": ["flext-core"],
+            "gates": ["lint,format,pyrefly,mypy,pyright,security,markdown"],
+        })
 
         tm.that(
             command.gates,
-            eq=(
-                "lint",
-                "format",
-                "pyrefly",
-                "mypy",
-                "pyright",
-                "security",
-                "markdown",
-            ),
+            eq=("lint", "format", "pyrefly", "mypy", "pyright", "security", "markdown"),
         )
 
 
@@ -68,62 +58,32 @@ class TestProjectResultProperties:
 
     def test_total_errors_multiple_gates(self) -> None:
         gate1 = m.Infra.GateResult(
-            gate="lint",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
         gate2 = m.Infra.GateResult(
-            gate="format",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="format", project="p", passed=True, errors=[], duration=0.0
         )
         issue1 = m.Infra.Issue(
-            file="a.py",
-            line=1,
-            column=1,
-            code="E1",
-            message="m1",
-            severity="error",
+            file="a.py", line=1, column=1, code="E1", message="m1", severity="error"
         )
         issue2 = m.Infra.Issue(
-            file="b.py",
-            line=2,
-            column=1,
-            code="E2",
-            message="m2",
-            severity="error",
+            file="b.py", line=2, column=1, code="E2", message="m2", severity="error"
         )
         issue3 = m.Infra.Issue(
-            file="c.py",
-            line=3,
-            column=1,
-            code="E3",
-            message="m3",
-            severity="error",
+            file="c.py", line=3, column=1, code="E3", message="m3", severity="error"
         )
         exec1 = m.Infra.GateExecution(
-            result=gate1,
-            issues=(issue1, issue2),
-            raw_output="",
+            result=gate1, issues=(issue1, issue2), raw_output=""
         )
         exec2 = m.Infra.GateExecution(result=gate2, issues=(issue3,), raw_output="")
         project = m.Infra.ProjectResult(
-            project="p",
-            gates={"lint": exec1, "format": exec2},
+            project="p", gates={"lint": exec1, "format": exec2}
         )
         tm.that(project.total_errors, eq=3)
 
     def test_total_errors_ignores_warning_issues(self) -> None:
         gate = m.Infra.GateResult(
-            gate="pyright",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="pyright", project="p", passed=True, errors=[], duration=0.0
         )
         warning = m.Infra.Issue(
             file="a.py",
@@ -133,11 +93,7 @@ class TestProjectResultProperties:
             message="warning",
             severity="warning",
         )
-        execution = m.Infra.GateExecution(
-            result=gate,
-            issues=(warning,),
-            raw_output="",
-        )
+        execution = m.Infra.GateExecution(result=gate, issues=(warning,), raw_output="")
         project = m.Infra.ProjectResult(project="p", gates={"pyright": execution})
 
         tm.that(execution.error_count, eq=0)
@@ -145,47 +101,29 @@ class TestProjectResultProperties:
 
     def test_passed_all_gates_pass(self) -> None:
         gate1 = m.Infra.GateResult(
-            gate="lint",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
         gate2 = m.Infra.GateResult(
-            gate="format",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="format", project="p", passed=True, errors=[], duration=0.0
         )
         exec1 = m.Infra.GateExecution(result=gate1, issues=(), raw_output="")
         exec2 = m.Infra.GateExecution(result=gate2, issues=(), raw_output="")
         project = m.Infra.ProjectResult(
-            project="p",
-            gates={"lint": exec1, "format": exec2},
+            project="p", gates={"lint": exec1, "format": exec2}
         )
         tm.that(project.passed, eq=True)
 
     def test_passed_one_gate_fails(self) -> None:
         gate1 = m.Infra.GateResult(
-            gate="lint",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
         gate2 = m.Infra.GateResult(
-            gate="format",
-            project="p",
-            passed=False,
-            errors=[],
-            duration=0.0,
+            gate="format", project="p", passed=False, errors=[], duration=0.0
         )
         exec1 = m.Infra.GateExecution(result=gate1, issues=(), raw_output="")
         exec2 = m.Infra.GateExecution(result=gate2, issues=(), raw_output="")
         project = m.Infra.ProjectResult(
-            project="p",
-            gates={"lint": exec1, "format": exec2},
+            project="p", gates={"lint": exec1, "format": exec2}
         )
         tm.that(not project.passed, eq=True)
 
@@ -195,47 +133,22 @@ class TestWorkspaceCheckerErrorSummary:
 
     def test_error_summary_with_multiple_projects_and_gates(self) -> None:
         issue1 = m.Infra.Issue(
-            file="a.py",
-            line=1,
-            column=1,
-            code="E1",
-            message="m1",
-            severity="error",
+            file="a.py", line=1, column=1, code="E1", message="m1", severity="error"
         )
         issue2 = m.Infra.Issue(
-            file="b.py",
-            line=2,
-            column=1,
-            code="E2",
-            message="m2",
-            severity="error",
+            file="b.py", line=2, column=1, code="E2", message="m2", severity="error"
         )
         issue3 = m.Infra.Issue(
-            file="c.py",
-            line=3,
-            column=1,
-            code="E3",
-            message="m3",
-            severity="error",
+            file="c.py", line=3, column=1, code="E3", message="m3", severity="error"
         )
         gate1 = m.Infra.GateResult(
-            gate="lint",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
         gate2 = m.Infra.GateResult(
-            gate="lint",
-            project="p",
-            passed=True,
-            errors=[],
-            duration=0.0,
+            gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
         exec1 = m.Infra.GateExecution(
-            result=gate1,
-            issues=(issue1, issue2),
-            raw_output="",
+            result=gate1, issues=(issue1, issue2), raw_output=""
         )
         exec2 = m.Infra.GateExecution(result=gate2, issues=(issue3,), raw_output="")
         proj1 = m.Infra.ProjectResult(project="proj1", gates={"lint": exec1})

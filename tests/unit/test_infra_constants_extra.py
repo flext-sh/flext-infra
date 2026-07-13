@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests.constants import c
+from tests import c
 
 
 class TestsFlextInfraInfraConstantsExtra:
@@ -32,7 +32,7 @@ class TestsFlextInfraInfraConstantsExtra:
         tm.that(dirs, contains="src")
         tm.that(dirs, contains="tests")
         tm.that(dirs, contains="examples")
-        assert "scripts" not in dirs
+        tm.that(dirs, lacks="scripts")
 
     def test_check_dirs_are_strings(self) -> None:
         for d in c.Infra.DEFAULT_CHECK_DIRS:
@@ -41,10 +41,7 @@ class TestsFlextInfraInfraConstantsExtra:
             tm.that(d, is_=str)
 
     def test_github_repo_url_constant(self) -> None:
-        tm.that(
-            c.Infra.GITHUB_REPO_URL,
-            eq="https://github.com/flext-sh/flext",
-        )
+        tm.that(c.Infra.GITHUB_REPO_URL, eq="https://github.com/flext-sh/flext")
 
     def test_github_repo_name_constant(self) -> None:
         tm.that(c.Infra.GITHUB_REPO_NAME, eq="flext-sh/flext")

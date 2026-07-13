@@ -8,8 +8,8 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import main
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,11 +27,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         ],
     )
     def test_toml_read_handles_public_file_cases(
-        self,
-        tmp_path: Path,
-        content: str,
-        exists: bool,
-        expected: bool,
+        self, tmp_path: Path, content: str, exists: bool, expected: bool
     ) -> None:
         toml_file = tmp_path / "test.toml"
         if exists:
@@ -46,17 +42,15 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.that(str(result), eq=str(explicit.resolve()))
 
     def test_workspace_root_fallback_returns_non_empty_path(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         deep_path = tmp_path / "a" / "b" / "c" / "d" / "e"
         deep_path.mkdir(parents=True, exist_ok=True)
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
-        assert str(result) != ""
+        tm.that(str(result), ne="")
 
     def test_main_applies_only_selected_projects(
-        self,
-        modernizer_workspace_with_projects: Path,
+        self, modernizer_workspace_with_projects: Path
     ) -> None:
         selected_pyproject = (
             modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
@@ -65,25 +59,20 @@ class TestsFlextInfraDepsModernizerWorkspace:
             modernizer_workspace_with_projects / "ignored" / c.Infra.PYPROJECT_FILENAME
         )
         tm.that(
-            main(
-                [
-                    "deps",
-                    "modernize",
-                    "--workspace",
-                    str(modernizer_workspace_with_projects),
-                    "--apply",
-                    "--skip-check",
-                    "--projects",
-                    "selected",
-                ],
-            ),
+            main([
+                "deps",
+                "modernize",
+                "--workspace",
+                str(modernizer_workspace_with_projects),
+                "--apply",
+                "--skip-check",
+                "--projects",
+                "selected",
+            ]),
             eq=0,
         )
         tm.that(
             selected_pyproject.read_text(encoding="utf-8"),
             has='build-backend = "hatchling.build"',
         )
-        tm.that(
-            ignored_pyproject.read_text(encoding="utf-8"),
-            has='name = "ignored"',
-        )
+        tm.that(ignored_pyproject.read_text(encoding="utf-8"), has='name = "ignored"')

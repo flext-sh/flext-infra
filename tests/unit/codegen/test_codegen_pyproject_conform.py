@@ -56,10 +56,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=1,
-            name="flext",
-            repository=root,
-            members=(core,),
+            version=1, name="flext", repository=root, members=(core,)
         )
         toolchain = m.Infra.ToolchainSpec(
             python_version="3.13.11",

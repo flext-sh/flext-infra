@@ -16,8 +16,7 @@ def pyright_content() -> str:
 
 def _create_pyproject(directory: Path, content: str) -> Path:
     pyproject_path: Path = tf(base_dir=directory).create(
-        content=content,
-        name="pyproject.toml",
+        content=content, name="pyproject.toml"
     )
     return pyproject_path
 
@@ -25,11 +24,9 @@ def _create_pyproject(directory: Path, content: str) -> Path:
 _TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
 
 
-def _manager(
-    workspace_root: Path | None = None,
-) -> FlextInfraExtraPathsManager:
+def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
     return FlextInfraExtraPathsManager(
-        workspace_root=workspace_root or _TEST_WORKSPACE_ROOT,
+        workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
     )
 
 
@@ -66,8 +63,7 @@ class TestsFlextInfraDepsExtraPathsSync:
             pyproject = _create_pyproject(project, content)
             project_dirs_arg = [project] if project_dirs else []
             result = _manager(tmp_path).sync_extra_paths(
-                dry_run=dry_run,
-                project_dirs=project_dirs_arg,
+                dry_run=dry_run, project_dirs=project_dirs_arg
             )
             tm.ok(result)
             if expect_has:
@@ -79,24 +75,17 @@ class TestsFlextInfraDepsExtraPathsSync:
             return
         _ = _create_pyproject(tmp_path, pyright_content)
         result = _manager(tmp_path).sync_extra_paths(
-            dry_run=dry_run,
-            project_dirs=[] if project_dirs == [] else None,
+            dry_run=dry_run, project_dirs=[] if project_dirs == [] else None
         )
         if expect_fail:
             tm.fail(result)
             return
         tm.ok(result)
 
-    def test_sync_extra_paths_missing_root_pyproject(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_sync_extra_paths_missing_root_pyproject(self, tmp_path: Path) -> None:
         tm.fail(_manager(tmp_path).sync_extra_paths(), has="Missing")
 
-    def test_sync_extra_paths_sync_failure(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_sync_extra_paths_sync_failure(self, tmp_path: Path) -> None:
         project = tmp_path / "proj"
         project.mkdir()
         tm.fail(
@@ -110,11 +99,7 @@ class TestsFlextInfraDepsExtraPathsSync:
             ("root", ["extra_paths.py"], 0),
             ("root", ["extra_paths.py", "--dry-run"], 0),
             ("project", ["extra_paths.py", "--projects", "proj"], 0),
-            (
-                "multi",
-                ["extra_paths.py", "--projects", "proj-a,proj-b"],
-                0,
-            ),
+            ("multi", ["extra_paths.py", "--projects", "proj-a,proj-b"], 0),
             ("abs-project", ["prog", "--projects", "project", "--dry-run"], 0),
         ],
     )

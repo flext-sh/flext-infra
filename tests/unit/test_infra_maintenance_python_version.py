@@ -15,7 +15,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -99,26 +99,20 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         return FlextInfraPythonVersionEnforcer()
 
     def test_from_pyproject(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         ws = _ws(tmp_path / "ws")
         tm.that(enforcer._read_required_minor(ws), eq=_MINOR)
 
     def test_fallback_to_13(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         d = tmp_path / "empty"
         d.mkdir()
         tm.that(enforcer._read_required_minor(d), eq=13)
 
     def test_malformed_pyproject(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         d = tmp_path / "bad"
         d.mkdir()
@@ -126,9 +120,7 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         tm.that(enforcer._read_required_minor(d), eq=13)
 
     def test_success(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         ws = _ws(tmp_path / "ws")
         f = ws / "src" / "module.py"
@@ -138,9 +130,7 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         tm.that(str(resolved.resolve()), eq=str(ws.resolve()))
 
     def test_not_found(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         f = tmp_path / "orphan.py"
         f.touch()
@@ -148,52 +138,41 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
             enforcer._workspace_root_from_file(f)
 
     def test_mismatch_check_mode(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         p = tmp_path / "proj"
         p.mkdir()
         (p / "pyproject.toml").write_text(
-            f'requires-python = ">=3.{_BAD}"\n',
-            encoding="utf-8",
+            f'requires-python = ">=3.{_BAD}"\n', encoding="utf-8"
         )
         enforcer.check_only = True
         tm.that(
-            not enforcer._ensure_python_version_file(p, required_minor=_MINOR),
-            eq=True,
+            not enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True
         )
 
     def test_match(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         p = tmp_path / "proj"
         p.mkdir()
         (p / "pyproject.toml").write_text(
-            f'requires-python = ">=3.{_MINOR}"\n',
-            encoding="utf-8",
+            f'requires-python = ">=3.{_MINOR}"\n', encoding="utf-8"
         )
         enforcer.check_only = True
         enforcer.verbose = False
         tm.that(enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True)
 
     def test_enforce_mode_mismatch(
-        self,
-        enforcer: FlextInfraPythonVersionEnforcer,
-        tmp_path: Path,
+        self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path
     ) -> None:
         p = tmp_path / "proj"
         p.mkdir()
         (p / "pyproject.toml").write_text(
-            f'requires-python = ">=3.{_BAD}"\n',
-            encoding="utf-8",
+            f'requires-python = ">=3.{_BAD}"\n', encoding="utf-8"
         )
         enforcer.check_only = False
         tm.that(
-            not enforcer._ensure_python_version_file(p, required_minor=_MINOR),
-            eq=True,
+            not enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True
         )
 
     def test_empty_dir_returns_empty(self, tmp_path: Path) -> None:

@@ -12,12 +12,12 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def _project(tmp_path: Path, *, name: str, filename: str, src: str) -> Path:
@@ -37,16 +37,11 @@ class TestAbstractionBoundaryGate:
 
     def test_banned_cli_lib_is_flagged(self, tmp_path: Path) -> None:
         project = _project(
-            tmp_path,
-            name="flext-demo",
-            filename="logic.py",
-            src="import typer\n",
+            tmp_path, name="flext-demo", filename="logic.py", src="import typer\n"
         )
 
         result = u.Tests.run_gate_check(
-            FlextInfraAbstractionBoundaryGate,
-            tmp_path,
-            project,
+            FlextInfraAbstractionBoundaryGate, tmp_path, project
         )
 
         tm.that(not result.result.passed, eq=True)
@@ -54,16 +49,11 @@ class TestAbstractionBoundaryGate:
 
     def test_click_allowed_in_singer_boundary(self, tmp_path: Path) -> None:
         project = _project(
-            tmp_path,
-            name="flext-tap-demo",
-            filename="logic.py",
-            src="import click\n",
+            tmp_path, name="flext-tap-demo", filename="logic.py", src="import click\n"
         )
 
         result = u.Tests.run_gate_check(
-            FlextInfraAbstractionBoundaryGate,
-            tmp_path,
-            project,
+            FlextInfraAbstractionBoundaryGate, tmp_path, project
         )
 
         tm.that(result.result.passed, eq=True)
@@ -77,9 +67,7 @@ class TestAbstractionBoundaryGate:
         )
 
         result = u.Tests.run_gate_check(
-            FlextInfraAbstractionBoundaryGate,
-            tmp_path,
-            project,
+            FlextInfraAbstractionBoundaryGate, tmp_path, project
         )
 
         tm.that(not result.result.passed, eq=True)
@@ -93,9 +81,7 @@ class TestAbstractionBoundaryGate:
         )
 
         result = u.Tests.run_gate_check(
-            FlextInfraAbstractionBoundaryGate,
-            tmp_path,
-            project,
+            FlextInfraAbstractionBoundaryGate, tmp_path, project
         )
 
         tm.that(result.result.passed, eq=True)

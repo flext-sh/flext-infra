@@ -5,31 +5,24 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import main
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def test_auditor_main_help_exits_zero() -> None:
-    assert main(["docs", "audit", "--help"]) == 0
+    tm.that(main(["docs", "audit", "--help"]), eq=0)
 
 
 def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
+        tmp_path, project_names=("flext-a", "flext-b")
     )
 
     assert (
-        main([
-            "docs",
-            "audit",
-            "--workspace",
-            str(workspace),
-            "--projects",
-            "flext-a",
-        ])
+        main(["docs", "audit", "--workspace", str(workspace), "--projects", "flext-a"])
         == 0
     )
     assert (workspace / ".reports/docs/audit-report.md").exists()
@@ -40,8 +33,7 @@ def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> Non
 def test_auditor_main_strict_failure_returns_one(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text(
-        "# Docs\n\n[Broken](missing.md)\n",
-        encoding="utf-8",
+        "# Docs\n\n[Broken](missing.md)\n", encoding="utf-8"
     )
 
-    assert main(["docs", "audit", "--workspace", str(workspace), "--strict"]) == 1
+    tm.that(main(["docs", "audit", "--workspace", str(workspace), "--strict"]), eq=1)

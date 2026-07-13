@@ -18,16 +18,12 @@ if TYPE_CHECKING:
 class TestsFlextInfraInternalImportDetector:
     """Behavior contract for internal import detection."""
 
-    def test_allows_public_dunder_version_module_import(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_allows_public_dunder_version_module_import(self, tmp_path: Path) -> None:
         project = tmp_path / "demo-project"
         package_dir = project / "src" / "demo_project"
         package_dir.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='demo-project'\n",
-            encoding="utf-8",
+            "[project]\nname='demo-project'\n", encoding="utf-8"
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
@@ -48,22 +44,20 @@ class TestsFlextInfraInternalImportDetector:
                     rope_project=rope_project,
                     parse_failures=parse_failures,
                     project_root=project,
-                ),
+                )
             )
 
         tm.that(parse_failures, eq=[])
         tm.that(violations, eq=[])
 
     def test_allows_private_local_alias_for_public_external_symbol(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project = tmp_path / "demo-project"
         package_dir = project / "src" / "demo_project"
         package_dir.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='demo-project'\n",
-            encoding="utf-8",
+            "[project]\nname='demo-project'\n", encoding="utf-8"
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
@@ -84,7 +78,7 @@ class TestsFlextInfraInternalImportDetector:
                     rope_project=rope_project,
                     parse_failures=parse_failures,
                     project_root=project,
-                ),
+                )
             )
 
         tm.that(parse_failures, eq=[])

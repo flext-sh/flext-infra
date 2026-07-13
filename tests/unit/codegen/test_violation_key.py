@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from tests.models import m
+from tests import m
 
 if TYPE_CHECKING:
-    from tests.typings import t
+    from tests import t
 
 
 def _violation(
@@ -29,11 +29,7 @@ def _violation(
     fixable: bool = True,
 ) -> m.Infra.CensusViolation:
     return m.Infra.CensusViolation(
-        module=module,
-        rule=rule,
-        line=line,
-        message=message,
-        fixable=fixable,
+        module=module, rule=rule, line=line, message=message, fixable=fixable
     )
 
 

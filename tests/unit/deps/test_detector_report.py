@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import (
-    Sequence,
-)
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -10,10 +8,10 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
-from tests.models import m
-from tests.protocols import p
-from tests.typings import t
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import m
+from tests import p
+from tests import t
+from tests import TestsFlextInfraUtilities as u
 
 
 class _ReportStub:
@@ -32,10 +30,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def discover_project_paths(
-        self,
-        workspace_root: Path,
-        *,
-        projects_filter: t.StrSequence | None = None,
+        self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
         _ = workspace_root
         _ = projects_filter
@@ -43,9 +38,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def run_deptry(
-        self,
-        project_path: Path,
-        venv_bin: Path,
+        self, project_path: Path, venv_bin: Path
     ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
         _ = project_path
         _ = venv_bin
@@ -53,9 +46,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def build_project_report(
-        self,
-        project_name: str,
-        deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
+        self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
     ) -> _ReportStub:
         _ = project_name
         _ = deptry_issues
@@ -63,9 +54,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def run_pip_check(
-        self,
-        workspace_root: Path,
-        venv_bin: Path,
+        self, workspace_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
         _ = workspace_root
         _ = venv_bin
@@ -81,10 +70,7 @@ class _DetectorStub:
         self.log: p.Logger = u.fetch_logger(__name__)
 
 
-def _setup(
-    tmp_path: Path,
-    deps: _DepsStub,
-) -> FlextInfraDependencyDetectorRuntime:
+def _setup(tmp_path: Path, deps: _DepsStub) -> FlextInfraDependencyDetectorRuntime:
     deptry_path = tmp_path / ".venv" / "bin" / "deptry"
     deptry_path.parent.mkdir(parents=True, exist_ok=True)
     deptry_path.write_text("", encoding="utf-8")
@@ -98,102 +84,67 @@ def _setup(
 
 class TestsFlextInfraDepsDetectorReport:
     def test_run_without_output_flag_writes_default_report(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         default_output = (
             tmp_path / ".reports" / "dependencies" / "detect-runtime-dev-latest.json"
         )
-        runtime = _setup(
-            tmp_path,
-            _DepsStub(tmp_path / "proj-a", 0, 0),
-        )
+        runtime = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
         tm.that(
-            tm.ok(
-                runtime.run(
-                    u.Tests.detect_command(
-                        tmp_path,
-                        no_pip_check=True,
-                    ),
-                ),
-            ),
+            tm.ok(runtime.run(u.Tests.detect_command(tmp_path, no_pip_check=True))),
             eq=True,
         )
         tm.that(default_output.exists(), eq=True)
         payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
-            tm.ok(u.Cli.json_read(default_output)),
+            tm.ok(u.Cli.json_read(default_output))
         )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
 
-    def test_run_with_output_flag(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_run_with_output_flag(self, tmp_path: Path) -> None:
         custom_output = tmp_path / "custom_report.json"
-        runtime = _setup(
-            tmp_path,
-            _DepsStub(tmp_path / "proj-a", 0, 0),
-        )
+        runtime = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
         tm.that(
             tm.ok(
                 runtime.run(
                     u.Tests.detect_command(
-                        tmp_path,
-                        output=str(custom_output),
-                        no_pip_check=True,
-                    ),
-                ),
+                        tmp_path, output=str(custom_output), no_pip_check=True
+                    )
+                )
             ),
             eq=True,
         )
         tm.that(custom_output.exists(), eq=True)
         payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
-            tm.ok(u.Cli.json_read(custom_output)),
+            tm.ok(u.Cli.json_read(custom_output))
         )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
 
-    def test_run_with_output_to_blocked_path_fails(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_run_with_output_to_blocked_path_fails(self, tmp_path: Path) -> None:
         blocked_parent = tmp_path / "blocked-output"
         blocked_parent.write_text("not-a-directory", encoding="utf-8")
         blocked_output = blocked_parent / "report.json"
 
-        runtime = _setup(
-            tmp_path,
-            _DepsStub(tmp_path / "proj-a", 0, 0),
-        )
+        runtime = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
         error = tm.fail(
             runtime.run(
                 u.Tests.detect_command(
-                    tmp_path,
-                    output=str(blocked_output),
-                    no_pip_check=True,
-                ),
-            ),
+                    tmp_path, output=str(blocked_output), no_pip_check=True
+                )
+            )
         )
         tm.that("json_write:" in error or "failed to write report" in error, eq=True)
 
-    def test_run_with_json_write_failure(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_run_with_json_write_failure(self, tmp_path: Path) -> None:
         blocked_parent = tmp_path / "blocked-parent"
         blocked_parent.write_text("not-a-directory", encoding="utf-8")
         blocked_output = blocked_parent / "report.json"
 
-        runtime = _setup(
-            tmp_path,
-            _DepsStub(tmp_path / "proj-a", 0, 0),
-        )
+        runtime = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
         error = tm.fail(
             runtime.run(
                 u.Tests.detect_command(
-                    tmp_path,
-                    output=str(blocked_output),
-                    no_pip_check=True,
-                ),
-            ),
+                    tmp_path, output=str(blocked_output), no_pip_check=True
+                )
+            )
         )
         tm.that("json_write:" in error or "failed to write report" in error, eq=True)

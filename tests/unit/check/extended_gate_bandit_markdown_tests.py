@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import m, p, r, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import TestsFlextInfraUtilities as u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,9 +24,7 @@ class TestBanditAndMarkdownGates:
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
-    def make_runner(
-        *results: p.Result[m.Cli.CommandOutput],
-    ) -> u.Tests.SequenceRunner:
+    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> u.Tests.SequenceRunner:
         return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
@@ -40,7 +38,7 @@ class TestBanditAndMarkdownGates:
                         u.Tests.stub_run(
                             stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
                             returncode=1,
-                        ),
+                        )
                     ),
                 ),
                 False,
@@ -92,9 +90,8 @@ class TestBanditAndMarkdownGates:
                 None,
                 r.ok(
                     u.Tests.stub_run(
-                        stdout="README.md:1:1 error MD001 Heading level",
-                        returncode=1,
-                    ),
+                        stdout="README.md:1:1 error MD001 Heading level", returncode=1
+                    )
                 ),
                 False,
                 1,
@@ -103,12 +100,7 @@ class TestBanditAndMarkdownGates:
             (
                 "# Test\n",
                 None,
-                r.ok(
-                    u.Tests.stub_run(
-                        stderr="markdownlint failed",
-                        returncode=1,
-                    ),
-                ),
+                r.ok(u.Tests.stub_run(stderr="markdownlint failed", returncode=1)),
                 False,
                 0,
                 "markdownlint failed",
@@ -130,8 +122,7 @@ class TestBanditAndMarkdownGates:
             (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
         if config_text is not None:
             (project_dir / ".markdownlint.json").write_text(
-                config_text,
-                encoding="utf-8",
+                config_text, encoding="utf-8"
             )
 
         gate = FlextInfraMarkdownGate(
@@ -148,8 +139,7 @@ class TestBanditAndMarkdownGates:
             tm.that(result.raw_output, contains=raw_output)
 
     def test_markdown_prefers_local_config_when_root_is_missing(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")

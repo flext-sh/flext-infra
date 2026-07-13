@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -27,33 +28,33 @@ class TestsFlextInfraTransformersCastRemover:
     def test_bare_cast_is_removed(self) -> None:
         source = "from typing import cast\n\nx: int = cast(int, '42')\n"
         code, changes = _transform(source)
-        assert "cast(" not in code
-        assert "'42'" in code
-        assert len(changes) == 1
+        tm.that(code, lacks="cast(")
+        tm.that(code, has="'42'")
+        tm.that(len(changes), eq=1)
 
     def test_typing_cast_is_removed(self) -> None:
         source = "import typing\n\nx: int = typing.cast(int, '42')\n"
         code, changes = _transform(source)
-        assert "typing.cast(" not in code
-        assert "'42'" in code
-        assert len(changes) == 1
+        tm.that(code, lacks="typing.cast(")
+        tm.that(code, has="'42'")
+        tm.that(len(changes), eq=1)
 
     def test_cast_in_return_statement(self) -> None:
         source = (
             "from typing import cast\n\ndef f() -> int:\n    return cast(int, 1 + 1)\n"
         )
         code, _changes = _transform(source)
-        assert "cast(" not in code
-        assert "return 1 + 1" in code
+        tm.that(code, lacks="cast(")
+        tm.that(code, has="return 1 + 1")
 
     def test_no_cast_unchanged(self) -> None:
         source = "x: int = 42\n"
         code, changes = _transform(source)
-        assert code == source
+        tm.that(code, eq=source)
         assert not changes
 
     def test_invalid_syntax_unchanged(self) -> None:
         source = "def foo(\n"
         code, changes = _transform(source)
-        assert code == source
+        tm.that(code, eq=source)
         assert not changes

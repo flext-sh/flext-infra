@@ -6,15 +6,13 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.typings import t
+from tests import t
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Callable,
-    )
+    from collections.abc import Callable
     from pathlib import Path
 
-    from tests.protocols import p
+    from tests import p
 
 
 def _set_toml_sequence(
@@ -30,8 +28,7 @@ def _set_toml_sequence(
 
     class _TomlReaderStub:
         def __init__(
-            self,
-            fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
+            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
         ) -> None:
             self._fn = fn
 
@@ -58,45 +55,45 @@ class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
             r[t.Infra.ContainerDict].ok({
                 "tool": {
                     "poetry": {
-                        "dependencies": {"flext-core": {"path": "../flext-core"}},
-                    },
+                        "dependencies": {"flext-core": {"path": "../flext-core"}}
+                    }
                 },
                 "project": {},
-            }),
+            })
         )
         two_result = _collect(
             r[t.Infra.ContainerDict].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @ file:../flext-core"]},
-            }),
+            })
         )
         three_result = _collect(
             r[t.Infra.ContainerDict].ok({
                 "tool": {
                     "poetry": {
-                        "dependencies": {"external-lib": {"path": "some/nested/path"}},
-                    },
+                        "dependencies": {"external-lib": {"path": "some/nested/path"}}
+                    }
                 },
                 "project": {},
-            }),
+            })
         )
         four_result = _collect(
             r[t.Infra.ContainerDict].ok({
                 "tool": {"poetry": {"dependencies": {"flext-core": {"path": 123}}}},
                 "project": {},
-            }),
+            })
         )
         five_result = _collect(
             r[t.Infra.ContainerDict].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @"]},
-            }),
+            })
         )
         six_result = _collect(
             r[t.Infra.ContainerDict].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @ file:///external/path"]},
-            }),
+            })
         )
         one = one_result.value
         two = two_result.value

@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 _OVER_CAP = (
     "from __future__ import annotations\n\n"

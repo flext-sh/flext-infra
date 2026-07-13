@@ -5,18 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import r
+from flext_tests import r, tm
 
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests.constants import c
-from tests.models import m
-from tests.typings import t
+from tests import c
+from tests import m
+from tests import t
 
 if TYPE_CHECKING:
-    from tests.protocols import p
+    from tests import p
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -54,24 +54,13 @@ def _write_workspace(workspace_root: Path) -> None:
 
 
 def _cmd_out(exit_code: int = 0) -> m.Cli.CommandOutput:
-    return m.Cli.CommandOutput(
-        stdout="",
-        stderr="",
-        exit_code=exit_code,
-        duration=0.0,
-    )
+    return m.Cli.CommandOutput(stdout="", stderr="", exit_code=exit_code, duration=0.0)
 
 
 def _install_successful_orchestration(
-    orchestrator: FlextInfraOrchestratorService,
-    *,
-    project_root: Path,
+    orchestrator: FlextInfraOrchestratorService, *, project_root: Path
 ) -> None:
-    project = m.Infra.ProjectInfo(
-        name="flext-demo",
-        path=project_root,
-        stack="python",
-    )
+    project = m.Infra.ProjectInfo(name="flext-demo", path=project_root, stack="python")
 
     def _resolved_projects(
         self: FlextInfraOrchestratorService,
@@ -100,16 +89,13 @@ def _install_successful_orchestration(
         return r[m.Cli.CommandOutput].ok(_cmd_out())
 
     orchestrator._resolved_projects = _resolved_projects.__get__(
-        orchestrator,
-        FlextInfraOrchestratorService,
+        orchestrator, FlextInfraOrchestratorService
     )
     orchestrator._prepare_projects = _prepare_projects.__get__(
-        orchestrator,
-        FlextInfraOrchestratorService,
+        orchestrator, FlextInfraOrchestratorService
     )
     orchestrator._run_project = _run_project.__get__(
-        orchestrator,
-        FlextInfraOrchestratorService,
+        orchestrator, FlextInfraOrchestratorService
     )
 
 
@@ -124,20 +110,18 @@ class TestsFlextInfraWorkspaceMain:
     """Behavior contract for test_main."""
 
     def test_unattached_child_does_not_infer_workspace_from_ancestor(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace_root = tmp_path / "workspace"
         _write_workspace(workspace_root)
         member_root = workspace_root / "demo-a"
 
         result = FlextInfraWorkspaceDetector(
-            workspace_root=member_root,
-            apply_changes=False,
+            workspace_root=member_root, apply_changes=False
         ).execute()
 
-        assert result.success, result.error
-        assert result.value == c.Infra.WorkspaceMode.STANDALONE
+        tm.ok(result)
+        tm.that(result.value, eq=c.Infra.WorkspaceMode.STANDALONE)
 
     def test_sync_workspace_returns_sync_result(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
@@ -149,69 +133,62 @@ class TestsFlextInfraWorkspaceMain:
             apply_changes=False,
         ).execute()
 
-        assert result.success, result.error
+        tm.ok(result)
         assert result.value.files_changed >= 1
 
     def test_orchestrate_workspace_rejects_unknown_verb(self) -> None:
         result = FlextInfraOrchestratorService(
-            verb="legacy-check",
-            selected_projects=["p-a"],
+            verb="legacy-check", selected_projects=["p-a"]
         ).execute()
 
-        assert result.failure
-        assert "unsupported orchestrate verb" in (result.error or "")
+        tm.fail(result)
+        tm.that((result.error or ""), has="unsupported orchestrate verb")
 
     def test_orchestrate_workspace_defaults_to_current_project(self) -> None:
-        orchestrator = FlextInfraOrchestratorService(
-            verb="check",
-            selected_projects=[],
-        )
+        orchestrator = FlextInfraOrchestratorService(verb="check", selected_projects=[])
         _install_successful_orchestration(orchestrator, project_root=Path.cwd())
         result = orchestrator.execute()
 
-        assert result.success, result.error
+        tm.ok(result)
 
     def test_orchestrate_project_target_accepts_external_sibling(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace = tmp_path / "flext"
         external = tmp_path / ".ai-hub"
         workspace.mkdir()
         external.mkdir()
         project = m.Infra.ProjectInfo(
-            name="ai-hub",
-            path=external,
-            stack="python/flext",
+            name="ai-hub", path=external, stack="python/flext"
         )
 
         target = FlextInfraOrchestratorService._project_target(
-            project,
-            workspace_root=workspace,
+            project, workspace_root=workspace
         )
 
-        assert target == str(external.resolve())
+        tm.that(target, eq=str(external.resolve()))
 
     def test_orchestrate_project_log_filename_stays_under_reports(self) -> None:
         filename = FlextInfraOrchestratorService._project_log_filename("../.ai-hub")
 
-        assert filename == ".ai-hub.log"
+        tm.that(filename, eq=".ai-hub.log")
 
     def test_orchestrate_workspace_forwards_fail_fast_to_project_make(self) -> None:
-        assert FlextInfraOrchestratorService._normalize_fail_fast_make_args(
-            (),
-            fail_fast=True,
-        ) == ("FAIL_FAST=1",)
+        tm.that(
+            FlextInfraOrchestratorService._normalize_fail_fast_make_args(
+                (), fail_fast=True
+            ),
+            eq=("FAIL_FAST=1",),
+        )
 
     def test_workspace_main_detect_accepts_explicit_workspace_root(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace_root = tmp_path / "workspace"
         _write_workspace(workspace_root)
         member_root = workspace_root / "demo-a"
 
-        assert workspace_main(["detect", "--workspace", str(member_root)]) == 0
+        tm.that(workspace_main(["detect", "--workspace", str(member_root)]), eq=0)
 
     def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
@@ -226,7 +203,7 @@ class TestsFlextInfraWorkspaceMain:
             "--apply",
         ])
 
-        assert exit_code == 0
+        tm.that(exit_code, eq=0)
         assert (project_root / "Makefile").exists()
         assert not (project_root / "base.mk").exists()
 
@@ -243,4 +220,4 @@ class TestsFlextInfraWorkspaceMain:
         )
 
     def test_workspace_main_without_command_returns_failure(self) -> None:
-        assert workspace_main([]) == 1
+        tm.that(workspace_main([]), eq=1)

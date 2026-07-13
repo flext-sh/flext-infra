@@ -28,22 +28,24 @@ class TestsFlextInfraRefactorInfraRefactorService:
         )
         service = FlextInfraRefactorService(config_path=config_path)
         result = service.load_rules()
-        assert result.success
-        assert len(service.rule_loader.rules) == 8
-        assert [rule_kind for rule_kind, _settings in service.rule_loader.rules] == [
-            c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
-            c.Infra.RefactorRuleKind.IMPORT_MODERNIZER,
-            c.Infra.RefactorRuleKind.CLASS_RECONSTRUCTOR,
-            c.Infra.RefactorRuleKind.MRO_CLASS_MIGRATION,
-            c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS,
-            c.Infra.RefactorRuleKind.SYMBOL_PROPAGATION,
-            c.Infra.RefactorRuleKind.SIGNATURE_PROPAGATION,
-            c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS,
-        ]
+        tm.ok(result)
+        tm.that(len(service.rule_loader.rules), eq=8)
+        tm.that(
+            [rule_kind for rule_kind, _settings in service.rule_loader.rules],
+            eq=[
+                c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
+                c.Infra.RefactorRuleKind.IMPORT_MODERNIZER,
+                c.Infra.RefactorRuleKind.CLASS_RECONSTRUCTOR,
+                c.Infra.RefactorRuleKind.MRO_CLASS_MIGRATION,
+                c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS,
+                c.Infra.RefactorRuleKind.SYMBOL_PROPAGATION,
+                c.Infra.RefactorRuleKind.SIGNATURE_PROPAGATION,
+                c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS,
+            ],
+        )
 
     def test_rule_dispatch_fails_on_invalid_pattern_rule_config(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir(parents=True)
@@ -57,8 +59,8 @@ class TestsFlextInfraRefactorInfraRefactorService:
         service = FlextInfraRefactorService(config_path=config_path)
         result = service.load_rules()
         tm.fail(result)
-        assert result.error is not None
-        assert "redundant_type_targets" in result.error
+        tm.that(result.error, none=False)
+        tm.that(result.error, has="redundant_type_targets")
 
     def test_rule_dispatch_ignores_unknown_rule_mapping(self, tmp_path: Path) -> None:
         rules_dir = tmp_path / "rules"
@@ -71,8 +73,8 @@ class TestsFlextInfraRefactorInfraRefactorService:
         )
         service = FlextInfraRefactorService(config_path=config_path)
         result = service.load_rules()
-        assert result.success
-        assert service.rule_loader.rules == []
+        tm.ok(result)
+        tm.that(service.rule_loader.rules, eq=[])
 
     def test_service_keeps_file_rules_declarative(self, tmp_path: Path) -> None:
         rules_dir = tmp_path / "rules"
@@ -87,12 +89,11 @@ class TestsFlextInfraRefactorInfraRefactorService:
         service = FlextInfraRefactorService(config_path=config_path)
         service.set_rule_filters(["custom-import-rule"])
         result = service.load_rules()
-        assert result.success
-        assert service.rule_loader.file_rules == []
+        tm.ok(result)
+        tm.that(service.rule_loader.file_rules, eq=[])
 
     def test_rule_dispatch_drops_legacy_id_fallback_mapping(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir(parents=True)
@@ -105,12 +106,11 @@ class TestsFlextInfraRefactorInfraRefactorService:
         )
         service = FlextInfraRefactorService(config_path=config_path)
         result = service.load_rules()
-        assert result.success
-        assert service.rule_loader.rules == []
+        tm.ok(result)
+        tm.that(service.rule_loader.rules, eq=[])
 
     def test_refactor_project_scans_tests_and_scripts_dirs(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir(parents=True)
@@ -134,16 +134,16 @@ class TestsFlextInfraRefactorInfraRefactorService:
         (scripts_dir / "task.py").write_text("import sys\n", encoding="utf-8")
         service = FlextInfraRefactorService(config_path=config_path)
         loaded = service.load_rules()
-        assert loaded.success
+        tm.ok(loaded)
         results = service.refactor_project(project_root)
         file_results = [
             result for result in results if result.file_path != project_root
         ]
-        assert len(file_results) == 2
-        assert {result.file_path.name for result in file_results} == {
-            "task.py",
-            "test_sample.py",
-        }
+        tm.that(len(file_results), eq=2)
+        tm.that(
+            {result.file_path.name for result in file_results},
+            eq={"task.py", "test_sample.py"},
+        )
         assert all(result.success for result in file_results)
         assert all(result.modified for result in file_results)
 
@@ -163,10 +163,10 @@ class TestsFlextInfraRefactorInfraRefactorService:
         md_file.write_text("# doc\n", encoding="utf-8")
         service = FlextInfraRefactorService(config_path=config_path)
         loaded = service.load_rules()
-        assert loaded.success
+        tm.ok(loaded)
         results = service.refactor_files([py_file, md_file], dry_run=True)
-        assert len(results) == 2
+        tm.that(len(results), eq=2)
         md_result = next(item for item in results if item.file_path == md_file)
-        assert md_result.success
+        tm.ok(md_result)
         assert not md_result.modified
-        assert "Skipped non-Python file" in md_result.changes
+        tm.that(md_result.changes, has="Skipped non-Python file")

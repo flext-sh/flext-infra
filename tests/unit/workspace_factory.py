@@ -10,12 +10,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.constants import c
+from tests import c
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestsFlextInfraWorkspaceFactory:
@@ -35,24 +35,18 @@ class TestsFlextInfraWorkspaceFactory:
         docs_dir = project_root / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (project_root / "AGENTS.md").write_text(
-            "# AGENTS\n\nProject rules.\n",
-            encoding=self.encoding,
+            "# AGENTS\n\nProject rules.\n", encoding=self.encoding
         )
         (project_root / "README.md").write_text(
-            f"# {name}\n\nGenerated full project fixture.\n",
-            encoding=self.encoding,
+            f"# {name}\n\nGenerated full project fixture.\n", encoding=self.encoding
         )
         (docs_dir / "README.md").write_text(
-            "# Docs\n\nDocumentation placeholder.\n",
-            encoding=self.encoding,
+            "# Docs\n\nDocumentation placeholder.\n", encoding=self.encoding
         )
         return project_root
 
     def create_with_deps(
-        self,
-        tmp_path: Path,
-        name: t.NonEmptyStr,
-        deps: t.StrSequence,
+        self, tmp_path: Path, name: t.NonEmptyStr, deps: t.StrSequence
     ) -> Path:
         """Create a project with the specified dependencies."""
         return self._create_project(tmp_path=tmp_path, name=name, deps=deps)
@@ -75,20 +69,15 @@ class TestsFlextInfraWorkspaceFactory:
             f"members = [{members}]\n"
         )
         (workspace_root / "pyproject.toml").write_text(
-            workspace_pyproject,
-            encoding=self.encoding,
+            workspace_pyproject, encoding=self.encoding
         )
         (workspace_root / "Makefile").write_text(
-            "check:\n\t@echo workspace-check\n",
-            encoding=self.encoding,
+            "check:\n\t@echo workspace-check\n", encoding=self.encoding
         )
         return workspace_root
 
     def _create_project(
-        self,
-        tmp_path: Path,
-        name: t.NonEmptyStr,
-        deps: t.StrSequence,
+        self, tmp_path: Path, name: t.NonEmptyStr, deps: t.StrSequence
     ) -> Path:
         """Create a project structure with package and tests directories."""
         project_name = name
@@ -98,16 +87,13 @@ class TestsFlextInfraWorkspaceFactory:
         package_dir.mkdir(parents=True, exist_ok=True)
         tests_dir.mkdir(parents=True, exist_ok=True)
         (project_root / "pyproject.toml").write_text(
-            self._project_pyproject(name=name, deps=deps),
-            encoding=self.encoding,
+            self._project_pyproject(name=name, deps=deps), encoding=self.encoding
         )
         (project_root / "Makefile").write_text(
-            "check:\n\t@echo project-check\n",
-            encoding=self.encoding,
+            "check:\n\t@echo project-check\n", encoding=self.encoding
         )
         (package_dir / "__init__.py").write_text(
-            f'"""{name} package."""\n',
-            encoding=self.encoding,
+            f'"""{name} package."""\n', encoding=self.encoding
         )
         (tests_dir / "__init__.py").write_text("", encoding=self.encoding)
         return project_root

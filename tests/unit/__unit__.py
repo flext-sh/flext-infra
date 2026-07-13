@@ -140,25 +140,13 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ),
     ".docs.auditor_budgets_tests": ("TestLoadAuditBudgets",),
     ".docs.auditor_docstring_tests": ("TestsDocstringCoverage",),
-    ".docs.auditor_links_tests": (
-        "TestAuditorBrokenLinks",
-        "TestAuditorToMarkdown",
-    ),
-    ".docs.auditor_scope_tests": (
-        "TestAuditorForbiddenTerms",
-        "TestAuditorScope",
-    ),
-    ".docs.auditor_tests": (
-        "TestAuditorCore",
-        "TestAuditorNormalize",
-    ),
+    ".docs.auditor_links_tests": ("TestAuditorBrokenLinks", "TestAuditorToMarkdown"),
+    ".docs.auditor_scope_tests": ("TestAuditorForbiddenTerms", "TestAuditorScope"),
+    ".docs.auditor_tests": ("TestAuditorCore", "TestAuditorNormalize"),
     ".docs.builder_tests": ("TestBuilderCore",),
     ".docs.render_tests": ("TestsDocsRenderExcludeDocs",),
     ".docs.server_tests": ("TestsFlextInfraDocServer",),
-    ".docs.shared_iter_tests": (
-        "TestIterMarkdownFiles",
-        "TestSelectedProjectNames",
-    ),
+    ".docs.shared_iter_tests": ("TestIterMarkdownFiles", "TestSelectedProjectNames"),
     ".fixtures": (
         "deptry_report_payload",
         "models_resource",

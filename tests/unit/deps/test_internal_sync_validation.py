@@ -12,33 +12,31 @@ class TestsFlextInfraDepsInternalSyncValidation:
     def test_service_initialization(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         tm.that(
-            service.__class__.__name__,
-            eq="FlextInfraInternalDependencySyncService",
+            service.__class__.__name__, eq="FlextInfraInternalDependencySyncService"
         )
 
     def test_validate_git_ref_valid(self) -> None:
         tm.ok(
-            FlextInfraInternalDependencySyncService.validate_git_ref("main"),
-            eq="main",
+            FlextInfraInternalDependencySyncService.validate_git_ref("main"), eq="main"
         )
 
     def test_validate_git_ref_invalid(self) -> None:
         tm.fail(
-            FlextInfraInternalDependencySyncService.validate_git_ref("invalid@ref!"),
+            FlextInfraInternalDependencySyncService.validate_git_ref("invalid@ref!")
         )
 
     def test_validate_repo_url_https(self) -> None:
         tm.ok(
             FlextInfraInternalDependencySyncService.validate_repo_url(
-                "https://github.com/flext-sh/flext.git",
-            ),
+                "https://github.com/flext-sh/flext.git"
+            )
         )
 
     def test_validate_repo_url_ssh(self) -> None:
         tm.ok(
             FlextInfraInternalDependencySyncService.validate_repo_url(
-                "git@github.com:flext-sh/flext.git",
-            ),
+                "git@github.com:flext-sh/flext.git"
+            )
         )
 
     def test_validate_repo_url_invalid(self) -> None:
@@ -46,7 +44,7 @@ class TestsFlextInfraDepsInternalSyncValidation:
 
     def test_ssh_to_https_conversion(self) -> None:
         result = FlextInfraInternalDependencySyncService.ssh_to_https(
-            "git@github.com:flext-sh/flext.git",
+            "git@github.com:flext-sh/flext.git"
         )
         tm.that(result.startswith("https://"), eq=True)
         tm.that(result, contains="flext-sh/flext")
@@ -56,8 +54,7 @@ class TestsFlextInfraDepsInternalSyncValidation:
         tm.that(FlextInfraInternalDependencySyncService.ssh_to_https(url), eq=url)
 
     @pytest.mark.parametrize(
-        "ref",
-        ["feature/my-branch", "v1.0.0", "release/2.0", "fix/issue-123"],
+        "ref", ["feature/my-branch", "v1.0.0", "release/2.0", "fix/issue-123"]
     )
     def test_valid_refs(self, ref: str) -> None:
         tm.ok(FlextInfraInternalDependencySyncService.validate_git_ref(ref))
@@ -83,16 +80,10 @@ class TestsFlextInfraDepsInternalSyncValidation:
 
     def test_relative_to_true(self, tmp_path: Path) -> None:
         child = tmp_path / "sub" / "file.txt"
-        tm.that(
-            child.is_relative_to(tmp_path),
-            eq=True,
-        )
+        tm.that(child.is_relative_to(tmp_path), eq=True)
 
     def test_relative_to_false(self, tmp_path: Path) -> None:
-        tm.that(
-            not Path("/completely/different").is_relative_to(tmp_path),
-            eq=True,
-        )
+        tm.that(not Path("/completely/different").is_relative_to(tmp_path), eq=True)
 
     @pytest.mark.parametrize(
         ("raw_path", "expected"),
@@ -108,13 +99,11 @@ class TestsFlextInfraDepsInternalSyncValidation:
         ],
     )
     def test_resolve_internal_repo_name(
-        self,
-        raw_path: str,
-        expected: str | None,
+        self, raw_path: str, expected: str | None
     ) -> None:
         tm.that(
             FlextInfraInternalDependencySyncService.resolve_internal_repo_name(
-                raw_path,
+                raw_path
             ),
             eq=expected,
         )

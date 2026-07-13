@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 
 class TestsFlextInfraInfraReportingExtra:
@@ -22,26 +23,19 @@ class TestsFlextInfraInfraReportingExtra:
         return service_cls
 
     def test_resolve_report_dir_returns_path(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test that resolve_report_dir returns Path type."""
         result = service.resolve_report_dir(tmp_path, "project", "check")
-        assert isinstance(result, Path)
+        tm.that(result, is_=Path)
         assert result.is_absolute()
 
     def test_resolve_report_path_returns_path(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test that resolve_report_path returns Path type."""
         result = service.resolve_report_path(
-            tmp_path,
-            "project",
-            "check",
-            "report.json",
+            tmp_path, "project", "check", "report.json"
         )
-        assert isinstance(result, Path)
+        tm.that(result, is_=Path)
         assert result.is_absolute()

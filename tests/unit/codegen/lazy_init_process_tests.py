@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
@@ -31,25 +31,19 @@ class TestsFlextInfraLazyInitProcessing:
         result = u.Tests.run_lazy_init(workspace_root)
 
         init_content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         unit_content = (package_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
         tm.that(unit_content, contains='".models": (')
         tm.that(unit_content, contains='    "FlextTestsModels",')
         tm.that(unit_content, contains='    "m",')
         # mro-i6nq.10: Assert manifest ownership, independent of import formatting.
-        tm.that(
-            init_content,
-            contains="from flext_test_project.__unit__ import (",
-        )
+        tm.that(init_content, contains="from flext_test_project.__unit__ import (")
         tm.that(init_content, contains="PUBLIC_EXPORTS as _PUBLIC_EXPORTS,")
-        tm.that(
-            init_content,
-            contains="public_exports=_PUBLIC_EXPORTS",
-        )
+        tm.that(init_content, contains="public_exports=_PUBLIC_EXPORTS")
         tm.that(init_content, contains="__all__: tuple[str, ...]")
         tm.that(init_content, contains="install_lazy_exports(")
         tm.that(init_content, lacks="LAZY_MODULES: dict")
@@ -57,15 +51,12 @@ class TestsFlextInfraLazyInitProcessing:
         compile(init_content, "__init__.py", "exec")
 
     def test_check_only_reports_both_root_artifacts_without_writing(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Check-only reports expected drift and preserves every byte."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
         unit_path = package_root / c.Infra.UNIT_PY
@@ -101,9 +92,7 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(check_service.modified_files, empty=True)
 
     def test_generated_manifests_are_not_rediscovered_as_public_exports(
-        self,
-        tmp_path: Path,
-        capsys: CaptureFixture[str],
+        self, tmp_path: Path, capsys: CaptureFixture[str]
     ) -> None:
         """A second generation pass ignores its own support modules."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -114,13 +103,10 @@ class TestsFlextInfraLazyInitProcessing:
             child_root = package_root / child_name
             child_root.mkdir()
             child_root.joinpath(c.Infra.INIT_PY).write_text(
-                "",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                "", encoding=c.Cli.ENCODING_DEFAULT
             )
             u.Tests.write_lazy_init_namespace_module(
-                child_root / "declarations.py",
-                class_name=class_name,
-                alias=alias,
+                child_root / "declarations.py", class_name=class_name, alias=alias
             )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
@@ -133,42 +119,32 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(output, lacks="export collision")
 
     def test_child_package_uses_manifest_and_thin_initializer(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Non-root packages use the same cycle-safe generated artifacts."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         child_root = package_root / "services"
         child_root.mkdir()
-        (child_root / c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        (child_root / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         u.Tests.write_lazy_init_namespace_module(
-            child_root / "demo.py",
-            class_name="FlextTestsService",
-            alias="service",
+            child_root / "demo.py", class_name="FlextTestsService", alias="service"
         )
 
         result = u.Tests.run_lazy_init(workspace_root)
 
         child_content = (child_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         child_unit_content = (child_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
         tm.that(
-            child_content,
-            contains="from flext_test_project.services.__unit__ import (",
+            child_content, contains="from flext_test_project.services.__unit__ import ("
         )
         tm.that(child_content, contains="install_lazy_exports(")
         runtime_content = child_content.partition("if TYPE_CHECKING:")[0]
-        tm.that(
-            runtime_content,
-            lacks="from flext_test_project.services.demo import",
-        )
+        tm.that(runtime_content, lacks="from flext_test_project.services.demo import")
         tm.that(child_unit_content, contains='".demo": (')
         tm.that(child_unit_content, contains='    "FlextTestsService",')
         tm.that(child_unit_content, contains='    "service",')
@@ -176,30 +152,24 @@ class TestsFlextInfraLazyInitProcessing:
         compile(child_content, "services/__init__.py", "exec")
 
     def test_private_foundation_package_uses_lazy_manifest(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Private foundations keep cycle-safe manifests instead of eager imports."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         private_root = package_root / "_models"
         private_root.mkdir()
-        (private_root / c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        (private_root / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         u.Tests.write_lazy_init_namespace_module(
-            private_root / "demo.py",
-            class_name="FlextTestsPrivateModels",
-            alias="m",
+            private_root / "demo.py", class_name="FlextTestsPrivateModels", alias="m"
         )
 
         result = u.Tests.run_lazy_init(workspace_root)
 
         init_content = (private_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         unit_content = (private_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
         # NOTE (multi-agent): mro-i6nq.10 proves the cycle-safe private route.
@@ -207,10 +177,7 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(init_content, contains="flext_test_project._models.__unit__")
         tm.that(init_content, contains="install_lazy_exports(")
         runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
-        tm.that(
-            runtime_content,
-            lacks="from flext_test_project._models.demo import",
-        )
+        tm.that(runtime_content, lacks="from flext_test_project._models.demo import")
         compile(unit_content, "_models/__unit__.py", "exec")
         compile(init_content, "_models/__init__.py", "exec")
 

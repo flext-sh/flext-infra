@@ -14,7 +14,8 @@ import pytest
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.utilities import u
-from tests.models import m
+from tests import m
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,8 +41,7 @@ def _write_project(tmp_path: Path) -> Path:
     package = project / "src" / "flext_demo"
     package.mkdir(parents=True)
     (project / "pyproject.toml").write_text(
-        '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
-        encoding="utf-8",
+        '[project]\nname = "flext-demo"\nversion = "0.1.0"\n', encoding="utf-8"
     )
     (package / "__init__.py").write_text(_PACKAGE_INIT, encoding="utf-8")
     return project
@@ -62,26 +62,24 @@ class TestsDocstringCoverage:
             assert coverage.checked > 0
             assert coverage.documented > 0
             assert coverage.documented < coverage.checked
-            assert coverage.percent == round(
-                100.0 * coverage.documented / coverage.checked,
-                1,
+            tm.that(
+                coverage.percent,
+                eq=round(100.0 * coverage.documented / coverage.checked, 1),
             )
 
         def test_empty_contract_reports_full_coverage(self, tmp_path: Path) -> None:
             coverage = u.Infra.docstring_coverage(tmp_path, {})
 
-            assert coverage.checked == 0
-            assert coverage.documented == 0
-            assert coverage.percent == pytest.approx(100.0)
+            tm.that(coverage.checked, eq=0)
+            tm.that(coverage.documented, eq=0)
+            tm.that(coverage.percent, eq=pytest.approx(100.0))
 
         def test_root_scope_has_no_coverage_metric(self, tmp_path: Path) -> None:
             scope = m.Infra.DocScope(
-                name="root",
-                path=tmp_path,
-                report_dir=tmp_path / ".reports/docs",
+                name="root", path=tmp_path, report_dir=tmp_path / ".reports/docs"
             )
 
-            assert u.Infra.docs_public_docstring_coverage(scope) is None
+            tm.that(u.Infra.docs_public_docstring_coverage(scope), none=True)
 
     class TestAuditReportIntegration:
         """audit_scope persists the coverage metric in markdown and JSON."""
@@ -98,14 +96,13 @@ class TestsDocstringCoverage:
             )
 
             FlextInfraDocAuditor().audit_scope(
-                scope,
-                params=m.Infra.AuditScopeParams(check="docstrings", strict=False),
+                scope, params=m.Infra.AuditScopeParams(check="docstrings", strict=False)
             )
 
             markdown = (report_dir / "audit-report.md").read_text(encoding="utf-8")
-            assert "Docstring coverage:" in markdown
+            tm.that(markdown, has="Docstring coverage:")
             summary = json.loads(
-                (report_dir / "audit-summary.json").read_text(encoding="utf-8"),
+                (report_dir / "audit-summary.json").read_text(encoding="utf-8")
             )
             metric = summary["summary"]["docstring_coverage"]
             assert metric["checked"] > 0
@@ -114,24 +111,20 @@ class TestsDocstringCoverage:
     class TestExecuteChecksSelector:
         """execute() honors the CLI --checks selector (no hardcoded "all")."""
 
-        def test_checks_docstrings_runs_only_that_check(
-            self,
-            tmp_path: Path,
-        ) -> None:
+        def test_checks_docstrings_runs_only_that_check(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project,
-                checks="docstrings",
+                workspace_root=project, checks="docstrings"
             ).execute()
 
-            assert result.success
+            tm.ok(result)
             summary = json.loads(
                 (project / ".reports/docs/audit-summary.json").read_text(
-                    encoding="utf-8",
-                ),
+                    encoding="utf-8"
+                )
             )["summary"]
-            assert summary["checks"] == ["docstrings"]
+            tm.that(summary["checks"], eq=["docstrings"])
             assert summary["docstring_coverage"]["checked"] > 0
 
         def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
@@ -139,58 +132,47 @@ class TestsDocstringCoverage:
 
             result = FlextInfraDocAuditor(workspace_root=project).execute()
 
-            assert result.success
+            tm.ok(result)
             summary = json.loads(
                 (project / ".reports/docs/audit-summary.json").read_text(
-                    encoding="utf-8",
-                ),
+                    encoding="utf-8"
+                )
             )["summary"]
-            assert "docstrings" in summary["checks"]
-            assert "links" in summary["checks"]
+            tm.that(summary["checks"], has="docstrings")
+            tm.that(summary["checks"], has="links")
 
     class TestDocstringMinThreshold:
         """--docstring-min replaces the interrogate --fail-under gate."""
 
-        def test_coverage_below_minimum_fails_the_audit(
-            self,
-            tmp_path: Path,
-        ) -> None:
+        def test_coverage_below_minimum_fails_the_audit(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project,
-                checks="docstrings",
-                docstring_min=80.0,
+                workspace_root=project, checks="docstrings", docstring_min=80.0
             ).execute()
 
-            assert result.failure
+            tm.fail(result)
             summary = json.loads(
                 (project / ".reports/docs/audit-summary.json").read_text(
-                    encoding="utf-8",
-                ),
+                    encoding="utf-8"
+                )
             )["summary"]
             assert summary["docstring_coverage"]["percent"] < 80.0
 
-        def test_coverage_above_minimum_keeps_audit_green(
-            self,
-            tmp_path: Path,
-        ) -> None:
+        def test_coverage_above_minimum_keeps_audit_green(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project,
-                checks="docstrings",
-                docstring_min=40.0,
+                workspace_root=project, checks="docstrings", docstring_min=40.0
             ).execute()
 
-            assert result.success
+            tm.ok(result)
 
         def test_no_threshold_disables_the_gate(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project,
-                checks="docstrings",
+                workspace_root=project, checks="docstrings"
             ).execute()
 
-            assert result.success
+            tm.ok(result)

@@ -5,19 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, overload, override
 
-from flext_tests import r
+from flext_tests import r, tm
 
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.service import FlextInfraRefactorService
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        MutableSequence,
-    )
+    from collections.abc import MutableSequence
 
     from flext_infra import t
-    from tests.protocols import p
+    from tests import p
 
 
 class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
@@ -31,10 +29,7 @@ class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
 
     @override
     def create_pre_transformation_checkpoint(
-        self,
-        workspace_root: Path,
-        *,
-        label: str = "flext-refactor-pre-transform",
+        self, workspace_root: Path, *, label: str = "flext-refactor-pre-transform"
     ) -> p.Result[str]:
         _ = workspace_root
         _ = label
@@ -76,9 +71,7 @@ class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
 
     @overload
     def rollback(
-        self,
-        workspace_root: Path,
-        checkpoint_ref: str = "",
+        self, workspace_root: Path, checkpoint_ref: str = ""
     ) -> p.Result[bool]: ...
 
     @overload
@@ -86,9 +79,7 @@ class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
 
     @override
     def rollback(
-        self,
-        workspace_root: Path | str,
-        checkpoint_ref: str = "",
+        self, workspace_root: Path | str, checkpoint_ref: str = ""
     ) -> p.Result[bool] | None:
         _ = checkpoint_ref
         self.calls.append("rollback")
@@ -123,12 +114,12 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         stub = RefactorSafetyStub()
         service.orchestrator.safety_manager = stub
         loaded = service.load_rules()
-        assert loaded.success
+        tm.ok(loaded)
         results = service.refactor_project(tmp_path, dry_run=False, apply_safety=True)
         assert results
         assert all(item.success for item in results)
-        assert stub.calls == ["checkpoint", "checkpoint-state", "validate", "clear"]
-        assert stub.kept_paths == [src_dir / "sample.py"]
+        tm.that(stub.calls, eq=["checkpoint", "checkpoint-state", "validate", "clear"])
+        tm.that(stub.kept_paths, eq=[src_dir / "sample.py"])
 
     def test_clear_checkpoint_preserves_requested_backups(self, tmp_path: Path) -> None:
         keep_file = tmp_path / "keep.py"
@@ -137,44 +128,41 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         drop_file.write_text("value = 2\n", encoding="utf-8")
         manager = FlextInfraRefactorSafetyManager()
         created = manager.create_pre_transformation_checkpoint(tmp_path)
-        assert created.success
+        tm.ok(created)
 
         cleared = manager.clear_checkpoint(keep=[keep_file])
 
-        assert cleared.success
+        tm.ok(cleared)
         assert keep_file.with_suffix(".py.bak").exists()
         assert not drop_file.with_suffix(".py.bak").exists()
 
     def test_create_pre_transformation_checkpoint_tracks_python_files(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
-        assert init_result.success
-        assert init_result.value.exit_code == 0
+        tm.ok(init_result)
+        tm.that(init_result.value.exit_code, eq=0)
         email_result = u.Cli.run_raw(
-            ["git", "config", "user.email", "test@example.com"],
-            cwd=tmp_path,
+            ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
         )
-        assert email_result.success
-        assert email_result.value.exit_code == 0
+        tm.ok(email_result)
+        tm.that(email_result.value.exit_code, eq=0)
         name_result = u.Cli.run_raw(
-            ["git", "config", "user.name", "Test User"],
-            cwd=tmp_path,
+            ["git", "config", "user.name", "Test User"], cwd=tmp_path
         )
-        assert name_result.success
-        assert name_result.value.exit_code == 0
+        tm.ok(name_result)
+        tm.that(name_result.value.exit_code, eq=0)
         tracked_file = tmp_path / "tracked.py"
         tracked_file.write_text("value = 1\n", encoding="utf-8")
         second_file = tmp_path / "second.py"
         second_file.write_text("value = 2\n", encoding="utf-8")
         add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
-        assert add_result.success
-        assert add_result.value.exit_code == 0
+        tm.ok(add_result)
+        tm.that(add_result.value.exit_code, eq=0)
         manager = FlextInfraRefactorSafetyManager()
 
         created = manager.create_pre_transformation_checkpoint(tmp_path)
 
-        assert created.success
+        tm.ok(created)
         assert tracked_file.with_suffix(".py.bak").exists()
         assert second_file.with_suffix(".py.bak").exists()

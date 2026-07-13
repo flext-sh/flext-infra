@@ -7,11 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import (
-    reset_settings as _shared_reset_settings,
-    settings as _shared_settings,
-    settings_factory as _shared_settings_factory,
-)
+from flext_tests import tm
 
 import flext_infra as infra_pkg
 from tests import c
@@ -22,14 +18,9 @@ from types import ModuleType
 
 from tests import t
 
-reset_settings = _shared_reset_settings
-settings = _shared_settings
-settings_factory = _shared_settings_factory
-
-pytest_plugins = [
-    "tests.unit.fixtures",
-    "tests.unit.fixtures_git",
-]
+# NOTE(mro-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
+# the only fixture owner; conftest must not re-export or shadow its fixtures.
+pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture
@@ -56,10 +47,8 @@ def _is_collectable_test_module(collection_path: Path) -> bool:
     return file_name.startswith("test_") or file_name.endswith("_tests.py")
 
 
-def pytest_ignore_collect(
-    collection_path: Path,
-    config: pytest.Config,
-) -> bool | None:
+def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool | None:
+    """Collect only executable test modules from the canonical test tree."""
     del config
     if _is_collectable_test_module(collection_path):
         return None
@@ -67,9 +56,9 @@ def pytest_ignore_collect(
 
 
 def pytest_collection_modifyitems(
-    config: pytest.Config,
-    items: list[pytest.Item],
+    config: pytest.Config, items: list[pytest.Item]
 ) -> None:
+    """Deselect non-test facade modules that pytest plugins may discover."""
     kept_items: list[pytest.Item] = []
     deselected_items: list[pytest.Item] = []
 
@@ -87,12 +76,12 @@ def pytest_collection_modifyitems(
 
 @pytest.fixture
 def infra_test_workspace(tmp_path: Path) -> Path:
+    """Create a minimal typed project workspace for public service tests."""
     workspace = tmp_path / "workspace"
     src_pkg = workspace / "src" / "infra_pkg"
     src_pkg.mkdir(parents=True, exist_ok=True)
     (workspace / "pyproject.toml").write_text(
-        "[project]\nname='infra-pkg'\nversion='0.0.0'\n",
-        encoding="utf-8",
+        "[project]\nname='infra-pkg'\nversion='0.0.0'\n", encoding="utf-8"
     )
     (workspace / "Makefile").write_text("help:\n\t@pwd\n", encoding="utf-8")
     (src_pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -101,75 +90,82 @@ def infra_test_workspace(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def infra_subprocess() -> u.Cli:
+    """Provide the public CLI utility facade for subprocess tests."""
     return u.Cli()
 
 
 @pytest.fixture
 def infra_toml() -> u.Cli:
+    """Provide the public CLI utility facade for TOML tests."""
     return u.Cli()
 
 
 @pytest.fixture
 def infra_git() -> u.Infra:
+    """Provide the public infrastructure utility facade for Git tests."""
     return u.Infra()
 
 
 @pytest.fixture
 def infra_io() -> u.Infra:
+    """Provide the public infrastructure utility facade for I/O tests."""
     return u.Infra()
 
 
 @pytest.fixture
 def infra_path() -> u.Infra:
+    """Provide the public infrastructure utility facade for path tests."""
     return u.Infra()
 
 
 @pytest.fixture
 def infra_patterns() -> u.Infra:
+    """Provide the public infrastructure utility facade for pattern tests."""
     return u.Infra()
 
 
 @pytest.fixture
 def infra_selection() -> u.Infra:
+    """Provide the public infrastructure utility facade for selection tests."""
     return u.Infra()
 
 
 @pytest.fixture
 def infra_reporting() -> u.Infra:
+    """Provide the public infrastructure utility facade for reporting tests."""
     return u.Infra()
 
 
 @pytest.fixture
 def infra_safe_command_output(
-    infra_subprocess: u.Cli,
-    infra_test_workspace: Path,
+    infra_subprocess: u.Cli, infra_test_workspace: Path
 ) -> str:
+    """Capture successful public command output inside the test workspace."""
     echo_result = infra_subprocess.capture(
-        ["echo", "infra-ok"],
-        cwd=infra_test_workspace,
+        ["echo", "infra-ok"], cwd=infra_test_workspace
     )
-    assert echo_result.success
+    tm.ok(echo_result)
     pwd_result = infra_subprocess.capture(["pwd"], cwd=infra_test_workspace)
-    assert pwd_result.success
+    tm.ok(pwd_result)
     return f"{echo_result.value.strip()}|{pwd_result.value.strip()}"
 
 
 @pytest.fixture
-def infra_git_repo(
-    infra_subprocess: u.Cli,
-    infra_test_workspace: Path,
-) -> Path:
+def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
+    """Initialize a local Git repository through the public CLI facade."""
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    assert infra_subprocess.run_checked(["git", "init"], cwd=repo).success
-    assert infra_subprocess.run_checked(
-        ["git", "config", "user.email", "infra@example.com"],
-        cwd=repo,
-    ).success
-    assert infra_subprocess.run_checked(
-        ["git", "config", "user.name", "Infra Fixtures"],
-        cwd=repo,
-    ).success
+    tm.ok(infra_subprocess.run_checked(["git", "init"], cwd=repo))
+    tm.ok(
+        infra_subprocess.run_checked(
+            ["git", "config", "user.email", "infra@example.com"], cwd=repo
+        )
+    )
+    tm.ok(
+        infra_subprocess.run_checked(
+            ["git", "config", "user.name", "Infra Fixtures"], cwd=repo
+        )
+    )
     return repo
 
 

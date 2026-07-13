@@ -8,6 +8,7 @@ from flext_infra import u
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,8 +51,8 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
             "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
             in code
         )
-        assert '    """timeout docs"""' in code
-        assert "class FlextDispatcher:" in code
+        tm.that(code, has='    """timeout docs"""')
+        tm.that(code, has="class FlextDispatcher:")
 
     def test_class_nesting_appends_to_existing_namespace_and_removes_pass(
         self,
@@ -61,10 +62,10 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
             "class FlextDispatcher:\n    pass\n\nclass TimeoutEnforcer:\n    pass\n"
         )
         code = _transform_source(tmp_path, source)
-        assert "class FlextDispatcher:" in code
-        assert "    class TimeoutEnforcer:" in code
-        assert "class TimeoutEnforcer:\n    pass\n" not in code
-        assert "class FlextDispatcher:\n    pass\n" not in code
+        tm.that(code, has="class FlextDispatcher:")
+        tm.that(code, has="    class TimeoutEnforcer:")
+        tm.that(code, lacks="class TimeoutEnforcer:\n    pass\n")
+        tm.that(code, lacks="class FlextDispatcher:\n    pass\n")
 
     def test_class_nesting_keeps_unmapped_top_level_classes(
         self,
@@ -72,6 +73,6 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
     ) -> None:
         source = "class TimeoutEnforcer:\n    pass\n\nclass OtherClass:\n    pass\n"
         code = _transform_source(tmp_path, source)
-        assert "class FlextDispatcher:" in code
-        assert "    class TimeoutEnforcer:" in code
-        assert "class OtherClass:\n    pass\n" in code
+        tm.that(code, has="class FlextDispatcher:")
+        tm.that(code, has="    class TimeoutEnforcer:")
+        tm.that(code, has="class OtherClass:\n    pass\n")

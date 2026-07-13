@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 
 from flext_tests import r
 
-from tests.typings import t
-from tests.utilities import u
+from tests import t
+from tests import u
 
 if TYPE_CHECKING:
-    from tests.protocols import p
+    from tests import p
 
 
 class RealSubprocessRunner:

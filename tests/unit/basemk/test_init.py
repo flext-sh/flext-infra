@@ -10,6 +10,7 @@ import pytest
 import flext_infra.basemk as basemk_module
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+from flext_tests import tm
 
 
 class TestsFlextInfraBasemkInit:
@@ -22,14 +23,14 @@ class TestsFlextInfraBasemkInit:
 
     def test_lazy_import_template_renderer(self) -> None:
         """Test lazy import of FlextInfraBaseMkTemplateRenderer."""
-        assert FlextInfraBaseMkTemplateRenderer is not None
+        tm.that(FlextInfraBaseMkTemplateRenderer, none=False)
 
     def test_lazy_import_generator(self) -> None:
         """Test lazy import of FlextInfraBaseMkGenerator."""
-        assert FlextInfraBaseMkGenerator is not None
+        tm.that(FlextInfraBaseMkGenerator, none=False)
 
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(basemk_module)
-        assert "FlextInfraBaseMkTemplateRenderer" in exports
-        assert "FlextInfraBaseMkGenerator" in exports
+        tm.that(exports, has="FlextInfraBaseMkTemplateRenderer")
+        tm.that(exports, has="FlextInfraBaseMkGenerator")

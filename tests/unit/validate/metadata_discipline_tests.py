@@ -14,12 +14,12 @@ from flext_tests import tf, tm
 from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
 )
-from tests.models import m
+from tests import m
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 @pytest.fixture
@@ -32,8 +32,7 @@ def _seed_pkg(root: Path, name: str = "pkg") -> Path:
     project_root = root / "flext-infra"
     project_root.mkdir(parents=True, exist_ok=True)
     (project_root / "pyproject.toml").write_text(
-        "[project]\nname = 'flext-infra'\nversion = '0.0.0'\n",
-        encoding="utf-8",
+        "[project]\nname = 'flext-infra'\nversion = '0.0.0'\n", encoding="utf-8"
     )
     package_root = project_root / "src" / "flext_infra"
     package_root.mkdir(parents=True, exist_ok=True)
@@ -48,18 +47,14 @@ class TestMetadataDiscipline:
     """Rogue metadata parser imports are blocked outside allowlist."""
 
     def test_empty_workspace_passes(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateMetadataDiscipline,
+        self, tmp_path: Path, v: FlextInfraValidateMetadataDiscipline
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
-        assert isinstance(report, m.Infra.ValidationReport)
+        tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
     def test_non_tomllib_import_passes(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateMetadataDiscipline,
+        self, tmp_path: Path, v: FlextInfraValidateMetadataDiscipline
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("import json\n", "ok.py")
@@ -67,9 +62,7 @@ class TestMetadataDiscipline:
         tm.that(report.passed, eq=True)
 
     def test_direct_tomllib_import_fails(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateMetadataDiscipline,
+        self, tmp_path: Path, v: FlextInfraValidateMetadataDiscipline
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("import tomllib\n", "bad.py")
@@ -78,9 +71,7 @@ class TestMetadataDiscipline:
         tm.that(" | ".join(report.violations), has="tomllib")
 
     def test_allowlisted_core_metadata_module_passes(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateMetadataDiscipline,
+        self, tmp_path: Path, v: FlextInfraValidateMetadataDiscipline
     ) -> None:
         allowlisted = (
             tmp_path
@@ -96,9 +87,7 @@ class TestMetadataDiscipline:
         tm.that(report.passed, eq=True)
 
     def test_outside_flext_infra_scope_is_ignored(
-        self,
-        tmp_path: Path,
-        v: FlextInfraValidateMetadataDiscipline,
+        self, tmp_path: Path, v: FlextInfraValidateMetadataDiscipline
     ) -> None:
         external = tmp_path / "other" / "src" / "other_pkg"
         external.mkdir(parents=True, exist_ok=True)

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.models import m
+    from tests import m
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
@@ -20,8 +21,7 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
     (project_root / ".git").mkdir()
     (project_root / "Makefile").write_text("test:\n\t@true\n", encoding="utf-8")
     (project_root / "pyproject.toml").write_text(
-        "[project]\nname = 'flext-demo'\nversion = '0.1.0'\n",
-        encoding="utf-8",
+        "[project]\nname = 'flext-demo'\nversion = '0.1.0'\n", encoding="utf-8"
     )
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     constants_path = package_root / "constants.py"
@@ -50,7 +50,7 @@ class TestsFlextInfraUtilitiesRopeHooks:
         workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
 
         results: list[m.Infra.Result] = list(
-            u.Infra.run_rope_post_hooks(workspace_root, dry_run=False),
+            u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
         )
 
         assert any(
@@ -58,13 +58,11 @@ class TestsFlextInfraUtilitiesRopeHooks:
         )
         assert (
             'class FlextDemoConstants:\n    FOO = "value"'
-            in constants_path.read_text(
-                encoding="utf-8",
-            )
+            in constants_path.read_text(encoding="utf-8")
         )
         consumer_text = consumer_path.read_text(encoding="utf-8")
-        assert "from demo_pkg.constants import c" in consumer_text
-        assert "value = c.FOO" in consumer_text
+        tm.that(consumer_text, has="from demo_pkg.constants import c")
+        tm.that(consumer_text, has="value = c.FOO")
 
     def test_run_rope_post_hooks_dry_run_is_non_mutating(self, tmp_path: Path) -> None:
         workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
@@ -72,10 +70,10 @@ class TestsFlextInfraUtilitiesRopeHooks:
         original_consumer = consumer_path.read_text(encoding="utf-8")
 
         results: list[m.Infra.Result] = list(
-            u.Infra.run_rope_post_hooks(workspace_root, dry_run=True),
+            u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
         )
 
         assert any(result.file_path == consumer_path for result in results)
         assert all(not result.modified for result in results)
-        assert constants_path.read_text(encoding="utf-8") == original_constants
-        assert consumer_path.read_text(encoding="utf-8") == original_consumer
+        tm.that(constants_path.read_text(encoding="utf-8"), eq=original_constants)
+        tm.that(consumer_path.read_text(encoding="utf-8"), eq=original_consumer)

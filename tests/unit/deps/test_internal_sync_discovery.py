@@ -7,23 +7,18 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.typings import t
+from tests import t
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Callable,
-    )
+    from collections.abc import Callable
 
-    from tests.protocols import p
+    from tests import p
 
 
 class _TomlReaderStub:
     """Test stub satisfying p.Infra.TomlReader protocol."""
 
-    def __init__(
-        self,
-        fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
-    ) -> None:
+    def __init__(self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]) -> None:
         self._fn = fn
 
     def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
@@ -59,14 +54,13 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
     def test_parse_gitmodules_valid(self, tmp_path: Path) -> None:
         gitmodules = tmp_path / ".gitmodules"
         gitmodules.write_text(
-            '[submodule "flext-core"]\n\tpath = flext-core\n\turl = git@github.com:flext-sh/flext-core.git\n[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n',
+            '[submodule "flext-core"]\n\tpath = flext-core\n\turl = git@github.com:flext-sh/flext-core.git\n[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n'
         )
         result = FlextInfraInternalDependencySyncService().parse_gitmodules(gitmodules)
         tm.that(result, has="flext-core")
         tm.that(result, has="flext-api")
         tm.that(
-            result["flext-core"].ssh_url,
-            eq="git@github.com:flext-sh/flext-core.git",
+            result["flext-core"].ssh_url, eq="git@github.com:flext-sh/flext-core.git"
         )
         tm.that(result["flext-core"].https_url.startswith("https://"), eq=True)
 
@@ -74,24 +68,21 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         path = tmp_path / ".gitmodules"
         path.write_text("")
         tm.that(
-            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
-            empty=True,
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
         )
 
     def test_parse_gitmodules_no_url(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text('[submodule "test"]\n\tpath = test\n')
         tm.that(
-            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
-            empty=True,
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
         )
 
     def test_parse_gitmodules_non_submodule_section(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text("[other]\nfoo = bar\n")
         tm.that(
-            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
-            empty=True,
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), empty=True
         )
 
     def test_parse_repo_map_success(self) -> None:
@@ -103,8 +94,8 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
                     "flext-core": {
                         "ssh_url": "git@github.com:flext-sh/flext-core.git",
                         "https_url": "https://github.com/flext-sh/flext-core.git",
-                    },
-                },
+                    }
+                }
             }),
         )
         result = service.parse_repo_map(Path("/fake/map.toml"))
@@ -148,8 +139,8 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
             service,
             r[t.Infra.ContainerDict].ok({
                 "repo": {
-                    "flext-core": {"ssh_url": "git@github.com:flext-sh/flext-core.git"},
-                },
+                    "flext-core": {"ssh_url": "git@github.com:flext-sh/flext-core.git"}
+                }
             }),
         )
         result = service.parse_repo_map(Path("/fake/map.toml"))
@@ -172,8 +163,8 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
                         "dependencies": {
                             "flext-core": {"path": ".flext-deps/flext-core"},
                             "requests": "^2.28",
-                        },
-                    },
+                        }
+                    }
                 },
                 "project": {},
             }),
@@ -193,7 +184,7 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
                     "dependencies": [
                         "flext-core @ file:.flext-deps/flext-core",
                         "requests>=2.28",
-                    ],
+                    ]
                 },
             }),
         )

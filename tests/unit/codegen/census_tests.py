@@ -15,23 +15,20 @@ import pytest
 from flext_tests import r, tm
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
-from tests.models import m
-from tests.utilities import u
+from tests import m
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:
     parsed = u.Infra.parse_namespace_validation(
         r[m.Infra.ValidationReport].ok(
-            m.Infra.ValidationReport(
-                passed=True,
-                violations=[violation],
-            ),
-        ),
+            m.Infra.ValidationReport(passed=True, violations=[violation])
+        )
     )
     if parsed.failure:
         return None
@@ -91,7 +88,7 @@ class TestParseViolationValid:
         result = _parse_violation(violation_str)
         tm.that(result, none=False)
         tm.that(result, is_=m.Infra.CensusViolation)
-        assert result is not None
+        tm.that(result, none=False)
         tm.that(result.rule, eq=expected_rule)
         tm.that(result.module, eq=expected_module)
         tm.that(result.line, eq=expected_line)
@@ -126,49 +123,39 @@ class TestParseViolationInvalid:
 
 class TestFixabilityClassification:
     def test_ns000_not_fixable(self) -> None:
-        result = _parse_violation(
-            "[NS-000-001] src/file.py:1 — Structure violation",
-        )
+        result = _parse_violation("[NS-000-001] src/file.py:1 — Structure violation")
         tm.that(result, none=False)
-        assert result is not None
+        tm.that(result, none=False)
         tm.that(not result.fixable, eq=True)
 
     def test_ns001_fixable(self) -> None:
-        result = _parse_violation(
-            "[NS-001-001] src/file.py:1 — Constant violation",
-        )
+        result = _parse_violation("[NS-001-001] src/file.py:1 — Constant violation")
         tm.that(result, none=False)
-        assert result is not None
+        tm.that(result, none=False)
         tm.that(result.fixable, eq=True)
 
     def test_ns002_fixable(self) -> None:
-        result = _parse_violation(
-            "[NS-002-001] src/file.py:1 — TypeVar violation",
-        )
+        result = _parse_violation("[NS-002-001] src/file.py:1 — TypeVar violation")
         tm.that(result, none=False)
-        assert result is not None
+        tm.that(result, none=False)
         tm.that(result.fixable, eq=True)
 
     def test_ns000_multiple_sub_rules_not_fixable(self) -> None:
         for sub in ("001", "002", "099"):
-            result = _parse_violation(
-                f"[NS-000-{sub}] src/x.py:1 — msg",
-            )
+            result = _parse_violation(f"[NS-000-{sub}] src/x.py:1 — msg")
             tm.that(result, none=False)
-            assert result is not None
+            tm.that(result, none=False)
             tm.that(not result.fixable, eq=True)
 
 
 class TestCensusExecute:
     def test_execute_fails_when_apply_changes_requested(self, tmp_path: Path) -> None:
         result = FlextInfraCodegenCensus(
-            workspace_root=tmp_path,
-            apply_changes=True,
+            workspace_root=tmp_path, apply_changes=True
         ).execute()
 
         tm.fail(
-            result,
-            has="census is read-only; use flext-infra codegen auto-fix --apply",
+            result, has="census is read-only; use flext-infra codegen auto-fix --apply"
         )
 
 

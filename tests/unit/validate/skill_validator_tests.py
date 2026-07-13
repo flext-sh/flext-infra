@@ -12,14 +12,14 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-from tests.constants import c
-from tests.utilities import u
+from tests import c
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.models import m
-    from tests.typings import t
+    from tests import m
+    from tests import t
 
 
 class TestSafeLoadYaml:
@@ -30,24 +30,24 @@ class TestSafeLoadYaml:
         f = tmp_path / "test.yml"
         f.write_text("key: value\nlist:\n  - item1\n  - item2")
         result = u.Cli.yaml_load_mapping(f)
-        assert result.get("key") == "value"
+        tm.that(result.get("key"), eq="value")
         list_value = result.get("list")
-        assert isinstance(list_value, list)
-        assert list_value == ["item1", "item2"]
+        tm.that(list_value, is_=list)
+        tm.that(list_value, eq=["item1", "item2"])
 
     def test_empty_and_null(self, tmp_path: Path) -> None:
         """Empty/null YAML returns empty dict."""
         (tmp_path / "empty.yml").write_text("")
-        assert dict(u.Cli.yaml_load_mapping(tmp_path / "empty.yml")) == {}
+        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "empty.yml")), eq={})
         (tmp_path / "null.yml").write_text("null")
-        assert dict(u.Cli.yaml_load_mapping(tmp_path / "null.yml")) == {}
+        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "null.yml")), eq={})
 
     def test_non_dict_returns_empty_mapping(self, tmp_path: Path) -> None:
         """Non-mapping YAML normalizes to an empty mapping."""
         (tmp_path / "list.yml").write_text("- item1\n- item2")
-        assert dict(u.Cli.yaml_load_mapping(tmp_path / "list.yml")) == {}
+        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "list.yml")), eq={})
         (tmp_path / "str.yml").write_text("just a string")
-        assert dict(u.Cli.yaml_load_mapping(tmp_path / "str.yml")) == {}
+        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "str.yml")), eq={})
 
 
 class TestStringList:
@@ -82,7 +82,7 @@ class TestSkillValidatorCore:
         skills = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skills.mkdir(parents=True)
         report: m.Infra.ValidationReport = tm.ok(
-            validator.build_report(tmp_path, "test-skill"),
+            validator.build_report(tmp_path, "test-skill")
         )
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, contains="no rules.yml")
@@ -102,8 +102,7 @@ class TestSkillValidatorCore:
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules: {not: a_list}")
         tm.fail(
-            validator.build_report(tmp_path, "test-skill"),
-            has="rules must be a list",
+            validator.build_report(tmp_path, "test-skill"), has="rules must be a list"
         )
 
     def test_validate_non_dict_rule_skipped(self, tmp_path: Path) -> None:
@@ -113,13 +112,12 @@ class TestSkillValidatorCore:
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
         report: m.Infra.ValidationReport = tm.ok(
-            validator.build_report(tmp_path, "test-skill"),
+            validator.build_report(tmp_path, "test-skill")
         )
         tm.that(report.passed, eq=True)
 
     def test_validate_scalar_rules_yml_yields_empty_success(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Scalar rules.yml content yields an empty successful report."""
         validator = FlextInfraSkillValidator(skill="test-skill")
@@ -127,7 +125,7 @@ class TestSkillValidatorCore:
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
         report: m.Infra.ValidationReport = tm.ok(
-            validator.build_report(tmp_path, "test-skill"),
+            validator.build_report(tmp_path, "test-skill")
         )
         tm.that(report.passed, eq=True)
         tm.that(report.violations, empty=True)
@@ -139,18 +137,14 @@ class TestSkillValidatorRenderTemplate:
     def test_absolute_path(self, tmp_path: Path) -> None:
         """Absolute path template resolves correctly."""
         result = FlextInfraSkillValidator._render_template(
-            tmp_path,
-            "/absolute/path/{skill}/file.json",
-            "my-skill",
+            tmp_path, "/absolute/path/{skill}/file.json", "my-skill"
         )
         tm.that(str(result), eq="/absolute/path/my-skill/file.json")
 
     def test_relative_path(self, tmp_path: Path) -> None:
         """Relative path template resolves with skill name."""
         result = FlextInfraSkillValidator._render_template(
-            tmp_path,
-            ".reports/{skill}/report.json",
-            "my-skill",
+            tmp_path, ".reports/{skill}/report.json", "my-skill"
         )
         tm.that(str(result), has="my-skill")
         tm.that(str(result), has="report.json")
@@ -177,13 +171,9 @@ class TestSkillValidatorAstGrepCount:
         rule_file = skill / "rule.yaml"
         rule_file.write_text("id: test\nlanguage: python\nrule: {pattern: 'test'}")
         count = v._run_ast_grep_count(
-            {"file": str(rule_file)},
-            skill,
-            tmp_path,
-            ["**/*.py"],
-            [],
+            {"file": str(rule_file)}, skill, tmp_path, ["**/*.py"], []
         )
-        assert isinstance(count, int)
+        tm.that(count, is_=int)
 
     def test_custom_count_empty_or_missing(self, tmp_path: Path) -> None:
         """Empty/nonexistent custom script returns 0."""
@@ -193,20 +183,12 @@ class TestSkillValidatorAstGrepCount:
         empty = {"id": "t", "type": "custom", "script": ""}
         missing = {"id": "t", "type": "custom", "script": "nonexistent.py"}
         tm.that(
-            v._run_custom_count(
-                empty,
-                skill,
-                tmp_path,
-                c.Infra.OperationMode.BASELINE,
-            ),
+            v._run_custom_count(empty, skill, tmp_path, c.Infra.OperationMode.BASELINE),
             eq=0,
         )
         tm.that(
             v._run_custom_count(
-                missing,
-                skill,
-                tmp_path,
-                c.Infra.OperationMode.BASELINE,
+                missing, skill, tmp_path, c.Infra.OperationMode.BASELINE
             ),
             eq=0,
         )

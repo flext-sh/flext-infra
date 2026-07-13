@@ -12,12 +12,12 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests.constants import c
+from tests import c
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.typings import t
+    from tests import t
 
 
 def _scanner() -> FlextInfraTextPatternScanner:
@@ -50,10 +50,7 @@ class TestScannerCore:
         (tmp_path / "included.txt").write_text("hello")
         (tmp_path / "excluded.log").write_text("hello")
         result = scanner.scan(
-            tmp_path,
-            pattern="hello",
-            includes=["*.txt"],
-            excludes=["*.log"],
+            tmp_path, pattern="hello", includes=["*.txt"], excludes=["*.log"]
         )
         tm.ok(result)
         tm.that(result.value["files_scanned"], eq=1)
@@ -89,20 +86,15 @@ class TestScannerCore:
         """Empty includes fail and invalid enum payload is rejected at validation."""
         tm.fail(_scanner().scan(tmp_path, pattern="x", includes=[]))
         with pytest.raises(c.ValidationError):
-            _ = FlextInfraTextPatternScanner.model_validate(
-                {"pattern": "x", "match": "invalid"},
-            )
+            _ = FlextInfraTextPatternScanner.model_validate({
+                "pattern": "x",
+                "match": "invalid",
+            })
 
     def test_scan_invalid_regex(self, tmp_path: Path) -> None:
         """Invalid regex pattern returns failure."""
         (tmp_path / "test.txt").write_text("content")
-        tm.fail(
-            _scanner().scan(
-                tmp_path,
-                pattern="[invalid",
-                includes=["*.txt"],
-            ),
-        )
+        tm.fail(_scanner().scan(tmp_path, pattern="[invalid", includes=["*.txt"]))
 
 
 class TestScannerMultiFile:
@@ -131,11 +123,7 @@ class TestScannerMultiFile:
         subdir = tmp_path / "subdir"
         subdir.mkdir()
         (subdir / "nested.txt").write_text("hello")
-        result = _scanner().scan(
-            tmp_path,
-            pattern="hello",
-            includes=["**/*.txt"],
-        )
+        result = _scanner().scan(tmp_path, pattern="hello", includes=["**/*.txt"])
         tm.ok(result)
         tm.that(result.value["files_scanned"], eq=1)
 
@@ -145,11 +133,7 @@ class TestScannerMultiFile:
         f.write_text("hello")
         f.chmod(0o000)
         try:
-            result = _scanner().scan(
-                tmp_path,
-                pattern="hello",
-                includes=["*.txt"],
-            )
+            result = _scanner().scan(tmp_path, pattern="hello", includes=["*.txt"])
             tm.that(result.failure, eq=True)
         finally:
             f.chmod(0o644)

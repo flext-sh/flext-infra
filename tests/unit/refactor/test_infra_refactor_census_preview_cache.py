@@ -10,14 +10,15 @@ from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
 
-    from tests.typings import t
+    from tests import t
 
 
 class TestsFlextInfraRefactorCensusPreviewCache:
@@ -25,9 +26,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
 
     @staticmethod
     def _candidate(
-        file_path: Path,
-        *,
-        object_name: str = "helper",
+        file_path: Path, *, object_name: str = "helper"
     ) -> m.Infra.Census.RemovalCandidate:
         """Build one minimal top-level removal candidate."""
         return m.Infra.Census.RemovalCandidate(
@@ -42,15 +41,11 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         )
 
     def test_preview_simple_removal_candidate_reuses_shared_source_cache(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Repeated previews reuse the same original source snapshot."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
         module_path.write_text(
@@ -65,10 +60,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         original_source = FlextInfraRopeWorkspace.source
         source_calls = 0
 
-        def _tracking_source(
-            rope: FlextInfraRopeWorkspace,
-            file_path: Path,
-        ) -> str:
+        def _tracking_source(rope: FlextInfraRopeWorkspace, file_path: Path) -> str:
             """Track source reads for the target module."""
             nonlocal source_calls
             if file_path.resolve() == module_path.resolve():
@@ -76,18 +68,13 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             return original_source(rope, file_path)
 
         def _preview_source_writes(
-            *args: object,
-            **kwargs: object,
+            *args: object, **kwargs: object
         ) -> tuple[bool, list[str]]:
             """Short-circuit protected preview writes for this unit test."""
             del args, kwargs
             return (True, [])
 
-        monkeypatch.setattr(
-            FlextInfraRopeWorkspace,
-            "source",
-            _tracking_source,
-        )
+        monkeypatch.setattr(FlextInfraRopeWorkspace, "source", _tracking_source)
         monkeypatch.setattr(
             FlextInfraUtilitiesProtectedEdit,
             "preview_source_writes",
@@ -111,20 +98,17 @@ class TestsFlextInfraRefactorCensusPreviewCache:
                 source_cache=source_cache,
             )
 
-        assert first.unwrap() is True
-        assert second.unwrap() is True
-        assert source_calls == 1
-        assert module_path.resolve() in source_cache
+        tm.that(first.unwrap(), eq=True)
+        tm.that(second.unwrap(), eq=True)
+        tm.that(source_calls, eq=1)
+        tm.that(source_cache, has=module_path.resolve())
 
     def test_build_simple_removal_sources_collapse_excess_blank_lines(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Removing a top-level block should not leave four blank lines behind."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
         module_path.write_text(
@@ -152,25 +136,21 @@ class TestsFlextInfraRefactorCensusPreviewCache:
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             updates = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources(
-                rope,
-                candidate,
+                rope, candidate
             )
 
-        assert updates is not None
+        tm.that(updates, none=False)
         updated_source = updates[module_path.resolve()]
-        assert "class Helper" not in updated_source
-        assert "def after" in updated_source
-        assert "\n\n\n\n" not in updated_source
+        tm.that(updated_source, lacks="class Helper")
+        tm.that(updated_source, has="def after")
+        tm.that(updated_source, lacks="\n\n\n\n")
 
     def test_build_simple_removal_sources_handle_multiline_class_base_references(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Multiline class-base references should not abort simple-removal planning."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         base_path = package_root / "base.py"
         base_path.write_text(
@@ -220,25 +200,21 @@ class TestsFlextInfraRefactorCensusPreviewCache:
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             updates = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources(
-                rope,
-                candidate,
+                rope, candidate
             )
 
-        assert updates is not None
+        tm.that(updates, none=False)
         updated_consumer = updates[consumer_path.resolve()]
-        assert "from flext_demo.base import Shared" not in updated_consumer
-        assert "Shared," not in updated_consumer
-        assert "Other," in updated_consumer
+        tm.that(updated_consumer, lacks="from flext_demo.base import Shared")
+        tm.that(updated_consumer, lacks="Shared,")
+        tm.that(updated_consumer, has="Other,")
 
     def test_removed_alias_names_resolve_runtime_aliases_via_rope_objects(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Removed aliases are resolved from Rope object identity, not AST."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
         module_path.write_text(
@@ -254,23 +230,17 @@ class TestsFlextInfraRefactorCensusPreviewCache:
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             alias_names = FlextInfraUtilitiesRefactorCensus._removed_alias_names(
-                rope,
-                module_path,
-                target_name="Helper",
-                removed_ranges=((8, 8),),
+                rope, module_path, target_name="Helper", removed_ranges=((8, 8),)
             )
 
-        assert alias_names == ("h",)
+        tm.that(alias_names, eq=("h",))
 
     def test_aliased_import_occurrence_lines_use_rope_import_statements(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Aliased import usage is located from Rope import statements."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         base_path = package_root / "base.py"
         base_path.write_text(
@@ -281,39 +251,26 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         consumer_source = (
             "from flext_demo.base import Shared as Alias\n\nVALUE = Alias\n"
         )
-        consumer_path.write_text(
-            consumer_source,
-            encoding="utf-8",
-        )
+        consumer_path.write_text(consumer_source, encoding="utf-8")
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             occurrence_lines = (
                 FlextInfraUtilitiesRefactorCensus._aliased_import_occurrence_lines(
-                    rope,
-                    consumer_path,
-                    consumer_source,
-                    imported_name="Shared",
+                    rope, consumer_path, consumer_source, imported_name="Shared"
                 )
             )
 
-        assert occurrence_lines == (1, 3)
+        tm.that(occurrence_lines, eq=(1, 3))
 
     def test_validated_project_reports_share_one_preview_source_cache(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Dry-run validation reuses one source cache across candidates."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
-        module_path.write_text(
-            "from __future__ import annotations\n",
-            encoding="utf-8",
-        )
+        module_path.write_text("from __future__ import annotations\n", encoding="utf-8")
         service = FlextInfraRefactorCensus(
             workspace_root=workspace_root,
             selected_projects=("flext-demo",),
@@ -339,7 +296,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         ) -> p.Result[bool]:
             """Capture the source cache instance reused across candidates."""
             del rope, workspace, candidate, gates
-            assert source_cache is not None
+            tm.that(source_cache, none=False)
             seen_cache_ids.append(id(source_cache))
             return r[bool].ok(True)
 
@@ -350,25 +307,19 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         )
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            validated = service._validated_project_reports(
-                rope,
-                (project_report,),
-            )
+            validated = service._validated_project_reports(rope, (project_report,))
 
-        assert len(validated) == 1
-        assert validated[0].removal_candidate_count == 2
-        assert len(seen_cache_ids) == 2
-        assert seen_cache_ids[0] == seen_cache_ids[1]
+        tm.that(len(validated), eq=1)
+        tm.that(validated[0].removal_candidate_count, eq=2)
+        tm.that(len(seen_cache_ids), eq=2)
+        tm.that(seen_cache_ids[0], eq=seen_cache_ids[1])
 
     def test_preview_simple_removal_candidate_formats_blank_lines_after_removal(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Preview formatting fixes blank-line churn introduced by class removal."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "dispatcher.py"
         module_path.write_text(
@@ -399,33 +350,23 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             preview = (
                 FlextInfraUtilitiesRefactorCensus.preview_simple_removal_candidate(
-                    rope,
-                    workspace_root,
-                    candidate,
-                    gates=("lint",),
+                    rope, workspace_root, candidate, gates=("lint",)
                 )
             )
 
-        assert preview.unwrap() is True
+        tm.that(preview.unwrap(), eq=True)
         source = module_path.read_text(encoding="utf-8")
-        assert "class ExampleDispatchDsl" in source
+        tm.that(source, has="class ExampleDispatchDsl")
 
     def test_validated_project_reports_record_preview_rejections(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Rejected previews remain visible as violations without aborting."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
-        module_path.write_text(
-            "from __future__ import annotations\n",
-            encoding="utf-8",
-        )
+        module_path.write_text("from __future__ import annotations\n", encoding="utf-8")
         service = FlextInfraRefactorCensus(
             workspace_root=workspace_root,
             selected_projects=("flext-demo",),
@@ -456,29 +397,22 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         )
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            validated = service._validated_project_reports(
-                rope,
-                (project_report,),
-            )
+            validated = service._validated_project_reports(rope, (project_report,))
 
-        assert len(validated) == 1
-        assert validated[0].removal_candidate_count == 0
-        assert len(validated[0].removal_candidates) == 0
-        assert len(validated[0].violations) == 1
-        assert validated[0].violations_total == 1
-        assert validated[0].violations[0].kind == "preview_rejected"
-        assert validated[0].violations[0].description == "preview broke"
+        tm.that(len(validated), eq=1)
+        tm.that(validated[0].removal_candidate_count, eq=0)
+        tm.that(len(validated[0].removal_candidates), eq=0)
+        tm.that(len(validated[0].violations), eq=1)
+        tm.that(validated[0].violations_total, eq=1)
+        tm.that(validated[0].violations[0].kind, eq="preview_rejected")
+        tm.that(validated[0].violations[0].description, eq="preview broke")
 
     def test_preview_simple_removal_candidate_skips_project_validate_on_refresh(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Preview cleanup keeps preserved indexes without revalidating Rope."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
         module_path.write_text(
@@ -493,8 +427,7 @@ class TestsFlextInfraRefactorCensusPreviewCache:
         refresh_calls: list[tuple[bool, bool]] = []
 
         def _preview_source_writes(
-            *args: object,
-            **kwargs: object,
+            *args: object, **kwargs: object
         ) -> tuple[bool, list[str]]:
             """Short-circuit protected preview writes for this unit test."""
             del args, kwargs
@@ -521,19 +454,12 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             "preview_source_writes",
             staticmethod(_preview_source_writes),
         )
-        monkeypatch.setattr(
-            FlextInfraRopeWorkspace,
-            "refresh",
-            _tracking_refresh,
-        )
+        monkeypatch.setattr(FlextInfraRopeWorkspace, "refresh", _tracking_refresh)
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             result = FlextInfraUtilitiesRefactorCensus.preview_simple_removal_candidate(
-                rope,
-                workspace_root,
-                candidate,
-                gates=("lint",),
+                rope, workspace_root, candidate, gates=("lint",)
             )
 
-        assert result.unwrap() is True
-        assert refresh_calls == [(True, False)]
+        tm.that(result.unwrap(), eq=True)
+        tm.that(refresh_calls, eq=[(True, False)])

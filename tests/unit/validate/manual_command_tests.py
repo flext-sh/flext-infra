@@ -14,7 +14,7 @@ from flext_tests import tm
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 
 if TYPE_CHECKING:
-    from tests.typings import t
+    from tests import t
 
 _V = FlextInfraManualCommandValidator
 
@@ -56,7 +56,7 @@ class TestManualCommandValidator:
     def test_uv_run_flext_infra_allowed(self) -> None:
         tm.that(
             _V.command_blocked(
-                "uv run --all-packages python -m flext_infra check --what boundary",
+                "uv run --all-packages python -m flext_infra check --what boundary"
             ),
             eq=False,
         )
@@ -72,8 +72,7 @@ class TestManualCommandValidator:
 
     def test_flext_infra_allowed(self) -> None:
         tm.that(
-            _V.command_blocked("python -m flext_infra check --what boundary"),
-            eq=False,
+            _V.command_blocked("python -m flext_infra check --what boundary"), eq=False
         )
 
     def test_render_uses_flext_infra_and_drops_scripts(self) -> None:

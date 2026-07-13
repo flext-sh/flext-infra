@@ -7,7 +7,7 @@ from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,8 +52,7 @@ class TestsFlextInfraDepsInternalSyncResolve:
         tm.that(result.value, eq="feature/test")
 
     def test_resolve_ref_uses_github_ref_name_when_head_ref_is_empty(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         result = u.Cli.capture(
             [
@@ -81,23 +80,22 @@ class TestsFlextInfraDepsInternalSyncResolve:
 
     def test_resolve_ref_uses_current_git_branch(self, tmp_path: Path) -> None:
         repo = self.create_git_repo(tmp_path, "repo")
-        assert u.Cli.run_checked(["git", "checkout", "-B", "develop"], cwd=repo).success
+        tm.ok(u.Cli.run_checked(["git", "checkout", "-B", "develop"], cwd=repo))
 
         result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
 
-        assert result == "develop"
+        tm.that(result, eq="develop")
 
     def test_resolve_ref_uses_exact_tag_on_detached_head(self, tmp_path: Path) -> None:
         repo = self.create_git_repo(tmp_path, "repo")
-        assert u.Cli.run_checked(
-            ["git", "tag", "-a", "v1.0.0", "-m", "release"],
-            cwd=repo,
-        ).success
-        assert u.Cli.run_checked(["git", "checkout", "v1.0.0"], cwd=repo).success
+        tm.ok(
+            u.Cli.run_checked(["git", "tag", "-a", "v1.0.0", "-m", "release"], cwd=repo)
+        )
+        tm.ok(u.Cli.run_checked(["git", "checkout", "v1.0.0"], cwd=repo))
 
         result = FlextInfraInternalDependencySyncService().resolve_ref(repo)
 
-        assert result == "v1.0.0"
+        tm.that(result, eq="v1.0.0")
 
     def test_resolve_ref_falls_back_to_main_for_non_repo(self, tmp_path: Path) -> None:
         project = tmp_path / "project"
@@ -117,11 +115,7 @@ class TestsFlextInfraDepsInternalSyncResolve:
                 ),
                 str(project),
             ],
-            remove_env_keys=(
-                "GITHUB_ACTIONS",
-                "GITHUB_HEAD_REF",
-                "GITHUB_REF_NAME",
-            ),
+            remove_env_keys=("GITHUB_ACTIONS", "GITHUB_HEAD_REF", "GITHUB_REF_NAME"),
         )
 
         tm.ok(result)
@@ -142,25 +136,25 @@ class TestsFlextInfraDepsInternalSyncResolve:
 
         result = FlextInfraInternalDependencySyncService().infer_owner_from_origin(repo)
 
-        assert result == "flext-sh"
+        tm.that(result, eq="flext-sh")
 
     def test_infer_owner_from_origin_returns_none_without_remote(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         repo = self.create_git_repo(tmp_path, "repo")
 
         result = FlextInfraInternalDependencySyncService().infer_owner_from_origin(repo)
 
-        assert result is None
+        tm.that(result, none=True)
 
     def test_synthesized_repo_map_builds_public_urls(self) -> None:
         result = FlextInfraInternalDependencySyncService().synthesized_repo_map(
-            "flext-sh",
-            {"flext-core", "flext-api"},
+            "flext-sh", {"flext-core", "flext-api"}
         )
 
-        assert result["flext-core"].ssh_url == "git@github.com:flext-sh/flext-core.git"
+        tm.that(
+            result["flext-core"].ssh_url, eq="git@github.com:flext-sh/flext-core.git"
+        )
         assert (
             result["flext-api"].https_url == "https://github.com/flext-sh/flext-api.git"
         )

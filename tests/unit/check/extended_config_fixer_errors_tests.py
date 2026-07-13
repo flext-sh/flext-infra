@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,56 +29,44 @@ class TestConfigFixerPublicBehavior:
         ],
     )
     def test_process_file_returns_empty_for_non_fixable_documents(
-        self,
-        tmp_path: Path,
-        pyproject: str,
-        name: str,
+        self, tmp_path: Path, pyproject: str, name: str
     ) -> None:
         file_path = tmp_path / f"{name}.toml"
         file_path.write_text(pyproject, encoding="utf-8")
 
         result = FlextInfraConfigFixer(workspace=tmp_path).process_file(file_path)
 
-        assert result.success
-        assert result.value == []
+        tm.ok(result)
+        tm.that(result.value, eq=[])
 
     def test_run_returns_verbose_messages_for_selected_project(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         u.Tests.mk_project(
-            tmp_path,
-            "project1",
-            pyproject="[tool.pyrefly]\nsearch-path = []\n",
+            tmp_path, "project1", pyproject="[tool.pyrefly]\nsearch-path = []\n"
         )
 
         result = FlextInfraConfigFixer(workspace=tmp_path).run(
-            ["project1"],
-            verbose=True,
+            ["project1"], verbose=True
         )
 
-        assert result.success
+        tm.ok(result)
         assert result.value
         assert any("project1/pyproject.toml" in line for line in result.value)
 
     def test_run_dry_run_preserves_file_while_reporting_fixes(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_dir = u.Tests.mk_project(
-            tmp_path,
-            "project1",
-            pyproject="[tool.pyrefly]\nsearch-path = []\n",
+            tmp_path, "project1", pyproject="[tool.pyrefly]\nsearch-path = []\n"
         )
         pyproject = project_dir / "pyproject.toml"
         original = pyproject.read_text(encoding="utf-8")
 
         result = FlextInfraConfigFixer(workspace=tmp_path).run(
-            ["project1"],
-            dry_run=True,
-            verbose=True,
+            ["project1"], dry_run=True, verbose=True
         )
 
-        assert result.success
+        tm.ok(result)
         assert result.value
-        assert pyproject.read_text(encoding="utf-8") == original
+        tm.that(pyproject.read_text(encoding="utf-8"), eq=original)

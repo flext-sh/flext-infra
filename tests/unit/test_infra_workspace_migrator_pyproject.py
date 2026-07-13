@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra import c
-from tests.utilities import u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.models import m
-    from tests.typings import t
+    from tests import m
+    from tests import t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorPyproject:
@@ -32,15 +32,12 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("unchanged for flext-core" in c for c in migration[0].changes),
-            eq=True,
+            any("unchanged for flext-core" in c for c in migration[0].changes), eq=True
         )
 
     def test_flext_core_dry_run(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            name="flext-core",
-            base_mk="base",
+            tmp_path, name="flext-core", base_mk="base"
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root, "flext-core"),
@@ -60,8 +57,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
 
     def test_has_flext_core_in_poetry(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            pyproject='[tool.poetry.dependencies]\nflext-core = "^0.1.0"\n',
+            tmp_path, pyproject='[tool.poetry.dependencies]\nflext-core = "^0.1.0"\n'
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -71,16 +67,11 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         )
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any("already includes" in c for c in migration[0].changes),
-            eq=True,
-        )
+        tm.that(any("already includes" in c for c in migration[0].changes), eq=True)
 
     def test_poetry_table_missing(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            pyproject="[tool]\n",
+            tmp_path, base_mk="base", pyproject="[tool]\n"
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -91,15 +82,12 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in c for c in migration[0].changes),
-            eq=True,
+            any("flext-core dependency" in c for c in migration[0].changes), eq=True
         )
 
     def test_poetry_deps_not_table(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            pyproject="[tool.poetry]\ndependencies = []\n",
+            tmp_path, base_mk="base", pyproject="[tool.poetry]\ndependencies = []\n"
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -110,15 +98,12 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in c for c in migration[0].changes),
-            eq=True,
+            any("flext-core dependency" in c for c in migration[0].changes), eq=True
         )
 
     def test_makefile_not_found(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            makefile=None,
+            tmp_path, base_mk="base", makefile=None
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -138,9 +123,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
 
     def test_pyproject_not_found(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            pyproject=None,
+            tmp_path, base_mk="base", pyproject=None
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),

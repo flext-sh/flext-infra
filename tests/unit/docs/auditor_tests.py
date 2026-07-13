@@ -12,13 +12,11 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests.models import m
-from tests.utilities import u
+from tests import m
+from tests import u
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Callable,
-    )
+    from collections.abc import Callable
     from pathlib import Path
 
 
@@ -56,26 +54,20 @@ def is_external() -> Callable[[str], bool]:
 
 class TestAuditorCore:
     def test_returns_flext_result(
-        self,
-        auditor: FlextInfraDocAuditor,
-        tmp_path: Path,
+        self, auditor: FlextInfraDocAuditor, tmp_path: Path
     ) -> None:
         result = auditor.audit(tmp_path)
         tm.that(result.success or result.failure, eq=True)
 
     def test_valid_scope_returns_success(
-        self,
-        auditor: FlextInfraDocAuditor,
-        tmp_path: Path,
+        self, auditor: FlextInfraDocAuditor, tmp_path: Path
     ) -> None:
         workspace = u.Tests.create_docs_workspace(tmp_path)
         result = auditor.audit(workspace)
         tm.ok(result)
 
     def test_report_structure(
-        self,
-        auditor: FlextInfraDocAuditor,
-        tmp_path: Path,
+        self, auditor: FlextInfraDocAuditor, tmp_path: Path
     ) -> None:
         result = auditor.audit(tmp_path)
         if result.success and result.value:
@@ -142,10 +134,7 @@ class TestAuditorNormalize:
         ],
     )
     def test_normalize_link(
-        self,
-        normalize_link: Callable[[str], str],
-        raw: str,
-        expected: str,
+        self, normalize_link: Callable[[str], str], raw: str, expected: str
     ) -> None:
         tm.that(normalize_link(raw), eq=expected)
 
@@ -183,9 +172,6 @@ class TestAuditorNormalize:
         ],
     )
     def test_is_external(
-        self,
-        is_external: Callable[[str], bool],
-        value: str,
-        expected: bool,
+        self, is_external: Callable[[str], bool], value: str, expected: bool
     ) -> None:
         tm.that(is_external(value), eq=expected)

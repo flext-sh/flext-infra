@@ -13,16 +13,9 @@ from flext_tests import tm
 from flext_infra import c
 
 if TYPE_CHECKING:
-    from tests.typings import t
+    from tests import t
 
-_PHASED_VERBS = frozenset({
-    "boot",
-    "build",
-    "check",
-    "test",
-    "val",
-    "ship",
-})
+_PHASED_VERBS = frozenset({"boot", "build", "check", "test", "val", "ship"})
 _RETIRED_VERBS = frozenset({
     "scan",
     "fmt",

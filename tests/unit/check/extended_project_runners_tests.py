@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.utilities import u
+from tests import u
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,21 +36,17 @@ class TestsExtendedProjectRunners:
         os.environ["PATH"] = f"{fake_bin}:{original_path}"
         try:
             result = checker.run_projects(
-                ["p1"],
-                ["lint", "format", "pyrefly"],
-                reports_dir=tmp_path / "reports",
+                ["p1"], ["lint", "format", "pyrefly"], reports_dir=tmp_path / "reports"
             )
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
+        tm.ok(result)
         assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(
-        self,
-        gate_method: str,
-        tmp_path: Path,
+        self, gate_method: str, tmp_path: Path
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
@@ -66,5 +63,5 @@ class TestsExtendedProjectRunners:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
-        assert result.value.gate == gate_method
+        tm.ok(result)
+        tm.that(result.value.gate, eq=gate_method)
