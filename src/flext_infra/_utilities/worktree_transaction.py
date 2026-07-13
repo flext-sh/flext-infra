@@ -490,10 +490,9 @@ class FlextInfraUtilitiesWorktreeTransaction:
         for repository in report.repositories:
             if not repository.patch:
                 continue
-            lines.extend((
-                f"diff -- repository {repository.relative_path}",
-                repository.patch,
-            ))
+            # Preserve byte-exact Git patches; decode only for the human report.
+            patch_text = repository.patch.decode(errors="replace")
+            lines.extend((f"diff -- repository {repository.relative_path}", patch_text))
         return "\n".join(lines)
 
 

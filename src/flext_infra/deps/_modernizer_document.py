@@ -273,7 +273,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if normalized_rendered == normalized_original:
             return ()
         if not dry_run:
-            u.write_file(path, rendered, encoding=c.Cli.ENCODING_DEFAULT)
+            # Persist the same normalized value used for change detection.
+            u.write_file(path, normalized_rendered, encoding=c.Cli.ENCODING_DEFAULT)
         return changes
 
 
