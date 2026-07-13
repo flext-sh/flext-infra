@@ -369,6 +369,14 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "u": "*utilities.py",
     })
     "Facade family letter → file glob mapping."
+    FAMILY_PUBLIC_MODULES: Final[t.StrMapping] = MappingProxyType({
+        "c": "constants",
+        "m": "models",
+        "p": "protocols",
+        "t": "typings",
+        "u": "utilities",
+    })
+    "Facade family letter → public facade module suffix mapping."
     NAMESPACE_FILE_TO_FAMILY: Final[t.StrMapping] = _build_namespace_file_to_family((
         ("c", tuple(MRO_CONSTANTS_FILE_NAMES)),
         ("t", tuple(MRO_TYPINGS_FILE_NAMES)),
