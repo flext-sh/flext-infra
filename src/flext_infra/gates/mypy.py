@@ -21,13 +21,30 @@ class FlextInfraMypyGate(FlextInfraGate):
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][1]
 
+    @staticmethod
+    def _has_real_module(directory: Path) -> bool:
+        """True when the dir holds a Python module other than __init__.py."""
+        for py_file in directory.rglob(c.Infra.EXT_PYTHON_GLOB):
+            if py_file.name != c.Infra.INIT_PY:
+                return True
+        return any(directory.rglob("*.pyi"))
+
     @override
     def _get_check_dirs(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
         _ = ctx
-        discovered_dirs = self._dirs_with_py(project_dir, c.Infra.CHECK_DIRS_SUBPROJECT)
+        # NOTE (multi-agent): mypy rejects a package dir whose only module is
+        # __init__.py (the flext-law section-8 placeholder for tests archived to
+        # legado/). Keep only dirs with a real, non-__init__ module. (mro-i6nq.11)
+        discovered_dirs = [
+            directory
+            for directory in self._dirs_with_py(
+                project_dir, c.Infra.CHECK_DIRS_SUBPROJECT
+            )
+            if self._has_real_module(project_dir / directory)
+        ]
         root_files = [
             path.name
             for path in sorted(project_dir.iterdir())
