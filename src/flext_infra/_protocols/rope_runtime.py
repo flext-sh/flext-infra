@@ -120,7 +120,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_doc(self) -> str | None: ...
 
-        def get_resource(self) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+        # NOTE (multi-agent, mro-f8vk / kimi): rope returns None for
+        # string-parsed modules (pycore.get_string_module(resource=None));
+        # the widened contract keeps every consumer None guard live.
+        def get_resource(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         def get_attributes(
             self,
