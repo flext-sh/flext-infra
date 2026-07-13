@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import m as cli_m
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m, t
@@ -24,7 +23,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         *,
         input_data: bytes | None = None,
         timeout: int | None = None,
-    ) -> p.Result[cli_m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Run one Git command through the canonical process facade."""
         return u.Cli.run_raw(
             (c.Infra.GIT, *arguments),

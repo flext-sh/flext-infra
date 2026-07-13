@@ -9,8 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import u as cli_u
-from flext_core import FlextUtilitiesProjectMetadata
+from flext_cli import u
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -84,9 +83,7 @@ from flext_infra._utilities.worktree_transaction import (
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
-# NOTE (multi-agent, mro-wkii.17.16 / agent: codex): keep the upstream facade
-# name distinct so the local public u alias exposes the typed Infra namespace.
-class FlextInfraUtilities(cli_u, FlextUtilitiesProjectMetadata):
+class FlextInfraUtilities(u):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
     Usage::

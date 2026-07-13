@@ -379,6 +379,7 @@ _boot_default: ## Install all projects into workspace .venv
 		echo "INFO: skipping pre-commit install (no git repository or config)"; \
 	fi
 
+# mro-45r9: resolve and maximize atomically; a conservative pre-lock can downgrade first.
 _up: ## Refresh workspace lock/install + rewrite dependency constraints + dependency report
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
@@ -393,15 +394,7 @@ _up: ## Refresh workspace lock/install + rewrite dependency constraints + depend
 	$(Q)echo "Upgrading workspace dependencies (uv workspace mode)..."; \
 	log_file="/tmp/flext-upgrade-workspace.log"; \
 	start_ts=$$(date +%s); \
-	printf " lock    ... "; \
-	if uv lock >"$$log_file" 2>&1; then \
-		echo "ok"; \
-	else \
-		echo "failed"; \
-		cat "$$log_file"; \
-		exit 1; \
-	fi; \
-	printf " update  ... "; \
+	printf " resolve ... "; \
 	if uv lock --upgrade >"$$log_file" 2>&1; then \
 		echo "ok"; \
 	else \
@@ -422,7 +415,7 @@ _up: ## Refresh workspace lock/install + rewrite dependency constraints + depend
 	echo "Upgrade summary: Upgraded=workspace Failed=0 Total=workspace"; \
 
 	$(Q)echo "Rewriting dependency constraints from uv.lock..."
-	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS)
+	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS) || exit 1
 
 	if [ "$(DEPS_REPORT)" != "0" ]; then \
 		printf "Dependency report (deptry + pip check)... "; \
@@ -460,7 +453,7 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Rewriting dependency constraints from uv.lock..."; \
-	$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS); \
+	$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
 	echo ""
 	$(Q)echo "Dependency constraint rewrite complete."
 
