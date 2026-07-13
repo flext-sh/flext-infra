@@ -487,6 +487,20 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 f"{before.warnings}->{after.warnings} "
                 f"({after.warnings - before.warnings:+d})"
             )
+            if (
+                after.errors > before.errors
+                or after.warnings > before.warnings
+                or (after.exit_code != 0 and before.exit_code == 0)
+            ):
+                lines.extend((f"{after.tool} diagnostics after command:", after.output))
+        for label, output in (
+            ("command stdout", report.command_output.stdout),
+            ("command stderr", report.command_output.stderr),
+            ("import stdout", report.import_probe.stdout),
+            ("import stderr", report.import_probe.stderr),
+        ):
+            if output:
+                lines.extend((f"{label}:", output))
         for repository in report.repositories:
             if not repository.patch:
                 continue
