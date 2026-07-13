@@ -1,7 +1,7 @@
 """Base.mk freshness validation service.
 
-Checks that the workspace root base.mk matches the output from the
-canonical template generator, detecting template drift.
+Checks that the canonical base.mk owner matches the output from the template
+generator, detecting template drift in workspace and standalone modes.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraBaseMkValidator(s[bool]):
-    """Validates root base.mk freshness against the template generator."""
+    """Validate canonical base.mk freshness against the template generator."""
 
     generator: Annotated[
         FlextInfraBaseMkGenerator | None,
@@ -33,7 +33,7 @@ class FlextInfraBaseMkValidator(s[bool]):
     ] = None
 
     def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
-        """Validate root base.mk exists and matches generated template output.
+        """Validate that canonical base.mk matches generated template output.
 
         Args:
             workspace_root: Root directory of the workspace.
@@ -43,20 +43,31 @@ class FlextInfraBaseMkValidator(s[bool]):
 
         """
         try:
-            source = workspace_root / c.Infra.BASE_MK
+            source = self._canonical_source(workspace_root)
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
         if not source.exists():
-            return r[m.Infra.ValidationReport].ok(self._missing_source_report())
+            return r[m.Infra.ValidationReport].ok(self._missing_source_report(source))
         return self._compare_with_generated(source)
 
     @staticmethod
-    def _missing_source_report() -> m.Infra.ValidationReport:
-        """Return the canonical missing-root-base.mk report."""
+    def _canonical_source(workspace_root: Path) -> Path:
+        """Return the base.mk path owned by the detected execution mode."""
+        # mro-wkii.17.26: Validate the same sole owner selected by workspace sync.
+        infra_project = workspace_root / c.Infra.PACKAGE_IMPORT_NAME.replace("_", "-")
+        owner = (
+            infra_project
+            if (infra_project / c.Infra.PYPROJECT_FILENAME).is_file()
+            else workspace_root
+        )
+        return owner / c.Infra.BASE_MK
+
+    @staticmethod
+    def _missing_source_report(source: Path) -> m.Infra.ValidationReport:
+        """Return the canonical missing-base.mk report."""
+        violation = f"missing canonical base.mk: {source}"
         return m.Infra.ValidationReport(
-            passed=False,
-            violations=["missing root base.mk"],
-            summary="missing root base.mk",
+            passed=False, violations=[violation], summary=violation
         )
 
     def _compare_with_generated(
@@ -96,13 +107,13 @@ class FlextInfraBaseMkValidator(s[bool]):
         violations: t.MutableSequenceOf[str] = []
         if generated_hash != existing_hash:
             violations.append(
-                "root base.mk is stale (does not match generated template)"
+                "canonical base.mk is stale (does not match generated template)"
             )
         passed = not violations
         summary = (
-            "root base.mk matches generated template"
+            "canonical base.mk matches generated template"
             if passed
-            else "root base.mk is out of sync with templates"
+            else "canonical base.mk is out of sync with templates"
         )
         return m.Infra.ValidationReport(
             passed=passed, violations=violations, summary=summary
