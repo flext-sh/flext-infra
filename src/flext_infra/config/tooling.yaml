@@ -11,6 +11,7 @@ Infra:
         pep621-dev-dependency-groups: [dev]
       hatch:
         allow-direct-references: true
+        packaged-data-dirs: [config, templates]
       ruff:
         # NOTE (multi-agent, mro-wkii.17.25): legacy trees are not production roots.
         exclude:
