@@ -25,12 +25,16 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         timeout: int | None = None,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run one Git command through the canonical process facade."""
-        return u.Cli.run_raw(
+        result = u.Cli.run_raw(
             (c.Infra.GIT, *arguments),
             cwd=repo_root,
             input_data=input_data,
             timeout=timeout,
         )
+        if result.failure:
+            return r.fail(result.error or "git command execution failed")
+        output: p.Cli.CommandOutput = result.value
+        return r.ok(output)
 
     @classmethod
     def git_capture(cls, repo_root: Path, arguments: t.StrSequence) -> p.Result[str]:

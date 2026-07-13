@@ -171,7 +171,11 @@ class FlextInfraUtilitiesDependencies:
                     current_specifier=(
                         raw_value
                         if isinstance(raw_value, str)
-                        else str(raw_value.get(c.Infra.VERSION, ""))
+                        else (
+                            str(raw_value.get(c.Infra.VERSION, ""))
+                            if isinstance(raw_value, Mapping)
+                            else ""
+                        )
                     ),
                 )
                 if isinstance(raw_value, str):
