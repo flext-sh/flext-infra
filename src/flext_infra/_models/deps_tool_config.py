@@ -48,6 +48,17 @@ class FlextInfraModelsDepsToolSettings(
                 description="Allow direct references in project metadata.",
             ),
         ]
+        packaged_data_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="packaged-data-dirs",
+                default_factory=tuple,
+                description=(
+                    "Root data directories force-included into the wheel when "
+                    "present (e.g. config, templates), so they survive install."
+                ),
+            ),
+        ]
 
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen.grpc import FlextInfraCodegenGrpc
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenPipelineStagesMixin:
-    """Seven linear codegen stage handlers, each a single fail-fast boundary.
+    """Eight linear codegen stage handlers, each a single fail-fast boundary.
 
     Composed into FlextInfraCodegenPipeline via MRO; every handler runs through
     the facade's ``_run_stage`` harness and caches its output in ``self._state``.
@@ -155,6 +156,28 @@ class FlextInfraCodegenPipelineStagesMixin:
             c.Infra.PipelineStage.LAZY_INIT,
             _action,
             lambda count: {"unmapped_count": count},
+        )
+
+    def _stage_grpc(
+        self, ctx: m.Cli.PipelineStageContext
+    ) -> p.Result[m.Cli.PipelineStageResult]:
+        """Generate real gRPC runtime modules before initializer discovery."""
+
+        def _action() -> bool:
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            result = FlextInfraCodegenGrpc(
+                workspace_root=ctx.workspace_root,
+                apply_changes=not dry_run,
+                check_only=dry_run,
+            ).execute()
+            if result.failure:
+                raise RuntimeError(result.error or "gRPC codegen failed")
+            return result.value
+
+        return self._run_stage(
+            c.Infra.PipelineStage.GRPC,
+            _action,
+            lambda synchronized: {"synchronized": synchronized},
         )
 
     def _stage_census_after(

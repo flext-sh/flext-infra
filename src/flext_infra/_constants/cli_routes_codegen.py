@@ -9,6 +9,7 @@ from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen.grpc import FlextInfraCodegenGrpc
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -77,6 +78,12 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 "Generate/refresh PEP 562 lazy-import __init__.py files",
                 FlextInfraCodegenLazyInit,
                 "init complete",
+            ),
+            (
+                "grpc",
+                "Generate Python gRPC modules from package proto schemas",
+                FlextInfraCodegenGrpc,
+                "gRPC modules synchronized",
             ),
             (
                 "census",

@@ -80,8 +80,9 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[str].ok(rendered)
 
     @staticmethod
-    def _validate_project_metadata(project: t.MutableJsonMapping) -> p.Result[bool]:
+    def _validate_project_metadata(project: t.JsonMapping) -> p.Result[bool]:
         """Require the modern static PEP 621 fields shared by uv, pip, and Poetry."""
+        # mro-wkii.17.26 (codex): metadata validation is read-only by contract.
         for key in ("name", "version", "description", "readme", "requires-python"):
             value = project.get(key)
             if not isinstance(value, str) or not value.strip():

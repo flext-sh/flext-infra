@@ -262,12 +262,20 @@ class FlextInfraUtilitiesDocsRender:
         description = str(data.get("description", "")).strip() or "_not declared_"
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
+        # NOTE(mro-wkii.17.26, agent codex): render release status from package metadata.
         return "\n".join([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name}",
             "",
             f"**Version**: `{version}` | **Python**: 3.13+ | **Project class**: `{scope.project_class}`",
+            "",
+            (
+                f"> **Alpha ({version}).** This package is alpha quality. Every "
+                "package in the workspace must be re-checked and re-validated "
+                f"at {version} before any promotion beyond alpha; treat interfaces "
+                "as unstable."
+            ),
             "",
             "## Purpose",
             "",

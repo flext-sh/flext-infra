@@ -221,6 +221,7 @@ class FlextInfraConstantsMake:
             "constraints",
             "docs",
             "gen",
+            "grpc",
             "mod",
             "stubs",
             "sync",

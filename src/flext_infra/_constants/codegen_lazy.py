@@ -30,11 +30,14 @@ class FlextInfraConstantsCodegenLazy:
     "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
-    # mro-wkii.17.26 (codex): cleanup is the only owner of retired init artifacts.
-    OBSOLETE_GENERATED_INIT_FILES: Final[t.StrSequence] = ("__unit__.py",)
+    # mro-wkii.17.26 (codex): cleanup owns every retired generated init artifact.
+    OBSOLETE_GENERATED_INIT_FILES: Final[t.StrSequence] = (
+        "__init__.pyi",
+        "__unit__.py",
+    )
     "Generated initializer artifacts removed during every codegen pass."
     INIT_PYI: Final[str] = "__init__.pyi"
-    "Typing stub paired with generated thin package initializers."
+    "Forbidden legacy initializer stub name retained only for violation detection."
     ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
     "Suffix for tuple constants that declare frozen public root exports."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (

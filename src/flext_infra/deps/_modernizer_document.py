@@ -12,6 +12,7 @@ from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConf
 from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
 )
+from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
@@ -96,11 +97,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         config_path = self.root / ".taplo.toml"
         if config_path.is_file():
             cmd.extend(["--config", str(config_path)])
-        # mro-j47u (codex): atomic scaffold planning precedes target-root creation.
+        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
         format_cwd = next(
-            candidate
-            for candidate in (self.root, *self.root.parents)
-            if candidate.is_dir()
+            (candidate for candidate in self.root.parents if candidate.is_dir()),
+            self.root,
         )
         format_result = u.Cli.run_raw(
             cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
@@ -234,6 +234,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload, path=path
             )
         )
+        changes.extend(
+            FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
+                payload, path=path, is_root=is_root
+            )
+        )
         # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
         changes.extend(
             FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
@@ -267,7 +272,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if normalized_rendered == normalized_original:
             return ()
         if not dry_run:
-            u.write_file(path, rendered, encoding=c.Cli.ENCODING_DEFAULT)
+            # Persist the same normalized value used for change detection.
+            u.write_file(path, normalized_rendered, encoding=c.Cli.ENCODING_DEFAULT)
         return changes
 
 

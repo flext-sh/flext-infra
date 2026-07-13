@@ -1,6 +1,7 @@
 Infra:
   name: flext-infra
-  version: "0.12.0-dev"
+  # NOTE(mro-wkii.17.26, agent codex): canonical package version for the 0.20 test release.
+  version: "0.20.0-dev0"
   source_scan:
     roots:
       - src

@@ -1,6 +1,6 @@
 Infra:
   codegen:
-    # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
+    # NOTE(mro-wkii.17.26, agent codex): declarative SSOT targets the canonical 0.20 development branch.
     version: 1
 
     toolchain:
@@ -15,7 +15,7 @@ Infra:
       - name: flext-sh
         organization: flext-sh
         base_url: https://github.com/flext-sh
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
       - name: datacosmos-br
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
@@ -140,7 +140,8 @@ Infra:
             codegen: [flext-infra]
             dev:
               - flext-tests
-              - mypy>=1.20.2,<1.21
+              # mro-45r9: the floor lets uv select 1.19 in DBT workspaces and latest standalone.
+              - mypy>=1.19.1
               - pyrefly>=1.1.1,<1.2
               - pyright>=1.1.411,<1.2
               - pytest>=9.0.3,<10
@@ -415,7 +416,7 @@ Infra:
         distribution: flext
         provider: flext-sh
         url: https://github.com/flext-sh/flext.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: .
         role: workspace-root
         state: active
@@ -424,7 +425,7 @@ Infra:
         distribution: flext-api
         provider: flext-sh
         url: https://github.com/flext-sh/flext-api.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-api
         role: workspace-member
         state: active
@@ -433,7 +434,7 @@ Infra:
         distribution: flext-auth
         provider: flext-sh
         url: https://github.com/flext-sh/flext-auth.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-auth
         role: workspace-member
         state: active
@@ -442,7 +443,7 @@ Infra:
         distribution: flext-cli
         provider: flext-sh
         url: https://github.com/flext-sh/flext-cli.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-cli
         role: workspace-member
         state: active
@@ -451,7 +452,7 @@ Infra:
         distribution: flext-core
         provider: flext-sh
         url: https://github.com/flext-sh/flext-core.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-core
         role: workspace-member
         state: active
@@ -460,7 +461,7 @@ Infra:
         distribution: flext-db-oracle
         provider: flext-sh
         url: https://github.com/flext-sh/flext-db-oracle.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-db-oracle
         role: workspace-member
         state: active
@@ -469,7 +470,7 @@ Infra:
         distribution: flext-dbt-ldap
         provider: flext-sh
         url: https://github.com/flext-sh/flext-dbt-ldap.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-dbt-ldap
         role: workspace-member
         state: active
@@ -478,7 +479,7 @@ Infra:
         distribution: flext-dbt-ldif
         provider: flext-sh
         url: https://github.com/flext-sh/flext-dbt-ldif.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-dbt-ldif
         role: workspace-member
         state: active
@@ -487,7 +488,7 @@ Infra:
         distribution: flext-dbt-oracle
         provider: flext-sh
         url: https://github.com/flext-sh/flext-dbt-oracle.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-dbt-oracle
         role: workspace-member
         state: active
@@ -496,7 +497,7 @@ Infra:
         distribution: flext-dbt-oracle-wms
         provider: flext-sh
         url: https://github.com/flext-sh/flext-dbt-oracle-wms.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-dbt-oracle-wms
         role: workspace-member
         state: active
@@ -505,7 +506,7 @@ Infra:
         distribution: flext-grpc
         provider: flext-sh
         url: https://github.com/flext-sh/flext-grpc.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-grpc
         role: workspace-member
         state: active
@@ -514,7 +515,7 @@ Infra:
         distribution: flext-infra
         provider: flext-sh
         url: https://github.com/flext-sh/flext-infra.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-infra
         role: workspace-member
         state: active
@@ -523,7 +524,7 @@ Infra:
         distribution: flext-ldap
         provider: flext-sh
         url: https://github.com/flext-sh/flext-ldap.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-ldap
         role: workspace-member
         state: active
@@ -532,7 +533,7 @@ Infra:
         distribution: flext-ldif
         provider: flext-sh
         url: https://github.com/flext-sh/flext-ldif.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-ldif
         role: workspace-member
         state: active
@@ -541,7 +542,7 @@ Infra:
         distribution: flext-meltano
         provider: flext-sh
         url: https://github.com/flext-sh/flext-meltano.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-meltano
         role: workspace-member
         state: active
@@ -550,7 +551,7 @@ Infra:
         distribution: flext-observability
         provider: flext-sh
         url: https://github.com/flext-sh/flext-observability.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-observability
         role: workspace-member
         state: active
@@ -559,7 +560,7 @@ Infra:
         distribution: flext-oracle-oic
         provider: flext-sh
         url: https://github.com/flext-sh/flext-oracle-oic.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-oracle-oic
         role: workspace-member
         state: active
@@ -568,7 +569,7 @@ Infra:
         distribution: flext-oracle-wms
         provider: flext-sh
         url: https://github.com/flext-sh/flext-oracle-wms.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-oracle-wms
         role: workspace-member
         state: active
@@ -577,7 +578,7 @@ Infra:
         distribution: flext-plugin
         provider: flext-sh
         url: https://github.com/flext-sh/flext-plugin.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-plugin
         role: workspace-member
         state: active
@@ -586,7 +587,7 @@ Infra:
         distribution: flext-quality
         provider: flext-sh
         url: https://github.com/flext-sh/flext-quality.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-quality
         role: workspace-member
         state: active
@@ -595,7 +596,7 @@ Infra:
         distribution: flext-tap-ldap
         provider: flext-sh
         url: https://github.com/flext-sh/flext-tap-ldap.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-tap-ldap
         role: workspace-member
         state: active
@@ -604,7 +605,7 @@ Infra:
         distribution: flext-tap-ldif
         provider: flext-sh
         url: https://github.com/flext-sh/flext-tap-ldif.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-tap-ldif
         role: workspace-member
         state: active
@@ -613,7 +614,7 @@ Infra:
         distribution: flext-tap-oracle
         provider: flext-sh
         url: https://github.com/flext-sh/flext-tap-oracle.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-tap-oracle
         role: workspace-member
         state: active
@@ -622,7 +623,7 @@ Infra:
         distribution: flext-tap-oracle-oic
         provider: flext-sh
         url: https://github.com/flext-sh/flext-tap-oracle-oic.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-tap-oracle-oic
         role: workspace-member
         state: active
@@ -631,7 +632,7 @@ Infra:
         distribution: flext-tap-oracle-wms
         provider: flext-sh
         url: https://github.com/flext-sh/flext-tap-oracle-wms.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-tap-oracle-wms
         role: workspace-member
         state: active
@@ -640,7 +641,7 @@ Infra:
         distribution: flext-target-ldap
         provider: flext-sh
         url: https://github.com/flext-sh/flext-target-ldap.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-target-ldap
         role: workspace-member
         state: active
@@ -649,7 +650,7 @@ Infra:
         distribution: flext-target-ldif
         provider: flext-sh
         url: https://github.com/flext-sh/flext-target-ldif.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-target-ldif
         role: workspace-member
         state: active
@@ -658,7 +659,7 @@ Infra:
         distribution: flext-target-oracle
         provider: flext-sh
         url: https://github.com/flext-sh/flext-target-oracle.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-target-oracle
         role: workspace-member
         state: active
@@ -667,7 +668,7 @@ Infra:
         distribution: flext-target-oracle-oic
         provider: flext-sh
         url: https://github.com/flext-sh/flext-target-oracle-oic.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-target-oracle-oic
         role: workspace-member
         state: active
@@ -676,7 +677,7 @@ Infra:
         distribution: flext-target-oracle-wms
         provider: flext-sh
         url: https://github.com/flext-sh/flext-target-oracle-wms.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-target-oracle-wms
         role: workspace-member
         state: active
@@ -685,7 +686,7 @@ Infra:
         distribution: flext-tests
         provider: flext-sh
         url: https://github.com/flext-sh/flext-tests.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-tests
         role: workspace-member
         state: active
@@ -694,7 +695,7 @@ Infra:
         distribution: flext-web
         provider: flext-sh
         url: https://github.com/flext-sh/flext-web.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: flext-web
         role: workspace-member
         state: active
@@ -747,7 +748,7 @@ Infra:
         distribution: algar-oud-mig
         provider: datacosmos-br
         url: https://github.com/datacosmos-br/algar-oud-mig.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: .
         role: standalone
         state: active
@@ -756,7 +757,7 @@ Infra:
         distribution: gruponos-meltano-native
         provider: datacosmos-br
         url: https://github.com/datacosmos-br/gruponos-meltano-native.git
-        branch: 0.12.0-dev
+        branch: 0.20.0-dev
         path: .
         role: standalone
         state: active

@@ -78,15 +78,18 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         lazy_init = config.Infra.tooling.lazy_init
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             workspace_index = rope.workspace_index
+            resolved_workspace_root = self.workspace_root.resolve()
+            # NOTE(mro-wkii.17.26, agent codex): lazy exports exist only at public src roots.
+            public_package_dirs = frozenset(
+                package_dir.resolve()
+                for package_dir in workspace_index.package_dirs
+                if package_dir.is_relative_to(resolved_workspace_root)
+                and package_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
+                and (package_dir.parent.parent / c.Infra.PYPROJECT_FILENAME).is_file()
+            )
             package_dirs = tuple(
                 sorted(
-                    (
-                        package_dir.resolve()
-                        for package_dir in workspace_index.package_dirs
-                        if package_dir.is_relative_to(self.workspace_root.resolve())
-                    ),
-                    key=lambda path: len(path.parts),
-                    reverse=True,
+                    public_package_dirs, key=lambda path: len(path.parts), reverse=True
                 )
             )
             if self.target_module:
@@ -112,6 +115,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 if sorted_target_dirs[1:]:
                     u.Cli.error(
                         f"lazy-init target module is ambiguous: {self.target_module}"
+                    )
+                    return 1
+                if sorted_target_dirs[0] not in public_package_dirs:
+                    u.Cli.error(
+                        "lazy-init target must be a public src package root: "
+                        f"{self.target_module}"
                     )
                     return 1
                 package_dirs = (sorted_target_dirs[0],)

@@ -60,6 +60,22 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         return r[m.Infra.WorkspaceSpec].ok(validated)
 
     @staticmethod
+    def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
+        """Resolve the manifest owner for a repository or attached member."""
+        resolved_root = repository_root.expanduser().resolve()
+        superproject = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
+            cwd=resolved_root,
+        )
+        if superproject.failure:
+            return r[Path].fail(
+                superproject.error or "unable to resolve Git superproject"
+            )
+        return r[Path].ok(
+            Path(superproject.value).resolve() if superproject.value else resolved_root
+        )
+
+    @staticmethod
     def _validate_local_repository(repository: m.Infra.RepositoryRef) -> p.Result[bool]:
         """Validate the role/profile invariants for a local manifest owner."""
         if repository.path.as_posix() != ".":
@@ -97,13 +113,11 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         return c.Infra.WorkspaceMode.STANDALONE
 
     @staticmethod
-    def _gitmodule_contract(
-        superproject_root: Path, member_path: str
-    ) -> p.Result[t.StrPair]:
-        """Read the exact URL and branch for one declared Git submodule path."""
+    def _gitmodule_contract(superproject_root: Path, member_path: str) -> p.Result[str]:
+        """Read the exact URL for one declared Git submodule path."""
         gitmodules_path = superproject_root / c.Infra.GITMODULES
         if not gitmodules_path.is_file():
-            return r[t.StrPair].fail(
+            return r[str].fail(
                 f"Git superproject has no {c.Infra.GITMODULES}: {superproject_root}"
             )
         entries = u.Cli.capture(
@@ -118,9 +132,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             cwd=superproject_root,
         )
         if entries.failure:
-            return r[t.StrPair].fail(
-                entries.error or "unable to read Git submodule paths"
-            )
+            return r[str].fail(entries.error or "unable to read Git submodule paths")
         matching_keys: t.MutableSequenceOf[str] = []
         for line in entries.value.splitlines():
             if not line.strip():
@@ -131,9 +143,9 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 case [_, _]:
                     continue
                 case _:
-                    return r[t.StrPair].fail("malformed Git submodule path entry")
+                    return r[str].fail("malformed Git submodule path entry")
         if len(matching_keys) != 1:
-            return r[t.StrPair].fail(
+            return r[str].fail(
                 f"Git submodule path must be declared exactly once: {member_path}"
             )
         section = matching_keys[0].removesuffix(".path")
@@ -149,25 +161,10 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             cwd=superproject_root,
         )
         if url.failure or not url.value:
-            return r[t.StrPair].fail(
+            return r[str].fail(
                 url.error or f"Git submodule URL is missing: {member_path}"
             )
-        branch = u.Cli.capture(
-            [
-                c.Infra.GIT,
-                "config",
-                "--file",
-                c.Infra.GITMODULES,
-                "--get",
-                f"{section}.branch",
-            ],
-            cwd=superproject_root,
-        )
-        if branch.failure or not branch.value:
-            return r[t.StrPair].fail(
-                branch.error or f"Git submodule branch is missing: {member_path}"
-            )
-        return r[t.StrPair].ok((url.value, branch.value))
+        return r[str].ok(url.value)
 
     @classmethod
     def _detect_attached(
@@ -263,7 +260,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         gitmodule_result = cls._gitmodule_contract(superproject_root, member_path)
         if gitmodule_result.failure:
             return r[c.Infra.WorkspaceMode].fail(gitmodule_result.error)
-        gitmodule_url, gitmodule_branch = gitmodule_result.value
+        gitmodule_url = gitmodule_result.value
         origin = u.Cli.capture(
             [c.Infra.GIT, "config", "--get", "remote.origin.url"], cwd=member_root
         )
@@ -282,7 +279,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
             )
-        if gitmodule_branch != declared.branch or branch.value != declared.branch:
+        if branch.value != declared.branch:
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
             )

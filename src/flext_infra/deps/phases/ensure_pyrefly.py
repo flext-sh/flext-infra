@@ -70,6 +70,9 @@ class FlextInfraEnsurePyreflyConfigPhase:
             .value("python-interpreter-path", interpreter_path)
             .deprecated("disable-search-path-heuristics")
             .deprecated("fallback-python-interpreter-name")
+            # Interpreter discovery resolves PEP 660 editable sibling packages.
+            .deprecated("site-package-path")
+            .deprecated("skip-interpreter-query")
             .value(
                 c.Infra.IGNORE_ERRORS_IN_GENERATED,
                 pyrefly_rules.ignore_errors_in_generated_code,

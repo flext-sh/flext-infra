@@ -30,6 +30,14 @@ class FlextInfraConstantsCodegen(
 ):
     """Namespace for all codegen-related constants."""
 
+    # mro-wkii.17.26 (codex): protobuf source owns runtime modules; no .pyi output.
+    GRPC_PROTO_GLOB: Final[str] = "*.proto"
+    "Package-source glob compiled by canonical gRPC codegen."
+    GRPC_GENERATED_MODULE_SUFFIXES: Final[t.StrSequence] = ("_pb2.py", "_pb2_grpc.py")
+    "Python runtime modules emitted for each protobuf schema."
+    GRPC_CODEGEN_TIMEOUT_SECONDS: Final[int] = 120
+    "Maximum duration of one project's grpc_tools.protoc invocation."
+
     SRC_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),
@@ -70,6 +78,7 @@ class FlextInfraConstantsCodegen(
         CENSUS_BEFORE = "census_before"
         SCAFFOLD = "scaffold"
         AUTO_FIX = "auto_fix"
+        GRPC = "grpc"
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
@@ -79,6 +88,7 @@ class FlextInfraConstantsCodegen(
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,
         PipelineStage.AUTO_FIX,
+        PipelineStage.GRPC,
         PipelineStage.LAZY_INIT,
         PipelineStage.CENSUS_AFTER,
     )

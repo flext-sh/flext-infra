@@ -70,6 +70,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 result = self._apply_change_tracker_transformer(
                     FlextInfraRefactorMRORemover(), source
                 )
+            case _:
+                msg = f"unsupported refactor rule kind: {kind!r}"
+                raise ValueError(msg)
         return result
 
     @staticmethod

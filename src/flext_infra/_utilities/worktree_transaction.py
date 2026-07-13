@@ -472,14 +472,23 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def render_worktree_transaction_report(
         report: m.Infra.WorktreeTransactionReport,
     ) -> str:
-        """Render lint deltas, breakage status, and generated patches."""
+        """Render command evidence, lint deltas, and generated patches."""
         lines: t.MutableSequenceOf[str] = [
             f"transaction: {report.transaction_id}",
             f"command exit: {report.command_output.exit_code}",
             f"import exit: {report.import_probe.exit_code}",
             report.summary,
-            "lint delta:",
         ]
+        # mro-45r9: a fail-closed transaction must expose its decisive output.
+        for label, output in (
+            ("command stdout", report.command_output.stdout),
+            ("command stderr", report.command_output.stderr),
+            ("import stdout", report.import_probe.stdout),
+            ("import stderr", report.import_probe.stderr),
+        ):
+            if output.strip():
+                lines.extend((f"{label}:", output.rstrip()))
+        lines.append("lint delta:")
         for before, after in zip(report.lint_before, report.lint_after, strict=True):
             lines.append(
                 f"  {before.tool}: errors {before.errors}->{after.errors} "
@@ -493,18 +502,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 or (after.exit_code != 0 and before.exit_code == 0)
             ):
                 lines.extend((f"{after.tool} diagnostics after command:", after.output))
-        for label, output in (
-            ("command stdout", report.command_output.stdout),
-            ("command stderr", report.command_output.stderr),
-            ("import stdout", report.import_probe.stdout),
-            ("import stderr", report.import_probe.stderr),
-        ):
-            if output:
-                lines.extend((f"{label}:", output))
         for repository in report.repositories:
             if not repository.patch:
                 continue
-            # mro-wkii.17.26 (codex): decode only at the human-report boundary.
+            # mro-wkii.17.26 (codex): decode verified patch bytes only at text egress.
             lines.extend((
                 f"diff -- repository {repository.relative_path}",
                 repository.patch.decode(c.Cli.ENCODING_DEFAULT),

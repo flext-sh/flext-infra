@@ -61,6 +61,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
             c.Infra.PipelineStage.CENSUS_BEFORE: self._stage_census_before,
             c.Infra.PipelineStage.SCAFFOLD: self._stage_scaffold,
             c.Infra.PipelineStage.AUTO_FIX: self._stage_auto_fix,
+            c.Infra.PipelineStage.GRPC: self._stage_grpc,
             c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }

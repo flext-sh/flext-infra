@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import m as cli_m
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m, t
@@ -24,14 +23,18 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         *,
         input_data: bytes | None = None,
         timeout: int | None = None,
-    ) -> p.Result[cli_m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Run one Git command through the canonical process facade."""
-        return u.Cli.run_raw(
+        result = u.Cli.run_raw(
             (c.Infra.GIT, *arguments),
             cwd=repo_root,
             input_data=input_data,
             timeout=timeout,
         )
+        if result.failure:
+            return r.fail(result.error or "git command execution failed")
+        output: p.Cli.CommandOutput = result.value
+        return r.ok(output)
 
     @classmethod
     def git_capture(cls, repo_root: Path, arguments: t.StrSequence) -> p.Result[str]:
@@ -44,6 +47,16 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             detail = (output.stderr or output.stdout).strip()
             return r[str].fail(detail or f"git command exited {output.exit_code}")
         return r[str].ok(output.stdout)
+
+    @classmethod
+    def git_capture_bytes(
+        cls, repo_root: Path, arguments: t.StrSequence
+    ) -> p.Result[bytes]:
+        """Capture one Git ASCII-armored patch as bytes."""
+        # mro-45r9: Git binary patches are ASCII armor; reuse the public text facade.
+        return cls.git_capture(repo_root, arguments).map(
+            lambda output: output.encode(c.Cli.ENCODING_DEFAULT)
+        )
 
     @classmethod
     def git_repository_head(cls, repo_root: Path) -> p.Result[str]:
@@ -142,6 +155,8 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             if cls._git_path_is_excluded(relative_path, excluded):
                 continue
             source_path = source_root / relative_path
+            if source_path.is_dir():
+                continue
             destination_path = worktree_root / relative_path
             ensure_parent = u.Cli.ensure_dir(destination_path.parent)
             if ensure_parent.failure:
@@ -173,16 +188,20 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bool]:
         """Reproduce tracked, staged, unstaged, and untracked source state."""
         pathspecs = tuple(f":(exclude){path.as_posix()}" for path in excluded)
-        diff_result = cls.git_capture(
+        diff_result = cls.git_capture_bytes(
             source_root, ("diff", "--binary", "HEAD", "--", ".", *pathspecs)
         )
         if diff_result.failure:
             return r[bool].fail(diff_result.error or "failed to capture dirty patch")
-        if diff_result.value:
+        patch_bytes = diff_result.value
+        if patch_bytes:
+            # git apply rejects a patch whose final line lacks the terminating
+            # newline ("corrupt patch"); `git diff --binary` can emit exactly
+            # that, so restore the single trailing newline the format requires.
+            if not patch_bytes.endswith(b"\n"):
+                patch_bytes += b"\n"
             apply_result = cls.git_run(
-                worktree_root,
-                ("apply", "--binary", "-"),
-                input_data=diff_result.value.encode(c.Cli.ENCODING_DEFAULT),
+                worktree_root, ("apply", "--binary", "-"), input_data=patch_bytes
             )
             if apply_result.failure:
                 return r[bool].fail(
@@ -256,7 +275,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             repository.worktree_root,
             ("diff", "--cached", "--name-only", "-z", repository.checkpoint_sha),
         )
-        patch_result = cls.git_capture(
+        patch_result = cls.git_capture_bytes(
             repository.worktree_root,
             ("diff", "--cached", "--binary", repository.checkpoint_sha, "--"),
         )
@@ -266,6 +285,13 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 if names_result.failure
                 else patch_result.error or "failed to capture operation patch"
             )
+        # git apply rejects a patch whose final line has no terminating newline
+        # ("corrupt patch"). `git diff --binary` can emit exactly that when the
+        # last hunk ends on a context line, so restore the single trailing
+        # newline the patch format requires before the delta is applied.
+        patch_bytes = patch_result.value
+        if patch_bytes and not patch_bytes.endswith(b"\n"):
+            patch_bytes += b"\n"
         return r[m.Infra.RepositoryDelta].ok(
             m.Infra.RepositoryDelta(
                 relative_path=repository.relative_path,
@@ -275,8 +301,8 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 changed_files=tuple(
                     name for name in names_result.value.split("\0") if name
                 ),
-                # mro-wkii.17.26 (codex): preserve the terminal newline and binaries.
-                patch=patch_result.value.encode(c.Cli.ENCODING_DEFAULT),
+                # mro-wkii.17.26 (codex): retain normalized binary patch bytes.
+                patch=patch_bytes,
             )
         )
 

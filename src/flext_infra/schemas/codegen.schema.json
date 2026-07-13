@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/flext-sh/flext-infra/schemas/codegen.schema.json",
-  "$comment": "NOTE(mro-wkii.17.5, agent implement_manifest): strict schema for the deterministic codegen SSOT.",
+  "$comment": "NOTE(mro-wkii.17.26, agent codex): strict schema for the 0.20 development codegen SSOT.",
   "title": "FLEXT Infra Codegen Configuration",
   "type": "object",
   "additionalProperties": false,
@@ -46,7 +46,7 @@
                   "const": "https://github.com/flext-sh"
                 },
                 "branch": {
-                  "const": "0.12.0-dev"
+                  "const": "0.20.0-dev"
                 }
               }
             }
@@ -302,7 +302,7 @@
         },
         "branch": {
           "enum": [
-            "0.12.0-dev",
+            "0.20.0-dev",
             "main"
           ]
         }
@@ -676,7 +676,7 @@
         },
         "branch": {
           "enum": [
-            "0.12.0-dev",
+            "0.20.0-dev",
             "main"
           ]
         },
