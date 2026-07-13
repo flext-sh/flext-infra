@@ -269,9 +269,13 @@ class FlextInfraUtilitiesDocsRender:
             "",
             f"**Version**: `{version}` | **Python**: 3.13+ | **Project class**: `{scope.project_class}`",
             "",
-            "> **Alpha (0.12.0).** This package is alpha quality. Every package in "
-            "the workspace must be re-checked and re-validated at 0.12.0 before "
-            "any promotion beyond alpha; treat interfaces as unstable.",
+            (
+                "> **Alpha (0.12.0).** This package is alpha quality. Every "
+                "package in the workspace must be re-checked and re-validated "
+                "at 0.12.0 before any promotion beyond alpha; treat interfaces "
+                "as unstable."
+            ),
+            "",
             "## Purpose",
             "",
             description,
