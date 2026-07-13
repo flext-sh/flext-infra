@@ -1,0 +1,215 @@
+"""Tests for FlextInfraSkillValidator — core validation and helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+from flext_tests import tm
+
+from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+from tests.constants import c
+from tests.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.models import m
+    from tests.typings import t
+
+
+class TestSafeLoadYaml:
+    """Test u.Infra.yaml_load_infra_mapping helper function."""
+
+    def test_valid_yaml(self, tmp_path: Path) -> None:
+        """Valid YAML file loads correctly."""
+        f = tmp_path / "test.yml"
+        f.write_text("key: value\nlist:\n  - item1\n  - item2")
+        result = u.Cli.yaml_load_mapping(f)
+        assert result.get("key") == "value"
+        list_value = result.get("list")
+        assert isinstance(list_value, list)
+        assert list_value == ["item1", "item2"]
+
+    def test_empty_and_null(self, tmp_path: Path) -> None:
+        """Empty/null YAML returns empty dict."""
+        (tmp_path / "empty.yml").write_text("")
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "empty.yml")) == {}
+        (tmp_path / "null.yml").write_text("null")
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "null.yml")) == {}
+
+    def test_non_dict_returns_empty_mapping(self, tmp_path: Path) -> None:
+        """Non-mapping YAML normalizes to an empty mapping."""
+        (tmp_path / "list.yml").write_text("- item1\n- item2")
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "list.yml")) == {}
+        (tmp_path / "str.yml").write_text("just a string")
+        assert dict(u.Cli.yaml_load_mapping(tmp_path / "str.yml")) == {}
+
+
+class TestStringList:
+    """Test u.Infra.string_list helper function."""
+
+    def test_none_returns_empty(self) -> None:
+        """None returns empty list."""
+        tm.that(u.Infra.string_list(None), empty=True)
+
+    def test_valid_list(self) -> None:
+        """Valid string list passes through."""
+        tm.that(u.Infra.string_list(["a", "b", "c"]), eq=["a", "b", "c"])
+
+    def test_string_wraps_to_list(self) -> None:
+        """Bare string is wrapped into a single-element list."""
+        tm.that(u.Infra.string_list("not a list"), eq=["not a list"])
+
+    def test_invalid_input_raises(self) -> None:
+        """Non-string items and non-list values raise."""
+        with pytest.raises(TypeError):
+            u.Infra.string_list(["a", 123, "c"])
+        with pytest.raises(TypeError, match="expected list"):
+            u.Infra.string_list({"key": "value"})
+
+
+class TestSkillValidatorCore:
+    """Core validation tests for FlextInfraSkillValidator."""
+
+    def test_validate_missing_rules_yml(self, tmp_path: Path) -> None:
+        """Missing rules.yml returns not-passed report."""
+        validator = FlextInfraSkillValidator(skill="test-skill")
+        skills = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
+        skills.mkdir(parents=True)
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(tmp_path, "test-skill"),
+        )
+        tm.that(not report.passed, eq=True)
+        tm.that(report.summary, contains="no rules.yml")
+
+    def test_validate_invalid_scan_targets(self, tmp_path: Path) -> None:
+        """Non-dict scan_targets returns failure."""
+        validator = FlextInfraSkillValidator(skill="test-skill")
+        skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
+        skill.mkdir(parents=True)
+        (skill / "rules.yml").write_text("scan_targets: [item1, item2]")
+        tm.fail(validator.build_report(tmp_path, "test-skill"), has="scan_targets")
+
+    def test_validate_invalid_rules_not_list(self, tmp_path: Path) -> None:
+        """Non-list rules returns failure."""
+        validator = FlextInfraSkillValidator(skill="test-skill")
+        skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
+        skill.mkdir(parents=True)
+        (skill / "rules.yml").write_text("rules: {not: a_list}")
+        tm.fail(
+            validator.build_report(tmp_path, "test-skill"),
+            has="rules must be a list",
+        )
+
+    def test_validate_non_dict_rule_skipped(self, tmp_path: Path) -> None:
+        """Non-dict rule objects are skipped."""
+        validator = FlextInfraSkillValidator(skill="test-skill")
+        skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
+        skill.mkdir(parents=True)
+        (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(tmp_path, "test-skill"),
+        )
+        tm.that(report.passed, eq=True)
+
+    def test_validate_scalar_rules_yml_yields_empty_success(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Scalar rules.yml content yields an empty successful report."""
+        validator = FlextInfraSkillValidator(skill="test-skill")
+        skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
+        skill.mkdir(parents=True)
+        (skill / "rules.yml").write_text("just a plain string")
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(tmp_path, "test-skill"),
+        )
+        tm.that(report.passed, eq=True)
+        tm.that(report.violations, empty=True)
+
+
+class TestSkillValidatorRenderTemplate:
+    """Tests for _render_template static method."""
+
+    def test_absolute_path(self, tmp_path: Path) -> None:
+        """Absolute path template resolves correctly."""
+        result = FlextInfraSkillValidator._render_template(
+            tmp_path,
+            "/absolute/path/{skill}/file.json",
+            "my-skill",
+        )
+        tm.that(str(result), eq="/absolute/path/my-skill/file.json")
+
+    def test_relative_path(self, tmp_path: Path) -> None:
+        """Relative path template resolves with skill name."""
+        result = FlextInfraSkillValidator._render_template(
+            tmp_path,
+            ".reports/{skill}/report.json",
+            "my-skill",
+        )
+        tm.that(str(result), has="my-skill")
+        tm.that(str(result), has="report.json")
+
+
+class TestSkillValidatorAstGrepCount:
+    """Tests for _run_ast_grep_count and _run_custom_count methods."""
+
+    def test_empty_or_missing_rule_file(self, tmp_path: Path) -> None:
+        """Empty/nonexistent rule file returns 0."""
+        v = FlextInfraSkillValidator(skill="test-skill")
+        skill = tmp_path / "skill"
+        skill.mkdir()
+        empty = {"id": "t", "type": "ast-grep", "file": ""}
+        missing = {"id": "t", "type": "ast-grep", "file": "nonexistent.yml"}
+        tm.that(v._run_ast_grep_count(empty, skill, tmp_path, [], []), eq=0)
+        tm.that(v._run_ast_grep_count(missing, skill, tmp_path, [], []), eq=0)
+
+    def test_with_include_globs(self, tmp_path: Path) -> None:
+        """Include globs are passed to runner."""
+        v = FlextInfraSkillValidator(skill="test-skill")
+        skill = tmp_path / "skill"
+        skill.mkdir()
+        rule_file = skill / "rule.yaml"
+        rule_file.write_text("id: test\nlanguage: python\nrule: {pattern: 'test'}")
+        count = v._run_ast_grep_count(
+            {"file": str(rule_file)},
+            skill,
+            tmp_path,
+            ["**/*.py"],
+            [],
+        )
+        assert isinstance(count, int)
+
+    def test_custom_count_empty_or_missing(self, tmp_path: Path) -> None:
+        """Empty/nonexistent custom script returns 0."""
+        v = FlextInfraSkillValidator(skill="test-skill")
+        skill = tmp_path / "skill"
+        skill.mkdir()
+        empty = {"id": "t", "type": "custom", "script": ""}
+        missing = {"id": "t", "type": "custom", "script": "nonexistent.py"}
+        tm.that(
+            v._run_custom_count(
+                empty,
+                skill,
+                tmp_path,
+                c.Infra.OperationMode.BASELINE,
+            ),
+            eq=0,
+        )
+        tm.that(
+            v._run_custom_count(
+                missing,
+                skill,
+                tmp_path,
+                c.Infra.OperationMode.BASELINE,
+            ),
+            eq=0,
+        )
+
+
+__all__: t.StrSequence = []

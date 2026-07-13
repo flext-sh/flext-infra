@@ -1,0 +1,309 @@
+"""Workspace Makefile dry-run tests through generated public targets."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from flext_cli import cli, m as cli_m
+from flext_infra.workspace.workspace_makefile import (
+    FlextInfraWorkspaceMakefileGenerator,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    (workspace_root / "pyproject.toml").write_text(
+        (
+            "[project]\n"
+            "name = 'workspace-root'\n"
+            "version = '0.1.0'\n"
+            "\n"
+            "[tool.flext.workspace]\n"
+            "members = ['demo-a', 'demo-b']\n"
+        ),
+        encoding="utf-8",
+    )
+    (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
+    for project_name in ("demo-a", "demo-b"):
+        project_root = workspace_root / project_name
+        project_root.mkdir()
+        (project_root / "pyproject.toml").write_text(
+            (f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n"),
+            encoding="utf-8",
+        )
+    result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
+    assert result.success, result.error
+    return workspace_root
+
+
+def _run_workspace_make_dry_run(
+    workspace_root: Path,
+    *args: str,
+) -> cli_m.Cli.CommandOutput:
+    outcome = cli.run_raw(
+        ["make", "-C", str(workspace_root), "--dry-run", *args],
+        remove_env_keys=(
+            "CHANGED_ONLY",
+            "CHECK_GATES",
+            "DOCS_PHASE",
+            "FAIL_FAST",
+            "FILE",
+            "FILES",
+            "MAKEFLAGS",
+            "MATCH",
+            "PROJECT",
+            "PROJECTS",
+            "PYRIGHT_ARGS",
+            "PYTEST_ARGS",
+            "PR_BRANCH",
+            "RUFF_ARGS",
+            "VALIDATE_GATES",
+            "VERBOSE",
+            "WHAT",
+        ),
+    )
+    if outcome.failure:
+        msg = f"make dry-run invocation failed: {outcome.error}"
+        raise RuntimeError(msg)
+    return outcome.value
+
+
+class TestsFlextInfraWorkspaceMakefileDryRun:
+    """Behavior contract for test_makefile_dry_run."""
+
+    def test_workspace_makefile_dry_run_mod_respects_project_selection(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_mod", "PROJECT=demo-a")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "--projects demo-a" in output
+        assert (
+            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
+            in output
+        )
+        assert "ruff format demo-a --quiet" in output
+        assert "pyproject.toml */pyproject.toml" not in output
+        assert "ruff format . --quiet" not in output
+
+    def test_workspace_makefile_dry_run_mod_without_selection_uses_workspace_scope(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_mod")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "modernize --apply" in output
+        # NOTE (multi-agent, mro-wkii.17.9): workspace rendering no longer
+        # promises the removed deps path-sync command.
+        assert (
+            f'taplo format --config "{workspace_root}/.taplo.toml" pyproject.toml demo-a/pyproject.toml demo-b/pyproject.toml'
+            in output
+        )
+        assert "ruff format . --quiet" in output
+        assert "--projects demo-a" not in output
+        assert "--projects demo-b" not in output
+
+    def test_workspace_makefile_dry_run_fmt_respects_project_selection(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_fmt", "PROJECT=demo-b")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert '_fmt_target="demo-b"' in output
+        assert "ruff format $_fmt_target --quiet" in output
+        assert 'md_roots="demo-b"' in output
+        assert "find \"$md_root\" -type f -name '*.md'" in output
+        assert '_fmt_target="."' not in output
+
+    def test_workspace_makefile_dry_run_up_forwards_selection_to_mod_and_constraints(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_up", "PROJECT=demo-a")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'make _mod PROJECT="demo-a"' in output
+        assert (
+            "modernize --apply --rewrite-constraints --constraint-policy floor"
+            in output
+        )
+        assert (
+            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
+            in output
+        )
+        assert "detect --quiet --no-fail" in output
+        assert (
+            f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
+            in output
+        )
+
+    def test_workspace_makefile_dry_run_types_writes_dependency_report(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_types")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "detect --typings --quiet --no-fail" in output
+        assert (
+            f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
+            in output
+        )
+
+    def test_workspace_makefile_dry_run_constraints_rewrites_dependency_floors(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(
+            workspace_root,
+            "_constraints",
+            "PROJECT=demo-a",
+        )
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert (
+            "modernize --apply --rewrite-constraints --constraint-policy floor"
+            in output
+        )
+        assert "--projects demo-a" in output
+        assert "path-sync --mode auto --apply" not in output
+        assert (
+            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
+            in output
+        )
+
+    def test_workspace_makefile_dry_run_gen_forwards_selection(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_gen", "PROJECT=demo-b")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert '--no-print-directory _mod PROJECT="demo-b"' in output
+        assert '--no-print-directory _sync PROJECT="demo-b"' in output
+
+    def test_workspace_makefile_dry_run_sync_respects_project_selection(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_sync", "PROJECT=demo-a")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert "workspace sync \\" in output
+        assert f'--workspace "{workspace_root}/$proj"' in output
+        assert f'--canonical-root "{workspace_root}"' in output
+        assert "for proj in demo-a; do" in output
+        assert f'init --workspace "{workspace_root}/$proj" --apply' in output
+        assert f'workspace sync --workspace "{workspace_root}" --apply' not in output
+
+    def test_workspace_makefile_dry_run_ship_save_dispatches_to_registry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "ship", "WHAT=save")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'WHAT="save"' in output
+        assert 'PR_BRANCH="' in output
+        assert "uv run --all-packages python -m scripts.dispatch ship" in output
+
+    def test_workspace_makefile_dry_run_build_what_mod_dispatches_to_registry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "build", "WHAT=mod")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'WHAT="mod"' in output
+        assert "uv run --all-packages python -m scripts.dispatch build" in output
+
+    def test_workspace_makefile_dry_run_build_default_runs_orchestrator(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "build")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'WHAT=""' in output
+        assert "uv run --all-packages python -m scripts.dispatch build" in output
+
+    def test_workspace_makefile_dry_run_check_what_pol_dispatches_to_registry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "check", "WHAT=pol")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'WHAT="pol"' in output
+        assert "uv run --all-packages python -m scripts.dispatch check" in output
+
+    def test_workspace_makefile_dry_run_check_what_gate_forwards_check_gates(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "check", "WHAT=loc-cap")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'WHAT="loc-cap"' in output
+        assert "uv run --all-packages python -m scripts.dispatch check" in output
+
+    def test_workspace_makefile_dry_run_boot_what_stat_dispatches_to_registry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "boot", "WHAT=stat")
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'WHAT="stat"' in output
+        assert "uv run --all-packages python -m scripts.dispatch boot" in output
+
+    def test_workspace_makefile_dry_run_docs_dispatches_to_registry(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(
+            workspace_root,
+            "docs",
+            "DOCS_PHASE=validate",
+        )
+        output = process.stdout + process.stderr
+
+        assert process.exit_code == 0
+        assert 'DOCS_PHASE="validate"' in output
+        assert "uv run --all-packages python -m scripts.dispatch docs" in output

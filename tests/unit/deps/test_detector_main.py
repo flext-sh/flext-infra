@@ -1,0 +1,304 @@
+from __future__ import annotations
+
+from collections.abc import (
+    Callable,
+    MutableSequence,
+    Sequence,
+)
+from pathlib import Path
+from typing import override
+
+from flext_tests import tm
+
+from flext_infra import main, r
+from flext_infra._models.deps import FlextInfraModelsDeps
+from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
+from tests.models import m
+from tests.protocols import p
+from tests.typings import t
+from tests.utilities import TestsFlextInfraUtilities as u
+
+
+class _DepsStub(
+    p.Infra.DepsService,
+    p.Infra.TypingsDepsService,
+    p.Infra.PipCheckDepsService,
+):
+    def __init__(self, project: Path, to_add: t.StrSequence) -> None:
+        self._project = project
+        self._to_add = to_add
+        self.typings_calls = 0
+
+    @override
+    def discover_project_paths(
+        self,
+        workspace_root: Path,
+        *,
+        projects_filter: t.StrSequence | None = None,
+    ) -> p.Result[Sequence[Path]]:
+        del workspace_root, projects_filter
+        return r[Sequence[Path]].ok([self._project])
+
+    @override
+    def run_deptry(
+        self,
+        project_path: Path,
+        venv_bin: Path,
+    ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
+        del project_path, venv_bin
+        return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
+
+    @override
+    def build_project_report(
+        self,
+        project_name: str,
+        deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
+    ) -> m.Infra.ProjectRuntimeReport:
+        del project_name, deptry_issues
+        return m.Infra.ProjectRuntimeReport(
+            deptry=m.Infra.DeptryReport(
+                missing=[],
+                unused=[],
+                transitive=[],
+                dev_in_runtime=[],
+                raw_count=0,
+            ),
+        )
+
+    @override
+    def get_required_typings(
+        self,
+        project_path: Path,
+        limits_path: Path | None = None,
+        *,
+        include_mypy: bool = True,
+    ) -> p.Result[m.Infra.TypingsReport]:
+        self.typings_calls += 1
+        del project_path, limits_path
+        del include_mypy
+        return r[m.Infra.TypingsReport].ok(
+            m.Infra.TypingsReport(to_add=list(self._to_add)),
+        )
+
+    @override
+    def load_dependency_limits(
+        self,
+        limits_path: Path | None = None,
+    ) -> t.StrMapping:
+        del limits_path
+        return {}
+
+    @override
+    def run_pip_check(
+        self,
+        workspace_root: Path,
+        venv_bin: Path,
+    ) -> p.Result[tuple[t.StrSequence, int]]:
+        del workspace_root, venv_bin
+        return r[tuple[t.StrSequence, int]].ok(([], 0))
+
+
+class _RunnerStub(p.Infra.RunnerService):
+    def __init__(
+        self,
+        run_raw: Callable[..., p.Result[m.Cli.CommandOutput]],
+    ) -> None:
+        self._run_raw = run_raw
+
+    @override
+    def run_raw(
+        self,
+        cmd: t.StrSequence,
+        cwd: Path | None = None,
+        timeout: int | None = None,
+        env: t.StrMapping | None = None,
+    ) -> p.Result[m.Cli.CommandOutput]:
+        return self._run_raw(
+            cmd,
+            cwd=cwd or Path.cwd(),
+            timeout=timeout or 0,
+            env=env or {},
+        )
+
+
+class _DetectorStub:
+    """Minimal stub satisfying p.Infra.DetectorRuntime for typings tests."""
+
+    def __init__(
+        self,
+        deps: p.Infra.DepsService,
+        runner: p.Infra.RunnerService,
+    ) -> None:
+        self.deps = deps
+        self.runner = runner
+        self.log = u.fetch_logger(__name__)
+
+
+def _setup_typings_detector(
+    tmp_path: Path,
+    to_add: t.StrSequence,
+    run_raw_result: p.Result[m.Cli.CommandOutput],
+) -> tuple[
+    FlextInfraDependencyDetectorRuntime,
+    t.SequenceOf[t.StrSequence],
+]:
+    project_path = tmp_path / "proj-a"
+    (project_path / "src").mkdir(parents=True)
+    deptry_path = tmp_path / ".venv" / "bin" / "deptry"
+    deptry_path.parent.mkdir(parents=True)
+    deptry_path.write_text("", encoding="utf-8")
+    captured_commands: MutableSequence[t.StrSequence] = []
+
+    def _run_raw(
+        cmd: t.StrSequence,
+        *,
+        cwd: Path,
+        timeout: int,
+        env: t.StrMapping,
+    ) -> p.Result[m.Cli.CommandOutput]:
+        del cwd, timeout, env
+        captured_commands.append(cmd)
+        return run_raw_result
+
+    stub = _DetectorStub(
+        deps=_DepsStub(project_path, to_add),
+        runner=_RunnerStub(_run_raw),
+    )
+    runtime = FlextInfraDependencyDetectorRuntime(
+        detector=stub,
+        workspace_report_factory=m.Infra.WorkspaceDependencyReport,
+        dependency_limits_factory=m.Infra.DependencyLimitsInfo,
+        pip_check_factory=m.Infra.PipCheckReport,
+    )
+    return runtime, captured_commands
+
+
+class TestsFlextInfraDepsDetectorMain:
+    def test_run_without_typings_skips_typings_detection(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project_path = tmp_path / "proj-a"
+        (project_path / "src").mkdir(parents=True)
+        deptry_path = tmp_path / ".venv" / "bin" / "deptry"
+        deptry_path.parent.mkdir(parents=True)
+        deptry_path.write_text("", encoding="utf-8")
+        deps = _DepsStub(project_path, ["types-requests"])
+        runtime = FlextInfraDependencyDetectorRuntime(
+            detector=_DetectorStub(
+                deps=deps,
+                runner=_RunnerStub(
+                    lambda cmd, *, cwd, timeout, env: r[m.Cli.CommandOutput].ok(
+                        m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
+                    ),
+                ),
+            ),
+            workspace_report_factory=m.Infra.WorkspaceDependencyReport,
+            dependency_limits_factory=m.Infra.DependencyLimitsInfo,
+            pip_check_factory=m.Infra.PipCheckReport,
+        )
+
+        tm.ok(
+            runtime.run(
+                FlextInfraModelsDeps.DetectCommand(
+                    workspace=str(tmp_path),
+                    no_pip_check=True,
+                ),
+            ),
+        )
+        tm.that(deps.typings_calls, eq=0)
+
+    def test_run_with_apply_typings_success(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        run_result = r[m.Cli.CommandOutput].ok(
+            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
+        )
+        runtime, calls = _setup_typings_detector(
+            tmp_path,
+            ["types-requests"],
+            run_result,
+        )
+        params = FlextInfraModelsDeps.DetectCommand(
+            workspace=str(tmp_path),
+            typings=True,
+            apply_typings=True,
+            apply=True,
+            no_pip_check=True,
+        )
+        tm.ok(runtime.run(params))
+        tm.that(len(calls), eq=1)
+
+    def test_run_with_apply_typings_multiple_packages(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        run_result = r[m.Cli.CommandOutput].ok(
+            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0),
+        )
+        runtime, calls = _setup_typings_detector(
+            tmp_path,
+            ["types-requests", "types-python-dateutil", "types-pyyaml"],
+            run_result,
+        )
+        params = FlextInfraModelsDeps.DetectCommand(
+            workspace=str(tmp_path),
+            typings=True,
+            apply_typings=True,
+            apply=True,
+            no_pip_check=True,
+        )
+        tm.ok(runtime.run(params))
+        tm.that(len(calls), eq=3)
+
+    def test_run_with_apply_typings_poetry_add_failure(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        run_result = r[m.Cli.CommandOutput].ok(
+            m.Cli.CommandOutput(stdout="", stderr="", exit_code=1),
+        )
+        runtime, _ = _setup_typings_detector(
+            tmp_path,
+            ["types-requests"],
+            run_result,
+        )
+        params = FlextInfraModelsDeps.DetectCommand(
+            workspace=str(tmp_path),
+            typings=True,
+            apply_typings=True,
+            no_pip_check=True,
+        )
+        tm.ok(runtime.run(params))
+
+    def test_run_with_apply_typings_poetry_add_failure_result(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        runtime, _ = _setup_typings_detector(
+            tmp_path,
+            ["types-requests"],
+            r[m.Cli.CommandOutput].fail("poetry add failed"),
+        )
+        params = FlextInfraModelsDeps.DetectCommand(
+            workspace=str(tmp_path),
+            typings=True,
+            apply_typings=True,
+            no_pip_check=True,
+        )
+        tm.ok(runtime.run(params))
+
+    def test_main_returns_failure_code_on_run_failure(
+        self,
+    ) -> None:
+        tm.that(
+            main([
+                "deps",
+                "detect",
+                "--workspace",
+                "/nonexistent/path",
+                "--no-pip-check",
+            ]),
+            eq=1,
+        )

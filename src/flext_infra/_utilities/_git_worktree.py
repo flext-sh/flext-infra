@@ -52,11 +52,20 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     def git_capture_bytes(
         cls, repo_root: Path, arguments: t.StrSequence
     ) -> p.Result[bytes]:
-        """Capture one Git ASCII-armored patch as bytes."""
-        # mro-45r9: Git binary patches are ASCII armor; reuse the public text facade.
-        return cls.git_capture(repo_root, arguments).map(
-            lambda output: output.encode(c.Cli.ENCODING_DEFAULT)
-        )
+        """Capture byte-exact stdout from one successful Git command."""
+        # mro-45r9: patch transport stays binary until the human error boundary.
+        result = u.Cli.run_bytes((c.Infra.GIT, *arguments), cwd=repo_root)
+        if result.failure:
+            return r[bytes].fail(result.error or "git command execution failed")
+        output: p.Cli.CommandBytesOutput = result.value
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).decode(
+                c.Cli.ENCODING_DEFAULT, errors="replace"
+            )
+            return r[bytes].fail(
+                detail.strip() or f"git command exited {output.exit_code}"
+            )
+        return r[bytes].ok(output.stdout)
 
     @classmethod
     def git_repository_head(cls, repo_root: Path) -> p.Result[str]:

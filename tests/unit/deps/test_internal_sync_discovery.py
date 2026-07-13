@@ -1,0 +1,225 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
+
+from flext_infra import r
+from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
+from tests.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+    )
+
+    from tests.protocols import p
+
+
+class _TomlReaderStub:
+    """Test stub satisfying p.Infra.TomlReader protocol."""
+
+    def __init__(
+        self,
+        fn: Callable[[Path], p.Result[t.Infra.ContainerDict]],
+    ) -> None:
+        self._fn = fn
+
+    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        """Delegate to the callable provided at construction."""
+        return self._fn(path)
+
+
+def _set_toml_stub(
+    service: FlextInfraInternalDependencySyncService,
+    value: p.Result[t.Infra.ContainerDict],
+) -> None:
+    def _reader(_path: Path) -> p.Result[t.Infra.ContainerDict]:
+        return value
+
+    service.toml = _TomlReaderStub(fn=_reader)
+
+
+def _set_toml_sequence(
+    service: FlextInfraInternalDependencySyncService,
+    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
+) -> None:
+    state = {"index": 0}
+
+    def _next(_path: Path) -> p.Result[t.Infra.ContainerDict]:
+        item = values[state["index"]]
+        state["index"] += 1
+        return item
+
+    service.toml = _TomlReaderStub(fn=_next)
+
+
+class TestsFlextInfraDepsInternalSyncDiscovery:
+    def test_parse_gitmodules_valid(self, tmp_path: Path) -> None:
+        gitmodules = tmp_path / ".gitmodules"
+        gitmodules.write_text(
+            '[submodule "flext-core"]\n\tpath = flext-core\n\turl = git@github.com:flext-sh/flext-core.git\n[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n',
+        )
+        result = FlextInfraInternalDependencySyncService().parse_gitmodules(gitmodules)
+        tm.that(result, has="flext-core")
+        tm.that(result, has="flext-api")
+        tm.that(
+            result["flext-core"].ssh_url,
+            eq="git@github.com:flext-sh/flext-core.git",
+        )
+        tm.that(result["flext-core"].https_url.startswith("https://"), eq=True)
+
+    def test_parse_gitmodules_empty(self, tmp_path: Path) -> None:
+        path = tmp_path / ".gitmodules"
+        path.write_text("")
+        tm.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
+            empty=True,
+        )
+
+    def test_parse_gitmodules_no_url(self, tmp_path: Path) -> None:
+        path = tmp_path / ".gitmodules"
+        path.write_text('[submodule "test"]\n\tpath = test\n')
+        tm.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
+            empty=True,
+        )
+
+    def test_parse_gitmodules_non_submodule_section(self, tmp_path: Path) -> None:
+        path = tmp_path / ".gitmodules"
+        path.write_text("[other]\nfoo = bar\n")
+        tm.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path),
+            empty=True,
+        )
+
+    def test_parse_repo_map_success(self) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(
+            service,
+            r[t.Infra.ContainerDict].ok({
+                "repo": {
+                    "flext-core": {
+                        "ssh_url": "git@github.com:flext-sh/flext-core.git",
+                        "https_url": "https://github.com/flext-sh/flext-core.git",
+                    },
+                },
+            }),
+        )
+        result = service.parse_repo_map(Path("/fake/map.toml"))
+        tm.ok(result)
+        tm.that(result.value, has="flext-core")
+
+    def test_parse_repo_map_read_failure(self) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(service, r[t.Infra.ContainerDict].fail("file not found"))
+        tm.fail(service.parse_repo_map(Path("/fake/map.toml")))
+
+    def test_parse_repo_map_no_repo_section(self) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(service, r[t.Infra.ContainerDict].ok({"other": "data"}))
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
+
+    def test_parse_repo_map_non_dict_repo(self) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(service, r[t.Infra.ContainerDict].ok({"repo": "not-a-dict"}))
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
+
+    def test_parse_repo_map_non_dict_values(self) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(
+            service,
+            r[t.Infra.ContainerDict].ok({"repo": {"flext-core": "string-value"}}),
+        )
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
+
+    def test_parse_repo_map_no_ssh_url(self) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(
+            service,
+            r[t.Infra.ContainerDict].ok({"repo": {"flext-core": {"other": "val"}}}),
+        )
+        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
+
+    def test_parse_repo_map_auto_https(self) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(
+            service,
+            r[t.Infra.ContainerDict].ok({
+                "repo": {
+                    "flext-core": {"ssh_url": "git@github.com:flext-sh/flext-core.git"},
+                },
+            }),
+        )
+        result = service.parse_repo_map(Path("/fake/map.toml"))
+        tm.ok(result)
+        tm.that(result.value["flext-core"].https_url.startswith("https://"), eq=True)
+
+    def test_no_pyproject(self, tmp_path: Path) -> None:
+        tm.ok(
+            FlextInfraInternalDependencySyncService().collect_internal_deps(tmp_path),
+            empty=True,
+        )
+
+    def test_poetry_path_deps(self, tmp_path: Path) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(
+            service,
+            r[t.Infra.ContainerDict].ok({
+                "tool": {
+                    "poetry": {
+                        "dependencies": {
+                            "flext-core": {"path": ".flext-deps/flext-core"},
+                            "requests": "^2.28",
+                        },
+                    },
+                },
+                "project": {},
+            }),
+        )
+        (tmp_path / "pyproject.toml").write_text("")
+        result = service.collect_internal_deps(tmp_path)
+        tm.ok(result)
+        tm.that(result.value, has="flext-core")
+
+    def test_pep621_path_deps(self, tmp_path: Path) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(
+            service,
+            r[t.Infra.ContainerDict].ok({
+                "tool": {},
+                "project": {
+                    "dependencies": [
+                        "flext-core @ file:.flext-deps/flext-core",
+                        "requests>=2.28",
+                    ],
+                },
+            }),
+        )
+        (tmp_path / "pyproject.toml").write_text("")
+        result = service.collect_internal_deps(tmp_path)
+        tm.ok(result)
+        tm.that(result.value, has="flext-core")
+
+    def test_read_failure(self, tmp_path: Path) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_stub(service, r[t.Infra.ContainerDict].fail("parse error"))
+        (tmp_path / "pyproject.toml").write_text("")
+        tm.fail(service.collect_internal_deps(tmp_path))
+
+    def test_no_tool_and_non_dict_deps(self, tmp_path: Path) -> None:
+        service = FlextInfraInternalDependencySyncService()
+        _set_toml_sequence(
+            service,
+            [
+                r[t.Infra.ContainerDict].ok({"project": {}}),
+                r[t.Infra.ContainerDict].ok({
+                    "tool": {"poetry": {"dependencies": "not-a-dict"}},
+                    "project": {"dependencies": "not-a-list"},
+                }),
+            ],
+        )
+        (tmp_path / "pyproject.toml").write_text("")
+        tm.ok(service.collect_internal_deps(tmp_path), empty=True)
+        tm.ok(service.collect_internal_deps(tmp_path), empty=True)
