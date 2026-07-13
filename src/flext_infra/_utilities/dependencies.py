@@ -205,6 +205,43 @@ class FlextInfraUtilitiesDependencies:
         return tuple(sorted(names))
 
     @classmethod
+    def runtime_dependency_names_from_payload(
+        cls, payload: t.Infra.ContainerDict
+    ) -> t.StrSequence:
+        """Return only productive runtime dependency names from one payload."""
+        # mro-wkii.17.26 (codex): analyzer import edges exclude dev groups and
+        # optional extras so foundation projects never gain reverse dependencies.
+        names: set[str] = set()
+        project = payload.get(c.Infra.PROJECT)
+        if isinstance(project, Mapping):
+            cls._append_requirement_names(
+                raw_requirements=project.get(c.Infra.DEPENDENCIES), names=names
+            )
+        tool = payload.get(c.Infra.TOOL)
+        poetry = tool.get(c.Infra.POETRY) if isinstance(tool, Mapping) else None
+        if isinstance(poetry, Mapping):
+            cls._append_runtime_mapping_dependency_names(
+                raw_mapping=poetry.get(c.Infra.DEPENDENCIES), names=names
+            )
+        return tuple(sorted(names))
+
+    @classmethod
+    def _append_runtime_mapping_dependency_names(
+        cls, *, raw_mapping: t.Infra.InfraValue, names: set[str]
+    ) -> None:
+        """Append non-optional Poetry runtime dependency names."""
+        if not isinstance(raw_mapping, Mapping):
+            return
+        for raw_name, raw_spec in raw_mapping.items():
+            specification = raw_spec if isinstance(raw_spec, Mapping) else None
+            if specification is not None and specification.get("optional") is True:
+                continue
+            dependency_name = cls.dep_name(raw_name)
+            if dependency_name is None or dependency_name == "python":
+                continue
+            names.add(dependency_name)
+
+    @classmethod
     def _append_project_dependency_names(
         cls, *, payload: t.Infra.ContainerDict, names: set[str]
     ) -> None:
@@ -297,6 +334,20 @@ class FlextInfraUtilitiesDependencies:
         declared = set(cls.declared_dependency_names_from_payload(payload))
         if not workspace_project_names:
             return ()
+        workspace_names = set(workspace_project_names)
+        return tuple(sorted(name for name in declared if name in workspace_names))
+
+    @classmethod
+    def local_runtime_dependency_names_from_payload(
+        cls,
+        payload: t.Infra.ContainerDict,
+        *,
+        workspace_project_names: t.StrSequence = (),
+    ) -> t.StrSequence:
+        """Return productive workspace-local dependency names from one payload."""
+        if not workspace_project_names:
+            return ()
+        declared = set(cls.runtime_dependency_names_from_payload(payload))
         workspace_names = set(workspace_project_names)
         return tuple(sorted(name for name in declared if name in workspace_names))
 

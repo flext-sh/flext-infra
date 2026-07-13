@@ -1,4 +1,4 @@
-"""Rope resource path helpers for FlextInfraUtilitiesRopeCore."""
+"""Manage Rope project resources and filesystem paths."""
 
 from __future__ import annotations
 

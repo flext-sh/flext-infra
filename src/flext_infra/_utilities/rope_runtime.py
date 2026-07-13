@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from flext_infra._utilities.rope_runtime_modules import (
+# mro-wkii.17.26 (codex): keep the runtime public owner as a thin domain facade.
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 

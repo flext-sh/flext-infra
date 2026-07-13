@@ -1,4 +1,4 @@
-"""Bracket-balance scanning for multi-line def/class block extraction — extracted."""
+"""Scan bracket balance for multi-line Rope definition extraction."""
 
 from __future__ import annotations
 

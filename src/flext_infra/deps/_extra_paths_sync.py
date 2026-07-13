@@ -21,6 +21,7 @@ class FlextInfraExtraPathsSyncMixin:
         # Provided by the concrete FlextInfraExtraPathsManager / its base; declared
         # for static resolution only so they don't shadow the runtime implementations.
         root: Path
+        _workspace_project_dirs: t.MappingKV[str, Path]
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
 
@@ -34,11 +35,16 @@ class FlextInfraExtraPathsSyncMixin:
             if name in resolved_visited:
                 continue
             resolved_visited.add(name)
-            dep_pyproject = self.root / name / c.Infra.PYPROJECT_FILENAME
+            dep_dir = self._workspace_project_dirs.get(name)
+            if dep_dir is None:
+                continue
+            # mro-wkii.17.26 (codex): transitive lookup uses the canonical
+            # distribution-to-member map, never directory-name assumptions.
+            dep_pyproject = dep_dir / c.Infra.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
             dep_payload = u.Infra.pyproject_payload(dep_pyproject)
-            transitive = u.Infra.local_dependency_names_from_payload(
+            transitive = u.Infra.local_runtime_dependency_names_from_payload(
                 dep_payload,
                 workspace_project_names=tuple(self._workspace_project_names),
             )

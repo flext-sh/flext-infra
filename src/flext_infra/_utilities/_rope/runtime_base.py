@@ -1,4 +1,4 @@
-"""Base loader for the typed Rope runtime boundary."""
+"""Load the typed Rope runtime boundary for the private Rope domain."""
 
 from __future__ import annotations
 

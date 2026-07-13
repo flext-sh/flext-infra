@@ -1,11 +1,13 @@
-"""Rope project, module and import factory boundary methods."""
+"""Construct Rope projects, modules, and imports behind typed protocols."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
 
 from flext_infra import p, t
-from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+
+# mro-wkii.17.26 (codex): runtime parts share the private Rope base.
+from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):

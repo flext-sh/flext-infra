@@ -1,4 +1,4 @@
-"""Rope PyModule / identifier helpers — extracted concern of FlextInfraUtilitiesRopeCore."""
+"""Resolve and cache Rope Python modules and identifiers."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Method categorization + ordering for class-body reordering — extracted concern."""
+"""Categorize and order methods for Rope class-body refactoring."""
 
 from __future__ import annotations
 

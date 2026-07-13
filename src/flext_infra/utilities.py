@@ -55,27 +55,7 @@ from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
 )
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_analysis_introspection import (
-    FlextInfraUtilitiesRopeAnalysisIntrospection,
-)
-from flext_infra._utilities.rope_analysis_workspace import (
-    FlextInfraUtilitiesRopeAnalysisWorkspace,
-)
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
-from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
-from flext_infra._utilities.rope_mro_transform import (
-    FlextInfraUtilitiesRopeMroTransform,
-)
-from flext_infra._utilities.rope_patch.pep695_patch import (
-    FlextInfraUtilitiesRopePep695Patch,
-)
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
+from flext_infra._utilities.rope import FlextInfraUtilitiesRope
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.worktree_transaction import (
@@ -105,18 +85,8 @@ class FlextInfraUtilities(cli_u, FlextUtilitiesProjectMetadata):
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesDiscovery,
-        FlextInfraUtilitiesRopeCore,
-        FlextInfraUtilitiesRopeAnalysis,
-        FlextInfraUtilitiesRopeAnalysisWorkspace,
-        FlextInfraUtilitiesRopeAnalysisIntrospection,
-        FlextInfraUtilitiesRopeHelpers,
-        FlextInfraUtilitiesRopeInventory,
-        FlextInfraUtilitiesRopeImports,
-        FlextInfraUtilitiesRopeModulePatch,
-        FlextInfraUtilitiesRopeRuntime,
-        FlextInfraUtilitiesRopeSource,
-        FlextInfraUtilitiesRopeStructure,
-        FlextInfraUtilitiesRopePep695Patch,
+        # mro-wkii.17.26 (codex): consume Rope only through its domain facade.
+        FlextInfraUtilitiesRope,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
         FlextInfraUtilitiesDocsAudit,
@@ -147,7 +117,6 @@ class FlextInfraUtilities(cli_u, FlextUtilitiesProjectMetadata):
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
-        FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
         # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing
@@ -156,9 +125,7 @@ class FlextInfraUtilities(cli_u, FlextUtilitiesProjectMetadata):
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 
-        _rope_pep695_patch_applied: bool = (
-            FlextInfraUtilitiesRopePep695Patch.apply() or True
-        )
+        _rope_pep695_patch_applied: bool = FlextInfraUtilitiesRope.apply() or True
 
 
 u = FlextInfraUtilities

@@ -1,11 +1,13 @@
-"""Rope runtime type predicates and exception factories."""
+"""Expose Rope runtime type predicates and exception factories."""
 
 from __future__ import annotations
 
 from typing import TypeGuard
 
 from flext_infra import p, t
-from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+
+# mro-wkii.17.26 (codex): runtime parts share the private Rope base.
+from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):

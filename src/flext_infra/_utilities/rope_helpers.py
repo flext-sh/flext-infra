@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import ClassVar, cast
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope_bracket_balance import (
+
+# mro-wkii.17.26 (codex): private Rope parts live under one domain package.
+from flext_infra._utilities._rope.bracket_balance import (
     FlextInfraUtilitiesRopeBracketBalanceMixin,
 )
-from flext_infra._utilities._rope_method_order import (
+from flext_infra._utilities._rope.method_order import (
     FlextInfraUtilitiesRopeMethodOrderMixin,
 )
 

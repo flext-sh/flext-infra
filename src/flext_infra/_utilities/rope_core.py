@@ -8,10 +8,12 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import config, t
-from flext_infra._utilities._rope_core_pymodule import (
+
+# mro-wkii.17.26 (codex): compose Rope core from its private domain package.
+from flext_infra._utilities._rope.core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )
-from flext_infra._utilities._rope_core_resources import (
+from flext_infra._utilities._rope.core_resources import (
     FlextInfraUtilitiesRopeCoreResourcesMixin,
 )
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery

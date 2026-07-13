@@ -38,7 +38,8 @@ class FlextInfraExtraPathsSourceMixin:
         self, payload: t.Infra.ContainerDict, *, project_dir: Path
     ) -> t.StrSequence:
         """Resolve ``[tool.uv.sources]`` path/editable dependencies to source roots."""
-        declared = set(u.Infra.declared_dependency_names_from_payload(payload))
+        # mro-wkii.17.26 (codex): path sources follow productive imports only.
+        declared = set(u.Infra.runtime_dependency_names_from_payload(payload))
         if not declared:
             return ()
         tool = u.Cli.json_as_mapping(payload.get(c.Infra.TOOL))
