@@ -173,7 +173,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeLocation(Protocol):
         """Rope occurrence location shape."""
 
+        # mro-j47u (codex): detectors consume Rope's semantic occurrence
+        # coordinates directly instead of rediscovering references textually.
         resource: FlextInfraProtocolsRopeRuntime.RopeResource | None
+        offset: int
+        lineno: int
 
     @runtime_checkable
     class RopeImportInfo(Protocol):

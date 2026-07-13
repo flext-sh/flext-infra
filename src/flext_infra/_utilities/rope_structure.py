@@ -51,6 +51,7 @@ class FlextInfraUtilitiesRopeStructure:
             statements.append(
                 m.Infra.LogicalStatement(
                     line=start,
+                    end_line=end,
                     indent=indent,
                     category=category,
                     enclosing_kind=kind,

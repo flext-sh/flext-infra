@@ -89,6 +89,11 @@ class FlextInfraModelsRope:
         indent: Annotated[
             int, m.Field(ge=0, description="Leading-whitespace column of the statement")
         ]
+        # mro-j47u (codex): Rope owns both boundaries so multiline consumers
+        # never reconstruct statement ranges from source text.
+        end_line: Annotated[
+            int, m.Field(ge=1, description="Final line in the Rope logical region")
+        ]
         category: Annotated[
             c.Infra.StatementCategory,
             m.Field(description="Lexical category of the leading token"),

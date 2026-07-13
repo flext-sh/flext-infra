@@ -97,6 +97,20 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return str(primary_at(offset))
 
     @classmethod
+    def word_is_function_call(cls, source: str, offset: int) -> bool:
+        """Return Rope's syntactic call fact for the primary at ``offset``."""
+        word_finder = cls._word_finder(source)
+        is_called = getattr(word_finder, "is_a_function_being_called", None)
+        if not callable(is_called):
+            msg = "rope Worder does not expose callable is_a_function_being_called"
+            raise TypeError(msg)
+        value = is_called(offset)
+        if not isinstance(value, bool):
+            msg = "rope Worder returned a non-boolean function-call fact"
+            raise TypeError(msg)
+        return value
+
+    @classmethod
     def _word_finder(cls, source: str) -> p.AttributeProbe:
         worder_module = cls._module("rope.base.worder")
         worder_factory = getattr(worder_module, "Worder", None)
