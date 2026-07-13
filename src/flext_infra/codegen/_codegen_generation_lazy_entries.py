@@ -85,23 +85,19 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         exports: t.StrSequence, lazy_filtered: t.LazyAliasMap
     ) -> t.StrSequence:
         """Build root public exports preserving canonical alias order."""
+        # mro-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
+        # only orders its validated contract and must not reinterpret target paths.
+        _ = lazy_filtered
         export_candidates = tuple(dict.fromkeys(exports))
-        published = tuple(
-            export_name
-            for export_name in export_candidates
-            if FlextInfraCodegenGenerationLazyEntriesMixin._should_publish_root_export(
-                export_name, lazy_filtered
-            )
-        )
         alias_order = c.Infra.PUBLIC_ROOT_ALIAS_ORDER
         return tuple(
             export_name
             for _index, export_name in sorted(
-                enumerate(published),
+                enumerate(export_candidates),
                 key=FlextInfraCodegenGenerationLazyEntriesMixin._public_export_order_key,
             )
             if export_name not in alias_order
-        ) + tuple(name for name in alias_order if name in published)
+        ) + tuple(name for name in alias_order if name in export_candidates)
 
     @staticmethod
     def _public_export_order_key(item: tuple[int, str]) -> tuple[int, int, str]:

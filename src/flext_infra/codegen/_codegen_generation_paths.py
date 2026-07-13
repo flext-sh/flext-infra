@@ -20,41 +20,6 @@ class FlextInfraCodegenGenerationPathsMixin:
         return not attr_name
 
     @staticmethod
-    def _is_private_subpackage_source(module_path: str) -> bool:
-        """Return whether a symbol's owner lives in a private subpackage."""
-        return any(
-            segment.startswith("_")
-            and not segment.startswith("__")
-            and segment not in c.Infra.LOCAL_INFERRED_SEGMENTS
-            for segment in module_path.split(".")[1:]
-        )
-
-    @staticmethod
-    def _should_publish_root_export(
-        export_name: str, lazy_filtered: t.LazyAliasMap
-    ) -> bool:
-        """Return whether a root export belongs in the frozen ``__all__`` ABI."""
-        if export_name in c.Infra.INFRA_ONLY_EXPORTS | c.Infra.PUBLISHED_ALL_EXCLUDE:
-            return False
-        target = lazy_filtered.get(export_name)
-        if target is None:
-            return True
-        module_path, attr_name = target
-        if FlextInfraCodegenGenerationPathsMixin._is_module_or_package_export(
-            attr_name
-        ):
-            return export_name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
-        if not FlextInfraCodegenGenerationPathsMixin._is_private_subpackage_source(
-            module_path
-        ):
-            return True
-        return (
-            export_name in c.Infra.ALIAS_NAMES
-            or export_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS
-            or "_fixtures" in module_path.split(".")
-        )
-
-    @staticmethod
     def _is_root_namespace_package(current_pkg: str) -> bool:
         """Return whether a package name is a root namespace."""
         return bool(current_pkg) and "." not in current_pkg
