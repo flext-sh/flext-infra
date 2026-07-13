@@ -146,7 +146,11 @@ class FlextInfraSyncService(
         """Return managed ignores and tracked resource-root declarations."""
         entries = list(c.Infra.REQUIRED_GITIGNORE_ENTRIES)
         if is_workspace_root:
-            entries.append("!.pre-commit-config.yaml")
+            # mro-wkii.17.26 (codex): uv.lock is a versioned workspace input.
+            entries.extend((
+                "!.pre-commit-config.yaml",
+                f"!/{c.Infra.UV_LOCK_FILENAME}",
+            ))
         for resource in config.Infra.codegen.scaffold.resources:
             source = resource.source.as_posix().rstrip("/")
             entries.extend((f"!/{source}/", f"!/{source}/**"))
