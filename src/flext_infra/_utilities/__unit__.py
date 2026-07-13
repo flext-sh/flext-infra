@@ -71,7 +71,9 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
     ".rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
     ".rope_mro_transform": ("FlextInfraUtilitiesRopeMroTransform",),
-    ".rope_pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
+    # NOTE (multi-agent, mro-f8vk / kimi): module moved into the rope_patch
+    # subpackage; `make gen` regenerates this same key from the new layout.
+    ".rope_patch.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
     ".rope_runtime": ("FlextInfraUtilitiesRopeRuntime",),
     ".rope_runtime_base": ("FlextInfraUtilitiesRopeRuntimeBase",),
     ".rope_runtime_modules": ("FlextInfraUtilitiesRopeRuntimeModules",),

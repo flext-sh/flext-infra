@@ -198,7 +198,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.rope_mro_transform import (
         FlextInfraUtilitiesRopeMroTransform as FlextInfraUtilitiesRopeMroTransform,
     )
-    from flext_infra._utilities.rope_pep695_patch import (
+    from flext_infra._utilities.rope_patch.pep695_patch import (
         FlextInfraUtilitiesRopePep695Patch as FlextInfraUtilitiesRopePep695Patch,
     )
     from flext_infra._utilities.rope_runtime import (
