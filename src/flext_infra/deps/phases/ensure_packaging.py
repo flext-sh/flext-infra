@@ -30,7 +30,8 @@ class FlextInfraEnsurePackagingPhase:
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the wheel-target phase for one resolved package name."""
         builder = (
-            m.Infra.Deps.Toml.PhaseConfig.Builder("packaging")
+            m.Infra.Deps.Toml.PhaseConfig
+            .Builder("packaging")
             .table("hatch", "build", "targets", "wheel")
             .list(
                 "packages",

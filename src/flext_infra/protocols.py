@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from flext_cli import p as cli_p
+from flext_cli import p
 from flext_infra._protocols.base import FlextInfraProtocolsBase
 from flext_infra._protocols.check import FlextInfraProtocolsCheck
 from flext_infra._protocols.docs import FlextInfraProtocolsDocs
@@ -20,9 +20,7 @@ from flext_infra._protocols.rope import FlextInfraProtocolsRope
 from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
 
 
-# NOTE (multi-agent, mro-wkii.17.16 / agent: codex): keep the upstream facade
-# name distinct so the local public p alias retains the Infra protocol surface.
-class FlextInfraProtocols(cli_p):
+class FlextInfraProtocols(p):
     """Structural contracts for flext-infra utilities and services.
 
     All parent protocols (Result, Config, DI, Service, etc.) are inherited

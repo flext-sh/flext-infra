@@ -48,15 +48,24 @@ class FlextInfraUtilitiesDependencies:
 
     @staticmethod
     def constraint_specifier(
-        version: str, *, policy: c.Infra.DependencyConstraintPolicy
+        version: str,
+        *,
+        policy: c.Infra.DependencyConstraintPolicy,
+        current_specifier: str = "",
     ) -> str:
-        """Return the canonical dependency specifier for one locked version."""
+        """Return the locked-version floor while retaining explicit safety caps."""
         normalized_version = version.strip()
         if not normalized_version:
             return ""
         if policy == c.Infra.DependencyConstraintPolicy.COMPATIBLE:
             return f"~={normalized_version}"
-        return f">={normalized_version}"
+        # mro-45r9: uv owns the floor; declared caps/exclusions remain compatibility SSOT.
+        preserved = tuple(
+            specifier.strip()
+            for specifier in current_specifier.split(",")
+            if specifier.strip().startswith(("<", "!="))
+        )
+        return ",".join((f">={normalized_version}", *preserved))
 
     @classmethod
     def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
@@ -125,7 +134,10 @@ class FlextInfraUtilitiesDependencies:
                     ):
                         locked_version = locked_versions.get(dependency_name)
                         if locked_version is not None:
-                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy)}"
+                            current_specifier = requirement_part.strip()[
+                                head_match.end() :
+                            ].strip()
+                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy, current_specifier=current_specifier)}"
                             marker_text = marker_part.strip()
                             if marker_separator and marker_text:
                                 rewritten = f"{rewritten}; {marker_text}"
@@ -154,7 +166,13 @@ class FlextInfraUtilitiesDependencies:
             locked_version = locked_versions.get(normalized_name)
             if locked_version is not None:
                 rewritten_specifier = cls.constraint_specifier(
-                    locked_version, policy=policy
+                    locked_version,
+                    policy=policy,
+                    current_specifier=(
+                        raw_value
+                        if isinstance(raw_value, str)
+                        else str(raw_value.get(c.Infra.VERSION, ""))
+                    ),
                 )
                 if isinstance(raw_value, str):
                     result = (

@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import m as cli_m
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m, t
@@ -24,7 +23,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         *,
         input_data: bytes | None = None,
         timeout: int | None = None,
-    ) -> p.Result[cli_m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Run one Git command through the canonical process facade."""
         return u.Cli.run_raw(
             (c.Infra.GIT, *arguments),
@@ -45,17 +44,15 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[str].fail(detail or f"git command exited {output.exit_code}")
         return r[str].ok(output.stdout)
 
-    @staticmethod
-    def git_capture_bytes(repo_root: Path, arguments: t.StrSequence) -> p.Result[bytes]:
-        """Capture byte-exact stdout from one successful Git command."""
-        result = u.Cli.run_bytes((c.Infra.GIT, *arguments), cwd=repo_root)
-        if result.failure:
-            return r[bytes].fail(result.error or "git command execution failed")
-        output = result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).decode(errors="replace").strip()
-            return r[bytes].fail(detail or f"git command exited {output.exit_code}")
-        return r[bytes].ok(output.stdout)
+    @classmethod
+    def git_capture_bytes(
+        cls, repo_root: Path, arguments: t.StrSequence
+    ) -> p.Result[bytes]:
+        """Capture one Git ASCII-armored patch as bytes."""
+        # mro-45r9: Git binary patches are ASCII armor; reuse the public text facade.
+        return cls.git_capture(repo_root, arguments).map(
+            lambda output: output.encode(c.Cli.ENCODING_DEFAULT)
+        )
 
     @classmethod
     def git_repository_head(cls, repo_root: Path) -> p.Result[str]:
