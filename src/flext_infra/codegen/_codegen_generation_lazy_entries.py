@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from flext_infra import c
 from flext_infra.codegen._codegen_generation_type_checking import (
     FlextInfraCodegenGenerationTypeCheckingMixin,
 )
@@ -84,34 +83,23 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
     def _build_published_exports(
         exports: t.StrSequence, lazy_filtered: t.LazyAliasMap
     ) -> t.StrSequence:
-        """Build root public exports preserving canonical alias order."""
+        """Build root public exports in Ruff's canonical isort-style order."""
+        # mro-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
+        # only orders its validated contract and must not reinterpret target paths.
+        _ = lazy_filtered
         export_candidates = tuple(dict.fromkeys(exports))
-        published = tuple(
-            export_name
-            for export_name in export_candidates
-            if FlextInfraCodegenGenerationLazyEntriesMixin._should_publish_root_export(
-                export_name, lazy_filtered
-            )
-        )
-        alias_order = c.Infra.PUBLIC_ROOT_ALIAS_ORDER
         return tuple(
-            export_name
-            for _index, export_name in sorted(
-                enumerate(published),
+            sorted(
+                export_candidates,
                 key=FlextInfraCodegenGenerationLazyEntriesMixin._public_export_order_key,
             )
-            if export_name not in alias_order
-        ) + tuple(name for name in alias_order if name in published)
+        )
 
     @staticmethod
-    def _public_export_order_key(item: tuple[int, str]) -> tuple[int, int, str]:
-        """Order classes before metadata before root aliases."""
-        index, export_name = item
-        if export_name in c.Infra.PUBLIC_ROOT_ALIAS_ORDER:
-            return (2, index, export_name)
-        if export_name.startswith("__") and export_name.endswith("__"):
-            return (1, index, export_name)
-        return (0, index, export_name)
+    def _public_export_order_key(export_name: str) -> tuple[int, str]:
+        """Classify one export using Ruff's SCREAMING, CamelCase, other order."""
+        category = 0 if export_name.isupper() else 1 if export_name[:1].isupper() else 2
+        return (category, export_name.casefold())
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationLazyEntriesMixin"]
