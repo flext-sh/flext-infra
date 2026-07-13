@@ -11,7 +11,7 @@ from flext_infra._utilities.mro_scan_source import FlextInfraUtilitiesMroScanSou
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRefactorMroScan:

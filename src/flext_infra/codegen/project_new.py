@@ -14,15 +14,12 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 
-from flext_infra import config
+from flext_infra import c, config, m, u
 from flext_infra.base import s
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):

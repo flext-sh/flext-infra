@@ -9,13 +9,10 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import config
+from flext_infra import c, config, m, t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from pathlib import Path

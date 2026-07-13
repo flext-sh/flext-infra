@@ -158,8 +158,6 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         except c.EXC_OS_SYNTAX as exc:
             return r[ast.AST].fail(f"get_pymodule raised: {exc!s}")
         ast_module = pymodule.get_ast()
-        if ast_module is None:
-            return r[ast.AST].fail(f"pymodule has no AST for {path}")
         return r[ast.AST].ok(ast_module)
 
     @staticmethod

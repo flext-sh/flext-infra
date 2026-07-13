@@ -351,6 +351,7 @@ docstring-code-format = true
 indent-style = "space"
 line-ending = "lf"
 quote-style = "double"
+skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 ignore = [
@@ -425,7 +426,7 @@ msg = "Use cli.create_app_with_common_params / cli.register_command from flext_c
 combine-as-imports = true
 force-single-line = false
 known-first-party = [ "{{ package_name }}", "flext_core" ]
-split-on-trailing-comma = true
+split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = [

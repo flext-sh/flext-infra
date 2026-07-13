@@ -15,6 +15,7 @@ from flext_core import r
 from flext_infra import config
 from flext_infra.base import s
 from flext_infra.constants import c
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -450,10 +451,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_result.error or f"pyproject conform failed: {pyproject}",
             )
+        tooling_result = FlextInfraPyprojectModernizer(
+            workspace_root=self.workspace_root,
+            skip_check=True,
+        ).conform_source(pyproject_result.value, path=pyproject)
+        if tooling_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                tooling_result.error
+                or f"pyproject tooling conform failed: {pyproject}",
+            )
         pyproject_plan = self._file_plan(
             root,
             c.Infra.PYPROJECT_FILENAME,
-            pyproject_result.value,
+            tooling_result.value,
             block_existing=initial,
         )
         if pyproject_plan.failure:
@@ -478,7 +488,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _render_context(
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
-        config: m.Infra.CodegenConfigSpec,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed template context from manifest data."""
         project = workspace.project
@@ -488,7 +498,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = c.Infra.MakeProfile(repository.profile)
         provider = next(
-            (item for item in config.providers if item.name == repository.provider),
+            (item for item in codegen.providers if item.name == repository.provider),
             None,
         )
         if provider is None:
@@ -502,6 +512,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
+                tooling=config.Infra.tooling,
                 dist=repository.distribution,
                 const_name=project.constant_name,
                 package_name=project.package_name,
@@ -514,11 +525,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 description=project.description,
                 version=project.version,
                 license=project.license,
-                python_version=config.toolchain.python_minor_version,
-                python_exact_version=config.toolchain.python_version,
-                python_required_version=config.toolchain.python_required_version,
-                uv_version=config.toolchain.uv_version,
-                uv_required_version=config.toolchain.uv_required_version,
+                python_version=codegen.toolchain.python_minor_version,
+                python_exact_version=codegen.toolchain.python_version,
+                python_required_version=codegen.toolchain.python_required_version,
+                uv_version=codegen.toolchain.uv_version,
+                uv_required_version=codegen.toolchain.uv_required_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,

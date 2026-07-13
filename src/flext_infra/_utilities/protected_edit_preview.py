@@ -5,16 +5,16 @@ from __future__ import annotations
 import difflib
 from typing import TYPE_CHECKING
 
+from flext_infra import c
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
-from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesProtectedEditPreview(

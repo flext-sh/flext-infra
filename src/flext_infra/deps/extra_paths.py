@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_infra import (
     c,
-    m,
+    config,
     p,
     r,
     t,
@@ -31,17 +31,15 @@ class FlextInfraExtraPathsManager(
 ):
     """Manager for synchronizing type-checker search paths from dependencies."""
 
-    _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
     @override
-    def model_post_init(self, __context: dict[str, p.AttributeProbe], /) -> None:
-        """Initialize tool configuration and workspace metadata after validation."""
-        tool_config_result = u.Infra.load_tool_config()
-        if tool_config_result.failure:
-            msg = tool_config_result.error or "failed to load deps tool settings"
-            raise ValueError(msg)
-        self._tool_config = tool_config_result.value
+    def model_post_init(
+        self,
+        __context: t.MappingKV[str, p.AttributeProbe],
+        /,
+    ) -> None:
+        """Initialize workspace metadata after validation."""
         self._workspace_project_names = set(
             u.Infra.workspace_member_names(self.workspace_root),
         )
@@ -95,7 +93,7 @@ class FlextInfraExtraPathsManager(
         is_root: bool,
     ) -> t.StrSequence:
         """Compute pyright extra paths for a project."""
-        rules = self._tool_config.tools.pyright.path_rules
+        rules = config.Infra.tooling.tools.pyright.path_rules
         source_root = (
             rules.source_dir
             if (project_dir / rules.source_dir).is_dir()
@@ -118,7 +116,7 @@ class FlextInfraExtraPathsManager(
         is_root: bool,
     ) -> t.StrSequence:
         """Compute pyrefly search paths for a project."""
-        rules = self._tool_config.tools.pyrefly.path_rules
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = (
             rules.source_dir
             if (project_dir / rules.source_dir).is_dir()
@@ -174,7 +172,7 @@ class FlextInfraExtraPathsManager(
         pyright_includes = self._pyright_include_globs(project_dir)
         if pyright_includes:
             return pyright_includes
-        rules = self._tool_config.tools.pyrefly.path_rules
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
         includes: t.Infra.StrSet = set()
         local_dirs = [
             directory

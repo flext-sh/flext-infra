@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra.base import s
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
@@ -26,21 +26,14 @@ class FlextInfra(
     def rope_workspace(
         self,
         workspace_root: Path | None = None,
-        *,
-        project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
-        src_dir: str = c.Infra.DEFAULT_SRC_DIR,
-        ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
     ) -> p.Infra.RopeWorkspaceDsl:
         """Open the public Rope workspace DSL directly from the facade."""
+        # NOTE (multi-agent, mro-wkii.17.24): Rope reads its source policy
+        # directly from config.Infra at the service boundary.
         resolved_root = (
             self.workspace_root if workspace_root is None else workspace_root
         )
-        return FlextInfraRopeWorkspace.open_workspace(
-            resolved_root,
-            project_prefix=project_prefix,
-            src_dir=src_dir,
-            ignored_resources=ignored_resources,
-        )
+        return FlextInfraRopeWorkspace.open_workspace(resolved_root)
 
     @override
     def execute(self) -> p.Result[t.JsonDict]:

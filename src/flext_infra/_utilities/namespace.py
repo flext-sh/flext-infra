@@ -8,22 +8,19 @@ from typing import TYPE_CHECKING, ClassVar, Final
 from flext_cli import u
 from flext_core import r
 
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra import c, config, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from collections.abc import (
         MutableMapping,
     )
 
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -32,7 +29,6 @@ class FlextInfraUtilitiesCodegenNamespace:
     _governance_cache: ClassVar[
         MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
     ] = {}
-    _lazy_init_config_cache: ClassVar[m.Infra.LazyInitConfig | None] = None
     _governance_file: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
     )
@@ -58,16 +54,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def _lazy_init_config(cls) -> m.Infra.LazyInitConfig:
         """Return the validated lazy-init policy document."""
-        cached = cls._lazy_init_config_cache
-        if cached is not None:
-            return cached
-        settings = FlextInfraUtilitiesBase.load_tool_config()
-        if settings.failure:
-            msg = settings.error or "lazy-init configuration is unavailable"
-            raise RuntimeError(msg)
-        cached = settings.unwrap().lazy_init
-        cls._lazy_init_config_cache = cached
-        return cached
+        return config.Infra.tooling.lazy_init
 
     @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:

@@ -10,12 +10,12 @@ from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import c
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra.constants import c
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRefactorNamespaceCommon:

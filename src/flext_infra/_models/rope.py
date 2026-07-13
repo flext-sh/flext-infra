@@ -430,18 +430,8 @@ class FlextInfraModelsRope:
             Path,
             m.Field(description="Canonical root used to open the shared Rope project"),
         ]
-        project_prefix: Annotated[
-            str,
-            m.Field(description="Project prefix passed to the Rope bootstrap"),
-        ]
-        src_dir: Annotated[
-            str,
-            m.Field(description="Primary source directory hint for Rope bootstrap"),
-        ]
-        ignored_resources: Annotated[
-            t.StrSequence,
-            m.Field(description="Ignored Rope resource patterns"),
-        ] = ()
+        # NOTE (multi-agent, mro-wkii.17.24): policy stays in config.Infra;
+        # this field-only model retains only materialized session state.
         workspace_index: Annotated[
             FlextInfraModelsRope.RopeWorkspaceIndex,
             m.Field(description="Materialized workspace index for the open session"),

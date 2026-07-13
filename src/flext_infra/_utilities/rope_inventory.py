@@ -6,15 +6,13 @@ from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import c, m, p
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeInventory:
@@ -322,8 +320,6 @@ class FlextInfraUtilitiesRopeInventory:
     ) -> int | None:
         """Definition line."""
         location = pyname.get_definition_location()
-        if location is None:
-            return None
         module, line = location
         origin = module.get_resource() if module is not None else None
         if line is None or origin is None or origin.path != resource.path:
@@ -338,8 +334,6 @@ class FlextInfraUtilitiesRopeInventory:
     ) -> p.Infra.RopeScopeDsl | None:
         """Child scope for."""
         location = pyname.get_definition_location()
-        if location is None:
-            return None
         _, line = location
         if line is None:
             return None
@@ -814,7 +808,7 @@ class FlextInfraUtilitiesRopeInventory:
         """Fingerprint."""
         start = max(1, line)
         end = child_scope.get_end() if child_scope is not None else start
-        end = end if isinstance(end, int) and end >= start else start
+        end = max(end, start)
         lines = source.splitlines()
         snippet = "\n".join(lines[start - 1 : end])
         return " ".join(snippet.replace(name, "<name>").split())

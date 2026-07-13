@@ -17,11 +17,10 @@ from typing import TYPE_CHECKING
 
 from rope.base import codeanalyze
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeStructure:

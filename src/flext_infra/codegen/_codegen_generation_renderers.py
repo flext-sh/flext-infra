@@ -12,7 +12,7 @@ from flext_infra.codegen._codegen_generation_lazy_entries import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): lazy generation

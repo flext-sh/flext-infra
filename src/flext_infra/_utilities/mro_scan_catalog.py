@@ -4,17 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import config
+from flext_infra import config, m
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.iteration import FlextInfraUtilitiesIteration
-from flext_infra.models import m
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra import t
     from flext_infra._models.mro_scan import FlextInfraModelsMroScan
-    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesMroScanCatalog:

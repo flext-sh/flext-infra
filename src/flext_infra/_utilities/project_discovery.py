@@ -16,7 +16,7 @@ from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesProjectDiscovery(

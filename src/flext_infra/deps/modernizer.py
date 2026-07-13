@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._modernizer_constraints import (
     FlextInfraPyprojectModernizerConstraintsMixin,
@@ -20,7 +21,6 @@ from flext_infra.deps._modernizer_payload import (
 from flext_infra.deps._modernizer_run import (
     FlextInfraPyprojectModernizerRunMixin,
 )
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -68,29 +68,40 @@ class FlextInfraPyprojectModernizer(
             ),
         ),
     ] = c.Infra.DependencyConstraintPolicy.FLOOR
-    _tool_config: m.Infra.ToolConfigDocument = u.PrivateAttr()
-    _paths_manager: FlextInfraExtraPathsManager | None = u.PrivateAttr(
-        default_factory=lambda: None,
-    )
 
-    @override
-    def model_post_init(self, __context: dict[str, p.AttributeProbe], /) -> None:
-        """Initialize pyproject modernization collaborators after validation."""
-        tool_config_result = u.Infra.load_tool_config()
-        if tool_config_result.failure:
-            msg = tool_config_result.error or "failed to load deps tool settings"
-            raise ValueError(msg)
-        self._tool_config = tool_config_result.value
-
-    @property
-    @override
-    def paths_manager(self) -> FlextInfraExtraPathsManager:
-        """Create the extra-paths manager only when a phase actually needs it."""
-        if self._paths_manager is None:
-            self._paths_manager = FlextInfraExtraPathsManager(
-                workspace_root=self.root,
+    def conform_source(
+        self,
+        source: str,
+        *,
+        path: Path,
+    ) -> p.Result[str]:
+        """Return one canonical pyproject using the same phases as workspace apply."""
+        payload_source = u.Cli.toml_mapping_from_text(source)
+        if payload_source is None:
+            return r[str].fail(f"invalid TOML: {path}")
+        try:
+            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+                payload_source,
             )
-        return self._paths_manager
+            canonical_dev = t.Infra.STR_SEQ_ADAPTER.validate_python(
+                u.Infra.canonical_dev_dependencies_from_payload(payload),
+            )
+        except c.ValidationError as exc:
+            return r[str].fail_op("pyproject model validation", exc)
+        state = m.Infra.PyprojectDocumentState(
+            pyproject_path=path,
+            original_rendered=source,
+            payload=payload,
+        )
+        self._process_document_state(
+            state,
+            canonical_dev=canonical_dev,
+            dry_run=True,
+            skip_comments=False,
+        )
+        if not state.rendered:
+            return r[str].fail(f"pyproject tooling render failed: {path}")
+        return r[str].ok(state.rendered)
 
     @override
     def execute(self) -> p.Result[bool]:

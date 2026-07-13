@@ -285,8 +285,6 @@ class FlextInfraClassPlacementDetector:
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
         tree = pymodule.get_ast()
-        if tree is None:
-            return ()
         body = FlextInfraClassPlacementDetector._class_body_nodes(
             tree,
             class_name=class_name,

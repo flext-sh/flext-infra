@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_cli import cli
 from flext_core import r
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
@@ -24,8 +24,6 @@ from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from collections.abc import (
@@ -33,9 +31,8 @@ if TYPE_CHECKING:
     )
     from pathlib import Path
 
+    from flext_infra import p, t
     from flext_infra.gates.base_gate import FlextInfraGate
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
 
 
 class FlextInfraGateRegistry:

@@ -7,18 +7,17 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli.utilities import FlextCliUtilities as u
+from flext_cli import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
 
+from flext_infra import FlextInfraConstants as c, FlextInfraTypes as t
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.typings import FlextInfraTypes as t
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import FlextInfraProtocols as p
+    from flext_infra import FlextInfraProtocols as p
 
 
 class FlextInfraUtilitiesDocsScope:

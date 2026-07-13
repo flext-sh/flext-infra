@@ -18,7 +18,7 @@ from flext_cli import cli
 from flext_core import e, r
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesSnapshot:

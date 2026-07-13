@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli.utilities import u
+from flext_cli import u
 from flext_core import r
 
 from flext_infra.constants import c
@@ -15,7 +15,7 @@ from flext_infra.models import m
 # mro-i6nq.10: Keep Ruff normalization behind one typed utilities owner.
 
 if TYPE_CHECKING:
-    from flext_core.protocols import p as core_p
+    from flext_core import p
 
     from flext_infra.typings import t
 
@@ -23,15 +23,27 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesCodegen:
     """Compose all codegen utility concerns for ``u.Infra``."""
 
-    @staticmethod
+    if TYPE_CHECKING:
+
+        @staticmethod
+        def project_root(file_path: Path) -> Path | None: ...
+
+    @classmethod
     def normalize_python_source(
+        cls,
         source: str,
         *,
         filename: t.Cli.TextPath,
-    ) -> core_p.Result[str]:
+    ) -> p.Result[str]:
         """Return Ruff-fixed and formatted source without writing ``filename``."""
         resolved_path = Path(filename).resolve()
-        cwd = resolved_path.parent
+        # mro-j47u: tool subprocesses run from the project root so package files
+        # such as collections.py can never shadow Python's standard library.
+        cwd = cls.project_root(resolved_path)
+        if cwd is None:
+            return r[str].fail(
+                f"project root not found for generated source: {resolved_path}",
+            )
         # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
         # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
         checked = u.Cli.run_raw(
@@ -127,7 +139,7 @@ class FlextInfraUtilitiesCodegen:
             base_import_block=base_import_block,
             docstring=docstring,
         )
-        rendered: core_p.Result[str] = u.Cli.template_render(
+        rendered: p.Result[str] = u.Cli.template_render(
             template_path,
             context,
         )

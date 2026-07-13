@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
+from flext_infra import c, m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.typings import t
 
 
 class FlextInfraEnsurePyrightConfigPhase:
@@ -198,6 +194,28 @@ class FlextInfraEnsurePyrightConfigPhase:
             project_root=rules.project_root,
             rules=rules,
         )
+
+    def _environment_payload(
+        self,
+        environment: m.Infra.PyrightConfig.ExecutionEnvironment,
+    ) -> t.JsonDict:
+        """Render one environment with its closed, scope-specific diagnostics."""
+        rules = self._tool_config.tools.pyright.path_rules
+        env_dir = Path(environment.root).name
+        diagnostics: t.MutableStrMapping = {
+            **self._tool_config.tools.pyright.lazy_import_suppressions,
+        }
+        if env_dir == rules.source_dir:
+            diagnostics.update(
+                self._tool_config.tools.pyright.source_env_suppressions,
+            )
+        elif env_dir in rules.test_like_dirs:
+            diagnostics.update(
+                self._tool_config.tools.pyright.test_like_env_suppressions,
+            )
+        payload: t.JsonDict = environment.model_dump(mode="json", by_alias=True)
+        payload.update(diagnostics)
+        return payload
 
     def _override_for_kind(
         self,
@@ -390,9 +408,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [
-                u.normalize_to_json_value(
-                    expected_env.model_dump(mode="json", by_alias=True),
-                )
+                u.normalize_to_json_value(self._environment_payload(expected_env))
                 for expected_env in expected_envs
             ],
         )

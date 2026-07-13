@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra import c, m, u
 from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from flext_infra.utilities import u
 
 _log = u.fetch_logger(__name__)
 

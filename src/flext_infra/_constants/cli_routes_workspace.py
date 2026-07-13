@@ -29,7 +29,6 @@ from flext_infra.transformers.pydantic_modernizer import (
 from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
-from flext_infra.transformers.tests_modernizer import FlextInfraRefactorTestsModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
@@ -134,16 +133,7 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 description="cli modernizer",
             ),
         ),
-        m.Cli.ResultCommandRoute(
-            name="modernize-tests",
-            help_text="Migrate unittest.TestCase tests to FLEXT test helpers",
-            model_cls=m.Infra.ModernizeInput,
-            handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
-                params,
-                transformer_factory=FlextInfraRefactorTestsModernizer,
-                description="tests modernizer",
-            ),
-        ),
+        # mro-j47u: legacy tests are outside production and have no refactor route.
     ),
     c.Infra.CLI_GROUP_RELEASE: (
         m.Cli.ResultCommandRoute(

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from flext_infra import m
 from flext_infra.codegen._codegen_generation_standard import (
     FlextInfraCodegenGenerationStandardMixin,
 )
-from flext_infra.models import m
 
 
 # mro-i6nq.10: Every package uses one manifest-backed thin initializer contract.

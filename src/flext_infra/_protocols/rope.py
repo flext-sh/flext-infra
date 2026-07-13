@@ -247,10 +247,6 @@ class FlextInfraProtocolsRope(Protocol):
         @staticmethod
         def init_rope_project(
             workspace_root: Path,
-            *,
-            project_prefix: str = "",
-            src_dir: str = "",
-            ignored_resources: t.VariadicTuple[str] = (),
         ) -> t.Infra.RopeProject: ...
 
         @staticmethod

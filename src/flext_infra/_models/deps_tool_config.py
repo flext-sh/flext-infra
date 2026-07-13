@@ -175,7 +175,7 @@ class FlextInfraModelsDepsToolSettings(
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
-        """Project-type-specific override matrix from tool_config.yml."""
+        """Project-type-specific override matrix from ``config/tooling.yaml``."""
 
         core: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
             description="Core overrides",
@@ -247,7 +247,7 @@ class FlextInfraModelsDepsToolSettings(
         ]
 
     class ToolConfigDocument(m.ArbitraryTypesModel):
-        """Root schema for tool_config.yml."""
+        """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
         tools: FlextInfraModelsDepsToolSettings.ToolConfigTools = m.Field(
             description="Tools",

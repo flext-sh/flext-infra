@@ -160,7 +160,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         real_modules = [
             name
             for name in real_modules
-            if not config.Infra.source_scan.ignored_directories.intersection(
+            if not config.Infra.source_scan.ignored_resources.intersection(
                 name.split("."),
             )
         ]

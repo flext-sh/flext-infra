@@ -162,6 +162,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             str,
             m.Field(description="Original TOML source text"),
         ] = ""
+        rendered: Annotated[
+            str,
+            m.Field(description="Canonical rendered TOML source text"),
+        ] = ""
         payload: Annotated[
             t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),

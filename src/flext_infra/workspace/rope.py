@@ -26,25 +26,6 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         ),
     ] = None
 
-    project_prefix: Annotated[
-        str,
-        m.Field(
-            description="Project prefix used when bootstrapping Rope",
-        ),
-    ] = c.Infra.PKG_PREFIX_HYPHEN
-    src_dir: Annotated[
-        str,
-        m.Field(
-            description="Primary source directory hint used by Rope bootstrap",
-        ),
-    ] = c.Infra.DEFAULT_SRC_DIR
-    ignored_resources: Annotated[
-        t.StrSequence,
-        m.Field(
-            description="Ignored Rope resource patterns for this session",
-        ),
-    ] = c.Infra.ROPE_IGNORED_RESOURCES
-
     _rope_workspace_root: Path = u.PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
         default_factory=lambda: None,
@@ -96,17 +77,13 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         workspace_root: Path,
         *,
         rope_workspace_root: Path | None = None,
-        project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
-        src_dir: str = c.Infra.DEFAULT_SRC_DIR,
-        ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
     ) -> Self:
         """Create one ready-to-use Rope workspace session."""
+        # NOTE (multi-agent, mro-wkii.17.24): scan policy is owned only by the
+        # validated config singleton, never copied into a session.
         workspace = cls(
             workspace_root=workspace_root,
             rope_workspace_root_override=rope_workspace_root,
-            project_prefix=project_prefix,
-            src_dir=src_dir,
-            ignored_resources=ignored_resources,
         )
         _ = workspace.rope_project
         return workspace
@@ -125,12 +102,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             u.Cli.info(
                 f"rope: opening workspace at {self._rope_workspace_root}",
             )
-            rope_project = u.Infra.init_rope_project(
-                self._rope_workspace_root,
-                project_prefix=self.project_prefix,
-                src_dir=self.src_dir,
-                ignored_resources=self.ignored_resources,
-            )
+            rope_project = u.Infra.init_rope_project(self._rope_workspace_root)
             self._rope_project = rope_project
             u.Cli.info(
                 f"rope: workspace ready in {perf_counter() - started_at:.2f}s",
@@ -170,9 +142,6 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         return m.Infra.RopeWorkspaceSession(
             workspace_root=self.workspace_root,
             rope_workspace_root=self._rope_workspace_root,
-            project_prefix=self.project_prefix,
-            src_dir=self.src_dir,
-            ignored_resources=self.ignored_resources,
             workspace_index=self.workspace_index,
         )
 

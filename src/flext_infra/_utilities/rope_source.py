@@ -8,12 +8,10 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
+from flext_infra import c, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from collections.abc import (

@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
-from flext_core import FlextConstantsEnforcement as _fce
+from flext_core import c
 
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from flext_infra import t
 
 
@@ -495,9 +494,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         r"^_?[A-Z][A-Z0-9_]+$",
     )
     "Regex: namespace constant candidate names."
-    CLASSVAR_EXEMPT_NAMES: Final[frozenset[str]] = (
-        _fce.ENFORCEMENT_CLASSVAR_EXEMPT_NAMES
-    )
+    CLASSVAR_EXEMPT_NAMES: Final[frozenset[str]] = c.ENFORCEMENT_CLASSVAR_EXEMPT_NAMES
     "ClassVar attribute names that are framework idioms and stay in place (SSOT: flext-core)."
     CLASSVAR_ALLOWED_CALLS: Final[frozenset[str]] = frozenset({
         "Path",
@@ -577,14 +574,15 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     })
     "Names to skip during compatibility alias detection."
     ENFORCEMENT_CANONICAL_ALIASES: Final[frozenset[str]] = (
-        _fce.ENFORCEMENT_CANONICAL_ALIASES
+        c.ENFORCEMENT_CANONICAL_ALIASES
     )
     "Canonical short aliases exposed by FLEXT facades (SSOT: flext-core)."
     ENFORCEMENT_PROJECT_ALIAS_OWNERS: Final[t.StrSequenceMapping] = (
-        _fce.ENFORCEMENT_PROJECT_ALIAS_OWNERS
+        c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
     )
     "Project package → canonical aliases it re-exports locally (SSOT: flext-core)."
-    ENFORCEMENT_LIBRARY_OWNERS: Final[t.StrMapping] = _fce.ENFORCEMENT_LIBRARY_OWNERS
+    # mro-j47u: consume core enforcement data through its exact canonical alias.
+    ENFORCEMENT_LIBRARY_OWNERS: Final[t.StrMapping] = c.ENFORCEMENT_LIBRARY_OWNERS
     "External library → project that owns its abstraction facade (SSOT: flext-core)."
     FUTURE_ANNOTATIONS_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+__future__\s+import\s+annotations\b",

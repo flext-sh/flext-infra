@@ -15,6 +15,9 @@ from flext_infra import t
 from flext_infra._constants.codegen_project import (
     FlextInfraConstantsCodegenProject,
 )
+from flext_infra._models.deps_tool_config import (
+    FlextInfraModelsDepsToolSettings,
+)
 
 
 class _ConfigContract(m.ContractModel):
@@ -308,6 +311,11 @@ class FlextInfraConfigModels:
     class ProjectRenderContext(_ConfigContract):
         """Complete typed input consumed by the universal project templates."""
 
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical generated tooling configuration"),
+        ]
+
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         const_name: Annotated[
             t.NonEmptyStr,
@@ -518,11 +526,11 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Ordered production source directory names"),
         ]
-        ignored_directories: Annotated[
+        ignored_resources: Annotated[
             frozenset[t.NonEmptyStr],
             m.Field(
                 min_length=1,
-                description="Directory names excluded from every source scan",
+                description="File or directory names excluded from every source scan",
             ),
         ]
 
@@ -542,6 +550,10 @@ class FlextInfraConfigModels:
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,
             m.Field(description="Unified project and workspace codegen contract"),
+        ]
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[
             FlextInfraConfigModels.SourceScanSpec,

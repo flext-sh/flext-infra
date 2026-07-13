@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
+from flext_infra import c
 from flext_infra.codegen._lazy_init_planner_parent_ast import (
     FlextInfraCodegenLazyInitPlannerParentAstMixin,
 )
-from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
-    from flext_infra.typings import t
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerParentsMixin(

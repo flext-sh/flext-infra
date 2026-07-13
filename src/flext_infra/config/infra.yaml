@@ -5,8 +5,11 @@ Infra:
     roots:
       - src
       - scripts
-    ignored_directories:
+    # NOTE (multi-agent, mro-wkii.17.24): resource names are rejected before indexing.
+    ignored_resources:
       - .cache
+      # mro-j47u: agent worktrees are duplicate repositories, never production input.
+      - .claude
       - .git
       - .mypy_cache
       - .pyrefly_cache
@@ -17,6 +20,7 @@ Infra:
       - .venv
       - __pycache__
       - build
+      - conftest.py
       - dist
       - dist-packages
       - examples

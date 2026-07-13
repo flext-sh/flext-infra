@@ -111,9 +111,6 @@ if TYPE_CHECKING:
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator as FlextInfraRefactorSymbolPropagator,
     )
-    from flext_infra.transformers.tests_modernizer import (
-        FlextInfraRefactorTestsModernizer as FlextInfraRefactorTestsModernizer,
-    )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer as FlextInfraTransformerTier0ImportFixer,
     )

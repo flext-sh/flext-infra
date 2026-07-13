@@ -20,12 +20,11 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_core.__version__ import FlextVersion
 
+from flext_infra import c, u
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraCodegenVersionFile(s[bool]):

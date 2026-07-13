@@ -10,18 +10,16 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 
+from flext_infra import c
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra.constants import c
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
 
 if TYPE_CHECKING:
-    from flext_infra.models import m
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
+    from flext_infra import m, p, t
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -575,7 +573,7 @@ class FlextInfraUtilitiesRopeImports:
         target_import_stmt: t.Infra.RopeImportStatement | None = None
         moved_aliases: t.Infra.StrSet = set()
         import_statements = module_imports.imports
-        if not isinstance(import_statements, list):
+        if not import_statements:
             return target_import_stmt, moved_aliases
         for import_stmt in import_statements:
             import_info = import_stmt.import_info

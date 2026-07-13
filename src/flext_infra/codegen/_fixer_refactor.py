@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import c, m
 from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
-from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.refactor.service import FlextInfraRefactorService
 
 if TYPE_CHECKING:

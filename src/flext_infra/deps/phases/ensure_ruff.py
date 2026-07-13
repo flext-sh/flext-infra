@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-from flext_infra.models import m
-from flext_infra.utilities import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -122,6 +120,10 @@ class FlextInfraEnsureRuffConfigPhase:
                     ("indent-style", ruff_cfg.format.indent_style),
                     ("line-ending", ruff_cfg.format.line_ending),
                     ("quote-style", ruff_cfg.format.quote_style),
+                    (
+                        "skip-magic-trailing-comma",
+                        ruff_cfg.format.skip_magic_trailing_comma,
+                    ),
                 ),
             )
             .nested(c.Infra.LINT_SECTION, values=lint_nested_values)

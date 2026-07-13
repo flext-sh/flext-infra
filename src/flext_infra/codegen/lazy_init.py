@@ -16,18 +16,16 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 
+from flext_infra import c, config, u
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,
 )
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.constants import c
-from flext_infra.utilities import u
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
@@ -78,7 +76,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             "lazy-init: starting "
             f"({'check' if check_only else 'apply'}) for {self.workspace_root}",
         )
-        lazy_init = u.Infra.load_tool_config().unwrap().lazy_init
+        lazy_init = config.Infra.tooling.lazy_init
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             workspace_index = rope.workspace_index
             package_dirs = tuple(

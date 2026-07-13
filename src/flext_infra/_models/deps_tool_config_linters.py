@@ -62,6 +62,13 @@ class FlextInfraModelsDepsToolConfigLinters:
                 description="Quote style for ruff formatter output.",
             ),
         ]
+        skip_magic_trailing_comma: Annotated[
+            bool,
+            m.Field(
+                alias="skip-magic-trailing-comma",
+                description="Collapse short comma-terminated constructs onto one line.",
+            ),
+        ]
 
     class RuffIsortConfig(m.ArbitraryTypesModel):
         """Ruff isort settings loaded from YAML."""

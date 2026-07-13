@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from flext_infra.deps.phases.ensure_formatting import (
@@ -31,7 +32,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 
 class FlextInfraPyprojectModernizerDocumentMixin:
@@ -39,14 +39,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     if TYPE_CHECKING:
         # Members provided by sibling mixins / the facade at runtime via MRO.
-        _tool_config: m.Infra.ToolConfigDocument
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
 
         @property
         def root(self) -> Path: ...
-
-        @property
-        def paths_manager(self) -> FlextInfraExtraPathsManager: ...
 
         def _ensure_build_system_payload(
             self,
@@ -145,7 +141,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
         no virtualenv exists at modernize time.
         """
-        rules = self._tool_config.tools.pyright.path_rules
+        rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
         if (project_dir / venv_name).is_dir():
             return False
@@ -188,6 +184,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             if kind_result.success:
                 project_kind = kind_result.value
         changes: t.MutableSequenceOf[str] = []
+        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
         if rewrite_constraints:
@@ -203,26 +200,34 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
         )
         changes.extend(
-            FlextInfraEnsurePytestConfigPhase(self._tool_config).apply_payload(payload),
+            FlextInfraEnsurePytestConfigPhase(config.Infra.tooling).apply_payload(
+                payload,
+            ),
         )
         changes.extend(
-            FlextInfraEnsurePyreflyConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
                 project_dir=path.parent,
-                paths_manager=self.paths_manager,
+                paths_manager=paths_manager,
             ),
         )
         changes.extend(
-            FlextInfraEnsureMypyConfigPhase(self._tool_config).apply_payload(payload),
-        )
-        changes.extend(
-            FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsureMypyConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
             ),
         )
         changes.extend(
-            FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply_payload(
+            FlextInfraEnsurePydanticMypyConfigPhase(
+                config.Infra.tooling,
+            ).apply_payload(
+                payload,
+            ),
+        )
+        changes.extend(
+            FlextInfraEnsureFormattingToolingPhase(
+                config.Infra.tooling,
+            ).apply_payload(
                 payload,
             ),
         )
@@ -230,29 +235,29 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path),
         )
         changes.extend(
-            FlextInfraEnsureRuffConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 path=path,
             ),
         )
         changes.extend(
-            FlextInfraEnsurePyrightConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
                 workspace_root=self.root,
                 project_dir=path.parent,
                 project_kind=project_kind,
-                paths_manager=self.paths_manager,
+                paths_manager=paths_manager,
             ),
         )
         changes.extend(
-            FlextInfraEnsureCoverageConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 project_kind=project_kind,
             ),
         )
         changes.extend(
-            self.paths_manager.sync_payload(
+            paths_manager.sync_payload(
                 payload,
                 project_dir=path.parent,
                 is_root=is_root,
@@ -271,8 +276,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
+        state.rendered = normalized_rendered
         if normalized_rendered == normalized_original:
-            return []
+            return ()
         if not dry_run:
             u.write_file(path, rendered, encoding=c.Cli.ENCODING_DEFAULT)
         return changes
