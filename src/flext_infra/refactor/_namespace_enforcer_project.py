@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_infra import config, m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -32,7 +32,6 @@ from flext_infra.detectors.mro_completeness_detector import (
 from flext_infra.detectors.namespace_source_detector import (
     FlextInfraNamespaceSourceDetector,
 )
-from flext_infra.detectors.pattern_smell_detector import FlextInfraPatternSmellDetector
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -328,13 +327,16 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         )
         pattern_smells = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraPatternSmellDetector.detect_file(
+            # mro-j47u (codex): config data + u.Infra are the only static-policy path.
+            detect_fn=lambda f: u.Infra.detect_static_rules(
                 self._detector_context(
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
+                    project_name=project_name,
                     project_root=project_root,
-                )
+                ),
+                config.Infra.enforcement.rules,
             ),
             rewrite_fn=None,
             apply=apply,

@@ -9,6 +9,7 @@ from __future__ import annotations
 from rope.base import codeanalyze, simplify, worder
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
@@ -59,6 +60,49 @@ class FlextInfraUtilitiesRopeStructure:
             ):
                 type_checking_guards.append(indent)
         return tuple(statements)
+
+    @classmethod
+    def detect_static_rules(
+        cls, ctx: m.Infra.DetectorContext, rules: t.SequenceOf[m.Infra.StaticRuleSpec]
+    ) -> t.SequenceOf[m.Infra.PatternSmellViolation]:
+        """Resolve one detector context and evaluate the configured Rope policy."""
+        resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
+            ctx.rope_project, ctx.file_path
+        )
+        if resource is None:
+            return ()
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                ctx.rope_project, resource
+            )
+            module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
+                ctx.rope_project, pymodule
+            )
+        except (*c.Infra.SYNTAX_ERRORS,) as exc:
+            if ctx.parse_failures is None:
+                raise
+            ctx.parse_failures.append(
+                m.Infra.ParseFailureViolation(
+                    file=str(ctx.file_path),
+                    stage="static_rules",
+                    error_type=type(exc).__name__,
+                    detail=str(exc),
+                )
+            )
+            return ()
+        display_path = (
+            ctx.file_path.relative_to(ctx.project_root)
+            if ctx.project_root is not None
+            and ctx.file_path.is_relative_to(ctx.project_root)
+            else ctx.file_path
+        )
+        return cls.evaluate_static_rules(
+            source=resource.read(),
+            module_imports=module_imports,
+            rules=rules,
+            file_path=str(display_path),
+            project_name=ctx.project_name,
+        )
 
     @classmethod
     def evaluate_static_rules(
