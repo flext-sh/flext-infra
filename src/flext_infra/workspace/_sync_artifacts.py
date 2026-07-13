@@ -100,11 +100,13 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     ) -> str:
         """Return ``existing`` with one canonical managed ignore block."""
         managed_patterns = frozenset(required)
+        # mro-wkii.17.26 (codex): remove obsolete ignores during every canonical sync.
         unmanaged: t.MutableSequenceOf[str] = [
             line
             for line in existing.splitlines()
             if line.strip() != c.Infra.GITIGNORE_MANAGED_HEADER
             and line.strip() not in managed_patterns
+            and line.strip() not in c.Infra.GITIGNORE_REMOVE_EXACT
         ]
         while unmanaged and not unmanaged[-1].strip():
             _ = unmanaged.pop()

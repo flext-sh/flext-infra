@@ -175,9 +175,10 @@ Infra:
         disabled_reply: disabled
       gitignore_sections:
         - name: Python
+          # mro-wkii.17.26 (codex): match the recursive workspace-sync bytecode rules.
           patterns:
-            - __pycache__/
-            - '*.py[cod]'
+            - '**/__pycache__/'
+            - '**/*.py[cod]'
             - '*$py.class'
             - '*.egg-info/'
             - .eggs/

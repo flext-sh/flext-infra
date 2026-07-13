@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, t, u
+from flext_infra import c, u
 from flext_infra.workspace._workspace_makefile_template import (
     FlextInfraWorkspaceMakefileTemplateMixin,
 )
@@ -108,7 +108,7 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
 
     @staticmethod
     def _current_branch(workspace_root: Path) -> str:
-        """Return current git branch or version from pyproject.toml."""
+        """Return the source branch, including inside a detached transaction."""
         capture_result = u.Cli.capture(
             ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
             timeout=5,
@@ -118,16 +118,30 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
             if branch and branch != c.Infra.GIT_HEAD:
                 return str(branch)
 
-        # Fallback: read version from pyproject.toml
-        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
-        data_result = u.Cli.toml_read_json(pyproject)
-        if data_result.success:
-            data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(data_result.value)
-            project_raw = data.get("project")
-            if isinstance(project_raw, dict):
-                version_raw = project_raw.get("version", c.Infra.GIT_MAIN)
-                if isinstance(version_raw, str):
-                    return version_raw
+        # mro-wkii.17.26 (codex): resolve the branch behind a detached checkpoint.
+        for revision in ("HEAD^", "HEAD"):
+            refs_result = u.Cli.capture(
+                [
+                    "git",
+                    "-C",
+                    str(workspace_root),
+                    "for-each-ref",
+                    "--format=%(refname:short)",
+                    "--points-at",
+                    revision,
+                    "refs/heads",
+                ],
+                timeout=5,
+            )
+            if refs_result.failure:
+                continue
+            branches = tuple(
+                line.strip()
+                for line in str(refs_result.value).splitlines()
+                if line.strip()
+            )
+            if len(branches) == 1:
+                return branches[0]
         return str(c.Infra.GIT_MAIN)
 
 

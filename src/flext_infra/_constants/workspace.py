@@ -67,14 +67,28 @@ class FlextInfraConstantsWorkspace:
     GITIGNORE_REMOVE_EXACT: Final[frozenset[str]] = frozenset({
         "!scripts/",
         "!scripts/**",
+        # mro-wkii.17.26 (codex): remove bytecode rules that precede resource allows.
+        "*$py.class",
+        "*.py[cod]",
+        "*.pyc",
+        "*.pyd",
+        "*.pyo",
+        "**/*.pyc",
+        "**/*.pyd",
+        "**/*.pyo",
+        "__pycache__/",
+        # mro-wkii.17.26 (codex): generated gRPC modules are tracked source artifacts.
+        "*_pb2.py",
+        "*_pb2_grpc.py",
+        "proto/",
         "scripts/",
         "/scripts/",
     })
+    # mro-wkii.17.26 (codex): sync appends bytecode ignores after resource negations.
     REQUIRED_GITIGNORE_ENTRIES: Final[t.StrSequence] = (
         ".direnv/",
         ".reports/",
         ".venv/",
-        "__pycache__/",
         "base.mk",
     )
     GITIGNORE_MANAGED_HEADER: Final[str] = (

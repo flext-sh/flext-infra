@@ -154,6 +154,8 @@ class FlextInfraSyncService(
         for resource in config.Infra.codegen.scaffold.resources:
             source = resource.source.as_posix().rstrip("/")
             entries.extend((f"!/{source}/", f"!/{source}/**"))
+        # mro-wkii.17.26 (codex): re-ignore bytecode after tracked resource roots.
+        entries.extend(("**/__pycache__/", "**/*.py[cod]"))
         entries.extend((
             "**/.env",
             "**/*.key",
